@@ -52,6 +52,9 @@ graph LR
 - Sync Obsidian notes to Google NotebookLM notebooks
 - Spaced repetition scheduling (1/3/7/14/30 day intervals)
 - Struggle topic detection from session history
+- Win tracking — see concepts you've mastered, fight imposter syndrome
+- Calendar time-blocking — generate `.ics` study blocks from your review schedule
+- Progress recording with confidence levels (struggling → learning → confident → mastered)
 - Cross-machine state sync via SSH
 - Scheduled auto-sync (launchd on macOS, cron on Linux)
 
@@ -60,13 +63,23 @@ graph LR
 - FTS5 full-text search across all sessions
 - Hybrid semantic search (FTS + vector embeddings)
 - Session classification and deduplication
+- Study progress and energy tracking database
 - Cross-machine database sync via SSH
 
 **AI Agents** — Socratic mentoring
 - AuDHD-aware teaching methodology (questions > lectures)
+- Energy-adaptive sessions (low/medium/high adjusts difficulty and chunk size)
+- End-of-session protocol: auto-record progress, suggest next review, offer calendar blocks
+- Break reminders at 25/50/90 minute intervals
+- Claude Code status line showing energy level, session timer, and context usage
 - Network→Data Engineering concept bridges
 - Body doubling session support
 - Progress tracking across agents and machines
+
+**MCP Integrations** — Optional calendar and reminder support
+- Apple Calendar + Reminders (macOS) — native notifications for study time
+- Google Calendar (cross-platform) — time-blocking via built-in connector or MCP server
+- See [agents/mcp/README.md](agents/mcp/README.md) for setup
 
 ## Quick Start
 
@@ -116,6 +129,9 @@ studyctl sync [TOPIC] --all --dry-run   # Sync notes to NotebookLM
 studyctl status [TOPIC]                  # Show sync status
 studyctl review                          # Check spaced repetition due dates
 studyctl struggles --days 30             # Find recurring struggle topics
+studyctl wins --days 30                  # Show your learning wins
+studyctl progress CONCEPT -t TOPIC -c LEVEL  # Record progress on a concept
+studyctl schedule-blocks --start 14:00   # Generate .ics calendar study blocks
 studyctl topics                          # List configured topics
 studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
@@ -142,6 +158,8 @@ tutor-checkpoint code --skill SKILL      # Record study progress
 - [Setup Guide](docs/setup-guide.md) — Installation, configuration, Obsidian setup
 - [Agent Installation](docs/agent-install.md) — AI agent setup for kiro-cli and Claude Code
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — Why this exists and how it works
+- [MCP Integrations](agents/mcp/README.md) — Calendar, reminders, and other MCP server configs
+- [Roadmap](docs/roadmap.md) — What's coming in v1.1 and beyond
 - [Contributing](CONTRIBUTING.md) — Development setup and contribution guide
 
 ## Contributing
