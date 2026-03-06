@@ -2,7 +2,6 @@
 
 from .aider import AiderExporter
 from .base import ExportStats, SessionExporter
-from .bedrock import BedrockProxyExporter
 from .claude import ClaudeCodeExporter
 from .gemini import GeminiCliExporter
 from .kiro import KiroCliExporter
@@ -19,7 +18,6 @@ __all__ = [
     "AiderExporter",
     "LitellmExporter",
     "RepoPromptExporter",
-    "BedrockProxyExporter",
     "OpenCodeExporter",
 ]
 
@@ -32,7 +30,6 @@ EXPORTERS = {
     "aider": AiderExporter(),
     "litellm": LitellmExporter(),
     "repoprompt": RepoPromptExporter(),
-    "bedrock": BedrockProxyExporter(),
 }
 
 

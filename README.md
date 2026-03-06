@@ -56,7 +56,7 @@ graph LR
 - Scheduled auto-sync (launchd on macOS, cron on Linux)
 
 **agent-session-tools** — AI session management
-- 8 source exporters: Claude Code, Kiro CLI, Gemini CLI, Aider, OpenCode, LiteLLM, RepoPrompt, Bedrock
+- 7 source exporters: Claude Code, Kiro CLI, Gemini CLI, Aider, OpenCode, LiteLLM, RepoPrompt
 - FTS5 full-text search across all sessions
 - Hybrid semantic search (FTS + vector embeddings)
 - Session classification and deduplication

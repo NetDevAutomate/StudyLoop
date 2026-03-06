@@ -198,7 +198,7 @@ session-export --source kiro
 session-export --source aider
 ```
 
-Supported sources: `claude`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`, `bedrock`
+Supported sources: `claude`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`
 
 ### Verify it's working
 

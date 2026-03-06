@@ -104,7 +104,6 @@ socratic-study-mentor/
 │       │   │   ├── opencode.py      # OpenCode
 │       │   │   ├── litellm.py       # LiteLLM
 │       │   │   ├── repoprompt.py    # RepoPrompt
-│       │   │   └── bedrock.py       # Bedrock proxy
 │       │   ├── export_sessions.py   # Export CLI
 │       │   ├── query_sessions.py    # Query CLI
 │       │   ├── sync.py              # Cross-machine sync
