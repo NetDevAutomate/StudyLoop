@@ -256,7 +256,7 @@ def classify_session(
         category = "work"
         confidence = 0.5
     else:
-        category = max(total_scores, key=total_scores.get)
+        category = max(total_scores, key=lambda k: total_scores[k])
         confidence = min(normalized[category], 1.0)
 
     return ClassificationResult(

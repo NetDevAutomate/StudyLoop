@@ -120,14 +120,14 @@ def load_config() -> dict[str, Any]:
             print(f"Warning: Failed to load {LOCAL_CONFIG}: {e}")
 
     # Override with environment variables
-    if os.getenv("DATABASE_PATH"):
-        config["database"]["path"] = os.getenv("DATABASE_PATH")
-    if os.getenv("LOG_LEVEL"):
-        config["logging"]["level"] = os.getenv("LOG_LEVEL")
-    if os.getenv("WARNING_THRESHOLD_MB"):
-        config["thresholds"]["warning_mb"] = int(os.getenv("WARNING_THRESHOLD_MB"))
-    if os.getenv("CRITICAL_THRESHOLD_MB"):
-        config["thresholds"]["critical_mb"] = int(os.getenv("CRITICAL_THRESHOLD_MB"))
+    if (v := os.getenv("DATABASE_PATH")):
+        config["database"]["path"] = v
+    if (v := os.getenv("LOG_LEVEL")):
+        config["logging"]["level"] = v
+    if (v := os.getenv("WARNING_THRESHOLD_MB")):
+        config["thresholds"]["warning_mb"] = int(v)
+    if (v := os.getenv("CRITICAL_THRESHOLD_MB")):
+        config["thresholds"]["critical_mb"] = int(v)
 
     # Expand all paths
     config["database"]["path"] = str(expand_path(config["database"]["path"]))
@@ -193,8 +193,8 @@ def get_embedding_model(config: dict[str, Any] | None = None) -> str:
 
     Can be overridden with EMBEDDING_MODEL environment variable.
     """
-    if os.getenv("EMBEDDING_MODEL"):
-        return os.getenv("EMBEDDING_MODEL")
+    if (v := os.getenv("EMBEDDING_MODEL")):
+        return v
 
     semantic_config = get_semantic_config(config)
     return semantic_config.get("model", "all-mpnet-base-v2")

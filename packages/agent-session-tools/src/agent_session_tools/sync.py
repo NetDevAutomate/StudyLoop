@@ -135,6 +135,7 @@ def _get_session_ids(db_path_or_host: Path | str, remote_db: str | None = None) 
         conn.close()
         return ids
     # Remote
+    assert remote_db is not None, "remote_db required for remote queries"
     raw = _remote_sql(db_path_or_host, remote_db, "SELECT id FROM sessions")
     return set(raw.splitlines()) if raw else set()
 

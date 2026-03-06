@@ -1016,11 +1016,11 @@ def _generate_resume_context(session: dict, messages: list, max_tokens: int) -> 
         )
         token_count = estimate_tokens(content, accurate=TIKTOKEN_AVAILABLE)
 
-    lines = content.split("\n")
-    lines.append("")
-    lines.append(f"*Context: {token_count} tokens*")
+    result_lines = list(content.split("\n"))
+    result_lines.append("")
+    result_lines.append(f"*Context: {token_count} tokens*")
 
-    return "\n".join(lines)
+    return "\n".join(result_lines)
 
 
 def _generate_branch_context(session: dict, messages: list, max_tokens: int) -> str:

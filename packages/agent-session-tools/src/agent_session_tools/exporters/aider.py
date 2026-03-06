@@ -157,7 +157,7 @@ class AiderExporter:
         return results
 
     def _process_history_file(
-        self, history_file: Path, incremental: bool, conn: sqlite3.Connection = None
+        self, history_file: Path, incremental: bool, conn: sqlite3.Connection | None = None
     ) -> tuple[dict | None, list[dict]]:
         """Process single file and return session data and messages."""
         project_path = str(history_file.parent)

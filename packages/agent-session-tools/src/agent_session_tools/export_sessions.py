@@ -53,9 +53,9 @@ DEFAULT_DB = get_db_path(config)
 
 def init_db(db_path: str) -> sqlite3.Connection:
     """Initialize database with schema and run migrations."""
-    db_path = Path(db_path)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    path = Path(db_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
 
     # Enable WAL mode for better concurrent access
@@ -218,7 +218,7 @@ def _run_export(
             if source == "aider":
 
                 class AiderArgs:
-                    pass
+                    aider_paths: list[Path] | None = None
 
                 args = AiderArgs()
                 args.aider_paths = aider_paths
@@ -240,7 +240,7 @@ def _run_export(
                     batch_stats.skipped += getattr(source_stats, "skipped", 0)
                     batch_stats.errors += getattr(source_stats, "errors", 0)
 
-            if progress:
+            if progress and task is not None:
                 progress.update(
                     task,
                     description=f"{source.title()}: {batch_stats.added} added, {batch_stats.updated} updated",

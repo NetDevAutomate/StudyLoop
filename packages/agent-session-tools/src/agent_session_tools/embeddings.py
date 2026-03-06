@@ -87,8 +87,8 @@ def get_configured_model() -> str:
     import os
 
     # Check environment variable first
-    if os.getenv("EMBEDDING_MODEL"):
-        return os.getenv("EMBEDDING_MODEL")
+    if (v := os.getenv("EMBEDDING_MODEL")):
+        return v
 
     # Try to load from config (may fail if config not available)
     try:
@@ -128,15 +128,15 @@ MIN_CODE_LENGTH = 20  # Shorter threshold for code content
 
 # Check if sentence-transformers is available
 try:
-    import numpy as np
-    from sentence_transformers import SentenceTransformer
+    import numpy as np  # pyright: ignore[reportMissingImports]
+    from sentence_transformers import SentenceTransformer  # pyright: ignore[reportMissingImports]
 
     EMBEDDINGS_AVAILABLE = True
 except ImportError:
     EMBEDDINGS_AVAILABLE = False
     if TYPE_CHECKING:
-        import numpy as np
-        from sentence_transformers import SentenceTransformer
+        import numpy as np  # pyright: ignore[reportMissingImports]
+        from sentence_transformers import SentenceTransformer  # pyright: ignore[reportMissingImports]
 
 
 def is_available() -> bool:

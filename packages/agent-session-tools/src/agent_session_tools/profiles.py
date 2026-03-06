@@ -105,7 +105,7 @@ def load_profile(name: str) -> dict[str, Any]:
     return data
 
 
-def create_profile(name: str, base: str = None, overwrite: bool = False) -> Path:
+def create_profile(name: str, base: str | None = None, overwrite: bool = False) -> Path:
     """Create new custom profile."""
     if name in BUILTIN_PROFILES:
         raise ValueError(f"Cannot override built-in profile: {name}")

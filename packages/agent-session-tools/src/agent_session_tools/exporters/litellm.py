@@ -48,7 +48,7 @@ class LitellmExporter:
 
     def is_available(self) -> bool:
         """Check if LiteLLM database is available."""
-        return self.litellm_db_path and self.litellm_db_path.exists()
+        return self.litellm_db_path is not None and self.litellm_db_path.exists()
 
     def export_all(self, conn: sqlite3.Connection, incremental: bool = True) -> ExportStats:
         """Export LiteLLM webhook metrics as sessions.
@@ -72,6 +72,7 @@ class LitellmExporter:
         stats = ExportStats(added=0, updated=0, skipped=0, errors=0)
 
         # Connect to LiteLLM database
+        assert self.litellm_db_path is not None
         litellm_conn = sqlite3.connect(self.litellm_db_path)
         litellm_conn.row_factory = sqlite3.Row
 

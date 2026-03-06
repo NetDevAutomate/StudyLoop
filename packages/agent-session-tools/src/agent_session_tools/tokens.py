@@ -8,11 +8,11 @@ from typing import Protocol
 
 # Try to import tiktoken, fall back gracefully
 try:
-    import tiktoken
+    import tiktoken  # pyright: ignore[reportMissingImports]
 
     TIKTOKEN_AVAILABLE = True
 except ImportError:
-    tiktoken = None  # type: ignore
+    tiktoken = None  # type: ignore[assignment]
     TIKTOKEN_AVAILABLE = False
 
 
@@ -23,7 +23,7 @@ class TokenCounter(Protocol):
         """Count tokens in text."""
         ...
 
-    def truncate_to_fit(self, text: str, max_tokens: int) -> str:
+    def truncate_to_fit(self, text: str, max_tokens: int, strategy: str = "end") -> str:
         """Truncate text to fit within max_tokens."""
         ...
 
@@ -37,7 +37,7 @@ class TiktokenCounter:
         Args:
             model: Encoding name or model name. Claude uses cl100k_base.
         """
-        if not TIKTOKEN_AVAILABLE:
+        if not TIKTOKEN_AVAILABLE or tiktoken is None:
             raise ImportError("tiktoken is required. Install with: uv pip install tiktoken")
         self.encoder = tiktoken.get_encoding(model)
 
