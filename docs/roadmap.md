@@ -60,6 +60,16 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - Break reminders at configurable intervals
 - Claude Code status line shows elapsed time + focus state
 
+#### Calendar Time-Blocking & Reminders
+**Why:** ADHD task initiation is the hardest part. External triggers (notifications, calendar blocks) bypass the executive function barrier.
+
+- Apple Calendar + Reminders MCP integration (macOS) — native notifications
+- Google Calendar MCP integration (cross-platform)
+- Auto-create study time blocks from `studyctl review` output
+- Daily study briefing generation
+- Break reminders via native notifications
+- Note: Windows/WSL2 users use Google Calendar; macOS users can use either
+
 ### 🔵 Nice to Have
 
 #### Pomodoro Session Structure
@@ -77,6 +87,14 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - Display: 🔋 Energy | ⏱️ Timer | 🍅 Pomodoro | 📊 Context %
 - Agent writes state → script reads state → user sees it
 - Note: kiro-cli does not support status lines (state shown in chat messages instead)
+
+#### Cowork Integration (Claude Desktop)
+**Why:** Scheduled daily study briefings without opening a terminal.
+
+- Cowork folder instructions for Socratic mentoring behaviour
+- `/schedule` recurring tasks for daily study review
+- Google Calendar connector for schedule-aware study planning
+- Note: Requires Claude Desktop open + computer awake
 
 ## v1.2 — Community & Polish
 

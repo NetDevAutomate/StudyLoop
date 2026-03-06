@@ -257,6 +257,63 @@ studyctl schedule add my-sync "studyctl sync --all" "daily 3am"
 
 On macOS, this creates launchd plists. On Linux, it uses cron.
 
+## Windows (WSL2)
+
+The toolkit runs on Windows via WSL2 (Windows Subsystem for Linux).
+
+### Prerequisites
+
+1. Install WSL2 with Ubuntu: `wsl --install -d Ubuntu`
+2. Inside WSL2, install Python 3.10+ and uv:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+3. Clone and install as normal (all commands run inside WSL2)
+
+### What works
+
+- All CLI tools (`studyctl`, `session-export`, `session-query`, etc.)
+- kiro-cli and Claude Code (terminal-based)
+- SQLite database, FTS5 search, session sync
+- Cron scheduling (enable with `sudo service cron start` or systemd)
+- Git, pre-commit, ruff, pyright, pytest
+
+### Differences from macOS
+
+| Feature | macOS | WSL2 |
+|---------|-------|------|
+| Scheduling | launchd (automatic) | cron (enable manually) |
+| Calendar MCP | Apple Calendar or Google | Google Calendar only |
+| Reminders | Apple Reminders (native notifications) | Google Calendar reminders |
+| Obsidian vault | `~/Obsidian/` | `/mnt/c/Users/<name>/Obsidian/` |
+| PDF rendering | `brew install pandoc mactex` | `sudo apt install pandoc texlive-xetex` |
+| Claude Desktop | Native app | Runs on Windows side |
+
+### Connecting WSL2 MCP servers to Claude Desktop (Windows)
+
+Claude Desktop runs on Windows but can connect to MCP servers inside WSL2:
+
+```json
+{
+  "mcpServers": {
+    "study-tools": {
+      "command": "wsl",
+      "args": ["--", "npx", "-y", "your-mcp-server"]
+    }
+  }
+}
+```
+
+### Obsidian vault path
+
+If your Obsidian vault is on the Windows filesystem, configure the path in `~/.config/studyctl/config.yaml`:
+
+```yaml
+obsidian_base: /mnt/c/Users/YourName/Obsidian
+```
+
+For better performance, consider keeping the vault inside WSL2's native filesystem (`~/Obsidian/`) and syncing with Obsidian Sync or Git.
+
 ## Troubleshooting
 
 ### `studyctl: command not found`
