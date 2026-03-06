@@ -22,4 +22,5 @@ pythonVersion = "3.10"
 typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
-testpaths = ["packages/agent-session-tools/tests", "tests"]
+testpaths = ["packages/agent-session-tools/tests", "packages/studyctl/tests"]
+addopts = "--import-mode=importlib"

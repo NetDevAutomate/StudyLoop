@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+from pathlib import Path
+
 import click
 from rich.console import Console
 from rich.table import Table
@@ -335,6 +338,49 @@ def schedule_delete(name: str) -> None:
 
 
 # ── review (spaced repetition) ────────────────────────────────────────────────
+
+
+@cli.command("schedule-blocks")
+@click.option("--start", "-s", default=None, help="Start time (HH:MM, default: next hour).")
+@click.option("--gap", "-g", default=10, help="Minutes between sessions.")
+@click.option("--output", "-o", default=None, type=click.Path(), help="Output directory.")
+@click.option("--open/--no-open", "open_file", default=True, help="Open .ics file after creation.")
+def schedule_blocks(start: str | None, gap: int, output: str | None, open_file: bool) -> None:
+    """Create calendar time blocks from spaced repetition schedule."""
+    from studyctl.calendar import schedule_reviews, write_ics
+    from studyctl.history import spaced_repetition_due
+
+    due = spaced_repetition_due(TOPIC_KEYWORDS)
+    if not due:
+        console.print("[green]Nothing due for review! \N{PARTY POPPER}[/green]")
+        return
+
+    start_time = None
+    if start:
+        now = datetime.now()
+        h, m = start.split(":")
+        start_time = now.replace(hour=int(h), minute=int(m), second=0, microsecond=0)
+        if start_time < now:
+            start_time += timedelta(days=1)
+
+    events = schedule_reviews(due, start_time=start_time, gap_minutes=gap)
+    output_dir = Path(output) if output else None
+    path = write_ics(events, output_dir=output_dir)
+
+    console.print(f"\n[bold]\N{CALENDAR} Created {len(events)} study blocks:[/bold]")
+    for evt in events:
+        t = evt["start"].strftime("%H:%M")
+        console.print(f"  {t} — {evt['topic']} ({evt['review_type']}, {evt['duration_min']}min)")
+    console.print(f"\n[dim]Saved to: {path}[/dim]")
+
+    if open_file:
+        import platform
+        import subprocess
+
+        if platform.system() == "Darwin":
+            subprocess.run(["open", str(path)], check=False)
+        elif platform.system() == "Linux":
+            subprocess.run(["xdg-open", str(path)], check=False)
 
 
 @cli.command()

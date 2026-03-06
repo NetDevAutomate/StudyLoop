@@ -34,6 +34,24 @@ python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyc
 
 This state is read by the Claude Code status line to show persistent session info.
 
+## End-of-Session Protocol
+
+After every study session:
+
+1. Record progress: `studyctl progress "<concept>" -t <topic> -c <confidence>`
+2. Suggest next review based on spaced repetition intervals
+3. Offer to create calendar blocks: `studyctl schedule-blocks`
+4. If session was 25+ minutes, remind user to take a break
+
+## Break Reminders
+
+Track session duration. At 25-minute intervals, suggest breaks:
+- 25 min: "Good time for a 5-minute break."
+- 50 min: "Take a proper break before continuing."
+- 90 min: "You should stop here and come back fresh."
+
+If Apple Reminders MCP is connected, create a timed reminder for the break.
+
 ## Session Start Protocol
 
 At the beginning of every session:

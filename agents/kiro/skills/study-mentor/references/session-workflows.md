@@ -103,3 +103,29 @@
    notebooklm download audio <topic>-overview.mp3
 5. Suggest: "New audio overview ready. Listen during commute/walk."
 ```
+
+## End-of-Session Protocol
+
+After every study session:
+
+1. **Record progress**: Run `studyctl progress "<concept>" -t <topic> -c <confidence>`
+2. **Suggest next review**: Based on spaced repetition intervals, tell the user when to review next:
+   - "You should review this in 3 days. Want me to create a calendar block?"
+3. **Create calendar block** (if user agrees): Run `studyctl schedule-blocks --start <suggested_time>`
+4. **Break reminder**: If the session was 25+ minutes, remind the user to take a break before continuing.
+
+## Break Reminders
+
+During sessions longer than 25 minutes:
+
+- At 25 minutes: "You've been focused for 25 minutes — good time for a 5-minute break."
+- At 50 minutes: "50 minutes in — take a proper break before continuing."
+- At 90 minutes: "90 minutes of deep work — you should stop here and come back fresh."
+
+If the user has Apple Reminders MCP connected, create a reminder:
+```bash
+# The agent should use the MCP tool to create a reminder, e.g.:
+# mcp_apple_reminders.create_reminder(title="Take a break from studying", due_in_minutes=25)
+```
+
+If no MCP is available, just mention it in chat.
