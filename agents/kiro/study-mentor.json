@@ -1,0 +1,17 @@
+{
+  "name": "study-mentor",
+  "description": "AuDHD-aware Socratic study mentor with NotebookLM integration. Syncs course notes, manages spaced repetition, conducts Socratic sessions, and provides body-doubling support.",
+  "prompt": "file://study-mentor/persona.md",
+  "resources": [
+    "file://study-mentor/persona.md"
+  ],
+  "tools": ["@builtin"],
+  "allowedTools": [
+    "fs_read",
+    "execute_bash",
+    "grep",
+    "glob",
+    "web_fetch",
+    "web_search"
+  ]
+}
