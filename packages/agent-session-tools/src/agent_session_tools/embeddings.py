@@ -87,7 +87,7 @@ def get_configured_model() -> str:
     import os
 
     # Check environment variable first
-    if (v := os.getenv("EMBEDDING_MODEL")):
+    if v := os.getenv("EMBEDDING_MODEL"):
         return v
 
     # Try to load from config (may fail if config not available)
@@ -136,7 +136,9 @@ except ImportError:
     EMBEDDINGS_AVAILABLE = False
     if TYPE_CHECKING:
         import numpy as np  # pyright: ignore[reportMissingImports]
-        from sentence_transformers import SentenceTransformer  # pyright: ignore[reportMissingImports]
+        from sentence_transformers import (  # pyright: ignore[reportMissingImports]
+            SentenceTransformer,
+        )
 
 
 def is_available() -> bool:
