@@ -9,7 +9,7 @@
 
 ## What is this?
 
-A study toolkit built for neurodivergent learners (AuDHD) that combines CLI tools for managing study materials with AI mentor agents that teach through Socratic questioning. It connects your Obsidian notes, AI conversation history, and spaced repetition into one workflow.
+An open-source study toolkit designed specifically for AuDHD learners. It combines two CLI tools with AI mentor agents that teach through Socratic questioning rather than lectures — because our brains get dopamine from *discovering* answers, not being told them. The toolkit tracks your AI study sessions across 7 tools (Claude Code, Kiro CLI, Gemini, etc.) into a searchable database, then uses that history to power spaced repetition scheduling (1/3/7/14/30 day intervals), detect topics you're repeatedly struggling with, and show you concrete evidence of progress — because RSD and imposter syndrome mean we're terrible at recognising how far we've come. It also supports body doubling sessions, energy-adaptive study modes (low energy day? shorter chunks, more scaffolding), and hyperfocus guardrails. The agents work with both kiro-cli and Claude Code, and the whole thing syncs across machines. If you're neurodivergent and self-teaching (especially career transitions), this might help — it's built by someone in exactly that position.
 
 ## Who is this for?
 
