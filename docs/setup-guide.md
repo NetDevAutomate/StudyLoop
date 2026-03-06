@@ -27,7 +27,7 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 ### Automatic (recommended)
 
 ```bash
-git clone https://github.com/andytaylor/socratic-study-mentor.git
+git clone <your-repo-url>/socratic-study-mentor.git
 cd socratic-study-mentor
 ./scripts/install.sh
 ```
@@ -41,7 +41,7 @@ This will:
 ### Manual
 
 ```bash
-git clone https://github.com/andytaylor/socratic-study-mentor.git
+git clone <your-repo-url>/socratic-study-mentor.git
 cd socratic-study-mentor
 
 # Install both packages in the workspace

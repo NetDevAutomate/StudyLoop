@@ -17,7 +17,7 @@ How to set up a development environment, add features, and submit changes.
 ## Development Setup
 
 ```bash
-git clone https://github.com/andytaylor/socratic-study-mentor.git
+git clone <your-repo-url>/socratic-study-mentor.git
 cd socratic-study-mentor
 
 # Install all packages with dev dependencies

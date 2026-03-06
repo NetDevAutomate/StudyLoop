@@ -4,7 +4,8 @@
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![CI](https://github.com/NetDevAutomate/socratic-study-mentor/actions/workflows/ci.yml/badge.svg)
+<!-- CI badge: update URL when GitHub repo is created -->
+<!-- ![CI](https://github.com/YOUR_ORG/socratic-study-mentor/actions/workflows/ci.yml/badge.svg) -->
 
 ## What is this?
 
@@ -70,7 +71,7 @@ graph LR
 ## Quick Start
 
 ```bash
-git clone https://github.com/andytaylor/socratic-study-mentor.git
+git clone <your-repo-url>/socratic-study-mentor.git
 cd socratic-study-mentor
 ./scripts/install.sh
 ```

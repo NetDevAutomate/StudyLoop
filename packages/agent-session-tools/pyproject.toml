@@ -31,10 +31,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/andytaylor/socratic-study-mentor"
-Documentation = "https://github.com/andytaylor/socratic-study-mentor#readme"
-Repository = "https://github.com/andytaylor/socratic-study-mentor"
-Issues = "https://github.com/andytaylor/socratic-study-mentor/issues"
+Homepage = "<your-repo-url>/socratic-study-mentor"
+Documentation = "<your-repo-url>/socratic-study-mentor#readme"
+Repository = "<your-repo-url>/socratic-study-mentor"
+Issues = "<your-repo-url>/socratic-study-mentor/issues"
 
 [project.scripts]
 session-export = "agent_session_tools.export_sessions:main"
