@@ -60,8 +60,19 @@ def _speak_kokoro(text: str, *, voice: str) -> bool:
     if not _ensure_kokoro_models():
         return False
     try:
+        import numpy as np  # noqa: PLC0415
+
         kokoro = Kokoro(str(_KOKORO_MODEL), str(_KOKORO_VOICES))
         samples, sr = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
+        # Resample to 48kHz — kokoro outputs 24kHz which causes crackling on some devices
+        target_sr = 48000
+        if sr != target_sr:
+            samples = np.interp(
+                np.linspace(0, len(samples), int(len(samples) * target_sr / sr), endpoint=False),
+                np.arange(len(samples)),
+                samples,
+            ).astype(np.float32)
+            sr = target_sr
         sd.play(samples, sr)
         sd.wait()
         return True
