@@ -5,6 +5,12 @@
   "resources": [
     "file://study-mentor/persona.md"
   ],
+  "skills": [
+    "file://skills/study-speak/SKILL.md",
+    "file://skills/tutor-progress-tracker/SKILL.md",
+    "file://skills/audhd-socratic-mentor/SKILL.md",
+    "file://skills/study-mentor/SKILL.md"
+  ],
   "tools": ["@builtin"],
   "allowedTools": [
     "fs_read",
