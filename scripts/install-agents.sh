@@ -92,12 +92,13 @@ CLAUDE_LINKS=(
 )
 
 install_links() {
-  local -n links=$1
+  local arr_name=$1
   local label="$2"
   echo ""
   echo "=== Installing ${label} agents ==="
   local count=0
-  for entry in "${links[@]}"; do
+  eval "local entries=(\"\${${arr_name}[@]}\")"
+  for entry in "${entries[@]}"; do
     local src="${REPO_DIR}/${entry%%:*}"
     local target="${entry#*:}"
     if [ ! -e "$src" ]; then
@@ -109,11 +110,12 @@ install_links() {
 }
 
 uninstall_links() {
-  local -n links=$1
+  local arr_name=$1
   local label="$2"
   echo ""
   echo "=== Uninstalling ${label} agents ==="
-  for entry in "${links[@]}"; do
+  eval "local entries=(\"\${${arr_name}[@]}\")"
+  for entry in "${entries[@]}"; do
     local target="${entry#*:}"
     remove_symlink "$target"
   done
