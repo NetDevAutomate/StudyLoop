@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "AuDHD study pipeline: Obsidian → NotebookLM sync, spaced repetition, study plan management"
 requires-python = ">=3.12"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "Andy Taylor"}]
 dependencies = [
     "click>=8.1",

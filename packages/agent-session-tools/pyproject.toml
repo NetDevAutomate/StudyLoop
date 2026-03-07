@@ -13,7 +13,7 @@ dependencies = [
     "typer>=0.9.0",
 ]
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 keywords = ["claude", "kiro", "ai", "sessions", "sqlite", "cli"]
 classifiers = [
     "Development Status :: 4 - Beta",

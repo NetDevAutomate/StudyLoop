@@ -4,8 +4,17 @@ version = "1.0.0"
 description = "AuDHD-aware Socratic study mentor with AI session management"
 requires-python = ">=3.10"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "Andy Taylor"}]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-cov>=7.0",
+    "ruff>=0.8",
+    "pyright>=1.1",
+    "pre-commit>=4.0",
+]
 
 [tool.uv.workspace]
 members = ["packages/*"]
