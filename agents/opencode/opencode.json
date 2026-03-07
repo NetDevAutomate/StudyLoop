@@ -1,0 +1,7 @@
+{
+  "agents": {
+    "study-mentor": {
+      "path": "agents/opencode/study-mentor.md"
+    }
+  }
+}
