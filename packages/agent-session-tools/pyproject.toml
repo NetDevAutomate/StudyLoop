@@ -42,6 +42,7 @@ session-query = "agent_session_tools.query_sessions:main"
 session-maint = "agent_session_tools.maintenance:main"
 session-sync = "agent_session_tools.sync:main"
 tutor-checkpoint = "agent_session_tools.tutor_checkpoint:main"
+study-speak = "agent_session_tools.speak:main"
 
 [project.optional-dependencies]
 tokens = [
