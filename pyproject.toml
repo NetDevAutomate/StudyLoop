@@ -6,6 +6,9 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = "MIT"
 authors = [{name = "Andy Taylor"}]
+dependencies = [
+    "pyyaml>=6.0.3",
+]
 
 [dependency-groups]
 dev = [
