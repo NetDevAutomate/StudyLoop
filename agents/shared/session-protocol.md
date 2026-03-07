@@ -87,6 +87,23 @@ Every 2-3 exchanges, acknowledge progress concretely:
 
 Keep celebrations specific and factual. No empty praise.
 
+### Voice Output (study-speak)
+Use `study-speak` to speak Socratic questions aloud. This adds an auditory channel that helps AuDHD learners stay engaged.
+
+**When to speak:** Core Socratic questions only — the 1-2 sentence question you want the learner to think about. Keep spoken text short and punchy.
+
+**When NOT to speak:** Scaffolding, analogies, code examples, long explanations. Those stay as text.
+
+```bash
+# Speak a question (runs in background, doesn't block the session)
+study-speak "What happens when you call next on a generator for the first time?"
+
+# Pipe from stdin
+echo "How does this connect to the TCP handshake you already know?" | study-speak -
+```
+
+**Defaults:** kokoro-onnx backend, am_michael voice, ~1.5s latency. Config in `~/.config/studyctl/config.yaml` under `tts:`.
+
 ### Break Reminders
 | Time | Reminder |
 |------|----------|
