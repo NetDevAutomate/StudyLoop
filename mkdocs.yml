@@ -1,0 +1,69 @@
+site_name: Socratic Study Mentor
+site_description: AuDHD-aware Socratic study toolkit with AI session management
+site_url: http://localhost:8000
+
+theme:
+  name: material
+  font: false
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - toc.follow
+    - search.highlight
+
+plugins:
+  - search
+  - offline
+  - privacy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_css:
+  - stylesheets/audhd.css
+  - stylesheets/fonts.css
+
+extra_javascript:
+  - javascripts/preferences.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Setup Guide: setup-guide.md
+    - Agent Installation: agent-install.md
+  - Learning:
+    - AuDHD Philosophy: audhd-learning-philosophy.md
+    - Session Protocol: session-protocol.md
+  - Reference:
+    - CLI Reference: cli-reference.md
+    - AuDHD Framework: audhd-framework.md
+    - Socratic Engine: socratic-engine.md
+    - Network Bridges: network-bridges.md
+  - Contributing: contributing.md
+  - Roadmap: roadmap.md
+  - MCP Integrations: mcp.md
