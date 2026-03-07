@@ -166,6 +166,10 @@ tutor-checkpoint code --skill SKILL      # Record study progress
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and how to add new exporters or study topics.
 
+## Acknowledgements
+
+> **Special thanks to [Teng Lin](https://github.com/teng-lin)** for creating the excellent [notebooklm-py](https://github.com/teng-lin/notebooklm-py) library, which powers all NotebookLM integration across the study mentor ecosystem. His work in reverse-engineering and wrapping the NotebookLM API made the audio/video overview generation in [notebooklm-pdf-by-chapters](https://github.com/andytaylor/notebooklm-pdf-by-chapters) and [notebooklm-repo-artefacts](https://github.com/andytaylor/notebooklm-repo-artefacts) possible.
+
 ## License
 
 MIT
