@@ -100,6 +100,9 @@ study-speak "What happens when you call next on a generator for the first time?"
 
 # Pipe from stdin
 echo "How does this connect to the TCP handshake you already know?" | study-speak -
+
+# If study-speak is not on PATH, use the full path:
+~/.local/bin/study-speak "What happens when you call next on a generator?"
 ```
 
 **Defaults:** kokoro-onnx backend, am_michael voice, ~1.5s latency. Config in `~/.config/studyctl/config.yaml` under `tts:`.
