@@ -48,6 +48,12 @@ cd "$REPO_DIR"
 uv sync
 info "Packages installed"
 
+# --- Install CLI tools globally ---
+step "Installing CLI tools to ~/.local/bin"
+uv tool install --force --from "${REPO_DIR}/packages/agent-session-tools" agent-session-tools
+uv tool install --force --from "${REPO_DIR}/packages/studyctl" studyctl
+info "CLI tools installed (session-export, session-query, session-sync, session-maint, tutor-checkpoint, studyctl)"
+
 # --- Install agents ---
 step "Installing agent definitions"
 bash "${SCRIPT_DIR}/install-agents.sh"
