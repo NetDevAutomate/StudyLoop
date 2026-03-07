@@ -62,6 +62,7 @@ semantic = [
 tts = [
     "kokoro-onnx>=0.4.0",
     "sounddevice>=0.5.0",
+    "numpy>=1.24.0",
 ]
 dev = [
     "pytest>=7.4.0",

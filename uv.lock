@@ -47,6 +47,7 @@ tokens = [
 ]
 tts = [
     { name = "kokoro-onnx" },
+    { name = "numpy" },
     { name = "sounddevice" },
 ]
 tui = [
@@ -71,6 +72,7 @@ requires-dist = [
     { name = "kokoro-onnx", marker = "extra == 'tts'", specifier = ">=0.4.0" },
     { name = "numpy", marker = "extra == 'all'", specifier = ">=1.24.0" },
     { name = "numpy", marker = "extra == 'semantic'", specifier = ">=1.24.0" },
+    { name = "numpy", marker = "extra == 'tts'", specifier = ">=1.24.0" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
