@@ -63,8 +63,8 @@ uv pip install agent-session-tools[semantic]
 # Base path to your Obsidian vault
 obsidian_base: ~/Obsidian
 
-# Path to the AI session database (from agent-session-tools)
-session_db: ~/.local/share/agent-session-tools/sessions.db
+# Path to the AI session database
+session_db: ~/.config/studyctl/sessions.db
 
 # State directory for sync tracking
 state_dir: ~/.local/share/studyctl
@@ -90,7 +90,7 @@ topics:
 | Field | Description | Default |
 |-------|-------------|---------|
 | `obsidian_base` | Root of your Obsidian vault | `~/Obsidian` |
-| `session_db` | Path to the session SQLite database | `~/.local/share/agent-session-tools/sessions.db` |
+| `session_db` | Path to the session SQLite database | `~/.config/studyctl/sessions.db` |
 | `state_dir` | Where studyctl stores sync state | `~/.local/share/studyctl` |
 | `topics[].name` | Display name for the topic | required |
 | `topics[].slug` | URL-safe identifier | required |
@@ -98,15 +98,15 @@ topics:
 | `topics[].notebook_id` | NotebookLM notebook ID (if using sync) | empty |
 | `topics[].tags` | Keywords for session search matching | `[]` |
 
-### agent-session-tools — `~/.config/agent_session/config.yaml`
+### agent-session-tools — `~/.config/studyctl/config.yaml`
 
 Created automatically on first run. Key settings:
 
 ```yaml
 database:
-  path: ~/.config/agent_session/sessions.db
-  archive_path: ~/.config/agent_session/sessions_archive.db
-  backup_dir: ~/.config/agent_session/backups
+  path: ~/.config/studyctl/sessions.db
+  archive_path: ~/.config/studyctl/sessions_archive.db
+  backup_dir: ~/.config/studyctl/backups
 
 thresholds:
   warning_mb: 100

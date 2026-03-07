@@ -1,6 +1,6 @@
 """Centralized configuration loader for agent-session-tools.
 
-Loads configuration from ~/.config/agent_session/config.yaml and .env
+Loads configuration from ~/.config/studyctl/config.yaml and .env
 Provides backwards compatibility with local config.json
 """
 
@@ -14,7 +14,7 @@ import yaml
 from dotenv import load_dotenv
 
 # Default paths
-CONFIG_DIR = Path.home() / ".config" / "agent_session"
+CONFIG_DIR = Path.home() / ".config" / "studyctl"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 ENV_FILE = CONFIG_DIR / ".env"
 LOCAL_CONFIG = Path(__file__).parent / "config.json"
@@ -88,7 +88,7 @@ def load_config() -> dict[str, Any]:
 
     Priority order:
     1. Environment variables
-    2. ~/.config/agent_session/config.yaml
+    2. ~/.config/studyctl/config.yaml
     3. Local config.json (backwards compatibility)
     4. Built-in defaults
     """
@@ -98,16 +98,21 @@ def load_config() -> dict[str, Any]:
     if ENV_FILE.exists():
         load_dotenv(ENV_FILE)
 
-    # Try loading config.yaml
-    if CONFIG_FILE.exists():
+    # Try loading config.yaml (new location first, then legacy)
+    config_file = CONFIG_FILE
+    legacy_config = Path.home() / ".config" / "agent_session" / "config.yaml"
+    if not config_file.exists() and legacy_config.exists():
+        config_file = legacy_config
+
+    if config_file.exists():
         try:
-            with open(CONFIG_FILE) as f:
+            with open(config_file) as f:
                 yaml_config = yaml.safe_load(f)
                 if yaml_config:
                     # Deep merge with defaults
                     _deep_merge(config, yaml_config)
         except Exception as e:
-            print(f"Warning: Failed to load {CONFIG_FILE}: {e}")
+            print(f"Warning: Failed to load {config_file}: {e}")
 
     # Backwards compatibility: try local config.json
     elif LOCAL_CONFIG.exists():

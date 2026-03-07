@@ -33,9 +33,7 @@ class Settings:
 
     obsidian_base: Path = field(default_factory=lambda: Path.home() / "Obsidian")
     session_db: Path = field(
-        default_factory=lambda: (
-            Path.home() / ".local" / "share" / "agent-session-tools" / "sessions.db"
-        )
+        default_factory=lambda: Path.home() / ".config" / "studyctl" / "sessions.db"
     )
     state_dir: Path = field(default_factory=lambda: Path.home() / ".local" / "share" / "studyctl")
     topics: list[TopicConfig] = field(default_factory=list)
@@ -89,8 +87,8 @@ def generate_default_config() -> str:
 # Base path to your Obsidian vault
 obsidian_base: ~/Obsidian
 
-# Path to the AI session database (from agent-session-tools)
-session_db: ~/.local/share/agent-session-tools/sessions.db
+# Path to the AI session database
+session_db: ~/.config/studyctl/sessions.db
 
 # State directory for sync tracking
 state_dir: ~/.local/share/studyctl

@@ -44,7 +44,7 @@ BUILTIN_PROFILES = {
 
 def get_profiles_dir() -> Path:
     """Return profiles directory, creating if needed."""
-    profiles_dir = Path.home() / ".config" / "agent_session" / "profiles"
+    profiles_dir = Path.home() / ".config" / "studyctl" / "profiles"
     profiles_dir.mkdir(parents=True, exist_ok=True)
     return profiles_dir
 
