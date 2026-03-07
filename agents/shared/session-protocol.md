@@ -87,25 +87,28 @@ Every 2-3 exchanges, acknowledge progress concretely:
 
 Keep celebrations specific and factual. No empty praise.
 
-### Voice Output (study-speak)
-Use `study-speak` to speak Socratic questions aloud. This adds an auditory channel that helps AuDHD learners stay engaged.
+### Voice Output (study-speak) — MANDATORY
 
-**When to speak:** Core Socratic questions only — the 1-2 sentence question you want the learner to think about. Keep spoken text short and punchy.
-
-**When NOT to speak:** Scaffolding, analogies, code examples, long explanations. Those stay as text.
+**Every time you ask the learner a Socratic question, you MUST also execute this shell command:**
 
 ```bash
-# Speak a question (runs in background, doesn't block the session)
-study-speak "What happens when you call next on a generator for the first time?"
-
-# Pipe from stdin
-echo "How does this connect to the TCP handshake you already know?" | study-speak -
-
-# If study-speak is not on PATH, use the full path:
-~/.local/bin/study-speak "What happens when you call next on a generator?"
+~/.local/bin/study-speak "<your question text here>"
 ```
 
-**Defaults:** kokoro-onnx backend, am_michael voice, ~1.5s latency. Config in `~/.config/studyctl/config.yaml` under `tts:`.
+This speaks the question aloud through the learner's speakers. It is a real CLI tool installed on the system.
+
+**Rules:**
+- Run the command EVERY time you ask a question — no exceptions
+- Keep the spoken text to 1-2 sentences (the core question only)
+- Scaffolding, analogies, code examples, and explanations stay as text — do NOT speak those
+- The command runs synchronously — wait for it to finish before continuing
+
+**Example flow:**
+1. Write your scaffolding/analogy as text
+2. Write the question as text
+3. Execute: `~/.local/bin/study-speak "What protocol does a device use to discover a MAC address from an IP?"`
+
+**If the command fails**, continue the session without voice — don't let TTS errors block teaching.
 
 ### Break Reminders
 | Time | Reminder |
