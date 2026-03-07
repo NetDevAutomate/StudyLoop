@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Text-to-speech for the Socratic Study Mentor.
 
-Wraps ltts (Qwen3-TTS / Kokoro) with fallback to macOS `say`.
-Agents call this to speak responses aloud.
+Backends (in priority order):
+  1. kokoro-onnx — 82M params, ~1.5s TTFA, am_michael voice
+  2. ltts/Qwen3-TTS — high quality but slow on Apple Silicon
+  3. macOS say — last resort fallback
 """
 
-import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -16,6 +18,11 @@ from agent_session_tools.config_loader import load_config
 
 app = typer.Typer(add_completion=False)
 
+# kokoro-onnx model paths (downloaded via wget from GitHub releases)
+_KOKORO_DIR = Path.home() / ".cache" / "kokoro-onnx"
+_KOKORO_MODEL = _KOKORO_DIR / "kokoro-v1.0.onnx"
+_KOKORO_VOICES = _KOKORO_DIR / "voices-v1.0.bin"
+
 
 def _get_tts_config() -> dict:
     """Load TTS config from studyctl config.yaml."""
@@ -23,8 +30,49 @@ def _get_tts_config() -> dict:
     return config.get("tts", {})
 
 
+def _ensure_kokoro_models() -> bool:
+    """Download kokoro-onnx models if missing. Returns True if available."""
+    if _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists():
+        return True
+    _KOKORO_DIR.mkdir(parents=True, exist_ok=True)
+    base = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+    for name in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
+        if not (_KOKORO_DIR / name).exists():
+            typer.echo(f"Downloading {name}...", err=True)
+            try:
+                subprocess.run(
+                    ["wget", "-q", f"{base}/{name}", "-O", str(_KOKORO_DIR / name)],
+                    check=True,
+                    timeout=300,
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                return False
+    return _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists()
+
+
+def _speak_kokoro(text: str, *, voice: str) -> bool:
+    """Speak via kokoro-onnx (fast, high quality)."""
+    try:
+        import sounddevice as sd  # noqa: PLC0415
+        from kokoro_onnx import Kokoro  # noqa: PLC0415
+    except ImportError:
+        return False
+    if not _ensure_kokoro_models():
+        return False
+    try:
+        kokoro = Kokoro(str(_KOKORO_MODEL), str(_KOKORO_VOICES))
+        samples, sr = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
+        sd.play(samples, sr)
+        sd.wait()
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _speak_ltts(text: str, *, voice: str, lang: str, device: str, instruct: str | None) -> bool:
-    """Speak via ltts (Qwen3-TTS)."""
+    """Speak via ltts (Qwen3-TTS). Slow on Apple Silicon but highest quality."""
+    import shutil  # noqa: PLC0415
+
     if not shutil.which("uvx"):
         return False
     cmd = ["uvx", "ltts", text, "--say", "--device", device, "-v", voice, "-l", lang]
@@ -54,11 +102,10 @@ def speak(
         str | None, typer.Option("--instruct", help="Emotion/style instruction (Qwen3 only)")
     ] = None,
     backend: Annotated[
-        str | None, typer.Option("-b", "--backend", help="Backend: qwen3, kokoro, macos")
+        str | None, typer.Option("-b", "--backend", help="Backend: kokoro, qwen3, macos")
     ] = None,
 ) -> None:
     """Speak text aloud using configured TTS backend."""
-    # Read from stdin if text is "-" or None
     if text is None or text == "-":
         if sys.stdin.isatty():
             typer.echo("Usage: study-speak 'text' or echo 'text' | study-speak -", err=True)
@@ -69,19 +116,26 @@ def speak(
         return
 
     cfg = _get_tts_config()
-    voice = voice or cfg.get("voice", "Ryan")
-    lang = cfg.get("lang", "en")
-    device = cfg.get("device", "mps")
-    backend = backend or cfg.get("backend", "qwen3")
+    backend = backend or cfg.get("backend", "kokoro")
+    voice = voice or cfg.get("voice", "am_michael")
     macos_voice = cfg.get("macos_voice", "Samantha")
 
-    if backend == "macos":
+    if backend == "kokoro":
+        if _speak_kokoro(text, voice=voice):
+            return
+    elif backend == "qwen3":
+        lang = cfg.get("lang", "en")
+        device = cfg.get("device", "mps")
+        if _speak_ltts(text, voice=voice, lang=lang, device=device, instruct=instruct):
+            return
+    elif backend == "macos":
         _speak_macos(text, voice=macos_voice)
-    elif _speak_ltts(text, voice=voice, lang=lang, device=device, instruct=instruct):
-        pass  # success
-    else:
-        # Fallback to macOS
-        _speak_macos(text, voice=macos_voice)
+        return
+
+    # Fallback chain: kokoro → macos
+    if backend != "kokoro" and _speak_kokoro(text, voice=voice):
+        return
+    _speak_macos(text, voice=macos_voice)
 
 
 def main():
