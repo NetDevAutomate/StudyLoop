@@ -17,30 +17,32 @@ Features designed specifically for AuDHD brains, ranked by impact.
 
 ### 🔴 High Priority
 
-#### Win Tracking
+#### ~~Win Tracking~~ ✅
 **Why:** AuDHD brains are terrible at recognising progress (RSD + imposter syndrome). Seeing concrete evidence of improvement is genuinely therapeutic.
 
-- `studyctl wins` — show concepts that moved from "struggled" to "confident"
-- Session count trends (studying more consistently?)
-- Skills where scaffolding level decreased over time
-- Queryable from agents for positive reinforcement during sessions
+- [x] `studyctl wins` — show concepts that moved from "struggled" to "confident"
+- [x] Session count trends (studying more consistently?)
+- [x] Skills where scaffolding level decreased over time
+- [x] Queryable from agents for positive reinforcement during sessions
 
-#### Energy-Adaptive Sessions
+#### ~~Energy-Adaptive Sessions~~ ✅
 **Why:** Variable capacity is THE defining AuDHD challenge. A "high energy" day and a "low energy" day need completely different study approaches.
 
-- `--energy low|medium|high` flag on session start
-- Low → shorter chunks, more scaffolding, review-only mode
-- High → deeper dives, harder Socratic questions, new material
-- Historical energy patterns → "you do your best Python work on Tuesday mornings"
-- Claude Code status line shows current energy level
+- [x] `--energy low|medium|high` flag on session start
+- [x] Low → shorter chunks, more scaffolding, review-only mode
+- [x] High → deeper dives, harder Socratic questions, new material
+- [x] Historical energy patterns → "you do your best Python work on Tuesday mornings"
+- [x] Claude Code status line shows current energy level
+- [x] Emotional regulation check (calm/anxious/frustrated/flat/shutdown)
 
-#### Struggle → Adaptive Difficulty
+#### ~~Struggle → Adaptive Difficulty~~ ✅
 **Why:** Repeating the same explanation doesn't work for neurodivergent brains. If a concept appears in 3+ sessions with questions, try a different approach.
 
-- Auto-detect recurring struggles from session history
-- Agent offers different analogies, smaller pieces, different modalities
-- "Try writing a small program that uses X" vs "let me explain X again"
-- Feeds into spaced repetition scheduling
+- [x] Auto-detect recurring struggles from session history
+- [x] Agent offers different analogies, smaller pieces, different modalities
+- [x] "Try writing a small program that uses X" vs "let me explain X again"
+- [x] Feeds into spaced repetition scheduling
+- [x] struggle_topics now config-driven
 
 ### 🟡 Medium Priority
 
@@ -52,23 +54,23 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - Shows: what you were learning, where you got stuck, what's next
 - Reduces session-start friction (huge for ADHD task initiation)
 
-#### Hyperfocus Guardrails
+#### ~~Hyperfocus Guardrails~~ ✅
 **Why:** Hyperfocus is a superpower but needs channeling. A study partner would say "you've been at this for 2 hours."
 
-- Session duration tracking with configurable nudges
-- Rabbit hole detection: "you started SQL but you've been in Python for 40 min"
-- Break reminders at configurable intervals
-- Claude Code status line shows elapsed time + focus state
+- [x] Session duration tracking with configurable nudges
+- [x] Rabbit hole detection: "you started SQL but you've been in Python for 40 min"
+- [x] Break reminders at configurable intervals (25/50/90 min)
+- [x] Claude Code status line shows elapsed time + focus state
 
-#### Calendar Time-Blocking & Reminders
+#### ~~Calendar Time-Blocking & Reminders~~ ✅
 **Why:** ADHD task initiation is the hardest part. External triggers (notifications, calendar blocks) bypass the executive function barrier.
 
-- Apple Calendar + Reminders MCP integration (macOS) — native notifications
-- Google Calendar MCP integration (cross-platform)
-- Auto-create study time blocks from `studyctl review` output
-- Daily study briefing generation
-- Break reminders via native notifications
-- Note: Windows/WSL2 users use Google Calendar; macOS users can use either
+- [x] Apple Calendar + Reminders MCP integration (macOS) — native notifications
+- [x] Google Calendar MCP integration (cross-platform)
+- [x] Auto-create study time blocks from `studyctl review` output
+- [x] Daily study briefing generation
+- [x] Break reminders via native notifications
+- [x] Note: Windows/WSL2 users use Google Calendar; macOS users can use either
 
 ### 🔵 Nice to Have
 
@@ -105,3 +107,6 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - [ ] Watchdog file watcher for auto-sync
 - [ ] Community-contributed study topics
 - [ ] Localisation support
+- [ ] TTS voice output (kokoro-tts / ltts integration)
+- [ ] MkDocs documentation site polish
+- [ ] Gemini CLI / OpenCode / Amp agent testing
