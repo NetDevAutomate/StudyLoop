@@ -1,6 +1,6 @@
 # Agent Installation Guide
 
-How to set up the AI mentor agents for kiro-cli and Claude Code.
+How to set up the AI mentor agents for kiro-cli, Claude Code, Gemini CLI, OpenCode, and Amp.
 
 ## Table of Contents
 
@@ -8,6 +8,9 @@ How to set up the AI mentor agents for kiro-cli and Claude Code.
 - [Automatic Installation](#automatic-installation)
 - [Kiro CLI Setup](#kiro-cli-setup)
 - [Claude Code Setup](#claude-code-setup)
+- [Gemini CLI Setup](#gemini-cli-setup)
+- [OpenCode Setup](#opencode-setup)
+- [Amp Setup](#amp-setup)
 - [Agent Descriptions](#agent-descriptions)
 - [Skills Reference](#skills-reference)
 - [Uninstalling](#uninstalling)
@@ -16,10 +19,13 @@ How to set up the AI mentor agents for kiro-cli and Claude Code.
 
 AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.
 
-This project ships three agents:
+This project ships agents for five platforms:
 - **study-mentor** (kiro-cli) — full study pipeline with spaced repetition
-- **socratic-mentor** (Claude Code) — Socratic questioning with Clean Code/GoF pedagogy
+- **socratic-mentor** (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
 - **mentor-reviewer** (Claude Code) — autonomous code review with scoring
+- **study-mentor** (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
+- **study-mentor** (OpenCode) — AuDHD-aware study mentor with spaced repetition
+- **AGENTS.md** (Amp) — Socratic mentoring loaded automatically from project context
 
 ## Automatic Installation
 
@@ -29,13 +35,16 @@ The install script detects which AI tools you have and symlinks the agent defini
 ./scripts/install-agents.sh
 ```
 
-It checks for `~/.kiro/` and `~/.claude/` directories. If found, it creates symlinks from the repo's `agents/` directory into the tool's config.
+It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `opencode`/`amp` commands on PATH. If found, it creates symlinks from the repo's `agents/` directory into the tool's config.
 
 Options:
 
 ```bash
 ./scripts/install-agents.sh --kiro      # Kiro CLI only
 ./scripts/install-agents.sh --claude    # Claude Code only
+./scripts/install-agents.sh --gemini    # Gemini CLI only
+./scripts/install-agents.sh --opencode  # OpenCode only
+./scripts/install-agents.sh --amp       # Amp only
 ./scripts/install-agents.sh --uninstall # Remove all agent links
 ```
 
@@ -115,6 +124,143 @@ The mentor-reviewer supports environment variable configuration:
 - `MENTOR_REVIEW_OUTPUT_DIR` — where review reports are saved (default: `./reviews`)
 - `MENTOR_TUTORIAL_DIR` — where tutorials are generated (default: `./tutorials`)
 
+## Gemini CLI Setup
+
+### Prerequisites
+
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli) installed
+- `~/.gemini/` directory exists
+
+### What gets installed
+
+| Source | Target | Purpose |
+|--------|--------|---------|
+| `agents/gemini/study-mentor.md` | `~/.gemini/agents/study-mentor.md` | Subagent definition |
+| `agents/gemini/GEMINI.md` | `GEMINI.md` (project root) | Project-level Gemini instructions |
+| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
+
+The installer also creates `~/.gemini/settings.json` with `experimental.enableAgents` enabled (required for subagent support). If the file already exists, you'll be prompted to add the setting manually.
+
+### Auto-install
+
+```bash
+./scripts/install-agents.sh --gemini
+```
+
+### Manual install
+
+```bash
+# Create directories
+mkdir -p ~/.gemini/agents
+
+# Symlink agent definition
+ln -s "$(pwd)/agents/gemini/study-mentor.md" ~/.gemini/agents/study-mentor.md
+ln -s "$(pwd)/agents/gemini/GEMINI.md" ./GEMINI.md
+
+# Symlink shared framework
+mkdir -p ~/.agents
+ln -s "$(pwd)/agents/shared" ~/.agents/shared
+
+# Enable subagents in settings
+cat > ~/.gemini/settings.json << 'EOF'
+{
+  "experimental": {
+    "enableAgents": true
+  }
+}
+EOF
+```
+
+### Starting a session
+
+```bash
+gemini
+# Then ask for a study session — the study-mentor subagent is auto-detected
+```
+
+## OpenCode Setup
+
+### Prerequisites
+
+- [OpenCode](https://github.com/opencode-ai/opencode) installed
+- `opencode` command available on PATH
+
+### What gets installed
+
+| Source | Target | Purpose |
+|--------|--------|---------|
+| `agents/opencode/study-mentor.md` | `~/.config/opencode/agents/study-mentor.md` | Agent definition |
+| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
+
+OpenCode discovers agents from `.opencode/agents/*.md` (project-level) or `~/.config/opencode/agents/*.md` (global). The installer uses the global path.
+
+### Auto-install
+
+```bash
+./scripts/install-agents.sh --opencode
+```
+
+### Manual install
+
+```bash
+# Create directories
+mkdir -p ~/.config/opencode/agents
+
+# Symlink agent definition
+ln -s "$(pwd)/agents/opencode/study-mentor.md" ~/.config/opencode/agents/study-mentor.md
+
+# Symlink shared framework
+mkdir -p ~/.agents
+ln -s "$(pwd)/agents/shared" ~/.agents/shared
+```
+
+### Starting a session
+
+```bash
+opencode
+# Press Tab to switch to the study-mentor agent
+```
+
+## Amp Setup
+
+### Prerequisites
+
+- [Amp](https://ampcode.com) installed
+- `amp` command available on PATH
+
+### What gets installed
+
+| Source | Target | Purpose |
+|--------|--------|---------|
+| `agents/amp/AGENTS.md` | `AGENTS.md` (project root) | Project-level agent instructions |
+| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
+
+Amp reads `AGENTS.md` from the project root automatically — no additional configuration needed.
+
+### Auto-install
+
+```bash
+./scripts/install-agents.sh --amp
+```
+
+### Manual install
+
+```bash
+# Symlink AGENTS.md to project root
+ln -s "$(pwd)/agents/amp/AGENTS.md" ./AGENTS.md
+
+# Symlink shared framework
+mkdir -p ~/.agents
+ln -s "$(pwd)/agents/shared" ~/.agents/shared
+```
+
+### Starting a session
+
+```bash
+amp
+# AGENTS.md is loaded automatically — just start asking for a study session
+```
+
 ## Agent Descriptions
 
 ### study-mentor (kiro-cli)
@@ -130,7 +276,7 @@ The primary study agent. Integrates with the full studyctl pipeline:
 
 ### socratic-mentor (Claude Code)
 
-A focused Socratic teaching agent built around Clean Code and GoF Design Patterns:
+A focused Socratic teaching agent with AuDHD-aware pedagogy:
 
 - Teaches through progressive questioning (observation → pattern → principle → application)
 - Embeds knowledge from Clean Code (Robert C. Martin) and GoF Design Patterns

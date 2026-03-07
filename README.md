@@ -69,6 +69,12 @@ graph LR
 **AI Agents** — Socratic mentoring
 - AuDHD-aware teaching methodology (questions > lectures)
 - Energy-adaptive sessions (low/medium/high adjusts difficulty and chunk size)
+- Emotional regulation check (calm/anxious/frustrated/flat/shutdown)
+- Transition support with grounding rituals
+- Parking lot for tangential thoughts
+- Sensory environment adaptation
+- Micro-celebrations for dopamine maintenance
+- Interleaved review sessions
 - End-of-session protocol: auto-record progress, suggest next review, offer calendar blocks
 - Break reminders at 25/50/90 minute intervals
 - Claude Code status line showing energy level, session timer, and context usage
@@ -91,13 +97,26 @@ cd socratic-study-mentor
 
 This installs both packages and sets up agent definitions for any detected AI tools.
 
+## Documentation Site
+
+Browse the full docs locally with AuDHD-friendly design (OpenDyslexic font toggle, Nord colour scheme, reading preferences):
+
+```bash
+uv pip install 'socratic-study-mentor[docs]'
+mkdocs serve
+# Open http://localhost:8000
+```
+
 ## Agent Support
 
 | Platform | Agent | Description |
 |----------|-------|-------------|
 | kiro-cli | `study-mentor` | Full study session management with spaced repetition and NotebookLM |
-| Claude Code | `socratic-mentor` | Socratic questioning with Clean Code/GoF pedagogy |
+| Claude Code | `socratic-mentor` | Socratic questioning with AuDHD-aware pedagogy |
 | Claude Code | `mentor-reviewer` | Autonomous code review with scoring and tutorial generation |
+| Gemini CLI | `study-mentor` | Socratic study sessions with energy-adaptive teaching |
+| OpenCode | `study-mentor` | AuDHD-aware study mentor with spaced repetition |
+| Amp | (via AGENTS.md) | Socratic mentoring loaded automatically from project context |
 
 Start a session:
 
@@ -107,6 +126,15 @@ kiro-cli chat --agent study-mentor
 
 # Claude Code
 /agent socratic-mentor
+
+# Gemini CLI (subagent auto-detected)
+gemini  # then ask for study session
+
+# OpenCode
+opencode  # Tab to switch to study-mentor
+
+# Amp
+amp  # AGENTS.md loaded automatically
 ```
 
 See [docs/agent-install.md](docs/agent-install.md) for setup details.
@@ -156,7 +184,7 @@ tutor-checkpoint code --skill SKILL      # Record study progress
 ## Documentation
 
 - [Setup Guide](docs/setup-guide.md) — Installation, configuration, Obsidian setup
-- [Agent Installation](docs/agent-install.md) — AI agent setup for kiro-cli and Claude Code
+- [Agent Installation](docs/agent-install.md) — AI agent setup for kiro-cli, Claude Code, Gemini CLI, OpenCode, and Amp
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — Why this exists and how it works
 - [MCP Integrations](agents/mcp/README.md) — Calendar, reminders, and other MCP server configs
 - [Roadmap](docs/roadmap.md) — What's coming in v1.1 and beyond
