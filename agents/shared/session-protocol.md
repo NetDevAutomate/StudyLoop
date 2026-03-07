@@ -87,26 +87,31 @@ Every 2-3 exchanges, acknowledge progress concretely:
 
 Keep celebrations specific and factual. No empty praise.
 
-### Voice Output (study-speak) — MANDATORY
+### Voice Output (study-speak)
 
-**Every time you ask the learner a Socratic question, you MUST also execute this shell command:**
+The learner can toggle voice output on/off during a session:
+
+- **Kiro CLI / Gemini / OpenCode / Amp:** `@speak-start` and `@speak-stop`
+- **Claude Code:** `/speak-start` and `/speak-stop`
+
+Voice is **off by default**. When the learner enables it, you MUST execute this shell command every time you ask a Socratic question:
 
 ```bash
 ~/.local/bin/study-speak "<your question text here>"
 ```
 
-This speaks the question aloud through the learner's speakers. It is a real CLI tool installed on the system.
-
-**Rules:**
+**Rules (when voice is enabled):**
 - Run the command EVERY time you ask a question — no exceptions
 - Keep the spoken text to 1-2 sentences (the core question only)
 - Scaffolding, analogies, code examples, and explanations stay as text — do NOT speak those
 - The command runs synchronously — wait for it to finish before continuing
 
 **Example flow:**
-1. Write your scaffolding/analogy as text
-2. Write the question as text
-3. Execute: `~/.local/bin/study-speak "What protocol does a device use to discover a MAC address from an IP?"`
+1. Learner says `@speak-start`
+2. You write your scaffolding/analogy as text
+3. You write the question as text
+4. You execute: `~/.local/bin/study-speak "What protocol does a device use to discover a MAC address from an IP?"`
+5. Learner says `@speak-stop` → stop executing study-speak, continue text-only
 
 **If the command fails**, continue the session without voice — don't let TTS errors block teaching.
 
