@@ -57,7 +57,31 @@ step "Checking configuration"
 CONFIG_DIR="${HOME}/.config/studyctl"
 CONFIG_FILE="${CONFIG_DIR}/config.yaml"
 if [ -f "$CONFIG_FILE" ]; then
-  info "Config exists: ${CONFIG_FILE}"
+  if grep -q '^topics:' "$CONFIG_FILE" 2>/dev/null; then
+    info "Config exists: ${CONFIG_FILE}"
+  else
+    warn "Config exists but has no 'topics' section: ${CONFIG_FILE}"
+    echo "  Adding study topics template..."
+    cat >> "$CONFIG_FILE" <<'EOF'
+
+# Study topics (added by install.sh)
+# Uncomment and customise for your learning goals
+topics: []
+#  - name: Python
+#    slug: python
+#    obsidian_path: 2-Areas/Study/Python
+#    tags: [python, programming]
+#  - name: SQL
+#    slug: sql
+#    obsidian_path: 2-Areas/Study/SQL
+#    tags: [sql, databases]
+#  - name: Data Engineering
+#    slug: data-engineering
+#    obsidian_path: 2-Areas/Study/Data-Engineering
+#    tags: [data-engineering, spark, glue]
+EOF
+    info "Topics template appended to ${CONFIG_FILE}"
+  fi
 else
   if command -v studyctl &>/dev/null; then
     studyctl config init 2>/dev/null && info "Config created via studyctl" || true
