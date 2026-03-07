@@ -9,23 +9,62 @@ from pathlib import Path
 
 from .settings import load_settings
 
-# Try multiple known DB locations — settings-configured path first
-_DB_CANDIDATES = [
-    load_settings().session_db,
-    Path.home() / ".local" / "share" / "agent-session-tools" / "sessions.db",
-    Path.home() / "code" / "personal" / "ai" / "extract_session_to_db" / "sessions.db",
-    Path.home()
-    / "code"
-    / "personal"
-    / "ai"
-    / "claude_code"
-    / "tutor_and_assesment"
-    / "sessions.db",
-]
+
+def _get_study_terms() -> list[str]:
+    """Build study terms from configured topics, falling back to defaults."""
+    try:
+        from .config import get_topics
+
+        topics = get_topics()
+        if topics:
+            terms: set[str] = set()
+            for t in topics:
+                terms.add(t.name.lower())
+                terms.update(tag.lower() for tag in t.tags)
+            return sorted(terms)
+    except Exception:
+        pass
+    # Fallback defaults
+    return [
+        "spark",
+        "glue",
+        "athena",
+        "redshift",
+        "sql",
+        "python",
+        "pattern",
+        "strategy",
+        "bridge",
+        "template",
+        "factory",
+        "pipeline",
+        "etl",
+        "partition",
+        "dag",
+        "airflow",
+        "dbt",
+        "dataclass",
+        "protocol",
+        "abc",
+        "decorator",
+        "generator",
+        "async",
+        "type hint",
+        "testing",
+        "pytest",
+        "sagemaker",
+        "lake formation",
+        "iceberg",
+        "delta",
+    ]
 
 
 def _find_db() -> Path | None:
-    for p in _DB_CANDIDATES:
+    candidates = [
+        load_settings().session_db,
+        Path.home() / ".local" / "share" / "agent-session-tools" / "sessions.db",
+    ]
+    for p in candidates:
         if p.exists():
             return p
     return None
@@ -106,38 +145,7 @@ def struggle_topics(days: int = 30, min_sessions: int = 3) -> list[dict]:
     from collections import Counter
 
     keywords = Counter()
-    study_terms = [
-        "spark",
-        "glue",
-        "athena",
-        "redshift",
-        "sql",
-        "python",
-        "pattern",
-        "strategy",
-        "bridge",
-        "template",
-        "factory",
-        "pipeline",
-        "etl",
-        "partition",
-        "dag",
-        "airflow",
-        "dbt",
-        "dataclass",
-        "protocol",
-        "abc",
-        "decorator",
-        "generator",
-        "async",
-        "type hint",
-        "testing",
-        "pytest",
-        "sagemaker",
-        "lake formation",
-        "iceberg",
-        "delta",
-    ]
+    study_terms = _get_study_terms()
     for row in rows:
         content = row["content"].lower()
         for term in study_terms:
@@ -256,7 +264,9 @@ def record_progress(
         return False
     try:
         now = datetime.now(UTC).isoformat()
-        progress_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic}:{concept}"))
+        progress_id = str(
+            uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic.lower().strip()}:{concept.lower().strip()}")
+        )
         conn.execute(
             """
             INSERT INTO study_progress

@@ -185,10 +185,12 @@ def export_aider(conn: sqlite3.Connection, incremental: bool = True, args=None) 
 
 # Valid source choices for CLI
 SOURCE_CHOICES = [
+    "aider",
+    "bedrock",
     "claude",
-    "kiro",
     "gemini",
     "kilocode",
+    "kiro",
     "opencode",
     "repoprompt",
 ]

@@ -5,18 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .settings import load_settings
-
-_settings = load_settings()
-
 HOME = Path.home()
-OBSIDIAN_BASE = _settings.obsidian_base
-OBSIDIAN_COURSES = OBSIDIAN_BASE / "Personal" / "2-Areas" / "Study" / "Courses"
-OBSIDIAN_STUDY_PLANS = OBSIDIAN_BASE / "Personal" / "2-Areas" / "Study" / "Study-Plans"
-OBSIDIAN_MENTORING = OBSIDIAN_BASE / "Personal" / "2-Areas" / "Study" / "Mentoring"
-STATE_DIR = _settings.state_dir
-STATE_FILE = STATE_DIR / "state.json"
-MEDIA_DIR = OBSIDIAN_BASE / "Personal" / "2-Areas" / "Study" / "media"
 
 # File extensions we sync as sources
 SYNCABLE_EXTENSIONS = {".md", ".pdf", ".txt"}
@@ -53,6 +42,8 @@ class Topic:
 
 def get_topics() -> list[Topic]:
     """Load topics from settings, falling back to defaults (without notebook IDs)."""
+    from .settings import load_settings
+
     settings = load_settings()
     if settings.topics:
         return [
@@ -66,20 +57,24 @@ def get_topics() -> list[Topic]:
             for t in settings.topics
         ]
 
-    # Defaults — no hardcoded notebook IDs
+    # Compute paths from settings for defaults
+    obsidian_base = settings.obsidian_base
+    obsidian_courses = obsidian_base / "Personal" / "2-Areas" / "Study" / "Courses"
+    obsidian_mentoring = obsidian_base / "Personal" / "2-Areas" / "Study" / "Mentoring"
+
     return [
         Topic(
             name="python",
             display_name="Python Study",
             notebook_id=None,
-            obsidian_paths=[OBSIDIAN_COURSES / "ArjanCodes", OBSIDIAN_MENTORING / "Python"],
+            obsidian_paths=[obsidian_courses / "ArjanCodes", obsidian_mentoring / "Python"],
             tags=["python", "patterns", "oop", "architecture"],
         ),
         Topic(
             name="sql",
             display_name="SQL & Database Design",
             notebook_id=None,
-            obsidian_paths=[OBSIDIAN_COURSES / "DataCamp", OBSIDIAN_MENTORING / "Databases"],
+            obsidian_paths=[obsidian_courses / "DataCamp", obsidian_mentoring / "Databases"],
             tags=["sql", "postgresql", "athena", "redshift", "database"],
         ),
         Topic(
@@ -87,8 +82,8 @@ def get_topics() -> list[Topic]:
             display_name="Data Engineering",
             notebook_id=None,
             obsidian_paths=[
-                OBSIDIAN_COURSES / "ZTM" / "transcripts" / "data-engineering-bootcamp",
-                OBSIDIAN_MENTORING / "Data-Engineering",
+                obsidian_courses / "ZTM" / "transcripts" / "data-engineering-bootcamp",
+                obsidian_mentoring / "Data-Engineering",
             ],
             tags=["etl", "spark", "glue", "airflow", "dbt", "pipeline", "lakehouse"],
         ),
@@ -97,13 +92,39 @@ def get_topics() -> list[Topic]:
             display_name="AWS Analytics Services",
             notebook_id=None,
             obsidian_paths=[
-                OBSIDIAN_COURSES / "ZTM" / "Ai-Engineering-Aws-Sagemaker",
-                OBSIDIAN_MENTORING / "AWS",
+                obsidian_courses / "ZTM" / "Ai-Engineering-Aws-Sagemaker",
+                obsidian_mentoring / "AWS",
             ],
             tags=["athena", "redshift", "glue", "sagemaker", "lake-formation", "emr"],
         ),
     ]
 
 
-# Keep DEFAULT_TOPICS for backward compatibility with cli.py
-DEFAULT_TOPICS = get_topics()
+# Lazy-loaded for backward compatibility
+def __getattr__(name: str):
+    if name == "DEFAULT_TOPICS":
+        return get_topics()
+    if name in (
+        "STATE_DIR",
+        "STATE_FILE",
+        "OBSIDIAN_BASE",
+        "OBSIDIAN_COURSES",
+        "OBSIDIAN_STUDY_PLANS",
+        "OBSIDIAN_MENTORING",
+        "MEDIA_DIR",
+    ):
+        from .settings import load_settings
+
+        settings = load_settings()
+        obs = settings.obsidian_base
+        _lazy = {
+            "STATE_DIR": settings.state_dir,
+            "STATE_FILE": settings.state_dir / "state.json",
+            "OBSIDIAN_BASE": obs,
+            "OBSIDIAN_COURSES": obs / "Personal" / "2-Areas" / "Study" / "Courses",
+            "OBSIDIAN_STUDY_PLANS": obs / "Personal" / "2-Areas" / "Study" / "Study-Plans",
+            "OBSIDIAN_MENTORING": obs / "Personal" / "2-Areas" / "Study" / "Mentoring",
+            "MEDIA_DIR": obs / "Personal" / "2-Areas" / "Study" / "media",
+        }
+        return _lazy[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

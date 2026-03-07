@@ -69,18 +69,23 @@ def record_checkpoint(
         conn.commit()
         typer.echo(f"✓ Recorded: {skill}")
 
-        # Auto-sync to remote machines if configured
+        # Auto-sync to configured remote endpoints
         try:
+            import contextlib
             import subprocess
 
-            subprocess.run(
-                ["session-sync", "push", "macmini"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=15,
-            )
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass  # session-sync not available or timeout
+            from agent_session_tools.config_loader import get_endpoints
+
+            for endpoint_name in get_endpoints():
+                with contextlib.suppress(FileNotFoundError, subprocess.TimeoutExpired):
+                    subprocess.run(
+                        ["session-sync", "push", endpoint_name],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        timeout=15,
+                    )
+        except Exception:
+            pass  # config not available or no endpoints
     except sqlite3.IntegrityError as e:
         conn.rollback()
         typer.echo(f"✗ Database constraint error: {e}", err=True)
