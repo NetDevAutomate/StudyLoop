@@ -3,9 +3,7 @@
   "description": "AuDHD-aware Socratic study mentor with NotebookLM integration. Syncs course notes, manages spaced repetition, conducts Socratic sessions, and provides body-doubling support.",
   "prompt": "file://study-mentor/persona.md",
   "resources": [
-    "file://study-mentor/persona.md"
-  ],
-  "skills": [
+    "file://study-mentor/persona.md",
     "file://skills/study-speak/SKILL.md",
     "file://skills/tutor-progress-tracker/SKILL.md",
     "file://skills/audhd-socratic-mentor/SKILL.md",
