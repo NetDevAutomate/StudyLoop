@@ -1,0 +1,1697 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-03-08-test-comprehensive-coverage-plan.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>test: Comprehensive Test Coverage - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#comprehensive-test-coverage" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              test: Comprehensive Test Coverage
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current State
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current State">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tested-5-files-925-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tested (5 files, 925 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#untested-20-modules-3500-lines-of-source-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Untested (20+ modules, ~3500 lines of source code)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commit-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commit Strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Phases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementation Phases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wave-1-pure-functions-low-risk-high-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wave 1: Pure Functions (Low Risk, High Value)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Wave 1: Pure Functions (Low Risk, High Value)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-test_utilspy-40-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 test_utils.py (~40 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-test_formatterspy-120-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 test_formatters.py (~120 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-test_query_utilspy-80-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 test_query_utils.py (~80 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-test_basepy-60-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 test_base.py (~60 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave-2-exporters-medium-risk-highest-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wave 2: Exporters (Medium Risk, Highest Value)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Wave 2: Exporters (Medium Risk, Highest Value)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-test_exporters_basepy-50-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 test_exporters_base.py (~50 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-test_exporter_claudepy-100-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 test_exporter_claude.py (~100 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-test_exporter_aiderpy-100-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 test_exporter_aider.py (~100 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-test_exporter_kiropy-80-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 test_exporter_kiro.py (~80 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-test_exporter_geminipy-80-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 test_exporter_gemini.py (~80 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-test_exporter_opencodepy-60-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 test_exporter_opencode.py (~60 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-test_exporter_litellmpy-80-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 test_exporter_litellm.py (~80 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-test_exporter_repopromptpy-60-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 test_exporter_repoprompt.py (~60 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave-3-cli-commands-medium-risk-good-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wave 3: CLI Commands (Medium Risk, Good Value)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Wave 3: CLI Commands (Medium Risk, Good Value)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-test_studyctl_clipy-200-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 test_studyctl_cli.py (~200 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-test_export_clipy-60-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 test_export_cli.py (~60 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave-4-infrastructure-modules-lower-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wave 4: Infrastructure Modules (Lower Risk)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Wave 4: Infrastructure Modules (Lower Risk)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-test_schedulerpy-100-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 test_scheduler.py (~100 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-test_migrationspy-60-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 test_migrations.py (~60 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-test_tutor_checkpointpy-50-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 test_tutor_checkpoint.py (~50 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave-5-modules-requiring-mocks-higher-complexity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wave 5: Modules Requiring Mocks (Higher Complexity)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Wave 5: Modules Requiring Mocks (Higher Complexity)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-test_speakpy-80-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 test_speak.py (~80 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-test_pdfpy-40-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 test_pdf.py (~40 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-test_maintenancepy-60-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 test_maintenance.py (~60 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixture-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixture Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mock-external-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mock External Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#priority-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance Criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-mitigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Mitigation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="comprehensive-test-coverage">Comprehensive Test Coverage<a class="headerlink" href="#comprehensive-test-coverage" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Add meaningful test coverage for all untested modules. Currently 925 lines of tests cover 5 modules. The target is ~3500 total test lines covering 25+ modules, prioritised by risk and value.</p>
+<h2 id="current-state">Current State<a class="headerlink" href="#current-state" title="Permanent link">&para;</a></h2>
+<h3 id="tested-5-files-925-lines">Tested (5 files, 925 lines)<a class="headerlink" href="#tested-5-files-925-lines" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>test_config_loader.py</code> (128 lines) — config loading</li>
+<li><code>test_query_sessions.py</code> (175 lines) — date parsing, thresholds, FTS, DB size</li>
+<li><code>test_sync.py</code> (190 lines) — session sync round-trips</li>
+<li><code>test_calendar.py</code> (159 lines) — ICS generation, scheduling</li>
+<li><code>test_history.py</code> (163 lines) — spaced repetition, wins, streaks</li>
+</ul>
+<h3 id="untested-20-modules-3500-lines-of-source-code">Untested (20+ modules, ~3500 lines of source code)<a class="headerlink" href="#untested-20-modules-3500-lines-of-source-code" title="Permanent link">&para;</a></h3>
+<ul>
+<li>8 exporters (aider, bedrock, claude, gemini, kiro, litellm, opencode, repoprompt)</li>
+<li><code>base.py</code> (ExportStats, commit_batch)</li>
+<li><code>formatters.py</code> (markdown, XML, summary, context-only)</li>
+<li><code>query_utils.py</code> (date parsing, FTS escaping, session resolution)</li>
+<li><code>utils.py</code> (stable_id, content_hash, file_fingerprint)</li>
+<li><code>scheduler.py</code> (launchd/cron generation)</li>
+<li><code>speak.py</code> (TTS backends)</li>
+<li><code>pdf.py</code> (markdown→PDF)</li>
+<li><code>cli.py</code> (studyctl Click commands)</li>
+<li><code>migrations.py</code> (schema versioning)</li>
+<li><code>tutor_checkpoint.py</code> (progress recording)</li>
+<li><code>maintenance.py</code> (vacuum, archive, dedup)</li>
+<li><code>classifier.py</code> (session classification)</li>
+<li><code>deduplication.py</code> (duplicate detection)</li>
+</ul>
+<h2 id="commit-strategy">Commit Strategy<a class="headerlink" href="#commit-strategy" title="Permanent link">&para;</a></h2>
+<p>One commit per test wave. Each wave is independently valuable.</p>
+<h2 id="implementation-phases">Implementation Phases<a class="headerlink" href="#implementation-phases" title="Permanent link">&para;</a></h2>
+<h3 id="wave-1-pure-functions-low-risk-high-value">Wave 1: Pure Functions (Low Risk, High Value)<a class="headerlink" href="#wave-1-pure-functions-low-risk-high-value" title="Permanent link">&para;</a></h3>
+<p><strong>Commit:</strong> <code>test: add tests for utils, formatters, query_utils, base</code></p>
+<p>These modules are pure functions with no I/O — easiest to test, highest confidence gain.</p>
+<h4 id="11-test_utilspy-40-lines">1.1 <code>test_utils.py</code> (~40 lines)<a class="headerlink" href="#11-test_utilspy-40-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>stable_id</code> returns deterministic IDs for same input</li>
+<li>[ ] <code>stable_id</code> returns different IDs for different inputs</li>
+<li>[ ] <code>stable_id</code> normalises path case</li>
+<li>[ ] <code>content_hash</code> returns consistent hashes</li>
+<li>[ ] <code>file_fingerprint</code> includes mtime and size</li>
+</ul>
+<h4 id="12-test_formatterspy-120-lines">1.2 <code>test_formatters.py</code> (~120 lines)<a class="headerlink" href="#12-test_formatterspy-120-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>format_markdown</code> includes session headers when not compressed</li>
+<li>[ ] <code>format_markdown</code> compresses long assistant responses</li>
+<li>[ ] <code>format_markdown</code> skips tool messages by default</li>
+<li>[ ] <code>format_xml</code> produces valid XML structure</li>
+<li>[ ] <code>format_xml</code> escapes <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code> in content</li>
+<li>[ ] <code>format_xml</code> extracts code blocks into <code>&lt;code&gt;</code> elements</li>
+<li>[ ] <code>format_summary</code> extracts first user message as topic</li>
+<li>[ ] <code>format_summary</code> limits to 3 code blocks</li>
+<li>[ ] <code>format_context_only</code> extracts only code blocks</li>
+<li>[ ] <code>render_profile</code> substitutes placeholders</li>
+<li>[ ] <code>render_profile</code> falls back to compressed markdown without template</li>
+</ul>
+<h4 id="13-test_query_utilspy-80-lines">1.3 <code>test_query_utils.py</code> (~80 lines)<a class="headerlink" href="#13-test_query_utilspy-80-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Move existing parse_date/build_date_filter/check_thresholds/get_db_size tests here</li>
+<li>[ ] <code>escape_fts_query</code> preserves FTS operators (AND, OR, NOT)</li>
+<li>[ ] <code>escape_fts_query</code> wraps multi-word queries in quotes</li>
+<li>[ ] <code>escape_fts_query</code> leaves single words unquoted for stemming</li>
+<li>[ ] <code>resolve_session_id</code> exact match returns immediately</li>
+<li>[ ] <code>resolve_session_id</code> prefix match returns unique result</li>
+<li>[ ] <code>resolve_session_id</code> raises ValueError for no match</li>
+<li>[ ] <code>resolve_session_id</code> raises ValueError for ambiguous match</li>
+</ul>
+<h4 id="14-test_basepy-60-lines">1.4 <code>test_base.py</code> (~60 lines)<a class="headerlink" href="#14-test_basepy-60-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>ExportStats</code> defaults to zeros</li>
+<li>[ ] <code>ExportStats.__iadd__</code> accumulates correctly</li>
+<li>[ ] <code>commit_batch</code> inserts sessions and messages</li>
+<li>[ ] <code>commit_batch</code> handles missing optional fields via .get()</li>
+<li>[ ] <code>commit_batch</code> updates stats from session status flags</li>
+<li>[ ] <code>commit_batch</code> rolls back and increments errors on failure</li>
+</ul>
+<h3 id="wave-2-exporters-medium-risk-highest-value">Wave 2: Exporters (Medium Risk, Highest Value)<a class="headerlink" href="#wave-2-exporters-medium-risk-highest-value" title="Permanent link">&para;</a></h3>
+<p><strong>Commit:</strong> <code>test: add exporter tests with fixture data</code></p>
+<p>Each exporter needs a fixture (fake data directory or DB) and a test that verifies it produces valid session/message dicts. No live tool installations required.</p>
+<h4 id="21-test_exporters_basepy-50-lines">2.1 <code>test_exporters_base.py</code> (~50 lines)<a class="headerlink" href="#21-test_exporters_basepy-50-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] All exporters in EXPORTERS registry have correct source_name</li>
+<li>[ ] All exporters implement is_available()</li>
+<li>[ ] All exporters implement export_all()</li>
+<li>[ ] Bedrock exporter is registered (regression test for #15)</li>
+</ul>
+<h4 id="22-test_exporter_claudepy-100-lines">2.2 <code>test_exporter_claude.py</code> (~100 lines)<a class="headerlink" href="#22-test_exporter_claudepy-100-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Fixture: create fake <code>~/.claude/projects/</code> with JSONL agent files</li>
+<li>[ ] <code>is_available()</code> returns True when projects dir exists</li>
+<li>[ ] <code>is_available()</code> returns False when missing</li>
+<li>[ ] <code>export_all()</code> parses JSONL entries into sessions and messages</li>
+<li>[ ] Session IDs are stable (same file → same ID)</li>
+<li>[ ] Incremental export skips already-imported sessions</li>
+</ul>
+<h4 id="23-test_exporter_aiderpy-100-lines">2.3 <code>test_exporter_aider.py</code> (~100 lines)<a class="headerlink" href="#23-test_exporter_aiderpy-100-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Fixture: create fake <code>.aider.chat.history.md</code> files</li>
+<li>[ ] <code>is_available()</code> checks search paths</li>
+<li>[ ] <code>export_all()</code> parses markdown into sessions</li>
+<li>[ ] <code>_walk_with_exclusions</code> skips excluded directories</li>
+<li>[ ] <code>_parse_aider_markdown</code> handles USER/ASSISTANT blocks</li>
+</ul>
+<h4 id="24-test_exporter_kiropy-80-lines">2.4 <code>test_exporter_kiro.py</code> (~80 lines)<a class="headerlink" href="#24-test_exporter_kiropy-80-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Fixture: create fake kiro SQLite database with conversations table</li>
+<li>[ ] <code>is_available()</code> checks database file</li>
+<li>[ ] <code>export_all()</code> extracts conversation history</li>
+<li>[ ] Handles malformed JSON gracefully (stats.errors incremented)</li>
+</ul>
+<h4 id="25-test_exporter_geminipy-80-lines">2.5 <code>test_exporter_gemini.py</code> (~80 lines)<a class="headerlink" href="#25-test_exporter_geminipy-80-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Fixture: create fake <code>~/.gemini/tmp/</code> session files</li>
+<li>[ ] Parses session JSON into sessions and messages</li>
+<li>[ ] Handles missing/empty files gracefully</li>
+</ul>
+<h4 id="26-test_exporter_opencodepy-60-lines">2.6 <code>test_exporter_opencode.py</code> (~60 lines)<a class="headerlink" href="#26-test_exporter_opencodepy-60-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>_ms_to_iso</code> returns None for None</li>
+<li>[ ] <code>_ms_to_iso</code> converts milliseconds to ISO string</li>
+<li>[ ] <code>_ms_to_iso</code> handles 0 correctly (not falsy, returns epoch)</li>
+</ul>
+<h4 id="27-test_exporter_litellmpy-80-lines">2.7 <code>test_exporter_litellm.py</code> (~80 lines)<a class="headerlink" href="#27-test_exporter_litellmpy-80-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Fixture: create fake LiteLLM SQLite database</li>
+<li>[ ] Session detection groups requests by time window</li>
+<li>[ ] Handles missing conversations table</li>
+</ul>
+<h4 id="28-test_exporter_repopromptpy-60-lines">2.8 <code>test_exporter_repoprompt.py</code> (~60 lines)<a class="headerlink" href="#28-test_exporter_repopromptpy-60-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>cf_timestamp_to_iso</code> converts Core Foundation timestamps</li>
+<li>[ ] <code>cf_timestamp_to_iso</code> returns None for None input</li>
+<li>[ ] Fixture: create fake RepoPrompt SQLite database</li>
+</ul>
+<h3 id="wave-3-cli-commands-medium-risk-good-value">Wave 3: CLI Commands (Medium Risk, Good Value)<a class="headerlink" href="#wave-3-cli-commands-medium-risk-good-value" title="Permanent link">&para;</a></h3>
+<p><strong>Commit:</strong> <code>test: add CLI command tests using Click CliRunner</code></p>
+<p>Use Click's <code>CliRunner</code> for studyctl and Typer's <code>CliRunner</code> for agent-session-tools.</p>
+<h4 id="31-test_studyctl_clipy-200-lines">3.1 <code>test_studyctl_cli.py</code> (~200 lines)<a class="headerlink" href="#31-test_studyctl_clipy-200-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>studyctl topics</code> lists configured topics</li>
+<li>[ ] <code>studyctl review</code> with empty DB shows "nothing due"</li>
+<li>[ ] <code>studyctl struggles</code> with empty DB shows "no struggles"</li>
+<li>[ ] <code>studyctl wins</code> with empty DB shows "no progress data"</li>
+<li>[ ] <code>studyctl progress</code> records a concept</li>
+<li>[ ] <code>studyctl resume</code> with empty DB shows "no sessions"</li>
+<li>[ ] <code>studyctl streaks</code> with empty DB shows "no sessions"</li>
+<li>[ ] <code>studyctl progress-map</code> with empty DB shows "no progress"</li>
+<li>[ ] <code>studyctl docs list</code> shows available pages</li>
+<li>[ ] <code>studyctl schedule list</code> shows no jobs when none installed</li>
+</ul>
+<h4 id="32-test_export_clipy-60-lines">3.2 <code>test_export_cli.py</code> (~60 lines)<a class="headerlink" href="#32-test_export_clipy-60-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>session-export --help</code> shows all options</li>
+<li>[ ] <code>session-export --sources invalid</code> raises BadParameter</li>
+<li>[ ] Only one <code>--*-only</code> flag at a time</li>
+</ul>
+<h3 id="wave-4-infrastructure-modules-lower-risk">Wave 4: Infrastructure Modules (Lower Risk)<a class="headerlink" href="#wave-4-infrastructure-modules-lower-risk" title="Permanent link">&para;</a></h3>
+<p><strong>Commit:</strong> <code>test: add tests for scheduler, migrations, tutor_checkpoint</code></p>
+<h4 id="41-test_schedulerpy-100-lines">4.1 <code>test_scheduler.py</code> (~100 lines)<a class="headerlink" href="#41-test_schedulerpy-100-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>Job</code> dataclass stores name, command, schedule</li>
+<li>[ ] launchd plist generation produces valid XML</li>
+<li>[ ] cron entry generation produces valid cron syntax</li>
+<li>[ ] <code>list_jobs</code> returns empty list when none installed</li>
+<li>[ ] <code>install_all</code> / <code>remove_all</code> are idempotent</li>
+</ul>
+<h4 id="42-test_migrationspy-60-lines">4.2 <code>test_migrations.py</code> (~60 lines)<a class="headerlink" href="#42-test_migrationspy-60-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>get_user_version</code> returns 0 for fresh DB</li>
+<li>[ ] <code>set_user_version</code> updates version</li>
+<li>[ ] <code>migrate</code> applies all pending migrations</li>
+<li>[ ] <code>migrate</code> skips already-applied migrations</li>
+<li>[ ] <code>migrate</code> returns list of applied migration names</li>
+</ul>
+<h4 id="43-test_tutor_checkpointpy-50-lines">4.3 <code>test_tutor_checkpoint.py</code> (~50 lines)<a class="headerlink" href="#43-test_tutor_checkpointpy-50-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Creates session and message in DB</li>
+<li>[ ] Session has source="study_mentor" and session_type="study"</li>
+<li>[ ] Handles duplicate checkpoint gracefully (IntegrityError)</li>
+</ul>
+<h3 id="wave-5-modules-requiring-mocks-higher-complexity">Wave 5: Modules Requiring Mocks (Higher Complexity)<a class="headerlink" href="#wave-5-modules-requiring-mocks-higher-complexity" title="Permanent link">&para;</a></h3>
+<p><strong>Commit:</strong> <code>test: add tests for speak, pdf, maintenance with mocks</code></p>
+<p>These modules call external processes — tests need mocking.</p>
+<h4 id="51-test_speakpy-80-lines">5.1 <code>test_speak.py</code> (~80 lines)<a class="headerlink" href="#51-test_speakpy-80-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>_get_tts_config</code> returns defaults when no config</li>
+<li>[ ] <code>_ensure_kokoro_models</code> returns True when models exist</li>
+<li>[ ] <code>_speak_macos</code> calls subprocess with correct args (mock subprocess)</li>
+<li>[ ] <code>speak</code> command reads from stdin when text is "-"</li>
+<li>[ ] Backend fallback chain: kokoro → macos</li>
+</ul>
+<h4 id="52-test_pdfpy-40-lines">5.2 <code>test_pdf.py</code> (~40 lines)<a class="headerlink" href="#52-test_pdfpy-40-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] Markdown to PDF conversion calls pandoc (mock subprocess)</li>
+<li>[ ] Handles missing pandoc gracefully</li>
+</ul>
+<h4 id="53-test_maintenancepy-60-lines">5.3 <code>test_maintenance.py</code> (~60 lines)<a class="headerlink" href="#53-test_maintenancepy-60-lines" title="Permanent link">&para;</a></h4>
+<ul>
+<li>[ ] <code>vacuum</code> runs VACUUM on database</li>
+<li>[ ] <code>reindex</code> rebuilds FTS index</li>
+<li>[ ] Archive moves old sessions to archive DB</li>
+</ul>
+<hr />
+<h2 id="testing-patterns">Testing Patterns<a class="headerlink" href="#testing-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="fixture-strategy">Fixture Strategy<a class="headerlink" href="#fixture-strategy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Reuse conftest.py temp_db fixture for all DB tests</span>
+<span class="c1"># Create exporter-specific fixtures that build fake data directories</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">fake_claude_dir</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create fake Claude Code project directory with JSONL sessions.&quot;&quot;&quot;</span>
+    <span class="n">projects</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;.claude&quot;</span> <span class="o">/</span> <span class="s2">&quot;projects&quot;</span>
+    <span class="n">project</span> <span class="o">=</span> <span class="n">projects</span> <span class="o">/</span> <span class="s2">&quot;-Users-test-myproject&quot;</span>
+    <span class="n">project</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># Write fake JSONL session file</span>
+    <span class="n">session_file</span> <span class="o">=</span> <span class="n">project</span> <span class="o">/</span> <span class="s2">&quot;agent-001.jsonl&quot;</span>
+    <span class="n">session_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">projects</span>
+</code></pre></div>
+<h3 id="cli-testing">CLI Testing<a class="headerlink" href="#cli-testing" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">click.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">CliRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.cli</span><span class="w"> </span><span class="kn">import</span> <span class="n">cli</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_topics</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">):</span>
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">CliRunner</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;topics&quot;</span><span class="p">])</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+</code></pre></div>
+<h3 id="mock-external-dependencies">Mock External Dependencies<a class="headerlink" href="#mock-external-dependencies" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_speak_macos</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;subprocess.run&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_run</span><span class="p">:</span>
+        <span class="n">mock_run</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">(</span><span class="n">returncode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">_speak_macos</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">,</span> <span class="n">voice</span><span class="o">=</span><span class="s2">&quot;Samantha&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">True</span>
+        <span class="n">mock_run</span><span class="o">.</span><span class="n">assert_called_once</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h2 id="priority-order">Priority Order<a class="headerlink" href="#priority-order" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Wave</th>
+<th>Tests</th>
+<th>Lines</th>
+<th>Value</th>
+<th>Risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Pure functions</td>
+<td>~300</td>
+<td>High — catch regressions in extracted modules</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Exporters</td>
+<td>~610</td>
+<td>Highest — untested core functionality</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>3</td>
+<td>CLI commands</td>
+<td>~260</td>
+<td>Good — catch integration issues</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Infrastructure</td>
+<td>~210</td>
+<td>Good — catch scheduler/migration bugs</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Mocked modules</td>
+<td>~180</td>
+<td>Medium — external deps are flaky</td>
+<td>Higher</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td></td>
+<td><strong>~1560</strong></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Combined with existing 925 lines → <strong>~2485 total test lines</strong>.</p>
+<h2 id="acceptance-criteria">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] <code>uv run pytest</code> passes with all new tests</li>
+<li>[ ] <code>uv run pytest --cov=packages/ --cov-report=term-missing</code> shows coverage for all tested modules</li>
+<li>[ ] No test requires live AI tool installations</li>
+<li>[ ] No test requires network access</li>
+<li>[ ] Each wave is independently committable and revertable</li>
+<li>[ ] Tests run in &lt; 10 seconds total</li>
+</ul>
+<h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Waves 1-4 have no external dependencies</li>
+<li>Wave 5 needs <code>unittest.mock</code> (stdlib)</li>
+<li>All waves use existing <code>conftest.py</code> fixtures</li>
+</ul>
+<h2 id="risk-mitigation">Risk Mitigation<a class="headerlink" href="#risk-mitigation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Exporter tests are the highest value</strong> — if time is limited, prioritise Wave 2</li>
+<li><strong>CLI tests catch integration regressions</strong> — important after the query_sessions.py refactor</li>
+<li><strong>Mock tests are brittle by nature</strong> — keep them focused on interface contracts, not implementation details</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

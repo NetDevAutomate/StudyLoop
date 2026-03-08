@@ -1,0 +1,1471 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/roadmap.html">
+      
+      
+        <link rel="prev" href="contributing.html">
+      
+      
+        <link rel="next" href="mcp.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Roadmap - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#roadmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="roadmap.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v10-foundation-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.0 — Foundation (current)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v11-audhd-learning-intelligence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.1 — AuDHD Learning Intelligence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v1.1 — AuDHD Learning Intelligence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#high-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔴 High Priority
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔴 High Priority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#win-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Win Tracking~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#energy-adaptive-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Energy-Adaptive Sessions~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#struggle-adaptive-difficulty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Struggle → Adaptive Difficulty~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🟡 Medium Priority
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🟡 Medium Priority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-was-i-auto-resume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~"Where Was I?" Auto-Resume~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hyperfocus-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Hyperfocus Guardrails~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calendar-time-blocking-reminders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Calendar Time-Blocking &amp; Reminders~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nice-to-have" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔵 Nice to Have
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔵 Nice to Have">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pomodoro-session-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pomodoro Session Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-status-line-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code Status Line Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cowork-integration-claude-desktop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cowork Integration (Claude Desktop)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v12-community-polish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.2 — Community &amp; Polish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v13-audhd-intelligence-from-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.3 — AuDHD Intelligence (from review)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v10-foundation-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.0 — Foundation (current)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v11-audhd-learning-intelligence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.1 — AuDHD Learning Intelligence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v1.1 — AuDHD Learning Intelligence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#high-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔴 High Priority
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔴 High Priority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#win-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Win Tracking~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#energy-adaptive-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Energy-Adaptive Sessions~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#struggle-adaptive-difficulty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Struggle → Adaptive Difficulty~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🟡 Medium Priority
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🟡 Medium Priority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-was-i-auto-resume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~"Where Was I?" Auto-Resume~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hyperfocus-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Hyperfocus Guardrails~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calendar-time-blocking-reminders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ~~Calendar Time-Blocking &amp; Reminders~~ ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nice-to-have" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔵 Nice to Have
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔵 Nice to Have">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pomodoro-session-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pomodoro Session Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-status-line-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code Status Line Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cowork-integration-claude-desktop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cowork Integration (Claude Desktop)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v12-community-polish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.2 — Community &amp; Polish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v13-audhd-intelligence-from-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.3 — AuDHD Intelligence (from review)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
+<h2 id="v10-foundation-current">v1.0 — Foundation (current)<a class="headerlink" href="#v10-foundation-current" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[x] Monorepo with studyctl + agent-session-tools</li>
+<li>[x] Kiro CLI + Claude Code agent definitions</li>
+<li>[x] Spaced repetition scheduling (1/3/7/14/30 days)</li>
+<li>[x] Session export from 8+ AI tools</li>
+<li>[x] FTS5 + hybrid semantic search</li>
+<li>[x] Cross-machine sync</li>
+<li>[x] Obsidian → NotebookLM sync</li>
+<li>[x] Install scripts for both platforms</li>
+</ul>
+<h2 id="v11-audhd-learning-intelligence">v1.1 — AuDHD Learning Intelligence<a class="headerlink" href="#v11-audhd-learning-intelligence" title="Permanent link">&para;</a></h2>
+<p>Features designed specifically for AuDHD brains, ranked by impact.</p>
+<h3 id="high-priority">🔴 High Priority<a class="headerlink" href="#high-priority" title="Permanent link">&para;</a></h3>
+<h4 id="win-tracking">~~Win Tracking~~ ✅<a class="headerlink" href="#win-tracking" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> AuDHD brains are terrible at recognising progress (RSD + imposter syndrome). Seeing concrete evidence of improvement is genuinely therapeutic.</p>
+<ul>
+<li>[x] <code>studyctl wins</code> — show concepts that moved from "struggled" to "confident"</li>
+<li>[x] Session count trends (studying more consistently?)</li>
+<li>[x] Skills where scaffolding level decreased over time</li>
+<li>[x] Queryable from agents for positive reinforcement during sessions</li>
+</ul>
+<h4 id="energy-adaptive-sessions">~~Energy-Adaptive Sessions~~ ✅<a class="headerlink" href="#energy-adaptive-sessions" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Variable capacity is THE defining AuDHD challenge. A "high energy" day and a "low energy" day need completely different study approaches.</p>
+<ul>
+<li>[x] <code>--energy low|medium|high</code> flag on session start</li>
+<li>[x] Low → shorter chunks, more scaffolding, review-only mode</li>
+<li>[x] High → deeper dives, harder Socratic questions, new material</li>
+<li>[x] Historical energy patterns → "you do your best Python work on Tuesday mornings"</li>
+<li>[x] Claude Code status line shows current energy level</li>
+<li>[x] Emotional regulation check (calm/anxious/frustrated/flat/shutdown)</li>
+</ul>
+<h4 id="struggle-adaptive-difficulty">~~Struggle → Adaptive Difficulty~~ ✅<a class="headerlink" href="#struggle-adaptive-difficulty" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Repeating the same explanation doesn't work for neurodivergent brains. If a concept appears in 3+ sessions with questions, try a different approach.</p>
+<ul>
+<li>[x] Auto-detect recurring struggles from session history</li>
+<li>[x] Agent offers different analogies, smaller pieces, different modalities</li>
+<li>[x] "Try writing a small program that uses X" vs "let me explain X again"</li>
+<li>[x] Feeds into spaced repetition scheduling</li>
+<li>[x] struggle_topics now config-driven</li>
+</ul>
+<h3 id="medium-priority">🟡 Medium Priority<a class="headerlink" href="#medium-priority" title="Permanent link">&para;</a></h3>
+<h4 id="where-was-i-auto-resume">~~"Where Was I?" Auto-Resume~~ ✅<a class="headerlink" href="#where-was-i-auto-resume" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> AuDHD learners lose context between sessions constantly. Manual context loading is a barrier to starting.</p>
+<ul>
+<li>[x] <code>studyctl resume</code> — automatic last-session summary with topics, concepts in progress</li>
+<li>[x] Built on existing session query infrastructure</li>
+<li>[x] Shows: what you were learning, where you got stuck, what's next</li>
+<li>[x] Integrated into session protocol — agents run it at session start</li>
+</ul>
+<h4 id="hyperfocus-guardrails">~~Hyperfocus Guardrails~~ ✅<a class="headerlink" href="#hyperfocus-guardrails" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Hyperfocus is a superpower but needs channeling. A study partner would say "you've been at this for 2 hours."</p>
+<ul>
+<li>[x] Session duration tracking with configurable nudges</li>
+<li>[x] Rabbit hole detection: "you started SQL but you've been in Python for 40 min"</li>
+<li>[x] Break reminders at configurable intervals (25/50/90 min)</li>
+<li>[x] Claude Code status line shows elapsed time + focus state</li>
+</ul>
+<h4 id="calendar-time-blocking-reminders">~~Calendar Time-Blocking &amp; Reminders~~ ✅<a class="headerlink" href="#calendar-time-blocking-reminders" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> ADHD task initiation is the hardest part. External triggers (notifications, calendar blocks) bypass the executive function barrier.</p>
+<ul>
+<li>[x] Apple Calendar + Reminders MCP integration (macOS) — native notifications</li>
+<li>[x] Google Calendar MCP integration (cross-platform)</li>
+<li>[x] Auto-create study time blocks from <code>studyctl review</code> output</li>
+<li>[x] Daily study briefing generation</li>
+<li>[x] Break reminders via native notifications</li>
+<li>[x] Note: Windows/WSL2 users use Google Calendar; macOS users can use either</li>
+</ul>
+<h3 id="nice-to-have">🔵 Nice to Have<a class="headerlink" href="#nice-to-have" title="Permanent link">&para;</a></h3>
+<h4 id="pomodoro-session-structure">Pomodoro Session Structure<a class="headerlink" href="#pomodoro-session-structure" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Time-boxed structure helps ADHD brains with task initiation and sustained attention.</p>
+<ul>
+<li>5 min review → 20 min focus → 5 min summarise</li>
+<li>Agent adapts behaviour to current phase</li>
+<li>Claude Code status line shows phase + timer</li>
+<li>Configurable intervals</li>
+</ul>
+<h4 id="claude-code-status-line-integration">Claude Code Status Line Integration<a class="headerlink" href="#claude-code-status-line-integration" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Persistent visual feedback without interrupting flow. Shows energy, timer, pomodoro phase, context usage.</p>
+<ul>
+<li>Custom status line script reading session state file</li>
+<li>Display: 🔋 Energy | ⏱️ Timer | 🍅 Pomodoro | 📊 Context %</li>
+<li>Agent writes state → script reads state → user sees it</li>
+<li>Note: kiro-cli does not support status lines (state shown in chat messages instead)</li>
+</ul>
+<h4 id="cowork-integration-claude-desktop">Cowork Integration (Claude Desktop)<a class="headerlink" href="#cowork-integration-claude-desktop" title="Permanent link">&para;</a></h4>
+<p><strong>Why:</strong> Scheduled daily study briefings without opening a terminal.</p>
+<ul>
+<li>Cowork folder instructions for Socratic mentoring behaviour</li>
+<li><code>/schedule</code> recurring tasks for daily study review</li>
+<li>Google Calendar connector for schedule-aware study planning</li>
+<li>Note: Requires Claude Desktop open + computer awake</li>
+</ul>
+<h2 id="v12-community-polish">v1.2 — Community &amp; Polish<a class="headerlink" href="#v12-community-polish" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] PyPI publishing</li>
+<li>[ ] Additional test coverage (exporters, scheduler, CLI commands, speak, PDF)</li>
+<li>[ ] VSCode integration (fix circular import)</li>
+<li>[ ] TUI interface (textual)</li>
+<li>[ ] Watchdog file watcher for auto-sync</li>
+<li>[ ] Community-contributed study topics</li>
+<li>[ ] Localisation support</li>
+<li>[x] TTS voice output (kokoro-tts / ltts integration)</li>
+<li>[ ] MkDocs documentation site polish</li>
+<li>[ ] Gemini CLI / OpenCode / Amp agent testing</li>
+<li>[ ] CI Python version matrix (3.12, 3.13)</li>
+<li>[ ] GitHub Pages deployment workflow</li>
+<li>[ ] CHANGELOG.md and release automation</li>
+<li>[ ] <code>query_sessions.py</code> refactor — split into CLI, formatters, resolver modules</li>
+</ul>
+<h2 id="v13-audhd-intelligence-from-review">v1.3 — AuDHD Intelligence (from review)<a class="headerlink" href="#v13-audhd-intelligence-from-review" title="Permanent link">&para;</a></h2>
+<p>Features identified through comprehensive code review:</p>
+<ul>
+<li>[x] <strong>"Where Was I?" auto-resume</strong> — <code>studyctl resume</code> shows last session, topics, concepts in progress</li>
+<li>[x] <strong>Medication timing awareness</strong> — optional config for cognitive windows (onset/peak/tapering/worn off)</li>
+<li>[x] <strong>Visual progress map</strong> — <code>studyctl progress-map</code> with Mermaid diagram output</li>
+<li>[x] <strong>Routine building / streak tracking</strong> — <code>studyctl streaks</code> with current/longest streak, consistency %</li>
+<li>[x] <strong>Interleaving suppression on low-energy days</strong> — automatic rule to disable topic mixing when energy &lt; 4</li>
+<li>[x] <strong>Custom admonition style guide</strong> — document the 7 custom admonition types for contributors</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
