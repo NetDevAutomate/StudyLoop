@@ -38,19 +38,13 @@ repos:
     - text
   - id: pyright
     name: pyright
-    pass_filenames: true
     language: system
-    entry: bash -c 'for x in "$@"; do (cd `dirname $x`; pwd; uv run --frozen --all-extras
-      --dev pyright --stats;); done;' --
-    stages:
-    - pre-push
-    files: (src|samples)\/.*\/pyproject.toml
+    entry: uv run pyright packages/agent-session-tools/
+    pass_filenames: false
+    files: ^packages/agent-session-tools/.*\.py$
   - id: pytest
     name: pytest
-    pass_filenames: true
     language: system
-    entry: bash -c 'for x in "$@"; do (cd `dirname $x`; pwd; uv run --frozen pytest
-      --cov --cov-branch --cov-report=term-missing;); done;' --
-    stages:
-    - pre-push
-    files: src\/.*\/pyproject.toml
+    entry: uv run pytest --tb=short
+    pass_filenames: false
+    files: ^packages/.*\.py$
