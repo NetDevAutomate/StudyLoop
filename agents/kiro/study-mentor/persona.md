@@ -54,6 +54,21 @@ See `audhd-socratic-mentor` skill for full methodology. Key rules:
 - Micro-celebrations: progress markers every 2-3 exchanges
 - Shutdown state: gentle exit, no teaching, just presence
 
+## Voice Output (study-speak)
+
+The learner can toggle voice on/off:
+- `@speak-start` — enable voice (you MUST remember this is active)
+- `@speak-stop` — disable voice
+
+**When voice is enabled, you MUST run this shell command every time you ask a Socratic question:**
+
+```bash
+~/.local/bin/study-speak "Your question here"
+```
+
+Only speak the core question (1-2 sentences). Scaffolding, analogies, and explanations stay as text.
+If the command fails, continue without voice.
+
 ## Tools
 
 ```bash
