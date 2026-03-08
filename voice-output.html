@@ -708,6 +708,62 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-kokoro-voices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Kokoro Voices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kiro-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kiro CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-gemini-opencode-amp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code / Gemini / OpenCode / Amp
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1058,6 +1114,62 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-kokoro-voices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Kokoro Voices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kiro-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kiro CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-gemini-opencode-amp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code / Gemini / OpenCode / Amp
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1174,6 +1286,47 @@
 <span class="w">  </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">             </span><span class="c1"># 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast</span>
 <span class="w">  </span><span class="nt">macos_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Samantha</span><span class="w">  </span><span class="c1"># fallback voice for macOS say</span>
 </code></pre></div>
+<h3 id="available-kokoro-voices">Available Kokoro Voices<a class="headerlink" href="#available-kokoro-voices" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Voice</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>am_michael</code></td>
+<td>American male (default)</td>
+</tr>
+<tr>
+<td><code>af_heart</code></td>
+<td>American female</td>
+</tr>
+<tr>
+<td><code>bf_emma</code></td>
+<td>British female</td>
+</tr>
+</tbody>
+</table>
+<p>Pass any kokoro voice name with <code>-v</code> or set in config. See <a href="https://github.com/thewh1teagle/kokoro-onnx#voices">kokoro-onnx voices</a> for the full list.</p>
+<hr />
+<h2 id="mcp-server-setup">MCP Server Setup<a class="headerlink" href="#mcp-server-setup" title="Permanent link">&para;</a></h2>
+<p>The study-speak MCP server lets AI agents call the TTS tool directly. The standalone server lives at <code>agents/mcp/study-speak-server.py</code>.</p>
+<h3 id="kiro-cli">Kiro CLI<a class="headerlink" href="#kiro-cli" title="Permanent link">&para;</a></h3>
+<p>Configured automatically via <code>agents/kiro/study-mentor.json</code>. No manual setup needed — the install script handles it.</p>
+<h3 id="claude-code-gemini-opencode-amp">Claude Code / Gemini / OpenCode / Amp<a class="headerlink" href="#claude-code-gemini-opencode-amp" title="Permanent link">&para;</a></h3>
+<p>Each agent has an <code>mcp.json</code> in its <code>agents/</code> directory. The server command uses <code>uvx</code> to run the standalone MCP server:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;speaker&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uvx&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--from&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp[cli]&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/absolute/path/to/agents/mcp/study-speak-server.py&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Replace the path with your actual clone location. The <code>scripts/install-agents.sh</code> script sets this up automatically for detected AI tools.</p>
 <hr />
 <h2 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w">                                        </span><span class="c1"># Speak text</span>
