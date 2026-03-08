@@ -9,7 +9,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from .config import DEFAULT_TOPICS, Topic
+from .config import Topic, get_topics
 from .history import spaced_repetition_due, struggle_topics
 from .maintenance import dedup_notebook, find_duplicates
 from .scheduler import (
@@ -56,7 +56,7 @@ console = Console()
 
 
 def _get_topic(name: str) -> Topic | None:
-    for t in DEFAULT_TOPICS:
+    for t in get_topics():
         if t.name == name or name in t.name:
             return t
     return None
@@ -75,12 +75,12 @@ def cli() -> None:
 def sync(topic_name: str | None, sync_all: bool, dry_run: bool) -> None:
     """Sync Obsidian course notes to NotebookLM notebooks."""
     state = SyncState()
-    topics = DEFAULT_TOPICS if sync_all else ([_get_topic(topic_name)] if topic_name else [])
+    topics = get_topics() if sync_all else ([_get_topic(topic_name)] if topic_name else [])
     topics = [t for t in topics if t]
 
     if not topics:
         console.print("[red]Specify a topic name or use --all[/red]")
-        console.print("Topics: " + ", ".join(t.name for t in DEFAULT_TOPICS))
+        console.print("Topics: " + ", ".join(t.name for t in get_topics()))
         raise SystemExit(1)
 
     for topic in topics:
@@ -110,7 +110,7 @@ def sync(topic_name: str | None, sync_all: bool, dry_run: bool) -> None:
 def status(topic_name: str | None) -> None:
     """Show sync status for topics."""
     state = SyncState()
-    topics = [_get_topic(topic_name)] if topic_name else DEFAULT_TOPICS
+    topics = [_get_topic(topic_name)] if topic_name else get_topics()
     topics = [t for t in topics if t]
 
     table = Table(title="Study Pipeline Status")
@@ -166,7 +166,7 @@ def audio(topic_name: str, instructions: str) -> None:
 @cli.command()
 def topics() -> None:
     """List configured study topics."""
-    for topic in DEFAULT_TOPICS:
+    for topic in get_topics():
         console.print(f"[bold cyan]{topic.name}[/bold cyan] — {topic.display_name}")
         for p in topic.obsidian_paths:
             exists = "✓" if p.exists() else "✗"
@@ -180,7 +180,7 @@ def topics() -> None:
 def dedup(topic_name: str | None, dedup_all: bool, dry_run: bool) -> None:
     """Remove duplicate sources from NotebookLM notebooks."""
     state = SyncState()
-    topics = DEFAULT_TOPICS if dedup_all else ([_get_topic(topic_name)] if topic_name else [])
+    topics = get_topics() if dedup_all else ([_get_topic(topic_name)] if topic_name else [])
     topics = [t for t in topics if t]
 
     if not topics:

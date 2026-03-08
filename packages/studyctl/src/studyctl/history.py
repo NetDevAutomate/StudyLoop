@@ -228,7 +228,7 @@ def get_wins(days: int = 30) -> list[dict]:
             (f"-{days} days",),
         ).fetchall()
         return [dict(r) for r in rows]
-    except Exception:
+    except sqlite3.OperationalError:
         return []
     finally:
         conn.close()
@@ -246,7 +246,7 @@ def get_progress_summary() -> dict:
         summary = {r["confidence"]: r["count"] for r in rows}
         summary["total"] = sum(summary.values())
         return summary
-    except Exception:
+    except sqlite3.OperationalError:
         return {}
     finally:
         conn.close()
@@ -283,7 +283,7 @@ def record_progress(
         )
         conn.commit()
         return True
-    except Exception:
+    except sqlite3.OperationalError:
         return False
     finally:
         conn.close()
