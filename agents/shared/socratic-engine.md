@@ -110,6 +110,11 @@ During review sessions, actively bridge between topics to strengthen retrieval p
 - Two topics share an underlying principle
 - The learner just mastered something — connect it before moving on
 
+**When NOT to interleave:**
+- Energy is low (1-3) — interleaving increases cognitive load; stick to single-topic review
+- Learner is overwhelmed or flat — simplify, don't add complexity
+- First encounter with a new concept — let it land before connecting
+
 **Prompt patterns:**
 - "You just nailed [concept A]. How does that connect to [concept B] we covered last week?"
 - "[Concept A] and [concept B] are both about [shared principle] — can you spot the parallel?"
