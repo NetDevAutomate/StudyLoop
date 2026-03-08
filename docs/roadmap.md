@@ -101,7 +101,7 @@ Features designed specifically for AuDHD brains, ranked by impact.
 ## v1.2 — Community & Polish
 
 - [ ] PyPI publishing
-- [ ] Additional test coverage
+- [ ] Additional test coverage (exporters, scheduler, CLI commands, speak, PDF)
 - [ ] VSCode integration (fix circular import)
 - [ ] TUI interface (textual)
 - [ ] Watchdog file watcher for auto-sync
@@ -110,3 +110,18 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - [x] TTS voice output (kokoro-tts / ltts integration)
 - [ ] MkDocs documentation site polish
 - [ ] Gemini CLI / OpenCode / Amp agent testing
+- [ ] CI Python version matrix (3.12, 3.13)
+- [ ] GitHub Pages deployment workflow
+- [ ] CHANGELOG.md and release automation
+- [ ] `query_sessions.py` refactor — split into CLI, formatters, resolver modules
+
+## v1.3 — AuDHD Intelligence (from review)
+
+Features identified through comprehensive code review:
+
+- [ ] **"Where Was I?" auto-resume** — automatic last-session summary on session start, reducing task initiation friction
+- [ ] **Medication timing awareness** — optional config for cognitive windows (onset/peak/wearing off), adapt session type to medication schedule
+- [ ] **Visual progress map** — Mermaid-rendered skill tree showing mastered/in-progress/next topics as a dependency graph
+- [ ] **Routine building / streak tracking** — cue-routine-reward loops, session streaks with factual tracking (not gamification)
+- [ ] **Interleaving suppression on low-energy days** — automatic rule to disable topic mixing when energy < 4
+- [ ] **Custom admonition style guide** — document the 6 custom admonition types for contributors
