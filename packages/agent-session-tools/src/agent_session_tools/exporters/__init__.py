@@ -1,7 +1,8 @@
 """Modular session exporters for different AI tools."""
 
 from .aider import AiderExporter
-from .base import ExportStats, SessionExporter
+from .base import ExportStats, SessionExporter, commit_batch
+from .bedrock import BedrockProxyExporter
 from .claude import ClaudeCodeExporter
 from .gemini import GeminiCliExporter
 from .kiro import KiroCliExporter
@@ -12,10 +13,12 @@ from .repoprompt import RepoPromptExporter
 __all__ = [
     "ExportStats",
     "SessionExporter",
+    "commit_batch",
     "ClaudeCodeExporter",
     "KiroCliExporter",
     "GeminiCliExporter",
     "AiderExporter",
+    "BedrockProxyExporter",
     "LitellmExporter",
     "RepoPromptExporter",
     "OpenCodeExporter",
@@ -28,6 +31,7 @@ EXPORTERS = {
     "gemini": GeminiCliExporter(),
     "opencode": OpenCodeExporter(),
     "aider": AiderExporter(),
+    "bedrock": BedrockProxyExporter(),
     "litellm": LitellmExporter(),
     "repoprompt": RepoPromptExporter(),
 }

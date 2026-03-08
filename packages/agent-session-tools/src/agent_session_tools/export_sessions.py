@@ -9,7 +9,6 @@ Supported sources:
 - Aider (.aider.chat.history.md files)
 """
 
-import hashlib
 import shutil
 import sqlite3
 from contextlib import nullcontext
@@ -20,7 +19,12 @@ from typing import Annotated
 import typer
 
 from agent_session_tools.config_loader import get_db_path, load_config
-from agent_session_tools.exporters import EXPORTERS, AiderExporter, ExportStats, get_exporter
+from agent_session_tools.exporters import (
+    EXPORTERS,
+    AiderExporter,
+    ExportStats,
+    get_exporter,
+)
 from agent_session_tools.migrations import migrate
 
 # Create Typer app with completion support
@@ -33,7 +37,13 @@ app = typer.Typer(
 
 # Try to import Rich progress bars
 try:
-    from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeRemainingColumn
+    from rich.progress import (
+        BarColumn,
+        Progress,
+        SpinnerColumn,
+        TextColumn,
+        TimeRemainingColumn,
+    )
 
     RICH_AVAILABLE = True
 except ImportError:
@@ -80,27 +90,6 @@ def init_db(db_path: str) -> sqlite3.Connection:
     return conn
 
 
-def stable_id(prefix: str, key: str) -> str:
-    """Generate stable, deterministic ID from prefix and key.
-
-    Uses SHA256 instead of Python's hash() which changes per process.
-    """
-    normalized = str(Path(key).resolve()).lower()
-    hash_bytes = hashlib.sha256(normalized.encode()).hexdigest()[:12]
-    return f"{prefix}_{hash_bytes}"
-
-
-def content_hash(content: str) -> str:
-    """Generate hash of content for change detection."""
-    return hashlib.sha256(content.encode()).hexdigest()[:16]
-
-
-def file_fingerprint(file_path: Path) -> str:
-    """Generate fingerprint from file metadata for change detection."""
-    stat = file_path.stat()
-    return f"{stat.st_mtime}:{stat.st_size}"
-
-
 def create_progress_bar() -> Progress | None:
     """Create a Rich progress bar if available."""
     if not RICH_AVAILABLE:
@@ -116,71 +105,9 @@ def create_progress_bar() -> Progress | None:
     )
 
 
-def commit_batch(
-    conn: sqlite3.Connection, sessions: list, messages: list, stats: ExportStats
-) -> None:
-    """Commit a batch of sessions and messages to the database."""
-    if not sessions:
-        return
-
-    try:
-        # Bulk insert sessions
-        conn.executemany(
-            """
-            INSERT OR REPLACE INTO sessions (
-                id, source, project_path, git_branch, created_at, updated_at, metadata
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-            [
-                (
-                    s["id"],
-                    s["source"],
-                    s["project_path"],
-                    s["git_branch"],
-                    s["created_at"],
-                    s["updated_at"],
-                    s["metadata"],
-                )
-                for s in sessions
-            ],
-        )
-
-        # Bulk insert messages
-        conn.executemany(
-            """
-            INSERT OR REPLACE INTO messages (
-                id, session_id, role, content, model, timestamp, metadata, seq
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-            [
-                (
-                    m["id"],
-                    m["session_id"],
-                    m["role"],
-                    m["content"],
-                    m["model"],
-                    m["timestamp"],
-                    m["metadata"],
-                    m["seq"],
-                )
-                for m in messages
-            ],
-        )
-
-        # Update stats
-        stats.added += len([s for s in sessions if s["status"] == "added"])
-        stats.updated += len([s for s in sessions if s["status"] == "updated"])
-        stats.skipped += len([s for s in sessions if s["status"] == "skipped"])
-
-    except sqlite3.Error as e:
-        stats.errors += len(sessions)
-        print(f"❌ Batch commit failed: {e}")
-        conn.rollback()
-    else:
-        conn.commit()
-
-
-def export_aider(conn: sqlite3.Connection, incremental: bool = True, args=None) -> ExportStats:
+def export_aider(
+    conn: sqlite3.Connection, incremental: bool = True, args=None
+) -> ExportStats:
     """Export Aider sessions using modular exporter."""
     aider_exporter = get_exporter("aider")
     if args and hasattr(args, "aider_paths") and args.aider_paths:
@@ -218,7 +145,9 @@ def _run_export(
     progress = create_progress_bar() if len(sources) > 1 else None
 
     with progress or nullcontext():
-        task = progress.add_task("Exporting...", total=len(sources)) if progress else None
+        task = (
+            progress.add_task("Exporting...", total=len(sources)) if progress else None
+        )
 
         for source in sources:
             source_stats = None
@@ -272,7 +201,9 @@ def _run_export(
 
     print("\nDatabase stats:")
     for row in stats:
-        print(f"  {row['source']}: {row['sessions']} sessions, {row['messages']} messages")
+        print(
+            f"  {row['source']}: {row['sessions']} sessions, {row['messages']} messages"
+        )
 
     conn.close()
 
@@ -281,13 +212,17 @@ def _run_export(
 def main(
     output: Annotated[
         Path | None,
-        typer.Option("-o", "--output", help="Output database path (default: from config)"),
+        typer.Option(
+            "-o", "--output", help="Output database path (default: from config)"
+        ),
     ] = None,
     # Source selection flags (mutually exclusive behavior handled in code)
     claude_only: Annotated[
         bool, typer.Option("--claude-only", help="Only export Claude Code")
     ] = False,
-    kiro_only: Annotated[bool, typer.Option("--kiro-only", help="Only export Kiro CLI")] = False,
+    kiro_only: Annotated[
+        bool, typer.Option("--kiro-only", help="Only export Kiro CLI")
+    ] = False,
     gemini_only: Annotated[
         bool, typer.Option("--gemini-only", help="Only export Gemini CLI")
     ] = False,
@@ -304,18 +239,24 @@ def main(
     # Aider-specific options
     aider_paths: Annotated[
         list[Path] | None,
-        typer.Option("--aider-paths", help="Additional paths to search for Aider history files"),
+        typer.Option(
+            "--aider-paths", help="Additional paths to search for Aider history files"
+        ),
     ] = None,
     # Safety options
     dated: Annotated[
         bool, typer.Option("--dated", help="Append date suffix to output filename")
     ] = False,
     backup: Annotated[
-        bool, typer.Option("--backup", help="Create backup of existing database before export")
+        bool,
+        typer.Option(
+            "--backup", help="Create backup of existing database before export"
+        ),
     ] = False,
     # Export mode
     full: Annotated[
-        bool, typer.Option("--full", help="Re-import all files, ignoring change detection")
+        bool,
+        typer.Option("--full", help="Re-import all files, ignoring change detection"),
     ] = False,
 ) -> None:
     """Export AI coding assistant sessions to SQLite database.
@@ -336,7 +277,9 @@ def main(
     """
     output_path = Path(output) if output else DEFAULT_DB
     if dated:
-        output_path = output_path.with_stem(f"{output_path.stem}_{datetime.now():%Y-%m-%d}")
+        output_path = output_path.with_stem(
+            f"{output_path.stem}_{datetime.now():%Y-%m-%d}"
+        )
 
     if backup and output_path.exists():
         backup_path = output_path.with_suffix(f".backup{output_path.suffix}")
@@ -359,7 +302,9 @@ def main(
     elif sources:
         invalid = set(sources) - set(SOURCE_CHOICES)
         if invalid:
-            raise typer.BadParameter(f"Invalid sources: {invalid}. Valid choices: {SOURCE_CHOICES}")
+            raise typer.BadParameter(
+                f"Invalid sources: {invalid}. Valid choices: {SOURCE_CHOICES}"
+            )
         export_sources = set(sources)
     else:
         export_sources = set(SOURCE_CHOICES)

@@ -2,7 +2,6 @@
 
 import sqlite3
 from dataclasses import dataclass
-from threading import Lock
 from typing import Protocol
 
 
@@ -12,14 +11,12 @@ class ExportStats:
     updated: int = 0
     skipped: int = 0
     errors: int = 0
-    _lock: Lock = Lock()
 
-    def __iadd__(self, other):
-        with self._lock:
-            self.added += other.added
-            self.updated += other.updated
-            self.skipped += other.skipped
-            self.errors += other.errors
+    def __iadd__(self, other: "ExportStats") -> "ExportStats":
+        self.added += other.added
+        self.updated += other.updated
+        self.skipped += other.skipped
+        self.errors += other.errors
         return self
 
 
@@ -45,7 +42,11 @@ class SessionExporter(Protocol):
 def commit_batch(
     conn: sqlite3.Connection, sessions: list, messages: list, stats: ExportStats
 ) -> None:
-    """Commit a batch of sessions and messages to the database."""
+    """Commit a batch of sessions and messages to the database.
+
+    Sessions and messages are lists of dicts with named keys matching the DB columns.
+    Missing optional fields default to NULL via dict.get().
+    """
     if not sessions:
         return
 
@@ -62,37 +63,45 @@ def commit_batch(
                     s["source"],
                     s["project_path"],
                     s.get("git_branch"),
-                    s["created_at"],
-                    s["updated_at"],
-                    s["metadata"],
+                    s.get("created_at"),
+                    s.get("updated_at"),
+                    s.get("metadata"),
                 )
                 for s in sessions
             ],
         )
 
-        conn.executemany(
-            """
-            INSERT OR REPLACE INTO messages (
-                id, session_id, role, content, model, timestamp, metadata, seq
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-            [
-                (
-                    m["id"],
-                    m["session_id"],
-                    m["role"],
-                    m["content"],
-                    m["model"],
-                    m["timestamp"],
-                    m["metadata"],
-                    m["seq"],
-                )
-                for m in messages
-            ],
-        )
+        if messages:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO messages (
+                    id, session_id, role, content, model, timestamp, metadata, seq
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                [
+                    (
+                        m["id"],
+                        m["session_id"],
+                        m["role"],
+                        m["content"],
+                        m.get("model"),
+                        m.get("timestamp"),
+                        m.get("metadata"),
+                        m.get("seq"),
+                    )
+                    for m in messages
+                ],
+            )
 
-        stats.added += len([s for s in sessions if s.get("status") == "added"])
-        stats.updated += len([s for s in sessions if s.get("status") == "updated"])
+        # Update stats from session status flags
+        for s in sessions:
+            status = s.get("status", "added")
+            if status == "added":
+                stats.added += 1
+            elif status == "updated":
+                stats.updated += 1
+            elif status == "skipped":
+                stats.skipped += 1
 
         conn.commit()
     except Exception as e:
