@@ -12,6 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
       - run: uv sync --all-packages
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -21,14 +23,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
       - run: uv sync --all-packages
       - run: uv run pyright packages/agent-session-tools/
       - run: cd packages/studyctl && uv run pyright src/
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: ${{ matrix.python-version }}
       - run: uv sync --all-packages --extra dev --extra test
       - run: uv run pytest --tb=short
