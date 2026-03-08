@@ -9,7 +9,7 @@
 
 ## What is this?
 
-An open-source study toolkit designed specifically for AuDHD learners. It combines two CLI tools with AI mentor agents that teach through Socratic questioning rather than lectures — because our brains get dopamine from *discovering* answers, not being told them. The toolkit tracks your AI study sessions across 7 tools (Claude Code, Kiro CLI, Gemini, etc.) into a searchable database, then uses that history to power spaced repetition scheduling (1/3/7/14/30 day intervals), detect topics you're repeatedly struggling with, and show you concrete evidence of progress — because RSD and imposter syndrome mean we're terrible at recognising how far we've come. It also supports body doubling sessions, energy-adaptive study modes (low energy day? shorter chunks, more scaffolding), and hyperfocus guardrails. The agents work with both kiro-cli and Claude Code, and the whole thing syncs across machines. If you're neurodivergent and self-teaching (especially career transitions), this might help — it's built by someone in exactly that position.
+An open-source study toolkit designed specifically for AuDHD learners. It combines two CLI tools with AI mentor agents that teach through Socratic questioning rather than lectures — because our brains get dopamine from *discovering* answers, not being told them. The toolkit tracks your AI study sessions across 7 tools (Claude Code, Kiro CLI, Gemini, etc.) into a searchable database, then uses that history to power spaced repetition scheduling (1/3/7/14/30 day intervals), detect topics you're repeatedly struggling with, and show you concrete evidence of progress — because RSD and imposter syndrome mean we're terrible at recognising how far we've come. It also supports body doubling sessions, energy-adaptive study modes (low energy day? shorter chunks, more scaffolding), and hyperfocus guardrails. It also supports voice output — the mentor can speak questions aloud using high-quality local TTS, adding an auditory channel that helps AuDHD learners stay focused. The agents work with both kiro-cli and Claude Code, and the whole thing syncs across machines. If you're neurodivergent and self-teaching (especially career transitions), this might help — it's built by someone in exactly that position.
 
 ## Who is this for?
 
@@ -81,6 +81,9 @@ graph LR
 - Network→Data Engineering concept bridges
 - Body doubling session support
 - Progress tracking across agents and machines
+- Voice output via study-speak (kokoro-onnx TTS, am_michael voice)
+- @speak-start/@speak-stop toggle for voice control
+- Configurable voice, speed, and backend
 
 **MCP Integrations** — Optional calendar and reminder support
 - Apple Calendar + Reminders (macOS) — native notifications for study time
@@ -147,6 +150,7 @@ See [docs/agent-install.md](docs/agent-install.md) for setup details.
 | Semantic search | `sentence-transformers` | `uv pip install agent-session-tools[semantic]` |
 | Token counting | `tiktoken` | `uv pip install agent-session-tools[tokens]` |
 | TUI interface | `textual` | `uv pip install agent-session-tools[tui]` |
+| TTS voice output | `kokoro-onnx` | `uv tool install "./packages/agent-session-tools[tts]"` |
 
 ## CLI Reference
 
@@ -179,6 +183,9 @@ session-query stats                      # Database statistics
 session-sync push|pull REMOTE            # Sync database across machines
 session-maint vacuum|reindex|schema      # Database maintenance
 tutor-checkpoint code --skill SKILL      # Record study progress
+study-speak TEXT                         # Speak text aloud using TTS
+study-speak - < file.txt                 # Speak from stdin
+study-speak TEXT -v af_heart -s 1.2      # Custom voice and speed
 ```
 
 ## Documentation
@@ -187,6 +194,7 @@ tutor-checkpoint code --skill SKILL      # Record study progress
 - [Agent Installation](docs/agent-install.md) — AI agent setup for kiro-cli, Claude Code, Gemini CLI, OpenCode, and Amp
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — Why this exists and how it works
 - [MCP Integrations](agents/mcp/README.md) — Calendar, reminders, and other MCP server configs
+- [Voice Output Guide](docs/voice-output.md) — TTS setup, configuration, and agent integration
 - [Roadmap](docs/roadmap.md) — What's coming in v1.1 and beyond
 - [Contributing](CONTRIBUTING.md) — Development setup and contribution guide
 

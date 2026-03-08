@@ -61,6 +61,7 @@ nav:
     - Session Protocol: session-protocol.md
   - Reference:
     - CLI Reference: cli-reference.md
+    - Voice Output: voice-output.md
     - AuDHD Framework: audhd-framework.md
     - Socratic Engine: socratic-engine.md
     - Network Bridges: network-bridges.md
