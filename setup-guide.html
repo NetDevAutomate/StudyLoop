@@ -1,0 +1,2038 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/setup-guide.html">
+      
+      
+        <link rel="prev" href="index.html">
+      
+      
+        <link rel="next" href="agent-install.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Setup Guide - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#setup-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Setup Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="setup-guide.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automatic-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-configstudyctlconfigyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl — ~/.config/studyctl/config.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-session-tools-configstudyctlconfigyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent-session-tools — ~/.config/studyctl/config.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#obsidian-vault-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian Vault Setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notebooklm-setup-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NotebookLM Setup (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Database
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Session Database">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#populate-the-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Populate the database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-its-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify it's working
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-machine-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Machine Sync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-state-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl state sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-database-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session database sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scheduling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows (WSL2)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Windows (WSL2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differences-from-macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences from macOS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connecting-wsl2-mcp-servers-to-claude-desktop-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting WSL2 MCP servers to Claude Desktop (Windows)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-vault-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian vault path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl: command not found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-export-finds-no-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        session-export finds no sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-review-shows-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl review shows nothing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notebooklm-sync-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NotebookLM sync fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-not-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file not loading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-too-large" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database too large
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automatic-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-configstudyctlconfigyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl — ~/.config/studyctl/config.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-session-tools-configstudyctlconfigyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent-session-tools — ~/.config/studyctl/config.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#obsidian-vault-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian Vault Setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notebooklm-setup-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NotebookLM Setup (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Database
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Session Database">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#populate-the-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Populate the database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-its-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify it's working
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-machine-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Machine Sync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-state-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl state sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-database-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session database sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scheduling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows (WSL2)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Windows (WSL2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differences-from-macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences from macOS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connecting-wsl2-mcp-servers-to-claude-desktop-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting WSL2 MCP servers to Claude Desktop (Windows)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-vault-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian vault path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl: command not found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-export-finds-no-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        session-export finds no sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-review-shows-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl review shows nothing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notebooklm-sync-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NotebookLM sync fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-not-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file not loading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-too-large" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database too large
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="setup-guide">Setup Guide<a class="headerlink" href="#setup-guide" title="Permanent link">&para;</a></h1>
+<p>Step-by-step installation and configuration for Socratic Study Mentor.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#obsidian-vault-setup">Obsidian Vault Setup</a></li>
+<li><a href="#notebooklm-setup-optional">NotebookLM Setup</a></li>
+<li><a href="#session-database">Session Database</a></li>
+<li><a href="#cross-machine-sync">Cross-Machine Sync</a></li>
+<li><a href="#scheduling">Scheduling</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Python 3.10+</strong> (studyctl requires 3.12+, agent-session-tools works with 3.10+)</li>
+<li><strong><a href="https://docs.astral.sh/uv/">uv</a></strong> — Python package manager</li>
+<li><strong>Obsidian</strong> — for study notes (any vault structure works)</li>
+<li><strong>Optional</strong>: <code>notebooklm-py</code> for Google NotebookLM sync</li>
+<li><strong>Optional</strong>: <code>sentence-transformers</code> for semantic search</li>
+</ul>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<h3 id="automatic-recommended">Automatic (recommended)<a class="headerlink" href="#automatic-recommended" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
+<span class="nb">cd</span><span class="w"> </span>socratic-study-mentor
+./scripts/install.sh
+</code></pre></div>
+<p>This will:
+1. Verify Python 3.10+ and <code>uv</code> are installed
+2. Run <code>uv sync</code> to install both packages
+3. Run <code>install-agents.sh</code> to set up AI agent definitions
+4. Create a default config at <code>~/.config/studyctl/config.yaml</code></p>
+<h3 id="manual">Manual<a class="headerlink" href="#manual" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
+<span class="nb">cd</span><span class="w"> </span>socratic-study-mentor
+
+<span class="c1"># Install both packages in the workspace</span>
+uv<span class="w"> </span>sync
+
+<span class="c1"># Install optional extras</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>notebooklm<span class="o">]</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>semantic<span class="o">]</span>
+
+<span class="c1"># Install agents separately</span>
+./scripts/install-agents.sh
+</code></pre></div>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="studyctl-configstudyctlconfigyaml">studyctl — <code>~/.config/studyctl/config.yaml</code><a class="headerlink" href="#studyctl-configstudyctlconfigyaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Base path to your Obsidian vault</span>
+<span class="nt">obsidian_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian</span>
+
+<span class="c1"># Path to the AI session database</span>
+<span class="nt">session_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions.db</span>
+
+<span class="c1"># State directory for sync tracking</span>
+<span class="nt">state_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.local/share/studyctl</span>
+
+<span class="c1"># Remote sync (optional — for cross-machine state sync)</span>
+<span class="c1"># sync_remote: your-remote-host</span>
+<span class="c1"># sync_user: your-username</span>
+
+<span class="c1"># Study topics — each maps to an Obsidian directory</span>
+<span class="nt">topics</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/Python</span>
+<span class="w">    </span><span class="c1"># notebook_id: your-notebooklm-notebook-id  # optional</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">programming</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SQL</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sql</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/SQL</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">sql</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">databases</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>obsidian_base</code></td>
+<td>Root of your Obsidian vault</td>
+<td><code>~/Obsidian</code></td>
+</tr>
+<tr>
+<td><code>session_db</code></td>
+<td>Path to the session SQLite database</td>
+<td><code>~/.config/studyctl/sessions.db</code></td>
+</tr>
+<tr>
+<td><code>state_dir</code></td>
+<td>Where studyctl stores sync state</td>
+<td><code>~/.local/share/studyctl</code></td>
+</tr>
+<tr>
+<td><code>topics[].name</code></td>
+<td>Display name for the topic</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>topics[].slug</code></td>
+<td>URL-safe identifier</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>topics[].obsidian_path</code></td>
+<td>Path relative to <code>obsidian_base</code></td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>topics[].notebook_id</code></td>
+<td>NotebookLM notebook ID (if using sync)</td>
+<td>empty</td>
+</tr>
+<tr>
+<td><code>topics[].tags</code></td>
+<td>Keywords for session search matching</td>
+<td><code>[]</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="agent-session-tools-configstudyctlconfigyaml">agent-session-tools — <code>~/.config/studyctl/config.yaml</code><a class="headerlink" href="#agent-session-tools-configstudyctlconfigyaml" title="Permanent link">&para;</a></h3>
+<p>Created automatically on first run. Key settings:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">database</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions.db</span>
+<span class="w">  </span><span class="nt">archive_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions_archive.db</span>
+<span class="w">  </span><span class="nt">backup_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/backups</span>
+
+<span class="nt">thresholds</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">warning_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">  </span><span class="nt">critical_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
+
+<span class="nt">semantic_search</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all-mpnet-base-v2</span><span class="w">    </span><span class="c1"># embedding model</span>
+<span class="w">  </span><span class="nt">fts_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span><span class="w">             </span><span class="c1"># hybrid search: FTS weight</span>
+<span class="w">  </span><span class="nt">semantic_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span><span class="w">        </span><span class="c1"># hybrid search: vector weight</span>
+<span class="w">  </span><span class="nt">min_content_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">  </span><span class="nt">auto_embed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p>Environment variable overrides:
+- <code>DATABASE_PATH</code> — override database location
+- <code>LOG_LEVEL</code> — set logging level (DEBUG, INFO, WARNING, ERROR)
+- <code>EMBEDDING_MODEL</code> — override embedding model</p>
+<h2 id="obsidian-vault-setup">Obsidian Vault Setup<a class="headerlink" href="#obsidian-vault-setup" title="Permanent link">&para;</a></h2>
+<p>studyctl expects your study notes in directories under your Obsidian vault. The structure is flexible — just point each topic's <code>obsidian_path</code> at the right directory.</p>
+<p>Example vault layout:</p>
+<div class="highlight"><pre><span></span><code>~/Obsidian/
+├── Personal/
+│   └── 2-Areas/
+│       └── Study/
+│           ├── Courses/
+│           │   ├── ArjanCodes/       ← Python topic
+│           │   └── DataCamp/         ← SQL topic
+│           ├── Mentoring/
+│           │   ├── Python/           ← AI-generated teaching moments
+│           │   ├── Databases/
+│           │   └── Data-Engineering/
+│           └── Study-Plans/
+</code></pre></div>
+<p>studyctl syncs <code>.md</code>, <code>.pdf</code>, and <code>.txt</code> files. It skips:
+- Files under 100 bytes
+- Obsidian metadata files (<code>.obsidian/</code>, index files)
+- Common non-content directories (<code>node_modules</code>, <code>__pycache__</code>)</p>
+<h2 id="notebooklm-setup-optional">NotebookLM Setup (optional)<a class="headerlink" href="#notebooklm-setup-optional" title="Permanent link">&para;</a></h2>
+<p>NotebookLM sync lets you upload your Obsidian notes as sources in Google NotebookLM notebooks, then generate audio overviews.</p>
+<ol>
+<li>
+<p>Install the optional dependency:
+   <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>notebooklm<span class="o">]</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Create notebooks in <a href="https://notebooklm.google.com/">NotebookLM</a> — one per study topic</p>
+</li>
+<li>
+<p>Get each notebook's ID from its URL:
+   <div class="highlight"><pre><span></span><code>https://notebooklm.google.com/notebook/NOTEBOOK_ID_HERE
+</code></pre></div></p>
+</li>
+<li>
+<p>Add the IDs to your config:
+   <div class="highlight"><pre><span></span><code><span class="nt">topics</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/Python</span>
+<span class="w">    </span><span class="nt">notebook_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-notebook-id-here</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Sync and generate audio:
+   <div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>sync<span class="w"> </span>python<span class="w">          </span><span class="c1"># Upload changed notes</span>
+studyctl<span class="w"> </span>audio<span class="w"> </span>python<span class="w">         </span><span class="c1"># Generate audio overview</span>
+</code></pre></div></p>
+</li>
+</ol>
+<h2 id="session-database">Session Database<a class="headerlink" href="#session-database" title="Permanent link">&para;</a></h2>
+<p>The session database stores exported AI conversations from all your tools. It powers spaced repetition, struggle detection, and session search.</p>
+<h3 id="populate-the-database">Populate the database<a class="headerlink" href="#populate-the-database" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Export from all detected sources</span>
+session-export
+
+<span class="c1"># Export from a specific source</span>
+session-export<span class="w"> </span>--source<span class="w"> </span>claude
+session-export<span class="w"> </span>--source<span class="w"> </span>kiro
+session-export<span class="w"> </span>--source<span class="w"> </span>aider
+</code></pre></div>
+<p>Supported sources: <code>claude</code>, <code>kiro</code>, <code>gemini</code>, <code>opencode</code>, <code>aider</code>, <code>litellm</code>, <code>repoprompt</code></p>
+<h3 id="verify-its-working">Verify it's working<a class="headerlink" href="#verify-its-working" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>session-query<span class="w"> </span>stats<span class="w">              </span><span class="c1"># Show database statistics</span>
+session-query<span class="w"> </span>list<span class="w"> </span>--since<span class="w"> </span>7d<span class="w">    </span><span class="c1"># List recent sessions</span>
+session-query<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="w">    </span><span class="c1"># Search across all sessions</span>
+</code></pre></div>
+<h2 id="cross-machine-sync">Cross-Machine Sync<a class="headerlink" href="#cross-machine-sync" title="Permanent link">&para;</a></h2>
+<p>Both tools support syncing state across machines via SSH.</p>
+<h3 id="studyctl-state-sync">studyctl state sync<a class="headerlink" href="#studyctl-state-sync" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Initialize sync config</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>init
+
+<span class="c1"># Edit ~/.config/studyctl/sync.yaml to add your remotes</span>
+<span class="c1"># Then:</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="w">              </span><span class="c1"># Push local state to remotes</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>pull<span class="w">              </span><span class="c1"># Pull state from remotes</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>status<span class="w">            </span><span class="c1"># Check connectivity</span>
+</code></pre></div>
+<h3 id="session-database-sync">Session database sync<a class="headerlink" href="#session-database-sync" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Push sessions to a remote machine</span>
+session-sync<span class="w"> </span>push<span class="w"> </span>user@remote-host
+
+<span class="c1"># Pull sessions from a remote machine</span>
+session-sync<span class="w"> </span>pull<span class="w"> </span>user@remote-host
+</code></pre></div>
+<p>This uses delta sync — only new sessions are transferred, not the entire database.</p>
+<h2 id="scheduling">Scheduling<a class="headerlink" href="#scheduling" title="Permanent link">&para;</a></h2>
+<p>Set up automatic sync so your notes and sessions stay current.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install all default scheduled jobs</span>
+studyctl<span class="w"> </span>schedule<span class="w"> </span>install
+
+<span class="c1"># List active jobs</span>
+studyctl<span class="w"> </span>schedule<span class="w"> </span>list
+
+<span class="c1"># Remove all jobs</span>
+studyctl<span class="w"> </span>schedule<span class="w"> </span>remove
+
+<span class="c1"># Add a custom job</span>
+studyctl<span class="w"> </span>schedule<span class="w"> </span>add<span class="w"> </span>my-sync<span class="w"> </span><span class="s2">&quot;studyctl sync --all&quot;</span><span class="w"> </span><span class="s2">&quot;daily 3am&quot;</span>
+</code></pre></div>
+<p>On macOS, this creates launchd plists. On Linux, it uses cron.</p>
+<h2 id="windows-wsl2">Windows (WSL2)<a class="headerlink" href="#windows-wsl2" title="Permanent link">&para;</a></h2>
+<p>The toolkit runs on Windows via WSL2 (Windows Subsystem for Linux).</p>
+<h3 id="prerequisites_1">Prerequisites<a class="headerlink" href="#prerequisites_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Install WSL2 with Ubuntu: <code>wsl --install -d Ubuntu</code></li>
+<li>Inside WSL2, install Python 3.10+ and uv:
+   <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</code></pre></div></li>
+<li>Clone and install as normal (all commands run inside WSL2)</li>
+</ol>
+<h3 id="what-works">What works<a class="headerlink" href="#what-works" title="Permanent link">&para;</a></h3>
+<ul>
+<li>All CLI tools (<code>studyctl</code>, <code>session-export</code>, <code>session-query</code>, etc.)</li>
+<li>kiro-cli and Claude Code (terminal-based)</li>
+<li>SQLite database, FTS5 search, session sync</li>
+<li>Cron scheduling (enable with <code>sudo service cron start</code> or systemd)</li>
+<li>Git, pre-commit, ruff, pyright, pytest</li>
+</ul>
+<h3 id="differences-from-macos">Differences from macOS<a class="headerlink" href="#differences-from-macos" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>macOS</th>
+<th>WSL2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scheduling</td>
+<td>launchd (automatic)</td>
+<td>cron (enable manually)</td>
+</tr>
+<tr>
+<td>Calendar MCP</td>
+<td>Apple Calendar or Google</td>
+<td>Google Calendar only</td>
+</tr>
+<tr>
+<td>Reminders</td>
+<td>Apple Reminders (native notifications)</td>
+<td>Google Calendar reminders</td>
+</tr>
+<tr>
+<td>Obsidian vault</td>
+<td><code>~/Obsidian/</code></td>
+<td><code>/mnt/c/Users/&lt;name&gt;/Obsidian/</code></td>
+</tr>
+<tr>
+<td>PDF rendering</td>
+<td><code>brew install pandoc mactex</code></td>
+<td><code>sudo apt install pandoc texlive-xetex</code></td>
+</tr>
+<tr>
+<td>Claude Desktop</td>
+<td>Native app</td>
+<td>Runs on Windows side</td>
+</tr>
+</tbody>
+</table>
+<h3 id="connecting-wsl2-mcp-servers-to-claude-desktop-windows">Connecting WSL2 MCP servers to Claude Desktop (Windows)<a class="headerlink" href="#connecting-wsl2-mcp-servers-to-claude-desktop-windows" title="Permanent link">&para;</a></h3>
+<p>Claude Desktop runs on Windows but can connect to MCP servers inside WSL2:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;study-tools&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;wsl&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;npx&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-y&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;your-mcp-server&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="obsidian-vault-path">Obsidian vault path<a class="headerlink" href="#obsidian-vault-path" title="Permanent link">&para;</a></h3>
+<p>If your Obsidian vault is on the Windows filesystem, configure the path in <code>~/.config/studyctl/config.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">obsidian_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/mnt/c/Users/YourName/Obsidian</span>
+</code></pre></div>
+<p>For better performance, consider keeping the vault inside WSL2's native filesystem (<code>~/Obsidian/</code>) and syncing with Obsidian Sync or Git.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="studyctl-command-not-found"><code>studyctl: command not found</code><a class="headerlink" href="#studyctl-command-not-found" title="Permanent link">&para;</a></h3>
+<p>The package isn't on your PATH. Either:
+- Run via <code>uv run studyctl</code> instead
+- Or ensure <code>uv sync</code> completed successfully and your shell can find uv-installed scripts</p>
+<h3 id="session-export-finds-no-sessions"><code>session-export</code> finds no sessions<a class="headerlink" href="#session-export-finds-no-sessions" title="Permanent link">&para;</a></h3>
+<p>Check that the AI tool's data directory exists:
+- Claude Code: <code>~/.claude/projects/</code>
+- Kiro CLI: <code>~/Library/Application Support/kiro-cli/data.sqlite3</code> (macOS)
+- Gemini CLI: <code>~/.gemini/tmp/</code>
+- Aider: <code>.aider.chat.history.md</code> files in project directories</p>
+<h3 id="studyctl-review-shows-nothing"><code>studyctl review</code> shows nothing<a class="headerlink" href="#studyctl-review-shows-nothing" title="Permanent link">&para;</a></h3>
+<p>The session database may be empty. Run <code>session-export</code> first to populate it, then <code>studyctl review</code> can check your study history.</p>
+<h3 id="notebooklm-sync-fails">NotebookLM sync fails<a class="headerlink" href="#notebooklm-sync-fails" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Verify <code>notebooklm-py</code> is installed: <code>uv pip install studyctl[notebooklm]</code></li>
+<li>Check that your <code>notebook_id</code> is correct (copy from the NotebookLM URL)</li>
+<li>Ensure you're authenticated with Google (follow <code>notebooklm-py</code> auth docs)</li>
+</ul>
+<h3 id="config-file-not-loading">Config file not loading<a class="headerlink" href="#config-file-not-loading" title="Permanent link">&para;</a></h3>
+<p>studyctl looks for config at <code>~/.config/studyctl/config.yaml</code>. Override with:
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">STUDYCTL_CONFIG</span><span class="o">=</span>/path/to/your/config.yaml
+</code></pre></div></p>
+<h3 id="database-too-large">Database too large<a class="headerlink" href="#database-too-large" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>session-maint<span class="w"> </span>vacuum<span class="w">             </span><span class="c1"># Reclaim space</span>
+session-query<span class="w"> </span>stats<span class="w">              </span><span class="c1"># Check current size</span>
+session-maint<span class="w"> </span>archive<span class="w">            </span><span class="c1"># Archive old sessions</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

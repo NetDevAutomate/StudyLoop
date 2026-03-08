@@ -1,0 +1,2263 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/agent-install.html">
+      
+      
+        <link rel="prev" href="setup-guide.html">
+      
+      
+        <link rel="next" href="audhd-learning-philosophy.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Agent Installation - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-installation-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent Installation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="agent-install.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-are-ai-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What are AI Agents?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automatic-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kiro-cli-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kiro CLI Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Kiro CLI Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#claude-code-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Claude Code Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gemini-cli-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gemini CLI Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gemini CLI Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#opencode-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenCode Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenCode Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-install_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-install_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#amp-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Amp Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Amp Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-install_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-install_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Descriptions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Descriptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#study-mentor-kiro-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        study-mentor (kiro-cli)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#socratic-mentor-claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        socratic-mentor (Claude Code)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mentor-reviewer-claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mentor-reviewer (Claude Code)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skills-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Skills Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audhd-socratic-mentor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audhd-socratic-mentor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-mentor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        study-mentor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tutor-progress-tracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tutor-progress-tracker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uninstalling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstalling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-are-ai-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What are AI Agents?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automatic-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kiro-cli-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kiro CLI Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Kiro CLI Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#claude-code-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Claude Code Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gemini-cli-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gemini CLI Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gemini CLI Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#opencode-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenCode Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenCode Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-install_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-install_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#amp-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Amp Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Amp Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-install_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-install_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#starting-a-session_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Descriptions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Descriptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#study-mentor-kiro-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        study-mentor (kiro-cli)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#socratic-mentor-claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        socratic-mentor (Claude Code)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mentor-reviewer-claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mentor-reviewer (Claude Code)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skills-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Skills Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audhd-socratic-mentor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audhd-socratic-mentor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-mentor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        study-mentor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tutor-progress-tracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tutor-progress-tracker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uninstalling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstalling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="agent-installation-guide">Agent Installation Guide<a class="headerlink" href="#agent-installation-guide" title="Permanent link">&para;</a></h1>
+<p>How to set up the AI mentor agents for kiro-cli, Claude Code, Gemini CLI, OpenCode, and Amp.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#what-are-ai-agents">What are AI Agents?</a></li>
+<li><a href="#automatic-installation">Automatic Installation</a></li>
+<li><a href="#kiro-cli-setup">Kiro CLI Setup</a></li>
+<li><a href="#claude-code-setup">Claude Code Setup</a></li>
+<li><a href="#gemini-cli-setup">Gemini CLI Setup</a></li>
+<li><a href="#opencode-setup">OpenCode Setup</a></li>
+<li><a href="#amp-setup">Amp Setup</a></li>
+<li><a href="#agent-descriptions">Agent Descriptions</a></li>
+<li><a href="#skills-reference">Skills Reference</a></li>
+<li><a href="#uninstalling">Uninstalling</a></li>
+</ul>
+<h2 id="what-are-ai-agents">What are AI Agents?<a class="headerlink" href="#what-are-ai-agents" title="Permanent link">&para;</a></h2>
+<p>AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.</p>
+<p>This project ships agents for five platforms:
+- <strong>study-mentor</strong> (kiro-cli) — full study pipeline with spaced repetition
+- <strong>socratic-mentor</strong> (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
+- <strong>mentor-reviewer</strong> (Claude Code) — autonomous code review with scoring
+- <strong>study-mentor</strong> (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
+- <strong>study-mentor</strong> (OpenCode) — AuDHD-aware study mentor with spaced repetition
+- <strong>AGENTS.md</strong> (Amp) — Socratic mentoring loaded automatically from project context</p>
+<h2 id="automatic-installation">Automatic Installation<a class="headerlink" href="#automatic-installation" title="Permanent link">&para;</a></h2>
+<p>The install script detects which AI tools you have and symlinks the agent definitions:</p>
+<div class="highlight"><pre><span></span><code>./scripts/install-agents.sh
+</code></pre></div>
+<p>It checks for <code>~/.kiro/</code>, <code>~/.claude/</code>, and <code>~/.gemini/</code> directories, and <code>opencode</code>/<code>amp</code> commands on PATH. If found, it creates symlinks from the repo's <code>agents/</code> directory into the tool's config.</p>
+<p>Options:</p>
+<div class="highlight"><pre><span></span><code>./scripts/install-agents.sh<span class="w"> </span>--kiro<span class="w">      </span><span class="c1"># Kiro CLI only</span>
+./scripts/install-agents.sh<span class="w"> </span>--claude<span class="w">    </span><span class="c1"># Claude Code only</span>
+./scripts/install-agents.sh<span class="w"> </span>--gemini<span class="w">    </span><span class="c1"># Gemini CLI only</span>
+./scripts/install-agents.sh<span class="w"> </span>--opencode<span class="w">  </span><span class="c1"># OpenCode only</span>
+./scripts/install-agents.sh<span class="w"> </span>--amp<span class="w">       </span><span class="c1"># Amp only</span>
+./scripts/install-agents.sh<span class="w"> </span>--uninstall<span class="w"> </span><span class="c1"># Remove all agent links</span>
+</code></pre></div>
+<h2 id="kiro-cli-setup">Kiro CLI Setup<a class="headerlink" href="#kiro-cli-setup" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<ul>
+<li><a href="https://github.com/aws/kiro-cli">kiro-cli</a> installed</li>
+<li><code>~/.kiro/</code> directory exists</li>
+</ul>
+<h3 id="what-gets-installed">What gets installed<a class="headerlink" href="#what-gets-installed" title="Permanent link">&para;</a></h3>
+<p>The script creates symlinks for:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Target</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agents/kiro/study-mentor.json</code></td>
+<td><code>~/.kiro/agents/study-mentor.json</code></td>
+<td>Agent definition</td>
+</tr>
+<tr>
+<td><code>agents/kiro/study-mentor/</code></td>
+<td><code>~/.kiro/agents/study-mentor/</code></td>
+<td>Agent persona and resources</td>
+</tr>
+<tr>
+<td><code>agents/kiro/skills/study-mentor/</code></td>
+<td><code>~/.kiro/skills/study-mentor/</code></td>
+<td>Session workflow skill</td>
+</tr>
+<tr>
+<td><code>agents/kiro/skills/audhd-socratic-mentor/</code></td>
+<td><code>~/.kiro/skills/audhd-socratic-mentor/</code></td>
+<td>Teaching methodology skill</td>
+</tr>
+<tr>
+<td><code>agents/kiro/skills/tutor-progress-tracker/</code></td>
+<td><code>~/.kiro/skills/tutor-progress-tracker/</code></td>
+<td>Progress tracking skill</td>
+</tr>
+</tbody>
+</table>
+<h3 id="starting-a-session">Starting a session<a class="headerlink" href="#starting-a-session" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kiro-cli<span class="w"> </span>chat<span class="w"> </span>--agent<span class="w"> </span>study-mentor
+</code></pre></div>
+<p>The agent will automatically:
+1. Run <code>studyctl status</code> to check sync state
+2. Run <code>studyctl review</code> to find what's due for spaced repetition
+3. Run <code>studyctl struggles</code> to identify recurring struggle areas
+4. Ask your energy level to match session type</p>
+<h3 id="customizing">Customizing<a class="headerlink" href="#customizing" title="Permanent link">&para;</a></h3>
+<p>Edit the persona at <code>agents/kiro/study-mentor/persona.md</code> to adjust:
+- Session start behaviour
+- Teaching style preferences
+- Which CLI commands run automatically</p>
+<p>Edit skills in <code>agents/kiro/skills/</code> to modify:
+- Socratic questioning patterns
+- Network→Data Engineering bridges
+- Progress tracking thresholds</p>
+<h2 id="claude-code-setup">Claude Code Setup<a class="headerlink" href="#claude-code-setup" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites_1">Prerequisites<a class="headerlink" href="#prerequisites_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> installed</li>
+<li><code>~/.claude/</code> directory exists</li>
+</ul>
+<h3 id="what-gets-installed_1">What gets installed<a class="headerlink" href="#what-gets-installed_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Target</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agents/claude/socratic-mentor.md</code></td>
+<td><code>~/.claude/agents/socratic-mentor.md</code></td>
+<td>Socratic teaching agent</td>
+</tr>
+<tr>
+<td><code>agents/claude/mentor-reviewer.yaml</code></td>
+<td><code>~/.claude/agents/mentor-reviewer.yaml</code></td>
+<td>Code review agent</td>
+</tr>
+</tbody>
+</table>
+<h3 id="starting-a-session_1">Starting a session<a class="headerlink" href="#starting-a-session_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Socratic mentor — guided learning</span>
+/agent<span class="w"> </span>socratic-mentor
+
+<span class="c1"># Code reviewer — autonomous review with scoring</span>
+/agent<span class="w"> </span>mentor-reviewer
+</code></pre></div>
+<h3 id="customizing_1">Customizing<a class="headerlink" href="#customizing_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>socratic-mentor</strong>: Edit <code>agents/claude/socratic-mentor.md</code> — it's a markdown file with the full persona, questioning techniques, and learning session orchestration</li>
+<li><strong>mentor-reviewer</strong>: Edit <code>agents/claude/mentor-reviewer.yaml</code> — configure output directories, scoring methodology, and review format</li>
+</ul>
+<p>The mentor-reviewer supports environment variable configuration:
+- <code>MENTOR_REVIEW_OUTPUT_DIR</code> — where review reports are saved (default: <code>./reviews</code>)
+- <code>MENTOR_TUTORIAL_DIR</code> — where tutorials are generated (default: <code>./tutorials</code>)</p>
+<h2 id="gemini-cli-setup">Gemini CLI Setup<a class="headerlink" href="#gemini-cli-setup" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites_2">Prerequisites<a class="headerlink" href="#prerequisites_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> installed</li>
+<li><code>~/.gemini/</code> directory exists</li>
+</ul>
+<h3 id="what-gets-installed_2">What gets installed<a class="headerlink" href="#what-gets-installed_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Target</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agents/gemini/study-mentor.md</code></td>
+<td><code>~/.gemini/agents/study-mentor.md</code></td>
+<td>Subagent definition</td>
+</tr>
+<tr>
+<td><code>agents/gemini/GEMINI.md</code></td>
+<td><code>GEMINI.md</code> (project root)</td>
+<td>Project-level Gemini instructions</td>
+</tr>
+<tr>
+<td><code>agents/shared/</code></td>
+<td><code>~/.agents/shared/</code></td>
+<td>Shared framework (cross-tool)</td>
+</tr>
+</tbody>
+</table>
+<p>The installer also creates <code>~/.gemini/settings.json</code> with <code>experimental.enableAgents</code> enabled (required for subagent support). If the file already exists, you'll be prompted to add the setting manually.</p>
+<h3 id="auto-install">Auto-install<a class="headerlink" href="#auto-install" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/install-agents.sh<span class="w"> </span>--gemini
+</code></pre></div>
+<h3 id="manual-install">Manual install<a class="headerlink" href="#manual-install" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create directories</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/.gemini/agents
+
+<span class="c1"># Symlink agent definition</span>
+ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/agents/gemini/study-mentor.md&quot;</span><span class="w"> </span>~/.gemini/agents/study-mentor.md
+ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/agents/gemini/GEMINI.md&quot;</span><span class="w"> </span>./GEMINI.md
+
+<span class="c1"># Symlink shared framework</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/.agents
+ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/agents/shared&quot;</span><span class="w"> </span>~/.agents/shared
+
+<span class="c1"># Enable subagents in settings</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span>~/.gemini/settings.json<span class="w"> </span><span class="s">&lt;&lt; &#39;EOF&#39;</span>
+<span class="s">{</span>
+<span class="s">  &quot;experimental&quot;: {</span>
+<span class="s">    &quot;enableAgents&quot;: true</span>
+<span class="s">  }</span>
+<span class="s">}</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<h3 id="starting-a-session_2">Starting a session<a class="headerlink" href="#starting-a-session_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>gemini
+<span class="c1"># Then ask for a study session — the study-mentor subagent is auto-detected</span>
+</code></pre></div>
+<h2 id="opencode-setup">OpenCode Setup<a class="headerlink" href="#opencode-setup" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites_3">Prerequisites<a class="headerlink" href="#prerequisites_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><a href="https://github.com/opencode-ai/opencode">OpenCode</a> installed</li>
+<li><code>opencode</code> command available on PATH</li>
+</ul>
+<h3 id="what-gets-installed_3">What gets installed<a class="headerlink" href="#what-gets-installed_3" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Target</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agents/opencode/study-mentor.md</code></td>
+<td><code>~/.config/opencode/agents/study-mentor.md</code></td>
+<td>Agent definition</td>
+</tr>
+<tr>
+<td><code>agents/shared/</code></td>
+<td><code>~/.agents/shared/</code></td>
+<td>Shared framework (cross-tool)</td>
+</tr>
+</tbody>
+</table>
+<p>OpenCode discovers agents from <code>.opencode/agents/*.md</code> (project-level) or <code>~/.config/opencode/agents/*.md</code> (global). The installer uses the global path.</p>
+<h3 id="auto-install_1">Auto-install<a class="headerlink" href="#auto-install_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/install-agents.sh<span class="w"> </span>--opencode
+</code></pre></div>
+<h3 id="manual-install_1">Manual install<a class="headerlink" href="#manual-install_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create directories</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/.config/opencode/agents
+
+<span class="c1"># Symlink agent definition</span>
+ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/agents/opencode/study-mentor.md&quot;</span><span class="w"> </span>~/.config/opencode/agents/study-mentor.md
+
+<span class="c1"># Symlink shared framework</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/.agents
+ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/agents/shared&quot;</span><span class="w"> </span>~/.agents/shared
+</code></pre></div>
+<h3 id="starting-a-session_3">Starting a session<a class="headerlink" href="#starting-a-session_3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>opencode
+<span class="c1"># Press Tab to switch to the study-mentor agent</span>
+</code></pre></div>
+<h2 id="amp-setup">Amp Setup<a class="headerlink" href="#amp-setup" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites_4">Prerequisites<a class="headerlink" href="#prerequisites_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li><a href="https://ampcode.com">Amp</a> installed</li>
+<li><code>amp</code> command available on PATH</li>
+</ul>
+<h3 id="what-gets-installed_4">What gets installed<a class="headerlink" href="#what-gets-installed_4" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Target</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agents/amp/AGENTS.md</code></td>
+<td><code>AGENTS.md</code> (project root)</td>
+<td>Project-level agent instructions</td>
+</tr>
+<tr>
+<td><code>agents/shared/</code></td>
+<td><code>~/.agents/shared/</code></td>
+<td>Shared framework (cross-tool)</td>
+</tr>
+</tbody>
+</table>
+<p>Amp reads <code>AGENTS.md</code> from the project root automatically — no additional configuration needed.</p>
+<h3 id="auto-install_2">Auto-install<a class="headerlink" href="#auto-install_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/install-agents.sh<span class="w"> </span>--amp
+</code></pre></div>
+<h3 id="manual-install_2">Manual install<a class="headerlink" href="#manual-install_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Symlink AGENTS.md to project root</span>
+ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/agents/amp/AGENTS.md&quot;</span><span class="w"> </span>./AGENTS.md
+
+<span class="c1"># Symlink shared framework</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/.agents
+ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/agents/shared&quot;</span><span class="w"> </span>~/.agents/shared
+</code></pre></div>
+<h3 id="starting-a-session_4">Starting a session<a class="headerlink" href="#starting-a-session_4" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>amp
+<span class="c1"># AGENTS.md is loaded automatically — just start asking for a study session</span>
+</code></pre></div>
+<h2 id="agent-descriptions">Agent Descriptions<a class="headerlink" href="#agent-descriptions" title="Permanent link">&para;</a></h2>
+<h3 id="study-mentor-kiro-cli">study-mentor (kiro-cli)<a class="headerlink" href="#study-mentor-kiro-cli" title="Permanent link">&para;</a></h3>
+<p>The primary study agent. Integrates with the full studyctl pipeline:</p>
+<ul>
+<li>Checks spaced repetition schedule before each session</li>
+<li>Detects struggle topics from your session history</li>
+<li>Syncs notes to NotebookLM and queries them during teaching</li>
+<li>Records progress via <code>tutor-checkpoint</code></li>
+<li>Adapts session type to your energy level (deep study, light review, body doubling)</li>
+<li>Uses network→data engineering analogies for concept bridging</li>
+</ul>
+<h3 id="socratic-mentor-claude-code">socratic-mentor (Claude Code)<a class="headerlink" href="#socratic-mentor-claude-code" title="Permanent link">&para;</a></h3>
+<p>A focused Socratic teaching agent with AuDHD-aware pedagogy:</p>
+<ul>
+<li>Teaches through progressive questioning (observation → pattern → principle → application)</li>
+<li>Embeds knowledge from Clean Code (Robert C. Martin) and GoF Design Patterns</li>
+<li>Adapts question difficulty based on demonstrated understanding</li>
+<li>Tracks principle mastery: discovered → applied → mastered</li>
+<li>Never gives direct answers unless explicitly asked (or after 4+ rounds stuck)</li>
+</ul>
+<h3 id="mentor-reviewer-claude-code">mentor-reviewer (Claude Code)<a class="headerlink" href="#mentor-reviewer-claude-code" title="Permanent link">&para;</a></h3>
+<p>An autonomous code reviewer that runs without prompting:</p>
+<ul>
+<li>Reads all code files, analyzes against SOLID/OWASP/testing standards</li>
+<li>Scores across 5 categories (1-10): Architecture, Testing, Code Quality, Security, Performance</li>
+<li>Generates detailed reports with critical issues, improvements, and learning opportunities</li>
+<li>Creates tutorials for concepts scoring below 5/10</li>
+<li>Tracks score trends across reviews with evidence-based assessments</li>
+<li>Brutally honest — no praise for mediocre code</li>
+</ul>
+<h2 id="skills-reference">Skills Reference<a class="headerlink" href="#skills-reference" title="Permanent link">&para;</a></h2>
+<p>Skills are modular knowledge packages that agents load for specific capabilities.</p>
+<h3 id="audhd-socratic-mentor">audhd-socratic-mentor<a class="headerlink" href="#audhd-socratic-mentor" title="Permanent link">&para;</a></h3>
+<p>The core teaching methodology skill. Defines:
+- Socratic questioning framework (70% questions / 30% strategic info drops)
+- AuDHD cognitive support patterns (executive function scaffolding, overload prevention)
+- Network→Data Engineering concept bridges (BGP→event streaming, VLAN→data lake zones)
+- The golden rule: never give direct answers, guide discovery through productive struggle</p>
+<h3 id="study-mentor">study-mentor<a class="headerlink" href="#study-mentor" title="Permanent link">&para;</a></h3>
+<p>Session workflow and pipeline integration. Defines:
+- Session start protocol (status → review → struggles → energy check)
+- Spaced repetition schedule and review types
+- NotebookLM query integration
+- Session type selection based on energy level</p>
+<h3 id="tutor-progress-tracker">tutor-progress-tracker<a class="headerlink" href="#tutor-progress-tracker" title="Permanent link">&para;</a></h3>
+<p>Cross-agent progress tracking. Provides:
+- Shared assessment database for skill scores
+- <code>tutor-checkpoint</code> CLI integration
+- Score history and trend tracking
+- Skill-specific progress queries</p>
+<h2 id="uninstalling">Uninstalling<a class="headerlink" href="#uninstalling" title="Permanent link">&para;</a></h2>
+<p>Remove all symlinks created by the installer:</p>
+<div class="highlight"><pre><span></span><code>./scripts/install-agents.sh<span class="w"> </span>--uninstall
+</code></pre></div>
+<p>This only removes symlinks that point into this repo. It won't touch agent files you've created manually or from other sources. Any existing files that were backed up during installation (with <code>.bak</code> suffix) remain untouched.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
