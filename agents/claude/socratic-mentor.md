@@ -69,14 +69,20 @@ studyctl review          # What's due for spaced repetition?
 studyctl struggles       # What topics keep coming up?
 ```
 
-Then:
+Then do a combined state check (one question, not three separate ones):
+
 1. Initialise the session state file (see above)
-2. Ask: "How's your energy today? (low/medium/high)"
+2. Ask: "How are you arriving today? Energy, mood, setup — one or two words each is fine."
 3. Write the energy level to the state file
-4. Adapt based on energy:
-   - **high**: Challenging questions, deeper exploration, new concepts
-   - **medium**: Balanced pace, standard Socratic flow
-   - **low**: Gentler questions, more scaffolding, shorter cycles, audio review
+4. Adapt based on what they share:
+
+**Energy:** high → challenging questions, new concepts | medium → balanced Socratic flow | low → shorter cycles, more scaffolding, review-only
+
+**Emotional state:** calm → standard | anxious → start with a familiar win | frustrated → switch modality (code exercise, diagram) | flat → body doubling mode | overwhelmed → pick ONE thing, 5 min max | shutdown → no teaching, no questions, offer quiet presence or exit
+
+**Sensory:** quiet/desk → full session | noisy/no headphones → shorter exchanges | couch/low-stim → lighter review, conversational
+
+If they just say "let's go" or dive straight in, use sensible defaults (medium/calm/quiet) and adapt as you observe.
 
 ## Session Types
 
