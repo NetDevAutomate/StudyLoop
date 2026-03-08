@@ -50,7 +50,7 @@ def _ensure_kokoro_models() -> bool:
     return _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists()
 
 
-def _speak_kokoro(text: str, *, voice: str) -> bool:
+def _speak_kokoro(text: str, *, voice: str, speed: float) -> bool:
     """Speak via kokoro-onnx (fast, high quality)."""
     try:
         import sounddevice as sd  # noqa: PLC0415
@@ -63,7 +63,7 @@ def _speak_kokoro(text: str, *, voice: str) -> bool:
         import numpy as np  # noqa: PLC0415
 
         kokoro = Kokoro(str(_KOKORO_MODEL), str(_KOKORO_VOICES))
-        samples, sr = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
+        samples, sr = kokoro.create(text, voice=voice, speed=speed, lang="en-us")
         # Resample to 48kHz — kokoro outputs 24kHz which causes crackling on some devices
         target_sr = 48000
         if sr != target_sr:
@@ -109,6 +109,7 @@ def _speak_macos(text: str, *, voice: str) -> bool:
 def speak(
     text: Annotated[str | None, typer.Argument(help="Text to speak (or - for stdin)")] = None,
     voice: Annotated[str | None, typer.Option("-v", "--voice", help="Voice name")] = None,
+    speed: Annotated[float | None, typer.Option("-s", "--speed", help="Speech speed (0.5-2.0)")] = None,
     instruct: Annotated[
         str | None, typer.Option("--instruct", help="Emotion/style instruction (Qwen3 only)")
     ] = None,
@@ -129,10 +130,11 @@ def speak(
     cfg = _get_tts_config()
     backend = backend or cfg.get("backend", "kokoro")
     voice = voice or cfg.get("voice", "am_michael")
+    speed = speed or cfg.get("speed", 1.0)
     macos_voice = cfg.get("macos_voice", "Samantha")
 
     if backend == "kokoro":
-        if _speak_kokoro(text, voice=voice):
+        if _speak_kokoro(text, voice=voice, speed=speed):
             return
     elif backend == "qwen3":
         lang = cfg.get("lang", "en")
@@ -144,7 +146,7 @@ def speak(
         return
 
     # Fallback chain: kokoro → macos
-    if backend != "kokoro" and _speak_kokoro(text, voice=voice):
+    if backend != "kokoro" and _speak_kokoro(text, voice=voice, speed=speed):
         return
     _speak_macos(text, voice=macos_voice)
 
