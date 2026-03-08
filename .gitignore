@@ -471,3 +471,6 @@ site/
 *.db-wal
 *.db-shm
 *.db-journal
+
+# Personal work-in-progress plans
+docs/plans/

@@ -1,0 +1,4 @@
+/* Logo adjustments for mkdocs */
+.md-header__topic {
+  font-weight: 700;
+}
