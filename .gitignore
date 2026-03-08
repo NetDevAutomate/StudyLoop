@@ -465,3 +465,9 @@ CLAUDE.md
 *.code-workspace
 .zed/
 site/
+
+# SQLite databases (may contain sensitive AI conversation data)
+*.db
+*.db-wal
+*.db-shm
+*.db-journal

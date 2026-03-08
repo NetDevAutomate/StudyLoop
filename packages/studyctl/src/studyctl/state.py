@@ -55,8 +55,11 @@ class SyncState:
                 )
 
     def save(self) -> None:
+        import os
+
         STATE_DIR.mkdir(parents=True, exist_ok=True)
         STATE_FILE.write_text(json.dumps(self._data, indent=2) + "\n")
+        os.chmod(STATE_FILE, 0o600)
 
     def get_topic(self, name: str) -> TopicState:
         raw = self._data.setdefault("topics", {}).get(name, {})

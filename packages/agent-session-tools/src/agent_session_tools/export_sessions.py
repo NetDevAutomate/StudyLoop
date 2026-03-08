@@ -53,10 +53,15 @@ DEFAULT_DB = get_db_path(config)
 
 def init_db(db_path: str) -> sqlite3.Connection:
     """Initialize database with schema and run migrations."""
+    import os
+
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+
+    # Restrict permissions — session data may contain sensitive conversations
+    os.chmod(path, 0o600)
 
     # Enable WAL mode for better concurrent access
     conn.execute("PRAGMA journal_mode=WAL")
