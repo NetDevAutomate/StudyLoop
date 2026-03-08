@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""MCP server for study-speak TTS."""
+"""Standalone MCP server for study-speak TTS.
+
+No dependency on agent_session_tools — just calls ~/.local/bin/study-speak.
+Install: uv tool install mcp[cli]
+Run: python mcp_speak_server.py
+"""
 
 import subprocess
 from pathlib import Path

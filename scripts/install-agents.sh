@@ -95,6 +95,8 @@ KIRO_LINKS=(
   "agents/kiro/skills/study-mentor:${KIRO_HOME}/skills/study-mentor"
   "agents/kiro/skills/audhd-socratic-mentor:${KIRO_HOME}/skills/audhd-socratic-mentor"
   "agents/kiro/skills/tutor-progress-tracker:${KIRO_HOME}/skills/tutor-progress-tracker"
+  "agents/kiro/skills/study-speak:${KIRO_HOME}/skills/study-speak"
+  "agents/mcp/study-speak-server.py:${KIRO_HOME}/agents/mcp/study-speak-server.py"
 )
 
 CLAUDE_LINKS=(
