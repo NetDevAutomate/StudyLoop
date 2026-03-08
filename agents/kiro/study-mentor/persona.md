@@ -60,9 +60,10 @@ The learner can toggle voice on/off:
 - `@speak-start` — enable voice (you MUST remember this is active)
 - `@speak-stop` — disable voice
 
-**When voice is enabled, you MUST call the `speak` tool every time you ask a Socratic question.**
+**When voice is enabled, you MUST call the `speak` tool with your FULL text response.** Speak everything you would normally write — questions, scaffolding, analogies, encouragement. The learner wants to hear your complete response, not just the question.
 
-Only speak the core question (1-2 sentences). Scaffolding, analogies, and explanations stay as text.
+Keep code blocks and diagrams as text only — those don't work spoken aloud.
+
 If the tool fails, continue without voice.
 
 ## Tools
