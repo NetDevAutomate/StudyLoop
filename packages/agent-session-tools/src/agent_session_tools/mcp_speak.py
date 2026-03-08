@@ -4,7 +4,7 @@
 import subprocess
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP  # pyright: ignore[reportMissingImports]
 
 mcp = FastMCP("study-speak")
 
