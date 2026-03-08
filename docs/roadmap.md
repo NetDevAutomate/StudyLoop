@@ -107,6 +107,6 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - [ ] Watchdog file watcher for auto-sync
 - [ ] Community-contributed study topics
 - [ ] Localisation support
-- [ ] TTS voice output (kokoro-tts / ltts integration)
+- [x] TTS voice output (kokoro-tts / ltts integration)
 - [ ] MkDocs documentation site polish
 - [ ] Gemini CLI / OpenCode / Amp agent testing
