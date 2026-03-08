@@ -234,6 +234,24 @@ Agent files are symlinked by the installer, so edits in the repo are immediately
 
 CI runs lint, typecheck, and tests automatically on every PR.
 
+## Documentation Style Guide
+
+### Custom Admonitions
+
+The docs use custom MkDocs admonition types defined in `docs/stylesheets/audhd.css`. Use these in documentation pages:
+
+| Type | Syntax | When to Use |
+|------|--------|-------------|
+| `struggling` | `!!! struggling "Title"` | Anti-patterns, common mistakes, what NOT to do |
+| `learning` | `!!! learning "Title"` | Key learning points, things to remember |
+| `confident` | `!!! confident "Title"` | Advanced tips for when the reader is comfortable |
+| `mastered` | `!!! mastered "Title"` | Expert-level insights, deep dives |
+| `parking-lot` | `!!! parking-lot "Title"` | Tangential information — interesting but not essential now |
+| `micro-celebration` | `!!! micro-celebration "Title"` | Positive reinforcement, progress acknowledgment |
+| `energy-check` | `!!! energy-check "Title"` | Important callouts about cognitive load or energy |
+
+These map to confidence levels and AuDHD support patterns. Standard MkDocs admonitions (`tip`, `warning`, `note`, etc.) also work.
+
 ## Code of Conduct
 
 - Be kind and constructive

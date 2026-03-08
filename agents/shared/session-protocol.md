@@ -141,6 +141,8 @@ During review sessions, bridge between related topics:
 
 Interleaving strengthens retrieval paths and fights the AuDHD tendency to silo knowledge.
 
+**Skip interleaving when energy is low (1-3) or emotional state is flat/overwhelmed.** Interleaving increases cognitive load — on low-energy days, stick to single-topic review.
+
 ## 6. End-of-Session Protocol
 
 ### Record Progress
