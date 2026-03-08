@@ -46,13 +46,13 @@ Features designed specifically for AuDHD brains, ranked by impact.
 
 ### 🟡 Medium Priority
 
-#### "Where Was I?" Auto-Resume
+#### ~~"Where Was I?" Auto-Resume~~ ✅
 **Why:** AuDHD learners lose context between sessions constantly. Manual context loading is a barrier to starting.
 
-- Automatic last-session summary on session start
-- Built on existing `session-query context` infrastructure
-- Shows: what you were learning, where you got stuck, what's next
-- Reduces session-start friction (huge for ADHD task initiation)
+- [x] `studyctl resume` — automatic last-session summary with topics, concepts in progress
+- [x] Built on existing session query infrastructure
+- [x] Shows: what you were learning, where you got stuck, what's next
+- [x] Integrated into session protocol — agents run it at session start
 
 #### ~~Hyperfocus Guardrails~~ ✅
 **Why:** Hyperfocus is a superpower but needs channeling. A study partner would say "you've been at this for 2 hours."
@@ -119,9 +119,9 @@ Features designed specifically for AuDHD brains, ranked by impact.
 
 Features identified through comprehensive code review:
 
-- [ ] **"Where Was I?" auto-resume** — automatic last-session summary on session start, reducing task initiation friction
-- [ ] **Medication timing awareness** — optional config for cognitive windows (onset/peak/wearing off), adapt session type to medication schedule
-- [ ] **Visual progress map** — Mermaid-rendered skill tree showing mastered/in-progress/next topics as a dependency graph
-- [ ] **Routine building / streak tracking** — cue-routine-reward loops, session streaks with factual tracking (not gamification)
+- [x] **"Where Was I?" auto-resume** — `studyctl resume` shows last session, topics, concepts in progress
+- [x] **Medication timing awareness** — optional config for cognitive windows (onset/peak/tapering/worn off)
+- [x] **Visual progress map** — `studyctl progress-map` with Mermaid diagram output
+- [x] **Routine building / streak tracking** — `studyctl streaks` with current/longest streak, consistency %
 - [x] **Interleaving suppression on low-energy days** — automatic rule to disable topic mixing when energy < 4
 - [x] **Custom admonition style guide** — document the 7 custom admonition types for contributors
