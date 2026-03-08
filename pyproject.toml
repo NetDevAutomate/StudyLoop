@@ -2,7 +2,7 @@
 name = "socratic-study-mentor"
 version = "1.0.0"
 description = "AuDHD-aware Socratic study mentor with AI session management"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 readme = "README.md"
 license = "MIT"
 authors = [{name = "Andy Taylor"}]
@@ -28,14 +28,17 @@ dev = [
 members = ["packages/*"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "RUF"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "TCH", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["studyctl", "agent_session_tools"]
 
 [tool.pyright]
-pythonVersion = "3.10"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
