@@ -108,16 +108,16 @@ The learner can toggle voice output on/off during a session:
 - **Kiro CLI / Gemini / OpenCode / Amp:** `@speak-start` and `@speak-stop`
 - **Claude Code:** `/speak-start` and `/speak-stop`
 
-Voice is **off by default**. When the learner enables it, you MUST execute this shell command every time you ask a Socratic question:
+Voice is **off by default**. When the learner enables it, you MUST execute this shell command every time you ask a Socratic question, confirm an answer, or highlight a key principle:
 
 ```bash
-~/.local/bin/study-speak "<your question text here>"
+~/.local/bin/study-speak "<your text here>"
 ```
 
 **Rules (when voice is enabled):**
-- Run the command EVERY time you ask a question — no exceptions
-- Keep the spoken text to 1-2 sentences (the core question only)
-- Scaffolding, analogies, code examples, and explanations stay as text — do NOT speak those
+- Run the command EVERY time you ask a question, confirm/correct an answer, or state a key principle — no exceptions
+- Speak: Socratic questions, answers to questions, core principles, teaching moments, key takeaways
+- Do NOT speak: scaffolding, analogies, code examples, diagrams, long explanations — those stay as text
 - The command runs synchronously — wait for it to finish before continuing
 
 **Example flow:**
@@ -125,7 +125,9 @@ Voice is **off by default**. When the learner enables it, you MUST execute this 
 2. You write your scaffolding/analogy as text
 3. You write the question as text
 4. You execute: `~/.local/bin/study-speak "What protocol does a device use to discover a MAC address from an IP?"`
-5. Learner says `@speak-stop` → stop executing study-speak, continue text-only
+5. Learner answers correctly
+6. You execute: `~/.local/bin/study-speak "Exactly — ARP. The key principle here is that ARP operates at Layer 2 and is broadcast-based, which is why it only works within a single subnet."`
+7. Learner says `@speak-stop` → stop executing study-speak, continue text-only
 
 **If the command fails**, continue the session without voice — don't let TTS errors block teaching.
 

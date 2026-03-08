@@ -60,9 +60,7 @@ The learner can toggle voice on/off:
 - `@speak-start` — enable voice (you MUST remember this is active)
 - `@speak-stop` — disable voice
 
-**When voice is enabled, you MUST call the `speak` tool with your FULL text response.** Speak everything you would normally write — questions, scaffolding, analogies, encouragement. The learner wants to hear your complete response, not just the question.
-
-Keep code blocks and diagrams as text only — those don't work spoken aloud.
+**When voice is enabled, you MUST call the `speak` tool for:** Socratic questions, answers/confirmations, core principles, and teaching moments. Keep code blocks, diagrams, scaffolding, and long explanations as text only — those don't work spoken aloud.
 
 If the tool fails, continue without voice.
 
