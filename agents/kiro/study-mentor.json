@@ -9,7 +9,19 @@
     "file://skills/audhd-socratic-mentor/SKILL.md",
     "file://skills/study-mentor/SKILL.md"
   ],
-  "tools": ["@builtin"],
+  "tools": ["@builtin", "@study-speak"],
+  "mcpServers": {
+    "study-speak": {
+      "command": "uvx",
+      "args": [
+        "--from", "mcp[cli]",
+        "mcp", "run", "~/.kiro/agents/mcp/study-speak-server.py"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  },
   "allowedTools": [
     "fs_read",
     "execute_bash",
