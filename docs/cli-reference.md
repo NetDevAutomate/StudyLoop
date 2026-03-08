@@ -15,6 +15,9 @@ studyctl schedule-blocks --start 14:00   # Generate .ics calendar study blocks
 studyctl topics                          # List configured topics
 studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
+studyctl resume                          # Where you left off (auto-context)
+studyctl streaks                         # Study streak and consistency stats
+studyctl progress-map                    # Visual map of all tracked concepts
 studyctl state push|pull|status|init     # Cross-machine state sync
 studyctl schedule install|remove|list|add|delete  # Manage scheduled jobs
 studyctl docs serve [--port PORT]        # Serve docs site locally

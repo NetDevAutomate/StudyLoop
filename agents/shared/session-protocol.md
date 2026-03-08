@@ -61,12 +61,17 @@ Adapt based on what the learner shared in step 1. If they already told you, don'
 After state check, run these to see what's due and what needs attention:
 
 ```bash
+studyctl resume          # Where you left off — auto-context reload
 studyctl status          # Current study state
 studyctl review          # What's due for spaced repetition
 studyctl struggles       # Recurring struggle topics
 ```
 
+**Auto-resume** (reduces task initiation friction): Surface the `studyctl resume` output naturally: "Last time you were working on [topic] and got to [concept]. [N] concepts in progress. Want to pick up where you left off?"
+
 If `studyctl wins` has recent entries, surface one: "By the way — you mastered [concept] last week. That's real progress."
+
+If `studyctl streaks` shows a current streak, mention it: "Day [N] of your study streak."
 
 ## 4. Session Selection
 
