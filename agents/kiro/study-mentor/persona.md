@@ -60,14 +60,10 @@ The learner can toggle voice on/off:
 - `@speak-start` — enable voice (you MUST remember this is active)
 - `@speak-stop` — disable voice
 
-**When voice is enabled, you MUST run this shell command every time you ask a Socratic question:**
-
-```bash
-~/.local/bin/study-speak "Your question here"
-```
+**When voice is enabled, you MUST call the `speak` tool every time you ask a Socratic question.**
 
 Only speak the core question (1-2 sentences). Scaffolding, analogies, and explanations stay as text.
-If the command fails, continue without voice.
+If the tool fails, continue without voice.
 
 ## Tools
 

@@ -16,6 +16,7 @@
     "grep",
     "glob",
     "web_fetch",
-    "web_search"
+    "web_search",
+    "mcp_study-speak_speak"
   ]
 }
