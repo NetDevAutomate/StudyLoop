@@ -4,10 +4,10 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from agent_session_tools.query_sessions import (
+from agent_session_tools.query_sessions import estimate_tokens
+from agent_session_tools.query_utils import (
     build_date_filter,
     check_thresholds,
-    estimate_tokens,
     get_db_size,
     parse_date,
 )
@@ -84,24 +84,26 @@ class TestBuildDateFilter:
 class TestCheckThresholds:
     """Tests for check_thresholds function."""
 
+    _config = {"thresholds": {"warning_mb": 100, "critical_mb": 500}}
+
     def test_ok_status(self):
         """Test status is 'ok' when below warning threshold."""
-        result = check_thresholds(50.0)
+        result = check_thresholds(50.0, self._config)
         assert result["status"] == "ok"
 
     def test_warning_status(self):
         """Test status is 'warning' when above warning but below critical."""
-        result = check_thresholds(150.0)
+        result = check_thresholds(150.0, self._config)
         assert result["status"] == "warning"
 
     def test_critical_status(self):
         """Test status is 'critical' when above critical threshold."""
-        result = check_thresholds(600.0)
+        result = check_thresholds(600.0, self._config)
         assert result["status"] == "critical"
 
     def test_result_has_message(self):
         """Test that result includes a message."""
-        result = check_thresholds(50.0)
+        result = check_thresholds(50.0, self._config)
         assert "message" in result
         assert result["message"] is not None
 
