@@ -16,7 +16,11 @@ studyctl topics                          # List configured topics
 studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
 studyctl state push|pull|status|init     # Cross-machine state sync
-studyctl schedule install|remove|list    # Manage scheduled jobs
+studyctl schedule install|remove|list|add|delete  # Manage scheduled jobs
+studyctl docs serve [--port PORT]        # Serve docs site locally
+studyctl docs open                       # Build and open docs in browser
+studyctl docs list                       # List available doc pages
+studyctl docs read PAGE                  # Read a page aloud via study-speak
 ```
 
 ### Confidence Levels
@@ -50,8 +54,9 @@ session-query show SESSION_ID            # Show session details
 session-query context SESSION_ID         # Generate context for resuming
 session-query stats                      # Database statistics
 session-sync push|pull REMOTE            # Sync database across machines
-session-maint vacuum|reindex|schema      # Database maintenance
+session-maint vacuum|reindex|schema|archive  # Database maintenance
 tutor-checkpoint code --skill SKILL      # Record study progress
+study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 ```
 
 ### Supported Sources
@@ -64,6 +69,7 @@ tutor-checkpoint code --skill SKILL      # Record study progress
 | `aider` | Aider |
 | `opencode` | OpenCode |
 | `litellm` | LiteLLM |
+| `bedrock` | Bedrock Proxy |
 | `repoprompt` | RepoPrompt |
 
 ### Optional Extras

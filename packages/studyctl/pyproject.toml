@@ -19,9 +19,9 @@ notebooklm = ["notebooklm-py"]
 studyctl = "studyctl.cli:cli"
 
 [project.urls]
-Homepage = "<your-repo-url>/socratic-study-mentor"
-Repository = "<your-repo-url>/socratic-study-mentor"
-Issues = "<your-repo-url>/socratic-study-mentor/issues"
+Homepage = "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
+Repository = "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
+Issues = "https://github.com/NetDevAutomate/Socratic-Study-Mentor/issues"
 
 [build-system]
 requires = ["hatchling"]
