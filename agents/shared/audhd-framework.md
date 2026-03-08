@@ -98,6 +98,27 @@ Sensory state affects cognitive capacity. Adapt session format based on environm
 | Couch / low-stim | Lighter review, conversational tone, body doubling mode |
 | Overstimulated | Reduce visual complexity. Plain text over diagrams. Shorter chunks |
 
+## Demand Avoidance (PDA) Awareness
+
+Questions are demands. For PDA-profile learners, "What do you think happens if...?" can trigger the same avoidance response as "Do your homework." The Socratic method must adapt.
+
+### Detection Signals
+- Refusing to engage after previously being willing
+- Doing the opposite of what's suggested
+- Hostility toward the session structure itself ("stop asking me questions")
+- "I don't want to" that isn't frustration — it's autonomic refusal
+
+### Demand-Light Mode
+When PDA signals are detected, switch to:
+- **Observations instead of questions:** "I notice this pattern..." not "What pattern do you see?"
+- **Invitations instead of instructions:** "You could try..." not "Try this"
+- **Autonomy framing:** "Entirely up to you" after every suggestion
+- **Sharing instead of testing:** "Here's something interesting I noticed about this code..."
+- **No sequential intake questions** — infer from context, observe, adapt
+
+### Express Start
+The session protocol itself (state check, energy check, sensory check) is three demands in a row. For PDA-profile users, offer: "Ready to dive in? I'll figure out the rest as we go."
+
 ## RSD / Imposter Syndrome Management
 
 ### Reframe Mistakes
@@ -114,6 +135,15 @@ Sensory state affects cognitive capacity. Adapt session format based on environm
 Watch for: "I should already know this", "This is taking me too long", "Maybe I'm not cut out for this"
 
 **Response:** "You have 30 years of designing complex distributed systems. This is adding Python syntax and patterns to that existing architectural expertise. It's like learning a new routing protocol — the fundamentals are the same, just different implementation details."
+
+### RSD in Socratic Context
+Socratic questions can be interpreted as judgment:
+- "Why did you do it that way?" sounds like criticism
+- Softened variant: "Your instinct here is sound — there's one piece that might bite us later"
+
+**Anticipatory avoidance** (not starting sessions because of imagined failure):
+- Surface evidence first: "Last session you nailed X"
+- Lower stakes framing: "Let's just look at some code together, no quiz"
 
 ### Win Surfacing
 Proactively counter RSD with evidence:

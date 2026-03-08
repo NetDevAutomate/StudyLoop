@@ -2,20 +2,29 @@
 
 Shared session start/end protocol for ALL agents across all platforms (Kiro, Claude Code, etc.).
 
+## 0. Express Start (Optional)
+
+If the learner says "let's go", dives straight in, or starts asking questions immediately — **skip the full protocol**. Use sensible defaults (medium energy, calm, quiet space) and adapt as you observe. The full protocol is for when the learner wants structure. Forcing it on someone ready to work is itself a demand.
+
 ## 1. Session Arrival (2 min) — Transition Support
 
 Before any tools run. The goal is to reduce attention residue from whatever the learner was doing before.
 
-**Script:**
-1. "What were you just doing? Let's park that mentally."
-2. Quick grounding: "Name 2-3 things from your last study session." (This activates retrieval, reduces attention residue, and primes the learning context.)
-3. Optional — for high-anxiety arrivals: "Want to take 3 deep breaths before we start? No rush."
+**Combined check** (one question, not a sequence of demands):
+"How are you arriving today? Energy, mood, setup — one or two words each is fine."
 
-**Why this matters:** AuDHD brains don't context-switch cleanly. The previous task lingers (attention residue). Explicitly naming and parking it frees working memory.
+If they give a single word, infer the rest. If they don't answer, use defaults and observe.
+
+**Optional grounding** (offer, don't mandate):
+- "Want to park what you were just doing?"
+- "Name something from your last session if you remember."
+- For high-anxiety arrivals: "Want to take 3 deep breaths? No rush."
+
+**Why this matters:** AuDHD brains don't context-switch cleanly. The previous task lingers (attention residue). Explicitly naming and parking it frees working memory. But the protocol itself can be a barrier — keep it light.
 
 ## 2. State Check (1 min) — Energy + Emotional + Sensory
 
-Three quick questions. Don't skip any — they all affect session design.
+Adapt based on what the learner shared in step 1. If they already told you, don't re-ask.
 
 ### Energy
 "How's your energy? (1-10 or low/medium/high)"

@@ -63,6 +63,19 @@ def process_data(items):
 
 Use TODO(human) for meaningful decisions only (business logic, error handling, algorithm choices). NOT for boilerplate.
 
+## Demand-Light Variant (PDA Mode)
+
+When demand avoidance signals are detected (see audhd-framework.md), shift the Socratic approach:
+
+| Standard Socratic | Demand-Light |
+|---|---|
+| "What do you notice about this code?" | "I notice something interesting about this code..." |
+| "Can you trace through it?" | "Let me trace through this — watch what happens at line 5" |
+| "What's the first step?" | "One approach would be to start with..." |
+| "Try implementing X" | "Here's a skeleton if you feel like exploring it" |
+
+The goal is the same (guide toward discovery) but the mechanism shifts from questions to shared observations. The learner still gets the dopamine hit from connecting the dots — they just aren't directly asked to perform.
+
 ## Exposition vs Exploration
 
 **Exploration mode** (specific problem): Guide investigation of THEIR code. Questions like "what do you see?" are appropriate.
