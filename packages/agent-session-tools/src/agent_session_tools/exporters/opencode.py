@@ -49,7 +49,9 @@ class OpenCodeExporter:
 
             if (
                 incremental
-                and conn.execute("SELECT 1 FROM sessions WHERE id = ?", (session_id,)).fetchone()
+                and conn.execute(
+                    "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
+                ).fetchone()
             ):
                 stats.skipped += 1
                 continue
@@ -165,7 +167,7 @@ class OpenCodeExporter:
 
 def _ms_to_iso(ms: int | None) -> str | None:
     """Convert millisecond timestamp to ISO format."""
-    if not ms:
+    if ms is None:
         return None
     try:
         return datetime.fromtimestamp(ms / 1000).isoformat()

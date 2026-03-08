@@ -35,7 +35,9 @@ def _ensure_kokoro_models() -> bool:
     if _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists():
         return True
     _KOKORO_DIR.mkdir(parents=True, exist_ok=True)
-    base = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+    base = (
+        "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+    )
     for name in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
         if not (_KOKORO_DIR / name).exists():
             typer.echo(f"Downloading {name}...", err=True)
@@ -68,7 +70,9 @@ def _speak_kokoro(text: str, *, voice: str, speed: float) -> bool:
         target_sr = 48000
         if sr != target_sr:
             samples = np.interp(
-                np.linspace(0, len(samples), int(len(samples) * target_sr / sr), endpoint=False),
+                np.linspace(
+                    0, len(samples), int(len(samples) * target_sr / sr), endpoint=False
+                ),
                 np.arange(len(samples)),
                 samples,
             ).astype(np.float32)
@@ -80,7 +84,9 @@ def _speak_kokoro(text: str, *, voice: str, speed: float) -> bool:
         return False
 
 
-def _speak_ltts(text: str, *, voice: str, lang: str, device: str, instruct: str | None) -> bool:
+def _speak_ltts(
+    text: str, *, voice: str, lang: str, device: str, instruct: str | None
+) -> bool:
     """Speak via ltts (Qwen3-TTS). Slow on Apple Silicon but highest quality."""
     import shutil  # noqa: PLC0415
 
@@ -92,7 +98,11 @@ def _speak_ltts(text: str, *, voice: str, lang: str, device: str, instruct: str 
     try:
         subprocess.run(cmd, check=True, timeout=120)
         return True
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return False
 
 
@@ -101,26 +111,40 @@ def _speak_macos(text: str, *, voice: str) -> bool:
     try:
         subprocess.run(["say", "-v", voice, text], check=True, timeout=60)
         return True
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return False
 
 
 @app.command()
 def speak(
-    text: Annotated[str | None, typer.Argument(help="Text to speak (or - for stdin)")] = None,
-    voice: Annotated[str | None, typer.Option("-v", "--voice", help="Voice name")] = None,
-    speed: Annotated[float | None, typer.Option("-s", "--speed", help="Speech speed (0.5-2.0)")] = None,
+    text: Annotated[
+        str | None, typer.Argument(help="Text to speak (or - for stdin)")
+    ] = None,
+    voice: Annotated[
+        str | None, typer.Option("-v", "--voice", help="Voice name")
+    ] = None,
+    speed: Annotated[
+        float | None, typer.Option("-s", "--speed", help="Speech speed (0.5-2.0)")
+    ] = None,
     instruct: Annotated[
-        str | None, typer.Option("--instruct", help="Emotion/style instruction (Qwen3 only)")
+        str | None,
+        typer.Option("--instruct", help="Emotion/style instruction (Qwen3 only)"),
     ] = None,
     backend: Annotated[
-        str | None, typer.Option("-b", "--backend", help="Backend: kokoro, qwen3, macos")
+        str | None,
+        typer.Option("-b", "--backend", help="Backend: kokoro, qwen3, macos"),
     ] = None,
 ) -> None:
     """Speak text aloud using configured TTS backend."""
     if text is None or text == "-":
         if sys.stdin.isatty():
-            typer.echo("Usage: study-speak 'text' or echo 'text' | study-speak -", err=True)
+            typer.echo(
+                "Usage: study-speak 'text' or echo 'text' | study-speak -", err=True
+            )
             raise typer.Exit(1)
         text = sys.stdin.read().strip()
 
@@ -151,7 +175,7 @@ def speak(
     _speak_macos(text, voice=macos_voice)
 
 
-def main():
+def main() -> None:
     app()
 
 

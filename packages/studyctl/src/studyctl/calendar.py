@@ -17,7 +17,10 @@ REVIEW_DURATIONS: dict[str, int] = {
 
 
 def _ics_dt(dt: datetime) -> str:
-    """Format datetime as ICS DTSTART/DTEND value."""
+    """Format datetime as ICS DTSTART/DTEND value with UTC suffix."""
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(UTC)
+        return dt.strftime("%Y%m%dT%H%M%SZ")
     return dt.strftime("%Y%m%dT%H%M%S")
 
 
