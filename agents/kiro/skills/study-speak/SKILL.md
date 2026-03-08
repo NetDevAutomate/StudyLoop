@@ -31,10 +31,14 @@ Voice is **off by default**. Do not speak unless the learner has said `@speak-st
 ```
 
 ### What to speak
-- The core Socratic question only (1-2 sentences)
+- Socratic questions
+- Answers and confirmations ("Exactly — that's because...")
+- Core principles and key takeaways
+- Teaching moments
 
 ### What NOT to speak
-- Scaffolding, analogies, code examples, explanations — those stay as text
+- Scaffolding, analogies, long explanations — those stay as text
+- Code examples, diagrams, tables
 
 ---
 
@@ -49,6 +53,10 @@ bookmark in a book — it remembers where you left off.
 Agent (text): Now here's the question:
 
 Agent (executes): ~/.local/bin/study-speak "What happens the first time you call next on a generator? Does the function run from the beginning or from somewhere else?"
+
+Learner: It runs from the beginning, up to the first yield.
+
+Agent (executes): ~/.local/bin/study-speak "Exactly right. The key principle is that a generator function is lazy — it doesn't execute until you call next, and it pauses at each yield."
 
 Learner: @speak-stop
 

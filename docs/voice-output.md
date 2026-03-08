@@ -63,7 +63,7 @@ Voice is **off by default**. Toggle it during a session:
 
     Uses shell command `~/.local/bin/study-speak`.
 
-When enabled, the agent speaks its full response — **excluding code blocks**.
+When enabled, the agent speaks core questions, answers, key principles, and teaching moments — **excluding code blocks, scaffolding, and long explanations**.
 
 ---
 
