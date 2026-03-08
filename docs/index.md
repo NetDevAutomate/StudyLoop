@@ -8,7 +8,7 @@
 
 ```bash
 # 1. Clone and install
-git clone <your-repo-url>/socratic-study-mentor.git
+git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 cd socratic-study-mentor
 ./scripts/install.sh
 
@@ -40,8 +40,11 @@ graph LR
     end
 
     subgraph "AI Agents"
-        KA[kiro-cli<br/>study-mentor]
-        CA[Claude Code<br/>socratic-mentor]
+        KA[kiro-cli]
+        CA[Claude Code]
+        GA[Gemini CLI]
+        OA[OpenCode]
+        AA[Amp]
     end
 
     OB -->|sync| SC
@@ -51,6 +54,9 @@ graph LR
     DB -->|query history| SC
     KA -->|Socratic sessions| DB
     CA -->|Socratic sessions| DB
+    GA -->|Socratic sessions| DB
+    OA -->|Socratic sessions| DB
+    AA -->|Socratic sessions| DB
 ```
 
 ---

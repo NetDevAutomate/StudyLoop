@@ -30,10 +30,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "<your-repo-url>/socratic-study-mentor"
-Documentation = "<your-repo-url>/socratic-study-mentor#readme"
-Repository = "<your-repo-url>/socratic-study-mentor"
-Issues = "<your-repo-url>/socratic-study-mentor/issues"
+Homepage = "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
+Documentation = "https://github.com/NetDevAutomate/Socratic-Study-Mentor#readme"
+Repository = "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
+Issues = "https://github.com/NetDevAutomate/Socratic-Study-Mentor/issues"
 
 [project.scripts]
 session-export = "agent_session_tools.export_sessions:main"

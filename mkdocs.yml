@@ -1,6 +1,6 @@
 site_name: Socratic Study Mentor
 site_description: AuDHD-aware Socratic study toolkit with AI session management
-site_url: http://localhost:8000
+site_url: https://netdevautomate.github.io/Socratic-Study-Mentor/
 
 theme:
   name: material

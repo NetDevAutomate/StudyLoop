@@ -2,10 +2,9 @@
 
 > 🧠 An AuDHD-aware Socratic study mentor with AI session management
 
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-<!-- CI badge: update URL when GitHub repo is created -->
-<!-- ![CI](https://github.com/YOUR_ORG/socratic-study-mentor/actions/workflows/ci.yml/badge.svg) -->
+![CI](https://github.com/NetDevAutomate/Socratic-Study-Mentor/actions/workflows/ci.yml/badge.svg)
 
 ## What is this?
 
@@ -33,8 +32,11 @@ graph LR
     end
 
     subgraph "AI Agents"
-        KA[kiro-cli<br/>study-mentor]
-        CA[Claude Code<br/>socratic-mentor]
+        KA[kiro-cli]
+        CA[Claude Code]
+        GA[Gemini CLI]
+        OA[OpenCode]
+        AA[Amp]
     end
 
     OB -->|sync| SC
@@ -44,6 +46,9 @@ graph LR
     DB -->|query history| SC
     KA -->|Socratic sessions| DB
     CA -->|Socratic sessions| DB
+    GA -->|Socratic sessions| DB
+    OA -->|Socratic sessions| DB
+    AA -->|Socratic sessions| DB
 ```
 
 ## Features
@@ -93,7 +98,7 @@ graph LR
 ## Quick Start
 
 ```bash
-git clone <your-repo-url>/socratic-study-mentor.git
+git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 cd socratic-study-mentor
 ./scripts/install.sh
 ```
