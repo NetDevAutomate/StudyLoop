@@ -101,7 +101,7 @@ def record_checkpoint(
         conn.close()
 
 
-def main():
+def main() -> None:
     """Entry point for the CLI."""
     typer.run(record_checkpoint)
 
