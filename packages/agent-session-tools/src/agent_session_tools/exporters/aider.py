@@ -7,65 +7,10 @@ from datetime import datetime
 from pathlib import Path
 
 from ..config_loader import load_config
-from .base import ExportStats
+from ..utils import stable_id
+from .base import ExportStats, commit_batch
 
 BATCH_SIZE = 100
-
-
-def commit_batch(
-    conn: sqlite3.Connection,
-    batch: list[dict],
-    batch_messages: list[dict],
-    stats: ExportStats,
-) -> None:
-    """Commit a batch of sessions and messages."""
-    if not batch:
-        return
-
-    try:
-        # Upsert sessions
-        conn.executemany(
-            """
-            INSERT OR REPLACE INTO sessions
-            (id, source, project_path, git_branch, created_at, updated_at, metadata)
-            VALUES (:id, :source, :project_path, :git_branch, :created_at, :updated_at, :metadata)
-            """,
-            batch,
-        )
-
-        # Upsert messages
-        if batch_messages:
-            conn.executemany(
-                """
-                INSERT OR REPLACE INTO messages
-                (id, session_id, role, content, model, timestamp, metadata, seq)
-                VALUES (:id, :session_id, :role, :content, :model, :timestamp, :metadata, :seq)
-                """,
-                batch_messages,
-            )
-
-        conn.commit()
-
-        # Update stats
-        for s in batch:
-            if s["status"] == "added":
-                stats.added += 1
-            elif s["status"] == "updated":
-                stats.updated += 1
-            elif s["status"] == "skipped":
-                stats.skipped += 1
-
-    except Exception:
-        stats.errors += len(batch)
-
-
-def stable_id(prefix: str, key: str) -> str:
-    """Generate stable, deterministic ID from prefix and key."""
-    import hashlib
-
-    normalized = str(Path(key).resolve()).lower()
-    hash_bytes = hashlib.sha256(normalized.encode()).hexdigest()[:12]
-    return f"{prefix}_{hash_bytes}"
 
 
 class AiderExporter:
@@ -91,7 +36,9 @@ class AiderExporter:
         """Check if any search paths exist."""
         return any(path.exists() for path in self.search_paths)
 
-    def export_all(self, conn: sqlite3.Connection, incremental: bool = True) -> ExportStats:
+    def export_all(
+        self, conn: sqlite3.Connection, incremental: bool = True
+    ) -> ExportStats:
         """Export all Aider sessions with batching."""
         stats = ExportStats(added=0, updated=0, skipped=0, errors=0)
         batch = []
@@ -114,7 +61,9 @@ class AiderExporter:
                 seen_files.add(file_key)
 
                 try:
-                    session_data, msgs = self._process_history_file(history_file, incremental, conn)
+                    session_data, msgs = self._process_history_file(
+                        history_file, incremental, conn
+                    )
                     if session_data:
                         if session_data.get("status") == "skipped":
                             stats.skipped += 1
@@ -134,7 +83,9 @@ class AiderExporter:
 
         return stats
 
-    def _walk_with_exclusions(self, base_path: Path, excluded_dirs: set[str]) -> list[Path]:
+    def _walk_with_exclusions(
+        self, base_path: Path, excluded_dirs: set[str]
+    ) -> list[Path]:
         """Walk directory tree, skipping excluded directories.
 
         Uses os.walk with in-place directory filtering to avoid
@@ -148,7 +99,8 @@ class AiderExporter:
             dirnames[:] = [
                 d
                 for d in dirnames
-                if d not in excluded_dirs and not any(excl in d for excl in excluded_dirs)
+                if d not in excluded_dirs
+                and not any(excl in d for excl in excluded_dirs)
             ]
 
             if target_file in filenames:
@@ -157,7 +109,10 @@ class AiderExporter:
         return results
 
     def _process_history_file(
-        self, history_file: Path, incremental: bool, conn: sqlite3.Connection | None = None
+        self,
+        history_file: Path,
+        incremental: bool,
+        conn: sqlite3.Connection | None = None,
     ) -> tuple[dict | None, list[dict]]:
         """Process single file and return session data and messages."""
         project_path = str(history_file.parent)

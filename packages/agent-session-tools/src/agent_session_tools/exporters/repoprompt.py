@@ -1,29 +1,16 @@
 """RepoPrompt session exporter."""
 
-import hashlib
 import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ..utils import file_fingerprint
 from .base import ExportStats, commit_batch
 
 # RepoPrompt uses macOS Core Foundation epoch (Jan 1, 2001)
 CF_EPOCH_OFFSET = 978307200
-
-
-def stable_id(prefix: str, key: str) -> str:
-    """Generate stable, deterministic ID from prefix and key."""
-    normalized = str(Path(key).resolve()).lower()
-    hash_bytes = hashlib.sha256(normalized.encode()).hexdigest()[:12]
-    return f"{prefix}_{hash_bytes}"
-
-
-def file_fingerprint(file_path: Path) -> str:
-    """Generate fingerprint from file metadata for change detection."""
-    stat = file_path.stat()
-    return f"{stat.st_mtime}:{stat.st_size}"
 
 
 def cf_timestamp_to_iso(cf_ts: float | None) -> str | None:
@@ -227,7 +214,9 @@ class RepoPromptExporter:
         updated_at = cf_timestamp_to_iso(saved_at) if saved_at else last_ts
 
         # Check if this is an update or new insert
-        is_update = conn.execute("SELECT 1 FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        is_update = conn.execute(
+            "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
 
         session_data = {
             "id": session_id,

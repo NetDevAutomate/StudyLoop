@@ -1,26 +1,12 @@
 """Claude Code session exporter."""
 
-# Utility functions (will be moved to utils module later)
-import hashlib
 import json
 import sqlite3
 import uuid
 from pathlib import Path
 
+from ..utils import file_fingerprint
 from .base import ExportStats, commit_batch
-
-
-def stable_id(prefix: str, key: str) -> str:
-    """Generate stable, deterministic ID from prefix and key."""
-    normalized = str(Path(key).resolve()).lower()
-    hash_bytes = hashlib.sha256(normalized.encode()).hexdigest()[:12]
-    return f"{prefix}_{hash_bytes}"
-
-
-def file_fingerprint(file_path: Path) -> str:
-    """Generate fingerprint from file metadata for change detection."""
-    stat = file_path.stat()
-    return f"{stat.st_mtime}:{stat.st_size}"
 
 
 # Claude Code directories
@@ -57,7 +43,9 @@ class ClaudeCodeExporter:
 
         for agent_file in self.projects_dir.rglob("agent-*.jsonl"):
             try:
-                session_data, msgs = self._process_session_file(conn, agent_file, incremental)
+                session_data, msgs = self._process_session_file(
+                    conn, agent_file, incremental
+                )
                 if session_data:
                     batch.append(session_data)
                     batch_messages.extend(msgs)
@@ -140,7 +128,8 @@ class ClaudeCodeExporter:
                             {
                                 k: v
                                 for k, v in entry.items()
-                                if k not in ("message", "uuid", "parentUuid", "timestamp")
+                                if k
+                                not in ("message", "uuid", "parentUuid", "timestamp")
                             }
                         ),
                     }
@@ -150,7 +139,9 @@ class ClaudeCodeExporter:
             return None, []
 
         # Check if this is an update or new insert
-        is_update = conn.execute("SELECT 1 FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        is_update = conn.execute(
+            "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
 
         session_data = {
             "id": session_id,

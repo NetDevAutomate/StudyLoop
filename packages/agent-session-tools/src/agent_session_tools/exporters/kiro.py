@@ -5,40 +5,10 @@ import sqlite3
 import uuid
 from pathlib import Path
 
-from .base import ExportStats
+from .base import ExportStats, commit_batch
 
 # Kiro CLI database location
 KIRO_DB = Path.home() / "Library/Application Support/kiro-cli/data.sqlite3"
-
-
-def commit_batch(
-    conn: sqlite3.Connection, batch: list, batch_messages: list, stats: ExportStats
-) -> None:
-    """Commit a batch of sessions and messages."""
-    if not batch:
-        return
-
-    conn.executemany(
-        """
-        INSERT OR REPLACE INTO sessions
-        (id, source, project_path, created_at, updated_at)
-        VALUES (:id, :source, :project_path, NULL, NULL)
-        """,
-        batch,
-    )
-
-    if batch_messages:
-        conn.executemany(
-            """
-            INSERT OR REPLACE INTO messages
-            (id, session_id, role, content, model, timestamp, metadata, seq)
-            VALUES (:id, :session_id, :role, :content, :model, :timestamp, :metadata, :seq)
-            """,
-            batch_messages,
-        )
-
-    stats.added += len(batch)
-    conn.commit()
 
 
 class KiroCliExporter:
