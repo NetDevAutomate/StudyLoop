@@ -8,6 +8,9 @@ Only new sessions and messages are transferred using INSERT OR IGNORE.
 from __future__ import annotations
 
 import logging
+import os
+import re
+import shlex
 import shutil
 import sqlite3
 import subprocess
@@ -56,8 +59,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Session ID validation — prevent SQL injection via crafted IDs from remote DBs
+_SAFE_SESSION_ID = re.compile(r"^[a-zA-Z0-9_.-]+$")
+
+
+def _validate_session_ids(session_ids: set[str]) -> set[str]:
+    """Validate session IDs contain only safe characters."""
+    for sid in session_ids:
+        if not _SAFE_SESSION_ID.match(sid):
+            raise ValueError(f"Invalid session ID (unsafe characters): {sid!r}")
+    return session_ids
+
+
 # SSH multiplexing options — reuse connections to avoid port exhaustion
-_SSH_MUX_DIR = Path("/tmp/session-sync-ssh")
+# Use user-private directory instead of /tmp to prevent TOCTOU attacks
+_SSH_MUX_DIR = (
+    Path(os.environ.get("XDG_RUNTIME_DIR", str(Path.home() / ".cache"))) / "session-sync-ssh"
+)
 _SSH_MUX_OPTS = [
     "-o",
     "ControlMaster=auto",
@@ -69,7 +87,7 @@ _SSH_MUX_OPTS = [
 
 
 def _ensure_mux_dir() -> None:
-    _SSH_MUX_DIR.mkdir(mode=0o700, exist_ok=True)
+    _SSH_MUX_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
 
 
 def _resolve_remote(remote: str) -> tuple[str, str]:
@@ -118,7 +136,7 @@ def _remote_sql(host: str, db_path: str, query: str) -> str:
     """Execute a SQL query on the remote DB via SSH and return stdout."""
     _ensure_mux_dir()
     result = subprocess.run(
-        ["ssh", *_SSH_MUX_OPTS, host, f'sqlite3 {db_path} "{query}"'],
+        ["ssh", *_SSH_MUX_OPTS, host, f"sqlite3 {shlex.quote(db_path)} {shlex.quote(query)}"],
         capture_output=True,
         text=True,
     )
@@ -182,6 +200,7 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
     if not session_ids:
         return ""
 
+    _validate_session_ids(session_ids)
     placeholders = ",".join(f"'{sid}'" for sid in session_ids)
     commands = [
         ".mode insert sessions",
@@ -225,7 +244,7 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     else:
         host, db_path = target
         result = subprocess.run(
-            ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {db_path}"],
+            ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(db_path)}"],
             input=sql,
             capture_output=True,
             text=True,
@@ -346,6 +365,7 @@ def pull(
     console.print(f"  New: [cyan]{len(new_ids)}[/cyan], Updated: [cyan]{len(updated_ids)}[/cyan]")
 
     # Dump from remote
+    _validate_session_ids(all_ids)
     placeholders = ",".join(f"'{sid}'" for sid in all_ids)
     commands = []
     for table in SYNC_TABLES:
@@ -354,7 +374,7 @@ def pull(
         commands.append(f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});")
 
     result = subprocess.run(
-        ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {remote_db}"],
+        ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],
         input="\n".join(commands),
         capture_output=True,
         text=True,
@@ -475,6 +495,7 @@ def sync(
     pull_ids = pull_new | pull_updated
     if pull_ids:
         console.print(f"\n[bold]Step 1: Pulling {len(pull_ids)} sessions...[/bold]")
+        _validate_session_ids(pull_ids)
         placeholders = ",".join(f"'{sid}'" for sid in pull_ids)
         commands = []
         for table in SYNC_TABLES:
@@ -483,7 +504,7 @@ def sync(
             commands.append(f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});")
 
         result = subprocess.run(
-            ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {remote_db}"],
+            ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],
             input="\n".join(commands),
             capture_output=True,
             text=True,
