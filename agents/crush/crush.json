@@ -1,0 +1,11 @@
+{
+  "$schema": "https://charm.land/crush.json",
+  "mcp": {
+    "speaker": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "mcp[cli]", "mcp", "run", "/Users/user/code/personal/tools/socratic-study-mentor/agents/mcp/study-speak-server.py"],
+      "timeout": 120
+    }
+  }
+}

@@ -2,6 +2,56 @@
 
 Optional MCP (Model Context Protocol) servers that enhance the study mentor experience.
 
+## Study-Speak TTS
+
+Speak agent responses aloud using local TTS. Wraps the `study-speak` CLI as an MCP tool.
+
+**Install the TTS package:**
+```bash
+uv tool install "./packages/agent-session-tools[tts]" --force
+```
+
+**Agent configs** — each agent's `mcp.json` already references the speaker server. To use it manually:
+
+=== "Kiro CLI"
+
+    The Kiro agent config (`agents/kiro/study-mentor.json`) includes the MCP server automatically. It runs:
+    ```bash
+    uvx --from "mcp[cli]" mcp run agents/mcp/study-speak-server.py
+    ```
+
+=== "Claude Code / Gemini / OpenCode / Amp"
+
+    Add to your MCP config (see agent-specific paths below):
+    ```json
+    {
+      "mcpServers": {
+        "speaker": {
+          "command": "uvx",
+          "args": ["--from", "mcp[cli]", "mcp", "run", "/path/to/socratic-study-mentor/agents/mcp/study-speak-server.py"]
+        }
+      }
+    }
+    ```
+
+**Configuration** — `~/.config/studyctl/config.yaml`:
+
+```yaml
+tts:
+  backend: kokoro        # kokoro | qwen3 | macos
+  voice: am_michael      # kokoro voices: am_michael, af_heart, bf_emma, etc.
+  speed: 1.0             # 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast
+  macos_voice: Samantha  # fallback voice for macOS say
+```
+
+**Toggle during a session:**
+
+- Kiro: `@speak-start` / `@speak-stop`
+- Claude Code: `/speak-start` / `/speak-stop`
+- Others: `@speak-start` / `@speak-stop`
+
+See [Voice Output Guide](../voice-output.md) for full details, backend comparison, and troubleshooting.
+
 ## Apple Calendar & Reminders (macOS only)
 
 Native calendar time-blocking and reminder notifications.
