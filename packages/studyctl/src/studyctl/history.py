@@ -211,6 +211,248 @@ def spaced_repetition_due(topic_keywords_map: dict[str, list[str]]) -> list[dict
     return sorted(due, key=lambda x: x.get("days_ago") or 999, reverse=True)
 
 
+def get_last_session_summary() -> dict | None:
+    """Get a summary of the most recent study session for auto-resume.
+
+    Returns {session_id, source, project_path, started, topics_covered,
+             last_message_preview, concepts_in_progress} or None.
+    """
+    conn = _connect()
+    if not conn:
+        return None
+    try:
+        # Find the most recent session
+        session = conn.execute(
+            """
+            SELECT s.id, s.source, s.project_path, s.created_at, s.updated_at
+            FROM sessions s
+            ORDER BY COALESCE(s.updated_at, s.created_at) DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        if not session:
+            return None
+
+        session_id = session["id"]
+
+        # Get last few messages for context
+        messages = conn.execute(
+            """
+            SELECT role, content FROM messages
+            WHERE session_id = ? AND role IN ('user', 'assistant')
+            ORDER BY COALESCE(seq, rowid) DESC
+            LIMIT 6
+            """,
+            (session_id,),
+        ).fetchall()
+
+        # Get concepts currently in progress
+        in_progress = conn.execute(
+            """
+            SELECT concept, topic, confidence FROM study_progress
+            WHERE confidence IN ('struggling', 'learning')
+            ORDER BY last_seen DESC
+            LIMIT 5
+            """
+        ).fetchall()
+
+        # Extract topic keywords from recent messages
+        study_terms = _get_study_terms()
+        topics_mentioned: set[str] = set()
+        for msg in messages:
+            content = (msg["content"] or "").lower()
+            for term in study_terms:
+                if term in content:
+                    topics_mentioned.add(term)
+
+        # Build preview from last assistant message
+        preview = ""
+        for msg in messages:
+            if msg["role"] == "assistant" and msg["content"]:
+                preview = msg["content"][:200].strip()
+                break
+
+        return {
+            "session_id": session_id,
+            "source": session["source"],
+            "project_path": session["project_path"],
+            "started": session["created_at"],
+            "updated": session["updated_at"],
+            "topics_covered": sorted(topics_mentioned)[:5],
+            "last_message_preview": preview,
+            "concepts_in_progress": [
+                {"concept": r["concept"], "topic": r["topic"], "confidence": r["confidence"]}
+                for r in in_progress
+            ],
+        }
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        conn.close()
+
+
+def get_study_streaks() -> dict:
+    """Calculate study streak data from session history.
+
+    Returns {current_streak, longest_streak, total_days, sessions_this_week,
+             last_session_date, day_counts}.
+    """
+    conn = _connect()
+    if not conn:
+        return {
+            "current_streak": 0,
+            "longest_streak": 0,
+            "total_days": 0,
+            "sessions_this_week": 0,
+            "last_session_date": None,
+        }
+    try:
+        # Get distinct study days (dates only) from last 90 days
+        rows = conn.execute(
+            """
+            SELECT DISTINCT DATE(COALESCE(s.updated_at, s.created_at)) as study_date
+            FROM sessions s
+            WHERE s.created_at > datetime('now', '-90 days')
+            ORDER BY study_date DESC
+            """
+        ).fetchall()
+
+        if not rows:
+            return {
+                "current_streak": 0,
+                "longest_streak": 0,
+                "total_days": 0,
+                "sessions_this_week": 0,
+                "last_session_date": None,
+            }
+
+        study_dates = [datetime.fromisoformat(r["study_date"]).date() for r in rows]
+        today = datetime.now(UTC).date()
+
+        # Calculate current streak (consecutive days ending today or yesterday)
+        current_streak = 0
+        check_date = today
+        for d in study_dates:
+            if d == check_date or d == check_date - timedelta(days=1):
+                current_streak += 1
+                check_date = d - timedelta(days=1)
+            else:
+                break
+
+        # Calculate longest streak
+        longest_streak = 1
+        current_run = 1
+        sorted_dates = sorted(study_dates)
+        for i in range(1, len(sorted_dates)):
+            if (sorted_dates[i] - sorted_dates[i - 1]).days == 1:
+                current_run += 1
+                longest_streak = max(longest_streak, current_run)
+            else:
+                current_run = 1
+
+        # Sessions this week
+        week_start = today - timedelta(days=today.weekday())
+        sessions_this_week = conn.execute(
+            """
+            SELECT COUNT(*) as cnt FROM sessions
+            WHERE DATE(COALESCE(updated_at, created_at)) >= ?
+            """,
+            (week_start.isoformat(),),
+        ).fetchone()["cnt"]
+
+        return {
+            "current_streak": current_streak,
+            "longest_streak": longest_streak,
+            "total_days": len(study_dates),
+            "sessions_this_week": sessions_this_week,
+            "last_session_date": study_dates[0].isoformat() if study_dates else None,
+        }
+    except sqlite3.OperationalError:
+        return {
+            "current_streak": 0,
+            "longest_streak": 0,
+            "total_days": 0,
+            "sessions_this_week": 0,
+            "last_session_date": None,
+        }
+    finally:
+        conn.close()
+
+
+def check_medication_window(medication_config: dict) -> dict | None:
+    """Check current time against medication schedule.
+
+    Args:
+        medication_config: {dose_time: "08:00", onset_minutes: 30,
+                           peak_hours: 4, duration_hours: 8}
+
+    Returns {phase, recommendation, minutes_remaining} or None if not configured.
+    """
+    if not medication_config or "dose_time" not in medication_config:
+        return None
+
+    now = datetime.now()
+    dose_h, dose_m = medication_config["dose_time"].split(":")
+    dose_time = now.replace(hour=int(dose_h), minute=int(dose_m), second=0, microsecond=0)
+
+    # If dose time is in the future, assume yesterday's dose
+    if dose_time > now:
+        dose_time -= timedelta(days=1)
+
+    minutes_since_dose = (now - dose_time).total_seconds() / 60
+    onset = medication_config.get("onset_minutes", 30)
+    peak_hours = medication_config.get("peak_hours", 4)
+    duration_hours = medication_config.get("duration_hours", 8)
+
+    if minutes_since_dose < onset:
+        return {
+            "phase": "onset",
+            "recommendation": "Meds ramping up. Light review or body doubling is a good fit.",
+            "minutes_remaining": int(onset - minutes_since_dose),
+        }
+    elif minutes_since_dose < (peak_hours * 60):
+        return {
+            "phase": "peak",
+            "recommendation": "Peak window. Best time for new material or hard problems.",
+            "minutes_remaining": int(peak_hours * 60 - minutes_since_dose),
+        }
+    elif minutes_since_dose < (duration_hours * 60):
+        return {
+            "phase": "tapering",
+            "recommendation": "Meds tapering. Switch to review or lighter material.",
+            "minutes_remaining": int(duration_hours * 60 - minutes_since_dose),
+        }
+    else:
+        return {
+            "phase": "worn_off",
+            "recommendation": "Meds have worn off. Review-only or body doubling recommended.",
+            "minutes_remaining": 0,
+        }
+
+
+def get_progress_for_map() -> list[dict]:
+    """Get all study progress entries for rendering a progress map.
+
+    Returns list of {topic, concept, confidence, session_count, first_seen, last_seen}.
+    """
+    conn = _connect()
+    if not conn:
+        return []
+    try:
+        rows = conn.execute(
+            """
+            SELECT topic, concept, confidence, session_count, first_seen, last_seen
+            FROM study_progress
+            ORDER BY topic, confidence DESC, concept
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
+    finally:
+        conn.close()
+
+
 def get_wins(days: int = 30) -> list[dict]:
     """Find concepts that improved in confidence over the given period."""
     conn = _connect()

@@ -130,4 +130,12 @@ topics:
     slug: aws-analytics
     obsidian_path: 2-Areas/Study/AWS-Analytics
     tags: [aws, analytics, redshift, athena]
+
+# Medication timing (optional — for ADHD stimulant medication awareness)
+# Uncomment to enable medication-aware session recommendations
+# medication:
+#   dose_time: "08:00"        # When you take your medication (24h format)
+#   onset_minutes: 30         # Minutes until meds kick in
+#   peak_hours: 4             # Hours of peak effectiveness
+#   duration_hours: 8         # Total duration before wearing off
 """

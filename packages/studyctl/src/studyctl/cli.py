@@ -487,6 +487,184 @@ def progress(concept: str, topic: str, confidence: str, notes: str | None) -> No
         console.print("[red]Failed to record progress. Check your session database path.[/red]")
 
 
+# ── auto-resume ───────────────────────────────────────────────────────────────
+
+
+@cli.command()
+def resume() -> None:
+    """Show where you left off — last session summary for quick context reload."""
+    from .history import check_medication_window, get_last_session_summary, get_study_streaks
+
+    summary = get_last_session_summary()
+    if not summary:
+        console.print("[dim]No sessions found. Start a study session to begin tracking![/dim]")
+        return
+
+    console.print("[bold]Where you left off:[/bold]\n")
+
+    # Last session info
+    source = summary["source"].replace("_", " ").title()
+    updated = summary.get("updated") or summary["started"]
+    if updated:
+        updated = updated[:16].replace("T", " ")
+    console.print(f"  Last session: [cyan]{source}[/cyan] ({updated})")
+
+    if summary["topics_covered"]:
+        topics_str = ", ".join(summary["topics_covered"])
+        console.print(f"  Topics: [bold]{topics_str}[/bold]")
+
+    if summary["last_message_preview"]:
+        preview = summary["last_message_preview"]
+        if len(preview) > 150:
+            preview = preview[:150] + "..."
+        console.print(f"  Context: [dim]{preview}[/dim]")
+
+    # Concepts in progress
+    if summary["concepts_in_progress"]:
+        console.print("\n[bold]In progress:[/bold]")
+        for c in summary["concepts_in_progress"]:
+            emoji = "🔧" if c["confidence"] == "struggling" else "📖"
+            console.print(f"  {emoji} {c['concept']} ({c['topic']}) — {c['confidence']}")
+
+    # Streak info
+    streak_data = get_study_streaks()
+    if streak_data["current_streak"] > 0:
+        console.print(
+            f"\n  Streak: [bold green]{streak_data['current_streak']} days[/bold green]"
+            f" (best: {streak_data['longest_streak']})"
+            f" | This week: {streak_data['sessions_this_week']} sessions"
+        )
+
+    # Medication window (if configured)
+    raw_config = {}
+    config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
+    if config_path.exists():
+        import yaml
+
+        raw_config = yaml.safe_load(config_path.read_text()) or {}
+    med_config = raw_config.get("medication")
+    if med_config:
+        med = check_medication_window(med_config)
+        if med:
+            phase_emoji = {
+                "onset": "💊",
+                "peak": "🧠",
+                "tapering": "📉",
+                "worn_off": "😴",
+            }
+            emoji = phase_emoji.get(med["phase"], "💊")
+            console.print(
+                f"\n  {emoji} Meds: [bold]{med['phase']}[/bold] — {med['recommendation']}"
+            )
+
+
+# ── streaks ───────────────────────────────────────────────────────────────────
+
+
+@cli.command()
+def streaks() -> None:
+    """Show your study streak and consistency stats."""
+    from .history import get_study_streaks
+
+    data = get_study_streaks()
+    if not data.get("last_session_date"):
+        console.print("[dim]No study sessions found yet.[/dim]")
+        return
+
+    console.print("\n[bold]Study Consistency[/bold]\n")
+
+    # Current streak with visual
+    current = data["current_streak"]
+    longest = data["longest_streak"]
+    fire = "🔥" if current >= 3 else ""
+    console.print(f"  Current streak: [bold green]{current} days[/bold green] {fire}")
+    console.print(f"  Longest streak: [bold]{longest} days[/bold]")
+    console.print(f"  Study days (last 90): [bold]{data['total_days']}[/bold]")
+    console.print(f"  Sessions this week: [bold]{data['sessions_this_week']}[/bold]")
+    console.print(f"  Last session: {data['last_session_date']}")
+
+    # Weekly consistency bar
+    consistency = data["total_days"] / 90 * 100
+    bar_len = int(consistency / 5)
+    bar = "█" * bar_len + "░" * (20 - bar_len)
+    console.print(f"\n  Consistency: [{bar}] {consistency:.0f}%")
+
+    if current == 0:
+        console.print(
+            "\n  [dim]No session today or yesterday. Start one to keep your streak going![/dim]"
+        )
+
+
+# ── progress map ──────────────────────────────────────────────────────────────
+
+
+@cli.command("progress-map")
+def progress_map() -> None:
+    """Show a visual progress map of all tracked concepts."""
+    from .history import get_progress_for_map
+
+    entries = get_progress_for_map()
+    if not entries:
+        console.print(
+            "[dim]No progress data yet."
+            " Use your study mentor and 'studyctl progress' to start tracking![/dim]"
+        )
+        return
+
+    # Group by topic
+    by_topic: dict[str, list[dict]] = {}
+    for entry in entries:
+        by_topic.setdefault(entry["topic"], []).append(entry)
+
+    # Render confidence levels with visual indicators
+    conf_style = {
+        "mastered": ("🏆", "bold green"),
+        "confident": ("✅", "green"),
+        "learning": ("📖", "yellow"),
+        "struggling": ("🔧", "red"),
+    }
+
+    console.print("\n[bold]Progress Map[/bold]\n")
+
+    for topic, concepts in sorted(by_topic.items()):
+        console.print(f"  [bold cyan]{topic}[/bold cyan]")
+        for c in concepts:
+            emoji, style = conf_style.get(c["confidence"], ("📝", "dim"))
+            sessions = c["session_count"]
+            console.print(
+                f"    {emoji} [{style}]{c['concept']}[/{style}]"
+                f" — {c['confidence']} ({sessions} sessions)"
+            )
+        console.print()
+
+    # Generate Mermaid diagram
+    console.print("[bold]Mermaid diagram (paste into any Mermaid renderer):[/bold]\n")
+    console.print("```mermaid")
+    console.print("graph TD")
+    for topic, concepts in sorted(by_topic.items()):
+        topic_id = topic.replace(" ", "_").replace("-", "_")
+        console.print(f'    {topic_id}["{topic}"]')
+        for c in concepts:
+            concept_id = f"{topic_id}_{c['concept'].replace(' ', '_').replace('-', '_')}"
+            conf = c["confidence"]
+            if conf == "mastered":
+                style = ":::mastered"
+            elif conf == "confident":
+                style = ":::confident"
+            elif conf == "learning":
+                style = ":::learning"
+            else:
+                style = ":::struggling"
+            console.print(f'    {topic_id} --> {concept_id}["{c["concept"]}"]')
+            console.print(f"    class {concept_id} {conf}")
+    console.print()
+    console.print("    classDef mastered fill:#10b981,color:#fff")
+    console.print("    classDef confident fill:#3b82f6,color:#fff")
+    console.print("    classDef learning fill:#f59e0b,color:#000")
+    console.print("    classDef struggling fill:#ef4444,color:#fff")
+    console.print("```")
+
+
 # --- Docs commands ---
 
 
