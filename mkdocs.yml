@@ -65,6 +65,7 @@ nav:
     - AuDHD Framework: audhd-framework.md
     - Socratic Engine: socratic-engine.md
     - Network Bridges: network-bridges.md
+  - Artefacts: artefacts.md
   - Contributing: contributing.md
   - Roadmap: roadmap.md
   - MCP Integrations: mcp.md
