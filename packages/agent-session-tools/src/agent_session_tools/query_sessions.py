@@ -4,7 +4,6 @@
 import json
 import logging
 import sqlite3
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -15,6 +14,13 @@ from rich.panel import Panel
 from rich.table import Table
 
 from agent_session_tools.config_loader import get_log_path, load_config
+from agent_session_tools.formatters import (
+    format_context_only,
+    format_markdown,
+    format_summary,
+    format_xml,
+    render_profile,
+)
 from agent_session_tools.profiles import (
     BUILTIN_PROFILES,
     create_profile,
@@ -23,7 +29,18 @@ from agent_session_tools.profiles import (
     list_profiles,
     load_profile,
 )
-from agent_session_tools.tokens import TIKTOKEN_AVAILABLE, count_tokens, truncate_to_tokens
+from agent_session_tools.query_utils import (
+    build_date_filter,
+    check_thresholds,
+    escape_fts_query,
+    get_db_size,
+    resolve_session_id,
+)
+from agent_session_tools.tokens import (
+    TIKTOKEN_AVAILABLE,
+    count_tokens,
+    truncate_to_tokens,
+)
 
 # VSCode integration temporarily disabled due to circular import
 # from agent_session_tools.integrations.vscode import (
@@ -64,196 +81,6 @@ logging.basicConfig(
     handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
-
-
-def get_db_size(db_path: Path) -> dict:
-    """Get database file size and formatted string."""
-    if not db_path.exists():
-        return {"bytes": 0, "mb": 0, "formatted": "0 B"}
-
-    size_bytes = db_path.stat().st_size
-    size_mb = size_bytes / (1024 * 1024)
-
-    # Format for display
-    if size_mb < 1:
-        formatted = f"{size_bytes / 1024:.2f} KB"
-    elif size_mb < 1024:
-        formatted = f"{size_mb:.2f} MB"
-    else:
-        formatted = f"{size_mb / 1024:.2f} GB"
-
-    return {"bytes": size_bytes, "mb": size_mb, "formatted": formatted}
-
-
-def check_thresholds(size_mb: float) -> dict:
-    """Check if database size exceeds thresholds."""
-    thresholds = config.get("thresholds", {})
-    warning_mb = thresholds.get("warning_mb", 100)
-    critical_mb = thresholds.get("critical_mb", 500)
-
-    result = {
-        "status": "ok",
-        "message": None,
-        "warning_mb": warning_mb,
-        "critical_mb": critical_mb,
-    }
-
-    if size_mb >= critical_mb:
-        result["status"] = "critical"
-        result["message"] = (
-            f"Database size ({size_mb:.2f} MB) exceeds critical threshold ({critical_mb} MB)"
-        )
-        logger.critical(result["message"])
-    elif size_mb >= warning_mb:
-        result["status"] = "warning"
-        result["message"] = (
-            f"Database size ({size_mb:.2f} MB) exceeds warning threshold ({warning_mb} MB)"
-        )
-        logger.warning(result["message"])
-    else:
-        result["message"] = f"Database size ({size_mb:.2f} MB) is within acceptable limits"
-
-    return result
-
-
-def parse_date(date_str: str) -> str:
-    """Parse date string to ISO format for SQL queries.
-
-    Supports:
-    - ISO format: '2024-01-01' -> '2024-01-01T00:00:00'
-    - Relative: 'last-week', 'last-month', 'last-90-days'
-    """
-    date_str = date_str.lower().strip()
-
-    # Relative dates
-    if date_str.startswith("last-"):
-        days_map = {
-            "last-day": 1,
-            "last-week": 7,
-            "last-month": 30,
-            "last-90-days": 90,
-            "last-year": 365,
-        }
-
-        if date_str in days_map:
-            target_date = datetime.now() - timedelta(days=days_map[date_str])
-            return target_date.isoformat()
-
-        # Try parsing 'last-N-days'
-        if date_str.startswith("last-") and date_str.endswith("-days"):
-            try:
-                days = int(date_str[5:-5])  # Extract N from 'last-N-days'
-                target_date = datetime.now() - timedelta(days=days)
-                return target_date.isoformat()
-            except ValueError:
-                pass
-
-    # ISO date format (YYYY-MM-DD)
-    try:
-        parsed = datetime.fromisoformat(date_str)
-        return parsed.isoformat()
-    except ValueError:
-        pass
-
-    # Try parsing as date only
-    try:
-        parsed = datetime.strptime(date_str, "%Y-%m-%d")
-        return parsed.isoformat()
-    except ValueError as err:
-        raise ValueError(
-            f"Invalid date format: {date_str}. Use YYYY-MM-DD or last-week/last-month/last-N-days"
-        ) from err
-
-
-def build_date_filter(since: str | None = None, before: str | None = None) -> tuple[str, list]:
-    """Build SQL WHERE clause for date filtering.
-
-    Returns: (where_clause, params)
-    """
-    conditions = []
-    params = []
-
-    if since:
-        since_iso = parse_date(since)
-        conditions.append("updated_at >= ?")
-        params.append(since_iso)
-
-    if before:
-        before_iso = parse_date(before)
-        conditions.append("updated_at <= ?")
-        params.append(before_iso)
-
-    where_clause = " AND ".join(conditions) if conditions else ""
-    return where_clause, params
-
-
-def escape_fts_query(query: str) -> str:
-    """Escape a query string for FTS5 MATCH.
-
-    With porter stemming enabled, we can use simpler queries that match variants.
-    For example: "create" will match "created", "creating", "creates".
-
-    Wraps the query in double quotes for phrase search when needed, but allows
-    simple word queries to benefit from stemming.
-    """
-    # Remove any existing quotes
-    query = query.strip().strip('"').strip("'")
-
-    # If query contains FTS operators (AND, OR, NOT), use as-is
-    if any(op in query.upper() for op in [" AND ", " OR ", " NOT "]):
-        return query
-
-    # For simple queries, escape quotes and use as phrase if multi-word
-    escaped = query.replace('"', '""')
-
-    # Multi-word queries become phrases
-    if " " in escaped:
-        return f'"{escaped}"'
-
-    # Single words benefit from stemming without quotes
-    return escaped
-
-
-def resolve_session_id(conn: sqlite3.Connection, user_input: str) -> str:
-    """Resolve partial session ID to full ID safely.
-
-    Args:
-        conn: Database connection
-        user_input: User-provided session ID (partial or full)
-
-    Returns:
-        Full session ID
-
-    Raises:
-        ValueError: If session not found or ambiguous
-    """
-    # Try exact match first (fastest)
-    exact = conn.execute("SELECT id FROM sessions WHERE id = ?", (user_input,)).fetchone()
-    if exact:
-        return exact[0]
-
-    # Try prefix match
-    matches = conn.execute(
-        "SELECT id, source, project_path FROM sessions WHERE id LIKE ? LIMIT 10",
-        (f"{user_input}%",),
-    ).fetchall()
-
-    if len(matches) == 0:
-        raise ValueError(f"No sessions found matching: {user_input}")
-    elif len(matches) == 1:
-        return matches[0][0]
-    else:
-        # Multiple matches - show disambiguation
-        error_msg = [f"Multiple sessions match '{user_input}':"]
-        for i, (session_id, source, project) in enumerate(matches[:5], 1):
-            project_short = (project or "Unknown")[:50]
-            error_msg.append(f"  {i}. [{source}] {session_id} | {project_short}")
-
-        if len(matches) > 5:
-            error_msg.append(f"  ... and {len(matches) - 5} more")
-
-        error_msg.append("\nUse more characters or the full session ID.")
-        raise ValueError("\n".join(error_msg))
 
 
 def search(
@@ -400,7 +227,9 @@ def list_sessions(
         # Table output (default)
         for s in results:
             session_id = s["id"] if full_ids else f"{s['id'][:20]}..."
-            print(f"[{s['source']}] {session_id} | {s['project_path']} | {s['updated_at']}")
+            print(
+                f"[{s['source']}] {session_id} | {s['project_path']} | {s['updated_at']}"
+            )
 
 
 def show_session(conn: sqlite3.Connection, session_id: str) -> None:
@@ -435,7 +264,7 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
     # Database size information
     db_path = Path(conn.execute("PRAGMA database_list").fetchone()[2])
     size_info = get_db_size(db_path)
-    threshold_check = check_thresholds(size_info["mb"])
+    threshold_check = check_thresholds(size_info["mb"], config)
 
     if use_rich:
         # Rich TUI output
@@ -465,13 +294,17 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
                 f"[{status_color}]⚠️  {threshold_check['message']}[/{status_color}]",
             )
 
-        console.print(Panel(overview, title="📊 Database Overview", border_style=status_color))
+        console.print(
+            Panel(overview, title="📊 Database Overview", border_style=status_color)
+        )
 
         # Sessions by source
         sessions_table = Table(title="Sessions by Source", box=box.SIMPLE)
         sessions_table.add_column("Source", style="cyan")
         sessions_table.add_column("Count", justify="right", style="green")
-        for r in conn.execute("SELECT source, COUNT(*) as cnt FROM sessions GROUP BY source"):
+        for r in conn.execute(
+            "SELECT source, COUNT(*) as cnt FROM sessions GROUP BY source"
+        ):
             sessions_table.add_row(r["source"], str(r["cnt"]))
         console.print(sessions_table)
 
@@ -516,7 +349,9 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
         print(f"\n{'=' * 50}")
         print("SESSIONS BY SOURCE")
         print(f"{'=' * 50}")
-        for r in conn.execute("SELECT source, COUNT(*) as cnt FROM sessions GROUP BY source"):
+        for r in conn.execute(
+            "SELECT source, COUNT(*) as cnt FROM sessions GROUP BY source"
+        ):
             print(f"  {r['source']}: {r['cnt']}")
 
         print(f"\n{'=' * 50}")
@@ -544,7 +379,7 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
 def check_size(db_path: Path) -> int:
     """Check database size against thresholds."""
     size_info = get_db_size(db_path)
-    threshold_check = check_thresholds(size_info["mb"])
+    threshold_check = check_thresholds(size_info["mb"], config)
 
     print("\nDatabase Size Check")
     print("=" * 50)
@@ -595,7 +430,9 @@ def export_context(
             print(f"❌ Failed to load profile '{profile}': {e}")
             return
 
-        defaults = profile_obj.get("defaults", {}) if isinstance(profile_obj, dict) else {}
+        defaults = (
+            profile_obj.get("defaults", {}) if isinstance(profile_obj, dict) else {}
+        )
         if max_tokens is None:
             max_tokens = defaults.get("max_tokens")
         if last_n is None:
@@ -612,7 +449,9 @@ def export_context(
         format_type = "compressed"
 
     # Get session info
-    session = conn.execute("SELECT * FROM sessions WHERE id = ?", (resolved_id,)).fetchone()
+    session = conn.execute(
+        "SELECT * FROM sessions WHERE id = ?", (resolved_id,)
+    ).fetchone()
 
     if not session:
         print(f"❌ Session not found: {resolved_id}")
@@ -659,7 +498,9 @@ def export_context(
         try:
             output = render_profile(profile_obj, session, filtered)
         except Exception as e:
-            print(f"❌ Failed to render profile '{profile_obj.get('name', profile)}': {e}")
+            print(
+                f"❌ Failed to render profile '{profile_obj.get('name', profile)}': {e}"
+            )
             return
     elif format_type == "markdown":
         output = format_markdown(session, filtered, compressed=False)
@@ -682,203 +523,17 @@ def export_context(
             char_limit = max_tokens * 4
             output = output[:char_limit]
             output += f"\n\n*[Truncated to fit {max_tokens} token budget]*"
-            console.print(f"[yellow]⚠️  Output truncated: {tokens} → {max_tokens} tokens[/yellow]")
+            console.print(
+                f"[yellow]⚠️  Output truncated: {tokens} → {max_tokens} tokens[/yellow]"
+            )
 
     print(output)
 
     # Show stats
     tokens = estimate_tokens(output)
-    console.print(f"\n[dim]Exported {len(filtered)} messages (~{tokens:,} tokens)[/dim]")
-
-
-def render_profile(profile: dict, session: dict, messages: list) -> str:
-    """Render session using profile template with placeholder substitution.
-
-    Supported placeholders:
-    - {session_id}, {project_path}, {source}, {updated_at}
-    - {messages} - formatted message content
-    - {message_count} - number of messages
-    """
-    template = profile.get("template", "")
-    if not template:
-        # Fall back to compressed markdown if no template
-        return format_markdown(session, messages, compressed=True)
-
-    # Format messages for insertion
-    msg_lines = []
-    for msg in messages:
-        role = msg["role"].upper()
-        content = msg.get("content", "")
-        if content:
-            msg_lines.append(f"**{role}**: {content}")
-
-    # Substitute placeholders
-    output = template.format(
-        session_id=session.get("id", ""),
-        project_path=session.get("project_path", ""),
-        source=session.get("source", ""),
-        updated_at=session.get("updated_at", ""),
-        messages="\n\n".join(msg_lines),
-        message_count=len(messages),
+    console.print(
+        f"\n[dim]Exported {len(filtered)} messages (~{tokens:,} tokens)[/dim]"
     )
-    return output
-
-
-def format_markdown(session: dict, messages: list, compressed: bool = False) -> str:
-    """Format session as Markdown."""
-    lines = []
-
-    if not compressed:
-        lines.append(f"# Session Context: {session['project_path'] or 'Unknown'}")
-        lines.append(f"**Session ID:** {session['id'][:16]}...")
-        lines.append(f"**Updated:** {session['updated_at'] or 'Unknown'}")
-        lines.append(f"**Source:** {session['source']}")
-        lines.append("")
-    else:
-        lines.append(f"# Context: {session['project_path'] or 'Session'}")
-        lines.append("")
-
-    for msg in messages:
-        role = msg["role"]
-        content = msg["content"] or ""
-
-        if role == "user":
-            lines.append(f"**Q:** {content}")
-            lines.append("")
-        elif role == "assistant":
-            if compressed:
-                # Compress long responses
-                if len(content) > 1000 and "```" not in content:
-                    # Extract key points (first few sentences)
-                    sentences = content.split(". ")[:3]
-                    content = ". ".join(sentences) + "..."
-                lines.append(f"**A:** {content}")
-            else:
-                lines.append("### Assistant")
-                lines.append(content)
-            lines.append("")
-        elif role in ["tool_use", "tool_result"]:
-            # Only included if --include-tools flag set
-            lines.append(f"*[{role}]*")
-            lines.append("")
-
-    return "\n".join(lines)
-
-
-def format_xml(session: dict, messages: list) -> str:
-    """Format session as Claude-optimized XML."""
-    lines = []
-    lines.append('<?xml version="1.0" encoding="UTF-8"?>')
-    lines.append(
-        f'<session id="{session["id"][:16]}" project="{session["project_path"] or "unknown"}">'
-    )
-    lines.append("  <metadata>")
-    lines.append(f"    <updated>{session['updated_at']}</updated>")
-    lines.append(f"    <source>{session['source']}</source>")
-    lines.append("  </metadata>")
-    lines.append("  <conversation>")
-
-    for msg in messages:
-        role = msg["role"]
-        content = msg["content"] or ""
-
-        # Escape XML special characters
-        content = content.replace("&", "&").replace("<", "<").replace(">", ">")
-
-        if role == "user":
-            lines.append('    <turn role="user">')
-            lines.append(f"      <content>{content}</content>")
-            lines.append("    </turn>")
-        elif role == "assistant":
-            lines.append('    <turn role="assistant">')
-            # Extract code blocks
-            if "```" in content:
-                parts = content.split("```")
-                for i, part in enumerate(parts):
-                    if i % 2 == 0:
-                        if part.strip():
-                            lines.append(f"      <content>{part.strip()}</content>")
-                    else:
-                        # Code block
-                        code_lines = part.split("\n", 1)
-                        lang = code_lines[0] if code_lines else ""
-                        code = code_lines[1] if len(code_lines) > 1 else ""
-                        lines.append(f'      <code language="{lang}">')
-                        lines.append(f"{code}")
-                        lines.append("      </code>")
-            else:
-                lines.append(f"      <content>{content}</content>")
-            lines.append("    </turn>")
-
-    lines.append("  </conversation>")
-    lines.append("</session>")
-
-    return "\n".join(lines)
-
-
-def format_summary(session: dict, messages: list) -> str:
-    """Format as concise summary with key points."""
-    lines = []
-    lines.append(f"# Session Summary: {session['project_path'] or 'Unknown'}")
-    lines.append("")
-
-    # Extract key information
-    user_msgs = [m for m in messages if m["role"] == "user"]
-    assistant_msgs = [m for m in messages if m["role"] == "assistant"]
-
-    # Main topic (first user message)
-    if user_msgs:
-        lines.append(f"**Topic:** {user_msgs[0]['content'][:200]}...")
-        lines.append("")
-
-    # Extract code blocks from all messages
-    code_blocks = []
-    for msg in assistant_msgs:
-        if msg["content"] and "```" in msg["content"]:
-            # Extract code
-            parts = msg["content"].split("```")
-            for i in range(1, len(parts), 2):
-                code_blocks.append(parts[i])
-
-    if code_blocks:
-        lines.append("## Key Code")
-        for block in code_blocks[:3]:  # Limit to 3 blocks
-            lines.append(f"```{block}```")
-            lines.append("")
-
-    # Key points (from assistant messages)
-    lines.append("## Key Points")
-    for i, msg in enumerate(assistant_msgs[:5], 1):  # Limit to 5 messages
-        if msg["content"]:
-            # Extract first sentence or two
-            content = msg["content"][:300]
-            if "```" in content:
-                content = content.split("```")[0]  # Text before code
-            lines.append(f"{i}. {content.strip()}")
-    lines.append("")
-
-    return "\n".join(lines)
-
-
-def format_context_only(session: dict, messages: list) -> str:
-    """Format as context-only (code + technical info)."""
-    lines = []
-    lines.append(f"# Technical Context: {session['project_path'] or 'Project'}")
-    lines.append("")
-
-    # Extract all code blocks
-    lines.append("## Code Implementations")
-    lines.append("")
-
-    for msg in messages:
-        if msg["content"] and "```" in msg["content"]:
-            # Extract code blocks
-            parts = msg["content"].split("```")
-            for i in range(1, len(parts), 2):
-                lines.append(f"```{parts[i]}```")
-                lines.append("")
-
-    return "\n".join(lines)
 
 
 def continue_session(
@@ -897,7 +552,9 @@ def continue_session(
         return
 
     # Get session info
-    session = conn.execute("SELECT * FROM sessions WHERE id = ?", (resolved_id,)).fetchone()
+    session = conn.execute(
+        "SELECT * FROM sessions WHERE id = ?", (resolved_id,)
+    ).fetchone()
 
     if not session:
         print(f"❌ Session not found: {resolved_id}")
@@ -980,7 +637,8 @@ def _generate_resume_context(session: dict, messages: list, max_tokens: int) -> 
             if any(marker in line_lower for marker in ["todo", "fixme", "next steps"]):
                 todos.append(line.strip()[:200])
             elif any(
-                marker in line_lower for marker in ["decided", "chosen", "implemented", "using"]
+                marker in line_lower
+                for marker in ["decided", "chosen", "implemented", "using"]
             ):
                 decisions.append(line.strip()[:200])
 
@@ -1070,7 +728,9 @@ def _generate_summary_context(session: dict, messages: list, max_tokens: int) ->
     # Count outcomes
     lines.append("## Outcomes")
     lines.append(f"- {len(messages)} total messages")
-    lines.append(f"- {len([m for m in messages if '```' in (m['content'] or '')])} code blocks")
+    lines.append(
+        f"- {len([m for m in messages if '```' in (m['content'] or '')])} code blocks"
+    )
     lines.append(
         f"- Session duration: {session.get('created_at', '')} to {session.get('updated_at', '')}"
     )
@@ -1102,10 +762,15 @@ def search_cmd(
     db: Annotated[Path | None, db_option] = None,
     limit: Annotated[int, typer.Option("-n", "--limit", help="Max results")] = 10,
     since: Annotated[
-        str | None, typer.Option(help="Filter by date (YYYY-MM-DD or last-week/last-month)")
+        str | None,
+        typer.Option(help="Filter by date (YYYY-MM-DD or last-week/last-month)"),
     ] = None,
-    before: Annotated[str | None, typer.Option(help="Filter by date (YYYY-MM-DD)")] = None,
-    output_format: Annotated[str, typer.Option("--output-format", help="Output format")] = "table",
+    before: Annotated[
+        str | None, typer.Option(help="Filter by date (YYYY-MM-DD)")
+    ] = None,
+    output_format: Annotated[
+        str, typer.Option("--output-format", help="Output format")
+    ] = "table",
 ) -> None:
     """Full-text search across message content."""
     conn = get_connection(db)
@@ -1119,16 +784,25 @@ def list_cmd(
     source: Annotated[
         str | None,
         typer.Option(
-            "-s", "--source", help="Filter by source (claude_code, kiro_cli, gemini_cli, etc.)"
+            "-s",
+            "--source",
+            help="Filter by source (claude_code, kiro_cli, gemini_cli, etc.)",
         ),
     ] = None,
     limit: Annotated[int, typer.Option("-n", "--limit", help="Max results")] = 20,
-    full: Annotated[bool, typer.Option("-f", "--full", help="Show full session IDs")] = False,
+    full: Annotated[
+        bool, typer.Option("-f", "--full", help="Show full session IDs")
+    ] = False,
     since: Annotated[
-        str | None, typer.Option(help="Filter by date (YYYY-MM-DD or last-week/last-month)")
+        str | None,
+        typer.Option(help="Filter by date (YYYY-MM-DD or last-week/last-month)"),
     ] = None,
-    before: Annotated[str | None, typer.Option(help="Filter by date (YYYY-MM-DD)")] = None,
-    output_format: Annotated[str, typer.Option("--output-format", help="Output format")] = "table",
+    before: Annotated[
+        str | None, typer.Option(help="Filter by date (YYYY-MM-DD)")
+    ] = None,
+    output_format: Annotated[
+        str, typer.Option("--output-format", help="Output format")
+    ] = "table",
 ) -> None:
     """List recent sessions."""
     conn = get_connection(db)
@@ -1169,13 +843,16 @@ def context(
     format_type: Annotated[
         str | None,
         typer.Option(
-            "--format", help="Output format (markdown, xml, compressed, summary, context-only)"
+            "--format",
+            help="Output format (markdown, xml, compressed, summary, context-only)",
         ),
     ] = None,
     max_tokens: Annotated[
         int | None, typer.Option("--max-tokens", help="Limit output to N tokens")
     ] = None,
-    last: Annotated[int | None, typer.Option("--last", help="Only export last N messages")] = None,
+    last: Annotated[
+        int | None, typer.Option("--last", help="Only export last N messages")
+    ] = None,
     include_tools: Annotated[
         bool, typer.Option("--include-tools", help="Include tool use/results")
     ] = False,
@@ -1203,9 +880,12 @@ def continue_cmd(
     session_id: Annotated[str, typer.Argument(help="Session ID to continue")],
     db: Annotated[Path | None, db_option] = None,
     continuation_type: Annotated[
-        str, typer.Option("--type", help="Continuation type (resume, branch, summarize)")
+        str,
+        typer.Option("--type", help="Continuation type (resume, branch, summarize)"),
     ] = "resume",
-    max_tokens: Annotated[int, typer.Option("--max-tokens", help="Max tokens for context")] = 8000,
+    max_tokens: Annotated[
+        int, typer.Option("--max-tokens", help="Max tokens for context")
+    ] = 8000,
     copy: Annotated[
         bool, typer.Option("--copy", help="Copy to clipboard (requires pyperclip)")
     ] = False,
@@ -1221,7 +901,9 @@ def tag(
     session_id: Annotated[str, typer.Argument(help="Session ID")],
     db: Annotated[Path | None, db_option] = None,
     add: Annotated[list[str] | None, typer.Option("--add", help="Tags to add")] = None,
-    remove: Annotated[list[str] | None, typer.Option("--remove", help="Tags to remove")] = None,
+    remove: Annotated[
+        list[str] | None, typer.Option("--remove", help="Tags to remove")
+    ] = None,
 ) -> None:
     """Manage session tags."""
     conn = get_connection(db)
@@ -1249,7 +931,8 @@ def tag(
     if remove:
         for t in remove:
             conn.execute(
-                "DELETE FROM session_tags WHERE session_id = ? AND tag = ?", (resolved_id, t)
+                "DELETE FROM session_tags WHERE session_id = ? AND tag = ?",
+                (resolved_id, t),
             )
         print(f"✅ Removed tags from {resolved_id[:20]}...: {', '.join(remove)}")
 
@@ -1337,7 +1020,8 @@ def note(
 
     else:
         note_row = conn.execute(
-            "SELECT notes, updated_at FROM session_notes WHERE session_id = ?", (resolved_id,)
+            "SELECT notes, updated_at FROM session_notes WHERE session_id = ?",
+            (resolved_id,),
         ).fetchone()
 
         if note_row:
@@ -1405,7 +1089,9 @@ def create(
     from_profile: Annotated[
         str | None, typer.Option("--from", help="Base profile to copy from")
     ] = None,
-    overwrite: Annotated[bool, typer.Option("--overwrite", help="Overwrite if exists")] = False,
+    overwrite: Annotated[
+        bool, typer.Option("--overwrite", help="Overwrite if exists")
+    ] = False,
     edit: Annotated[
         bool, typer.Option("--edit", help="Open the profile in $EDITOR after creation")
     ] = False,
@@ -1486,7 +1172,9 @@ def path() -> None:
 @vscode_app.command()
 def snippet(
     session_id: Annotated[str, typer.Argument(help="Session ID to export")],
-    workspace: Annotated[Path, typer.Option("-w", "--workspace", help="VSCode workspace path")],
+    workspace: Annotated[
+        Path, typer.Option("-w", "--workspace", help="VSCode workspace path")
+    ],
     db: Annotated[Path | None, db_option] = None,
 ) -> None:
     """Export session as VSCode snippet."""
@@ -1497,8 +1185,12 @@ def snippet(
 
 @vscode_app.command()
 def setup(
-    workspace: Annotated[Path, typer.Option("-w", "--workspace", help="VSCode workspace path")],
-    db_path: Annotated[Path | None, typer.Option("--db-path", help="Session database path")] = None,
+    workspace: Annotated[
+        Path, typer.Option("-w", "--workspace", help="VSCode workspace path")
+    ],
+    db_path: Annotated[
+        Path | None, typer.Option("--db-path", help="Session database path")
+    ] = None,
     db: Annotated[Path | None, db_option] = None,
 ) -> None:
     """Setup VSCode workspace for session integration."""
