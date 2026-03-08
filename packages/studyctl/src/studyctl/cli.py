@@ -564,7 +564,7 @@ def docs_open() -> None:
     index = site_dir / "index.html"
     if index.exists():
         webbrowser.open(f"file://{index}")
-        console.print(f"[green]Opened docs in browser[/green]")
+        console.print("[green]Opened docs in browser[/green]")
     else:
         console.print("[red]Build failed — site/index.html not found[/red]")
 
@@ -605,7 +605,9 @@ def docs_read(page: str) -> None:
         if len(matches) == 1:
             md_file = matches[0]
         else:
-            console.print(f"[red]Page '{page}' not found.[/red] Run [bold]studyctl docs list[/bold]")
+            console.print(
+                f"[red]Page '{page}' not found.[/red] Run [bold]studyctl docs list[/bold]"
+            )
             return
 
     text = _strip_markdown(md_file.read_text())
@@ -615,7 +617,10 @@ def docs_read(page: str) -> None:
 
     speak_bin = Path.home() / ".local" / "bin" / "study-speak"
     if not speak_bin.exists():
-        console.print("[red]study-speak not installed.[/red] Run: uv tool install './packages/agent-session-tools[tts]'")
+        console.print(
+            "[red]study-speak not installed.[/red]"
+            " Run: uv tool install './packages/agent-session-tools[tts]'"
+        )
         return
 
     console.print(f"[bold]📖 Reading: {md_file.stem}[/bold]")

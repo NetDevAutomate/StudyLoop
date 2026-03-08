@@ -19,7 +19,10 @@ _SPEAK_BIN = Path.home() / ".local" / "bin" / "study-speak"
 
 @mcp.tool()
 def speak(text: str) -> str:
-    """Speak text aloud using TTS. When voice is enabled, call this with your full response text (excluding code blocks)."""
+    """Speak text aloud using TTS.
+
+    When voice is enabled, call this with your full response text (excluding code blocks).
+    """
     try:
         subprocess.run([str(_SPEAK_BIN), text], check=True, timeout=120, capture_output=True)
         return f"🔊 Spoke: {text[:80]}..."

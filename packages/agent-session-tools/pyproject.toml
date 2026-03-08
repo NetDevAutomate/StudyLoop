@@ -5,7 +5,7 @@ description = "Session management tools for Claude Code and Kiro CLI conversatio
 authors = [
     {name = "Andy Taylor"}
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "rich>=13.7.0",
     "pyyaml>=6.0",
@@ -22,9 +22,8 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Database",
     "Typing :: Typed",
@@ -106,22 +105,13 @@ dev = [
     "pre-commit>=3.5.0",
 ]
 
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-src = ["src", "tests"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
-
 [tool.ruff.lint.isort]
 known-first-party = ["agent_session_tools"]
 
 [tool.pyright]
 include = ["src"]
 exclude = ["**/__pycache__"]
-pythonVersion = "3.10"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"
 reportMissingImports = true
 reportMissingTypeStubs = false
