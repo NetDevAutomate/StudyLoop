@@ -123,5 +123,5 @@ Features identified through comprehensive code review:
 - [ ] **Medication timing awareness** — optional config for cognitive windows (onset/peak/wearing off), adapt session type to medication schedule
 - [ ] **Visual progress map** — Mermaid-rendered skill tree showing mastered/in-progress/next topics as a dependency graph
 - [ ] **Routine building / streak tracking** — cue-routine-reward loops, session streaks with factual tracking (not gamification)
-- [ ] **Interleaving suppression on low-energy days** — automatic rule to disable topic mixing when energy < 4
-- [ ] **Custom admonition style guide** — document the 6 custom admonition types for contributors
+- [x] **Interleaving suppression on low-energy days** — automatic rule to disable topic mixing when energy < 4
+- [x] **Custom admonition style guide** — document the 7 custom admonition types for contributors
