@@ -22,7 +22,9 @@ class LitellmExporter:
 
     source_name = "litellm-proxy"
 
-    def __init__(self, litellm_db_path: Path | None = None, session_timeout_minutes: int = 30):
+    def __init__(
+        self, litellm_db_path: Path | None = None, session_timeout_minutes: int = 30
+    ):
         """Initialize LiteLLM exporter.
 
         Args:
@@ -50,7 +52,9 @@ class LitellmExporter:
         """Check if LiteLLM database is available."""
         return self.litellm_db_path is not None and self.litellm_db_path.exists()
 
-    def export_all(self, conn: sqlite3.Connection, incremental: bool = True) -> ExportStats:
+    def export_all(
+        self, conn: sqlite3.Connection, incremental: bool = True
+    ) -> ExportStats:
         """Export LiteLLM webhook metrics as sessions.
 
         Strategy:
@@ -95,7 +99,9 @@ class LitellmExporter:
                 return stats
 
             # Group records into inferred sessions
-            sessions = self._detect_sessions(webhook_records, full_conversations_available)
+            sessions = self._detect_sessions(
+                webhook_records, full_conversations_available
+            )
 
             # Export each session
             for session in sessions:
@@ -126,13 +132,17 @@ class LitellmExporter:
                 return False
 
             # Check if table has data
-            count = litellm_conn.execute("SELECT COUNT(*) FROM webhook_conversations").fetchone()[0]
+            count = litellm_conn.execute(
+                "SELECT COUNT(*) FROM webhook_conversations"
+            ).fetchone()[0]
             return count > 0
 
         except Exception:
             return False
 
-    def _detect_sessions(self, webhook_records: list, full_content: bool = False) -> list[dict]:
+    def _detect_sessions(
+        self, webhook_records: list, full_content: bool = False
+    ) -> list[dict]:
         """Detect session boundaries from webhook records.
 
         Strategy: Group requests by temporal clustering since user_id not available
@@ -156,7 +166,8 @@ class LitellmExporter:
 
                 # Determine if new session needed
                 start_new_session = current_session is None or (
-                    last_timestamp and (record_time - last_timestamp) > self.session_timeout
+                    last_timestamp
+                    and (record_time - last_timestamp) > self.session_timeout
                 )
 
                 if start_new_session:
@@ -185,7 +196,9 @@ class LitellmExporter:
 
                 # Add request to current session
                 if current_session:
-                    self._add_request_to_session(current_session, record, raw_data, full_content)
+                    self._add_request_to_session(
+                        current_session, record, raw_data, full_content
+                    )
                     last_timestamp = record_time
 
             except Exception:
@@ -208,7 +221,9 @@ class LitellmExporter:
             # Update session metadata (sqlite3.Row access)
             metadata = session["metadata"]
             metadata["total_requests"] += 1
-            metadata["total_tokens"] += record["tokens_used"] if record["tokens_used"] else 0
+            metadata["total_tokens"] += (
+                record["tokens_used"] if record["tokens_used"] else 0
+            )
 
             if record["event_type"] == "failure":
                 metadata["error_count"] += 1
@@ -225,21 +240,29 @@ class LitellmExporter:
             message_id = raw_data.get("request_id", str(uuid.uuid4()))
 
             # Extract content based on available data source
-            if full_content and "conversation_json" in record and record["conversation_json"]:
+            if (
+                full_content
+                and "conversation_json" in record
+                and record["conversation_json"]
+            ):
                 # Extract from full conversation data
                 user_content, assistant_content = self._extract_full_conversation(
                     record["conversation_json"]
                 )
             else:
                 # Use preview content
-                user_content = raw_data.get("request_preview", "") or f"[LiteLLM Request: {model}]"
+                user_content = (
+                    raw_data.get("request_preview", "") or f"[LiteLLM Request: {model}]"
+                )
                 if record["event_type"] == "success":
                     assistant_content = (
                         raw_data.get("response_preview", "")
                         or f"[LiteLLM Response: {record['tokens_used'] or 0} tokens]"
                     )
                 else:
-                    assistant_content = f"[Error: {record['error_message'] or 'Unknown error'}]"
+                    assistant_content = (
+                        f"[Error: {record['error_message'] or 'Unknown error'}]"
+                    )
 
             user_message = {
                 "id": f"{message_id}_user",
@@ -322,7 +345,11 @@ class LitellmExporter:
                     user_content = user_messages[-1].get("content", "")
 
             # Alternative: kwargs format
-            if not user_content and "kwargs" in conv_data and "messages" in conv_data["kwargs"]:
+            if (
+                not user_content
+                and "kwargs" in conv_data
+                and "messages" in conv_data["kwargs"]
+            ):
                 messages = conv_data["kwargs"]["messages"]
                 user_messages = [msg for msg in messages if msg.get("role") == "user"]
                 if user_messages:
@@ -350,13 +377,17 @@ class LitellmExporter:
         except (json.JSONDecodeError, KeyError, TypeError, IndexError):
             return "", ""
 
-    def _export_session(self, conn: sqlite3.Connection, session: dict, incremental: bool) -> bool:
+    def _export_session(
+        self, conn: sqlite3.Connection, session: dict, incremental: bool
+    ) -> bool:
         """Export single session to Agent Session Tools database."""
         session_id = session["id"]
 
         # Check if already imported (incremental mode)
         if incremental:
-            existing = conn.execute("SELECT 1 FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            existing = conn.execute(
+                "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
+            ).fetchone()
             if existing:
                 return False
 

@@ -83,7 +83,9 @@ class GeminiCliExporter:
 
         return stats
 
-    def _parse_session_file(self, session_file: Path):
+    def _parse_session_file(
+        self, session_file: Path
+    ) -> tuple[str, str, list[dict], str | None, str | None] | None:
         """Parse session file and return session data."""
         try:
             with open(session_file) as f:
@@ -101,7 +103,11 @@ class GeminiCliExporter:
             # Convert timestamp from milliseconds (may be string or int)
             ts_ms = msg.get("timestamp")
             try:
-                timestamp = datetime.fromtimestamp(int(ts_ms) / 1000).isoformat() if ts_ms else None
+                timestamp = (
+                    datetime.fromtimestamp(int(ts_ms) / 1000).isoformat()
+                    if ts_ms
+                    else None
+                )
             except (ValueError, TypeError):
                 timestamp = None
 

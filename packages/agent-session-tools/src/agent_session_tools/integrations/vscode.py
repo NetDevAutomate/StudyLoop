@@ -12,7 +12,10 @@ from typing import Any
 
 
 def export_session_as_snippet(
-    conn: sqlite3.Connection, session_id: str, workspace_path: str | Path, resolve_fn=None
+    conn: sqlite3.Connection,
+    session_id: str,
+    workspace_path: str | Path,
+    resolve_fn=None,
 ) -> dict[str, Any]:
     """Export a session as a VSCode snippet.
 
@@ -48,7 +51,9 @@ def export_session_as_snippet(
             resolved_id = matches[0][0]
 
     # Get session info
-    session = conn.execute("SELECT * FROM sessions WHERE id = ?", (resolved_id,)).fetchone()
+    session = conn.execute(
+        "SELECT * FROM sessions WHERE id = ?", (resolved_id,)
+    ).fetchone()
     if not session:
         raise ValueError(f"Session not found: {resolved_id}")
 
@@ -128,7 +133,9 @@ def export_session_as_snippet(
     }
 
 
-def create_workspace_settings(workspace_path: str | Path, session_db_path: str | Path) -> str:
+def create_workspace_settings(
+    workspace_path: str | Path, session_db_path: str | Path
+) -> str:
     """Create VSCode workspace settings to reference session database.
 
     Args:

@@ -15,9 +15,15 @@ _SPEAK_BIN = Path.home() / ".local" / "bin" / "study-speak"
 def speak(text: str) -> str:
     """Speak text aloud using TTS. Use for Socratic questions when voice is enabled (@speak-start)."""
     try:
-        subprocess.run([str(_SPEAK_BIN), text], check=True, timeout=30, capture_output=True)
+        subprocess.run(
+            [str(_SPEAK_BIN), text], check=True, timeout=30, capture_output=True
+        )
         return f"🔊 Spoke: {text}"
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ) as e:
         return f"TTS failed (continuing without voice): {e}"
 
 

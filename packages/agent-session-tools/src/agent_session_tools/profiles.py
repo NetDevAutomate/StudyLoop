@@ -56,7 +56,11 @@ def list_profiles() -> list[dict[str, Any]]:
     # Add built-in profiles
     for name, profile in BUILTIN_PROFILES.items():
         profiles.append(
-            {"name": name, "description": profile.get("description", ""), "origin": "builtin"}
+            {
+                "name": name,
+                "description": profile.get("description", ""),
+                "origin": "builtin",
+            }
         )
 
     # Add custom profiles

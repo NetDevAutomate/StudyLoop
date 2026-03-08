@@ -515,7 +515,9 @@ def format_suggested_context(
     lines.append(
         "- **High confidence** results are likely directly relevant - review code and approach"
     )
-    lines.append("- **Medium confidence** may have useful patterns but verify applicability")
+    lines.append(
+        "- **Medium confidence** may have useful patterns but verify applicability"
+    )
     lines.append("- Historical context should be **adapted**, not copied blindly")
     lines.append("")
     lines.append("**Would you like me to:**")
@@ -539,7 +541,9 @@ def _format_single_result(
     lines = []
 
     # Project name (extract last component for readability)
-    project_name = result.project_path.split("/")[-1] if result.project_path else "Unknown"
+    project_name = (
+        result.project_path.split("/")[-1] if result.project_path else "Unknown"
+    )
     full_path = result.project_path or "Unknown"
 
     lines.append(f"**{index}. {project_name}**")

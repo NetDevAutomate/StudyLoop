@@ -17,7 +17,9 @@ def temp_db():
     conn.row_factory = sqlite3.Row
 
     # Initialize schema
-    schema_path = Path(__file__).parent.parent / "src" / "agent_session_tools" / "schema.sql"
+    schema_path = (
+        Path(__file__).parent.parent / "src" / "agent_session_tools" / "schema.sql"
+    )
     with open(schema_path) as f:
         conn.executescript(f.read())
 

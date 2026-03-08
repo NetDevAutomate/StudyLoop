@@ -55,14 +55,14 @@ def _ensure_kokoro_models() -> bool:
 def _speak_kokoro(text: str, *, voice: str, speed: float) -> bool:
     """Speak via kokoro-onnx (fast, high quality)."""
     try:
-        import sounddevice as sd  # noqa: PLC0415
-        from kokoro_onnx import Kokoro  # noqa: PLC0415
+        import sounddevice as sd  # noqa: PLC0415  # pyright: ignore[reportMissingImports]
+        from kokoro_onnx import Kokoro  # noqa: PLC0415  # pyright: ignore[reportMissingImports]
     except ImportError:
         return False
     if not _ensure_kokoro_models():
         return False
     try:
-        import numpy as np  # noqa: PLC0415
+        import numpy as np  # noqa: PLC0415  # pyright: ignore[reportMissingImports]
 
         kokoro = Kokoro(str(_KOKORO_MODEL), str(_KOKORO_VOICES))
         samples, sr = kokoro.create(text, voice=voice, speed=speed, lang="en-us")

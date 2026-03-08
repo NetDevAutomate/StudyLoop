@@ -130,14 +130,18 @@ class TestParseSessionFile:
     def test_gemini_role_replaced_with_assistant(self, gemini_dir):
         exporter = GeminiCliExporter()
         session_file = list(gemini_dir.rglob("session-*.json"))[0]
-        _, _, messages, _, _ = exporter._parse_session_file(session_file)
+        result = exporter._parse_session_file(session_file)
+        assert result is not None
+        _, _, messages, _, _ = result
         assert messages[0]["role"] == "user"
         assert messages[1]["role"] == "assistant"  # "gemini" -> "assistant"
 
     def test_timestamp_converted_from_ms(self, gemini_dir):
         exporter = GeminiCliExporter()
         session_file = list(gemini_dir.rglob("session-*.json"))[0]
-        _, _, messages, _, _ = exporter._parse_session_file(session_file)
+        result = exporter._parse_session_file(session_file)
+        assert result is not None
+        _, _, messages, _, _ = result
         # Timestamp should be ISO-format, not None
         assert messages[0]["timestamp"] is not None
         assert "T" in messages[0]["timestamp"]
@@ -171,15 +175,17 @@ class TestParseSessionFile:
         (chats / "session-list-content-test.json").write_text(json.dumps(data))
 
         exporter = GeminiCliExporter()
-        _, _, messages, _, _ = exporter._parse_session_file(
-            chats / "session-list-content-test.json"
-        )
+        result = exporter._parse_session_file(chats / "session-list-content-test.json")
+        assert result is not None
+        _, _, messages, _, _ = result
         assert messages[0]["content"] == "part one\npart two"
 
     def test_metadata_contains_tokens_and_thoughts(self, gemini_dir):
         exporter = GeminiCliExporter()
         session_file = list(gemini_dir.rglob("session-*.json"))[0]
-        _, _, messages, _, _ = exporter._parse_session_file(session_file)
+        result = exporter._parse_session_file(session_file)
+        assert result is not None
+        _, _, messages, _, _ = result
 
         meta = json.loads(messages[1]["metadata"])
         assert "tokens" in meta

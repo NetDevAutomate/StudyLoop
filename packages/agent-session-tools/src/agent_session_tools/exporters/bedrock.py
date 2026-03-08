@@ -116,7 +116,9 @@ class BedrockProxyExporter:
                             "content": msg["content"],
                             "model": msg["model"],
                             "timestamp": msg["timestamp"],
-                            "metadata": msg["metadata"] if msg["metadata"] else json.dumps({}),
+                            "metadata": msg["metadata"]
+                            if msg["metadata"]
+                            else json.dumps({}),
                             "seq": msg["seq"] if msg["seq"] else 0,
                         }
                     )

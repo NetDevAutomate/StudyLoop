@@ -100,7 +100,9 @@ def migrate_v1(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE messages ADD COLUMN content_hash TEXT")
 
     # Add index for faster lookups
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_content_hash ON sessions(content_hash)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sessions_content_hash ON sessions(content_hash)"
+    )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_sessions_fingerprint ON sessions(import_fingerprint)"
     )
@@ -116,7 +118,9 @@ def migrate_v2(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE messages ADD COLUMN seq INTEGER")
 
     # Create index for ordering
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_seq ON messages(session_id, seq)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_messages_session_seq ON messages(session_id, seq)"
+    )
 
     # Backfill seq values for existing messages using rowid order
     conn.execute(
@@ -176,7 +180,9 @@ def migrate_v4(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_messages_session_role ON messages(session_id, role)"
     )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC)"
+    )
 
     # Covering index for list operations (most common query)
     conn.execute("""
@@ -186,7 +192,9 @@ def migrate_v4(conn: sqlite3.Connection) -> None:
 
     # Tag operations optimization (uses tables from migration v3)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_session_tags_tag ON session_tags(tag)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_session_tags_session ON session_tags(session_id)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_session_tags_session ON session_tags(session_id)"
+    )
 
 
 @migration(5, "Optimize FTS5 with porter stemming and metadata columns")
@@ -348,8 +356,12 @@ def migrate_v9(conn: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_progress_topic ON study_progress(topic)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_progress_confidence ON study_progress(confidence)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_progress_topic ON study_progress(topic)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_progress_confidence ON study_progress(confidence)"
+    )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_progress_updated ON study_progress(updated_at DESC)"
     )
@@ -368,7 +380,9 @@ def migrate_v9(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_study_sessions_topic ON study_sessions(topic)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_study_sessions_topic ON study_sessions(topic)"
+    )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_study_sessions_energy ON study_sessions(energy_level)"
     )

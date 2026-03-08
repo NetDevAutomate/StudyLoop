@@ -14,7 +14,9 @@ class DuplicateGroup:
     detection_method: str
 
 
-def find_duplicates(conn: sqlite3.Connection, threshold: float = 0.8) -> list[DuplicateGroup]:
+def find_duplicates(
+    conn: sqlite3.Connection, threshold: float = 0.8
+) -> list[DuplicateGroup]:
     """Find potential duplicate sessions.
 
     Args:
@@ -72,7 +74,9 @@ def find_duplicates(conn: sqlite3.Connection, threshold: float = 0.8) -> list[Du
     return groups
 
 
-def calculate_message_similarity(conn: sqlite3.Connection, session1: str, session2: str) -> float:
+def calculate_message_similarity(
+    conn: sqlite3.Connection, session1: str, session2: str
+) -> float:
     """Calculate Jaccard similarity between two sessions' message content.
 
     Args:
@@ -113,7 +117,9 @@ def calculate_message_similarity(conn: sqlite3.Connection, session1: str, sessio
     return intersection / union if union > 0 else 0.0
 
 
-def merge_duplicates(conn: sqlite3.Connection, primary_id: str, duplicate_ids: list[str]) -> dict:
+def merge_duplicates(
+    conn: sqlite3.Connection, primary_id: str, duplicate_ids: list[str]
+) -> dict:
     """Merge duplicate sessions into the primary session.
 
     Args:
@@ -222,7 +228,8 @@ def list_all_duplicates(conn: sqlite3.Connection, threshold: float = 0.8) -> Non
 
         for dup_id in group.duplicate_ids[:3]:  # Show first 3
             dup_session = conn.execute(
-                "SELECT source, project_path, updated_at FROM sessions WHERE id = ?", (dup_id,)
+                "SELECT source, project_path, updated_at FROM sessions WHERE id = ?",
+                (dup_id,),
             ).fetchone()
             if dup_session:
                 print(
@@ -233,7 +240,9 @@ def list_all_duplicates(conn: sqlite3.Connection, threshold: float = 0.8) -> Non
             print(f"   ... and {len(group.duplicate_ids) - 3} more")
 
 
-def auto_merge_safe_duplicates(conn: sqlite3.Connection, min_similarity: float = 0.95) -> dict:
+def auto_merge_safe_duplicates(
+    conn: sqlite3.Connection, min_similarity: float = 0.95
+) -> dict:
     """Automatically merge very high similarity duplicates.
 
     Args:

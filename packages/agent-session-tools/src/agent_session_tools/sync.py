@@ -74,7 +74,8 @@ def _validate_session_ids(session_ids: set[str]) -> set[str]:
 # SSH multiplexing options — reuse connections to avoid port exhaustion
 # Use user-private directory instead of /tmp to prevent TOCTOU attacks
 _SSH_MUX_DIR = (
-    Path(os.environ.get("XDG_RUNTIME_DIR", str(Path.home() / ".cache"))) / "session-sync-ssh"
+    Path(os.environ.get("XDG_RUNTIME_DIR", str(Path.home() / ".cache")))
+    / "session-sync-ssh"
 )
 _SSH_MUX_OPTS = [
     "-o",
@@ -116,7 +117,9 @@ def _resolve_remote(remote: str) -> tuple[str, str]:
                     capture_output=True,
                     timeout=5,
                 )
-                console.print(f"[dim]Resolved endpoint '{remote}' → {host}:{path}[/dim]")
+                console.print(
+                    f"[dim]Resolved endpoint '{remote}' → {host}:{path}[/dim]"
+                )
                 return host, path
             except (subprocess.TimeoutExpired, OSError):
                 console.print(f"[dim]{ip_key} ({ip}) unreachable, trying next...[/dim]")
@@ -136,7 +139,12 @@ def _remote_sql(host: str, db_path: str, query: str) -> str:
     """Execute a SQL query on the remote DB via SSH and return stdout."""
     _ensure_mux_dir()
     result = subprocess.run(
-        ["ssh", *_SSH_MUX_OPTS, host, f"sqlite3 {shlex.quote(db_path)} {shlex.quote(query)}"],
+        [
+            "ssh",
+            *_SSH_MUX_OPTS,
+            host,
+            f"sqlite3 {shlex.quote(db_path)} {shlex.quote(query)}",
+        ],
         capture_output=True,
         text=True,
     )
@@ -145,7 +153,9 @@ def _remote_sql(host: str, db_path: str, query: str) -> str:
     return result.stdout.strip()
 
 
-def _get_session_ids(db_path_or_host: Path | str, remote_db: str | None = None) -> set[str]:
+def _get_session_ids(
+    db_path_or_host: Path | str, remote_db: str | None = None
+) -> set[str]:
     """Get all session IDs from a local or remote DB."""
     if isinstance(db_path_or_host, Path):
         conn = sqlite3.connect(db_path_or_host)
@@ -158,7 +168,9 @@ def _get_session_ids(db_path_or_host: Path | str, remote_db: str | None = None) 
     return set(raw.splitlines()) if raw else set()
 
 
-def _get_sync_state(local_db: Path, host: str, remote_db: str) -> tuple[set[str], set[str]]:
+def _get_sync_state(
+    local_db: Path, host: str, remote_db: str
+) -> tuple[set[str], set[str]]:
     """Calculate new + updated session IDs by comparing updated_at timestamps.
 
     Returns (new_ids, updated_ids).
@@ -166,12 +178,15 @@ def _get_sync_state(local_db: Path, host: str, remote_db: str) -> tuple[set[str]
     # Get local sessions with timestamps
     conn = sqlite3.connect(local_db)
     local_sessions = {
-        r[0]: r[1] for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
+        r[0]: r[1]
+        for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
     }
     conn.close()
 
     # Get remote sessions with timestamps (pipe-delimited)
-    raw = _remote_sql(host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions")
+    raw = _remote_sql(
+        host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions"
+    )
     remote_sessions = {}
     for line in raw.splitlines():
         if "|" in line:
@@ -254,7 +269,9 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
         stderr = result.stderr.strip()
         # Filter out warnings about missing optional tables
         errors = [
-            line for line in stderr.splitlines() if "Error" in line and "no such table" not in line
+            line
+            for line in stderr.splitlines()
+            if "Error" in line and "no such table" not in line
         ]
         if errors:
             logger.error(f"SQL import errors: {chr(10).join(errors)}")
@@ -310,7 +327,9 @@ def show_db_stats(db_path: Path, label: str = "Database") -> None:
 @app.command()
 def pull(
     remote: Annotated[str, typer.Argument(help="Remote path (user@host:path)")],
-    db: Annotated[Path | None, typer.Option("--db", "-d", help="Local database path")] = None,
+    db: Annotated[
+        Path | None, typer.Option("--db", "-d", help="Local database path")
+    ] = None,
     no_backup: Annotated[bool, typer.Option("--no-backup", help="Skip backup")] = False,
 ) -> None:
     """Pull new sessions from remote via SQL streaming."""
@@ -335,7 +354,9 @@ def pull(
     # Reverse: remote is "local" from the perspective of what to pull
     # We need remote's updated_at vs our updated_at
     # Reuse _get_sync_state but swap: get remote sessions newer than ours
-    raw = _remote_sql(host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions")
+    raw = _remote_sql(
+        host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions"
+    )
     remote_sessions = {}
     for line in raw.splitlines():
         if "|" in line:
@@ -346,7 +367,8 @@ def pull(
 
     conn = sqlite3.connect(local_db)
     local_sessions = {
-        r[0]: r[1] or "" for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
+        r[0]: r[1] or ""
+        for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
     }
     conn.close()
 
@@ -362,7 +384,9 @@ def pull(
         console.print("[green]✅ Already up to date[/green]")
         return
 
-    console.print(f"  New: [cyan]{len(new_ids)}[/cyan], Updated: [cyan]{len(updated_ids)}[/cyan]")
+    console.print(
+        f"  New: [cyan]{len(new_ids)}[/cyan], Updated: [cyan]{len(updated_ids)}[/cyan]"
+    )
 
     # Dump from remote
     _validate_session_ids(all_ids)
@@ -386,14 +410,18 @@ def pull(
         console.print("[red]❌ Failed to import[/red]")
         raise typer.Exit(1)
 
-    console.print(f"\n[green]✅ Pulled {len(new_ids)} new, {len(updated_ids)} updated[/green]")
+    console.print(
+        f"\n[green]✅ Pulled {len(new_ids)} new, {len(updated_ids)} updated[/green]"
+    )
     show_db_stats(local_db, "Local (after)")
 
 
 @app.command()
 def push(
     remote: Annotated[str, typer.Argument(help="Remote path (user@host:path)")],
-    db: Annotated[Path | None, typer.Option("--db", "-d", help="Local database path")] = None,
+    db: Annotated[
+        Path | None, typer.Option("--db", "-d", help="Local database path")
+    ] = None,
 ) -> None:
     """Push new and updated sessions to remote via SQL streaming."""
     local_db = db or DB_PATH
@@ -416,13 +444,17 @@ def push(
         console.print("[green]✅ Already up to date[/green]")
         return
 
-    console.print(f"  New: [cyan]{len(new_ids)}[/cyan], Updated: [cyan]{len(updated_ids)}[/cyan]")
+    console.print(
+        f"  New: [cyan]{len(new_ids)}[/cyan], Updated: [cyan]{len(updated_ids)}[/cyan]"
+    )
 
     sql = _dump_delta_sql(local_db, all_ids)
 
     console.print("[bold]Streaming to remote...[/bold]")
     if _stream_sql_to_target(sql, (host, remote_db)):
-        console.print(f"[green]✅ Pushed {len(new_ids)} new, {len(updated_ids)} updated[/green]")
+        console.print(
+            f"[green]✅ Pushed {len(new_ids)} new, {len(updated_ids)} updated[/green]"
+        )
     else:
         console.print("[red]❌ Failed to push to remote[/red]")
         raise typer.Exit(1)
@@ -431,7 +463,9 @@ def push(
 @app.command()
 def sync(
     remote: Annotated[str, typer.Argument(help="Remote path (user@host:path)")],
-    db: Annotated[Path | None, typer.Option("--db", "-d", help="Local database path")] = None,
+    db: Annotated[
+        Path | None, typer.Option("--db", "-d", help="Local database path")
+    ] = None,
     no_backup: Annotated[bool, typer.Option("--no-backup", help="Skip backup")] = False,
 ) -> None:
     """Two-way sync: stream deltas in both directions.
@@ -454,7 +488,9 @@ def sync(
 
     # Calculate deltas in both directions using one SSH call for remote state
     console.print("[bold]Calculating deltas...[/bold]")
-    raw = _remote_sql(host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions")
+    raw = _remote_sql(
+        host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions"
+    )
     remote_sessions = {}
     for line in raw.splitlines():
         if "|" in line:
@@ -465,7 +501,8 @@ def sync(
 
     conn = sqlite3.connect(local_db)
     local_sessions = {
-        r[0]: r[1] or "" for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
+        r[0]: r[1] or ""
+        for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
     }
     conn.close()
 
@@ -501,7 +538,9 @@ def sync(
         for table in SYNC_TABLES:
             id_col = "id" if table == "sessions" else "session_id"
             commands.append(f".mode insert {table}")
-            commands.append(f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});")
+            commands.append(
+                f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});"
+            )
 
         result = subprocess.run(
             ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],
@@ -513,7 +552,9 @@ def sync(
         if sql.strip() and not _stream_sql_to_target(sql, local_db):
             console.print("[red]❌ Failed to pull[/red]")
             raise typer.Exit(1)
-        console.print(f"[green]✓ Pulled {len(pull_new)} new, {len(pull_updated)} updated[/green]")
+        console.print(
+            f"[green]✓ Pulled {len(pull_new)} new, {len(pull_updated)} updated[/green]"
+        )
     else:
         console.print("\n[bold]Step 1:[/bold] Nothing to pull")
 
@@ -525,7 +566,9 @@ def sync(
         if sql.strip() and not _stream_sql_to_target(sql, (host, remote_db)):
             console.print("[red]❌ Failed to push[/red]")
             raise typer.Exit(1)
-        console.print(f"[green]✓ Pushed {len(push_new)} new, {len(push_updated)} updated[/green]")
+        console.print(
+            f"[green]✓ Pushed {len(push_new)} new, {len(push_updated)} updated[/green]"
+        )
     else:
         console.print("\n[bold]Step 2:[/bold] Nothing to push")
 
@@ -552,13 +595,17 @@ def status(
     # Show recent backups
     backup_dir = get_backup_dir(config)
     if backup_dir.exists():
-        backups = sorted(backup_dir.glob("*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+        backups = sorted(
+            backup_dir.glob("*.db"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
         if backups:
             console.print(f"\n[bold]Recent backups:[/bold] ({backup_dir})")
             for backup in backups[:5]:
                 mtime = datetime.fromtimestamp(backup.stat().st_mtime)
                 size_mb = backup.stat().st_size / 1024 / 1024
-                console.print(f"  {backup.name} ({size_mb:.1f} MB) - {mtime:%Y-%m-%d %H:%M}")
+                console.print(
+                    f"  {backup.name} ({size_mb:.1f} MB) - {mtime:%Y-%m-%d %H:%M}"
+                )
 
 
 @app.command()
