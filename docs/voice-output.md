@@ -79,6 +79,43 @@ tts:
   macos_voice: Samantha  # fallback voice for macOS say
 ```
 
+### Available Kokoro Voices
+
+| Voice | Description |
+|-------|-------------|
+| `am_michael` | American male (default) |
+| `af_heart` | American female |
+| `bf_emma` | British female |
+
+Pass any kokoro voice name with `-v` or set in config. See [kokoro-onnx voices](https://github.com/thewh1teagle/kokoro-onnx#voices) for the full list.
+
+---
+
+## MCP Server Setup
+
+The study-speak MCP server lets AI agents call the TTS tool directly. The standalone server lives at `agents/mcp/study-speak-server.py`.
+
+### Kiro CLI
+
+Configured automatically via `agents/kiro/study-mentor.json`. No manual setup needed — the install script handles it.
+
+### Claude Code / Gemini / OpenCode / Amp
+
+Each agent has an `mcp.json` in its `agents/` directory. The server command uses `uvx` to run the standalone MCP server:
+
+```json
+{
+  "mcpServers": {
+    "speaker": {
+      "command": "uvx",
+      "args": ["--from", "mcp[cli]", "mcp", "run", "/absolute/path/to/agents/mcp/study-speak-server.py"]
+    }
+  }
+}
+```
+
+Replace the path with your actual clone location. The `scripts/install-agents.sh` script sets this up automatically for detected AI tools.
+
 ---
 
 ## CLI Reference

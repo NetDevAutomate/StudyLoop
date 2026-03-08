@@ -16,7 +16,7 @@ def speak(text: str) -> str:
     """Speak text aloud using TTS. Use for Socratic questions when voice is enabled (@speak-start)."""
     try:
         subprocess.run(
-            [str(_SPEAK_BIN), text], check=True, timeout=30, capture_output=True
+            [str(_SPEAK_BIN), text], check=True, timeout=120, capture_output=True
         )
         return f"🔊 Spoke: {text}"
     except (
