@@ -136,8 +136,12 @@ def load_config() -> dict[str, Any]:
 
     # Expand all paths
     config["database"]["path"] = str(expand_path(config["database"]["path"]))
-    config["database"]["archive_path"] = str(expand_path(config["database"]["archive_path"]))
-    config["database"]["backup_dir"] = str(expand_path(config["database"]["backup_dir"]))
+    config["database"]["archive_path"] = str(
+        expand_path(config["database"]["archive_path"])
+    )
+    config["database"]["backup_dir"] = str(
+        expand_path(config["database"]["backup_dir"])
+    )
     config["logging"]["path"] = str(expand_path(config["logging"]["path"]))
 
     return config

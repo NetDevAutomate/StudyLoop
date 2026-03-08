@@ -26,7 +26,8 @@ class TestLaunchdPlist:
 
     def test_contains_program_arguments(self):
         job = Job(name="run", command="~/.local/bin/studyctl sync --all", schedule="daily 7am")
-        plist = _launchd_plist(job, "alice")
+        with patch("studyctl.scheduler._is_macos", return_value=True):
+            plist = _launchd_plist(job, "alice")
         assert "/Users/alice/.local/bin/studyctl" in plist
         assert "<string>sync</string>" in plist
         assert "<string>--all</string>" in plist

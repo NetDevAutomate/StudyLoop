@@ -78,7 +78,9 @@ class TestDumpDeltaSql:
         sql = _dump_delta_sql(db_path, {"test-session-001"})
         for line in sql.splitlines():
             if line.startswith("INSERT"):
-                assert line.startswith("INSERT OR REPLACE INTO"), f"Unprotected insert: {line}"
+                assert line.startswith("INSERT OR REPLACE INTO"), (
+                    f"Unprotected insert: {line}"
+                )
 
 
 # --- _stream_sql_to_target (local path only) ---
@@ -147,7 +149,9 @@ class TestRoundTrip:
             target_path = Path(f.name)
 
         target_conn = sqlite3.connect(target_path)
-        schema_path = Path(__file__).parent.parent / "src" / "agent_session_tools" / "schema.sql"
+        schema_path = (
+            Path(__file__).parent.parent / "src" / "agent_session_tools" / "schema.sql"
+        )
         target_conn.executescript(schema_path.read_text())
 
         # Source has sessions A, B, C

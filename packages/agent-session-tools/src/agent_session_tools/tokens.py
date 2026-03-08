@@ -38,7 +38,9 @@ class TiktokenCounter:
             model: Encoding name or model name. Claude uses cl100k_base.
         """
         if not TIKTOKEN_AVAILABLE or tiktoken is None:
-            raise ImportError("tiktoken is required. Install with: uv pip install tiktoken")
+            raise ImportError(
+                "tiktoken is required. Install with: uv pip install tiktoken"
+            )
         self.encoder = tiktoken.get_encoding(model)
 
     def count(self, text: str) -> int:

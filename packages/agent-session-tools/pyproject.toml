@@ -110,11 +110,12 @@ known-first-party = ["agent_session_tools"]
 
 [tool.pyright]
 include = ["src"]
-exclude = ["**/__pycache__"]
+exclude = ["**/__pycache__", "src/agent_session_tools/mcp_speak.py"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 reportMissingImports = true
 reportMissingTypeStubs = false
+extraPaths = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

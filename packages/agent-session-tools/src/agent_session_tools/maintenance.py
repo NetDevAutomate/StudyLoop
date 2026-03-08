@@ -304,10 +304,16 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
             """
             )
             # Create indexes
-            archive_conn.execute("CREATE INDEX idx_messages_session ON messages(session_id)")
-            archive_conn.execute("CREATE INDEX idx_messages_timestamp ON messages(timestamp)")
+            archive_conn.execute(
+                "CREATE INDEX idx_messages_session ON messages(session_id)"
+            )
+            archive_conn.execute(
+                "CREATE INDEX idx_messages_timestamp ON messages(timestamp)"
+            )
             archive_conn.execute("CREATE INDEX idx_sessions_source ON sessions(source)")
-            archive_conn.execute("CREATE INDEX idx_sessions_project ON sessions(project_path)")
+            archive_conn.execute(
+                "CREATE INDEX idx_sessions_project ON sessions(project_path)"
+            )
 
             # Create FTS table
             archive_conn.execute(
@@ -362,7 +368,9 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
                 message_count += 1
 
             # Delete from source
-            source_conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+            source_conn.execute(
+                "DELETE FROM messages WHERE session_id = ?", (session_id,)
+            )
             source_conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
 
         # Rebuild FTS index in archive
@@ -386,7 +394,9 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
         return 1
 
 
-def _delete_old(db_path: Path, days: int, confirm: bool = False, backup: bool = True) -> int:
+def _delete_old(
+    db_path: Path, days: int, confirm: bool = False, backup: bool = True
+) -> int:
     """Delete sessions older than N days (requires confirmation)."""
     print(f"\n{'=' * 50}")
     print(f"⚠️  DELETE SESSIONS (older than {days} days)")
@@ -438,7 +448,9 @@ def _delete_old(db_path: Path, days: int, confirm: bool = False, backup: bool = 
 
         # Delete messages first (foreign key constraint)
         print("\n🗑️  Deleting messages...")
-        conn.execute(f"DELETE FROM messages WHERE session_id IN ({placeholders})", session_ids)
+        conn.execute(
+            f"DELETE FROM messages WHERE session_id IN ({placeholders})", session_ids
+        )
 
         # Delete sessions
         print("🗑️  Deleting sessions...")
@@ -549,7 +561,9 @@ def reindex(
 
 @app.command()
 def archive(
-    days: Annotated[int, typer.Option("--days", help="Archive sessions older than N days")],
+    days: Annotated[
+        int, typer.Option("--days", help="Archive sessions older than N days")
+    ],
     db: Annotated[Path | None, db_option] = None,
     no_backup: Annotated[bool, no_backup_option] = False,
 ) -> None:
@@ -561,9 +575,13 @@ def archive(
 
 @app.command("delete")
 def delete_cmd(
-    days: Annotated[int, typer.Option("--days", help="Delete sessions older than N days")],
+    days: Annotated[
+        int, typer.Option("--days", help="Delete sessions older than N days")
+    ],
     db: Annotated[Path | None, db_option] = None,
-    confirm: Annotated[bool, typer.Option("--confirm", help="Confirm deletion (required)")] = False,
+    confirm: Annotated[
+        bool, typer.Option("--confirm", help="Confirm deletion (required)")
+    ] = False,
     no_backup: Annotated[bool, no_backup_option] = False,
 ) -> None:
     """Delete old sessions permanently (requires --confirm)."""
@@ -579,11 +597,16 @@ def find_duplicates(
         float, typer.Option("--threshold", help="Similarity threshold (0.0-1.0)")
     ] = 0.8,
     auto_merge: Annotated[
-        bool, typer.Option("--auto-merge", help="Auto-merge high similarity duplicates (>95%)")
+        bool,
+        typer.Option(
+            "--auto-merge", help="Auto-merge high similarity duplicates (>95%)"
+        ),
     ] = False,
     merge_ids: Annotated[
         list[str] | None,
-        typer.Option("--merge-ids", help="Manually merge specific session IDs into first ID"),
+        typer.Option(
+            "--merge-ids", help="Manually merge specific session IDs into first ID"
+        ),
     ] = None,
 ) -> None:
     """Find and manage duplicate sessions."""
