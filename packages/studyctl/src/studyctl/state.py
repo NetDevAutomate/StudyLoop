@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .config import STATE_DIR, STATE_FILE
+from .config import get_state_dir, get_state_file
 
 
 @dataclass
@@ -43,23 +43,23 @@ class SyncState:
         self._load()
 
     def _load(self) -> None:
-        if STATE_FILE.exists():
+        if get_state_file().exists():
             try:
-                self._data = json.loads(STATE_FILE.read_text())
+                self._data = json.loads(get_state_file().read_text())
             except json.JSONDecodeError:
                 import sys
 
                 print(
-                    f"[studyctl] Corrupt state file {STATE_FILE}, using defaults",
+                    f"[studyctl] Corrupt state file {get_state_file()}, using defaults",
                     file=sys.stderr,
                 )
 
     def save(self) -> None:
         import os
 
-        STATE_DIR.mkdir(parents=True, exist_ok=True)
-        STATE_FILE.write_text(json.dumps(self._data, indent=2) + "\n")
-        os.chmod(STATE_FILE, 0o600)
+        get_state_dir().mkdir(parents=True, exist_ok=True)
+        get_state_file().write_text(json.dumps(self._data, indent=2) + "\n")
+        os.chmod(get_state_file(), 0o600)
 
     def get_topic(self, name: str) -> TopicState:
         raw = self._data.setdefault("topics", {}).get(name, {})

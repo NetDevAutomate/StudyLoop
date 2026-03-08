@@ -16,6 +16,16 @@ _CONFIG_PATH = Path(
 )
 
 
+def _get_username() -> str:
+    """Get current username safely (works in cron, CI, and non-interactive environments)."""
+    try:
+        return os.getlogin()
+    except OSError:
+        import getpass
+
+        return getpass.getuser()
+
+
 @dataclass
 class TopicConfig:
     """Configuration for a single study topic."""
@@ -38,7 +48,7 @@ class Settings:
     state_dir: Path = field(default_factory=lambda: Path.home() / ".local" / "share" / "studyctl")
     topics: list[TopicConfig] = field(default_factory=list)
     sync_remote: str = ""
-    sync_user: str = field(default_factory=lambda: os.getlogin())
+    sync_user: str = field(default_factory=lambda: _get_username())
 
 
 def load_settings() -> Settings:

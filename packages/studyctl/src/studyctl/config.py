@@ -100,31 +100,13 @@ def get_topics() -> list[Topic]:
     ]
 
 
-# Lazy-loaded for backward compatibility
-def __getattr__(name: str):
-    if name == "DEFAULT_TOPICS":
-        return get_topics()
-    if name in (
-        "STATE_DIR",
-        "STATE_FILE",
-        "OBSIDIAN_BASE",
-        "OBSIDIAN_COURSES",
-        "OBSIDIAN_STUDY_PLANS",
-        "OBSIDIAN_MENTORING",
-        "MEDIA_DIR",
-    ):
-        from .settings import load_settings
+def get_state_dir() -> Path:
+    """Get state directory from settings."""
+    from .settings import load_settings
 
-        settings = load_settings()
-        obs = settings.obsidian_base
-        _lazy = {
-            "STATE_DIR": settings.state_dir,
-            "STATE_FILE": settings.state_dir / "state.json",
-            "OBSIDIAN_BASE": obs,
-            "OBSIDIAN_COURSES": obs / "Personal" / "2-Areas" / "Study" / "Courses",
-            "OBSIDIAN_STUDY_PLANS": obs / "Personal" / "2-Areas" / "Study" / "Study-Plans",
-            "OBSIDIAN_MENTORING": obs / "Personal" / "2-Areas" / "Study" / "Mentoring",
-            "MEDIA_DIR": obs / "Personal" / "2-Areas" / "Study" / "media",
-        }
-        return _lazy[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return load_settings().state_dir
+
+
+def get_state_file() -> Path:
+    """Get state file path from settings."""
+    return get_state_dir() / "state.json"

@@ -16,7 +16,11 @@ import yaml
 from .settings import load_settings
 
 CONFIG_PATH = Path.home() / ".config" / "studyctl" / "config.yaml"
-_DEFAULT_USER = load_settings().sync_user
+
+
+def _get_default_user() -> str:
+    """Get default sync user lazily (avoids import-time os.getlogin failure)."""
+    return load_settings().sync_user
 
 
 def _load_config() -> dict:
@@ -45,7 +49,7 @@ def push_state(remote: str | None = None) -> list[str]:
 
     for name, r in remotes.items():
         host = r["host"]
-        user = r.get("user", _DEFAULT_USER)
+        user = r.get("user", _get_default_user())
         remote_state = r.get("state_json", "~/.local/share/studyctl/state.json")
 
         # Push state.json via rsync
@@ -93,7 +97,7 @@ def pull_state(remote: str | None = None) -> list[str]:
 
     for name, r in remotes.items():
         host = r["host"]
-        user = r.get("user", _DEFAULT_USER)
+        user = r.get("user", _get_default_user())
         remote_state = r.get("state_json", "~/.local/share/studyctl/state.json")
 
         # Pull state.json — take most recent
@@ -142,7 +146,7 @@ def sync_status() -> dict:
                 "ConnectTimeout=3",
                 "-o",
                 "BatchMode=yes",
-                f"{r.get('user', _DEFAULT_USER)}@{host}",
+                f"{r.get('user', _get_default_user())}@{host}",
                 "echo ok",
             ],
             capture_output=True,
@@ -170,7 +174,7 @@ def init_config() -> Path:
         "remotes": {
             "mac-mini": {
                 "host": "mac-mini.local",
-                "user": _DEFAULT_USER,
+                "user": _get_default_user(),
                 "state_json": "~/.local/share/studyctl/state.json",
                 "sessions_db": "~/code/personal/ai/extract_session_to_db/sessions.db",
             },
