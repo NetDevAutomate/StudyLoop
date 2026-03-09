@@ -1239,12 +1239,15 @@
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;./packages/agent-session-tools[tts]&quot;</span><span class="w"> </span>--force
 </code></pre></div>
 <h3 id="download-models">Download Models<a class="headerlink" href="#download-models" title="Permanent link">&para;</a></h3>
-<p>Models download automatically on first run. To pre-download:</p>
+<p>Models download automatically on first run. The install script also offers to pre-download them:</p>
+<div class="highlight"><pre><span></span><code>./scripts/install.sh<span class="w">  </span><span class="c1"># prompts: &quot;Download voice model now? [y/N]&quot;</span>
+</code></pre></div>
+<p>To download manually:</p>
 <div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.cache/kokoro-onnx<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>wget<span class="w"> </span>-q<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-O<span class="w"> </span>~/.cache/kokoro-onnx/kokoro-v1.0.onnx<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>wget<span class="w"> </span>-q<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-O<span class="w"> </span>~/.cache/kokoro-onnx/voices-v1.0.bin
+<span class="w">  </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>~/.cache/kokoro-onnx/kokoro-v1.0.onnx<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>~/.cache/kokoro-onnx/voices-v1.0.bin
 </code></pre></div>
 <h3 id="test">Test<a class="headerlink" href="#test" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;Hello, can you hear me?&quot;</span>
