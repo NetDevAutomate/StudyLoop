@@ -37,9 +37,15 @@ fi
 if command -v uv &>/dev/null; then
   info "uv $(uv --version 2>/dev/null | head -1) found"
 else
-  err "uv not found. Install with:"
-  echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
-  exit 1
+  warn "uv not found — installing..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+  if command -v uv &>/dev/null; then
+    info "uv $(uv --version 2>/dev/null | head -1) installed"
+  else
+    err "uv installation failed"
+    exit 1
+  fi
 fi
 
 # --- Install packages ---
@@ -107,6 +113,39 @@ topics: []
 notes_dir: ~/Obsidian/Personal/2-Areas/Study
 EOF
     info "Default config created: ${CONFIG_FILE}"
+  fi
+fi
+
+# --- Optional: Voice model ---
+KOKORO_DIR="${HOME}/.cache/kokoro-onnx"
+KOKORO_MODEL="${KOKORO_DIR}/kokoro-v1.0.onnx"
+KOKORO_VOICES="${KOKORO_DIR}/voices-v1.0.bin"
+KOKORO_BASE="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+
+if [ -f "$KOKORO_MODEL" ] && [ -f "$KOKORO_VOICES" ]; then
+  info "Voice model already downloaded"
+else
+  echo ""
+  printf "${BOLD}▸ Voice output (optional)${NC}\n"
+  echo "  The study mentor can speak questions aloud using kokoro-onnx TTS (~85MB download)."
+  printf "  Download voice model now? [y/N] "
+  read -r REPLY
+  if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+    mkdir -p "$KOKORO_DIR"
+    for name in kokoro-v1.0.onnx voices-v1.0.bin; do
+      if [ ! -f "${KOKORO_DIR}/${name}" ]; then
+        echo "  Downloading ${name}..."
+        curl -fsSL "${KOKORO_BASE}/${name}" -o "${KOKORO_DIR}/${name}" || {
+          err "Failed to download ${name}"
+          rm -f "${KOKORO_DIR}/${name}"
+        }
+      fi
+    done
+    if [ -f "$KOKORO_MODEL" ] && [ -f "$KOKORO_VOICES" ]; then
+      info "Voice model downloaded to ${KOKORO_DIR}"
+    fi
+  else
+    info "Skipped — models will download on first use of study-speak"
   fi
 fi
 
