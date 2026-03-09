@@ -33,10 +33,12 @@ cd socratic-study-mentor
 ```
 
 This will:
-1. Verify Python 3.10+ and `uv` are installed
-2. Run `uv sync` to install both packages
-3. Run `install-agents.sh` to set up AI agent definitions
-4. Create a default config at `~/.config/studyctl/config.yaml`
+1. Verify Python 3.10+ is installed
+2. Install `uv` if not already available
+3. Run `uv sync` to install both packages
+4. Run `install-agents.sh` to set up AI agent definitions
+5. Create a default config at `~/.config/studyctl/config.yaml`
+6. Optionally download the kokoro-onnx voice model (~85MB) for TTS support
 
 ### Manual
 

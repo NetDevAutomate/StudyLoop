@@ -103,7 +103,7 @@ cd socratic-study-mentor
 ./scripts/install.sh
 ```
 
-This installs both packages and sets up agent definitions for any detected AI tools.
+This installs both packages, sets up agent definitions for any detected AI tools, and optionally downloads the voice model for TTS support.
 
 ## Documentation Site
 

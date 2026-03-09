@@ -14,14 +14,20 @@ uv tool install "./packages/agent-session-tools[tts]" --force
 
 ### Download Models
 
-Models download automatically on first run. To pre-download:
+Models download automatically on first run. The install script also offers to pre-download them:
+
+```bash
+./scripts/install.sh  # prompts: "Download voice model now? [y/N]"
+```
+
+To download manually:
 
 ```bash
 mkdir -p ~/.cache/kokoro-onnx && \
-  wget -q https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx \
-    -O ~/.cache/kokoro-onnx/kokoro-v1.0.onnx && \
-  wget -q https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin \
-    -O ~/.cache/kokoro-onnx/voices-v1.0.bin
+  curl -fsSL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx \
+    -o ~/.cache/kokoro-onnx/kokoro-v1.0.onnx && \
+  curl -fsSL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin \
+    -o ~/.cache/kokoro-onnx/voices-v1.0.bin
 ```
 
 ### Test
