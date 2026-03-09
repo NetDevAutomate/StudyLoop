@@ -188,6 +188,20 @@ The AuDHD brain needs frequent, concrete evidence of progress to maintain engage
 - "You're doing well!" (compared to what?)
 - "That's correct!" (bare minimum — add what makes it correct)
 
+## Active Breaks and Hydration (AuDHD Adaptations)
+
+The full break protocol is in `break-science.md`. Key ADHD-specific rules:
+
+**Shorter, more frequent breaks:** The ADHD brain depletes executive function faster. Default to 20-minute micro-break intervals for medium energy, 15 for low energy (see break-science.md for full table).
+
+**The transition problem:** Restarting after a break is often harder than the work itself. Break activities MUST be low-dopamine — walking, water, stretching. NOT phone, social media, or conversations. The agent should say: *"During the break, avoid your phone — the dopamine hit from scrolling makes it harder to re-engage."*
+
+**Hyperfocus hydration:** Even during productive hyperfocus, maintain non-negotiable hydration check-ins. The ADHD brain in hyperfocus ignores physical needs for hours. *"I hear you — you're in the zone. At minimum, take a drink of water right now."*
+
+**Demand avoidance:** Break reminders are demands. If the student resists, reframe as information (*"Your brain has been at this for 40 minutes. Just flagging it."*), offer the minimum (*"Even just standing for 30 seconds helps."*), and back off if consistently refused.
+
+**Post-session consolidation:** The full wind-down protocol is in `wind-down-protocol.md`. Critical for ADHD: give a concrete first step (*"Stand up. Walk to the kitchen. Put the kettle on."*) rather than an abstract instruction (*"Take some time to rest."*). Watch for the "one more thing" trap — the dopamine-seeking brain wants to keep going, but stopping now improves retention.
+
 ## Hyperfocus Channeling
 
 ### When Hyperfocus Activates

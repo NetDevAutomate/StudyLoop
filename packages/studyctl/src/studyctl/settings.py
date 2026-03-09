@@ -38,6 +38,23 @@ class TopicConfig:
 
 
 @dataclass
+class KnowledgeDomain:
+    """Configuration for a knowledge domain used in concept bridging."""
+
+    domain: str
+    anchors: list[str] = field(default_factory=list)
+
+
+@dataclass
+class KnowledgeDomainsConfig:
+    """Configuration for the knowledge bridging system."""
+
+    primary: str = "networking"
+    anchors: list[dict[str, str | int]] = field(default_factory=list)
+    secondary: list[KnowledgeDomain] = field(default_factory=list)
+
+
+@dataclass
 class Settings:
     """Application settings loaded from config file."""
 
@@ -49,6 +66,7 @@ class Settings:
     topics: list[TopicConfig] = field(default_factory=list)
     sync_remote: str = ""
     sync_user: str = field(default_factory=lambda: _get_username())
+    knowledge_domains: KnowledgeDomainsConfig = field(default_factory=KnowledgeDomainsConfig)
 
 
 def load_settings() -> Settings:
@@ -83,6 +101,21 @@ def load_settings() -> Settings:
                 notebook_id=t.get("notebook_id", ""),
                 tags=t.get("tags", []),
             )
+        )
+
+    # Knowledge domains configuration
+    kd = raw.get("knowledge_domains", {})
+    if kd:
+        settings.knowledge_domains = KnowledgeDomainsConfig(
+            primary=kd.get("primary", "networking"),
+            anchors=kd.get("anchors", []),
+            secondary=[
+                KnowledgeDomain(
+                    domain=s.get("domain", ""),
+                    anchors=s.get("anchors", []),
+                )
+                for s in kd.get("secondary", [])
+            ],
         )
 
     return settings
@@ -138,4 +171,17 @@ topics:
 #   onset_minutes: 30         # Minutes until meds kick in
 #   peak_hours: 4             # Hours of peak effectiveness
 #   duration_hours: 8         # Total duration before wearing off
+
+# Knowledge domains for concept bridging (optional)
+# Default: networking. Run /socratic-mentor configure for interactive setup.
+# knowledge_domains:
+#   primary: networking
+#   anchors:
+#     - concept: "ECMP load balancing"
+#       comfort: 10
+#     - concept: "BGP route propagation"
+#       comfort: 9
+#   secondary:
+#     - domain: cooking
+#       anchors: ["mise en place", "flavour balancing"]
 """

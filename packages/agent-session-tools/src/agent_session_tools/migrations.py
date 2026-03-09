@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 9
+CURRENT_VERSION = 11
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -388,6 +388,86 @@ def migrate_v9(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_study_sessions_started ON study_sessions(started_at DESC)"
+    )
+
+
+@migration(10, "Add teach-back scoring and study progress extensions")
+def migrate_v10(conn: sqlite3.Connection) -> None:
+    """Add teach_back_scores table and extend study_progress for teach-back tracking."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS teach_back_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            concept TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            session_id TEXT REFERENCES sessions(id),
+            score_accuracy INTEGER CHECK(score_accuracy BETWEEN 1 AND 4),
+            score_own_words INTEGER CHECK(score_own_words BETWEEN 1 AND 4),
+            score_structure INTEGER CHECK(score_structure BETWEEN 1 AND 4),
+            score_depth INTEGER CHECK(score_depth BETWEEN 1 AND 4),
+            score_transfer INTEGER CHECK(score_transfer BETWEEN 1 AND 4),
+            total_score INTEGER GENERATED ALWAYS AS (
+                COALESCE(score_accuracy, 0) + COALESCE(score_own_words, 0)
+                + COALESCE(score_structure, 0) + COALESCE(score_depth, 0)
+                + COALESCE(score_transfer, 0)
+            ) STORED,
+            review_type TEXT NOT NULL,
+            question_angle TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_teachback_concept "
+        "ON teach_back_scores(concept, topic)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_teachback_date "
+        "ON teach_back_scores(created_at DESC)"
+    )
+
+    # Extend study_progress with teach-back tracking columns
+    cursor = conn.execute("PRAGMA table_info(study_progress)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    if "last_teachback_score" not in columns:
+        conn.execute(
+            "ALTER TABLE study_progress ADD COLUMN last_teachback_score INTEGER"
+        )
+    if "angles_used" not in columns:
+        conn.execute("ALTER TABLE study_progress ADD COLUMN angles_used TEXT")
+    if "mastery_signals" not in columns:
+        conn.execute("ALTER TABLE study_progress ADD COLUMN mastery_signals TEXT")
+
+
+@migration(11, "Add knowledge bridges table for configurable domain analogies")
+def migrate_v11(conn: sqlite3.Connection) -> None:
+    """Add knowledge_bridges table for dynamic concept bridging."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_bridges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_concept TEXT NOT NULL,
+            source_domain TEXT NOT NULL,
+            target_concept TEXT NOT NULL,
+            target_domain TEXT NOT NULL,
+            structural_mapping TEXT,
+            quality TEXT DEFAULT 'proposed',
+            times_used INTEGER DEFAULT 0,
+            times_helpful INTEGER DEFAULT 0,
+            created_by TEXT DEFAULT 'agent',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_bridge_target "
+        "ON knowledge_bridges(target_concept, target_domain)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_bridge_source "
+        "ON knowledge_bridges(source_domain)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_bridge_quality ON knowledge_bridges(quality)"
     )
 
 
