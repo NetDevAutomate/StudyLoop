@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -522,6 +523,240 @@ def record_progress(
                 updated_at = datetime('now')
             """,
             (progress_id, topic, concept, confidence, now, now, notes),
+        )
+        conn.commit()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
+
+
+# ── teach-back scoring ────────────────────────────────────────────────────────
+
+
+def record_teachback(
+    concept: str,
+    topic: str,
+    scores: tuple[int, int, int, int, int],
+    review_type: str,
+    angle: str | None = None,
+    notes: str | None = None,
+    session_id: str | None = None,
+) -> bool:
+    """Record a teach-back score for a concept.
+
+    Args:
+        concept: The concept being assessed.
+        topic: Study topic (python, sql, etc.).
+        scores: Tuple of (accuracy, own_words, structure, depth, transfer) each 1-4.
+        review_type: One of micro, structured, transfer, full.
+        angle: Question angle used (e.g. "bloom_apply", "network_analogy").
+        notes: Optional notes about the assessment.
+        session_id: Optional session ID to link to.
+    """
+    conn = _connect()
+    if not conn:
+        return False
+    try:
+        accuracy, own_words, structure, depth, transfer = scores
+        conn.execute(
+            """
+            INSERT INTO teach_back_scores
+                (concept, topic, session_id, score_accuracy, score_own_words,
+                 score_structure, score_depth, score_transfer,
+                 review_type, question_angle, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                concept,
+                topic,
+                session_id,
+                accuracy,
+                own_words,
+                structure,
+                depth,
+                transfer,
+                review_type,
+                angle,
+                notes,
+            ),
+        )
+
+        # Update study_progress with latest teach-back score and angle
+        total = sum(scores)
+        progress_id = str(
+            uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic.lower().strip()}:{concept.lower().strip()}")
+        )
+
+        # Get existing angles_used and append
+        existing = conn.execute(
+            "SELECT angles_used FROM study_progress WHERE id = ?",
+            (progress_id,),
+        ).fetchone()
+        angles: list[str] = []
+        if existing and existing["angles_used"]:
+            angles = json.loads(existing["angles_used"])
+        if angle and angle not in angles:
+            angles.append(angle)
+
+        conn.execute(
+            """
+            UPDATE study_progress
+            SET last_teachback_score = ?,
+                angles_used = ?,
+                updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (total, json.dumps(angles), progress_id),
+        )
+
+        conn.commit()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
+
+
+def get_teachback_history(concept: str, topic: str | None = None) -> list[dict]:
+    """Get teach-back score history for a concept."""
+    conn = _connect()
+    if not conn:
+        return []
+    try:
+        if topic:
+            rows = conn.execute(
+                """
+                SELECT concept, topic, score_accuracy, score_own_words,
+                       score_structure, score_depth, score_transfer,
+                       total_score, review_type, question_angle, notes, created_at
+                FROM teach_back_scores
+                WHERE concept = ? AND topic = ?
+                ORDER BY created_at DESC
+                LIMIT 20
+                """,
+                (concept, topic),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT concept, topic, score_accuracy, score_own_words,
+                       score_structure, score_depth, score_transfer,
+                       total_score, review_type, question_angle, notes, created_at
+                FROM teach_back_scores
+                WHERE concept = ?
+                ORDER BY created_at DESC
+                LIMIT 20
+                """,
+                (concept,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
+    finally:
+        conn.close()
+
+
+# ── knowledge bridges ─────────────────────────────────────────────────────────
+
+
+def record_bridge(
+    source_concept: str,
+    source_domain: str,
+    target_concept: str,
+    target_domain: str,
+    structural_mapping: str | None = None,
+    quality: str = "proposed",
+    created_by: str = "agent",
+) -> bool:
+    """Record a knowledge bridge between two concepts."""
+    conn = _connect()
+    if not conn:
+        return False
+    try:
+        conn.execute(
+            """
+            INSERT INTO knowledge_bridges
+                (source_concept, source_domain, target_concept, target_domain,
+                 structural_mapping, quality, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                source_concept,
+                source_domain,
+                target_concept,
+                target_domain,
+                structural_mapping,
+                quality,
+                created_by,
+            ),
+        )
+        conn.commit()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
+
+
+def get_bridges(
+    target_domain: str | None = None,
+    source_domain: str | None = None,
+    quality: str | None = None,
+) -> list[dict]:
+    """Get knowledge bridges, optionally filtered."""
+    conn = _connect()
+    if not conn:
+        return []
+    try:
+        conditions = []
+        params: list[str] = []
+        if target_domain:
+            conditions.append("target_domain = ?")
+            params.append(target_domain)
+        if source_domain:
+            conditions.append("source_domain = ?")
+            params.append(source_domain)
+        if quality:
+            conditions.append("quality = ?")
+            params.append(quality)
+
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        rows = conn.execute(
+            f"""
+            SELECT id, source_concept, source_domain, target_concept, target_domain,
+                   structural_mapping, quality, times_used, times_helpful,
+                   created_by, created_at
+            FROM knowledge_bridges
+            {where}
+            ORDER BY times_helpful DESC, created_at DESC
+            """,
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
+    finally:
+        conn.close()
+
+
+def update_bridge_usage(bridge_id: int, helpful: bool) -> bool:
+    """Record that a bridge was used, and whether it was helpful."""
+    conn = _connect()
+    if not conn:
+        return False
+    try:
+        helpful_increment = 1 if helpful else 0
+        conn.execute(
+            """
+            UPDATE knowledge_bridges
+            SET times_used = times_used + 1,
+                times_helpful = times_helpful + ?,
+                updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (helpful_increment, bridge_id),
         )
         conn.commit()
         return True

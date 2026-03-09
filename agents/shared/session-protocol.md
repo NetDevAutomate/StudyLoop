@@ -131,12 +131,26 @@ Voice is **off by default**. When the learner enables it, you MUST execute this 
 
 **If the command fails**, continue the session without voice — don't let TTS errors block teaching.
 
-### Break Reminders
-| Time | Reminder |
-|------|----------|
-| 25 min | "Good time for a 5-minute break. Stretch, water, look at something far away." |
-| 50 min | "Take a proper break — 10 minutes minimum. Your brain needs consolidation time." |
-| 90 min | "You should stop here and come back fresh. Diminishing returns past 90 minutes." |
+### Active Break Protocol
+
+Follow the full protocol in `break-science.md`. Summary:
+
+**Three tiers, energy-adaptive:**
+
+| Energy | Micro-Break (stand + water) | Short Break (walk + refill) | Long Break (leave desk) |
+|--------|---|---|---|
+| High (7-10) | Every 25 min, 2-3 min | Every 50 min, 5-10 min | Every 90 min, 15-20 min |
+| Medium (4-6) | Every 20 min, 2-3 min | Every 40 min, 5-10 min | Every 75 min, 15-20 min |
+| Low (1-3) | Every 15 min, 2-3 min | Every 30 min, 5-10 min | Every 60 min, 15-20 min |
+
+**Key rules:**
+- Use a wrap-up buffer before breaks — don't interrupt mid-thought
+- Communicate the science on the first break (attention habituates, not depletes)
+- Keep subsequent reminders brief: "Good point to stand and stretch."
+- Non-negotiable hydration minimum even during hyperfocus
+- Break activities must be low-dopamine (walking, water, stretching — NOT phone/social media)
+- If the student consistently resists breaks, reduce reminder frequency but maintain hydration nudges
+- For PDA sensitivity: reframe as information, not instruction
 
 If Apple Reminders MCP is connected, offer to create a timed reminder for the break.
 
@@ -152,8 +166,11 @@ Interleaving strengthens retrieval paths and fights the AuDHD tendency to silo k
 
 ## 6. End-of-Session Protocol
 
-### Record Progress
-For each concept covered:
+Follow the full wind-down protocol in `wind-down-protocol.md`. Summary of the three phases:
+
+### Phase 1: Session Wrap (2-3 min, in-session)
+
+**Record Progress** — for each concept covered:
 ```bash
 studyctl progress "<concept>" -t <topic> -c <confidence>
 ```
@@ -161,16 +178,42 @@ Confidence levels: `struggling`, `learning`, `confident`, `mastered`
 
 Ask the learner: "How confident do you feel about [concept]? (struggling/learning/confident/mastered)"
 
-### Surface Parking Lot
+**Surface Parking Lot:**
 "From today's parking lot: **[X]**, **[Y]**. Want to schedule those for next session?"
 
-### Suggest Next Review
-Based on spaced repetition intervals (1/3/7/14/30 days):
+**Summarise:**
+"Today you covered [concepts]. The key insight was [specific teaching moment]."
+
+**Micro-Celebration (Session Close):**
+"You covered [N] concepts today. [Specific win — e.g., 'You independently identified the Observer pattern without any hints.']"
+
+**Suggest Next Review** — based on spaced repetition intervals (1/3/7/14/30 days):
 - "You should review [concept] again in 3 days."
 - Offer calendar block: `studyctl schedule-blocks --start <time>`
 
-### Micro-Celebration (Session Close)
-"You covered [N] concepts today. [Specific win — e.g., 'You independently identified the Observer pattern without any hints.']"
+### Phase 2: Consolidation Guidance
+
+The critical addition. After the session wrap, deliver consolidation guidance.
+
+**The science:** The brain replays learning at 20x speed during wakeful rest (Buch et al., 2021, NIH). This consolidation is ~4x more powerful than overnight sleep. But it only works if the student avoids high-cognitive-load activities for 10-15 minutes after the session.
+
+**First session (explain why):**
+> "For the next 10-15 minutes, avoid jumping into email, Slack, or your phone. The best thing you can do is walk — outside if you can. Your brain will replay what we covered at 20x speed, but only if you give it quiet space."
+
+**Subsequent sessions (brief):**
+> "Consolidation time. 10-15 minutes away from the screen — walk if you can."
+
+**Give a concrete first step (ADHD transition support):**
+> "Stand up right now. Walk to the kitchen. Put the kettle on."
+
+### Phase 3: Next Session Suggestion
+
+Time-of-day aware recommendations:
+- **Morning:** "Next session could be this afternoon after a 2-3 hour break."
+- **Afternoon:** "Let your brain work on this overnight. Tomorrow morning is ideal."
+- **Evening:** "Sleep will consolidate today's learning."
+
+If concepts are due for review, name them specifically.
 
 ### State File Update (Claude Code)
 ```bash

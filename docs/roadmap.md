@@ -125,3 +125,53 @@ Features identified through comprehensive code review:
 - [x] **Routine building / streak tracking** — `studyctl streaks` with current/longest streak, consistency %
 - [x] **Interleaving suppression on low-energy days** — automatic rule to disable topic mixing when energy < 4
 - [x] **Custom admonition style guide** — document the 7 custom admonition types for contributors
+
+## v1.4 — Pedagogical Intelligence
+
+Features to deepen the mentor's teaching methodology and student wellbeing.
+
+### Active Break Protocol
+**Why:** The science shows sustained attention degrades after ~25 minutes (Ariga & Lleras, 2011). ADHD brains deplete faster. Evidence-based break timing dramatically improves retention and focus.
+
+- [x] Three-tier break system: micro (2-3 min), short (5-10 min), long (15-20 min)
+- [x] Energy-adaptive intervals (shorter breaks when energy is low)
+- [x] Wrap-up buffer for flow states (don't hard-stop mid-thought)
+- [x] Non-negotiable hydration minimum even during hyperfocus
+- [x] PDA-sensitive reminders (information, not instruction)
+- [x] Science communication (explain WHY on first break)
+- [x] Shared framework: `agents/shared/break-science.md`
+
+### Session Wind-Down
+**Why:** NIH research (Buch et al., 2021) shows the brain replays learning at 20x speed during quiet rest — but only if you avoid high-cognitive-load activities for 10-15 minutes after a session. This consolidation is 4x more powerful than overnight sleep.
+
+- [x] Three-phase wind-down: session wrap → consolidation guidance → next session suggestion
+- [x] Science-based consolidation advice (walk, avoid phone, leave desk)
+- [x] Concrete first step for ADHD transition support ("Stand up. Walk to kitchen.")
+- [x] Time-of-day aware next session suggestions
+- [x] Shared framework: `agents/shared/wind-down-protocol.md`
+
+### Teach the Teacher
+**Why:** The Protege Effect (Chase et al., 2009) — people learn more deeply when teaching. Scoring teach-backs provides concrete mastery evidence (fights RSD/imposter syndrome) and drives adaptive spaced repetition.
+
+- [x] 5-dimension scoring rubric: Accuracy, Own Words, Structure, Depth, Transfer (each 1-4)
+- [x] Teach-back layered into every spaced repetition interval (micro at 3 days → full at 30 days)
+- [x] Detection probes for understanding vs memorisation
+- [x] Angle rotation: Bloom's levels, contexts, modalities, directions
+- [x] Score transparency with metacognitive calibration
+- [x] `studyctl teachback` and `studyctl teachback-history` CLI commands
+- [x] Database migration v10: teach_back_scores table + study_progress extensions
+- [x] Shared framework: `agents/shared/teach-back-protocol.md`
+
+### Dynamic Knowledge Bridging
+**Why:** The current system hardcodes networking as the bridge domain. Configurable bridges make the tool usable for anyone, and dynamic bridge tracking improves analogy quality over time.
+
+- [x] Configurable knowledge domains via `~/.config/studyctl/config.yaml`
+- [x] Interactive configure flow (discover student's expertise, map anchors, generate bridges)
+- [x] Bridge lifecycle: proposed → validated → effective (or misleading → rejected)
+- [x] Student-generated bridge capture and re-use
+- [x] Bridge fading (explicit at L1-L2, prompted at L3, student-generated at L4)
+- [x] Warm-up activation before new material
+- [x] `studyctl bridge add/list` CLI commands
+- [x] Database migration v11: knowledge_bridges table
+- [x] Shared framework: `agents/shared/knowledge-bridging.md`
+- [x] Default: networking bridges preserved as zero-configuration experience

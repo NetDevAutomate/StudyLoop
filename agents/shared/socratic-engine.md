@@ -37,6 +37,22 @@ When providing information, immediately follow with a question that makes the le
 5. Evaluate: "What are the tradeoffs vs alternatives?"
 6. Create: "Design a solution that uses this concept."
 
+### Teach-Back (When Student Reaches L3+ or Signals Understanding)
+
+Follow the full protocol in `teach-back-protocol.md`.
+
+1. "Explain [concept] to me as if you're teaching it to someone who doesn't know it."
+2. Assess on 5 dimensions: Accuracy, Own Words, Structure, Depth, Transfer (each 1-4).
+3. Share the score with the student — build metacognitive calibration.
+4. Use detection probes to verify depth:
+   - "Now explain it to a different audience" (register-shifting tests genuine understanding)
+   - "When would this approach fail?" (boundary knowledge)
+   - "Give me an analogy from [their domain]" (structural mapping requires real understanding)
+   - "Here's a slightly different problem — how does the same principle apply?" (near transfer)
+5. Record: `studyctl teachback "[concept]" -t [topic] --score "[scores]" --type [type] --angle "[angle]"`
+
+**Vary the angle every review.** Never ask the same question twice. Rotate through Bloom's levels, contexts, modalities, and directions. Track `angles_used` per concept.
+
 ## Challenge-First Protocol
 
 When user requests implementation:

@@ -27,13 +27,15 @@ Then assess:
 
 `studyctl review` checks session history to determine what's due:
 
-| Days Since Study | Review Type |
-|---|---|
-| 1 day | 5-min recall quiz |
-| 3 days | 10-min Socratic review |
-| 7 days | 15-min deep review with new angles |
-| 14 days | Apply concept to new problem |
-| 30 days | Teach-back: explain to the mentor |
+| Days Since Study | Review Type | Teach-Back Integration |
+|---|---|---|
+| 1 day | 5-min recall quiz | None — too early |
+| 3 days | 10-min Socratic review | Micro teach-back: "In one sentence, explain [concept]." |
+| 7 days | 15-min deep review with new angles | Structured teach-back: full 5-dimension rubric |
+| 14 days | Apply concept to new problem | Transfer teach-back: apply to novel scenario |
+| 30 days | Teach-back: explain to the mentor | Full teaching episode: all dimensions scored |
+
+See `teach-back-protocol.md` for scoring rubric and angle rotation.
 
 ## Querying Session History
 
@@ -61,6 +63,14 @@ studyctl audio python -i "..."   # Generate audio overview
 # Spaced repetition & history
 studyctl review                  # What's due for review?
 studyctl struggles               # Recurring struggle topics
+
+# Teach-back scoring
+studyctl teachback "concept" -t topic --score "3,3,4,3,2" --type structured --angle "bloom_apply"
+studyctl teachback-history "concept"
+
+# Knowledge bridges
+studyctl bridge add "source" "target" -s networking -t spark -m "why they map"
+studyctl bridge list -s networking
 
 # NotebookLM direct queries
 notebooklm ask "question" --notebook <id>
@@ -97,6 +107,21 @@ Run `studyctl config show` to see your configured notebook IDs.
 - Session DB path: configured in `~/.config/studyctl/config.yaml`
 - Teaching moments path: configured in `~/.config/studyctl/config.yaml`
 
+## End-of-Session Wind-Down
+
+When a session is ending (student signals or 90+ min elapsed), follow `wind-down-protocol.md`:
+
+1. **Record progress** for each concept: `studyctl progress "<concept>" -t <topic> -c <confidence>`
+2. **Summarise** key concepts and teaching moments
+3. **Surface parking lot** items; offer to schedule them
+4. **Consolidation guidance**: Explain brain replay science (first time) or brief reminder (subsequent). Give concrete first step: "Stand up. Walk to the kitchen."
+5. **Next session suggestion**: Time-of-day aware, reference upcoming spaced repetition reviews
+6. **Offer calendar blocks**: `studyctl schedule-blocks --start <time>`
+
 ## References
 
 - `references/session-workflows.md` — Detailed session type workflows
+- `references/break-science.md` — Active break protocol with science
+- `references/wind-down-protocol.md` — Post-session consolidation protocol
+- `references/teach-back-protocol.md` — Teach-back scoring rubric and methodology
+- `references/knowledge-bridging.md` — Configurable domain bridge framework

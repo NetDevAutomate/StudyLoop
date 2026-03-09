@@ -10,7 +10,14 @@ from rich.console import Console
 from rich.table import Table
 
 from .config import Topic, get_topics
-from .history import spaced_repetition_due, struggle_topics
+from .history import (
+    get_bridges,
+    get_teachback_history,
+    record_bridge,
+    record_teachback,
+    spaced_repetition_due,
+    struggle_topics,
+)
 from .maintenance import dedup_notebook, find_duplicates
 from .scheduler import (
     Job,
@@ -663,6 +670,217 @@ def progress_map() -> None:
     console.print("    classDef learning fill:#f59e0b,color:#000")
     console.print("    classDef struggling fill:#ef4444,color:#fff")
     console.print("```")
+
+
+# ── teach-back scoring ────────────────────────────────────────────────────────
+
+
+@cli.command()
+@click.argument("concept")
+@click.option("--topic", "-t", required=True, help="Study topic.")
+@click.option(
+    "--score",
+    "-s",
+    required=True,
+    help="Comma-separated scores: accuracy,own_words,structure,depth,transfer (each 1-4).",
+)
+@click.option(
+    "--type",
+    "review_type",
+    type=click.Choice(["micro", "structured", "transfer", "full"]),
+    required=True,
+    help="Type of teach-back review.",
+)
+@click.option("--angle", "-a", default=None, help="Question angle used (e.g. bloom_apply).")
+@click.option("--notes", "-n", default=None, help="Optional notes.")
+def teachback(
+    concept: str,
+    topic: str,
+    score: str,
+    review_type: str,
+    angle: str | None,
+    notes: str | None,
+) -> None:
+    """Record a teach-back score for a concept.
+
+    Example: studyctl teachback "Spark partitioning" -t spark --score "3,3,4,3,2" --type structured
+    """
+    parts = score.split(",")
+    if len(parts) != 5:
+        console.print(
+            "[red]Score must be 5 comma-separated values"
+            " (accuracy,own_words,structure,depth,transfer)[/red]"
+        )
+        raise SystemExit(1)
+
+    try:
+        scores = tuple(int(p.strip()) for p in parts)
+    except ValueError:
+        console.print("[red]Each score must be an integer 1-4[/red]")
+        raise SystemExit(1) from None
+
+    for s in scores:
+        if not 1 <= s <= 4:
+            console.print("[red]Each score must be between 1 and 4[/red]")
+            raise SystemExit(1)
+
+    if record_teachback(concept, topic, scores, review_type, angle=angle, notes=notes):  # type: ignore[arg-type]
+        total = sum(scores)
+        if total >= 18:
+            label = "Mastery demonstrated"
+            style = "bold green"
+        elif total >= 14:
+            label = "Solid understanding"
+            style = "green"
+        elif total >= 9:
+            label = "Partial understanding"
+            style = "yellow"
+        else:
+            label = "Memorised, not understood"
+            style = "red"
+
+        console.print(f"[{style}]{label}[/{style}] — [bold]{concept}[/bold] ({topic}): {total}/20")
+        a, o, s, d, t = scores
+        console.print(f"  Accuracy: {a}  Own Words: {o}  Structure: {s}  Depth: {d}  Transfer: {t}")
+    else:
+        console.print("[red]Failed to record teach-back. Check your session database.[/red]")
+
+
+@cli.command("teachback-history")
+@click.argument("concept")
+@click.option("--topic", "-t", default=None, help="Filter by topic.")
+def teachback_history_cmd(concept: str, topic: str | None) -> None:
+    """Show teach-back score progression for a concept."""
+    history = get_teachback_history(concept, topic)
+    if not history:
+        console.print(f"[dim]No teach-back history for '{concept}'[/dim]")
+        return
+
+    table = Table(title=f"Teach-Back History: {concept}")
+    table.add_column("Date", style="dim")
+    table.add_column("Type")
+    table.add_column("Total", justify="right", style="bold")
+    table.add_column("A", justify="center")
+    table.add_column("O", justify="center")
+    table.add_column("S", justify="center")
+    table.add_column("D", justify="center")
+    table.add_column("T", justify="center")
+    table.add_column("Angle", style="dim")
+
+    for entry in history:
+        total = entry["total_score"]
+        if total >= 18:
+            total_style = "[bold green]"
+        elif total >= 14:
+            total_style = "[green]"
+        elif total >= 9:
+            total_style = "[yellow]"
+        else:
+            total_style = "[red]"
+        total_str = f"{total_style}{total}[/]"
+
+        date = entry["created_at"][:10] if entry["created_at"] else "?"
+        table.add_row(
+            date,
+            entry["review_type"],
+            total_str,
+            str(entry["score_accuracy"] or ""),
+            str(entry["score_own_words"] or ""),
+            str(entry["score_structure"] or ""),
+            str(entry["score_depth"] or ""),
+            str(entry["score_transfer"] or ""),
+            entry["question_angle"] or "",
+        )
+
+    console.print(table)
+
+
+# ── knowledge bridges ─────────────────────────────────────────────────────────
+
+
+@cli.group(name="bridge")
+def bridge_group() -> None:
+    """Manage knowledge bridges between domains."""
+
+
+@bridge_group.command(name="add")
+@click.argument("source")
+@click.argument("target")
+@click.option("--source-domain", "-s", required=True, help="Source domain (e.g. networking).")
+@click.option("--target-domain", "-t", required=True, help="Target domain (e.g. spark).")
+@click.option("--mapping", "-m", default=None, help="Why they map (structural similarity).")
+@click.option(
+    "--quality",
+    "-q",
+    type=click.Choice(["proposed", "validated", "effective", "misleading", "rejected"]),
+    default="validated",
+    help="Bridge quality.",
+)
+def bridge_add(
+    source: str,
+    target: str,
+    source_domain: str,
+    target_domain: str,
+    mapping: str | None,
+    quality: str,
+) -> None:
+    """Add a knowledge bridge between two concepts.
+
+    Example: studyctl bridge add "ECMP load balancing" "Spark partition distribution"
+             -s networking -t spark -m "distribute work across parallel processors"
+    """
+    if record_bridge(source, source_domain, target, target_domain, mapping, quality, "student"):
+        console.print(
+            f"[green]Bridge added:[/green] "
+            f"[bold]{source}[/bold] ({source_domain}) "
+            f"-> [bold]{target}[/bold] ({target_domain})"
+        )
+    else:
+        console.print("[red]Failed to add bridge. Check your session database.[/red]")
+
+
+@bridge_group.command(name="list")
+@click.option("--source-domain", "-s", default=None, help="Filter by source domain.")
+@click.option("--target-domain", "-t", default=None, help="Filter by target domain.")
+@click.option("--quality", "-q", default=None, help="Filter by quality.")
+def bridge_list(source_domain: str | None, target_domain: str | None, quality: str | None) -> None:
+    """List knowledge bridges."""
+    bridges = get_bridges(target_domain=target_domain, source_domain=source_domain, quality=quality)
+    if not bridges:
+        console.print("[dim]No bridges found. Use 'studyctl bridge add' to create some.[/dim]")
+        return
+
+    table = Table(title="Knowledge Bridges")
+    table.add_column("Source", style="cyan")
+    table.add_column("Domain", style="dim")
+    table.add_column("Target", style="bold")
+    table.add_column("Domain", style="dim")
+    table.add_column("Quality")
+    table.add_column("Used", justify="right")
+    table.add_column("Helpful", justify="right")
+
+    quality_style = {
+        "effective": "bold green",
+        "validated": "green",
+        "proposed": "yellow",
+        "misleading": "red",
+        "rejected": "dim red",
+    }
+
+    for b in bridges:
+        q = b["quality"]
+        style = quality_style.get(q, "dim")
+        table.add_row(
+            b["source_concept"],
+            b["source_domain"],
+            b["target_concept"],
+            b["target_domain"],
+            f"[{style}]{q}[/{style}]",
+            str(b["times_used"]),
+            str(b["times_helpful"]),
+        )
+
+    console.print(table)
 
 
 # --- Docs commands ---
