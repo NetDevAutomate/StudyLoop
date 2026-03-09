@@ -1,0 +1,2204 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorm-v1.4-features.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Brainstorm: v1.4 Features - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#brainstorm-v14-features" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Brainstorm: v1.4 Features
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#feature-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-teach-the-teacher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Teach the Teacher
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Teach the Teacher">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-research-says" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Research Says
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#teach-back-scoring-rubric-5-dimensions-4-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Teach-Back Scoring Rubric (5 dimensions, 4 levels)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#teach-back-integration-with-spaced-repetition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Teach-Back Integration with Spaced Repetition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detecting-understanding-vs-memorisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detecting Understanding vs Memorisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#avoiding-repetitiveness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Avoiding Repetitiveness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-addition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Addition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-active-break-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Active Break Protocol
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Active Break Protocol">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-research-says_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Research Says
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the Research Says">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#movement-breaks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Movement Breaks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hydration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hydration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#walking-and-thinking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Walking and Thinking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adhd-specific-break-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADHD-Specific Break Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-design_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tiered-break-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tiered Break System
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adhd-adaptations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ADHD Adaptations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-prompt-additions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Prompt Additions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open-questions_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-session-wind-down-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Session Wind-Down Protocol
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Session Wind-Down Protocol">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-research-says_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Research Says
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the Research Says">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-nih-wakeful-rest-discovery-buch-et-al-2021-cell-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The NIH Wakeful Rest Discovery (Buch et al., 2021, Cell Reports)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rest-type-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rest Type Matters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimal-post-session-timing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimal Post-Session Timing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-design_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wind-down-protocol-agent-driven" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wind-Down Protocol (Agent-Driven)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rest-duration-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rest Duration Recommendations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-addition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Addition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open-questions_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-dynamic-knowledge-bridging-socratic-mentor-configure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Dynamic Knowledge Bridging (/socratic-mentor configure)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Dynamic Knowledge Bridging (/socratic-mentor configure)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-research-says_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Research Says
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the Research Says">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#analogical-reasoning-gentners-structure-mapping-theory-1983" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analogical Reasoning (Gentner's Structure-Mapping Theory, 1983)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#knowledge-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Knowledge Activation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-design_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-restructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Restructure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#socratic-mentor-configure-interactive-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /socratic-mentor configure — Interactive Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-bridge-evolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Bridge Evolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-changes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backward-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backward Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open-questions_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-cutting-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Cutting Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cross-Cutting Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#feature-interactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature Interactions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-priority-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Priority (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estimated-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimated Scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#challenges-worth-debating" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Challenges Worth Debating
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="brainstorm-v14-features">Brainstorm: v1.4 Features<a class="headerlink" href="#brainstorm-v14-features" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-03-09
+<strong>Status:</strong> Brainstorm (pre-plan)</p>
+<hr />
+<h2 id="feature-summary">Feature Summary<a class="headerlink" href="#feature-summary" title="Permanent link">&para;</a></h2>
+<p>Four interconnected features that deepen the mentor's pedagogical intelligence:</p>
+<ol>
+<li><strong>Teach the Teacher</strong> — Student explains concepts back; scored and tracked with spaced repetition</li>
+<li><strong>Active Break Protocol</strong> — Science-backed movement, hydration, and micro-break reminders during sessions</li>
+<li><strong>Session Wind-Down</strong> — End-of-session rest protocol with evidence-based timing for memory consolidation</li>
+<li><strong>Dynamic Knowledge Bridging</strong> — Rename to <code>/socratic-mentor</code>, add configurable knowledge domains beyond networking</li>
+</ol>
+<hr />
+<h2 id="1-teach-the-teacher">1. Teach the Teacher<a class="headerlink" href="#1-teach-the-teacher" title="Permanent link">&para;</a></h2>
+<h3 id="the-problem">The Problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h3>
+<p>The mentor currently has four scaffolding levels (L1 Prompted → L4 Teaching), and at the 30-day spaced repetition interval it triggers a "teach-back session." But there's no formal scoring, no structured protocol for assessing the quality of the teach-back, and no mechanism to distinguish genuine understanding from memorisation. The teach-back is also only triggered at the 30-day mark — research says it should happen earlier and more frequently.</p>
+<h3 id="what-the-research-says">What the Research Says<a class="headerlink" href="#what-the-research-says" title="Permanent link">&para;</a></h3>
+<p><strong>The Protege Effect</strong> (Chase et al., 2009): People learn more effortfully when they believe they are teaching someone else. Three mechanisms drive this:
+- <strong>Generative processing</strong>: Explaining forces select → organise → integrate (beyond surface)
+- <strong>Metacognitive monitoring</strong>: "Do I actually understand this well enough to explain it?"
+- <strong>Motivation shift</strong>: Social obligation creates effort the learner wouldn't apply for themselves</p>
+<p><strong>Kobayashi (2019) meta-analysis</strong>: Preparing to teach promotes deep learning because teacher-role students use 1.3x more metacognitive strategies than those studying for themselves.</p>
+<p><strong>Key insight</strong>: The effect works even when teaching is <em>simulated</em>. Simply believing you're explaining to a teachable agent triggers deeper processing (Stanford, Chase et al., 2009). Our AI mentor is a perfect "teachable agent."</p>
+<h3 id="proposed-design">Proposed Design<a class="headerlink" href="#proposed-design" title="Permanent link">&para;</a></h3>
+<h4 id="teach-back-scoring-rubric-5-dimensions-4-levels">Teach-Back Scoring Rubric (5 dimensions, 4 levels)<a class="headerlink" href="#teach-back-scoring-rubric-5-dimensions-4-levels" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>1 - Recitation</th>
+<th>2 - Paraphrase</th>
+<th>3 - Explanation</th>
+<th>4 - Teaching</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Accuracy</strong></td>
+<td>Significant errors/omissions</td>
+<td>Mostly correct, minor gaps</td>
+<td>Accurate with nuance</td>
+<td>Accurate + anticipates edge cases</td>
+</tr>
+<tr>
+<td><strong>Own Words</strong></td>
+<td>Verbatim repetition</td>
+<td>Mixed own/parroted</td>
+<td>Consistently own language</td>
+<td>Creates novel analogies/framings</td>
+</tr>
+<tr>
+<td><strong>Structure</strong></td>
+<td>Disconnected facts</td>
+<td>Some structure, unclear relationships</td>
+<td>Clear logical flow (cause/effect)</td>
+<td>Builds narrative for listener</td>
+</tr>
+<tr>
+<td><strong>Depth</strong></td>
+<td>States WHAT only</td>
+<td>WHAT + partial HOW</td>
+<td>WHAT, HOW, and WHY</td>
+<td>WHY + tradeoffs + when NOT to use</td>
+</tr>
+<tr>
+<td><strong>Transfer</strong></td>
+<td>Cannot apply to new context</td>
+<td>Applies with heavy hints</td>
+<td>Independently applies to related scenario</td>
+<td>Generates novel examples/counter-examples</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Score ranges:</strong>
+- 5-8: Memorised, not understood → reset interval to 1 day
+- 9-13: Partial understanding → same interval, probe the gaps
+- 14-17: Solid understanding → extend interval
+- 18-20: Mastery → maximum interval extension (90-day check-in)</p>
+<h4 id="teach-back-integration-with-spaced-repetition">Teach-Back Integration with Spaced Repetition<a class="headerlink" href="#teach-back-integration-with-spaced-repetition" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th>Current Review Type</th>
+<th>Proposed Teach-Back Addition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 day</td>
+<td>5-min recall quiz</td>
+<td>No teach-back (too early)</td>
+</tr>
+<tr>
+<td>3 days</td>
+<td>10-min Socratic review</td>
+<td><strong>Micro teach-back</strong>: "In one sentence, explain [concept]." Score Accuracy + Own Words only.</td>
+</tr>
+<tr>
+<td>7 days</td>
+<td>15-min deep review</td>
+<td><strong>Structured teach-back</strong>: Full 5-dimension rubric. Vary question angle from last review.</td>
+</tr>
+<tr>
+<td>14 days</td>
+<td>Apply to new problem</td>
+<td><strong>Transfer teach-back</strong>: "Explain how [concept] applies to [novel scenario]." Score Transfer + Depth.</td>
+</tr>
+<tr>
+<td>30 days</td>
+<td>Teach-back session</td>
+<td><strong>Full teaching episode</strong>: Explain as if teaching someone new. All 5 dimensions. Score &gt;= 14 → "mastered" with 90-day check-in.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="detecting-understanding-vs-memorisation">Detecting Understanding vs Memorisation<a class="headerlink" href="#detecting-understanding-vs-memorisation" title="Permanent link">&para;</a></h4>
+<p><strong>Red flags (surface learning):</strong>
+- Uses exact same words as source material
+- Cannot answer "what if?" variations
+- Explanation breaks down with unseen examples
+- Cannot explain WHY, only WHAT
+- Confidence collapses when question angle changes</p>
+<p><strong>Detection probes the agent should use:</strong>
+1. <strong>"Explain it differently"</strong>: "Now explain it as if I'm a network engineer / a 10-year-old / your manager"
+2. <strong>"Break it"</strong>: "What happens if we remove [key component]?" / "When would this fail?"
+3. <strong>"Analogy generation"</strong>: "Give me an analogy from [student's expert domain]"
+4. <strong>"Near transfer"</strong>: Present a slightly different problem using the same principle</p>
+<h4 id="avoiding-repetitiveness">Avoiding Repetitiveness<a class="headerlink" href="#avoiding-repetitiveness" title="Permanent link">&para;</a></h4>
+<p>The agent MUST vary the angle on each review. Track which angles have been used per concept:</p>
+<ul>
+<li><strong>Bloom's rotation</strong>: Cycle through Remember → Understand → Apply → Analyse → Evaluate → Create</li>
+<li><strong>Context rotation</strong>: Same concept, different scenario each review</li>
+<li><strong>Modality rotation</strong>: Verbal → code exercise → diagram → debug broken code → teach-back → compare/contrast</li>
+<li><strong>Direction reversal</strong>: "What is X?" → "When would you NOT use X?" → "What problem does X solve?"</li>
+</ul>
+<h4 id="database-changes">Database Changes<a class="headerlink" href="#database-changes" title="Permanent link">&para;</a></h4>
+<p>New table: <code>teach_back_scores</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">teach_back_scores</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTOINCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">concept</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">topic</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">sessions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">score_accuracy</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">CHECK</span><span class="p">(</span><span class="n">score_accuracy</span><span class="w"> </span><span class="k">BETWEEN</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="mi">4</span><span class="p">),</span>
+<span class="w">    </span><span class="n">score_own_words</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">CHECK</span><span class="p">(</span><span class="n">score_own_words</span><span class="w"> </span><span class="k">BETWEEN</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="mi">4</span><span class="p">),</span>
+<span class="w">    </span><span class="n">score_structure</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">CHECK</span><span class="p">(</span><span class="n">score_structure</span><span class="w"> </span><span class="k">BETWEEN</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="mi">4</span><span class="p">),</span>
+<span class="w">    </span><span class="n">score_depth</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">CHECK</span><span class="p">(</span><span class="n">score_depth</span><span class="w"> </span><span class="k">BETWEEN</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="mi">4</span><span class="p">),</span>
+<span class="w">    </span><span class="n">score_transfer</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">CHECK</span><span class="p">(</span><span class="n">score_transfer</span><span class="w"> </span><span class="k">BETWEEN</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="mi">4</span><span class="p">),</span>
+<span class="w">    </span><span class="n">total_score</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">GENERATED</span><span class="w"> </span><span class="n">ALWAYS</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">score_accuracy</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">score_own_words</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">score_structure</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">score_depth</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">score_transfer</span>
+<span class="w">    </span><span class="p">)</span><span class="w"> </span><span class="n">STORED</span><span class="p">,</span>
+<span class="w">    </span><span class="n">review_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">  </span><span class="c1">-- micro|structured|transfer|full</span>
+<span class="w">    </span><span class="n">question_angle</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">        </span><span class="c1">-- bloom_level + modality used</span>
+<span class="w">    </span><span class="n">notes</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="s1">&#39;now&#39;</span><span class="p">))</span>
+<span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_teachback_concept</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">teach_back_scores</span><span class="p">(</span><span class="n">concept</span><span class="p">,</span><span class="w"> </span><span class="n">topic</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_teachback_date</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">teach_back_scores</span><span class="p">(</span><span class="n">created_at</span><span class="p">);</span>
+</code></pre></div>
+<p>Extend <code>study_progress</code> table:
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">study_progress</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">last_teachback_score</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">study_progress</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">angles_used</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">;</span><span class="w">  </span><span class="c1">-- JSON array of angles already tried</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">study_progress</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">mastery_signals</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">;</span><span class="w">  </span><span class="c1">-- JSON: {accuracy_pct, transfer_success, independence_level}</span>
+</code></pre></div></p>
+<h4 id="cli-addition">CLI Addition<a class="headerlink" href="#cli-addition" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>teachback<span class="w"> </span>CONCEPT<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>--score<span class="w"> </span><span class="s2">&quot;3,3,4,3,2&quot;</span><span class="w"> </span>--type<span class="w"> </span>structured<span class="w"> </span>--angle<span class="w"> </span><span class="s2">&quot;apply_network_analogy&quot;</span>
+studyctl<span class="w"> </span>teachback-history<span class="w"> </span>CONCEPT<span class="w">  </span><span class="c1"># show score progression over time</span>
+</code></pre></div>
+<h3 id="open-questions">Open Questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Should the agent self-assess the teach-back score, or should it propose a score and ask the student to confirm/adjust? (Self-assessment is a metacognitive skill worth developing)</li>
+<li>Do we need FSRS (Free Spaced Repetition Scheduler) instead of fixed intervals? The <code>fsrs</code> Python package exists and adapts per-concept. Worth the complexity?</li>
+<li>Should teach-back scores feed into the existing <code>study_progress.confidence</code> levels, or remain a separate signal?</li>
+</ul>
+<hr />
+<h2 id="2-active-break-protocol">2. Active Break Protocol<a class="headerlink" href="#2-active-break-protocol" title="Permanent link">&para;</a></h2>
+<h3 id="the-problem_1">The Problem<a class="headerlink" href="#the-problem_1" title="Permanent link">&para;</a></h3>
+<p>The session protocol already has break reminders at 25/50/90 minutes, but they're passive text nudges. There's no science-backed reasoning communicated to the student, no differentiation between break types, and no ADHD-specific adaptations for when timers help vs when they break flow.</p>
+<h3 id="what-the-research-says_1">What the Research Says<a class="headerlink" href="#what-the-research-says_1" title="Permanent link">&para;</a></h3>
+<h4 id="movement-breaks">Movement Breaks<a class="headerlink" href="#movement-breaks" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Sharpe et al. (2025, Frontiers in Psychology)</strong>: Human sustained attention is limited to ~25 minutes before significant decline. "Perfect sustained attention is fundamentally impossible."</li>
+<li><strong>Ariga &amp; Lleras (2011, Cognition)</strong>: The vigilance decrement is NOT from "running out" of attention — it's from <em>habituation to the task goal</em>. Brief diversions <strong>reactivate</strong> the goal and completely prevent performance decline.</li>
+<li><strong>PMC (2024)</strong>: 10-minute physical activity breaks significantly enhance selective attention and executive function vs no-break conditions.</li>
+<li><strong>Active &gt; passive</strong>: Evidence does NOT support passive breaks being as effective. Movement triggers increased cerebral blood flow, dopamine/norepinephrine/BDNF release, and cardiovascular oxygen delivery.</li>
+</ul>
+<h4 id="hydration">Hydration<a class="headerlink" href="#hydration" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Popkin et al. (2010)</strong>: Even 1-2% body mass dehydration impairs concentration, reaction time, short-term memory, and mood.</li>
+<li><strong>Edmonds &amp; Jeffes (2009)</strong>: Simply drinking water improved visual attention even in mild (non-exercise) dehydration. Routine mild dehydration from not drinking during study is sufficient to impair cognition.</li>
+<li><strong>Chinese RCT (2021)</strong>: 500mL water supplementation improved processing speed and working memory.</li>
+<li><strong>Practical threshold</strong>: ~200-500mL per hour during cognitive work.</li>
+</ul>
+<h4 id="walking-and-thinking">Walking and Thinking<a class="headerlink" href="#walking-and-thinking" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Oppezzo &amp; Schwartz (2014, Stanford)</strong>: Creative output increased 60% while walking vs sitting. Walking on a treadmill facing a blank wall produced nearly the same benefit — the act of walking itself is the driver. Effect <strong>persisted after walking</strong> (elevated creativity in subsequent seated session). Walking improved <em>divergent thinking</em> (novel ideas) but not <em>convergent thinking</em> (single correct answer).</li>
+<li><strong>Huberman (Stanford)</strong>: Walking creates optic flow that quiets stress responses — enhanced outdoors.</li>
+<li><strong>Nature walking</strong>: Reduces cortisol, which impairs memory consolidation when elevated.</li>
+</ul>
+<h4 id="adhd-specific-break-patterns">ADHD-Specific Break Patterns<a class="headerlink" href="#adhd-specific-break-patterns" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Faster depletion</strong>: ADHD brains deplete executive function faster ("smaller gas tank, burns fuel faster").</li>
+<li><strong>Shorter, more frequent breaks</strong> (Hunter &amp; Wu, 2016): Maximise resource recovery.</li>
+<li><strong>5-minute movement breaks every 20 minutes</strong> improved attention/memory in university students — notably shorter than standard Pomodoro.</li>
+<li><strong>Hyperfocus trap</strong>: ADHD brain can lock into tasks and ignore physical needs for hours. Non-negotiable hydration/movement alarms needed.</li>
+<li><strong>The transition problem</strong>: For ADHD, restarting after a break is harder than the work itself. Break activities must be low-dopamine (walking, water, stretching — NOT phone, social media, rabbit holes).</li>
+</ul>
+<h3 id="proposed-design_1">Proposed Design<a class="headerlink" href="#proposed-design_1" title="Permanent link">&para;</a></h3>
+<h4 id="tiered-break-system">Tiered Break System<a class="headerlink" href="#tiered-break-system" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>MICRO-BREAK (every 20-25 min):
+  Duration: 2-3 minutes
+  Activities: Stand up, stretch, drink water (200mL)
+  Agent behaviour: Gentle nudge, don&#39;t break mid-thought
+  Implementation: 2-minute wrap-up buffer before break
+
+SHORT BREAK (every 50-60 min / every 2-3 micro-breaks):
+  Duration: 5-10 minutes
+  Activities: Walk to another room, refill water, light movement
+  Agent behaviour: Summarise progress, set re-entry point
+  Implementation: Agent notes current concept for seamless resume
+
+LONG BREAK (every 90-120 min):
+  Duration: 15-20 minutes
+  Activities: Walk outside if possible, change environment
+  Agent behaviour: Full progress checkpoint, suggest what to tackle next
+  Implementation: Auto-record session state for resume
+</code></pre></div>
+<h4 id="adhd-adaptations">ADHD Adaptations<a class="headerlink" href="#adhd-adaptations" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Energy Level</th>
+<th>Micro-Break</th>
+<th>Short Break</th>
+<th>Long Break</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>High (7-10)</td>
+<td>Every 25 min</td>
+<td>Every 50 min</td>
+<td>Every 90 min</td>
+</tr>
+<tr>
+<td>Medium (4-6)</td>
+<td>Every 20 min</td>
+<td>Every 40 min</td>
+<td>Every 75 min</td>
+</tr>
+<tr>
+<td>Low (1-3)</td>
+<td>Every 15 min</td>
+<td>Every 30 min</td>
+<td>Every 60 min</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hyperfocus override</strong>: If student is in productive flow (responding quickly, making progress), use a "wrap-up buffer" instead of hard stops. "You've been going for 30 minutes — finish your current thought, then let's take a quick stretch." Don't destroy flow states.</p>
+<p><strong>The "just water" minimum</strong>: Even if the student resists a full break, the agent should insist on water. "I hear you — you're in the zone. At minimum, take a drink of water right now. We'll keep going."</p>
+<h4 id="agent-prompt-additions">Agent Prompt Additions<a class="headerlink" href="#agent-prompt-additions" title="Permanent link">&para;</a></h4>
+<p>The agent should communicate the WHY, not just the instruction:</p>
+<blockquote>
+<p>"Quick science check: your brain habituates to tasks after about 25 minutes — attention doesn't deplete, it <em>tunes out</em>. Standing up for 2 minutes literally reactivates your focus. Let's take a micro-break — stand up, drink some water, and we'll pick up right where we left off."</p>
+<p>"You've been at this for 50 minutes. Stanford research shows walking increases creative thinking by 60% — and the effect persists after you sit back down. Walk to the kitchen, refill your water, and when you come back you'll see this problem differently."</p>
+</blockquote>
+<h4 id="state-tracking">State Tracking<a class="headerlink" href="#state-tracking" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># In session state (written to state file for status line)</span>
+<span class="n">break_state</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;session_start&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-09T14:00:00&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_micro_break&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-09T14:25:00&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;last_short_break&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="s2">&quot;last_long_break&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="s2">&quot;water_reminders_sent&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s2">&quot;breaks_taken&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;breaks_skipped&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;energy_level&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="s2">&quot;current_interval&quot;</span><span class="p">:</span> <span class="s2">&quot;micro&quot;</span><span class="p">,</span>  <span class="c1"># next break type due</span>
+    <span class="s2">&quot;next_break_due&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-09T14:50:00&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="open-questions_1">Open Questions<a class="headerlink" href="#open-questions_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Should the agent track actual break compliance (did the student actually take the break) or is that too surveillant?</li>
+<li>Integration with the existing status line — should break countdown show in the status line?</li>
+<li>For voice mode (<code>study-speak</code>), should break reminders be spoken aloud?</li>
+</ul>
+<hr />
+<h2 id="3-session-wind-down-protocol">3. Session Wind-Down Protocol<a class="headerlink" href="#3-session-wind-down-protocol" title="Permanent link">&para;</a></h2>
+<h3 id="the-problem_2">The Problem<a class="headerlink" href="#the-problem_2" title="Permanent link">&para;</a></h3>
+<p>The current end-of-session protocol records progress and suggests next review dates, but doesn't address what happens <em>immediately after</em> the session. The science on post-learning rest is compelling and largely unknown to most learners.</p>
+<h3 id="what-the-research-says_2">What the Research Says<a class="headerlink" href="#what-the-research-says_2" title="Permanent link">&para;</a></h3>
+<h4 id="the-nih-wakeful-rest-discovery-buch-et-al-2021-cell-reports">The NIH Wakeful Rest Discovery (Buch et al., 2021, Cell Reports)<a class="headerlink" href="#the-nih-wakeful-rest-discovery-buch-et-al-2021-cell-reports" title="Permanent link">&para;</a></h4>
+<p>This is the most important finding for post-session design:</p>
+<ul>
+<li>During wakeful rest, the brain <strong>replays newly learned material at 20x speed</strong></li>
+<li>This replay occurs in the hippocampus and sensorimotor cortex</li>
+<li>The more replay during rest, the <strong>greater the performance improvement</strong> in subsequent practice</li>
+<li><strong>Wakeful consolidation is ~4x greater in magnitude</strong> than overnight sleep consolidation</li>
+<li>You do NOT need to actively rehearse — consolidation happens automatically during quiet rest</li>
+</ul>
+<h4 id="rest-type-matters">Rest Type Matters<a class="headerlink" href="#rest-type-matters" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Post-Session Activity</th>
+<th>Effect on Memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quiet rest (eyes closed, low stimulation)</td>
+<td><strong>Best</strong> for declarative memory consolidation</td>
+</tr>
+<tr>
+<td>Walking (low cognitive load)</td>
+<td><strong>Good</strong> — consolidation + movement benefits</td>
+</tr>
+<tr>
+<td>Immediately starting new unrelated topic</td>
+<td><strong>Interferes</strong> with consolidation</td>
+</tr>
+<tr>
+<td>Checking phone / social media</td>
+<td><strong>Interferes</strong> with consolidation</td>
+</tr>
+<tr>
+<td>Sleep</td>
+<td>Excellent for long-term systems-level consolidation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dewar et al. (2012, Psychological Science)</strong>: Brief wakeful rest boosts new memories over the <strong>long term</strong>, not just short-term. The effect does NOT depend on intentional rehearsal.</p>
+<p><strong>Wamsley (2019)</strong>: Even seconds-long rest breaks trigger memory-related brain activity that predicts later test performance. Rest during wakefulness is "a crucial and widely underappreciated contributor to long-term memory formation."</p>
+<h4 id="optimal-post-session-timing">Optimal Post-Session Timing<a class="headerlink" href="#optimal-post-session-timing" title="Permanent link">&para;</a></h4>
+<p>Based on research synthesis:</p>
+<ul>
+<li><strong>Immediate post-session</strong>: 10-15 minutes quiet/low-stimulation activity</li>
+<li><strong>Do NOT</strong> immediately load new cognitive material</li>
+<li><strong>Walking is ideal</strong>: Combines consolidation with movement benefits</li>
+<li><strong>Between major sessions</strong>: 20-30 minute break minimum</li>
+<li><strong>After 3-4 hours total study</strong>: Consider ending for the day or taking 1+ hour break</li>
+</ul>
+<h3 id="proposed-design_2">Proposed Design<a class="headerlink" href="#proposed-design_2" title="Permanent link">&para;</a></h3>
+<h4 id="wind-down-protocol-agent-driven">Wind-Down Protocol (Agent-Driven)<a class="headerlink" href="#wind-down-protocol-agent-driven" title="Permanent link">&para;</a></h4>
+<p>When the session approaches end (student signals, or 90+ min elapsed):</p>
+<div class="highlight"><pre><span></span><code>PHASE 1: Session Wrap (2-3 min, in-session)
+  - Record progress: studyctl progress &quot;concept&quot; -t topic -c level
+  - Surface parking lot items
+  - Summarise what was covered + key insights
+  - Set next review dates via spaced repetition
+
+PHASE 2: Consolidation Guidance (spoken if voice mode active)
+  Agent says something like:
+  &quot;Here&#39;s something most people don&#39;t know: your brain is about to replay
+  everything we just covered at 20x speed — but only if you give it quiet
+  space. For the next 10-15 minutes, avoid jumping into email or your phone.
+
+  Best option: walk outside if you can. The movement helps and the change
+  of scenery lets your brain consolidate.
+
+  Second best: get up, make a tea or coffee, sit somewhere different from
+  your desk for 10 minutes.
+
+  What you want to avoid: immediately opening Slack, Twitter, or starting
+  another intense task. That interferes with the replay process.&quot;
+
+PHASE 3: Next Session Suggestion
+  Based on spaced repetition schedule + time of day:
+  - Morning session ending: &quot;Your next session could be this afternoon
+    after a 2-3 hour break, or tomorrow morning.&quot;
+  - Afternoon session ending: &quot;Let your brain consolidate overnight.
+    Tomorrow is ideal for the next session.&quot;
+  - If concepts are due for review tomorrow: mention them specifically
+</code></pre></div>
+<h4 id="rest-duration-recommendations">Rest Duration Recommendations<a class="headerlink" href="#rest-duration-recommendations" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Minimum Rest</th>
+<th>Ideal Rest</th>
+<th>Activity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Between focus blocks (same session)</td>
+<td>5 min</td>
+<td>10 min</td>
+<td>Stand, walk, water</td>
+</tr>
+<tr>
+<td>End of study session</td>
+<td>10 min</td>
+<td>15-20 min</td>
+<td>Walk outside, change environment</td>
+</tr>
+<tr>
+<td>Between sessions (same day)</td>
+<td>30 min</td>
+<td>1-2 hours</td>
+<td>Different activity entirely</td>
+</tr>
+<tr>
+<td>After intensive session (2+ hours)</td>
+<td>1 hour</td>
+<td>2-3 hours</td>
+<td>Exercise, meal, non-screen activity</td>
+</tr>
+</tbody>
+</table>
+<h4 id="cli-addition_1">CLI Addition<a class="headerlink" href="#cli-addition_1" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>wind-down<span class="w">  </span><span class="c1"># Show post-session guidance based on session duration and time of day</span>
+</code></pre></div>
+<h3 id="open-questions_2">Open Questions<a class="headerlink" href="#open-questions_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Should <code>studyctl wind-down</code> be automatic at session end, or opt-in?</li>
+<li>Should it integrate with calendar to block "consolidation time" after study blocks?</li>
+<li>How do we handle the student who says "I'm fine, I want to keep going"? Respect autonomy while communicating the science.</li>
+</ul>
+<hr />
+<h2 id="4-dynamic-knowledge-bridging-socratic-mentor-configure">4. Dynamic Knowledge Bridging (/socratic-mentor configure)<a class="headerlink" href="#4-dynamic-knowledge-bridging-socratic-mentor-configure" title="Permanent link">&para;</a></h2>
+<h3 id="the-problem_3">The Problem<a class="headerlink" href="#the-problem_3" title="Permanent link">&para;</a></h3>
+<p>The current system hardcodes networking as the student's expert domain. Every analogy bridges from network concepts (ECMP, BGP, VLAN, etc.) to data engineering concepts. This works perfectly for you — but makes the tool useless for anyone whose background isn't networking. Even for you, there may be <em>other</em> domains you're comfortable with that could provide better bridges for specific concepts.</p>
+<h3 id="what-the-research-says_3">What the Research Says<a class="headerlink" href="#what-the-research-says_3" title="Permanent link">&para;</a></h3>
+<h4 id="analogical-reasoning-gentners-structure-mapping-theory-1983">Analogical Reasoning (Gentner's Structure-Mapping Theory, 1983)<a class="headerlink" href="#analogical-reasoning-gentners-structure-mapping-theory-1983" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Surface vs structural similarity</strong>: Novices match on surface features ("both involve water"). Experts match on relational structure ("both involve flow through constrained paths"). Good bridges must map <em>structure</em>, not surface.</li>
+<li><strong>Bridging analogies</strong> (Clement, 1993): When target concept is too distant from known domain, create a chain of intermediate analogies. Multi-hop bridges.</li>
+<li><strong>Analogical encoding</strong> (Gentner et al., 2004): Comparing two cases side-by-side leads to better transfer than studying each alone.</li>
+</ul>
+<h4 id="knowledge-activation">Knowledge Activation<a class="headerlink" href="#knowledge-activation" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Richland et al. (2019)</strong>: Warm-up activities that activate prior knowledge before new material significantly improve transfer. The warm-up closes the gap between old and new learning.</li>
+<li><strong>Blanchette &amp; Dunbar (2000)</strong>: People produce more and better analogies when given the goal of creating a persuasive argument than a memory task.</li>
+</ul>
+<h3 id="proposed-design_3">Proposed Design<a class="headerlink" href="#proposed-design_3" title="Permanent link">&para;</a></h3>
+<h4 id="command-restructure">Command Restructure<a class="headerlink" href="#command-restructure" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>CURRENT:
+  /audhd-socratic-mentor  (hardcoded to networking bridges)
+
+PROPOSED:
+  /socratic-mentor                     # Default: uses configured knowledge domain
+  /socratic-mentor --domain networking  # Explicit domain override
+  /socratic-mentor configure           # Interactive setup wizard
+</code></pre></div>
+<p>The <code>audhd-socratic-mentor</code> skill becomes the <em>engine</em> (questioning methodology, scaffolding, cognitive support) while the <em>knowledge bridges</em> become a configurable layer on top.</p>
+<h4 id="socratic-mentor-configure-interactive-setup">/socratic-mentor configure — Interactive Setup<a class="headerlink" href="#socratic-mentor-configure-interactive-setup" title="Permanent link">&para;</a></h4>
+<p>The agent runs an interactive discovery session:</p>
+<div class="highlight"><pre><span></span><code>STEP 1: Background Discovery
+  &quot;What&#39;s your professional background? What have you spent the most
+  years working with?&quot;
+  → Captures: primary expertise domain(s)
+
+STEP 2: Comfort Mapping
+  &quot;Within [domain], what are the concepts you could explain in your
+  sleep? The ones that are second nature?&quot;
+  → Captures: anchor concepts (Clement&#39;s &quot;anchors&quot;)
+
+  &quot;What about outside your main field — any hobbies, interests, or
+  other skills where you have deep intuitive understanding?&quot;
+  → Captures: secondary domains for cross-pollination
+
+STEP 3: Bridge Generation
+  Agent identifies structural mappings between student&#39;s known concepts
+  and the target learning domain. Proposes initial bridge table.
+
+  &quot;Based on what you&#39;ve told me, here are some concept bridges I think
+  will work. Let me know if any feel wrong or forced:&quot;
+
+  | Your Experience | Maps To | Why |
+  |---|---|---|
+  | [known concept] | [target concept] | [structural similarity] |
+
+  Student validates/rejects/modifies bridges.
+
+STEP 4: Persist Configuration
+  Writes to ~/.config/studyctl/config.yaml:
+
+  knowledge_domains:
+    primary: networking
+    anchors:
+      - concept: &quot;ECMP load balancing&quot;
+        comfort: 10
+      - concept: &quot;BGP route propagation&quot;
+        comfort: 9
+      - concept: &quot;VLAN segmentation&quot;
+        comfort: 10
+    secondary:
+      - domain: &quot;cooking&quot;
+        anchors: [&quot;mise en place&quot;, &quot;flavour balancing&quot;]
+    bridges:
+      - source: &quot;ECMP load balancing&quot;
+        target: &quot;Spark partition distribution&quot;
+        quality: &quot;validated&quot;  # validated|proposed|rejected
+      - source: &quot;mise en place&quot;
+        target: &quot;data pipeline staging&quot;
+        quality: &quot;proposed&quot;
+</code></pre></div>
+<h4 id="dynamic-bridge-evolution">Dynamic Bridge Evolution<a class="headerlink" href="#dynamic-bridge-evolution" title="Permanent link">&para;</a></h4>
+<p>Beyond the initial configure step:</p>
+<ol>
+<li>
+<p><strong>Student-generated analogies</strong>: When the student produces a good analogy during a session, capture it:
+   <div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>bridge<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;TCP three-way handshake&quot;</span><span class="w"> </span><span class="s2">&quot;OAuth token exchange&quot;</span><span class="w"> </span>--quality<span class="w"> </span>validated
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Bridge effectiveness tracking</strong>: Did the analogy help or confuse?</p>
+</li>
+<li>If student grasped concept faster after bridge: mark as effective</li>
+<li>
+<p>If student got confused by the analogy: mark as misleading, try different angle</p>
+</li>
+<li>
+<p><strong>Analogy fading</strong>: Track scaffolding level per concept. At L1-L2, provide explicit bridges. At L3, ask "What does this remind you of?" At L4, expect student to generate bridges unprompted.</p>
+</li>
+<li>
+<p><strong>Warm-up activation</strong>: Before new material, spend 2 minutes activating relevant prior knowledge from the configured domain. "Before we dive into Spark DAGs, let's think about network topology and dependency graphs for a moment..."</p>
+</li>
+</ol>
+<h4 id="database-changes_1">Database Changes<a class="headerlink" href="#database-changes_1" title="Permanent link">&para;</a></h4>
+<p>New table: <code>knowledge_bridges</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">knowledge_bridges</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTOINCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">source_concept</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">source_domain</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">target_concept</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">target_domain</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">structural_mapping</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">        </span><span class="c1">-- WHY they map (the relational structure)</span>
+<span class="w">    </span><span class="n">quality</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;proposed&#39;</span><span class="p">,</span><span class="w"> </span><span class="c1">-- proposed|validated|effective|misleading|rejected</span>
+<span class="w">    </span><span class="n">times_used</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">times_helpful</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_by</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;agent&#39;</span><span class="p">,</span><span class="w"> </span><span class="c1">-- agent|student|configure</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="s1">&#39;now&#39;</span><span class="p">)),</span>
+<span class="w">    </span><span class="n">updated_at</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="s1">&#39;now&#39;</span><span class="p">))</span>
+<span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_bridge_target</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">knowledge_bridges</span><span class="p">(</span><span class="n">target_concept</span><span class="p">,</span><span class="w"> </span><span class="n">target_domain</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_bridge_source</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">knowledge_bridges</span><span class="p">(</span><span class="n">source_domain</span><span class="p">);</span>
+</code></pre></div>
+<h4 id="backward-compatibility">Backward Compatibility<a class="headerlink" href="#backward-compatibility" title="Permanent link">&para;</a></h4>
+<p>The existing <code>network-bridges.md</code> file becomes one <em>instance</em> of bridges — the networking domain. The shared agent files reference a configurable bridge source rather than hardcoding networking. For users who don't run <code>configure</code>, the default remains networking bridges (preserving current behaviour for you).</p>
+<h3 id="open-questions_3">Open Questions<a class="headerlink" href="#open-questions_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>How many domains should we support simultaneously? Just primary, or allow multiple with priority ordering?</li>
+<li>Should the agent be able to <em>generate</em> bridge tables for new domains on the fly using its own knowledge, or should they always go through the configure validation step?</li>
+<li>For the rename: do we keep <code>/audhd-socratic-mentor</code> as an alias during a transition period, or clean break?</li>
+<li>Should <code>configure</code> re-run periodically as the student's comfort with target concepts grows? (Some bridges become unnecessary as the student develops direct understanding.)</li>
+</ul>
+<hr />
+<h2 id="cross-cutting-concerns">Cross-Cutting Concerns<a class="headerlink" href="#cross-cutting-concerns" title="Permanent link">&para;</a></h2>
+<h3 id="feature-interactions">Feature Interactions<a class="headerlink" href="#feature-interactions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>                    configure
+                       |
+                       v
+              knowledge_domains
+                    /     \
+                   v       v
+         teach-back -----&gt; bridges (use domain-specific probes)
+              |
+              v
+       spaced repetition (teach-back scores adjust intervals)
+              |
+              v
+         break protocol (breaks timed around teach-back blocks)
+              |
+              v
+        wind-down (consolidation advice references what was taught back)
+</code></pre></div>
+<ul>
+<li><strong>Teach-back + bridges</strong>: When asking "explain it using an analogy," pull from configured domain</li>
+<li><strong>Teach-back + breaks</strong>: After a teach-back assessment, a short break aids consolidation of the self-assessment</li>
+<li><strong>Breaks + energy</strong>: Break frequency already adapts to energy level</li>
+<li><strong>Wind-down + spaced repetition</strong>: Post-session advice includes next review dates and what type of review (recall vs teach-back)</li>
+</ul>
+<h3 id="migration-strategy">Migration Strategy<a class="headerlink" href="#migration-strategy" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Database migration v10</strong>: Add <code>teach_back_scores</code> + <code>knowledge_bridges</code> tables, extend <code>study_progress</code></li>
+<li><strong>Agent prompt updates</strong>: All 7 agent configurations need the new protocols</li>
+<li><strong>Shared framework</strong>: New <code>teach-back-protocol.md</code> and <code>break-science.md</code> in <code>agents/shared/</code></li>
+<li><strong>CLI commands</strong>: <code>studyctl teachback</code>, <code>studyctl bridge</code>, <code>studyctl wind-down</code></li>
+<li><strong>Config changes</strong>: <code>~/.config/studyctl/config.yaml</code> gets <code>knowledge_domains</code> section</li>
+</ol>
+<h3 id="implementation-priority-recommended">Implementation Priority (Recommended)<a class="headerlink" href="#implementation-priority-recommended" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Feature</th>
+<th>Why First</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Active Break Protocol</td>
+<td>Smallest scope, immediate health benefit, no schema changes needed (state file only)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Session Wind-Down</td>
+<td>Builds on break protocol, small scope, high-value science communication</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Teach the Teacher</td>
+<td>Largest feature, needs schema migration, most complex agent prompt changes</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Dynamic Knowledge Bridging</td>
+<td>Depends on teach-back (bridges feed into teach-back probes), most architectural change</td>
+</tr>
+</tbody>
+</table>
+<h3 id="estimated-scope">Estimated Scope<a class="headerlink" href="#estimated-scope" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Break protocol</strong>: Agent prompt changes + state tracking. ~Medium complexity.</li>
+<li><strong>Wind-down</strong>: Agent prompt changes + 1 CLI command. ~Small complexity.</li>
+<li><strong>Teach the Teacher</strong>: Schema migration + CLI commands + agent prompt changes + scoring logic. ~Large complexity.</li>
+<li><strong>Knowledge bridging</strong>: Schema migration + CLI commands + interactive configure flow + agent prompt refactor + backward compat. ~Large complexity.</li>
+</ul>
+<hr />
+<h2 id="challenges-worth-debating">Challenges Worth Debating<a class="headerlink" href="#challenges-worth-debating" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Agent self-scoring teach-backs</strong>: Can the AI reliably score a teach-back on 5 dimensions? It sees the text, not the understanding. Risk of students gaming the rubric. Counter-argument: even imperfect scoring creates metacognitive benefit.</p>
+</li>
+<li>
+<p><strong>Break compliance vs autonomy</strong>: How pushy should the agent be? ADHD brains often resist externally imposed breaks (PDA — pathological demand avoidance). The agent needs to be informative without being nagging.</p>
+</li>
+<li>
+<p><strong>Fixed vs adaptive intervals</strong>: The current 1/3/7/14/30 schedule is simple and predictable. FSRS would be more optimal but adds complexity and a dependency. Is the juice worth the squeeze for a study tool?</p>
+</li>
+<li>
+<p><strong>Bridge generation at scale</strong>: If someone configures "cooking" as their domain, can the agent generate useful structural bridges to data engineering on the fly? Or do we need curated bridge tables per domain?</p>
+</li>
+<li>
+<p><strong>Multi-agent consistency</strong>: All 7 agent configurations (Kiro, Claude, Gemini, OpenCode, Amp, Crush, RepoPrompt) need to implement these features consistently. The shared framework approach helps, but each agent has different capabilities.</p>
+</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
