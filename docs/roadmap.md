@@ -108,8 +108,8 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - [ ] Community-contributed study topics
 - [ ] Localisation support
 - [x] TTS voice output (kokoro-tts / ltts integration)
-- [ ] MkDocs documentation site polish
-- [ ] Gemini CLI / OpenCode / Amp agent testing
+- [x] MkDocs documentation site (font toggle, Nord colours, reading preferences, 7 admonition types, `studyctl docs` CLI)
+- [x] Gemini CLI / OpenCode / Amp agents (unified shared framework)
 - [ ] CI Python version matrix (3.12, 3.13)
 - [ ] GitHub Pages deployment workflow
 - [ ] CHANGELOG.md and release automation
@@ -175,3 +175,15 @@ Features to deepen the mentor's teaching methodology and student wellbeing.
 - [x] Database migration v11: knowledge_bridges table
 - [x] Shared framework: `agents/shared/knowledge-bridging.md`
 - [x] Default: networking bridges preserved as zero-configuration experience
+
+## v1.5 — Code Quality & Framework Unification
+
+Bug fixes, agent framework unification, and documentation polish.
+
+- [x] **Bug fixes**: `record_progress()` case sensitivity, legacy DB paths removed, `init_config()` hardcoded machine names
+- [x] **Study sessions wired up**: `start_study_session()`, `end_study_session()`, `get_study_session_stats()` for the orphaned `study_sessions` table
+- [x] **Unified agent framework**: All 5 platforms (Kiro, Claude Code, Gemini, OpenCode, Amp) reference `agents/shared/` — eliminated ~700 lines of inline duplication
+- [x] **Interactive config wizard**: `studyctl config init` with knowledge bridging, NotebookLM, Obsidian vault questions
+- [x] **Config viewer**: `studyctl config show` with Rich tables
+- [x] **Docs site**: `studyctl docs serve/open/list/read` commands
+- [x] **Agent installation integration**: `install-agents.sh` called from `config init` flow
