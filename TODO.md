@@ -49,6 +49,6 @@
 ## Phase 5: Documentation & Install Polish
 **Commit: `docs: update README, agent-install, and roadmap for all platforms`**
 
-- [ ] 30. Update README agent support table
-- [ ] 31. Update `docs/agent-install.md` for all 5 platforms
-- [ ] 32. Update `docs/roadmap.md` with completed items
+- [x] 30. Update README agent support table — already covers all 5 platforms (Kiro, Claude Code, Gemini, OpenCode, Amp)
+- [x] 31. Update `docs/agent-install.md` for all 5 platforms — already comprehensive with auto-install + manual install for each
+- [x] 32. Update `docs/roadmap.md` with completed items — added v1.5 section with all recent work
