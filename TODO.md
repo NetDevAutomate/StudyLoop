@@ -27,14 +27,14 @@
 ## Phase 3: AuDHD Methodology Enhancements
 **Commit: `feat: add emotional regulation, transition support, parking lot, and sensory patterns`**
 
-- [ ] 16. Add emotional regulation / pre-study state check to session protocol
-- [ ] 17. Add transition support / grounding ritual
-- [ ] 18. Add parking lot pattern for tangential thoughts
-- [ ] 19. Add sensory environment check
-- [ ] 20. Add micro-celebrations / dopamine maintenance
-- [ ] 21. Add interleaving / varied practice to review system
-- [ ] 22. Add async body doubling session type
-- [ ] 23. Update `docs/audhd-learning-philosophy.md` with all new patterns
+- [x] 16. Add emotional regulation / pre-study state check — `session-protocol.md` §2 (State Check) + `audhd-framework.md` §Emotional Regulation
+- [x] 17. Add transition support / grounding ritual — `audhd-framework.md` §Transition Support / Attention Residue
+- [x] 18. Add parking lot pattern for tangential thoughts — `audhd-framework.md` §Parking Lot Pattern
+- [x] 19. Add sensory environment check — `session-protocol.md` §Sensory Environment + `audhd-framework.md` §Sensory Environment Adaptation
+- [x] 20. Add micro-celebrations / dopamine maintenance — `audhd-framework.md` §Micro-Celebrations / Dopamine Maintenance
+- [x] 21. Add interleaving / varied practice to review system — `audhd-framework.md` §Interleaving / Varied Practice + `socratic-engine.md` §Interleaving Prompts
+- [x] 22. Add async body doubling session type — `audhd-framework.md` §Async Body Doubling
+- [x] 23. Update `docs/audhd-learning-philosophy.md` with all new patterns — comprehensive coverage of all 7 patterns
 
 ## Phase 4: AuDHD-Friendly Documentation Site
 **Commit: `feat: add MkDocs Material documentation site with AuDHD-friendly design`**
