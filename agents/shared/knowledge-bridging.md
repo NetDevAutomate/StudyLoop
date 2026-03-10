@@ -18,7 +18,7 @@ This is the zero-configuration experience. It works immediately for the primary 
 
 ## Configuring Custom Domains
 
-For other users or additional bridge domains, run `/socratic-mentor configure` or manually edit `~/.config/studyctl/config.yaml`:
+For other users or additional bridge domains, run `studyctl config init` (or `/socratic-mentor configure` in Claude Code) or manually edit `~/.config/studyctl/config.yaml`:
 
 ```yaml
 knowledge_domains:
@@ -70,6 +70,28 @@ Validated bridges are saved via `studyctl bridge add` and written to config.
 
 ## Bridge Lifecycle
 
+```mermaid
+stateDiagram-v2
+    [*] --> proposed: Agent generates bridge
+    proposed --> validated: Student confirms
+    proposed --> rejected: Student rejects
+    validated --> effective: Used successfully 3+ times
+    validated --> misleading: Student reports confusion
+    effective --> effective: Continues working
+    misleading --> rejected: Confirmed unhelpful
+
+    state proposed {
+        direction LR
+        [*] --> tentative: Use with caution
+        tentative --> ask: "Did that analogy help?"
+    }
+
+    state effective {
+        direction LR
+        [*] --> prioritised: Use for this concept
+    }
+```
+
 ### Quality States
 
 | State | Meaning | Agent Behaviour |
@@ -90,6 +112,18 @@ Validated bridges are saved via `studyctl bridge add` and written to config.
 ### Bridge Fading
 
 As competence grows, bridges should become less explicit:
+
+```mermaid
+graph LR
+    L1["L1 Prompted<br/>Agent provides bridge"] --> L2["L2 Assisted<br/>Agent prompts for bridge"]
+    L2 --> L3["L3 Independent<br/>Student generates bridge"]
+    L3 --> L4["L4 Teaching<br/>Student creates bridges for others"]
+
+    style L1 fill:#1e3a5f,stroke:#5b9bd5,color:#fff
+    style L2 fill:#2d5a27,stroke:#70ad47,color:#fff
+    style L3 fill:#5a4b1e,stroke:#ffc000,color:#fff
+    style L4 fill:#4a1e5a,stroke:#b07fd5,color:#fff
+```
 
 | Scaffolding Level | Bridge Behaviour |
 |---|---|
