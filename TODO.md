@@ -39,12 +39,12 @@
 ## Phase 4: AuDHD-Friendly Documentation Site
 **Commit: `feat: add MkDocs Material documentation site with AuDHD-friendly design`**
 
-- [ ] 24. Set up MkDocs Material with offline + privacy plugins
-- [ ] 25. Implement font toggle (Lexend Deca / OpenDyslexic / Atkinson Hyperlegible)
-- [ ] 26. Implement Nord-inspired colour scheme (light + dark)
-- [ ] 27. Add reading preferences panel (font, size, theme)
-- [ ] 28. Migrate existing docs to MkDocs structure with colour-coded admonitions
-- [ ] 29. Add `studyctl docs` command to serve/open local docs site
+- [x] 24. Set up MkDocs Material with offline + privacy plugins — `mkdocs.yml` configured
+- [x] 25. Implement font toggle (Lexend Deca / OpenDyslexic / Atkinson Hyperlegible) — `stylesheets/fonts.css`
+- [x] 26. Implement Nord-inspired colour scheme (light + dark) — `stylesheets/audhd.css` with warm paper/slate toggle
+- [x] 27. Add reading preferences panel (font, size, theme) — `javascripts/preferences.js` with localStorage persistence
+- [x] 28. Migrate existing docs to MkDocs structure with colour-coded admonitions — 7 custom admonition types (struggling, learning, confident, mastered, parking-lot, micro-celebration, energy-check)
+- [x] 29. Add `studyctl docs` command — `docs serve`, `docs open`, `docs list`, `docs read` subcommands
 
 ## Phase 5: Documentation & Install Polish
 **Commit: `docs: update README, agent-install, and roadmap for all platforms`**
