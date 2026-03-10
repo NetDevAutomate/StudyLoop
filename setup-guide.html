@@ -448,6 +448,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#interactive-setup-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive Setup (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#studyctl-configstudyctlconfigyaml" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1310,6 +1332,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#interactive-setup-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive Setup (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#studyctl-configstudyctlconfigyaml" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1669,6 +1713,18 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 ./scripts/install-agents.sh
 </code></pre></div>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="interactive-setup-recommended">Interactive Setup (recommended)<a class="headerlink" href="#interactive-setup-recommended" title="Permanent link">&para;</a></h3>
+<p>Run the interactive wizard to configure your study environment:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>config<span class="w"> </span>init
+</code></pre></div>
+<p>This walks you through three core questions:</p>
+<ol>
+<li><strong>Knowledge bridging</strong> — Do you want to leverage a topic you already know well (e.g. networking, cooking, music theory) so the mentor can draw analogies to new topics you're studying?</li>
+<li><strong>NotebookLM integration</strong> — Do you want to integrate with Google's NotebookLM to use notebooks as a knowledge source?</li>
+<li><strong>Obsidian vault</strong> — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. <code>~/Obsidian/Vault</code>).</li>
+</ol>
+<p>The wizard creates or updates <code>~/.config/studyctl/config.yaml</code> with your choices. You can re-run it at any time to change settings.</p>
+<h3 id="manual-configuration">Manual Configuration<a class="headerlink" href="#manual-configuration" title="Permanent link">&para;</a></h3>
 <h3 id="studyctl-configstudyctlconfigyaml">studyctl — <code>~/.config/studyctl/config.yaml</code><a class="headerlink" href="#studyctl-configstudyctlconfigyaml" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Base path to your Obsidian vault</span>
 <span class="nt">obsidian_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian</span>
