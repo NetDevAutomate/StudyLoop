@@ -847,3 +847,107 @@ def get_study_session_stats(days: int = 30) -> list[dict]:
         return []
     finally:
         conn.close()
+
+
+def migrate_bridges_to_graph() -> int:
+    """One-time migration of knowledge_bridges → concept graph.
+
+    Creates concept rows and analogy_to relations from existing bridges.
+    Returns the number of bridges migrated.
+    """
+    conn = _connect()
+    if not conn:
+        return 0
+
+    try:
+        # Check if both tables exist
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+        if "knowledge_bridges" not in tables or "concepts" not in tables:
+            return 0
+
+        bridges = conn.execute(
+            """
+            SELECT source_concept, source_domain, target_concept, target_domain,
+                   structural_mapping, quality, created_by
+            FROM knowledge_bridges
+            """
+        ).fetchall()
+
+        count = 0
+        for b in bridges:
+            src_name = b["source_concept"].lower()
+            tgt_name = b["target_concept"].lower()
+            src_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{b['source_domain']}:{src_name}"))
+            tgt_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{b['target_domain']}:{tgt_name}"))
+
+            conn.execute(
+                "INSERT OR IGNORE INTO concepts (id, name, domain) VALUES (?, ?, ?)",
+                (src_id, src_name, b["source_domain"]),
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO concepts (id, name, domain) VALUES (?, ?, ?)",
+                (tgt_id, tgt_name, b["target_domain"]),
+            )
+
+            quality = b["quality"]
+            confidence = 1.0 if quality == "effective" else 0.7 if quality == "validated" else 0.3
+
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO concept_relations
+                    (source_concept_id, target_concept_id, relation_type,
+                     confidence, created_by)
+                VALUES (?, ?, 'analogy_to', ?, ?)
+                """,
+                (src_id, tgt_id, confidence, b["created_by"]),
+            )
+            count += 1
+
+        conn.commit()
+        return count
+    except sqlite3.OperationalError:
+        return 0
+    finally:
+        conn.close()
+
+
+def seed_concepts_from_config() -> int:
+    """Create concept rows from configured topics + tags.
+
+    Returns the number of concepts seeded.
+    """
+    conn = _connect()
+    if not conn:
+        return 0
+
+    try:
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+        if "concepts" not in tables:
+            return 0
+
+        from .config import get_topics
+
+        count = 0
+        for topic in get_topics():
+            domain = topic.name.lower()
+            for tag in topic.tags:
+                name = tag.lower().strip()
+                concept_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{domain}:{name}"))
+                conn.execute(
+                    "INSERT OR IGNORE INTO concepts (id, name, domain) VALUES (?, ?, ?)",
+                    (concept_id, name, domain),
+                )
+                count += 1
+
+        conn.commit()
+        return count
+    except (sqlite3.OperationalError, Exception):
+        return 0
+    finally:
+        conn.close()

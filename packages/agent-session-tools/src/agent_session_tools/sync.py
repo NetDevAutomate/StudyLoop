@@ -31,7 +31,16 @@ from agent_session_tools.config_loader import (
 )
 
 # Tables to sync (order matters — sessions before messages for FK)
+# Session-scoped tables: filtered by session_id during delta sync
 SYNC_TABLES = ["sessions", "messages", "session_notes", "session_tags"]
+
+# Global tables: synced in full (small metadata, no session_id column)
+GLOBAL_SYNC_TABLES = [
+    "concepts",
+    "concept_aliases",
+    "concept_relations",
+    "message_concepts",
+]
 
 # Create Typer app
 app = typer.Typer(
@@ -227,13 +236,18 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
         commands.append(f".mode insert {table}")
         commands.append(f"SELECT * FROM {table} WHERE session_id IN ({placeholders});")
 
+    # Global tables: sync all rows (small metadata, not session-scoped)
+    for table in GLOBAL_SYNC_TABLES:
+        commands.append(f".mode insert {table}")
+        commands.append(f"SELECT * FROM {table};")
+
     result = subprocess.run(
         ["sqlite3", str(db_path)],
         input="\n".join(commands),
         capture_output=True,
         text=True,
     )
-    # Ignore errors from missing optional tables (session_notes, session_tags)
+    # Ignore errors from missing optional tables
     sql = result.stdout.replace("INSERT INTO", "INSERT OR REPLACE INTO")
     return sql
 
@@ -396,6 +410,9 @@ def pull(
         commands.append(f".mode insert {table}")
         id_col = "id" if table == "sessions" else "session_id"
         commands.append(f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});")
+    for table in GLOBAL_SYNC_TABLES:
+        commands.append(f".mode insert {table}")
+        commands.append(f"SELECT * FROM {table};")
 
     result = subprocess.run(
         ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],
@@ -541,6 +558,9 @@ def sync(
             commands.append(
                 f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});"
             )
+        for table in GLOBAL_SYNC_TABLES:
+            commands.append(f".mode insert {table}")
+            commands.append(f"SELECT * FROM {table};")
 
         result = subprocess.run(
             ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],

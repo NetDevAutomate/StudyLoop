@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 11
+CURRENT_VERSION = 13
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -469,6 +469,90 @@ def migrate_v11(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_bridge_quality ON knowledge_bridges(quality)"
     )
+
+
+@migration(12, "Add concept graph layer — concepts, aliases, and relations")
+def migrate_v12(conn: sqlite3.Connection) -> None:
+    """Add concept graph tables for tracking concept relationships."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS concepts (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            description TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_concepts_name_domain "
+        "ON concepts(name, domain)"
+    )
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS concept_aliases (
+            alias TEXT NOT NULL,
+            concept_id TEXT NOT NULL REFERENCES concepts(id),
+            PRIMARY KEY (alias, concept_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_aliases_alias ON concept_aliases(alias)"
+    )
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS concept_relations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_concept_id TEXT NOT NULL REFERENCES concepts(id),
+            target_concept_id TEXT NOT NULL REFERENCES concepts(id),
+            relation_type TEXT NOT NULL,
+            confidence REAL DEFAULT 0.5,
+            evidence_session_id TEXT,
+            evidence_message_id TEXT,
+            created_by TEXT DEFAULT 'agent',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(source_concept_id, target_concept_id, relation_type)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_relations_source "
+        "ON concept_relations(source_concept_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_relations_target "
+        "ON concept_relations(target_concept_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_relations_type "
+        "ON concept_relations(relation_type)"
+    )
+
+
+@migration(13, "Add message_concepts table and concept_id to study_progress")
+def migrate_v13(conn: sqlite3.Connection) -> None:
+    """Add message-concept linking and concept FK on study_progress."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS message_concepts (
+            message_id TEXT NOT NULL REFERENCES messages(id),
+            concept_id TEXT NOT NULL REFERENCES concepts(id),
+            confidence REAL DEFAULT 0.5,
+            PRIMARY KEY (message_id, concept_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_msg_concepts_concept "
+        "ON message_concepts(concept_id)"
+    )
+
+    # Add concept_id FK to study_progress
+    cursor = conn.execute("PRAGMA table_info(study_progress)")
+    columns = {row[1] for row in cursor.fetchall()}
+    if "concept_id" not in columns:
+        conn.execute(
+            "ALTER TABLE study_progress ADD COLUMN concept_id TEXT "
+            "REFERENCES concepts(id)"
+        )
 
 
 def check_migration_status(db_path: Path) -> dict:
