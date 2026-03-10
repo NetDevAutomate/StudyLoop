@@ -16,13 +16,13 @@
 ## Phase 2: Unify Agent Framework (single source of truth)
 **Commit: `feat: unify agent framework across all platforms with shared AuDHD methodology`**
 
-- [ ] 9. Create `agents/shared/` reference docs (audhd-framework, socratic-engine, session-protocol, network-bridges)
-- [ ] 10. Rewrite Claude Code agent to reference shared framework
-- [ ] 11. Create Gemini CLI agent (`.gemini/agents/study-mentor.md` + skills)
-- [ ] 12. Create OpenCode agent (`.opencode/agents/study-mentor.md` + opencode.json)
-- [ ] 13. Create Amp agent (`AGENTS.md` + `.agents/skills/`)
-- [ ] 14. Update `install-agents.sh` for all 5 platforms
-- [ ] 15. Update Kiro agent to reference `agents/shared/`
+- [x] 9. Create `agents/shared/` reference docs — 8 files: audhd-framework, socratic-engine, session-protocol, network-bridges, knowledge-bridging, break-science, wind-down-protocol, teach-back-protocol
+- [x] 10. Rewrite Claude Code agent to reference shared framework — replaced 476-line inline version with shared doc references
+- [x] 11. Create Gemini CLI agent — replaced inline content with shared doc references
+- [x] 12. Create OpenCode agent — replaced inline content with shared doc references
+- [x] 13. Create Amp agent — `AGENTS.md` references shared docs
+- [x] 14. Update `install-agents.sh` for all 5 platforms — supports kiro, claude, gemini, opencode, amp with shared symlinks
+- [x] 15. Update Kiro agent to reference `agents/shared/` — persona references shared, skill references are symlinks to shared
 
 ## Phase 3: AuDHD Methodology Enhancements
 **Commit: `feat: add emotional regulation, transition support, parking lot, and sensory patterns`**
