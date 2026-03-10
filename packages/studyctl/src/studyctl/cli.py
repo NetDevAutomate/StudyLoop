@@ -27,7 +27,7 @@ from .scheduler import (
     remove_all,
     remove_job,
 )
-from .shared import init_config, pull_state, push_state
+from .shared import init_config, init_interactive_config, pull_state, push_state
 from .shared import sync_status as shared_sync_status
 from .state import SyncState
 from .sync import find_changed_sources, find_sources, generate_audio, sync_topic
@@ -67,6 +67,44 @@ def _get_topic(name: str) -> Topic | None:
         if t.name == name or name in t.name:
             return t
     return None
+
+
+def _offer_agent_install(flag: bool | None) -> None:
+    """Offer to install AI agent definitions after config init.
+
+    Args:
+        flag: True = install, False = skip, None = ask interactively.
+    """
+    import subprocess
+
+    # Find install-agents.sh relative to the package
+    candidate = Path(__file__).resolve().parent
+    for _ in range(6):
+        script = candidate / "scripts" / "install-agents.sh"
+        if script.exists():
+            break
+        candidate = candidate.parent
+    else:
+        return  # Script not found — skip silently (pip install, not git clone)
+
+    if flag is None:
+        console.print("\n[bold cyan]Agent Installation[/bold cyan]")
+        console.print(
+            "The study mentor agents can be installed for detected AI tools\n"
+            "(Claude Code, Kiro CLI, Gemini, OpenCode, Amp).\n"
+        )
+        reply = input("Install agent definitions now? [Y/n] ").strip().lower()
+        flag = reply in ("", "y", "yes")
+
+    if flag:
+        console.print("[dim]Running install-agents.sh...[/dim]")
+        result = subprocess.run(["bash", str(script)], capture_output=True, text=True)
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                console.print(f"  {line}")
+        else:
+            console.print("[yellow]Agent install had issues — run manually:[/yellow]")
+            console.print(f"  bash {script}")
 
 
 @click.group()
@@ -277,6 +315,128 @@ def state_init() -> None:
     path = init_config()
     console.print(f"[green]✓[/green] Config at {path}")
     console.print("Edit remotes to match your machines, then run 'studyctl state status'")
+
+
+# ── config ────────────────────────────────────────────────────────────────────
+
+
+@cli.group(name="config")
+def config_group() -> None:
+    """Manage studyctl configuration."""
+
+
+@config_group.command(name="init")
+@click.option(
+    "--install-agents/--no-install-agents",
+    default=None,
+    help="Install AI agent definitions after config (auto-detects available tools).",
+)
+def config_init(install_agents: bool | None) -> None:
+    """Interactive setup — configure knowledge bridging, NotebookLM, and Obsidian integration."""
+    path = init_interactive_config(console)
+    console.print(f"\n[bold green]✓ Configuration saved to {path}[/bold green]")
+
+    # Offer to install agents
+    _offer_agent_install(install_agents)
+
+    console.print("\nNext steps:")
+    console.print("  1. Add study topics:  studyctl topics")
+    console.print("  2. Start a session:   /agent socratic-mentor  (Claude Code)")
+    console.print("                        kiro-cli chat --agent study-mentor  (Kiro)")
+
+
+@config_group.command(name="show")
+def config_show() -> None:
+    """Display current configuration."""
+    from .settings import _CONFIG_PATH, load_settings
+
+    settings = load_settings()
+    config_path = _CONFIG_PATH
+
+    if not config_path.exists():
+        console.print("[red]No config file found.[/red] Run: studyctl config init")
+        return
+
+    console.print(f"[bold]Configuration[/bold] — {config_path}\n")
+
+    # Core settings
+    table = Table(title="Core Settings")
+    table.add_column("Setting", style="cyan")
+    table.add_column("Value")
+    table.add_column("Status", justify="center")
+
+    # Obsidian
+    obsidian_path = settings.obsidian_base
+    obsidian_exists = obsidian_path.exists()
+    table.add_row(
+        "Obsidian vault",
+        str(obsidian_path),
+        "[green]✓[/green]" if obsidian_exists else "[red]✗[/red]",
+    )
+
+    # Session DB
+    db_exists = settings.session_db.exists()
+    table.add_row(
+        "Session database",
+        str(settings.session_db),
+        "[green]✓[/green]" if db_exists else "[dim]—[/dim]",
+    )
+
+    # State dir
+    state_exists = settings.state_dir.exists()
+    table.add_row(
+        "State directory",
+        str(settings.state_dir),
+        "[green]✓[/green]" if state_exists else "[dim]—[/dim]",
+    )
+
+    # Knowledge domains
+    kd = settings.knowledge_domains
+    if kd.primary:
+        table.add_row("Knowledge bridging", f"Primary: {kd.primary}", "[green]✓[/green]")
+    else:
+        table.add_row("Knowledge bridging", "Not configured", "[dim]—[/dim]")
+
+    # NotebookLM
+    nlm_enabled = settings.notebooklm.enabled
+    table.add_row(
+        "NotebookLM",
+        "Enabled" if nlm_enabled else "Disabled",
+        "[green]✓[/green]" if nlm_enabled else "[dim]—[/dim]",
+    )
+
+    # Sync
+    if settings.sync_remote:
+        table.add_row("Sync remote", settings.sync_remote, "[green]✓[/green]")
+    else:
+        table.add_row("Sync remote", "Not configured", "[dim]—[/dim]")
+
+    console.print(table)
+
+    # Topics
+    if settings.topics:
+        topics_table = Table(title="\nStudy Topics")
+        topics_table.add_column("Name", style="bold")
+        topics_table.add_column("Slug", style="dim")
+        topics_table.add_column("Path")
+        topics_table.add_column("Notebook", style="dim")
+        topics_table.add_column("Tags")
+
+        for t in settings.topics:
+            path_str = str(t.obsidian_path)
+            path_str = (
+                f"[green]{path_str}[/green]"
+                if t.obsidian_path.exists()
+                else f"[red]{path_str}[/red]"
+            )
+
+            nb = t.notebook_id[:12] + "…" if t.notebook_id else "[dim]—[/dim]"
+            tags = ", ".join(t.tags) if t.tags else "[dim]—[/dim]"
+            topics_table.add_row(t.name, t.slug, path_str, nb, tags)
+
+        console.print(topics_table)
+    else:
+        console.print("\n[dim]No topics configured. Add topics to config.yaml.[/dim]")
 
 
 # ── schedule ──────────────────────────────────────────────────────────────────

@@ -59,6 +59,24 @@ uv pip install agent-session-tools[semantic]
 
 ## Configuration
 
+### Interactive Setup (recommended)
+
+Run the interactive wizard to configure your study environment:
+
+```bash
+studyctl config init
+```
+
+This walks you through three core questions:
+
+1. **Knowledge bridging** — Do you want to leverage a topic you already know well (e.g. networking, cooking, music theory) so the mentor can draw analogies to new topics you're studying?
+2. **NotebookLM integration** — Do you want to integrate with Google's NotebookLM to use notebooks as a knowledge source?
+3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Vault`).
+
+The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices. You can re-run it at any time to change settings.
+
+### Manual Configuration
+
 ### studyctl — `~/.config/studyctl/config.yaml`
 
 ```yaml

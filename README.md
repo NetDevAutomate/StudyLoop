@@ -105,6 +105,14 @@ cd socratic-study-mentor
 
 This installs both packages, sets up agent definitions for any detected AI tools, and optionally downloads the voice model for TTS support.
 
+Then run the interactive setup wizard:
+
+```bash
+studyctl config init
+```
+
+This asks three core questions: whether to enable knowledge bridging (leveraging topics you already know), NotebookLM integration, and Obsidian vault path.
+
 ## Documentation Site
 
 Browse the full docs locally with AuDHD-friendly design (OpenDyslexic font toggle, Nord colour scheme, reading preferences):
@@ -172,6 +180,8 @@ studyctl schedule-blocks --start 14:00   # Generate .ics calendar study blocks
 studyctl topics                          # List configured topics
 studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
+studyctl config init                     # Interactive setup wizard
+studyctl config show                     # Display current configuration
 studyctl state push|pull|status|init     # Cross-machine state sync
 studyctl schedule install|remove|list    # Manage scheduled jobs
 ```

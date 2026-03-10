@@ -20,6 +20,8 @@ studyctl streaks                         # Study streak and consistency stats
 studyctl progress-map                    # Visual map of all tracked concepts
 studyctl state push|pull|status|init     # Cross-machine state sync
 studyctl schedule install|remove|list|add|delete  # Manage scheduled jobs
+studyctl config init                     # Interactive setup wizard
+studyctl config show                     # Display current configuration
 studyctl docs serve [--port PORT]        # Serve docs site locally
 studyctl docs open                       # Build and open docs in browser
 studyctl docs list                       # List available doc pages

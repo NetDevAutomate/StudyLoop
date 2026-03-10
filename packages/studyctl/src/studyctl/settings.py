@@ -55,6 +55,13 @@ class KnowledgeDomainsConfig:
 
 
 @dataclass
+class NotebookLMConfig:
+    """Configuration for Google NotebookLM integration."""
+
+    enabled: bool = False
+
+
+@dataclass
 class Settings:
     """Application settings loaded from config file."""
 
@@ -67,6 +74,7 @@ class Settings:
     sync_remote: str = ""
     sync_user: str = field(default_factory=lambda: _get_username())
     knowledge_domains: KnowledgeDomainsConfig = field(default_factory=KnowledgeDomainsConfig)
+    notebooklm: NotebookLMConfig = field(default_factory=NotebookLMConfig)
 
 
 def load_settings() -> Settings:
@@ -116,6 +124,13 @@ def load_settings() -> Settings:
                 )
                 for s in kd.get("secondary", [])
             ],
+        )
+
+    # NotebookLM configuration
+    nlm = raw.get("notebooklm", {})
+    if nlm:
+        settings.notebooklm = NotebookLMConfig(
+            enabled=bool(nlm.get("enabled", False)),
         )
 
     return settings
@@ -172,8 +187,13 @@ topics:
 #   peak_hours: 4             # Hours of peak effectiveness
 #   duration_hours: 8         # Total duration before wearing off
 
+# Google NotebookLM integration (optional)
+# Run 'studyctl config init' for interactive setup
+# notebooklm:
+#   enabled: true
+
 # Knowledge domains for concept bridging (optional)
-# Default: networking. Run /socratic-mentor configure for interactive setup.
+# Run 'studyctl config init' for interactive setup
 # knowledge_domains:
 #   primary: networking
 #   anchors:

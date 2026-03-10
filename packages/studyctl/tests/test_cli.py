@@ -14,7 +14,7 @@ recently studied. We test both paths explicitly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path  # noqa: TC003 — used at runtime in Topic fixture
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
@@ -215,6 +215,140 @@ class TestScheduleList:
         assert result.exit_code == 0
         assert "session-export" in result.output
         assert "studyctl-sync" in result.output
+
+
+# ---------------------------------------------------------------------------
+# config init (interactive wizard)
+# ---------------------------------------------------------------------------
+
+
+class TestConfigInit:
+    def test_config_init_all_yes(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Config init with all options enabled writes correct YAML."""
+        config_file = tmp_path / "config.yaml"
+        monkeypatch.setattr("studyctl.shared.CONFIG_PATH", config_file)
+
+        # Simulate: yes bridging, "cooking" domain, yes nlm, yes obsidian, path, no agent install
+        user_input = "y\ncooking\ny\ny\n~/MyVault\nn\n"
+        result = runner.invoke(cli, ["config", "init"], input=user_input)
+        assert result.exit_code == 0
+        assert "Configuration saved" in result.output
+
+        import yaml
+
+        config = yaml.safe_load(config_file.read_text())
+        assert config["knowledge_domains"]["primary"] == "cooking"
+        assert config["notebooklm"]["enabled"] is True
+        assert config["obsidian_base"] == "~/MyVault"
+
+    def test_config_init_all_no(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Config init with all options declined."""
+        config_file = tmp_path / "config.yaml"
+        monkeypatch.setattr("studyctl.shared.CONFIG_PATH", config_file)
+
+        user_input = "n\nn\nn\nn\n"
+        result = runner.invoke(cli, ["config", "init"], input=user_input)
+        assert result.exit_code == 0
+        assert "Configuration saved" in result.output
+
+        import yaml
+
+        config = yaml.safe_load(config_file.read_text())
+        assert "knowledge_domains" not in config
+        assert config["notebooklm"]["enabled"] is False
+
+    def test_config_init_defaults(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Config init accepting all defaults (just pressing Enter)."""
+        config_file = tmp_path / "config.yaml"
+        monkeypatch.setattr("studyctl.shared.CONFIG_PATH", config_file)
+
+        # All empty = accept defaults: yes bridging, "networking", no nlm, yes obsidian
+        user_input = "\n\n\n\n\n\n"
+        result = runner.invoke(cli, ["config", "init"], input=user_input)
+        assert result.exit_code == 0
+        assert "Configuration saved" in result.output
+
+    def test_config_init_skip_agents(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Config init with --no-install-agents skips agent installation prompt."""
+        config_file = tmp_path / "config.yaml"
+        monkeypatch.setattr("studyctl.shared.CONFIG_PATH", config_file)
+
+        user_input = "n\nn\nn\n"
+        result = runner.invoke(cli, ["config", "init", "--no-install-agents"], input=user_input)
+        assert result.exit_code == 0
+        assert "Agent Installation" not in result.output
+
+    def test_config_init_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["config", "init", "--help"])
+        assert result.exit_code == 0
+        assert "Interactive setup" in result.output
+
+
+# ---------------------------------------------------------------------------
+# config show
+# ---------------------------------------------------------------------------
+
+
+class TestConfigShow:
+    def test_config_show_no_config(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Config show with no config file shows error message."""
+        monkeypatch.setattr("studyctl.settings._CONFIG_PATH", tmp_path / "nonexistent.yaml")
+        result = runner.invoke(cli, ["config", "show"])
+        assert result.exit_code == 0
+        assert "No config file found" in result.output
+
+    def test_config_show_with_config(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Config show with valid config displays settings."""
+        import yaml
+
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            yaml.dump(
+                {
+                    "obsidian_base": str(tmp_path),
+                    "notebooklm": {"enabled": True},
+                    "knowledge_domains": {"primary": "cooking"},
+                    "topics": [
+                        {
+                            "name": "Python",
+                            "slug": "python",
+                            "obsidian_path": str(tmp_path / "python"),
+                            "tags": ["python", "coding"],
+                        }
+                    ],
+                }
+            )
+        )
+        monkeypatch.setattr("studyctl.settings._CONFIG_PATH", config_file)
+        # Also point the CLI config_path check at the same file
+        monkeypatch.setattr(
+            "studyctl.cli.Path",
+            type("FakePath", (), {"home": staticmethod(lambda: tmp_path.parent)})
+            if False
+            else Path,
+        )
+
+        result = runner.invoke(cli, ["config", "show"])
+        assert result.exit_code == 0
+        assert "Core Settings" in result.output
+        assert "cooking" in result.output
+
+    def test_config_show_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["config", "show", "--help"])
+        assert result.exit_code == 0
+        assert "Display current configuration" in result.output
 
 
 # ---------------------------------------------------------------------------

@@ -314,7 +314,7 @@ If 70% questions feels too intense, edit the agent persona to shift the ratio. S
 
 ### Change the concept bridges
 
-The default bridges assume a networking background. If you're coming from a different domain, edit `agents/kiro/skills/audhd-socratic-mentor/references/network-bridges.md` to use analogies from your experience.
+The default bridges assume a networking background. If you're coming from a different domain, run `studyctl config init` to configure your primary expertise domain, then use `studyctl bridge add` to create specific concept bridges.
 
 ### Modify session types
 

@@ -159,6 +159,165 @@ def sync_status() -> dict:
     return status
 
 
+def init_interactive_config(console: object) -> Path:
+    """Run interactive configuration wizard asking core setup questions.
+
+    Asks about:
+    1. Knowledge bridging — leverage familiar topics for analogies
+    2. NotebookLM integration
+    3. Obsidian vault path
+    """
+    from rich.console import Console
+    from rich.panel import Panel
+
+    if not isinstance(console, Console):
+        console = Console()
+
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load existing config or start fresh
+    existing: dict = {}
+    if CONFIG_PATH.exists():
+        existing = yaml.safe_load(CONFIG_PATH.read_text()) or {}
+        console.print(f"[dim]Existing config found at {CONFIG_PATH} — updating.[/dim]\n")
+
+    console.print(
+        Panel(
+            "[bold]Socratic Study Mentor — Interactive Setup[/bold]\n\n"
+            "This will configure your study environment.\n"
+            "Press Enter to accept defaults shown in [dim]brackets[/dim].",
+            title="🧠 studyctl config init",
+            border_style="cyan",
+        )
+    )
+
+    # ── Question 1: Knowledge bridging ──────────────────────────────────────
+    console.print("\n[bold cyan]1/3 — Knowledge Bridging[/bold cyan]")
+    console.print(
+        "The study mentor can draw analogies between topics you already know well\n"
+        "and new topics you're studying (e.g. networking → data engineering).\n"
+    )
+
+    use_bridging = _prompt_yn(
+        "Do you want to leverage a topic you are already very familiar with\n"
+        "  so we can draw comparisons with an area you already know well\n"
+        "  to topics you are studying?",
+        default=True,
+    )
+
+    knowledge_domains: dict = existing.get("knowledge_domains", {})
+    if use_bridging:
+        current_primary = knowledge_domains.get("primary", "")
+        primary_domain = _prompt_text(
+            "  What is your primary area of expertise?",
+            default=current_primary or "networking",
+        )
+        knowledge_domains["primary"] = primary_domain
+
+        console.print(
+            f"\n  [dim]Great — the mentor will use {primary_domain} analogies"
+            " to teach new concepts.[/dim]"
+        )
+        console.print(
+            "  [dim]You can add specific anchor concepts later with: studyctl bridge add[/dim]\n"
+        )
+    else:
+        knowledge_domains = {}
+        console.print("  [dim]Skipped — no knowledge bridging configured.[/dim]\n")
+
+    # ── Question 2: NotebookLM integration ──────────────────────────────────
+    console.print("[bold cyan]2/3 — Google NotebookLM Integration[/bold cyan]")
+    console.print(
+        "NotebookLM can be used as a knowledge source — sync your notes into\n"
+        "notebooks for AI-generated audio overviews and enhanced study sessions.\n"
+    )
+
+    use_notebooklm = _prompt_yn(
+        "Do you want to integrate with Google's NotebookLM to use new and\n"
+        "  existing Notebooks as a source of knowledge?",
+        default=bool(existing.get("notebooklm", {}).get("enabled")),
+    )
+
+    notebooklm_config: dict = existing.get("notebooklm", {})
+    if use_notebooklm:
+        notebooklm_config["enabled"] = True
+        console.print("\n  [dim]NotebookLM enabled. Map notebooks to topics via:[/dim]")
+        console.print(
+            "  [dim]  studyctl sync <topic>  — syncs Obsidian notes to a NotebookLM notebook[/dim]"
+        )
+        console.print("  [dim]  Requires: uv pip install 'studyctl[notebooklm]'[/dim]\n")
+    else:
+        notebooklm_config["enabled"] = False
+        console.print("  [dim]Skipped — NotebookLM integration disabled.[/dim]\n")
+
+    # ── Question 3: Obsidian vault ──────────────────────────────────────────
+    console.print("[bold cyan]3/3 — Obsidian Vault Integration[/bold cyan]")
+    console.print(
+        "The study mentor can read your Obsidian vault for study notes,\n"
+        "course materials, and knowledge base content.\n"
+    )
+
+    current_obsidian = str(existing.get("obsidian_base", "~/Obsidian"))
+    use_obsidian = _prompt_yn(
+        "Do you want to integrate with an existing Obsidian vault for sources\n  of information?",
+        default=True,
+    )
+
+    obsidian_base = current_obsidian
+    if use_obsidian:
+        obsidian_base = _prompt_text(
+            "  Base path of your Obsidian vault",
+            default=current_obsidian,
+        )
+        resolved = Path(obsidian_base).expanduser()
+        if resolved.exists():
+            console.print(f"  [green]✓ Found vault at {resolved}[/green]\n")
+        else:
+            console.print(
+                f"  [yellow]⚠ Path {resolved} does not exist yet — "
+                f"you can create it later.[/yellow]\n"
+            )
+    else:
+        obsidian_base = ""
+        console.print("  [dim]Skipped — no Obsidian vault configured.[/dim]\n")
+
+    # ── Write config ────────────────────────────────────────────────────────
+    config = dict(existing)
+    if obsidian_base:
+        config["obsidian_base"] = obsidian_base
+    elif "obsidian_base" in config:
+        del config["obsidian_base"]
+
+    if knowledge_domains:
+        config["knowledge_domains"] = knowledge_domains
+    elif "knowledge_domains" in config:
+        del config["knowledge_domains"]
+
+    config["notebooklm"] = notebooklm_config
+
+    # Ensure topics key exists
+    config.setdefault("topics", [])
+
+    CONFIG_PATH.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
+    return CONFIG_PATH
+
+
+def _prompt_yn(question: str, default: bool = False) -> bool:
+    """Prompt for yes/no with a default."""
+    suffix = " [Y/n] " if default else " [y/N] "
+    reply = input(question + suffix).strip().lower()
+    if not reply:
+        return default
+    return reply in ("y", "yes")
+
+
+def _prompt_text(question: str, default: str = "") -> str:
+    """Prompt for text input with a default."""
+    suffix = f" [{default}] " if default else " "
+    reply = input(question + suffix).strip()
+    return reply or default
+
+
 def init_config() -> Path:
     """Create default config file."""
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
