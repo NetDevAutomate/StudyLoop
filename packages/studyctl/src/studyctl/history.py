@@ -6,9 +6,12 @@ import json
 import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .settings import load_settings
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _get_study_terms() -> list[str]:
@@ -61,14 +64,8 @@ def _get_study_terms() -> list[str]:
 
 
 def _find_db() -> Path | None:
-    candidates = [
-        load_settings().session_db,
-        Path.home() / ".local" / "share" / "agent-session-tools" / "sessions.db",
-    ]
-    for p in candidates:
-        if p.exists():
-            return p
-    return None
+    db = load_settings().session_db
+    return db if db.exists() else None
 
 
 def _connect() -> sqlite3.Connection | None:
@@ -506,10 +503,11 @@ def record_progress(
     if not conn:
         return False
     try:
+        # Normalise to avoid case-sensitive duplicates (e.g. "Python" vs "python")
+        topic = topic.lower().strip()
+        concept = concept.lower().strip()
         now = datetime.now(UTC).isoformat()
-        progress_id = str(
-            uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic.lower().strip()}:{concept.lower().strip()}")
-        )
+        progress_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic}:{concept}"))
         conn.execute(
             """
             INSERT INTO study_progress
@@ -762,5 +760,90 @@ def update_bridge_usage(bridge_id: int, helpful: bool) -> bool:
         return True
     except sqlite3.OperationalError:
         return False
+    finally:
+        conn.close()
+
+
+# ── study sessions ────────────────────────────────────────────────────────────
+
+
+def start_study_session(
+    topic: str,
+    energy_level: str,
+    session_id: str | None = None,
+) -> str | None:
+    """Start a tracked study session. Returns the study session ID."""
+    conn = _connect()
+    if not conn:
+        return None
+    try:
+        study_id = str(uuid.uuid4())
+        now = datetime.now(UTC).isoformat()
+        conn.execute(
+            """
+            INSERT INTO study_sessions (id, session_id, topic, energy_level, started_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (study_id, session_id, topic.lower().strip(), energy_level, now),
+        )
+        conn.commit()
+        return study_id
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        conn.close()
+
+
+def end_study_session(study_id: str, notes: str | None = None) -> bool:
+    """End a tracked study session, recording duration."""
+    conn = _connect()
+    if not conn:
+        return False
+    try:
+        now = datetime.now(UTC).isoformat()
+        conn.execute(
+            """
+            UPDATE study_sessions
+            SET ended_at = ?,
+                duration_minutes = CAST(
+                    (julianday(?) - julianday(started_at)) * 1440 AS INTEGER
+                ),
+                notes = COALESCE(?, notes)
+            WHERE id = ?
+            """,
+            (now, now, notes, study_id),
+        )
+        conn.commit()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
+
+
+def get_study_session_stats(days: int = 30) -> list[dict]:
+    """Get study session stats grouped by topic for the given period."""
+    conn = _connect()
+    if not conn:
+        return []
+    try:
+        rows = conn.execute(
+            """
+            SELECT topic,
+                   COUNT(*) as sessions,
+                   SUM(duration_minutes) as total_minutes,
+                   AVG(duration_minutes) as avg_minutes,
+                   energy_level as most_common_energy
+            FROM study_sessions
+            WHERE started_at > datetime('now', ?)
+              AND duration_minutes IS NOT NULL
+            GROUP BY topic
+            ORDER BY total_minutes DESC
+            """,
+            (f"-{days} days",),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
     finally:
         conn.close()

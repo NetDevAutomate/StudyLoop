@@ -324,20 +324,16 @@ def init_config() -> Path:
     if CONFIG_PATH.exists():
         return CONFIG_PATH
 
+    import socket
+
+    hostname = socket.gethostname().split(".")[0]
     default = {
         "local": {
-            "name": "work-macbook",
+            "name": hostname,
             "state_json": "~/.local/share/studyctl/state.json",
-            "sessions_db": "~/code/personal/ai/extract_session_to_db/sessions.db",
+            "sessions_db": "~/.config/studyctl/sessions.db",
         },
-        "remotes": {
-            "mac-mini": {
-                "host": "mac-mini.local",
-                "user": _get_default_user(),
-                "state_json": "~/.local/share/studyctl/state.json",
-                "sessions_db": "~/code/personal/ai/extract_session_to_db/sessions.db",
-            },
-        },
+        "remotes": {},
     }
     CONFIG_PATH.write_text(yaml.dump(default, default_flow_style=False))
     return CONFIG_PATH

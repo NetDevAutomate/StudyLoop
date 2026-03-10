@@ -3,14 +3,15 @@
 ## Phase 1: Fix Broken Code (bugs affecting correctness)
 **Commit: `fix: correct bugs in spaced repetition, progress tracking, and config`**
 
-- [ ] 1. Fix `spaced_repetition_due()` interval logic in `history.py`
-- [ ] 2. Fix `record_progress()` case sensitivity in `history.py`
-- [ ] 3. Fix `struggle_topics()` hardcoded keywords in `history.py`
-- [ ] 4. Fix `tutor_checkpoint.py` hardcoded "macmini" sync target
-- [ ] 5. Fix `config.py` module-level `load_settings()` — lazy-load
-- [ ] 6. Remove hardcoded legacy DB paths from `history.py`
-- [ ] 7. Add "aider" and "bedrock" to `SOURCE_CHOICES` in `export_sessions.py`
-- [ ] 8. Wire up orphaned `study_sessions` table
+- [x] 1. Fix `spaced_repetition_due()` interval logic in `history.py` — reviewed, logic is correct (ascending iteration keeps last match = deepest overdue review)
+- [x] 2. Fix `record_progress()` case sensitivity in `history.py` — normalise topic/concept to lowercase before storing
+- [x] 3. Fix `struggle_topics()` hardcoded keywords in `history.py` — already uses `_get_study_terms()` from config
+- [x] 4. Fix `tutor_checkpoint.py` hardcoded "macmini" sync target — already uses `get_endpoints()` from config
+- [x] 5. Fix `config.py` module-level `load_settings()` — already lazy-loaded inside functions
+- [x] 6. Remove hardcoded legacy DB paths from `history.py` — removed fallback, uses config only
+- [x] 7. Add "aider" and "bedrock" to `SOURCE_CHOICES` in `export_sessions.py` — already present
+- [x] 8. Wire up orphaned `study_sessions` table — added `start_study_session()`, `end_study_session()`, `get_study_session_stats()`
+- [x] 8b. Fix `shared.py` `init_config()` hardcoded personal machine names — uses `socket.gethostname()` + sensible defaults
 
 ## Phase 2: Unify Agent Framework (single source of truth)
 **Commit: `feat: unify agent framework across all platforms with shared AuDHD methodology`**
