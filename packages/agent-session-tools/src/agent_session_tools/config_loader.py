@@ -77,9 +77,46 @@ def expand_path(path_str: str) -> Path:
 
 
 def get_endpoints(config: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
-    """Get configured sync endpoints."""
+    """Get configured sync endpoints from hosts section.
+
+    Reads the unified 'hosts' config and converts to endpoint format,
+    filtering out the local machine (detected by hostname match).
+    Falls back to legacy 'endpoints' key for backwards compatibility.
+    """
     if config is None:
         config = load_config()
+
+    # New format: derive endpoints from hosts section
+    hosts = config.get("hosts", {})
+    if hosts:
+        import socket
+
+        current_hostname = socket.gethostname().split(".")[0]
+        endpoints: dict[str, dict[str, Any]] = {}
+
+        for name, host in hosts.items():
+            # Skip the local machine
+            if host.get("hostname") == current_hostname:
+                continue
+
+            ip_cfg = host.get("ip_address", {})
+            if isinstance(ip_cfg, dict):
+                ip_address = {
+                    "primary_ip": ip_cfg.get("primary", ""),
+                    "secondary_ip": ip_cfg.get("secondary", ""),
+                }
+            else:
+                ip_address = {"primary_ip": str(ip_cfg) if ip_cfg else ""}
+
+            endpoints[name] = {
+                "username": host.get("user", ""),
+                "path": host.get("sessions_db", str(CONFIG_DIR / "sessions.db")),
+                "ip_address": ip_address,
+            }
+
+        return endpoints
+
+    # Legacy format: direct endpoints config
     return config.get("endpoints", {})
 
 
