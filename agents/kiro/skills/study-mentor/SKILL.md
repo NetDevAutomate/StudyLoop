@@ -76,6 +76,13 @@ studyctl bridge list -s networking
 notebooklm ask "question" --notebook <id>
 notebooklm source list --notebook <id>
 
+# eBook audio overviews (pdf-by-chapters)
+pdf-by-chapters process "Book.pdf" -o ./chapters           # Split + upload
+pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video  # Episode plan
+pdf-by-chapters generate-next -o ./chapters --no-wait      # Generate next episode
+pdf-by-chapters status -o ./chapters --poll                 # Check progress
+pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
+
 # Progress tracking
 uv run tutor-progress
 uv run tutor-checkpoint code --skill <name>
@@ -88,6 +95,39 @@ studyctl state push              # Push to hub
 studyctl schedule list           # Show active jobs
 studyctl schedule install        # Install all default jobs
 ```
+
+## eBook Audio Overviews (pdf-by-chapters)
+
+For book-based study, generate chunked audio overviews of entire eBooks using `pdf-by-chapters`.
+This splits a PDF by chapter, uploads to NotebookLM, creates a syllabus, and generates audio
+episode-by-episode.
+
+```bash
+# 1. Split eBook and upload chapters to a new NotebookLM notebook
+pdf-by-chapters process "Book Title.pdf" -o ./chapters
+
+# 2. Generate a podcast syllabus (AI groups chapters into logical episodes)
+pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video
+
+# 3. Generate audio for the next episode (repeat until all done)
+pdf-by-chapters generate-next -o ./chapters --no-wait
+pdf-by-chapters status -o ./chapters --poll     # check progress
+pdf-by-chapters generate-next -o ./chapters --no-wait
+# ... repeat for each episode
+
+# 4. Download all completed audio
+pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews
+```
+
+**When to use:** Starting a new textbook, low-energy days (listen instead of read),
+commute-friendly study material, or when the learner wants audio reinforcement.
+
+**Energy adaptation:**
+- Energy 1-3: Suggest listening to already-generated episodes
+- Energy 4-6: Generate next episode, listen to previous ones
+- Energy 7+: Active study session with audio as supplementary material
+
+Install: `uv tool install notebooklm-pdf-by-chapters`
 
 ## Notebook IDs
 

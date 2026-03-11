@@ -104,6 +104,45 @@
 5. Suggest: "New audio overview ready. Listen during commute/walk."
 ```
 
+## eBook Audio Overview Generation
+
+When starting a new book or the learner requests audio overviews of a textbook:
+
+```
+1. Check if pdf-by-chapters is installed:
+   which pdf-by-chapters
+
+2. Split the eBook and upload chapters to NotebookLM:
+   pdf-by-chapters process "Book Title.pdf" -o ./chapters
+   → Note the NOTEBOOK_ID from the output table
+   → export NOTEBOOK_ID=<id>
+
+3. Generate a podcast syllabus (groups chapters into logical episodes):
+   pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video
+   → Review the syllabus table with the learner
+   → Adjust --max-chapters if groupings don't suit
+
+4. Generate episodes one at a time (rate limits apply):
+   pdf-by-chapters generate-next -o ./chapters --no-wait
+   → Check progress: pdf-by-chapters status -o ./chapters --poll
+   → Wait for completion before generating the next episode
+
+5. Check overall progress:
+   pdf-by-chapters status -o ./chapters
+   → Shows completed/pending/failed episodes
+
+6. Download completed audio:
+   pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews
+
+7. Suggest listening schedule:
+   → Match episodes to spaced repetition intervals
+   → Low-energy days: listen to audio instead of active study
+   → Commute time: queue up the next episode
+```
+
+If generation fails, `generate-next` automatically retries failed episodes.
+To regenerate a specific episode: `pdf-by-chapters generate-next -o ./chapters --episode 3`
+
 ## End-of-Session Protocol
 
 After every study session:
