@@ -448,6 +448,9 @@ $RECYCLE.BIN/
 # Agentic Agent Files
 .claude/
 CLAUDE.md
+AGENTS.md
+GEMINI.md
+agents/cowork/
 .kiro/
 .crush/
 .opencode/
@@ -474,3 +477,6 @@ site/
 
 # Personal work-in-progress plans
 docs/plans/
+
+# Artefacts (served from artefact-store, not committed to source repo)
+docs/artefacts/
