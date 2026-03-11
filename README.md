@@ -205,13 +205,18 @@ session-query list --since 7d            # List recent sessions
 session-query show SESSION_ID            # Show session details
 session-query context SESSION_ID         # Generate context for resuming
 session-query stats                      # Database statistics
-session-sync push|pull REMOTE            # Sync database across machines
+session-sync push macmini                # Push sessions to a named host
+session-sync pull macbookpro             # Pull sessions from a named host
+session-sync sync work-macbook           # Two-way sync with a host
+session-sync endpoints                   # List all configured remote hosts
 session-maint vacuum|reindex|schema      # Database maintenance
 tutor-checkpoint code --skill SKILL      # Record study progress
 study-speak TEXT                         # Speak text aloud using TTS
 study-speak - < file.txt                 # Speak from stdin
 study-speak TEXT -v af_heart -s 1.2      # Custom voice and speed
 ```
+
+> **Single config for all machines:** Define hosts once in `~/.config/studyctl/config.yaml`, deploy the same file everywhere. Both `studyctl state push/pull` and `session-sync push/pull/sync` read from it — local machine auto-detected by hostname. See [Setup Guide](docs/setup-guide.md#hosts--cross-machine-sync).
 
 ## Documentation
 
