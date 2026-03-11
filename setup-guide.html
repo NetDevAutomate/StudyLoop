@@ -1700,10 +1700,16 @@
 6. Optionally download the kokoro-onnx voice model (~85MB) for TTS support</p>
 <h3 id="manual">Manual<a class="headerlink" href="#manual" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-<span class="nb">cd</span><span class="w"> </span>socratic-study-mentor
+<span class="nb">cd</span><span class="w"> </span>Socratic-Study-Mentor
 
 <span class="c1"># Install both packages in the workspace</span>
 uv<span class="w"> </span>sync
+
+<span class="c1"># Install as global CLI tools (studyctl, session-export, etc.)</span>
+./scripts/install-tools.sh
+
+<span class="c1"># Reinstall / upgrade existing tools</span>
+./scripts/install-tools.sh<span class="w"> </span>--force
 
 <span class="c1"># Install optional extras</span>
 uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>notebooklm<span class="o">]</span>
