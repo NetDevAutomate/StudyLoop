@@ -24,6 +24,13 @@ dev = [
     "pre-commit>=4.0",
 ]
 
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []  # Workspace root — no packages to install here
+
 [tool.uv.workspace]
 members = ["packages/*"]
 
