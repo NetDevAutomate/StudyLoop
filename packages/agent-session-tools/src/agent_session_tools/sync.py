@@ -151,6 +151,36 @@ def _quote_remote_path(path: str) -> str:
     return shlex.quote(path)
 
 
+def _remote_db_exists(host: str, db_path: str) -> bool:
+    """Check if a database file exists on the remote host."""
+    _ensure_mux_dir()
+    remote_path = _quote_remote_path(db_path)
+    result = subprocess.run(
+        ["ssh", *_SSH_MUX_OPTS, host, f"test -f {remote_path}"],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
+    """Copy local DB to remote for first-time sync. Creates remote directory."""
+    _ensure_mux_dir()
+    remote_dir = _quote_remote_path(str(Path(remote_db).parent))
+    # Ensure remote directory exists
+    subprocess.run(
+        ["ssh", *_SSH_MUX_OPTS, host, f"mkdir -p {remote_dir}"],
+        capture_output=True,
+    )
+    # scp the database
+    scp_path = f"{host}:{remote_db}"
+    result = subprocess.run(
+        ["scp", "-o", f"ControlPath={_SSH_MUX_DIR}/%r@%h:%p", str(local_db), scp_path],
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
 def _remote_sql(host: str, db_path: str, query: str) -> str:
     """Execute a SQL query on the remote DB via SSH and return stdout."""
     _ensure_mux_dir()
@@ -377,6 +407,13 @@ def pull(
 
     show_db_stats(local_db, "Local (before)")
 
+    if not _remote_db_exists(host, remote_db):
+        console.print("[yellow]⚠ Remote database not found — nothing to pull.[/yellow]")
+        console.print(
+            f"[dim]Use 'session-sync push {remote}' to seed the remote first.[/dim]"
+        )
+        return
+
     # Calculate delta: what does remote have that's new or newer?
     console.print("\n[bold]Calculating delta...[/bold]")
     # Reverse: remote is "local" from the perspective of what to pull
@@ -466,6 +503,21 @@ def push(
         raise typer.Exit(1)
 
     show_db_stats(local_db, "Local")
+
+    # If remote DB doesn't exist, seed it with a full copy
+    if not _remote_db_exists(host, remote_db):
+        console.print(
+            "\n[bold]Remote database not found — seeding with full copy...[/bold]"
+        )
+        if _seed_remote_db(host, remote_db, local_db):
+            conn = sqlite3.connect(local_db)
+            count = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+            conn.close()
+            console.print(f"[green]✅ Seeded remote with {count} sessions[/green]")
+        else:
+            console.print("[red]❌ Failed to copy database to remote[/red]")
+            raise typer.Exit(1)
+        return
 
     console.print("\n[bold]Calculating delta...[/bold]")
     new_ids, updated_ids = _get_sync_state(local_db, host, remote_db)
