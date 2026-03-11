@@ -152,12 +152,24 @@ def _quote_remote_path(path: str) -> str:
 
 
 def _remote_db_exists(host: str, db_path: str) -> bool:
-    """Check if a database file exists on the remote host."""
+    """Check if a usable database exists on the remote host.
+
+    Verifies both that the file exists AND contains the sessions table.
+    An empty file or wrong-schema DB returns False.
+    """
     _ensure_mux_dir()
     remote_path = _quote_remote_path(db_path)
+    # Check file exists AND has the sessions table
     result = subprocess.run(
-        ["ssh", *_SSH_MUX_OPTS, host, f"test -f {remote_path}"],
+        [
+            "ssh",
+            *_SSH_MUX_OPTS,
+            host,
+            f"test -f {remote_path} && sqlite3 {remote_path} "
+            f"{shlex.quote('SELECT COUNT(*) FROM sessions LIMIT 1')}",
+        ],
         capture_output=True,
+        text=True,
     )
     return result.returncode == 0
 

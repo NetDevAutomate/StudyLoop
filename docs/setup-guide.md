@@ -87,6 +87,36 @@ All configuration lives in a single file: `~/.config/studyctl/config.yaml`. This
 
 ### Hosts — Cross-Machine Sync
 
+#### Prerequisites: Passwordless SSH
+
+Cross-machine sync uses SSH and rsync under the hood. **Passwordless SSH must be configured** between all machines before sync will work. If you're prompted for a password, sync will hang or fail.
+
+Set up SSH key-based auth between each pair of machines:
+
+```bash
+# 1. Generate a key (if you don't have one)
+ssh-keygen -t ed25519 -C "your-email@example.com"
+
+# 2. Copy your public key to each remote machine
+ssh-copy-id user@192.168.1.22    # macmini
+ssh-copy-id user@192.168.1.21    # macbookpro
+
+# 3. Verify passwordless login works
+ssh user@192.168.1.22 "echo ok"  # should print "ok" with no password prompt
+```
+
+Do this from **every machine** to **every other machine** you want to sync with. If machine A syncs with B and C, then A needs key access to B and C, B needs access to A and C, etc.
+
+> **Platform limitation:** Cross-machine sync requires a native Unix/Linux SSH server on the remote host with direct access to the filesystem. This means sync **does not work** with:
+>
+> - **Windows hosts running WSL** — SSH connects to Windows, not the WSL filesystem where the database lives. The `$HOME` path and `sqlite3` binary won't resolve correctly.
+> - **Docker containers** — unless SSH is exposed from the container (not recommended). The database path inside the container differs from the host path.
+> - **Network-attached storage** — the remote needs `sqlite3` installed and SSH access.
+>
+> Supported targets: macOS, native Linux, any Unix system with SSH + sqlite3.
+
+#### Host Configuration
+
 The `hosts` section defines all your machines. The local machine is auto-detected by matching your system hostname, and everything else becomes a sync target.
 
 ```yaml
