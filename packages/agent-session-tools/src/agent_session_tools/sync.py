@@ -144,15 +144,23 @@ def _resolve_remote(remote: str) -> tuple[str, str]:
     return host, db_path
 
 
+def _quote_remote_path(path: str) -> str:
+    """Quote a path for remote shell execution, expanding ~/."""
+    if path.startswith("~/"):
+        return f'"$HOME/{path[2:]}"'
+    return shlex.quote(path)
+
+
 def _remote_sql(host: str, db_path: str, query: str) -> str:
     """Execute a SQL query on the remote DB via SSH and return stdout."""
     _ensure_mux_dir()
+    remote_path = _quote_remote_path(db_path)
     result = subprocess.run(
         [
             "ssh",
             *_SSH_MUX_OPTS,
             host,
-            f"sqlite3 {shlex.quote(db_path)} {shlex.quote(query)}",
+            f"sqlite3 {remote_path} {shlex.quote(query)}",
         ],
         capture_output=True,
         text=True,
@@ -273,7 +281,13 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     else:
         host, db_path = target
         result = subprocess.run(
-            ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(db_path)}"],
+            [
+                "ssh",
+                *_SSH_MUX_OPTS,
+                "-C",
+                host,
+                f"sqlite3 {_quote_remote_path(db_path)}",
+            ],
             input=sql,
             capture_output=True,
             text=True,
@@ -563,7 +577,13 @@ def sync(
             commands.append(f"SELECT * FROM {table};")
 
         result = subprocess.run(
-            ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],
+            [
+                "ssh",
+                *_SSH_MUX_OPTS,
+                "-C",
+                host,
+                f"sqlite3 {_quote_remote_path(remote_db)}",
+            ],
             input="\n".join(commands),
             capture_output=True,
             text=True,
