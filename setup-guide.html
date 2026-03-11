@@ -470,10 +470,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#studyctl-configstudyctlconfigyaml" class="md-nav__link">
+  <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
-        studyctl — ~/.config/studyctl/config.yaml
+        Hosts — Cross-Machine Sync
       
     </span>
   </a>
@@ -481,10 +481,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#agent-session-tools-configstudyctlconfigyaml" class="md-nav__link">
+  <a href="#study-topics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        agent-session-tools — ~/.config/studyctl/config.yaml
+        Study Topics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-search-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database &amp; Search Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tts-voice-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTS Voice Settings
       
     </span>
   </a>
@@ -1354,10 +1376,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#studyctl-configstudyctlconfigyaml" class="md-nav__link">
+  <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
-        studyctl — ~/.config/studyctl/config.yaml
+        Hosts — Cross-Machine Sync
       
     </span>
   </a>
@@ -1365,10 +1387,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#agent-session-tools-configstudyctlconfigyaml" class="md-nav__link">
+  <a href="#study-topics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        agent-session-tools — ~/.config/studyctl/config.yaml
+        Study Topics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-search-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database &amp; Search Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tts-voice-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTS Voice Settings
       
     </span>
   </a>
@@ -1731,22 +1775,84 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 </ol>
 <p>The wizard creates or updates <code>~/.config/studyctl/config.yaml</code> with your choices. You can re-run it at any time to change settings.</p>
 <h3 id="manual-configuration">Manual Configuration<a class="headerlink" href="#manual-configuration" title="Permanent link">&para;</a></h3>
-<h3 id="studyctl-configstudyctlconfigyaml">studyctl — <code>~/.config/studyctl/config.yaml</code><a class="headerlink" href="#studyctl-configstudyctlconfigyaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Base path to your Obsidian vault</span>
-<span class="nt">obsidian_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian</span>
+<p>All configuration lives in a single file: <code>~/.config/studyctl/config.yaml</code>. This file is shared between <code>studyctl</code> and all <code>session-*</code> tools — use the same file on every machine.</p>
+<h3 id="hosts-cross-machine-sync">Hosts — Cross-Machine Sync<a class="headerlink" href="#hosts-cross-machine-sync" title="Permanent link">&para;</a></h3>
+<p>The <code>hosts</code> section defines all your machines. The local machine is auto-detected by matching your system hostname, and everything else becomes a sync target.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">macmini</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study-hub</span><span class="w">          </span><span class="c1"># must match socket.gethostname()</span>
+<span class="w">    </span><span class="nt">ip_address</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.22</span><span class="w">        </span><span class="c1"># wired / ethernet</span>
+<span class="w">      </span><span class="nt">secondary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.12</span><span class="w">      </span><span class="c1"># wifi (optional fallback)</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user</span>
+<span class="w">    </span><span class="nt">state_json</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/state.json</span>
+<span class="w">    </span><span class="nt">sessions_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions.db</span>
 
-<span class="c1"># Path to the AI session database</span>
-<span class="nt">session_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions.db</span>
+<span class="w">  </span><span class="nt">macbookpro</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Andys-MacBook-Pro-Max</span>
+<span class="w">    </span><span class="nt">ip_address</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.21</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user</span>
+<span class="w">    </span><span class="nt">state_json</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/state.json</span>
+<span class="w">    </span><span class="nt">sessions_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions.db</span>
 
-<span class="c1"># State directory for sync tracking</span>
-<span class="nt">state_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.local/share/studyctl</span>
+<span class="w">  </span><span class="nt">work-macbook</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">842f575e3614</span>
+<span class="w">    </span><span class="nt">ip_address</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.20</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user</span>
+<span class="w">    </span><span class="nt">state_json</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/state.json</span>
+<span class="w">    </span><span class="nt">sessions_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions.db</span>
+</code></pre></div>
+<p><strong>One config file on all machines.</strong> Deploy the same <code>config.yaml</code> everywhere — each machine auto-detects itself by hostname and treats the rest as remotes.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hostname</code></td>
+<td>Must match <code>socket.gethostname()</code> on that machine</td>
+</tr>
+<tr>
+<td><code>ip_address.primary</code></td>
+<td>Wired/ethernet IP (tried first for rsync/SSH)</td>
+</tr>
+<tr>
+<td><code>ip_address.secondary</code></td>
+<td>Wifi IP (optional fallback if primary unreachable)</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>SSH username for this machine</td>
+</tr>
+<tr>
+<td><code>state_json</code></td>
+<td>Path to studyctl state file</td>
+</tr>
+<tr>
+<td><code>sessions_db</code></td>
+<td>Path to the AI session SQLite database</td>
+</tr>
+</tbody>
+</table>
+<p>Both <code>studyctl state push/pull</code> and <code>session-sync push/pull/sync</code> use this config:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># studyctl</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="w"> </span>macmini
+studyctl<span class="w"> </span>state<span class="w"> </span>pull<span class="w"> </span>macbookpro
+studyctl<span class="w"> </span>state<span class="w"> </span>status
 
-<span class="c1"># Remote sync (optional — for cross-machine state sync)</span>
-<span class="c1"># sync_remote: your-remote-host</span>
-<span class="c1"># sync_user: your-username</span>
-
-<span class="c1"># Study topics — each maps to an Obsidian directory</span>
-<span class="nt">topics</span><span class="p">:</span>
+<span class="c1"># session-sync (same host names, same config)</span>
+session-sync<span class="w"> </span>push<span class="w"> </span>macmini
+session-sync<span class="w"> </span>pull<span class="w"> </span>macbookpro
+session-sync<span class="w"> </span>sync<span class="w"> </span>work-macbook
+session-sync<span class="w"> </span>endpoints<span class="w">            </span><span class="c1"># list all remote hosts</span>
+</code></pre></div>
+<h3 id="study-topics">Study Topics<a class="headerlink" href="#study-topics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">topics</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python</span>
 <span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
 <span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/Python</span>
@@ -1767,21 +1873,6 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>obsidian_base</code></td>
-<td>Root of your Obsidian vault</td>
-<td><code>~/Obsidian</code></td>
-</tr>
-<tr>
-<td><code>session_db</code></td>
-<td>Path to the session SQLite database</td>
-<td><code>~/.config/studyctl/sessions.db</code></td>
-</tr>
-<tr>
-<td><code>state_dir</code></td>
-<td>Where studyctl stores sync state</td>
-<td><code>~/.local/share/studyctl</code></td>
-</tr>
 <tr>
 <td><code>topics[].name</code></td>
 <td>Display name for the topic</td>
@@ -1809,8 +1900,7 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 </tr>
 </tbody>
 </table>
-<h3 id="agent-session-tools-configstudyctlconfigyaml">agent-session-tools — <code>~/.config/studyctl/config.yaml</code><a class="headerlink" href="#agent-session-tools-configstudyctlconfigyaml" title="Permanent link">&para;</a></h3>
-<p>Created automatically on first run. Key settings:</p>
+<h3 id="database-search-settings">Database &amp; Search Settings<a class="headerlink" href="#database-search-settings" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">database</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions.db</span>
 <span class="w">  </span><span class="nt">archive_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyctl/sessions_archive.db</span>
@@ -1831,6 +1921,13 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 - <code>DATABASE_PATH</code> — override database location
 - <code>LOG_LEVEL</code> — set logging level (DEBUG, INFO, WARNING, ERROR)
 - <code>EMBEDDING_MODEL</code> — override embedding model</p>
+<h3 id="tts-voice-settings">TTS Voice Settings<a class="headerlink" href="#tts-voice-settings" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">tts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">am_michael</span><span class="w">      </span><span class="c1"># kokoro voice (am_michael, af_heart, bf_emma, etc.)</span>
+<span class="w">  </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.5</span><span class="w">             </span><span class="c1"># 0.5 = slow, 1.0 = normal, 1.5 = fast</span>
+<span class="w">  </span><span class="nt">pause</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">             </span><span class="c1"># seconds between sentences</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kokoro</span><span class="w">        </span><span class="c1"># kokoro | qwen3 | macos</span>
+</code></pre></div>
 <h2 id="obsidian-vault-setup">Obsidian Vault Setup<a class="headerlink" href="#obsidian-vault-setup" title="Permanent link">&para;</a></h2>
 <p>studyctl expects your study notes in directories under your Obsidian vault. The structure is flexible — just point each topic's <code>obsidian_path</code> at the right directory.</p>
 <p>Example vault layout:</p>
