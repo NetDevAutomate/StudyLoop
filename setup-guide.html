@@ -1802,21 +1802,35 @@
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 <span class="nb">cd</span><span class="w"> </span>Socratic-Study-Mentor
 
-<span class="c1"># Install both packages in the workspace</span>
-uv<span class="w"> </span>sync
+<span class="c1"># Full install (interactive — prompts for TTS voice model)</span>
+./scripts/install.sh
 
-<span class="c1"># Install as global CLI tools (studyctl, session-export, etc.)</span>
-./scripts/install-tools.sh
+<span class="c1"># Full install without prompts (for Ansible/CI)</span>
+./scripts/install.sh<span class="w"> </span>--non-interactive
 
-<span class="c1"># Reinstall / upgrade existing tools</span>
-./scripts/install-tools.sh<span class="w"> </span>--force
+<span class="c1"># Just reinstall/upgrade CLI tools globally</span>
+./scripts/install.sh<span class="w"> </span>--tools-only
+
+<span class="c1"># Just reinstall agent definitions</span>
+./scripts/install.sh<span class="w"> </span>--agents-only
 
 <span class="c1"># Install optional extras</span>
 uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>notebooklm<span class="o">]</span>
 uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>semantic<span class="o">]</span>
+</code></pre></div>
+<p>For <strong>Ansible playbooks</strong>, clone the repo then run the install script:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install Socratic Study Mentor</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_machines</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Clone repo</span>
+<span class="w">      </span><span class="nt">git</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">repo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/NetDevAutomate/Socratic-Study-Mentor.git</span>
+<span class="w">        </span><span class="nt">dest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/code/personal/tools/Socratic-Study-Mentor</span>
 
-<span class="c1"># Install agents separately</span>
-./scripts/install-agents.sh
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run installer</span>
+<span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./scripts/install.sh --non-interactive</span>
+<span class="w">      </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">chdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/code/personal/tools/Socratic-Study-Mentor</span>
 </code></pre></div>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <h3 id="interactive-setup-recommended">Interactive Setup (recommended)<a class="headerlink" href="#interactive-setup-recommended" title="Permanent link">&para;</a></h3>
