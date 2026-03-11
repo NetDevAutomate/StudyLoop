@@ -83,23 +83,69 @@ The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices
 
 ### Manual Configuration
 
-### studyctl — `~/.config/studyctl/config.yaml`
+All configuration lives in a single file: `~/.config/studyctl/config.yaml`. This file is shared between `studyctl` and all `session-*` tools — use the same file on every machine.
+
+### Hosts — Cross-Machine Sync
+
+The `hosts` section defines all your machines. The local machine is auto-detected by matching your system hostname, and everything else becomes a sync target.
 
 ```yaml
-# Base path to your Obsidian vault
-obsidian_base: ~/Obsidian
+hosts:
+  macmini:
+    hostname: study-hub          # must match socket.gethostname()
+    ip_address:
+      primary: 192.168.1.22        # wired / ethernet
+      secondary: 192.168.1.12      # wifi (optional fallback)
+    user: user
+    state_json: ~/.config/studyctl/state.json
+    sessions_db: ~/.config/studyctl/sessions.db
 
-# Path to the AI session database
-session_db: ~/.config/studyctl/sessions.db
+  macbookpro:
+    hostname: Andys-MacBook-Pro-Max
+    ip_address:
+      primary: 192.168.1.21
+    user: user
+    state_json: ~/.config/studyctl/state.json
+    sessions_db: ~/.config/studyctl/sessions.db
 
-# State directory for sync tracking
-state_dir: ~/.local/share/studyctl
+  work-macbook:
+    hostname: 842f575e3614
+    ip_address:
+      primary: 192.168.1.20
+    user: user
+    state_json: ~/.config/studyctl/state.json
+    sessions_db: ~/.config/studyctl/sessions.db
+```
 
-# Remote sync (optional — for cross-machine state sync)
-# sync_remote: your-remote-host
-# sync_user: your-username
+**One config file on all machines.** Deploy the same `config.yaml` everywhere — each machine auto-detects itself by hostname and treats the rest as remotes.
 
-# Study topics — each maps to an Obsidian directory
+| Field | Description |
+|-------|-------------|
+| `hostname` | Must match `socket.gethostname()` on that machine |
+| `ip_address.primary` | Wired/ethernet IP (tried first for rsync/SSH) |
+| `ip_address.secondary` | Wifi IP (optional fallback if primary unreachable) |
+| `user` | SSH username for this machine |
+| `state_json` | Path to studyctl state file |
+| `sessions_db` | Path to the AI session SQLite database |
+
+Both `studyctl state push/pull` and `session-sync push/pull/sync` use this config:
+
+```bash
+# studyctl
+studyctl state push macmini
+studyctl state pull macbookpro
+studyctl state status
+
+# session-sync (same host names, same config)
+session-sync push macmini
+session-sync pull macbookpro
+session-sync sync work-macbook
+session-sync endpoints            # list all remote hosts
+```
+
+### Study Topics
+
+```yaml
 topics:
   - name: Python
     slug: python
@@ -115,18 +161,13 @@ topics:
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| `obsidian_base` | Root of your Obsidian vault | `~/Obsidian` |
-| `session_db` | Path to the session SQLite database | `~/.config/studyctl/sessions.db` |
-| `state_dir` | Where studyctl stores sync state | `~/.local/share/studyctl` |
 | `topics[].name` | Display name for the topic | required |
 | `topics[].slug` | URL-safe identifier | required |
 | `topics[].obsidian_path` | Path relative to `obsidian_base` | required |
 | `topics[].notebook_id` | NotebookLM notebook ID (if using sync) | empty |
 | `topics[].tags` | Keywords for session search matching | `[]` |
 
-### agent-session-tools — `~/.config/studyctl/config.yaml`
-
-Created automatically on first run. Key settings:
+### Database & Search Settings
 
 ```yaml
 database:
@@ -150,6 +191,16 @@ Environment variable overrides:
 - `DATABASE_PATH` — override database location
 - `LOG_LEVEL` — set logging level (DEBUG, INFO, WARNING, ERROR)
 - `EMBEDDING_MODEL` — override embedding model
+
+### TTS Voice Settings
+
+```yaml
+tts:
+  voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
+  speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
+  pause: 0.0             # seconds between sentences
+  backend: kokoro        # kokoro | qwen3 | macos
+```
 
 ## Obsidian Vault Setup
 
