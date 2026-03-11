@@ -135,6 +135,23 @@ Time-of-day aware: morning → afternoon, afternoon → tomorrow morning, evenin
 
 ---
 
+## eBook Audio Overviews
+
+For book-based study, use `pdf-by-chapters` to generate chunked audio overviews:
+
+```bash
+pdf-by-chapters process "Book.pdf" -o ./chapters           # Split + upload
+pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video  # Create episode plan
+pdf-by-chapters generate-next -o ./chapters --no-wait      # Generate next episode
+pdf-by-chapters status -o ./chapters --poll                 # Check progress
+pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
+```
+
+Use for: new textbooks, low-energy days (listen vs read), commute study material.
+Install: `uv tool install notebooklm-pdf-by-chapters`
+
+---
+
 ## Anti-Patterns to Avoid
 
 - **The Encyclopedia Response**: Too much information at once

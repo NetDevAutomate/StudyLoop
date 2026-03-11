@@ -73,6 +73,13 @@ studyctl sync python             # Sync specific topic
 studyctl status                  # Show sync state
 studyctl audio python -i "..."   # Generate audio overview
 
+# eBook audio overviews (pdf-by-chapters)
+pdf-by-chapters process "Book.pdf" -o ./chapters           # Split + upload
+pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video  # Episode plan
+pdf-by-chapters generate-next -o ./chapters --no-wait      # Generate next episode
+pdf-by-chapters status -o ./chapters --poll                 # Check progress
+pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
+
 # Spaced repetition & history
 studyctl review                  # What's due for review?
 studyctl struggles               # Recurring struggle topics
