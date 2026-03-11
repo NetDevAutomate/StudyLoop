@@ -44,10 +44,16 @@ This will:
 
 ```bash
 git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd socratic-study-mentor
+cd Socratic-Study-Mentor
 
 # Install both packages in the workspace
 uv sync
+
+# Install as global CLI tools (studyctl, session-export, etc.)
+./scripts/install-tools.sh
+
+# Reinstall / upgrade existing tools
+./scripts/install-tools.sh --force
 
 # Install optional extras
 uv pip install studyctl[notebooklm]
