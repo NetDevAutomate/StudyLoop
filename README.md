@@ -103,12 +103,17 @@ graph LR
 git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 cd Socratic-Study-Mentor
 ./scripts/install.sh
-
-# Or install all CLI tools globally (studyctl, session-export, etc.)
-./scripts/install-tools.sh
 ```
 
-This installs both packages, sets up agent definitions for any detected AI tools, and optionally downloads the voice model for TTS support. The `install-tools.sh` script registers all workspace packages as global `uv` tools so they're available without activating a venv.
+This installs packages, registers CLI tools globally (`studyctl`, `session-export`, `session-sync`, etc.), sets up agent definitions for any detected AI tools, and optionally downloads the voice model for TTS support.
+
+For Ansible or CI (no interactive prompts):
+
+```bash
+./scripts/install.sh --non-interactive
+```
+
+Other modes: `--tools-only` (just CLI tools), `--agents-only` (just agent definitions).
 
 Then run the interactive setup wizard:
 

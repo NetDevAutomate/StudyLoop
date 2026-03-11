@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-# install.sh — Full installation of Socratic Study Mentor
+# install.sh — Install Socratic Study Mentor
 #
 # Usage:
-#   ./scripts/install.sh
+#   ./scripts/install.sh                # Full install (interactive)
+#   ./scripts/install.sh --non-interactive  # Full install (no prompts — for Ansible/CI)
+#   ./scripts/install.sh --tools-only   # Just install CLI tools globally
+#   ./scripts/install.sh --agents-only  # Just install agent definitions
+#
+# After cloning the repo, this is the only script you need to run.
+# For Ansible: clone the repo, then run ./scripts/install.sh --non-interactive
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
@@ -13,6 +19,37 @@ step()  { printf "\n${BOLD}▸ %s${NC}\n" "$1"; }
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_DIR=$(dirname "$SCRIPT_DIR")
+
+# --- Parse flags ---
+TOOLS_ONLY=false
+AGENTS_ONLY=false
+NON_INTERACTIVE=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --tools-only)      TOOLS_ONLY=true ;;
+    --agents-only)     AGENTS_ONLY=true ;;
+    --non-interactive) NON_INTERACTIVE=true ;;
+    --help|-h)
+      echo "Usage: ./scripts/install.sh [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --non-interactive  Skip all prompts (for Ansible/CI)"
+      echo "  --tools-only       Only install CLI tools globally"
+      echo "  --agents-only      Only install agent definitions"
+      echo "  -h, --help         Show this help"
+      exit 0
+      ;;
+    *) err "Unknown option: $arg"; exit 1 ;;
+  esac
+done
+
+# --- Shortcut: agents only ---
+if $AGENTS_ONLY; then
+  step "Installing agent definitions"
+  bash "${SCRIPT_DIR}/install-agents.sh"
+  exit 0
+fi
 
 # --- Prerequisites ---
 step "Checking prerequisites"
@@ -49,16 +86,30 @@ else
 fi
 
 # --- Install packages ---
-step "Installing Python packages"
-cd "$REPO_DIR"
-uv sync
-info "Packages installed"
+if ! $TOOLS_ONLY; then
+  step "Installing Python packages"
+  cd "$REPO_DIR"
+  uv sync
+  info "Packages installed"
+fi
 
 # --- Install CLI tools globally ---
-step "Installing CLI tools to ~/.local/bin"
-uv tool install --force --from "${REPO_DIR}/packages/agent-session-tools" agent-session-tools
-uv tool install --force --from "${REPO_DIR}/packages/studyctl" studyctl
-info "CLI tools installed (session-export, session-query, session-sync, session-maint, tutor-checkpoint, studyctl)"
+step "Installing CLI tools globally"
+for pkg in "${REPO_DIR}"/packages/*/; do
+  pkg_name=$(basename "$pkg")
+  uv tool install "$pkg" --editable --force 2>&1 | while read -r line; do
+    echo "  $line"
+  done
+done
+info "CLI tools installed (studyctl, session-export, session-query, session-sync, session-maint, tutor-checkpoint, study-speak)"
+
+# --- Shortcut: tools only ---
+if $TOOLS_ONLY; then
+  echo ""
+  printf "${BOLD}${GREEN}Tools installed!${NC}\n"
+  uv tool list 2>/dev/null | grep -E "^(studyctl|agent-session-tools)" | sed 's/^/  /'
+  exit 0
+fi
 
 # --- Install agents ---
 step "Installing agent definitions"
@@ -95,7 +146,7 @@ EOF
     info "Topics template appended to ${CONFIG_FILE}"
   fi
 else
-  if command -v studyctl &>/dev/null; then
+  if command -v studyctl &>/dev/null && ! $NON_INTERACTIVE; then
     studyctl config init 2>/dev/null && info "Config created via studyctl" || true
   fi
   if [ ! -f "$CONFIG_FILE" ]; then
@@ -124,6 +175,8 @@ KOKORO_BASE="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model
 
 if [ -f "$KOKORO_MODEL" ] && [ -f "$KOKORO_VOICES" ]; then
   info "Voice model already downloaded"
+elif $NON_INTERACTIVE; then
+  info "Skipped voice model download (non-interactive mode)"
 else
   echo ""
   printf "${BOLD}▸ Voice output (optional)${NC}\n"

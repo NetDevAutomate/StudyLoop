@@ -46,21 +46,38 @@ This will:
 git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 cd Socratic-Study-Mentor
 
-# Install both packages in the workspace
-uv sync
+# Full install (interactive — prompts for TTS voice model)
+./scripts/install.sh
 
-# Install as global CLI tools (studyctl, session-export, etc.)
-./scripts/install-tools.sh
+# Full install without prompts (for Ansible/CI)
+./scripts/install.sh --non-interactive
 
-# Reinstall / upgrade existing tools
-./scripts/install-tools.sh --force
+# Just reinstall/upgrade CLI tools globally
+./scripts/install.sh --tools-only
+
+# Just reinstall agent definitions
+./scripts/install.sh --agents-only
 
 # Install optional extras
 uv pip install studyctl[notebooklm]
 uv pip install agent-session-tools[semantic]
+```
 
-# Install agents separately
-./scripts/install-agents.sh
+For **Ansible playbooks**, clone the repo then run the install script:
+
+```yaml
+- name: Install Socratic Study Mentor
+  hosts: study_machines
+  tasks:
+    - name: Clone repo
+      git:
+        repo: https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
+        dest: ~/code/personal/tools/Socratic-Study-Mentor
+
+    - name: Run installer
+      command: ./scripts/install.sh --non-interactive
+      args:
+        chdir: ~/code/personal/tools/Socratic-Study-Mentor
 ```
 
 ## Configuration
