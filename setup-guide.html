@@ -478,6 +478,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Hosts — Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites-passwordless-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites: Passwordless SSH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#host-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1384,6 +1412,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Hosts — Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites-passwordless-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites: Passwordless SSH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#host-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1777,6 +1833,30 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 <h3 id="manual-configuration">Manual Configuration<a class="headerlink" href="#manual-configuration" title="Permanent link">&para;</a></h3>
 <p>All configuration lives in a single file: <code>~/.config/studyctl/config.yaml</code>. This file is shared between <code>studyctl</code> and all <code>session-*</code> tools — use the same file on every machine.</p>
 <h3 id="hosts-cross-machine-sync">Hosts — Cross-Machine Sync<a class="headerlink" href="#hosts-cross-machine-sync" title="Permanent link">&para;</a></h3>
+<h4 id="prerequisites-passwordless-ssh">Prerequisites: Passwordless SSH<a class="headerlink" href="#prerequisites-passwordless-ssh" title="Permanent link">&para;</a></h4>
+<p>Cross-machine sync uses SSH and rsync under the hood. <strong>Passwordless SSH must be configured</strong> between all machines before sync will work. If you're prompted for a password, sync will hang or fail.</p>
+<p>Set up SSH key-based auth between each pair of machines:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Generate a key (if you don&#39;t have one)</span>
+ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-C<span class="w"> </span><span class="s2">&quot;your-email@example.com&quot;</span>
+
+<span class="c1"># 2. Copy your public key to each remote machine</span>
+ssh-copy-id<span class="w"> </span>user@192.168.1.22<span class="w">    </span><span class="c1"># macmini</span>
+ssh-copy-id<span class="w"> </span>user@192.168.1.21<span class="w">    </span><span class="c1"># macbookpro</span>
+
+<span class="c1"># 3. Verify passwordless login works</span>
+ssh<span class="w"> </span>user@192.168.1.22<span class="w"> </span><span class="s2">&quot;echo ok&quot;</span><span class="w">  </span><span class="c1"># should print &quot;ok&quot; with no password prompt</span>
+</code></pre></div>
+<p>Do this from <strong>every machine</strong> to <strong>every other machine</strong> you want to sync with. If machine A syncs with B and C, then A needs key access to B and C, B needs access to A and C, etc.</p>
+<blockquote>
+<p><strong>Platform limitation:</strong> Cross-machine sync requires a native Unix/Linux SSH server on the remote host with direct access to the filesystem. This means sync <strong>does not work</strong> with:</p>
+<ul>
+<li><strong>Windows hosts running WSL</strong> — SSH connects to Windows, not the WSL filesystem where the database lives. The <code>$HOME</code> path and <code>sqlite3</code> binary won't resolve correctly.</li>
+<li><strong>Docker containers</strong> — unless SSH is exposed from the container (not recommended). The database path inside the container differs from the host path.</li>
+<li><strong>Network-attached storage</strong> — the remote needs <code>sqlite3</code> installed and SSH access.</li>
+</ul>
+<p>Supported targets: macOS, native Linux, any Unix system with SSH + sqlite3.</p>
+</blockquote>
+<h4 id="host-configuration">Host Configuration<a class="headerlink" href="#host-configuration" title="Permanent link">&para;</a></h4>
 <p>The <code>hosts</code> section defines all your machines. The local machine is auto-detected by matching your system hostname, and everything else becomes a sync target.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">hosts</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">macmini</span><span class="p">:</span>
