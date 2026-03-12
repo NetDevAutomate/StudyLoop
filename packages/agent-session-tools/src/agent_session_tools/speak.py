@@ -170,6 +170,12 @@ def speak(
         return
 
     # Fallback chain: kokoro → macos
+    if backend == "kokoro":
+        typer.echo(
+            "⚠ Kokoro TTS not available — falling back to macOS say. "
+            "Install TTS deps: uv tool install './packages/agent-session-tools[tts]' --force",
+            err=True,
+        )
     if backend != "kokoro" and _speak_kokoro(text, voice=voice, speed=speed):
         return
     _speak_macos(text, voice=macos_voice)
