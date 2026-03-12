@@ -97,9 +97,16 @@ fi
 step "Installing CLI tools globally"
 for pkg in "${REPO_DIR}"/packages/*/; do
   pkg_name=$(basename "$pkg")
-  uv tool install "$pkg" --editable --force 2>&1 | while read -r line; do
-    echo "  $line"
-  done
+  # Include TTS extras for agent-session-tools (kokoro voice output)
+  if [ "$pkg_name" = "agent-session-tools" ]; then
+    uv tool install "${pkg}[tts]" --editable --force 2>&1 | while read -r line; do
+      echo "  $line"
+    done
+  else
+    uv tool install "$pkg" --editable --force 2>&1 | while read -r line; do
+      echo "  $line"
+    done
+  fi
 done
 info "CLI tools installed (studyctl, session-export, session-query, session-sync, session-maint, tutor-checkpoint, study-speak)"
 
