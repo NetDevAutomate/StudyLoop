@@ -52,3 +52,99 @@
 - [x] 30. Update README agent support table — already covers all 5 platforms (Kiro, Claude Code, Gemini, OpenCode, Amp)
 - [x] 31. Update `docs/agent-install.md` for all 5 platforms — already comprehensive with auto-install + manual install for each
 - [x] 32. Update `docs/roadmap.md` with completed items — added v1.5 section with all recent work
+
+## Phase 6: Centralised Artefact Store (Completed 2026-03-13)
+
+- [x] Create `NetDevAutomate/artefact-store` repo with landing page + GitHub Pages
+- [x] Cloudflare DNS CNAME: `artefacts.netdevautomate.dev`
+- [x] `repo-artefacts` — config system (`config.py`, TOML, `default_store`)
+- [x] `repo-artefacts` — store module (`store.py`, clone/publish/manifest/push)
+- [x] `repo-artefacts` — `--store` flag on `pipeline` and `publish` commands
+- [x] `repo-artefacts` — `validate`, `clean`, `migrate` commands
+- [x] Migrate 3 repos (Socratic-Study-Mentor, pdf-by-chapters, Agent-Speaker)
+- [x] Git history cleaned (`git filter-repo`) on all 3 repos
+- [x] Bug fixes: enum comparison, completed artefact deletion, infographic params, source dedup
+
+## Phase 7: Unified Config & Cross-Machine Sync (Completed 2026-03-13)
+
+- [x] Unified `hosts` config with hostname-based auto-detection
+- [x] Primary/secondary IP support for wired/wifi fallback
+- [x] `session-sync` reads hosts from studyctl config
+- [x] Remote DB seeding on first push (`_seed_remote_db`)
+- [x] Tilde path expansion fix for SSH commands
+- [x] SSH prerequisite docs with platform caveats
+- [x] Consolidated install scripts (`install.sh` with `--non-interactive`)
+
+## Phase 8: StudyCards TUI (Completed 2026-03-13)
+
+- [x] `review_loader.py` — self-contained flashcard/quiz JSON loader
+- [x] `review_db.py` — SM-2 spaced repetition tracking (card_reviews table)
+- [x] `tui/study_cards.py` — Textual widget with keyboard-driven review
+- [x] Voice toggle (v key) via study-speak/kokoro
+- [x] `studyctl tui` command registered in CLI
+- [x] 27 unit tests for loader + DB
+- [x] Agent configs updated for quiz/flashcard generation from Obsidian
+
+## Phase 9: TUI Polish & Documentation (Next Session)
+
+- [ ] Update README.md with TUI section + screenshot (`images/soctractic_mentor_tui.png`)
+- [ ] Fix screenshot filename typo: `soctractic` → `socratic`
+- [ ] Update `docs/setup-guide.md` with TUI installation and `review.directories` config
+- [ ] Update `docs/cli-reference.md` with `studyctl tui` command
+- [ ] Add course picker for multiple directories (currently uses first course)
+- [ ] Add `--retry-wrong` flag to `pdf-by-chapters review` command
+- [ ] Add "Review Wrong Answers" mode (r key) in TUI after session completion
+- [ ] Fix 29 pre-existing test failures (classifier, TUI import, vscode, dedup, etc.)
+- [ ] Implement `list_concepts()` in `history.py` (referenced but missing)
+
+## Phase 10: Local Web App (PWA)
+
+**Plan:** `~/code/personal/tools/notebooklm_pdf_by_chapters/docs/plans/2026-03-13-feat-study-review-interfaces-plan.md`
+
+- [ ] `studyctl serve` command (FastAPI + Jinja2 + HTMX + Pico CSS)
+- [ ] Dashboard: courses, progress, due reviews, recent sessions
+- [ ] Flashcard page: tap to flip, score buttons, progress bar
+- [ ] Quiz page: multiple choice with rationale reveal
+- [ ] Audio page: play/pause episodes from downloads/audio/
+- [ ] Wrong answers review mode
+- [ ] Voice: `POST /api/speak` endpoint + browser SpeechSynthesis fallback
+- [ ] PWA: manifest.json, service worker, offline caching
+- [ ] Per-card scoring to card_reviews table via API
+- [ ] Spaced repetition dashboard (due/overdue/mastered)
+- [ ] Mobile responsive (test on iPhone Safari)
+- [ ] `studyctl[serve]` optional dependency group
+
+## Phase 11: Obsidian Export
+
+- [ ] `pdf-by-chapters export-obsidian` command
+- [ ] Convert flashcard JSON → Obsidian `#flashcard` format
+- [ ] Compatible with Obsidian Spaced Repetition plugin
+
+## Phase 12: Native iOS/macOS Apps (Future)
+
+- [ ] SwiftUI universal app (iPhone + iPad + Mac Catalyst)
+- [ ] Core Data / Swift Data for local storage
+- [ ] Push notifications for due reviews
+- [ ] Apple Watch complication (due count)
+- [ ] Siri Shortcuts integration
+
+## Phase 13: AWS Cloud Sync (Future)
+
+- [ ] Cognito user pools + social login (Apple ID, Google)
+- [ ] API Gateway + Lambda REST API
+- [ ] DynamoDB with per-user partition key
+- [ ] Offline-first sync with conflict resolution
+- [ ] SNS + APNS push notifications
+
+## Key File References
+
+| Item | Location |
+|------|----------|
+| Study Review Plan | `~/code/personal/tools/notebooklm_pdf_by_chapters/docs/plans/2026-03-13-feat-study-review-interfaces-plan.md` |
+| Artefact Store Plan | `~/code/personal/tools/notebooklm_repo_artefacts/docs/plans/2026-03-11-feat-centralised-artefact-store-plan.md` |
+| TUI Source | `packages/studyctl/src/studyctl/tui/` |
+| Review Loader | `packages/studyctl/src/studyctl/review_loader.py` |
+| Review DB (SM-2) | `packages/studyctl/src/studyctl/review_db.py` |
+| TUI Screenshot | `images/soctractic_mentor_tui.png` |
+| Hosts Config | `~/.config/studyctl/config.yaml` |
+| Store Config | `~/.config/repo-artefacts/config.toml` |
