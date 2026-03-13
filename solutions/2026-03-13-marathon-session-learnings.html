@@ -1,0 +1,1268 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/2026-03-13-marathon-session-learnings.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Marathon Session: Artefact Store, TUI, and Cross-Machine Sync - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#marathon-session-learnings-2026-03-13" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Marathon Session: Artefact Store, TUI, and Cross-Machine Sync
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem-binary-artefacts-bloating-source-repos-385mb-clones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem: Binary artefacts bloating source repos (385MB clones)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Problem: Binary artefacts bloating source repos (385MB clones)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#solution-centralised-artefact-store-with-github-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution: Centralised artefact-store with GitHub Pages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-would-have-saved-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What would have saved time
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-notebooklm-infographic-generation-failing-via-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem: NotebookLM infographic generation failing via API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Problem: NotebookLM infographic generation failing via API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-chain-3-bugs-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root cause chain (3 bugs found):
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-cross-machine-config-with-separate-localremotes-sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem: Cross-machine config with separate local/remotes sections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Problem: Cross-machine config with separate local/remotes sections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#solution-unified-hosts-with-hostname-auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution: Unified hosts with hostname auto-detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-flashcardquiz-review-only-available-via-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem: Flashcard/quiz review only available via CLI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Problem: Flashcard/quiz review only available via CLI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#solution-textual-tui-with-spaced-repetition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution: Textual TUI with spaced repetition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-lfs-pointer-mismatch-on-clone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem: LFS pointer mismatch on clone
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Problem: LFS pointer mismatch on clone">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solution_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-cloudflare-proxy-blocking-github-pages-dns-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem: Cloudflare proxy blocking GitHub Pages DNS verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Problem: Cloudflare proxy blocking GitHub Pages DNS verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#solution_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-install-script-didnt-include-tts-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem: Install script didn't include TTS dependencies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Problem: Install script didn&#39;t include TTS dependencies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solution_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architectural-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architectural Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="marathon-session-learnings-2026-03-13">Marathon Session Learnings — 2026-03-13<a class="headerlink" href="#marathon-session-learnings-2026-03-13" title="Permanent link">&para;</a></h1>
+<h2 id="problem-binary-artefacts-bloating-source-repos-385mb-clones">Problem: Binary artefacts bloating source repos (385MB clones)<a class="headerlink" href="#problem-binary-artefacts-bloating-source-repos-385mb-clones" title="Permanent link">&para;</a></h2>
+<h3 id="solution-centralised-artefact-store-with-github-pages">Solution: Centralised artefact-store with GitHub Pages<a class="headerlink" href="#solution-centralised-artefact-store-with-github-pages" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Dedicated <code>artefact-store</code> repo serves all artefacts via <code>artefacts.netdevautomate.dev</code></li>
+<li>Source repos get README links only — zero binary files</li>
+<li><code>--store</code> flag on pipeline/publish, configurable default via <code>~/.config/repo-artefacts/config.toml</code></li>
+<li><code>migrate</code> command handles the full move: copy → push store → update README → <code>git rm</code> → push source</li>
+<li><code>validate --all</code> checks every artefact link, <code>clean --delete</code> removes orphans</li>
+</ul>
+<p><strong>Key pattern:</strong> Store repo cloned shallowly (<code>--depth 1</code>), cached in <code>~/.cache/</code>, with push conflict retry.</p>
+<h3 id="what-would-have-saved-time">What would have saved time<a class="headerlink" href="#what-would-have-saved-time" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Should have created the artefact-store FIRST, then built the pipeline integration. We built them in parallel which caused the git divergence headaches.</li>
+</ul>
+<hr />
+<h2 id="problem-notebooklm-infographic-generation-failing-via-api">Problem: NotebookLM infographic generation failing via API<a class="headerlink" href="#problem-notebooklm-infographic-generation-failing-via-api" title="Permanent link">&para;</a></h2>
+<h3 id="root-cause-chain-3-bugs-found">Root cause chain (3 bugs found):<a class="headerlink" href="#root-cause-chain-3-bugs-found" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong><code>is</code> vs <code>==</code> for IntEnum comparison</strong> — <code>_delete_failed_by_type</code> wasn't matching failed artefacts</li>
+<li><strong>Only deleting FAILED, not COMPLETED artefacts</strong> — API refuses new generation when completed one exists</li>
+<li><strong>Missing <code>orientation</code> and <code>detail_level</code> params</strong> — API silently fails without these for infographics</li>
+</ol>
+<h3 id="solution">Solution<a class="headerlink" href="#solution" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Changed all enum comparisons to <code>==</code></li>
+<li>Renamed to <code>_delete_existing_by_type(failed_only=False)</code> for initial requests</li>
+<li>Added <code>InfographicOrientation.LANDSCAPE</code> + <code>InfographicDetail.STANDARD</code> to generate kwargs</li>
+<li>Added diagnostic logging showing full <code>GenerationStatus</code> fields on failure</li>
+</ul>
+<p><strong>Key pattern:</strong> When an API returns a generic error, compare your call against a known-working client (the <code>notebooklm</code> CLI in this case) to find parameter differences.</p>
+<hr />
+<h2 id="problem-cross-machine-config-with-separate-localremotes-sections">Problem: Cross-machine config with separate local/remotes sections<a class="headerlink" href="#problem-cross-machine-config-with-separate-localremotes-sections" title="Permanent link">&para;</a></h2>
+<h3 id="solution-unified-hosts-with-hostname-auto-detection">Solution: Unified hosts with hostname auto-detection<a class="headerlink" href="#solution-unified-hosts-with-hostname-auto-detection" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">macmini</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study-hub</span><span class="w">     </span><span class="c1"># auto-detected via socket.gethostname()</span>
+<span class="w">    </span><span class="nt">ip_address</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.22</span><span class="w">   </span><span class="c1"># wired</span>
+<span class="w">      </span><span class="nt">secondary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.12</span><span class="w"> </span><span class="c1"># wifi fallback</span>
+</code></pre></div>
+<ul>
+<li>Same config file on all machines</li>
+<li><code>session-sync</code> reads from studyctl's hosts config via <code>get_endpoints()</code> translation</li>
+<li>rsync tries primary IP, falls back to secondary</li>
+<li>First-time push auto-seeds remote DB via scp</li>
+</ul>
+<p><strong>Key pattern:</strong> <code>_quote_remote_path()</code> converts <code>~/...</code> to <code>"$HOME/..."</code> for SSH commands — <code>shlex.quote</code> prevents tilde expansion.</p>
+<hr />
+<h2 id="problem-flashcardquiz-review-only-available-via-cli">Problem: Flashcard/quiz review only available via CLI<a class="headerlink" href="#problem-flashcardquiz-review-only-available-via-cli" title="Permanent link">&para;</a></h2>
+<h3 id="solution-textual-tui-with-spaced-repetition">Solution: Textual TUI with spaced repetition<a class="headerlink" href="#solution-textual-tui-with-spaced-repetition" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Self-contained <code>review_loader.py</code> (no cross-package imports — JSON format is the contract)</li>
+<li><code>review_db.py</code> with SM-2 simplified algorithm (correct → increase interval, wrong → reset)</li>
+<li><code>tui/study_cards.py</code> — keyboard-driven: Space (flip), y/n (score), v (voice toggle)</li>
+<li>Voice runs in background thread via study-speak/kokoro (optional, graceful fallback)</li>
+</ul>
+<p><strong>Key pattern:</strong> When two packages need to share data, copy the loader code (~60 lines) rather than creating a cross-package import dependency. The JSON format is the contract.</p>
+<hr />
+<h2 id="problem-lfs-pointer-mismatch-on-clone">Problem: LFS pointer mismatch on clone<a class="headerlink" href="#problem-lfs-pointer-mismatch-on-clone" title="Permanent link">&para;</a></h2>
+<h3 id="root-cause">Root cause<a class="headerlink" href="#root-cause" title="Permanent link">&para;</a></h3>
+<p>Files committed before <code>git-lfs</code> filters were active on the committing machine. <code>.gitattributes</code> had the rules but the smudge/clean hooks weren't registered.</p>
+<h3 id="solution_1">Solution<a class="headerlink" href="#solution_1" title="Permanent link">&para;</a></h3>
+<p><code>git rm --cached</code> + <code>git add</code> to re-add through LFS filters. Then <code>git filter-repo</code> to clean history.</p>
+<p><strong>Key pattern:</strong> Always run <code>git lfs install</code> on a new machine before committing to a repo with <code>.gitattributes</code> LFS rules.</p>
+<hr />
+<h2 id="problem-cloudflare-proxy-blocking-github-pages-dns-verification">Problem: Cloudflare proxy blocking GitHub Pages DNS verification<a class="headerlink" href="#problem-cloudflare-proxy-blocking-github-pages-dns-verification" title="Permanent link">&para;</a></h2>
+<h3 id="solution_2">Solution<a class="headerlink" href="#solution_2" title="Permanent link">&para;</a></h3>
+<p>Set <code>proxied: False</code> (DNS-only) for the CNAME record. GitHub needs to see its own IP in DNS responses to verify the domain and provision the SSL cert.</p>
+<p><strong>Key pattern:</strong> Cloudflare proxy hides the real DNS target. GitHub Pages requires DNS-only mode for initial domain verification. Can optionally re-enable proxy after cert is provisioned.</p>
+<hr />
+<h2 id="problem-install-script-didnt-include-tts-dependencies">Problem: Install script didn't include TTS dependencies<a class="headerlink" href="#problem-install-script-didnt-include-tts-dependencies" title="Permanent link">&para;</a></h2>
+<h3 id="root-cause_1">Root cause<a class="headerlink" href="#root-cause_1" title="Permanent link">&para;</a></h3>
+<p><code>uv tool install agent-session-tools</code> created an isolated venv without the <code>[tts]</code> optional extras. <code>kokoro_onnx</code> import failed silently, falling back to macOS <code>say</code>.</p>
+<h3 id="solution_3">Solution<a class="headerlink" href="#solution_3" title="Permanent link">&para;</a></h3>
+<p>Install with extras: <code>uv tool install "agent-session-tools[tts]"</code>. Updated <code>install.sh</code> to detect <code>agent-session-tools</code> and include <code>[tts]</code>.</p>
+<p><strong>Key pattern:</strong> <code>uv tool install</code> creates isolated venvs. Optional dependencies MUST be specified explicitly — they're not inherited from the workspace.</p>
+<hr />
+<h2 id="architectural-decisions">Architectural Decisions<a class="headerlink" href="#architectural-decisions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TOML for repo-artefacts config</td>
+<td>stdlib <code>tomllib</code> in Python 3.11+, zero new deps</td>
+</tr>
+<tr>
+<td>YAML for studyctl config</td>
+<td>Already a dependency, human-friendly for multi-section config</td>
+</tr>
+<tr>
+<td>SQLite <code>card_reviews</code> table in sessions.db</td>
+<td>Reuse existing DB, feeds into spaced repetition</td>
+</tr>
+<tr>
+<td>SM-2 simplified (not full algorithm)</td>
+<td>Start simple, iterate. Full SM-2 adds complexity for marginal benefit.</td>
+</tr>
+<tr>
+<td>PWA before native app</td>
+<td>Validates UX at 10% of the effort. Build native only after patterns proven.</td>
+</tr>
+<tr>
+<td>FastAPI + HTMX for web app</td>
+<td>No JS build step, server-rendered, minimal dependencies</td>
+</tr>
+<tr>
+<td>No cross-package imports for review data</td>
+<td>JSON format is the contract. Copying 60 lines beats coupling two packages.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
