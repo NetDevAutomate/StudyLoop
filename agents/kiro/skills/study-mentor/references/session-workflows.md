@@ -143,6 +143,41 @@ When starting a new book or the learner requests audio overviews of a textbook:
 If generation fails, `generate-next` automatically retries failed episodes.
 To regenerate a specific episode: `pdf-by-chapters generate-next -o ./chapters --episode 3`
 
+## Quiz & Flashcard Generation from Obsidian Notes
+
+When the learner wants quizzes or flashcards from their Obsidian study notes:
+
+```
+1. Identify the course directory in the learner's Obsidian vault:
+   → Ask: "Which course or topic are your notes for?"
+   → Check: ls ~/Obsidian/Personal/2-Areas/Courses/
+
+2. Run quiz + flashcard generation (skip audio for speed):
+   pdf-by-chapters from-obsidian ~/Obsidian/Personal/2-Areas/Courses/<course>/ \
+     --subdir study-notes --no-audio -o ~/Desktop/<course>-output
+
+3. If a notebook already exists for this course:
+   pdf-by-chapters from-obsidian ~/Obsidian/path/ \
+     -n $NOTEBOOK_ID --skip-convert --no-audio
+
+4. Review generated artifacts:
+   → Quizzes: <output>/downloads/*-quiz.json
+   → Flashcards: <output>/downloads/*-flashcards.json
+   → Each source gets its own quiz and flashcard set
+
+5. Use in study session:
+   → Load quiz JSON and present questions Socratically
+   → Use flashcards for rapid-fire recall testing
+   → Track scores via tutor-checkpoint
+```
+
+**Prerequisites:** pandoc (brew install pandoc), @mermaid-js/mermaid-cli (npm install -g @mermaid-js/mermaid-cli)
+
+**Energy adaptation:**
+- Energy 1-3: Skip generation, review existing flashcards
+- Energy 4-6: Generate quizzes only (`--no-audio --no-flashcards`), light quiz session
+- Energy 7+: Full generation (audio + quiz + flashcards), active Socratic quiz
+
 ## End-of-Session Protocol
 
 After every study session:

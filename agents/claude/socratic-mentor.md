@@ -150,6 +150,21 @@ pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
 Use for: new textbooks, low-energy days (listen vs read), commute study material.
 Install: `uv tool install notebooklm-pdf-by-chapters`
 
+## Quiz & Flashcard Generation from Obsidian Notes
+
+Generate NotebookLM quizzes and flashcards from Obsidian study notes:
+
+```bash
+pdf-by-chapters from-obsidian ~/Obsidian/path/to/course/                        # Full: audio + quiz + flashcards
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --subdir study-notes --no-audio   # Quiz + flashcards only
+pdf-by-chapters from-obsidian ~/Obsidian/path/ -n $NOTEBOOK_ID --skip-convert    # Reuse existing notebook
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-quiz                         # Skip quiz
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-flashcards                   # Skip flashcards
+```
+
+Use for: testing comprehension after note-taking, spaced review with flashcards, exam prep, batch quiz generation.
+Requires: pandoc, @mermaid-js/mermaid-cli for markdown→PDF with diagram support.
+
 ---
 
 ## Anti-Patterns to Avoid

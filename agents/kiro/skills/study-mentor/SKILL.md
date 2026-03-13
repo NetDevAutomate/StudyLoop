@@ -83,6 +83,12 @@ pdf-by-chapters generate-next -o ./chapters --no-wait      # Generate next episo
 pdf-by-chapters status -o ./chapters --poll                 # Check progress
 pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
 
+# Quiz & flashcard generation from Obsidian notes (pdf-by-chapters)
+pdf-by-chapters from-obsidian ~/Obsidian/path/to/course/    # Full: audio + quiz + flashcards
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --subdir study-notes  # Specific subdirectory
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-audio   # Quiz + flashcards only
+pdf-by-chapters from-obsidian ~/Obsidian/path/ -n $NOTEBOOK_ID --skip-convert  # Reuse existing
+
 # Progress tracking
 uv run tutor-progress
 uv run tutor-checkpoint code --skill <name>
@@ -128,6 +134,39 @@ commute-friendly study material, or when the learner wants audio reinforcement.
 - Energy 7+: Active study session with audio as supplementary material
 
 Install: `uv tool install notebooklm-pdf-by-chapters`
+
+## Quiz & Flashcard Generation from Obsidian Notes
+
+Generate NotebookLM quizzes and flashcards directly from Obsidian study notes using `pdf-by-chapters from-obsidian`. Converts markdown to PDF (with Mermaid diagram rendering), uploads to NotebookLM, and generates per-source artifacts.
+
+```bash
+# Full pipeline: convert notes → upload → generate audio + quiz + flashcards
+pdf-by-chapters from-obsidian ~/Obsidian/Personal/2-Areas/Courses/MyCourse/
+
+# Target a specific subdirectory (e.g. study-notes within a course)
+pdf-by-chapters from-obsidian ~/Obsidian/Personal/2-Areas/Courses/MyCourse/ \
+  --subdir study-notes -o ~/Desktop/MyCourse-output
+
+# Quiz + flashcards only (skip audio — faster, avoids audio rate limits)
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-audio
+
+# Reuse existing notebook and skip PDF conversion
+pdf-by-chapters from-obsidian ~/Obsidian/path/ -n $NOTEBOOK_ID --skip-convert
+
+# Skip quiz or flashcards individually
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-quiz
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-flashcards
+```
+
+**What it generates per source:** Audio deep-dive, quiz (JSON), flashcards (JSON). Downloads go to `<output>/downloads/`.
+
+**When to use:**
+- After adding new study notes to Obsidian — generate quizzes to test comprehension
+- Spaced review sessions — use flashcards for rapid recall testing
+- Before exams — batch-generate quizzes across all course materials
+- Low-energy days — use `--no-audio` for quick quiz/flashcard generation only
+
+**Requires:** `pandoc` (brew install pandoc) and `@mermaid-js/mermaid-cli` (npm install -g @mermaid-js/mermaid-cli) for markdown-to-PDF conversion with Mermaid diagram support.
 
 ## Notebook IDs
 

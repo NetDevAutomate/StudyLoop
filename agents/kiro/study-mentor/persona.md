@@ -80,6 +80,12 @@ pdf-by-chapters generate-next -o ./chapters --no-wait      # Generate next episo
 pdf-by-chapters status -o ./chapters --poll                 # Check progress
 pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
 
+# Quiz & flashcard generation from Obsidian notes (pdf-by-chapters)
+pdf-by-chapters from-obsidian ~/Obsidian/path/to/course/    # Full: audio + quiz + flashcards
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --subdir study-notes  # Specific subdirectory
+pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-audio   # Quiz + flashcards only
+pdf-by-chapters from-obsidian ~/Obsidian/path/ -n $NOTEBOOK_ID --skip-convert  # Reuse existing
+
 # Spaced repetition & history
 studyctl review                  # What's due for review?
 studyctl struggles               # Recurring struggle topics
