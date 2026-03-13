@@ -65,7 +65,7 @@ class ReviewResult:
 def load_flashcards(directory: Path) -> list[Flashcard]:
     """Load all flashcard JSON files from a directory."""
     cards: list[Flashcard] = []
-    for path in sorted(directory.glob("*-flashcards.json")):
+    for path in sorted(directory.glob("*flashcards.json")):
         try:
             data = json.loads(path.read_text())
             source = data.get("title", path.stem)
@@ -81,7 +81,7 @@ def load_flashcards(directory: Path) -> list[Flashcard]:
 def load_quizzes(directory: Path) -> list[QuizQuestion]:
     """Load all quiz JSON files from a directory."""
     questions: list[QuizQuestion] = []
-    for path in sorted(directory.glob("*-quiz.json")):
+    for path in sorted(directory.glob("*quiz.json")):
         try:
             data = json.loads(path.read_text())
             source = data.get("title", path.stem)
@@ -147,13 +147,13 @@ def _has_review_content(directory: Path) -> bool:
     fc_dir = directory / "flashcards"
     quiz_dir = directory / "quizzes"
 
-    if fc_dir.is_dir() and list(fc_dir.glob("*-flashcards.json")):
+    if fc_dir.is_dir() and list(fc_dir.glob("*flashcards.json")):
         return True
-    if quiz_dir.is_dir() and list(quiz_dir.glob("*-quiz.json")):
+    if quiz_dir.is_dir() and list(quiz_dir.glob("*quiz.json")):
         return True
-    if list(directory.glob("*-flashcards.json")):
+    if list(directory.glob("*flashcards.json")):
         return True
-    if list(directory.glob("*-quiz.json")):
+    if list(directory.glob("*quiz.json")):
         return True
     return False
 
@@ -166,13 +166,13 @@ def find_content_dirs(directory: Path) -> tuple[Path | None, Path | None]:
     fc_sub = directory / "flashcards"
     if fc_sub.is_dir() and list(fc_sub.glob("*-flashcards.json")):
         fc_dir = fc_sub
-    elif list(directory.glob("*-flashcards.json")):
+    elif list(directory.glob("*flashcards.json")):
         fc_dir = directory
 
     quiz_sub = directory / "quizzes"
     if quiz_sub.is_dir() and list(quiz_sub.glob("*-quiz.json")):
         quiz_dir = quiz_sub
-    elif list(directory.glob("*-quiz.json")):
+    elif list(directory.glob("*quiz.json")):
         quiz_dir = directory
 
     return fc_dir, quiz_dir
