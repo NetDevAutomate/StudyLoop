@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
+from pathlib import Path  # noqa: TC003 — used at runtime in fixtures
 
 
 class TestLoadFlashcards:
@@ -64,7 +62,10 @@ class TestLoadFlashcards:
         fc_dir.mkdir()
         for i in range(3):
             (fc_dir / f"{i:02d}-section-flashcards.json").write_text(
-                json.dumps({"title": f"Section {i}", "cards": [{"front": f"Q{i}", "back": f"A{i}"}]})
+                json.dumps({
+                    "title": f"Section {i}",
+                    "cards": [{"front": f"Q{i}", "back": f"A{i}"}],
+                })
             )
 
         cards = load_flashcards(fc_dir)
@@ -87,7 +88,11 @@ class TestLoadQuizzes:
                         {
                             "question": "What does ETL stand for?",
                             "answerOptions": [
-                                {"text": "Extract, Transform, Load", "isCorrect": True, "rationale": "Correct!"},
+                                {
+                            "text": "Extract, Transform, Load",
+                            "isCorrect": True,
+                            "rationale": "Correct!",
+                        },
                                 {"text": "Easy To Learn", "isCorrect": False, "rationale": "Nope"},
                             ],
                             "hint": "Think about data movement",

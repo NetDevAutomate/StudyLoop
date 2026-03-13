@@ -153,9 +153,7 @@ def _has_review_content(directory: Path) -> bool:
         return True
     if list(directory.glob("*flashcards.json")):
         return True
-    if list(directory.glob("*quiz.json")):
-        return True
-    return False
+    return bool(list(directory.glob("*quiz.json")))
 
 
 def find_content_dirs(directory: Path) -> tuple[Path | None, Path | None]:
