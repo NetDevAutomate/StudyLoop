@@ -6,31 +6,29 @@ and optional voice output via study-speak.
 
 from __future__ import annotations
 
+import contextlib
 import time
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 try:
-    from textual.app import ComposeResult
     from textual.binding import Binding
-    from textual.containers import Center, Horizontal, Vertical
+    from textual.containers import Center, Horizontal
     from textual.reactive import reactive
     from textual.widget import Widget
-    from textual.widgets import Button, Footer, Label, OptionList, ProgressBar, Static
-    from textual.widgets.option_list import Option
+    from textual.widgets import Button, Static
 except ImportError as _exc:
     raise ImportError(
         "The TUI requires 'textual'. Install: pip install studyctl[tui]"
     ) from _exc
+
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 from studyctl.review_db import record_card_review, record_session
 from studyctl.review_loader import (
     Flashcard,
     QuizQuestion,
     ReviewResult,
-    find_content_dirs,
-    load_flashcards,
-    load_quizzes,
-    shuffle_items,
 )
 
 
@@ -131,11 +129,19 @@ class StudyCardsTab(Widget):
         yield Static(voice_text, id="voice-label")
         yield CardPanel(id="card-panel")
         yield Static("", id="progress-label")
-        with Center():
-            with Horizontal(id="score-bar"):
-                yield Button("Know (y)", variant="success", id="btn-correct", classes="score-btn")
-                yield Button("Don't Know (n)", variant="error", id="btn-incorrect", classes="score-btn")
-                yield Button("Skip (s)", variant="default", id="btn-skip", classes="score-btn")
+        with Center(), Horizontal(id="score-bar"):
+            yield Button(
+                "Know (y)", variant="success",
+                id="btn-correct", classes="score-btn",
+            )
+            yield Button(
+                "Don't Know (n)", variant="error",
+                id="btn-incorrect", classes="score-btn",
+            )
+            yield Button(
+                "Skip (s)", variant="default",
+                id="btn-skip", classes="score-btn",
+            )
 
     def on_mount(self) -> None:
         self._show_current_card()
@@ -159,7 +165,8 @@ class StudyCardsTab(Widget):
 
         if isinstance(card, Flashcard):
             panel.set_card(
-                f"[bold]Q:[/bold] {card.front}\n\n[dim]Press Space to reveal answer[/dim]",
+                f"[bold]Q:[/bold] {card.front}\n\n"
+                "[dim]Press Space to reveal answer[/dim]",
                 f"[bold]A:[/bold] {card.back}",
             )
         else:
@@ -186,9 +193,14 @@ class StudyCardsTab(Widget):
 
     def _format_quiz_answer(self, q: QuizQuestion) -> str:
         letters = "abcdefghij"
-        correct_idx = next((i for i, o in enumerate(q.options) if o.is_correct), 0)
+        correct_idx = next(
+            (i for i, o in enumerate(q.options) if o.is_correct), 0
+        )
         correct_opt = q.options[correct_idx]
-        lines = [f"[green bold]Answer: {letters[correct_idx]})[/green bold] {correct_opt.text}"]
+        lines = [
+            f"[green bold]Answer: {letters[correct_idx]})"
+            f"[/green bold] {correct_opt.text}"
+        ]
         if correct_opt.rationale:
             lines.append(f"\n[dim]{correct_opt.rationale}[/dim]")
         return "\n".join(lines)
@@ -205,7 +217,7 @@ class StudyCardsTab(Widget):
 
         # Record to DB
         card_type = "flashcard" if isinstance(card, Flashcard) else "quiz"
-        try:
+        with contextlib.suppress(Exception):
             record_card_review(
                 course=self._course,
                 card_type=card_type,
@@ -213,8 +225,6 @@ class StudyCardsTab(Widget):
                 correct=correct,
                 response_time_ms=elapsed_ms,
             )
-        except Exception:
-            pass  # Don't crash TUI if DB write fails
 
         self.current_index += 1
         self._show_current_card()
@@ -231,15 +241,19 @@ class StudyCardsTab(Widget):
         else:
             grade = "[red]Needs review[/red]"
 
+        wrong_count = len(self._result.wrong_hashes)
         summary = [
             "[bold]Session Complete![/bold]",
             "",
-            f"  Score: {self._result.correct}/{attempted} ({pct:.0f}%) — {grade}",
+            f"  Score: {self._result.correct}/{attempted}"
+            f" ({pct:.0f}%) — {grade}",
             f"  Skipped: {self._result.skipped}",
             f"  Duration: {duration // 60}m {duration % 60}s",
         ]
-        if self._result.wrong_hashes:
-            summary.append(f"\n  [yellow]{len(self._result.wrong_hashes)} cards to review again[/yellow]")
+        if wrong_count:
+            summary.append(
+                f"\n  [yellow]{wrong_count} cards to review again[/yellow]"
+            )
 
         panel = self.query_one("#card-panel", CardPanel)
         panel.update("\n".join(summary))
@@ -248,10 +262,12 @@ class StudyCardsTab(Widget):
         for btn_id in ("btn-correct", "btn-incorrect", "btn-skip"):
             self.query_one(f"#{btn_id}", Button).display = False
 
-        self.query_one("#progress-label", Static).update("[bold]Press q to return[/bold]")
+        self.query_one("#progress-label", Static).update(
+            "[bold]Press q to return[/bold]"
+        )
 
         # Record session
-        try:
+        with contextlib.suppress(Exception):
             record_session(
                 course=self._course,
                 mode=self._mode,
@@ -259,18 +275,18 @@ class StudyCardsTab(Widget):
                 correct=self._result.correct,
                 duration_seconds=duration,
             )
-        except Exception:
-            pass
 
     def _speak(self, text: str) -> None:
         """Speak text via study-speak (non-blocking, best-effort)."""
         try:
-            from agent_session_tools.speak import _speak_kokoro, _get_tts_config
+            from agent_session_tools.speak import (
+                _get_tts_config,
+                _speak_kokoro,
+            )
 
             cfg = _get_tts_config()
             voice = cfg.get("voice", "am_michael")
             speed = cfg.get("speed", 1.0)
-            # Run in background thread to not block TUI
             import threading
 
             threading.Thread(
@@ -289,7 +305,6 @@ class StudyCardsTab(Widget):
         if not panel.revealed:
             panel.flip()
             panel.add_class("revealed")
-            # Speak the answer
             if self.voice_enabled and self.current_index < len(self._cards):
                 card = self._cards[self.current_index]
                 text = card.back if isinstance(card, Flashcard) else ""

@@ -204,7 +204,10 @@ class StudyApp(App):
             fc_dir, quiz_dir = find_content_dirs(path)
             fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
             quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
-            lines.append(f"  • [bold]{name}[/bold] — {fc_count} flashcards, {quiz_count} quiz questions")
+            lines.append(
+                f"  • [bold]{name}[/bold] — {fc_count} flashcards,"
+                f" {quiz_count} quiz questions"
+            )
 
         lines.append("\n  Press [bold]f[/bold] for flashcards / [bold]z[/bold] for quiz")
         content.update("\n".join(lines))
@@ -213,7 +216,10 @@ class StudyApp(App):
         """Launch interactive study session."""
         courses = discover_directories(self._study_dirs)
         if not courses:
-            self.notify("No courses found. Configure review.directories in config.yaml", severity="error")
+            self.notify(
+                "No courses found. Configure review.directories in config.yaml",
+                severity="error",
+            )
             return
 
         # Use first course (TODO: add course picker for multiple)
