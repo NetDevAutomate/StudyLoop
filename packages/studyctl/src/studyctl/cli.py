@@ -1189,3 +1189,38 @@ def docs_read(page: str) -> None:
         console.print("\n[yellow]Stopped reading[/yellow]")
     except subprocess.TimeoutExpired:
         console.print("\n[yellow]Reading timed out[/yellow]")
+
+
+# ── TUI ──────────────────────────────────────────────────────────────────────
+
+
+@cli.command()
+def tui() -> None:
+    """Launch the interactive study dashboard (requires textual).
+
+    Install: uv pip install 'studyctl[tui]'
+
+    Key bindings: f=flashcards, z=quiz, d=dashboard, q=quit, v=voice toggle
+    """
+    try:
+        from studyctl.tui.app import StudyApp
+    except ImportError:
+        console.print(
+            "[red]The TUI requires 'textual'.[/red]\n"
+            "Install: uv pip install 'studyctl[tui]'"
+        )
+        return
+
+    import yaml
+
+    config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
+    study_dirs: list[str] = []
+    if config_path.exists():
+        try:
+            data = yaml.safe_load(config_path.read_text()) or {}
+            study_dirs = data.get("review", {}).get("directories", [])
+        except Exception:
+            pass
+
+    app = StudyApp(study_dirs=study_dirs)
+    app.run()
