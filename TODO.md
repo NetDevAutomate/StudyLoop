@@ -12,6 +12,7 @@
 - [x] 7. Add "aider" and "bedrock" to `SOURCE_CHOICES` in `export_sessions.py` — already present
 - [x] 8. Wire up orphaned `study_sessions` table — added `start_study_session()`, `end_study_session()`, `get_study_session_stats()`
 - [x] 8b. Fix `shared.py` `init_config()` hardcoded personal machine names — uses `socket.gethostname()` + sensible defaults
+- [ ] 8c. Fix `session-export` progress bar showing cumulative stats with last-source label — e.g. "Kiro: 48 added" is really the total across all sources, not Kiro-specific. Show per-source stats instead.
 
 ## Phase 2: Unify Agent Framework (single source of truth)
 **Commit: `feat: unify agent framework across all platforms with shared AuDHD methodology`**
