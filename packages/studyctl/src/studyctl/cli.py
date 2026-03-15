@@ -1191,16 +1191,54 @@ def docs_read(page: str) -> None:
         console.print("\n[yellow]Reading timed out[/yellow]")
 
 
+# ── Web PWA ─────────────────────────────────────────────────────────────────
+
+
+@cli.command()
+@click.option("--port", "-p", default=8567, help="Port for web server")
+@click.option(
+    "--host",
+    "-H",
+    default="0.0.0.0",
+    help="Host to bind to (default: 0.0.0.0 for LAN access)",
+)
+def web(port: int, host: str) -> None:
+    """Launch the study PWA in your browser.
+
+    Serves flashcard and quiz review as a web app accessible from any
+    device on the network. Installable as a PWA (add to home screen).
+    Includes OpenDyslexic font toggle for accessibility.
+
+    No extra dependencies required.
+    """
+    import yaml
+
+    config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
+    study_dirs: list[str] = []
+    if config_path.exists():
+        try:
+            data = yaml.safe_load(config_path.read_text()) or {}
+            study_dirs = data.get("review", {}).get("directories", [])
+        except Exception:
+            pass
+
+    from studyctl.web.server import serve
+
+    serve(host=host, port=port, study_dirs=study_dirs)
+
+
 # ── TUI ──────────────────────────────────────────────────────────────────────
 
 
 @cli.command()
 def tui() -> None:
-    """Launch the interactive study dashboard (requires textual).
+    """Launch the interactive terminal dashboard (requires textual).
 
     Install: uv pip install 'studyctl[tui]'
 
-    Key bindings: f=flashcards, z=quiz, d=dashboard, q=quit, v=voice toggle
+    Key bindings: f=flashcards, z=quiz, d=dashboard, q=quit, v=voice, o=OpenDyslexic
+
+    For a web-based UI accessible from any device, use: studyctl web
     """
     try:
         from studyctl.tui.app import StudyApp
@@ -1214,12 +1252,21 @@ def tui() -> None:
 
     config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
     study_dirs: list[str] = []
+    theme: str = ""
+    dyslexic: bool = False
     if config_path.exists():
         try:
             data = yaml.safe_load(config_path.read_text()) or {}
             study_dirs = data.get("review", {}).get("directories", [])
+            tui_cfg = data.get("tui", {})
+            theme = tui_cfg.get("theme", "")
+            dyslexic = tui_cfg.get("dyslexic_friendly", False)
         except Exception:
             pass
 
-    app = StudyApp(study_dirs=study_dirs)
+    app = StudyApp(
+        study_dirs=study_dirs,
+        theme_name=theme,
+        dyslexic_friendly=dyslexic,
+    )
     app.run()

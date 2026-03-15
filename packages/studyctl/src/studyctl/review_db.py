@@ -165,19 +165,19 @@ def get_due_cards(course: str, db_path: Path | None = None) -> list[CardProgress
 
     rows = conn.execute(
         """
-        SELECT card_hash, correct, ease_factor, interval_days, next_review,
-               COUNT(*) as review_count
-        FROM card_reviews
-        WHERE course = ? AND card_hash IN (
-            SELECT card_hash FROM card_reviews
-            WHERE course = ? AND next_review <= ?
-            GROUP BY card_hash
+        WITH latest AS (
+            SELECT card_hash, correct, ease_factor, interval_days, next_review,
+                   COUNT(*) OVER (PARTITION BY card_hash) as review_count,
+                   ROW_NUMBER() OVER (PARTITION BY card_hash ORDER BY reviewed_at DESC) as rn
+            FROM card_reviews
+            WHERE course = ?
         )
-        GROUP BY card_hash
-        HAVING reviewed_at = MAX(reviewed_at)
+        SELECT card_hash, correct, ease_factor, interval_days, next_review, review_count
+        FROM latest
+        WHERE rn = 1 AND next_review <= ?
         ORDER BY next_review ASC
         """,
-        (course, course, today),
+        (course, today),
     ).fetchall()
     conn.close()
 

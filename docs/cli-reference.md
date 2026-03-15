@@ -25,6 +25,7 @@ studyctl config show                     # Display current configuration
 studyctl docs serve [--port PORT]        # Serve docs site locally
 studyctl docs open                       # Build and open docs in browser
 studyctl docs list                       # List available doc pages
+studyctl tui                             # Launch interactive TUI dashboard
 studyctl docs read PAGE                  # Read a page aloud via study-speak
 ```
 
@@ -44,6 +45,53 @@ Used with `studyctl progress`:
 Review schedule: **1 → 3 → 7 → 14 → 30 days**
 
 `studyctl review` shows what's due based on when you last recorded progress.
+
+### Web PWA
+
+`studyctl web` launches a progressive web app for flashcard and quiz review. No extra dependencies. LAN accessible by default.
+
+```bash
+studyctl web                    # Serve on 0.0.0.0:8567
+studyctl web --port 9000        # Custom port
+studyctl web --host localhost   # Local only
+```
+
+| Key | Action | When |
+|-----|--------|------|
+| `Space`/`Enter` | Flip card | Flashcard, before reveal |
+| `Y` | I knew it | Flashcard, after reveal |
+| `N` | Didn't know | Flashcard, after reveal |
+| `A`-`D` | Select quiz option | Quiz mode |
+| `S` | Skip card | During review |
+| `T` | Read aloud (once) | During review |
+| `V` | Toggle auto-voice | During review |
+| `R` | Retry wrong answers | After session |
+| `Esc` | Back to home | Anywhere |
+
+**Features:** Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, 90-day study heatmap, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.
+
+**Voice:** Uses Web Speech API (browser built-in). Two modes:
+- **Read once** — speaker icon on card or `T` key
+- **Auto-voice** — header toggle or `V` key (reads everything automatically)
+
+For best voice quality, download enhanced voices in OS settings (Accessibility → Spoken Content → Voices).
+
+### TUI Dashboard (terminal)
+
+`studyctl tui` launches a terminal dashboard. Requires `uv pip install studyctl[tui]`.
+
+| Key | Action | When |
+|-----|--------|------|
+| `d`/`r`/`c`/`s` | Switch tabs | Always |
+| `f`/`z` | Start flashcards/quiz | Always |
+| `Space` | Flip card | During review |
+| `y`/`n` | Correct/incorrect | After flip |
+| `r` | Retry wrong answers | After session |
+| `v` | Toggle voice | During review |
+| `o` | Toggle OpenDyslexic | Always |
+| `q` | Quit | Always |
+
+**Course picker:** Modal appears when multiple directories configured. **Retry mode:** SM-2 scheduling not updated during retry.
 
 ---
 
@@ -82,5 +130,5 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 ```bash
 uv pip install agent-session-tools[semantic]  # Vector embeddings search
 uv pip install agent-session-tools[tokens]    # Token counting
-uv pip install agent-session-tools[tui]       # TUI interface
+uv pip install studyctl[tui]                   # TUI interface
 ```

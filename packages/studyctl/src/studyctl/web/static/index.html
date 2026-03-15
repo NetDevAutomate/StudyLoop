@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1b26">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Socratic Study Mentor</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+</head>
+<body>
+  <header>
+    <h1>Socratic Study Mentor</h1>
+    <div class="header-controls">
+      <button class="toggle-btn" id="pomo-toggle" title="Pomodoro timer (25min study / 5min break)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
+      <button class="toggle-btn" id="voice-toggle" title="Toggle voice (reads questions aloud)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+      </button>
+      <button class="toggle-btn" id="theme-toggle" title="Toggle light/dark theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="toggle-btn" id="dyslexic-toggle" title="Toggle OpenDyslexic font">Aa</button>
+    </div>
+  </header>
+  <div class="pomodoro hidden" id="pomodoro">
+    <div class="pomo-ring">
+      <svg width="44" height="44" viewBox="0 0 44 44">
+        <circle class="track" cx="22" cy="22" r="18"/>
+        <circle class="fill" cx="22" cy="22" r="18" id="pomo-arc"
+          stroke-dasharray="113.1" stroke-dashoffset="0"/>
+      </svg>
+    </div>
+    <div>
+      <div class="pomo-time" id="pomo-time">25:00</div>
+      <div class="pomo-label" id="pomo-label">Study</div>
+    </div>
+    <button class="pomo-btn" id="pomo-pause" title="Pause/Resume">&#10074;&#10074;</button>
+    <button class="pomo-btn" id="pomo-stop" title="Stop">&times;</button>
+  </div>
+  <main id="app"></main>
+  <div class="shortcuts" id="shortcuts"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

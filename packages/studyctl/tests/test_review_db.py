@@ -146,6 +146,81 @@ class TestGetCourseStats:
         assert stats["unique_cards"] == 2
 
 
+class TestGetDueCards:
+    def test_empty_db(self, db_path: Path) -> None:
+        from studyctl.review_db import ensure_tables, get_due_cards
+
+        ensure_tables(db_path)
+        assert get_due_cards("ZTM-DE", db_path=db_path) == []
+
+    def test_returns_most_recent_review_data(self, db_path: Path) -> None:
+        """Verify ROW_NUMBER window function picks the latest review per card."""
+        from studyctl.review_db import ensure_tables, get_due_cards
+
+        ensure_tables(db_path)
+        conn = sqlite3.connect(db_path)
+
+        # Insert two reviews for the same card: first incorrect, then correct
+        conn.execute(
+            "INSERT INTO card_reviews "
+            "(course, card_type, card_hash, correct, reviewed_at, "
+            "ease_factor, interval_days, next_review) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("ZTM-DE", "flashcard", "abc123", 0, "2026-01-01T00:00:00", 2.3, 1, "2026-01-02"),
+        )
+        conn.execute(
+            "INSERT INTO card_reviews "
+            "(course, card_type, card_hash, correct, reviewed_at, "
+            "ease_factor, interval_days, next_review) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("ZTM-DE", "flashcard", "abc123", 1, "2026-01-02T00:00:00", 2.5, 3, "2026-01-05"),
+        )
+        conn.commit()
+        conn.close()
+
+        # Due date far in the future — get_due_cards needs next_review <= today
+        # Set next_review to past to make it due
+        conn = sqlite3.connect(db_path)
+        conn.execute("UPDATE card_reviews SET next_review = '2020-01-01'")
+        conn.commit()
+        conn.close()
+
+        due = get_due_cards("ZTM-DE", db_path=db_path)
+        assert len(due) == 1
+        card = due[0]
+        # Must return the LATEST review (correct=True, ease=2.5, interval=3)
+        assert card.last_correct is True
+        assert card.ease_factor == 2.5
+        assert card.interval_days == 3
+        assert card.review_count == 2
+
+    def test_filters_by_course(self, db_path: Path) -> None:
+        from studyctl.review_db import ensure_tables, get_due_cards
+
+        ensure_tables(db_path)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO card_reviews "
+            "(course, card_type, card_hash, correct, reviewed_at, "
+            "ease_factor, interval_days, next_review) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("ZTM-DE", "flashcard", "h1", 1, "2026-01-01T00:00:00", 2.5, 1, "2020-01-01"),
+        )
+        conn.execute(
+            "INSERT INTO card_reviews "
+            "(course, card_type, card_hash, correct, reviewed_at, "
+            "ease_factor, interval_days, next_review) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("OTHER", "flashcard", "h2", 1, "2026-01-01T00:00:00", 2.5, 1, "2020-01-01"),
+        )
+        conn.commit()
+        conn.close()
+
+        due = get_due_cards("ZTM-DE", db_path=db_path)
+        assert len(due) == 1
+        assert due[0].card_hash == "h1"
+
+
 class TestGetWrongHashes:
     def test_returns_wrong_from_last_session(self, db_path: Path) -> None:
         from studyctl.review_db import get_wrong_hashes, record_card_review, record_session
