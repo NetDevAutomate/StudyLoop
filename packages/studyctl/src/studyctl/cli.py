@@ -1257,7 +1257,7 @@ def tui(serve: bool, port: int, host: str) -> None:
 def _tui_serve(port: int, host: str = "localhost") -> None:
     """Serve the TUI as a web app via textual-serve."""
     try:
-        from textual_serve.server import Server
+        from textual_serve.server import Server  # type: ignore[reportMissingImports]
     except ImportError:
         console.print(
             "[red]'textual-serve' not found.[/red]\nInstall: uv pip install textual-serve"
