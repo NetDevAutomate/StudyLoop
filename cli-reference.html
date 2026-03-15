@@ -642,6 +642,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#web-pwa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tui-dashboard-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TUI Dashboard (terminal)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -982,6 +1004,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#web-pwa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tui-dashboard-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TUI Dashboard (terminal)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1066,6 +1110,7 @@ studyctl<span class="w"> </span>config<span class="w"> </span>show<span class="w
 studyctl<span class="w"> </span>docs<span class="w"> </span>serve<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w">        </span><span class="c1"># Serve docs site locally</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span>open<span class="w">                       </span><span class="c1"># Build and open docs in browser</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span>list<span class="w">                       </span><span class="c1"># List available doc pages</span>
+studyctl<span class="w"> </span>tui<span class="w">                             </span><span class="c1"># Launch interactive TUI dashboard</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span><span class="nb">read</span><span class="w"> </span>PAGE<span class="w">                  </span><span class="c1"># Read a page aloud via study-speak</span>
 </code></pre></div>
 <h3 id="confidence-levels">Confidence Levels<a class="headerlink" href="#confidence-levels" title="Permanent link">&para;</a></h3>
@@ -1099,6 +1144,127 @@ studyctl<span class="w"> </span>docs<span class="w"> </span><span class="nb">rea
 <h3 id="spaced-repetition-intervals">Spaced Repetition Intervals<a class="headerlink" href="#spaced-repetition-intervals" title="Permanent link">&para;</a></h3>
 <p>Review schedule: <strong>1 → 3 → 7 → 14 → 30 days</strong></p>
 <p><code>studyctl review</code> shows what's due based on when you last recorded progress.</p>
+<h3 id="web-pwa">Web PWA<a class="headerlink" href="#web-pwa" title="Permanent link">&para;</a></h3>
+<p><code>studyctl web</code> launches a progressive web app for flashcard and quiz review. No extra dependencies. LAN accessible by default.</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>web<span class="w">                    </span><span class="c1"># Serve on 0.0.0.0:8567</span>
+studyctl<span class="w"> </span>web<span class="w"> </span>--port<span class="w"> </span><span class="m">9000</span><span class="w">        </span><span class="c1"># Custom port</span>
+studyctl<span class="w"> </span>web<span class="w"> </span>--host<span class="w"> </span>localhost<span class="w">   </span><span class="c1"># Local only</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Space</code>/<code>Enter</code></td>
+<td>Flip card</td>
+<td>Flashcard, before reveal</td>
+</tr>
+<tr>
+<td><code>Y</code></td>
+<td>I knew it</td>
+<td>Flashcard, after reveal</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>Didn't know</td>
+<td>Flashcard, after reveal</td>
+</tr>
+<tr>
+<td><code>A</code>-<code>D</code></td>
+<td>Select quiz option</td>
+<td>Quiz mode</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>Skip card</td>
+<td>During review</td>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>Read aloud (once)</td>
+<td>During review</td>
+</tr>
+<tr>
+<td><code>V</code></td>
+<td>Toggle auto-voice</td>
+<td>During review</td>
+</tr>
+<tr>
+<td><code>R</code></td>
+<td>Retry wrong answers</td>
+<td>After session</td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>Back to home</td>
+<td>Anywhere</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Features:</strong> Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, 90-day study heatmap, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.</p>
+<p><strong>Voice:</strong> Uses Web Speech API (browser built-in). Two modes:
+- <strong>Read once</strong> — speaker icon on card or <code>T</code> key
+- <strong>Auto-voice</strong> — header toggle or <code>V</code> key (reads everything automatically)</p>
+<p>For best voice quality, download enhanced voices in OS settings (Accessibility → Spoken Content → Voices).</p>
+<h3 id="tui-dashboard-terminal">TUI Dashboard (terminal)<a class="headerlink" href="#tui-dashboard-terminal" title="Permanent link">&para;</a></h3>
+<p><code>studyctl tui</code> launches a terminal dashboard. Requires <code>uv pip install studyctl[tui]</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>d</code>/<code>r</code>/<code>c</code>/<code>s</code></td>
+<td>Switch tabs</td>
+<td>Always</td>
+</tr>
+<tr>
+<td><code>f</code>/<code>z</code></td>
+<td>Start flashcards/quiz</td>
+<td>Always</td>
+</tr>
+<tr>
+<td><code>Space</code></td>
+<td>Flip card</td>
+<td>During review</td>
+</tr>
+<tr>
+<td><code>y</code>/<code>n</code></td>
+<td>Correct/incorrect</td>
+<td>After flip</td>
+</tr>
+<tr>
+<td><code>r</code></td>
+<td>Retry wrong answers</td>
+<td>After session</td>
+</tr>
+<tr>
+<td><code>v</code></td>
+<td>Toggle voice</td>
+<td>During review</td>
+</tr>
+<tr>
+<td><code>o</code></td>
+<td>Toggle OpenDyslexic</td>
+<td>Always</td>
+</tr>
+<tr>
+<td><code>q</code></td>
+<td>Quit</td>
+<td>Always</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Course picker:</strong> Modal appears when multiple directories configured. <strong>Retry mode:</strong> SM-2 scheduling not updated during retry.</p>
 <hr />
 <h2 id="agent-session-tools">agent-session-tools<a class="headerlink" href="#agent-session-tools" title="Permanent link">&para;</a></h2>
 <p>AI session export, search, and management.</p>
@@ -1159,7 +1325,7 @@ study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span
 <h3 id="optional-extras">Optional Extras<a class="headerlink" href="#optional-extras" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>semantic<span class="o">]</span><span class="w">  </span><span class="c1"># Vector embeddings search</span>
 uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>tokens<span class="o">]</span><span class="w">    </span><span class="c1"># Token counting</span>
-uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>tui<span class="o">]</span><span class="w">       </span><span class="c1"># TUI interface</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>tui<span class="o">]</span><span class="w">                   </span><span class="c1"># TUI interface</span>
 </code></pre></div>
 
 
