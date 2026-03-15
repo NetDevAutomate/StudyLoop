@@ -428,3 +428,55 @@ class TestSeedConceptsFromConfig:
         expected_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, "python:decorators"))
         assert stored_id == expected_id
         conn.close()
+
+
+class TestListConcepts:
+    """list_concepts() returns stored concepts for display."""
+
+    def test_returns_empty_for_empty_db(self, tmp_path, monkeypatch):
+        db_path = _make_migrated_db(tmp_path)
+        _mock_connect_for(db_path, monkeypatch)
+
+        import studyctl.history as hist
+
+        result = hist.list_concepts()
+        assert result == []
+
+    def test_returns_concepts_ordered_by_domain_and_name(self, tmp_path, monkeypatch):
+        db_path = _make_migrated_db(tmp_path)
+        _mock_connect_for(db_path, monkeypatch)
+
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO concepts (id, name, domain, description) "
+            "VALUES ('1', 'generators', 'python', 'lazy iterators')"
+        )
+        conn.execute(
+            "INSERT INTO concepts (id, name, domain, description) "
+            "VALUES ('2', 'decorators', 'python', 'function wrappers')"
+        )
+        conn.execute(
+            "INSERT INTO concepts (id, name, domain, description) "
+            "VALUES ('3', 'joins', 'sql', NULL)"
+        )
+        conn.commit()
+        conn.close()
+
+        import studyctl.history as hist
+
+        result = hist.list_concepts()
+        assert len(result) == 3
+        # Ordered by domain then name: python/decorators, python/generators, sql/joins
+        assert result[0].name == "decorators"
+        assert result[0].domain == "python"
+        assert result[0].description == "function wrappers"
+        assert result[1].name == "generators"
+        assert result[2].name == "joins"
+        assert result[2].description == ""  # NULL → empty string via COALESCE
+
+    def test_returns_no_db(self, monkeypatch):
+        """Returns empty list when no DB connection available."""
+        import studyctl.history as hist
+
+        monkeypatch.setattr(hist, "_connect", lambda: None)
+        assert hist.list_concepts() == []
