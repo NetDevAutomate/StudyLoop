@@ -1255,14 +1255,10 @@ def tui(serve: bool, port: int, host: str) -> None:
 
 
 def _tui_serve(port: int, host: str = "localhost") -> None:
-    """Serve the TUI as a web app via textual-serve."""
-    try:
-        from textual_serve.server import Server  # type: ignore[reportMissingImports]
-    except ImportError:
-        console.print(
-            "[red]'textual-serve' not found.[/red]\nInstall: uv pip install textual-serve"
-        )
-        return
+    """Serve the TUI as a web app via ttyd (preferred) or textual-serve."""
+    import shutil
+    import subprocess
+    import sys
 
     import yaml
 
@@ -1275,26 +1271,70 @@ def _tui_serve(port: int, host: str = "localhost") -> None:
         except Exception:
             pass
 
-    import sys
+    command = f"{sys.executable} -m studyctl.tui"
+
+    # Prefer ttyd — reliable, supports custom fonts, LAN-friendly
+    ttyd_bin = shutil.which("ttyd")
+    if ttyd_bin:
+        ttyd_args = [
+            ttyd_bin,
+            "--port",
+            str(port),
+            "--interface",
+            host if host != "0.0.0.0" else "",
+            "--writable",
+        ]
+        if dyslexic:
+            ttyd_args.extend(
+                [
+                    "--font-family",
+                    "OpenDyslexic Mono, monospace",
+                    "--font-size",
+                    "16",
+                ]
+            )
+            console.print(
+                "[bold]Dyslexic-friendly mode:[/bold] "
+                "OpenDyslexic Mono font requested in web UI\n"
+                "[dim]Install the font on your device for best results: "
+                "https://opendyslexic.org[/dim]"
+            )
+        # Remove empty --interface arg when binding to all interfaces
+        ttyd_args = [a for a in ttyd_args if a != ""]
+        ttyd_args.extend(["--", *command.split()])
+        console.print(
+            f"[bold]Serving studyctl TUI at http://{host}:{port}[/bold]\n"
+            "[dim]Press Ctrl+C to stop (via ttyd)[/dim]"
+        )
+        subprocess.run(ttyd_args, check=False)
+        return
+
+    # Fallback: textual-serve
+    try:
+        from textual_serve.server import Server  # type: ignore[reportMissingImports]
+    except ImportError:
+        console.print(
+            "[red]No web server backend found.[/red]\n"
+            "Install one of:\n"
+            "  brew install ttyd          [dim](recommended)[/dim]\n"
+            "  uv pip install textual-serve"
+        )
+        return
 
     kwargs: dict = {
-        "command": f"{sys.executable} -m studyctl.tui",
+        "command": command,
         "host": host,
         "port": port,
         "title": "studyctl",
     }
-
     if dyslexic:
         templates_dir = Path(__file__).parent / "tui" / "templates"
         if templates_dir.is_dir():
             kwargs["templates_path"] = str(templates_dir)
-        console.print(
-            "[bold]Dyslexic-friendly mode:[/bold] OpenDyslexic Mono font loaded in web UI"
-        )
 
     console.print(
         f"[bold]Serving studyctl TUI at http://{host}:{port}[/bold]\n"
-        "[dim]Press Ctrl+C to stop[/dim]"
+        "[dim]Press Ctrl+C to stop (via textual-serve)[/dim]"
     )
     server = Server(**kwargs)
     server.serve()
