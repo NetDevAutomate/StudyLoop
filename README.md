@@ -221,6 +221,8 @@ Launch the interactive study dashboard with `studyctl tui`. Requires the `[tui]`
 | `h` | Show hint (quiz mode) |
 | `q` | Quit |
 
+![TUI Dashboard](images/socratic_mentor_tui.svg)
+
 When multiple course directories are configured, a picker appears on session start. Voice output requires the `[tts]` extra on `agent-session-tools`.
 
 ### agent-session-tools
