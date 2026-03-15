@@ -70,9 +70,7 @@ def load_flashcards(directory: Path) -> list[Flashcard]:
             data = json.loads(path.read_text())
             source = data.get("title", path.stem)
             for card in data.get("cards", []):
-                cards.append(
-                    Flashcard(front=card["front"], back=card["back"], source=source)
-                )
+                cards.append(Flashcard(front=card["front"], back=card["back"], source=source))
         except (json.JSONDecodeError, KeyError):
             continue
     return cards
@@ -137,7 +135,6 @@ def discover_directories(config_dirs: list[str] | None = None) -> list[tuple[str
         for child in sorted(base.iterdir()):
             if child.is_dir() and _has_review_content(child):
                 courses.append((child.name, child))
-
 
     return courses
 
