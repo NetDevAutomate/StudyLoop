@@ -507,6 +507,70 @@ body.dyslexic .card-content {
 .history-item .hi-score { color: var(--green); }
 .history-item .hi-date { color: var(--text-muted); }
 
+/* --- Pomodoro timer --- */
+.pomodoro {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  transition: all 0.3s;
+}
+
+.pomodoro.hidden { display: none; }
+.pomodoro.break { border-color: var(--green); }
+
+.pomo-time {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 60px;
+  text-align: center;
+}
+
+.pomo-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pomo-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.pomo-btn:hover { border-color: var(--accent); color: var(--text); }
+
+.pomodoro .pomo-ring {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.pomo-ring svg { transform: rotate(-90deg); }
+.pomo-ring circle { fill: none; stroke-width: 3; stroke-linecap: round; }
+.pomo-ring .track { stroke: var(--bg); }
+.pomo-ring .fill { stroke: var(--accent); transition: stroke-dashoffset 1s linear; }
+.pomodoro.break .pomo-ring .fill { stroke: var(--green); }
+
 /* --- Heatmap --- */
 .heatmap-section {
   margin-top: 24px;
