@@ -1191,6 +1191,42 @@ def docs_read(page: str) -> None:
         console.print("\n[yellow]Reading timed out[/yellow]")
 
 
+# ── Web PWA ─────────────────────────────────────────────────────────────────
+
+
+@cli.command()
+@click.option("--port", "-p", default=8567, help="Port for web server")
+@click.option(
+    "--host",
+    "-H",
+    default="0.0.0.0",
+    help="Host to bind to (default: 0.0.0.0 for LAN access)",
+)
+def web(port: int, host: str) -> None:
+    """Launch the study PWA in your browser.
+
+    Serves flashcard and quiz review as a web app accessible from any
+    device on the network. Installable as a PWA (add to home screen).
+    Includes OpenDyslexic font toggle for accessibility.
+
+    No extra dependencies required.
+    """
+    import yaml
+
+    config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
+    study_dirs: list[str] = []
+    if config_path.exists():
+        try:
+            data = yaml.safe_load(config_path.read_text()) or {}
+            study_dirs = data.get("review", {}).get("directories", [])
+        except Exception:
+            pass
+
+    from studyctl.web.server import serve
+
+    serve(host=host, port=port, study_dirs=study_dirs)
+
+
 # ── TUI ──────────────────────────────────────────────────────────────────────
 
 
