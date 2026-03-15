@@ -205,8 +205,7 @@ class StudyApp(App):
             fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
             quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
             lines.append(
-                f"  • [bold]{name}[/bold] — {fc_count} flashcards,"
-                f" {quiz_count} quiz questions"
+                f"  • [bold]{name}[/bold] — {fc_count} flashcards, {quiz_count} quiz questions"
             )
 
         lines.append("\n  Press [bold]f[/bold] for flashcards / [bold]z[/bold] for quiz")

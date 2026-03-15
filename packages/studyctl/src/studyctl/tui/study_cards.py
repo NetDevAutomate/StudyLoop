@@ -17,9 +17,7 @@ try:
     from textual.widget import Widget
     from textual.widgets import Button, Static
 except ImportError as _exc:
-    raise ImportError(
-        "The TUI requires 'textual'. Install: pip install studyctl[tui]"
-    ) from _exc
+    raise ImportError("The TUI requires 'textual'. Install: pip install studyctl[tui]") from _exc
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -131,16 +129,22 @@ class StudyCardsTab(Widget):
         yield Static("", id="progress-label")
         with Center(), Horizontal(id="score-bar"):
             yield Button(
-                "Know (y)", variant="success",
-                id="btn-correct", classes="score-btn",
+                "Know (y)",
+                variant="success",
+                id="btn-correct",
+                classes="score-btn",
             )
             yield Button(
-                "Don't Know (n)", variant="error",
-                id="btn-incorrect", classes="score-btn",
+                "Don't Know (n)",
+                variant="error",
+                id="btn-incorrect",
+                classes="score-btn",
             )
             yield Button(
-                "Skip (s)", variant="default",
-                id="btn-skip", classes="score-btn",
+                "Skip (s)",
+                variant="default",
+                id="btn-skip",
+                classes="score-btn",
             )
 
     def on_mount(self) -> None:
@@ -165,8 +169,7 @@ class StudyCardsTab(Widget):
 
         if isinstance(card, Flashcard):
             panel.set_card(
-                f"[bold]Q:[/bold] {card.front}\n\n"
-                "[dim]Press Space to reveal answer[/dim]",
+                f"[bold]Q:[/bold] {card.front}\n\n[dim]Press Space to reveal answer[/dim]",
                 f"[bold]A:[/bold] {card.back}",
             )
         else:
@@ -193,14 +196,9 @@ class StudyCardsTab(Widget):
 
     def _format_quiz_answer(self, q: QuizQuestion) -> str:
         letters = "abcdefghij"
-        correct_idx = next(
-            (i for i, o in enumerate(q.options) if o.is_correct), 0
-        )
+        correct_idx = next((i for i, o in enumerate(q.options) if o.is_correct), 0)
         correct_opt = q.options[correct_idx]
-        lines = [
-            f"[green bold]Answer: {letters[correct_idx]})"
-            f"[/green bold] {correct_opt.text}"
-        ]
+        lines = [f"[green bold]Answer: {letters[correct_idx]})[/green bold] {correct_opt.text}"]
         if correct_opt.rationale:
             lines.append(f"\n[dim]{correct_opt.rationale}[/dim]")
         return "\n".join(lines)
@@ -245,15 +243,12 @@ class StudyCardsTab(Widget):
         summary = [
             "[bold]Session Complete![/bold]",
             "",
-            f"  Score: {self._result.correct}/{attempted}"
-            f" ({pct:.0f}%) — {grade}",
+            f"  Score: {self._result.correct}/{attempted} ({pct:.0f}%) — {grade}",
             f"  Skipped: {self._result.skipped}",
             f"  Duration: {duration // 60}m {duration % 60}s",
         ]
         if wrong_count:
-            summary.append(
-                f"\n  [yellow]{wrong_count} cards to review again[/yellow]"
-            )
+            summary.append(f"\n  [yellow]{wrong_count} cards to review again[/yellow]")
 
         panel = self.query_one("#card-panel", CardPanel)
         panel.update("\n".join(summary))
@@ -262,9 +257,7 @@ class StudyCardsTab(Widget):
         for btn_id in ("btn-correct", "btn-incorrect", "btn-skip"):
             self.query_one(f"#{btn_id}", Button).display = False
 
-        self.query_one("#progress-label", Static).update(
-            "[bold]Press q to return[/bold]"
-        )
+        self.query_one("#progress-label", Static).update("[bold]Press q to return[/bold]")
 
         # Record session
         with contextlib.suppress(Exception):

@@ -153,9 +153,7 @@ class CardProgress:
     review_count: int
 
 
-def get_due_cards(
-    course: str, db_path: Path | None = None
-) -> list[CardProgress]:
+def get_due_cards(course: str, db_path: Path | None = None) -> list[CardProgress]:
     """Get cards due for review (next_review <= today)."""
     path = db_path or _get_db()
     if not path.exists():
@@ -196,9 +194,7 @@ def get_due_cards(
     ]
 
 
-def get_wrong_hashes(
-    course: str, db_path: Path | None = None
-) -> set[str]:
+def get_wrong_hashes(course: str, db_path: Path | None = None) -> set[str]:
     """Get card hashes that were incorrect in the most recent session."""
     path = db_path or _get_db()
     if not path.exists():
@@ -209,8 +205,7 @@ def get_wrong_hashes(
 
     # Find the most recent session's reviewed_at range
     last_session = conn.execute(
-        "SELECT started_at FROM review_sessions "
-        "WHERE course = ? ORDER BY started_at DESC LIMIT 1",
+        "SELECT started_at FROM review_sessions WHERE course = ? ORDER BY started_at DESC LIMIT 1",
         (course,),
     ).fetchone()
 
@@ -227,9 +222,7 @@ def get_wrong_hashes(
     return {r[0] for r in rows}
 
 
-def get_course_stats(
-    course: str, db_path: Path | None = None
-) -> dict:
+def get_course_stats(course: str, db_path: Path | None = None) -> dict:
     """Get summary statistics for a course."""
     path = db_path or _get_db()
     if not path.exists():
@@ -248,8 +241,7 @@ def get_course_stats(
     ).fetchone()[0]
 
     due = conn.execute(
-        "SELECT COUNT(DISTINCT card_hash) FROM card_reviews "
-        "WHERE course = ? AND next_review <= ?",
+        "SELECT COUNT(DISTINCT card_hash) FROM card_reviews WHERE course = ? AND next_review <= ?",
         (course, today),
     ).fetchone()[0]
 

@@ -1206,8 +1206,7 @@ def tui() -> None:
         from studyctl.tui.app import StudyApp
     except ImportError:
         console.print(
-            "[red]The TUI requires 'textual'.[/red]\n"
-            "Install: uv pip install 'studyctl[tui]'"
+            "[red]The TUI requires 'textual'.[/red]\nInstall: uv pip install 'studyctl[tui]'"
         )
         return
 
