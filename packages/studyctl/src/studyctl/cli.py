@@ -1195,13 +1195,26 @@ def docs_read(page: str) -> None:
 
 
 @cli.command()
-def tui() -> None:
+@click.option(
+    "--serve",
+    is_flag=True,
+    default=False,
+    help="Serve as web app in browser (uses textual serve)",
+)
+@click.option("--port", "-p", default=8566, help="Port for web serve mode")
+def tui(serve: bool, port: int) -> None:
     """Launch the interactive study dashboard (requires textual).
 
     Install: uv pip install 'studyctl[tui]'
 
     Key bindings: f=flashcards, z=quiz, d=dashboard, q=quit, v=voice toggle
+
+    Use --serve to run as a web app in your browser.
     """
+    if serve:
+        _tui_serve(port)
+        return
+
     try:
         from studyctl.tui.app import StudyApp
     except ImportError:
@@ -1232,3 +1245,47 @@ def tui() -> None:
         dyslexic_friendly=dyslexic,
     )
     app.run()
+
+
+def _tui_serve(port: int) -> None:
+    """Serve the TUI as a web app via textual-serve."""
+    try:
+        from textual_serve.server import Server
+    except ImportError:
+        console.print(
+            "[red]'textual-serve' not found.[/red]\nInstall: uv pip install textual-serve"
+        )
+        return
+
+    import yaml
+
+    config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
+    dyslexic = False
+    if config_path.exists():
+        try:
+            data = yaml.safe_load(config_path.read_text()) or {}
+            dyslexic = data.get("tui", {}).get("dyslexic_friendly", False)
+        except Exception:
+            pass
+
+    kwargs: dict = {
+        "command": "python -m studyctl.tui",
+        "host": "localhost",
+        "port": port,
+        "title": "studyctl",
+    }
+
+    if dyslexic:
+        templates_dir = Path(__file__).parent / "tui" / "templates"
+        if templates_dir.is_dir():
+            kwargs["templates_path"] = str(templates_dir)
+        console.print(
+            "[bold]Dyslexic-friendly mode:[/bold] OpenDyslexic Mono font loaded in web UI"
+        )
+
+    console.print(
+        f"[bold]Serving studyctl TUI at http://localhost:{port}[/bold]\n"
+        "[dim]Press Ctrl+C to stop[/dim]"
+    )
+    server = Server(**kwargs)
+    server.serve()
