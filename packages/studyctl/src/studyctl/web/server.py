@@ -12,7 +12,12 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from studyctl.review_db import get_course_stats, record_card_review, record_session
+from studyctl.review_db import (
+    get_course_stats,
+    get_due_cards,
+    record_card_review,
+    record_session,
+)
 from studyctl.review_loader import (
     discover_directories,
     find_content_dirs,
@@ -43,9 +48,16 @@ class StudyHandler(SimpleHTTPRequestHandler):
             qs = parse_qs(parsed.query)
             mode = qs.get("mode", ["flashcards"])[0]
             self._handle_cards(course, mode)
+        elif path.startswith("/api/sources/"):
+            course = path.split("/api/sources/", 1)[1]
+            qs = parse_qs(parsed.query)
+            mode = qs.get("mode", ["flashcards"])[0]
+            self._handle_sources(course, mode)
         elif path.startswith("/api/stats/"):
             course = path.split("/api/stats/", 1)[1]
             self._handle_stats(course)
+        elif path == "/api/history":
+            self._handle_history()
         else:
             # Serve static files; route / to index.html
             if path == "/":
@@ -72,11 +84,16 @@ class StudyHandler(SimpleHTTPRequestHandler):
             fc_dir, quiz_dir = find_content_dirs(path)
             fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
             quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
+            due = len(get_due_cards(name))
+            stats = get_course_stats(name)
             result.append(
                 {
                     "name": name,
                     "flashcard_count": fc_count,
                     "quiz_count": quiz_count,
+                    "due_count": due,
+                    "total_reviews": stats.get("total_reviews", 0),
+                    "mastered": stats.get("mastered", 0),
                 }
             )
         self._json_response(result)
@@ -130,9 +147,61 @@ class StudyHandler(SimpleHTTPRequestHandler):
         else:
             self._json_response({"error": f"No {mode} content for {course_name}"}, 404)
 
+    def _handle_sources(self, course_name: str, mode: str) -> None:
+        """Return unique source names for filtering by chapter."""
+        courses = discover_directories(self._study_dirs)
+        match = next(((n, p) for n, p in courses if n == course_name), None)
+        if not match:
+            self._json_response([])
+            return
+        _, path = match
+        fc_dir, quiz_dir = find_content_dirs(path)
+        sources: set[str] = set()
+        if mode == "flashcards" and fc_dir:
+            for c in load_flashcards(fc_dir):
+                if c.source:
+                    sources.add(c.source)
+        elif mode == "quiz" and quiz_dir:
+            for q in load_quizzes(quiz_dir):
+                if q.source:
+                    sources.add(q.source)
+        self._json_response(sorted(sources))
+
     def _handle_stats(self, course_name: str) -> None:
         stats = get_course_stats(course_name)
         self._json_response(stats)
+
+    def _handle_history(self) -> None:
+        """Return recent review sessions for the home page."""
+        import sqlite3
+
+        from studyctl.review_db import _get_db, ensure_tables
+
+        path = _get_db()
+        if not path.exists():
+            self._json_response([])
+            return
+        ensure_tables(path)
+        conn = sqlite3.connect(path)
+        rows = conn.execute(
+            "SELECT course, mode, total, correct, duration_seconds, "
+            "started_at, finished_at FROM review_sessions "
+            "ORDER BY started_at DESC LIMIT 20"
+        ).fetchall()
+        conn.close()
+        self._json_response(
+            [
+                {
+                    "course": r[0],
+                    "mode": r[1],
+                    "total": r[2],
+                    "correct": r[3],
+                    "duration": r[4],
+                    "date": r[5][:10] if r[5] else None,
+                }
+                for r in rows
+            ]
+        )
 
     def _handle_review(self, body: dict) -> None:
         try:
