@@ -71,6 +71,37 @@ header h1 {
 
 .toggle-btn:hover { border-color: var(--accent); color: var(--text); }
 .toggle-btn.active { border-color: var(--accent); color: var(--accent); background: var(--bg-hover); }
+.toggle-btn svg { vertical-align: middle; }
+
+/* --- Nav bar (in study view) --- */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.nav-course {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.nav-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover { border-color: var(--accent); color: var(--text); }
 
 /* --- Main content --- */
 main {
@@ -358,6 +389,8 @@ body.dyslexic .card-content {
 
 .btn-retry { background: var(--orange); color: var(--bg); border: none; }
 .btn-retry:hover { filter: brightness(1.1); }
+.btn-restart { background: var(--accent); color: var(--bg); border: none; }
+.btn-restart:hover { filter: brightness(1.1); }
 .btn-back { background: var(--bg-card); color: var(--text); }
 .btn-back:hover { border-color: var(--accent); }
 

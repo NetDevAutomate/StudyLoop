@@ -19,6 +19,7 @@ let state = {
   cardStart: 0,
   isRetry: false,
   allCards: [],
+  voiceOn: false,
 };
 
 /* --- Service Worker --- */
@@ -39,6 +40,45 @@ dyslexicBtn.addEventListener("click", () => {
   localStorage.setItem("dyslexic", on);
 });
 
+/* --- Voice toggle --- */
+const voiceBtn = $("#voice-toggle");
+if (localStorage.getItem("voice") === "true") {
+  state.voiceOn = true;
+  voiceBtn.classList.add("active");
+}
+voiceBtn.addEventListener("click", () => {
+  state.voiceOn = !state.voiceOn;
+  voiceBtn.classList.toggle("active", state.voiceOn);
+  localStorage.setItem("voice", state.voiceOn);
+  if (state.voiceOn) {
+    speak("Voice enabled");
+  } else {
+    window.speechSynthesis.cancel();
+  }
+});
+
+/* --- Voice (Web Speech API) --- */
+function speak(text) {
+  if (!state.voiceOn || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95;
+  u.pitch = 1.0;
+  // Prefer a natural English voice
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(
+    (v) => v.lang.startsWith("en") && v.name.includes("Samantha")
+  ) || voices.find(
+    (v) => v.lang.startsWith("en") && !v.name.includes("Google")
+  ) || voices.find((v) => v.lang.startsWith("en"));
+  if (preferred) u.voice = preferred;
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
 /* --- API --- */
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -49,6 +89,7 @@ async function api(path, opts) {
 async function showCourses() {
   state.view = "courses";
   state.isRetry = false;
+  stopSpeaking();
   const courses = await api("/api/courses");
 
   if (courses.length === 0) {
@@ -67,14 +108,14 @@ async function showCourses() {
 
   app.innerHTML = `<div class="courses">${courses.map((c) => `
     <div class="course-card" data-course="${c.name}">
-      <h2>${c.name}</h2>
+      <h2>${escHtml(c.name)}</h2>
       <div class="counts">
         <span>${c.flashcard_count} flashcards</span>
         <span>${c.quiz_count} quiz questions</span>
       </div>
       <div class="mode-buttons">
-        ${c.flashcard_count ? `<button class="mode-btn flashcard" data-course="${c.name}" data-mode="flashcards">Flashcards</button>` : ""}
-        ${c.quiz_count ? `<button class="mode-btn quiz" data-course="${c.name}" data-mode="quiz">Quiz</button>` : ""}
+        ${c.flashcard_count ? `<button class="mode-btn flashcard" data-course="${escAttr(c.name)}" data-mode="flashcards">Flashcards</button>` : ""}
+        ${c.quiz_count ? `<button class="mode-btn quiz" data-course="${escAttr(c.name)}" data-mode="quiz">Quiz</button>` : ""}
       </div>
     </div>`).join("")}</div>`;
 
@@ -118,6 +159,11 @@ async function startSession(course, mode) {
   showCard();
 }
 
+function restartSession() {
+  stopSpeaking();
+  startSession(state.course, state.mode);
+}
+
 function showCard() {
   if (state.index >= state.cards.length) {
     showSummary();
@@ -131,11 +177,23 @@ function showCard() {
   state.revealed = false;
   state.cardStart = Date.now();
 
+  const navBar = `
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="showCourses()" title="Back to courses">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </button>
+      <span class="nav-course">${escHtml(state.course)} — ${state.mode}${retryTag}</span>
+      <button class="nav-btn" onclick="restartSession()" title="Restart session">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-12.36L1 10"/></svg>
+      </button>
+    </div>`;
+
   if (card.type === "flashcard") {
     app.innerHTML = `
       <div class="study-view">
+        ${navBar}
         <div class="progress-bar">
-          <span>${state.index + 1}/${total}${retryTag}</span>
+          <span>${state.index + 1}/${total}</span>
           <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
           <span>${scoreText()}</span>
         </div>
@@ -152,11 +210,13 @@ function showCard() {
       </div>`;
 
     $("#card").addEventListener("click", flipCard);
+    speak(card.front);
   } else {
     app.innerHTML = `
       <div class="study-view">
+        ${navBar}
         <div class="progress-bar">
-          <span>${state.index + 1}/${total}${retryTag}</span>
+          <span>${state.index + 1}/${total}</span>
           <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
           <span>${scoreText()}</span>
         </div>
@@ -177,6 +237,7 @@ function showCard() {
     app.querySelectorAll(".quiz-option").forEach((btn) => {
       btn.addEventListener("click", () => answerQuiz(parseInt(btn.dataset.idx)));
     });
+    speak(card.question);
   }
 
   updateShortcuts("study");
@@ -193,6 +254,7 @@ function flipCard() {
   cardEl.querySelector(".card-content").innerHTML = escHtml(card.back);
   cardEl.querySelector(".card-hint").style.display = "none";
   $("#actions").style.display = "flex";
+  speak(card.back);
 }
 
 function answerQuiz(idx) {
@@ -214,6 +276,9 @@ function answerQuiz(idx) {
     r.className = "rationale";
     r.textContent = correctOpt.rationale;
     $("#quiz-options").after(r);
+    speak(isCorrect ? "Correct! " + correctOpt.rationale : "Incorrect. " + correctOpt.rationale);
+  } else {
+    speak(isCorrect ? "Correct!" : "Incorrect");
   }
 
   recordAnswer(isCorrect);
@@ -221,7 +286,7 @@ function answerQuiz(idx) {
   setTimeout(() => {
     state.index++;
     showCard();
-  }, isCorrect ? 1200 : 2500);
+  }, isCorrect ? 1500 : 3000);
 }
 
 function answer(correct) {
@@ -233,6 +298,7 @@ function answer(correct) {
 function skip() {
   state.skipped++;
   state.index++;
+  stopSpeaking();
   showCard();
 }
 
@@ -265,6 +331,7 @@ function recordAnswer(correct) {
 
 function showSummary() {
   state.view = "summary";
+  stopSpeaking();
   const attempted = state.correct + state.incorrect;
   const pct = attempted > 0 ? Math.round((state.correct / attempted) * 100) : 0;
   const duration = Math.round((Date.now() - state.startTime) / 1000);
@@ -316,10 +383,12 @@ function showSummary() {
       </div>
       <div class="summary-actions">
         ${wrongCount && !state.isRetry ? `<button class="summary-btn btn-retry" onclick="retryWrong()">Retry ${wrongCount} wrong</button>` : ""}
-        <button class="summary-btn btn-back" onclick="showCourses()">Back to courses</button>
+        <button class="summary-btn btn-restart" onclick="restartSession()">Restart</button>
+        <button class="summary-btn btn-back" onclick="showCourses()">Home</button>
       </div>
     </div>`;
 
+  speak(`Session complete. You scored ${pct} percent. ${state.correct} correct, ${state.incorrect} wrong.`);
   updateShortcuts("summary");
 }
 
@@ -355,17 +424,23 @@ function escHtml(s) {
   return d.innerHTML;
 }
 
+function escAttr(s) {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
 function updateShortcuts(view) {
   if (view === "study") {
     shortcuts.innerHTML = `
       <span><kbd>Space</kbd> Flip</span>
       <span><kbd>Y</kbd> Correct</span>
       <span><kbd>N</kbd> Incorrect</span>
-      <span><kbd>S</kbd> Skip</span>`;
+      <span><kbd>S</kbd> Skip</span>
+      <span><kbd>V</kbd> Voice</span>
+      <span><kbd>Esc</kbd> Home</span>`;
   } else if (view === "summary") {
     shortcuts.innerHTML = `
       <span><kbd>R</kbd> Retry</span>
-      <span><kbd>Esc</kbd> Back</span>`;
+      <span><kbd>Esc</kbd> Home</span>`;
   } else {
     shortcuts.innerHTML = "";
   }
@@ -373,6 +448,12 @@ function updateShortcuts(view) {
 
 /* --- Keyboard shortcuts --- */
 document.addEventListener("keydown", (e) => {
+  // Global: V toggles voice
+  if ((e.key === "v" || e.key === "V") && state.view !== "courses") {
+    voiceBtn.click();
+    return;
+  }
+
   if (state.view === "study") {
     const card = state.cards[state.index];
     if (e.key === " " || e.key === "Enter") {
@@ -384,10 +465,11 @@ document.addEventListener("keydown", (e) => {
       if (e.key === "n" || e.key === "N") answer(false);
     }
     if (e.key === "s" || e.key === "S") skip();
+    if (e.key === "Escape") showCourses();
     if (card.type === "quiz") {
       const num = parseInt(e.key);
       if (num >= 1 && num <= card.options.length) answerQuiz(num - 1);
-      if (e.key >= "a" && e.key <= "j") {
+      if (e.key >= "a" && e.key <= "d") {
         const idx = e.key.charCodeAt(0) - 97;
         if (idx < card.options.length) answerQuiz(idx);
       }
@@ -398,9 +480,12 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "r" || e.key === "R") retryWrong();
     if (e.key === "Escape") showCourses();
   }
-
-  if (state.view === "courses" && e.key === "Escape") showCourses();
 });
 
 /* --- Init --- */
+// Load voices (needed for some browsers)
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
 showCourses();
