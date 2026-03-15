@@ -25,6 +25,7 @@ studyctl config show                     # Display current configuration
 studyctl docs serve [--port PORT]        # Serve docs site locally
 studyctl docs open                       # Build and open docs in browser
 studyctl docs list                       # List available doc pages
+studyctl tui                             # Launch interactive TUI dashboard
 studyctl docs read PAGE                  # Read a page aloud via study-speak
 ```
 
@@ -44,6 +45,31 @@ Used with `studyctl progress`:
 Review schedule: **1 → 3 → 7 → 14 → 30 days**
 
 `studyctl review` shows what's due based on when you last recorded progress.
+
+### TUI Dashboard
+
+`studyctl tui` launches an interactive terminal dashboard. Requires `uv pip install studyctl[tui]`.
+
+| Key | Action | When |
+|-----|--------|------|
+| `d` | Dashboard tab | Always |
+| `r` | Review tab | Always |
+| `c` | Concepts tab | Always |
+| `s` | Sessions tab | Always |
+| `f` | Start flashcard session | Always |
+| `z` | Start quiz session | Always |
+| `space` | Flip card / submit answer | During review |
+| `y` | Mark correct | After flip |
+| `n` | Mark incorrect | After flip |
+| `s` | Skip card | During review |
+| `h` | Show hint | Quiz mode |
+| `r` | Retry wrong answers | After session, if wrong answers exist |
+| `v` | Toggle voice output | Always |
+| `q` | Quit | Always |
+
+**Course picker:** When multiple directories are configured in `review.directories`, a modal picker appears on session start. Single directory launches directly.
+
+**Retry mode:** After a session, press `r` to drill only the cards you got wrong. SM-2 scheduling is not updated during retry — the original incorrect answer already penalised the card.
 
 ---
 
@@ -82,5 +108,5 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 ```bash
 uv pip install agent-session-tools[semantic]  # Vector embeddings search
 uv pip install agent-session-tools[tokens]    # Token counting
-uv pip install agent-session-tools[tui]       # TUI interface
+uv pip install studyctl[tui]                   # TUI interface
 ```

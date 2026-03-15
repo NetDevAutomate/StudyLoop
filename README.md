@@ -172,7 +172,7 @@ See [docs/agent-install.md](docs/agent-install.md) for setup details.
 | NotebookLM sync | `notebooklm-py` | `uv pip install studyctl[notebooklm]` |
 | Semantic search | `sentence-transformers` | `uv pip install agent-session-tools[semantic]` |
 | Token counting | `tiktoken` | `uv pip install agent-session-tools[tokens]` |
-| TUI interface | `textual` | `uv pip install agent-session-tools[tui]` |
+| TUI interface | `textual` | `uv pip install studyctl[tui]` |
 | TTS voice output | `kokoro-onnx` | `uv tool install "./packages/agent-session-tools[tts]"` |
 
 ## CLI Reference
@@ -198,8 +198,30 @@ studyctl concepts relate SRC TGT --type TYPE -d DOMAIN  # Add a relation
 studyctl prereqs CONCEPT -d DOMAIN      # Show prerequisite chain (recursive)
 studyctl related CONCEPT -d DOMAIN      # Show concept neighbourhood
 studyctl state push|pull|status|init     # Cross-machine state sync
+studyctl tui                             # Launch interactive TUI dashboard
 studyctl schedule install|remove|list    # Manage scheduled jobs
 ```
+
+### TUI Dashboard
+
+Launch the interactive study dashboard with `studyctl tui`. Requires the `[tui]` extra (`uv pip install studyctl[tui]`).
+
+**Tabs:** Dashboard, Review, Concepts, Sessions, StudyCards
+
+**Key bindings:**
+
+| Key | Action |
+|-----|--------|
+| `f` | Start flashcard session |
+| `z` | Start quiz session |
+| `space` | Flip card / submit answer |
+| `y` / `n` | Mark correct / incorrect |
+| `r` | Retry wrong answers (after session) |
+| `v` | Toggle voice output |
+| `h` | Show hint (quiz mode) |
+| `q` | Quit |
+
+When multiple course directories are configured, a picker appears on session start. Voice output requires the `[tts]` extra on `agent-session-tools`.
 
 ### agent-session-tools
 
