@@ -14,7 +14,17 @@ from typing import ClassVar
 try:
     from textual.app import App, ComposeResult
     from textual.containers import Vertical
-    from textual.widgets import DataTable, Footer, Header, Static, TabbedContent, TabPane
+    from textual.screen import ModalScreen
+    from textual.widgets import (
+        DataTable,
+        Footer,
+        Header,
+        OptionList,
+        Static,
+        TabbedContent,
+        TabPane,
+    )
+    from textual.widgets.option_list import Option
 except ImportError as _exc:
     raise ImportError(
         "The TUI requires the 'textual' package. Install it with:\n  pip install studyctl[tui]"
@@ -43,6 +53,36 @@ def _load_session_state() -> dict:
         return json.loads(state_path.read_text()) if state_path.exists() else {}
     except (json.JSONDecodeError, OSError):
         return {}
+
+
+class CoursePickerScreen(ModalScreen[tuple[str, Path] | None]):
+    """Modal overlay for selecting a course directory."""
+
+    CSS = """
+    CoursePickerScreen {
+        align: center middle;
+    }
+    #course-picker {
+        width: 60;
+        max-height: 20;
+        border: round $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    """
+
+    def __init__(self, courses: list[tuple[str, Path]]) -> None:
+        super().__init__()
+        self._courses = courses
+
+    def compose(self) -> ComposeResult:
+        yield OptionList(
+            *[Option(name) for name, _ in self._courses],
+            id="course-picker",
+        )
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        self.dismiss(self._courses[event.option_index])
 
 
 class StudyApp(App):
@@ -222,8 +262,17 @@ class StudyApp(App):
             )
             return
 
-        # Use first course (TODO: add course picker for multiple)
-        name, path = courses[0]
+        if len(courses) == 1:
+            self._start_session(courses[0], mode)
+        else:
+            self.push_screen(
+                CoursePickerScreen(courses),
+                lambda result: self._start_session(result, mode) if result else None,
+            )
+
+    def _start_session(self, course: tuple[str, Path], mode: str) -> None:
+        """Start a study session for the selected course."""
+        name, path = course
         fc_dir, quiz_dir = find_content_dirs(path)
 
         if mode == "flashcards" and fc_dir:
@@ -231,7 +280,10 @@ class StudyApp(App):
         elif mode == "quiz" and quiz_dir:
             cards = shuffle_items(load_quizzes(quiz_dir))
         else:
-            self.notify(f"No {mode} content found for {name}", severity="warning")
+            self.notify(
+                f"No {mode} content found for {name}",
+                severity="warning",
+            )
             return
 
         if not cards:
