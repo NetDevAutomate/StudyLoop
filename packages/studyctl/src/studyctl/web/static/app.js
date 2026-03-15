@@ -40,8 +40,42 @@ dyslexicBtn.addEventListener("click", () => {
   localStorage.setItem("dyslexic", on);
 });
 
+/* --- Theme toggle --- */
+const themeBtn = $("#theme-toggle");
+if (localStorage.getItem("theme") === "light") {
+  document.body.classList.add("light");
+  themeBtn.classList.add("active");
+}
+themeBtn.addEventListener("click", () => {
+  document.body.classList.toggle("light");
+  const light = document.body.classList.contains("light");
+  themeBtn.classList.toggle("active", light);
+  localStorage.setItem("theme", light ? "light" : "dark");
+});
+
 /* --- Voice toggle --- */
 const voiceBtn = $("#voice-toggle");
+let voicesLoaded = false;
+let preferredVoice = null;
+
+function loadVoices() {
+  if (!window.speechSynthesis) return;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return;
+  voicesLoaded = true;
+  // Prefer natural/premium voices: Siri-like > Samantha > any English
+  preferredVoice =
+    voices.find((v) => v.lang.startsWith("en") && /premium|enhanced|natural/i.test(v.name)) ||
+    voices.find((v) => v.lang.startsWith("en") && /samantha|daniel|karen|moira|tessa|fiona/i.test(v.name)) ||
+    voices.find((v) => v.lang.startsWith("en-") && !v.name.includes("Google")) ||
+    voices.find((v) => v.lang.startsWith("en"));
+}
+
+if (window.speechSynthesis) {
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
 if (localStorage.getItem("voice") === "true") {
   state.voiceOn = true;
   voiceBtn.classList.add("active");
@@ -51,27 +85,30 @@ voiceBtn.addEventListener("click", () => {
   voiceBtn.classList.toggle("active", state.voiceOn);
   localStorage.setItem("voice", state.voiceOn);
   if (state.voiceOn) {
-    speak("Voice enabled");
+    // Speak current card if in study view
+    if (state.view === "study" && state.index < state.cards.length) {
+      const card = state.cards[state.index];
+      if (state.revealed) {
+        speak(card.type === "flashcard" ? card.back : "");
+      } else {
+        speak(card.type === "flashcard" ? card.front : card.question);
+      }
+    } else {
+      speak("Voice enabled");
+    }
   } else {
-    window.speechSynthesis.cancel();
+    stopSpeaking();
   }
 });
 
 /* --- Voice (Web Speech API) --- */
 function speak(text) {
-  if (!state.voiceOn || !window.speechSynthesis) return;
+  if (!state.voiceOn || !window.speechSynthesis || !text) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 0.95;
   u.pitch = 1.0;
-  // Prefer a natural English voice
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(
-    (v) => v.lang.startsWith("en") && v.name.includes("Samantha")
-  ) || voices.find(
-    (v) => v.lang.startsWith("en") && !v.name.includes("Google")
-  ) || voices.find((v) => v.lang.startsWith("en"));
-  if (preferred) u.voice = preferred;
+  if (preferredVoice) u.voice = preferredVoice;
   window.speechSynthesis.speak(u);
 }
 
@@ -90,7 +127,11 @@ async function showCourses() {
   state.view = "courses";
   state.isRetry = false;
   stopSpeaking();
-  const courses = await api("/api/courses");
+
+  const [courses, history] = await Promise.all([
+    api("/api/courses"),
+    api("/api/history"),
+  ]);
 
   if (courses.length === 0) {
     app.innerHTML = `
@@ -106,38 +147,142 @@ async function showCourses() {
     return;
   }
 
-  app.innerHTML = `<div class="courses">${courses.map((c) => `
-    <div class="course-card" data-course="${c.name}">
-      <h2>${escHtml(c.name)}</h2>
+  const courseCards = courses.map((c) => {
+    const dueBadge = c.due_count > 0
+      ? `<span class="due-badge">${c.due_count} due</span>`
+      : "";
+    return `
+    <div class="course-card" data-course="${escAttr(c.name)}">
+      <h2>${escHtml(c.name)}${dueBadge}</h2>
       <div class="counts">
         <span>${c.flashcard_count} flashcards</span>
         <span>${c.quiz_count} quiz questions</span>
+      </div>
+      <div class="stats-row">
+        <span>${c.total_reviews} reviews</span>
+        <span>${c.mastered} mastered</span>
       </div>
       <div class="mode-buttons">
         ${c.flashcard_count ? `<button class="mode-btn flashcard" data-course="${escAttr(c.name)}" data-mode="flashcards">Flashcards</button>` : ""}
         ${c.quiz_count ? `<button class="mode-btn quiz" data-course="${escAttr(c.name)}" data-mode="quiz">Quiz</button>` : ""}
       </div>
-    </div>`).join("")}</div>`;
+    </div>`;
+  }).join("");
+
+  // Heatmap — last 90 days
+  const heatmapDays = buildHeatmap(history);
+
+  // Recent history
+  const historyHtml = history.length ? `
+    <div class="history-section">
+      <h3>Recent Sessions</h3>
+      <div class="history-list">
+        ${history.slice(0, 8).map((h) => {
+          const pct = h.total > 0 ? Math.round((h.correct / h.total) * 100) : 0;
+          return `<div class="history-item">
+            <span class="hi-course">${escHtml(h.course)}</span>
+            <span>${h.mode}</span>
+            <span class="hi-score">${pct}% (${h.correct}/${h.total})</span>
+            <span class="hi-date">${h.date || ""}</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>` : "";
+
+  app.innerHTML = `
+    <div style="width:100%;max-width:800px">
+      <div class="courses">${courseCards}</div>
+      ${heatmapDays ? `
+        <div class="heatmap-section">
+          <h3 style="font-size:1rem;color:var(--text-muted);margin-bottom:8px">Study Activity</h3>
+          <div class="heatmap">${heatmapDays}</div>
+        </div>` : ""}
+      ${historyHtml}
+    </div>`;
 
   app.querySelectorAll(".mode-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      startSession(btn.dataset.course, btn.dataset.mode);
+      showSessionConfig(btn.dataset.course, btn.dataset.mode);
     });
   });
 
   shortcuts.innerHTML = "";
 }
 
-async function startSession(course, mode) {
-  const cards = await api(`/api/cards/${encodeURIComponent(course)}?mode=${mode}`);
+/* --- Session config (source filter + card limit) --- */
+async function showSessionConfig(course, mode) {
+  const sources = await api(`/api/sources/${encodeURIComponent(course)}?mode=${mode}`);
+
+  if (sources.length <= 1) {
+    // No chapters to filter — go straight to session
+    startSession(course, mode, "all", 0);
+    return;
+  }
+
+  // Show config modal
+  app.innerHTML = `
+    <div class="study-view">
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="showCourses()" title="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <span class="nav-course">${escHtml(course)} — ${mode}</span>
+        <span></span>
+      </div>
+      <div class="card" style="cursor:default">
+        <div class="card-label">Session Setup</div>
+        <div class="config-bar">
+          <label>Chapter:
+            <select id="source-filter">
+              <option value="all">All chapters (${sources.length})</option>
+              ${sources.map((s) => `<option value="${escAttr(s)}">${escHtml(s)}</option>`).join("")}
+            </select>
+          </label>
+          <label>Cards:
+            <select id="card-limit">
+              <option value="0">All</option>
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+        </div>
+        <div style="margin-top:16px">
+          <button class="action-btn btn-flip" id="start-btn" style="width:100%">Start Session</button>
+        </div>
+      </div>
+    </div>`;
+
+  $("#start-btn").addEventListener("click", () => {
+    const source = $("#source-filter").value;
+    const limit = parseInt($("#card-limit").value);
+    startSession(course, mode, source, limit);
+  });
+}
+
+async function startSession(course, mode, sourceFilter, limit) {
+  let cards = await api(`/api/cards/${encodeURIComponent(course)}?mode=${mode}`);
   if (!cards.length) return;
+
+  // Filter by source
+  if (sourceFilter && sourceFilter !== "all") {
+    cards = cards.filter((c) => c.source === sourceFilter);
+  }
 
   // Shuffle
   for (let i = cards.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [cards[i], cards[j]] = [cards[j], cards[i]];
   }
+
+  // Limit
+  if (limit > 0 && cards.length > limit) {
+    cards = cards.slice(0, limit);
+  }
+
+  if (!cards.length) return;
 
   Object.assign(state, {
     view: "study",
@@ -161,7 +306,7 @@ async function startSession(course, mode) {
 
 function restartSession() {
   stopSpeaking();
-  startSession(state.course, state.mode);
+  showSessionConfig(state.course, state.mode);
 }
 
 function showCard() {
@@ -179,11 +324,11 @@ function showCard() {
 
   const navBar = `
     <div class="nav-bar">
-      <button class="nav-btn" onclick="showCourses()" title="Back to courses">
+      <button class="nav-btn" onclick="showCourses()" title="Home">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </button>
       <span class="nav-course">${escHtml(state.course)} — ${state.mode}${retryTag}</span>
-      <button class="nav-btn" onclick="restartSession()" title="Restart session">
+      <button class="nav-btn" onclick="restartSession()" title="Restart">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-12.36L1 10"/></svg>
       </button>
     </div>`;
@@ -269,16 +414,15 @@ function answerQuiz(idx) {
     if (i === idx && !isCorrect) btn.classList.add("incorrect");
   });
 
-  // Show rationale
   const correctOpt = card.options[correctIdx];
   if (correctOpt.rationale) {
     const r = document.createElement("div");
     r.className = "rationale";
     r.textContent = correctOpt.rationale;
     $("#quiz-options").after(r);
-    speak(isCorrect ? "Correct! " + correctOpt.rationale : "Incorrect. " + correctOpt.rationale);
+    speak(isCorrect ? "Correct! " + correctOpt.rationale : "Incorrect. The answer is: " + correctOpt.text + ". " + correctOpt.rationale);
   } else {
-    speak(isCorrect ? "Correct!" : "Incorrect");
+    speak(isCorrect ? "Correct!" : "Incorrect. The answer is: " + correctOpt.text);
   }
 
   recordAnswer(isCorrect);
@@ -313,7 +457,6 @@ function recordAnswer(correct) {
     state.wrongHashes.add(card.hash);
   }
 
-  // Record to SM-2 (skip during retry)
   if (!state.isRetry) {
     api("/api/review", {
       method: "POST",
@@ -347,7 +490,6 @@ function showSummary() {
   const circumference = 2 * Math.PI * 58;
   const offset = circumference - (pct / 100) * circumference;
 
-  // Record session
   if (!state.isRetry) {
     api("/api/session", {
       method: "POST",
@@ -412,6 +554,26 @@ function retryWrong() {
   showCard();
 }
 
+/* --- Heatmap builder --- */
+function buildHeatmap(history) {
+  if (!history.length) return "";
+  const counts = {};
+  history.forEach((h) => { if (h.date) counts[h.date] = (counts[h.date] || 0) + 1; });
+
+  const days = [];
+  const today = new Date();
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const n = counts[key] || 0;
+    const level = n === 0 ? "" : n === 1 ? "l1" : n <= 3 ? "l2" : n <= 5 ? "l3" : "l4";
+    days.push(`<div class="heatmap-day ${level}" title="${key}: ${n} session${n !== 1 ? "s" : ""}"></div>`);
+  }
+  return days.join("");
+}
+
+/* --- Helpers --- */
 function scoreText() {
   const attempted = state.correct + state.incorrect;
   if (!attempted) return "";
@@ -448,7 +610,6 @@ function updateShortcuts(view) {
 
 /* --- Keyboard shortcuts --- */
 document.addEventListener("keydown", (e) => {
-  // Global: V toggles voice
   if ((e.key === "v" || e.key === "V") && state.view !== "courses") {
     voiceBtn.click();
     return;
@@ -483,9 +644,4 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* --- Init --- */
-// Load voices (needed for some browsers)
-if (window.speechSynthesis) {
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-}
 showCourses();
