@@ -643,5 +643,154 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+/* --- Pomodoro Timer --- */
+const pomo = {
+  STUDY: 25 * 60,
+  BREAK: 5 * 60,
+  LONG_BREAK: 15 * 60,
+  running: false,
+  paused: false,
+  isBreak: false,
+  remaining: 25 * 60,
+  total: 25 * 60,
+  interval: null,
+  sessions: 0,
+};
+
+const pomoEl = $("#pomodoro");
+const pomoToggle = $("#pomo-toggle");
+const pomoTime = $("#pomo-time");
+const pomoLabel = $("#pomo-label");
+const pomoArc = $("#pomo-arc");
+const pomoPause = $("#pomo-pause");
+const pomoStop = $("#pomo-stop");
+const CIRCUMFERENCE = 2 * Math.PI * 18;
+
+pomoToggle.addEventListener("click", () => {
+  if (pomo.running) {
+    // Show/hide the timer widget
+    pomoEl.classList.toggle("hidden");
+  } else {
+    pomoStart();
+  }
+});
+
+pomoPause.addEventListener("click", () => {
+  if (pomo.paused) {
+    pomoResume();
+  } else {
+    pomoPauseTimer();
+  }
+});
+
+pomoStop.addEventListener("click", pomoStopTimer);
+
+function pomoStart() {
+  pomo.isBreak = false;
+  pomo.remaining = pomo.STUDY;
+  pomo.total = pomo.STUDY;
+  pomo.running = true;
+  pomo.paused = false;
+  pomoEl.classList.remove("hidden", "break");
+  pomoToggle.classList.add("active");
+  pomoLabel.textContent = "Study";
+  pomoPause.innerHTML = "&#10074;&#10074;";
+  pomoTick();
+  pomo.interval = setInterval(pomoTick, 1000);
+  speak("Pomodoro started. 25 minutes of focused study.");
+}
+
+function pomoPauseTimer() {
+  pomo.paused = true;
+  clearInterval(pomo.interval);
+  pomoPause.innerHTML = "&#9654;";
+}
+
+function pomoResume() {
+  pomo.paused = false;
+  pomoPause.innerHTML = "&#10074;&#10074;";
+  pomo.interval = setInterval(pomoTick, 1000);
+}
+
+function pomoStopTimer() {
+  pomo.running = false;
+  pomo.paused = false;
+  clearInterval(pomo.interval);
+  pomoEl.classList.add("hidden");
+  pomoToggle.classList.remove("active");
+}
+
+function pomoTick() {
+  pomo.remaining--;
+  if (pomo.remaining <= 0) {
+    clearInterval(pomo.interval);
+    if (pomo.isBreak) {
+      // Break over — start new study session
+      speak("Break over! Time to study.");
+      pomoNotify("Break over!", "Time for another study session.");
+      pomo.isBreak = false;
+      pomo.remaining = pomo.STUDY;
+      pomo.total = pomo.STUDY;
+      pomoEl.classList.remove("break");
+      pomoLabel.textContent = "Study";
+    } else {
+      // Study over — start break
+      pomo.sessions++;
+      const isLong = pomo.sessions % 4 === 0;
+      const breakTime = isLong ? pomo.LONG_BREAK : pomo.BREAK;
+      speak(isLong ? "Great work! Take a 15 minute break." : "Good session! Take a 5 minute break.");
+      pomoNotify("Study session complete!", isLong ? "Take a 15 minute break." : "Take a 5 minute break.");
+      pomo.isBreak = true;
+      pomo.remaining = breakTime;
+      pomo.total = breakTime;
+      pomoEl.classList.add("break");
+      pomoLabel.textContent = isLong ? "Long Break" : "Break";
+    }
+    pomo.interval = setInterval(pomoTick, 1000);
+  }
+  pomoRender();
+}
+
+function pomoRender() {
+  const mins = Math.floor(pomo.remaining / 60);
+  const secs = pomo.remaining % 60;
+  pomoTime.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
+  const progress = 1 - pomo.remaining / pomo.total;
+  pomoArc.setAttribute(
+    "stroke-dashoffset",
+    (CIRCUMFERENCE * (1 - progress)).toString()
+  );
+}
+
+function pomoNotify(title, body) {
+  // Browser notification
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, { body, icon: "/icon-192.svg" });
+  }
+  // Audio chime — short beep sequence
+  try {
+    const ctx = new AudioContext();
+    [0, 200, 400].forEach((delay) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.value = 0.15;
+      osc.start(ctx.currentTime + delay / 1000);
+      osc.stop(ctx.currentTime + delay / 1000 + 0.12);
+    });
+  } catch (_) {
+    /* audio not available */
+  }
+}
+
+// Request notification permission on first pomodoro use
+pomoToggle.addEventListener("click", () => {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}, { once: true });
+
 /* --- Init --- */
 showCourses();
