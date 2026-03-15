@@ -6,7 +6,8 @@ and optional voice output via study-speak.
 
 from __future__ import annotations
 
-import contextlib
+import logging
+import sqlite3
 import time
 from typing import TYPE_CHECKING, ClassVar
 
@@ -28,6 +29,8 @@ from studyctl.review_loader import (
     QuizQuestion,
     ReviewResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CardPanel(Static):
@@ -215,7 +218,7 @@ class StudyCardsTab(Widget):
 
         # Record to DB
         card_type = "flashcard" if isinstance(card, Flashcard) else "quiz"
-        with contextlib.suppress(Exception):
+        try:
             record_card_review(
                 course=self._course,
                 card_type=card_type,
@@ -223,6 +226,8 @@ class StudyCardsTab(Widget):
                 correct=correct,
                 response_time_ms=elapsed_ms,
             )
+        except (sqlite3.Error, OSError) as exc:
+            logger.debug("Failed to record card review: %s", exc)
 
         self.current_index += 1
         self._show_current_card()
@@ -260,7 +265,7 @@ class StudyCardsTab(Widget):
         self.query_one("#progress-label", Static).update("[bold]Press q to return[/bold]")
 
         # Record session
-        with contextlib.suppress(Exception):
+        try:
             record_session(
                 course=self._course,
                 mode=self._mode,
@@ -268,6 +273,8 @@ class StudyCardsTab(Widget):
                 correct=self._result.correct,
                 duration_seconds=duration,
             )
+        except (sqlite3.Error, OSError) as exc:
+            logger.debug("Failed to record session: %s", exc)
 
     def _speak(self, text: str) -> None:
         """Speak text via study-speak (non-blocking, best-effort)."""
@@ -288,8 +295,8 @@ class StudyCardsTab(Widget):
                 kwargs={"voice": voice, "speed": speed},
                 daemon=True,
             ).start()
-        except Exception:
-            pass  # Voice is optional
+        except (ImportError, OSError, RuntimeError) as exc:
+            logger.debug("Voice unavailable: %s", exc)
 
     # --- Actions ---
 
