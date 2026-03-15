@@ -104,12 +104,27 @@ voiceBtn.addEventListener("click", () => {
 /* --- Voice (Web Speech API) --- */
 function speak(text) {
   if (!state.voiceOn || !window.speechSynthesis || !text) return;
+  speakNow(text);
+}
+
+function speakNow(text) {
+  if (!window.speechSynthesis || !text) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 0.95;
   u.pitch = 1.0;
   if (preferredVoice) u.voice = preferredVoice;
   window.speechSynthesis.speak(u);
+}
+
+function speakCurrentCard() {
+  if (state.view !== "study" || state.index >= state.cards.length) return;
+  const card = state.cards[state.index];
+  if (card.type === "flashcard") {
+    speakNow(state.revealed ? card.back : card.front);
+  } else {
+    speakNow(state.revealed ? "" : card.question);
+  }
 }
 
 function stopSpeaking() {
@@ -343,7 +358,12 @@ function showCard() {
           <span>${scoreText()}</span>
         </div>
         <div class="card" id="card">
-          <div class="card-label">Question</div>
+          <div class="card-header">
+            <div class="card-label">Question</div>
+            <button class="speak-btn" onclick="event.stopPropagation();speakCurrentCard()" title="Read aloud (T)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+            </button>
+          </div>
           <div class="card-content">${escHtml(card.front)}</div>
           <div class="card-hint">Tap or press Space to reveal</div>
         </div>
@@ -366,7 +386,12 @@ function showCard() {
           <span>${scoreText()}</span>
         </div>
         <div class="card" id="card">
-          <div class="card-label">Question</div>
+          <div class="card-header">
+            <div class="card-label">Question</div>
+            <button class="speak-btn" onclick="event.stopPropagation();speakCurrentCard()" title="Read aloud (T)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+            </button>
+          </div>
           <div class="card-content">${escHtml(card.question)}</div>
           ${card.hint ? `<div class="card-hint">Hint: ${escHtml(card.hint)}</div>` : ""}
           <div class="quiz-options" id="quiz-options">
@@ -597,7 +622,8 @@ function updateShortcuts(view) {
       <span><kbd>Y</kbd> Correct</span>
       <span><kbd>N</kbd> Incorrect</span>
       <span><kbd>S</kbd> Skip</span>
-      <span><kbd>V</kbd> Voice</span>
+      <span><kbd>T</kbd> Read</span>
+      <span><kbd>V</kbd> Auto-voice</span>
       <span><kbd>Esc</kbd> Home</span>`;
   } else if (view === "summary") {
     shortcuts.innerHTML = `
@@ -626,6 +652,7 @@ document.addEventListener("keydown", (e) => {
       if (e.key === "n" || e.key === "N") answer(false);
     }
     if (e.key === "s" || e.key === "S") skip();
+    if (e.key === "t" || e.key === "T") speakCurrentCard();
     if (e.key === "Escape") showCourses();
     if (card.type === "quiz") {
       const num = parseInt(e.key);
