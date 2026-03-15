@@ -104,6 +104,34 @@ class StudyApp(App):
     .info-line {
         margin-bottom: 0;
     }
+
+    /* Dyslexic-friendly: wider spacing, more padding, clearer separation */
+    .dyslexic #dashboard-content {
+        padding: 2 4;
+    }
+    .dyslexic .section-header {
+        margin-bottom: 2;
+    }
+    .dyslexic .info-line {
+        margin-bottom: 1;
+    }
+    .dyslexic DataTable {
+        padding: 1 2;
+    }
+    .dyslexic #card-panel {
+        padding: 2 4;
+        min-height: 8;
+        margin: 2 1;
+    }
+    .dyslexic #progress-label {
+        margin: 2 0;
+    }
+    .dyslexic #status-label {
+        margin-bottom: 1;
+    }
+    .dyslexic .score-btn {
+        margin: 0 2;
+    }
     """
 
     BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
@@ -120,11 +148,13 @@ class StudyApp(App):
         self,
         study_dirs: list[str] | None = None,
         theme_name: str = "",
+        dyslexic_friendly: bool = False,
         **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
         self._study_dirs = study_dirs or []
         self._theme_name = theme_name
+        self._dyslexic_friendly = dyslexic_friendly
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -157,6 +187,14 @@ class StudyApp(App):
     def on_mount(self) -> None:
         if self._theme_name:
             self.theme = self._theme_name
+        if self._dyslexic_friendly:
+            self.add_class("dyslexic")
+            self.notify(
+                "Dyslexic-friendly mode ON. For best results, set your "
+                "terminal font to OpenDyslexic: https://opendyslexic.org",
+                title="Accessibility",
+                timeout=8,
+            )
         self._populate_dashboard()
         self._populate_review()
         self._populate_concepts()

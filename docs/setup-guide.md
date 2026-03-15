@@ -132,6 +132,22 @@ Voice output in the TUI (toggle with `v` key) requires the `[tts]` extra on `age
 uv tool install "./packages/agent-session-tools[tts]"
 ```
 
+Optional TUI settings:
+
+```yaml
+# ~/.config/studyctl/config.yaml
+tui:
+  theme: dracula              # Any Textual theme (dracula, nord, tokyo-night, etc.)
+  dyslexic_friendly: true     # Wider spacing, more padding, clearer separation
+```
+
+**Dyslexic-friendly mode** adjusts the TUI layout for readability — wider padding, more line spacing, and clearer visual separation between elements. For the best experience, also set your terminal font to [OpenDyslexic](https://opendyslexic.org):
+
+- **iTerm2**: Preferences → Profiles → Text → Font → select OpenDyslexic
+- **Terminal.app**: Preferences → Profiles → Font → Change → select OpenDyslexic
+- **Windows Terminal**: Settings → Profiles → Appearance → Font face → OpenDyslexic
+- **VS Code terminal**: `"terminal.integrated.fontFamily": "OpenDyslexic"`
+
 ### Hosts — Cross-Machine Sync
 
 #### Prerequisites: Passwordless SSH
