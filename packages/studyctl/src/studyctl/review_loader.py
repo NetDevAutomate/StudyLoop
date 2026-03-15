@@ -54,7 +54,7 @@ class ReviewResult:
     correct: int = 0
     incorrect: int = 0
     skipped: int = 0
-    wrong_hashes: list[str] = field(default_factory=list)
+    wrong_hashes: set[str] = field(default_factory=set)
 
     @property
     def score_pct(self) -> float:
@@ -105,6 +105,20 @@ def load_quizzes(directory: Path) -> list[QuizQuestion]:
     return questions
 
 
+_GENERIC_DIR_NAMES = {"downloads", "content", "data", "files", "output", "generated"}
+
+
+def _course_name(directory: Path) -> str:
+    """Derive a display name from a directory path.
+
+    Uses the parent name when the directory has a generic name like 'downloads'.
+    """
+    name = directory.name
+    if name.lower() in _GENERIC_DIR_NAMES:
+        return directory.parent.name
+    return name
+
+
 def discover_directories(config_dirs: list[str] | None = None) -> list[tuple[str, Path]]:
     """Discover course directories with flashcard/quiz content.
 
@@ -122,19 +136,19 @@ def discover_directories(config_dirs: list[str] | None = None) -> list[tuple[str
 
         # Check if this directory itself has content
         if _has_review_content(base):
-            courses.append((base.name, base))
+            courses.append((_course_name(base), base))
             continue
 
         # Check subdirectories (e.g. downloads/flashcards/)
         downloads = base / "downloads"
         if downloads.is_dir() and _has_review_content(downloads):
-            courses.append((base.name, downloads))
+            courses.append((_course_name(base), downloads))
             continue
 
         # Check immediate children
         for child in sorted(base.iterdir()):
             if child.is_dir() and _has_review_content(child):
-                courses.append((child.name, child))
+                courses.append((_course_name(child), child))
 
     return courses
 

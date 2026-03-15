@@ -163,23 +163,29 @@ def _run_export(
                 exporter = get_exporter(source)
                 source_stats = exporter.export_all(conn, incremental)
 
-            # Accumulate batch stats
+            # Capture per-source values before accumulating into batch totals
+            source_added = 0
+            source_updated = 0
             if source_stats:
                 if isinstance(source_stats, dict):
-                    batch_stats.added += source_stats.get("added", 0)
-                    batch_stats.updated += source_stats.get("updated", 0)
+                    source_added = source_stats.get("added", 0)
+                    source_updated = source_stats.get("updated", 0)
+                    batch_stats.added += source_added
+                    batch_stats.updated += source_updated
                     batch_stats.skipped += source_stats.get("skipped", 0)
                     batch_stats.errors += source_stats.get("errors", 0)
                 else:
-                    batch_stats.added += getattr(source_stats, "added", 0)
-                    batch_stats.updated += getattr(source_stats, "updated", 0)
+                    source_added = getattr(source_stats, "added", 0)
+                    source_updated = getattr(source_stats, "updated", 0)
+                    batch_stats.added += source_added
+                    batch_stats.updated += source_updated
                     batch_stats.skipped += getattr(source_stats, "skipped", 0)
                     batch_stats.errors += getattr(source_stats, "errors", 0)
 
             if progress and task is not None:
                 progress.update(
                     task,
-                    description=f"{source.title()}: {batch_stats.added} added, {batch_stats.updated} updated",
+                    description=f"{source.title()}: {source_added} added, {source_updated} updated",
                 )
                 progress.advance(task)
 

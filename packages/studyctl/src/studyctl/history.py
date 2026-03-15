@@ -6,7 +6,7 @@ import json
 import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from .settings import load_settings
 
@@ -949,5 +949,27 @@ def seed_concepts_from_config() -> int:
         return count
     except (sqlite3.OperationalError, Exception):
         return 0
+    finally:
+        conn.close()
+
+
+class ConceptInfo(NamedTuple):
+    name: str
+    domain: str
+    description: str
+
+
+def list_concepts() -> list[ConceptInfo]:
+    """Return all stored concepts for display."""
+    conn = _connect()
+    if not conn:
+        return []
+    try:
+        rows = conn.execute(
+            "SELECT name, domain, COALESCE(description, '') FROM concepts ORDER BY domain, name"
+        ).fetchall()
+        return [ConceptInfo(*r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
     finally:
         conn.close()

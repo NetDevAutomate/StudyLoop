@@ -14,7 +14,17 @@ from typing import ClassVar
 try:
     from textual.app import App, ComposeResult
     from textual.containers import Vertical
-    from textual.widgets import DataTable, Footer, Header, Static, TabbedContent, TabPane
+    from textual.screen import ModalScreen
+    from textual.widgets import (
+        DataTable,
+        Footer,
+        Header,
+        OptionList,
+        Static,
+        TabbedContent,
+        TabPane,
+    )
+    from textual.widgets.option_list import Option
 except ImportError as _exc:
     raise ImportError(
         "The TUI requires the 'textual' package. Install it with:\n  pip install studyctl[tui]"
@@ -23,6 +33,7 @@ except ImportError as _exc:
 from studyctl.cli import TOPIC_KEYWORDS
 from studyctl.history import (
     get_study_session_stats,
+    list_concepts,
     spaced_repetition_due,
     struggle_topics,
 )
@@ -44,6 +55,36 @@ def _load_session_state() -> dict:
         return {}
 
 
+class CoursePickerScreen(ModalScreen[tuple[str, Path] | None]):
+    """Modal overlay for selecting a course directory."""
+
+    CSS = """
+    CoursePickerScreen {
+        align: center middle;
+    }
+    #course-picker {
+        width: 60;
+        max-height: 20;
+        border: round $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    """
+
+    def __init__(self, courses: list[tuple[str, Path]]) -> None:
+        super().__init__()
+        self._courses = courses
+
+    def compose(self) -> ComposeResult:
+        yield OptionList(
+            *[Option(name) for name, _ in self._courses],
+            id="course-picker",
+        )
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        self.dismiss(self._courses[event.option_index])
+
+
 class StudyApp(App):
     """Read-only study management dashboard."""
 
@@ -63,6 +104,34 @@ class StudyApp(App):
     .info-line {
         margin-bottom: 0;
     }
+
+    /* Dyslexic-friendly: wider spacing, more padding, clearer separation */
+    .dyslexic #dashboard-content {
+        padding: 2 4;
+    }
+    .dyslexic .section-header {
+        margin-bottom: 2;
+    }
+    .dyslexic .info-line {
+        margin-bottom: 1;
+    }
+    .dyslexic DataTable {
+        padding: 1 2;
+    }
+    .dyslexic #card-panel {
+        padding: 2 4;
+        min-height: 8;
+        margin: 2 1;
+    }
+    .dyslexic #progress-label {
+        margin: 2 0;
+    }
+    .dyslexic #status-label {
+        margin-bottom: 1;
+    }
+    .dyslexic .score-btn {
+        margin: 0 2;
+    }
     """
 
     BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
@@ -73,11 +142,20 @@ class StudyApp(App):
         ("s", "show_tab('sessions')", "Sessions"),
         ("f", "start_flashcards", "Flashcards"),
         ("z", "start_quiz", "Quiz"),
+        ("o", "toggle_dyslexic", "OpenDyslexic"),
     ]
 
-    def __init__(self, study_dirs: list[str] | None = None, **kwargs: object) -> None:
+    def __init__(
+        self,
+        study_dirs: list[str] | None = None,
+        theme_name: str = "",
+        dyslexic_friendly: bool = False,
+        **kwargs: object,
+    ) -> None:
         super().__init__(**kwargs)
         self._study_dirs = study_dirs or []
+        self._theme_name = theme_name
+        self._dyslexic_friendly = dyslexic_friendly
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -108,6 +186,16 @@ class StudyApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        if self._theme_name:
+            self.theme = self._theme_name
+        if self._dyslexic_friendly:
+            self.add_class("dyslexic")
+            self.notify(
+                "Dyslexic-friendly mode ON. For best results, set your "
+                "terminal font to OpenDyslexic: https://opendyslexic.org",
+                title="Accessibility",
+                timeout=8,
+            )
         self._populate_dashboard()
         self._populate_review()
         self._populate_concepts()
@@ -117,6 +205,18 @@ class StudyApp(App):
     def action_show_tab(self, tab_id: str) -> None:
         tabs = self.query_one(TabbedContent)
         tabs.active = tab_id
+
+    def action_toggle_dyslexic(self) -> None:
+        """Toggle dyslexic-friendly mode (wider spacing)."""
+        self.toggle_class("dyslexic")
+        if self.has_class("dyslexic"):
+            self.notify(
+                "Dyslexic-friendly mode ON — wider spacing applied. "
+                "Set terminal font to OpenDyslexic for best results.",
+                title="Accessibility",
+            )
+        else:
+            self.notify("Dyslexic-friendly mode OFF")
 
     # ------------------------------------------------------------------
     # Tab population
@@ -163,8 +263,8 @@ class StudyApp(App):
         table = self.query_one("#concepts-table", DataTable)
         table.add_columns("Name", "Domain", "Description")
 
-        # list_concepts not yet implemented — show empty table
-        pass
+        for concept in list_concepts():
+            table.add_row(concept.name, concept.domain, concept.description)
 
     def _populate_sessions(self) -> None:
         table = self.query_one("#sessions-table", DataTable)
@@ -221,8 +321,17 @@ class StudyApp(App):
             )
             return
 
-        # Use first course (TODO: add course picker for multiple)
-        name, path = courses[0]
+        if len(courses) == 1:
+            self._start_session(courses[0], mode)
+        else:
+            self.push_screen(
+                CoursePickerScreen(courses),
+                lambda result: self._start_session(result, mode) if result else None,
+            )
+
+    def _start_session(self, course: tuple[str, Path], mode: str) -> None:
+        """Start a study session for the selected course."""
+        name, path = course
         fc_dir, quiz_dir = find_content_dirs(path)
 
         if mode == "flashcards" and fc_dir:
@@ -230,7 +339,10 @@ class StudyApp(App):
         elif mode == "quiz" and quiz_dir:
             cards = shuffle_items(load_quizzes(quiz_dir))
         else:
-            self.notify(f"No {mode} content found for {name}", severity="warning")
+            self.notify(
+                f"No {mode} content found for {name}",
+                severity="warning",
+            )
             return
 
         if not cards:
