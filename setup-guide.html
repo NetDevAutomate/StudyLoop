@@ -470,6 +470,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#web-pwa-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tui-dashboard-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TUI Dashboard (terminal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1404,6 +1426,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#web-pwa-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tui-dashboard-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TUI Dashboard (terminal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1846,6 +1890,50 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 <p>The wizard creates or updates <code>~/.config/studyctl/config.yaml</code> with your choices. You can re-run it at any time to change settings.</p>
 <h3 id="manual-configuration">Manual Configuration<a class="headerlink" href="#manual-configuration" title="Permanent link">&para;</a></h3>
 <p>All configuration lives in a single file: <code>~/.config/studyctl/config.yaml</code>. This file is shared between <code>studyctl</code> and all <code>session-*</code> tools — use the same file on every machine.</p>
+<h3 id="web-pwa-recommended">Web PWA (recommended)<a class="headerlink" href="#web-pwa-recommended" title="Permanent link">&para;</a></h3>
+<p>The study web app requires no extra dependencies — just run:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>web
+</code></pre></div>
+<p>This starts a web server on <code>http://0.0.0.0:8567</code> accessible from any device on your network. Open it on your phone, tablet, or laptop.</p>
+<p><strong>Install as PWA (iOS/Android):</strong> Open in Safari → Share → Add to Home Screen. The app then works full-screen like a native app.</p>
+<p>Configure flashcard/quiz directories:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># ~/.config/studyctl/config.yaml</span>
+<span class="nt">review</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">directories</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Desktop/ZTM-DE/downloads</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Desktop/Python/downloads</span>
+</code></pre></div>
+<p><strong>Voice output</strong> uses the Web Speech API (built into all browsers). For best quality voices:</p>
+<ul>
+<li><strong>macOS</strong>: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → download Samantha (Enhanced) or Ava (Premium)</li>
+<li><strong>iOS</strong>: Settings → Accessibility → Spoken Content → Voices → English → download Siri voices</li>
+<li><strong>Windows</strong>: Settings → Time &amp; Language → Speech → Manage voices</li>
+</ul>
+<p>Two voice modes in the PWA:
+- <strong>Read once</strong> — tap the speaker icon on a card, or press <code>T</code>. Reads the current content once.
+- <strong>Auto-voice</strong> — toggle the header speaker icon, or press <code>V</code>. Reads everything automatically as you navigate.</p>
+<p><strong>Accessibility:</strong> The <code>Aa</code> button toggles <a href="https://opendyslexic.org">OpenDyslexic</a> font. The sun icon toggles light/dark theme. Both are persisted across sessions.</p>
+<h3 id="tui-dashboard-terminal">TUI Dashboard (terminal)<a class="headerlink" href="#tui-dashboard-terminal" title="Permanent link">&para;</a></h3>
+<p>The terminal TUI requires the <code>[tui]</code> extra:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>tui<span class="o">]</span>
+studyctl<span class="w"> </span>tui
+</code></pre></div>
+<p>Optional TUI settings:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># ~/.config/studyctl/config.yaml</span>
+<span class="nt">tui</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">theme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dracula</span><span class="w">              </span><span class="c1"># Any Textual theme (dracula, nord, tokyo-night, etc.)</span>
+<span class="w">  </span><span class="nt">dyslexic_friendly</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">     </span><span class="c1"># Wider spacing, more padding (also toggle with o key)</span>
+</code></pre></div>
+<p>Voice output in the TUI requires the <code>[tts]</code> extra on <code>agent-session-tools</code>:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;./packages/agent-session-tools[tts]&quot;</span>
+</code></pre></div>
+<p><strong>Dyslexic-friendly mode</strong> in the terminal — for best results, set your terminal font to <a href="https://opendyslexic.org">OpenDyslexic</a>:</p>
+<ul>
+<li><strong>iTerm2</strong>: Preferences → Profiles → Text → Font → select OpenDyslexic</li>
+<li><strong>Terminal.app</strong>: Preferences → Profiles → Font → Change → select OpenDyslexic</li>
+<li><strong>Windows Terminal</strong>: Settings → Profiles → Appearance → Font face → OpenDyslexic</li>
+<li><strong>VS Code terminal</strong>: <code>"terminal.integrated.fontFamily": "OpenDyslexic"</code></li>
+</ul>
 <h3 id="hosts-cross-machine-sync">Hosts — Cross-Machine Sync<a class="headerlink" href="#hosts-cross-machine-sync" title="Permanent link">&para;</a></h3>
 <h4 id="prerequisites-passwordless-ssh">Prerequisites: Passwordless SSH<a class="headerlink" href="#prerequisites-passwordless-ssh" title="Permanent link">&para;</a></h4>
 <p>Cross-machine sync uses SSH and rsync under the hood. <strong>Passwordless SSH must be configured</strong> between all machines before sync will work. If you're prompted for a password, sync will hang or fail.</p>
