@@ -142,6 +142,7 @@ class StudyApp(App):
         ("s", "show_tab('sessions')", "Sessions"),
         ("f", "start_flashcards", "Flashcards"),
         ("z", "start_quiz", "Quiz"),
+        ("o", "toggle_dyslexic", "OpenDyslexic"),
     ]
 
     def __init__(
@@ -204,6 +205,18 @@ class StudyApp(App):
     def action_show_tab(self, tab_id: str) -> None:
         tabs = self.query_one(TabbedContent)
         tabs.active = tab_id
+
+    def action_toggle_dyslexic(self) -> None:
+        """Toggle dyslexic-friendly mode (wider spacing)."""
+        self.toggle_class("dyslexic")
+        if self.has_class("dyslexic"):
+            self.notify(
+                "Dyslexic-friendly mode ON — wider spacing applied. "
+                "Set terminal font to OpenDyslexic for best results.",
+                title="Accessibility",
+            )
+        else:
+            self.notify("Dyslexic-friendly mode OFF")
 
     # ------------------------------------------------------------------
     # Tab population
