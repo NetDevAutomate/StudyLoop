@@ -1275,8 +1275,10 @@ def _tui_serve(port: int, host: str = "localhost") -> None:
         except Exception:
             pass
 
+    import sys
+
     kwargs: dict = {
-        "command": "python -m studyctl.tui",
+        "command": f"{sys.executable} -m studyctl.tui",
         "host": host,
         "port": port,
         "title": "studyctl",
