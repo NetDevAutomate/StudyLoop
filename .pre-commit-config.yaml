@@ -36,15 +36,22 @@ repos:
     language: pygrep
     types:
     - text
-  - id: pyright
-    name: pyright
+  - id: pyright-agent-session-tools
+    name: pyright (agent-session-tools)
     language: system
     entry: uv run pyright packages/agent-session-tools/
     pass_filenames: false
     files: ^packages/agent-session-tools/.*\.py$
+  - id: pyright-studyctl
+    name: pyright (studyctl)
+    language: system
+    entry: bash -c 'cd packages/studyctl && uv run pyright src/'
+    pass_filenames: false
+    files: ^packages/studyctl/.*\.py$
   - id: pytest
     name: pytest
     language: system
     entry: uv run pytest --tb=short
     pass_filenames: false
     files: ^packages/.*\.py$
+    stages: [pre-push]
