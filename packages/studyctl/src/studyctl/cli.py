@@ -1202,7 +1202,13 @@ def docs_read(page: str) -> None:
     help="Serve as web app in browser (uses textual serve)",
 )
 @click.option("--port", "-p", default=8566, help="Port for web serve mode")
-def tui(serve: bool, port: int) -> None:
+@click.option(
+    "--host",
+    "-H",
+    default="localhost",
+    help="Host to bind to (use 0.0.0.0 for LAN access)",
+)
+def tui(serve: bool, port: int, host: str) -> None:
     """Launch the interactive study dashboard (requires textual).
 
     Install: uv pip install 'studyctl[tui]'
@@ -1210,9 +1216,10 @@ def tui(serve: bool, port: int) -> None:
     Key bindings: f=flashcards, z=quiz, d=dashboard, q=quit, v=voice toggle
 
     Use --serve to run as a web app in your browser.
+    Use --serve --host 0.0.0.0 for LAN access.
     """
     if serve:
-        _tui_serve(port)
+        _tui_serve(port, host)
         return
 
     try:
@@ -1247,7 +1254,7 @@ def tui(serve: bool, port: int) -> None:
     app.run()
 
 
-def _tui_serve(port: int) -> None:
+def _tui_serve(port: int, host: str = "localhost") -> None:
     """Serve the TUI as a web app via textual-serve."""
     try:
         from textual_serve.server import Server
@@ -1270,7 +1277,7 @@ def _tui_serve(port: int) -> None:
 
     kwargs: dict = {
         "command": "python -m studyctl.tui",
-        "host": "localhost",
+        "host": host,
         "port": port,
         "title": "studyctl",
     }
@@ -1284,7 +1291,7 @@ def _tui_serve(port: int) -> None:
         )
 
     console.print(
-        f"[bold]Serving studyctl TUI at http://localhost:{port}[/bold]\n"
+        f"[bold]Serving studyctl TUI at http://{host}:{port}[/bold]\n"
         "[dim]Press Ctrl+C to stop[/dim]"
     )
     server = Server(**kwargs)
