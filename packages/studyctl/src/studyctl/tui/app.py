@@ -116,9 +116,15 @@ class StudyApp(App):
         ("z", "start_quiz", "Quiz"),
     ]
 
-    def __init__(self, study_dirs: list[str] | None = None, **kwargs: object) -> None:
+    def __init__(
+        self,
+        study_dirs: list[str] | None = None,
+        theme_name: str = "",
+        **kwargs: object,
+    ) -> None:
         super().__init__(**kwargs)
         self._study_dirs = study_dirs or []
+        self._theme_name = theme_name
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -149,6 +155,8 @@ class StudyApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        if self._theme_name:
+            self.theme = self._theme_name
         self._populate_dashboard()
         self._populate_review()
         self._populate_concepts()

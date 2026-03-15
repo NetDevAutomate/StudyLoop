@@ -57,6 +57,8 @@ class CardPanel(Static):
 class StudyCardsTab(Widget):
     """Interactive flashcard and quiz review widget."""
 
+    can_focus = True
+
     DEFAULT_CSS = """
     StudyCardsTab {
         layout: vertical;
@@ -159,6 +161,7 @@ class StudyCardsTab(Widget):
             )
 
     def on_mount(self) -> None:
+        self.focus()
         self._show_current_card()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

@@ -1214,12 +1214,14 @@ def tui() -> None:
 
     config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
     study_dirs: list[str] = []
+    theme: str = ""
     if config_path.exists():
         try:
             data = yaml.safe_load(config_path.read_text()) or {}
             study_dirs = data.get("review", {}).get("directories", [])
+            theme = data.get("tui", {}).get("theme", "")
         except Exception:
             pass
 
-    app = StudyApp(study_dirs=study_dirs)
+    app = StudyApp(study_dirs=study_dirs, theme_name=theme)
     app.run()
