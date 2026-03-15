@@ -23,6 +23,7 @@ except ImportError as _exc:
 from studyctl.cli import TOPIC_KEYWORDS
 from studyctl.history import (
     get_study_session_stats,
+    list_concepts,
     spaced_repetition_due,
     struggle_topics,
 )
@@ -163,8 +164,8 @@ class StudyApp(App):
         table = self.query_one("#concepts-table", DataTable)
         table.add_columns("Name", "Domain", "Description")
 
-        # list_concepts not yet implemented — show empty table
-        pass
+        for concept in list_concepts():
+            table.add_row(concept.name, concept.domain, concept.description)
 
     def _populate_sessions(self) -> None:
         table = self.query_one("#sessions-table", DataTable)
