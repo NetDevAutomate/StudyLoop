@@ -102,21 +102,19 @@ The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices
 
 All configuration lives in a single file: `~/.config/studyctl/config.yaml`. This file is shared between `studyctl` and all `session-*` tools — use the same file on every machine.
 
-### TUI Dashboard
+### Web PWA (recommended)
 
-The interactive TUI requires the `[tui]` extra:
-
-```bash
-uv pip install studyctl[tui]
-```
-
-Launch with:
+The study web app requires no extra dependencies — just run:
 
 ```bash
-studyctl tui
+studyctl web
 ```
 
-To configure flashcard/quiz directories for the StudyCards tab, add a `review` section to your config:
+This starts a web server on `http://0.0.0.0:8567` accessible from any device on your network. Open it on your phone, tablet, or laptop.
+
+**Install as PWA (iOS/Android):** Open in Safari → Share → Add to Home Screen. The app then works full-screen like a native app.
+
+Configure flashcard/quiz directories:
 
 ```yaml
 # ~/.config/studyctl/config.yaml
@@ -126,10 +124,25 @@ review:
     - ~/Desktop/Python/downloads
 ```
 
-Voice output in the TUI (toggle with `v` key) requires the `[tts]` extra on `agent-session-tools`:
+**Voice output** uses the Web Speech API (built into all browsers). For best quality voices:
+
+- **macOS**: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → download Samantha (Enhanced) or Ava (Premium)
+- **iOS**: Settings → Accessibility → Spoken Content → Voices → English → download Siri voices
+- **Windows**: Settings → Time & Language → Speech → Manage voices
+
+Two voice modes in the PWA:
+- **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once.
+- **Auto-voice** — toggle the header speaker icon, or press `V`. Reads everything automatically as you navigate.
+
+**Accessibility:** The `Aa` button toggles [OpenDyslexic](https://opendyslexic.org) font. The sun icon toggles light/dark theme. Both are persisted across sessions.
+
+### TUI Dashboard (terminal)
+
+The terminal TUI requires the `[tui]` extra:
 
 ```bash
-uv tool install "./packages/agent-session-tools[tts]"
+uv pip install studyctl[tui]
+studyctl tui
 ```
 
 Optional TUI settings:
@@ -138,10 +151,16 @@ Optional TUI settings:
 # ~/.config/studyctl/config.yaml
 tui:
   theme: dracula              # Any Textual theme (dracula, nord, tokyo-night, etc.)
-  dyslexic_friendly: true     # Wider spacing, more padding, clearer separation
+  dyslexic_friendly: true     # Wider spacing, more padding (also toggle with o key)
 ```
 
-**Dyslexic-friendly mode** adjusts the TUI layout for readability — wider padding, more line spacing, and clearer visual separation between elements. For the best experience, also set your terminal font to [OpenDyslexic](https://opendyslexic.org):
+Voice output in the TUI requires the `[tts]` extra on `agent-session-tools`:
+
+```bash
+uv tool install "./packages/agent-session-tools[tts]"
+```
+
+**Dyslexic-friendly mode** in the terminal — for best results, set your terminal font to [OpenDyslexic](https://opendyslexic.org):
 
 - **iTerm2**: Preferences → Profiles → Text → Font → select OpenDyslexic
 - **Terminal.app**: Preferences → Profiles → Font → Change → select OpenDyslexic
