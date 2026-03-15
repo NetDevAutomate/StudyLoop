@@ -102,6 +102,36 @@ The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices
 
 All configuration lives in a single file: `~/.config/studyctl/config.yaml`. This file is shared between `studyctl` and all `session-*` tools — use the same file on every machine.
 
+### TUI Dashboard
+
+The interactive TUI requires the `[tui]` extra:
+
+```bash
+uv pip install studyctl[tui]
+```
+
+Launch with:
+
+```bash
+studyctl tui
+```
+
+To configure flashcard/quiz directories for the StudyCards tab, add a `review` section to your config:
+
+```yaml
+# ~/.config/studyctl/config.yaml
+review:
+  directories:
+    - ~/Desktop/ZTM-DE/downloads
+    - ~/Desktop/Python/downloads
+```
+
+Voice output in the TUI (toggle with `v` key) requires the `[tts]` extra on `agent-session-tools`:
+
+```bash
+uv tool install "./packages/agent-session-tools[tts]"
+```
+
 ### Hosts — Cross-Machine Sync
 
 #### Prerequisites: Passwordless SSH
