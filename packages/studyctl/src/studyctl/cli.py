@@ -1215,13 +1215,20 @@ def tui() -> None:
     config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
     study_dirs: list[str] = []
     theme: str = ""
+    dyslexic: bool = False
     if config_path.exists():
         try:
             data = yaml.safe_load(config_path.read_text()) or {}
             study_dirs = data.get("review", {}).get("directories", [])
-            theme = data.get("tui", {}).get("theme", "")
+            tui_cfg = data.get("tui", {})
+            theme = tui_cfg.get("theme", "")
+            dyslexic = tui_cfg.get("dyslexic_friendly", False)
         except Exception:
             pass
 
-    app = StudyApp(study_dirs=study_dirs, theme_name=theme)
+    app = StudyApp(
+        study_dirs=study_dirs,
+        theme_name=theme,
+        dyslexic_friendly=dyslexic,
+    )
     app.run()
