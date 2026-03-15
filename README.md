@@ -199,16 +199,54 @@ studyctl prereqs CONCEPT -d DOMAIN      # Show prerequisite chain (recursive)
 studyctl related CONCEPT -d DOMAIN      # Show concept neighbourhood
 studyctl state push|pull|status|init     # Cross-machine state sync
 studyctl tui                             # Launch interactive TUI dashboard
+studyctl web [--port PORT] [--host HOST] # Launch study PWA web app
 studyctl schedule install|remove|list    # Manage scheduled jobs
 ```
 
-### TUI Dashboard
+### Web PWA (recommended for multi-device study)
 
-Launch the interactive study dashboard with `studyctl tui`. Requires the `[tui]` extra (`uv pip install studyctl[tui]`).
+Launch the study web app with `studyctl web`. Accessible from any device on the network — phone, tablet, laptop. No extra dependencies.
+
+```bash
+studyctl web                    # LAN accessible on port 8567
+studyctl web --port 9000        # Custom port
+```
+
+**Features:**
+- Flashcard and quiz review with SM-2 spaced repetition
+- Source/chapter filter — study specific chapters
+- Card count limiter — choose 10/20/50/100/All per session
+- Due cards indicator on course picker
+- Session history with scores and 90-day study heatmap
+- Retry wrong answers mode
+- Pomodoro timer (25min study / 5min break with audio chime + notifications)
+- Voice output via Web Speech API — reads questions/answers aloud, works on any device
+- Read-once button (speaker icon on card) or auto-voice toggle (header)
+- OpenDyslexic font toggle for accessibility
+- Dark/light theme toggle
+- PWA installable — add to home screen on iOS/Android
+- Keyboard shortcuts: `Space` flip, `Y`/`N` answer, `T` read aloud, `V` auto-voice, `S` skip, `R` retry
+
+**Voice setup:** The PWA uses your device's built-in text-to-speech. For best quality, download enhanced voices: Settings → Accessibility → Spoken Content → Voices → English → download Samantha (Enhanced) or Siri voices.
+
+**Config:**
+
+```yaml
+# ~/.config/studyctl/config.yaml
+review:
+  directories:
+    - ~/Desktop/ZTM-DE/downloads
+    - ~/Desktop/Python/downloads
+tui:
+  theme: dracula                # Textual theme (TUI only)
+  dyslexic_friendly: true       # Wider spacing in TUI
+```
+
+### TUI Dashboard (terminal)
+
+Launch the terminal dashboard with `studyctl tui`. Requires the `[tui]` extra (`uv pip install studyctl[tui]`).
 
 **Tabs:** Dashboard, Review, Concepts, Sessions, StudyCards
-
-**Key bindings:**
 
 | Key | Action |
 |-----|--------|
@@ -218,12 +256,11 @@ Launch the interactive study dashboard with `studyctl tui`. Requires the `[tui]`
 | `y` / `n` | Mark correct / incorrect |
 | `r` | Retry wrong answers (after session) |
 | `v` | Toggle voice output |
+| `o` | Toggle OpenDyslexic spacing |
 | `h` | Show hint (quiz mode) |
 | `q` | Quit |
 
 ![TUI Dashboard](images/socratic_mentor_tui.svg)
-
-When multiple course directories are configured, a picker appears on session start. Voice output requires the `[tts]` extra on `agent-session-tools`.
 
 ### agent-session-tools
 
