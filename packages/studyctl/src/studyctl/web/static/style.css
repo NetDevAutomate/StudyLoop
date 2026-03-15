@@ -236,6 +236,30 @@ main {
   margin-bottom: 12px;
 }
 
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.speak-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.speak-btn:hover { border-color: var(--accent); color: var(--accent); }
+.speak-btn:active { transform: scale(0.9); }
+
 .card.revealed .card-label { color: var(--green); }
 
 .card-content {
