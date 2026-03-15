@@ -101,10 +101,12 @@ class StudyCardsTab(Widget):
         Binding("s", "skip_card", "Skip"),
         Binding("h", "show_hint", "Hint"),
         Binding("v", "toggle_voice", "Voice"),
+        Binding("r", "retry_wrong", "Retry Wrong"),
     ]
 
     current_index = reactive(0)
     voice_enabled = reactive(False)
+    _is_retry = reactive(False, bindings=True)
 
     def __init__(
         self,
@@ -114,12 +116,18 @@ class StudyCardsTab(Widget):
         **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
+        self._all_cards = list(cards)
         self._cards = cards
         self._course = course_name
         self._mode = mode
         self._result = ReviewResult(total=len(cards))
         self._start_time = time.monotonic()
         self._card_start_time = time.monotonic()
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        if action == "retry_wrong":
+            return bool(self._result.wrong_hashes) and not self._is_retry
+        return True
 
     def compose(self) -> ComposeResult:
         yield Static(
@@ -192,7 +200,8 @@ class StudyCardsTab(Widget):
             text = card.front if isinstance(card, Flashcard) else card.question
             self._speak(text)
 
-        progress = f"Card {self.current_index + 1}/{len(self._cards)}"
+        retry_tag = " (Retry)" if self._is_retry else ""
+        progress = f"Card {self.current_index + 1}/{len(self._cards)}{retry_tag}"
         if self._result.correct + self._result.incorrect > 0:
             progress += f"  |  Score: {self._result.score_pct:.0f}%"
         self.query_one("#progress-label", Static).update(progress)
@@ -214,20 +223,21 @@ class StudyCardsTab(Widget):
             self._result.correct += 1
         else:
             self._result.incorrect += 1
-            self._result.wrong_hashes.append(card.card_hash)
+            self._result.wrong_hashes.add(card.card_hash)
 
-        # Record to DB
-        card_type = "flashcard" if isinstance(card, Flashcard) else "quiz"
-        try:
-            record_card_review(
-                course=self._course,
-                card_type=card_type,
-                card_hash=card.card_hash,
-                correct=correct,
-                response_time_ms=elapsed_ms,
-            )
-        except (sqlite3.Error, OSError) as exc:
-            logger.debug("Failed to record card review: %s", exc)
+        # Record to DB (skip SM-2 during retry)
+        if not self._is_retry:
+            card_type = "flashcard" if isinstance(card, Flashcard) else "quiz"
+            try:
+                record_card_review(
+                    course=self._course,
+                    card_type=card_type,
+                    card_hash=card.card_hash,
+                    correct=correct,
+                    response_time_ms=elapsed_ms,
+                )
+            except (sqlite3.Error, OSError) as exc:
+                logger.debug("Failed to record card review: %s", exc)
 
         self.current_index += 1
         self._show_current_card()
@@ -252,8 +262,10 @@ class StudyCardsTab(Widget):
             f"  Skipped: {self._result.skipped}",
             f"  Duration: {duration // 60}m {duration % 60}s",
         ]
-        if wrong_count:
-            summary.append(f"\n  [yellow]{wrong_count} cards to review again[/yellow]")
+        if wrong_count and not self._is_retry:
+            summary.append(
+                f"\n  [yellow]{wrong_count} cards to review again — press r to retry[/yellow]"
+            )
 
         panel = self.query_one("#card-panel", CardPanel)
         panel.update("\n".join(summary))
@@ -262,7 +274,10 @@ class StudyCardsTab(Widget):
         for btn_id in ("btn-correct", "btn-incorrect", "btn-skip"):
             self.query_one(f"#{btn_id}", Button).display = False
 
-        self.query_one("#progress-label", Static).update("[bold]Press q to return[/bold]")
+        hint = "[bold]Press q to return[/bold]"
+        if self._result.wrong_hashes and not self._is_retry:
+            hint = "[bold]Press r to retry wrong, q to return[/bold]"
+        self.query_one("#progress-label", Static).update(hint)
 
         # Record session
         try:
@@ -346,3 +361,25 @@ class StudyCardsTab(Widget):
         else:
             label.update("Voice: OFF (v to toggle)")
             self.notify("Voice disabled")
+
+    def action_retry_wrong(self) -> None:
+        """Retry only the incorrectly answered cards."""
+        if not self._result.wrong_hashes or self._is_retry:
+            return
+
+        wrong = self._result.wrong_hashes
+        retry_cards = [c for c in self._all_cards if c.card_hash in wrong]
+        if not retry_cards:
+            return
+
+        self._cards = retry_cards
+        self._result = ReviewResult(total=len(retry_cards))
+        self._is_retry = True
+        self.current_index = 0
+        self._start_time = time.monotonic()
+
+        # Re-show score buttons
+        for btn_id in ("btn-correct", "btn-incorrect", "btn-skip"):
+            self.query_one(f"#{btn_id}", Button).display = True
+
+        self._show_current_card()

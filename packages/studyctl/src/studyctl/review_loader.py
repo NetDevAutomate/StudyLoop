@@ -54,7 +54,7 @@ class ReviewResult:
     correct: int = 0
     incorrect: int = 0
     skipped: int = 0
-    wrong_hashes: list[str] = field(default_factory=list)
+    wrong_hashes: set[str] = field(default_factory=set)
 
     @property
     def score_pct(self) -> float:
