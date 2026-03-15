@@ -1276,14 +1276,10 @@ def _tui_serve(port: int, host: str = "localhost") -> None:
     # Prefer ttyd — reliable, supports custom fonts, LAN-friendly
     ttyd_bin = shutil.which("ttyd")
     if ttyd_bin:
-        ttyd_args = [
-            ttyd_bin,
-            "--port",
-            str(port),
-            "--interface",
-            host if host != "0.0.0.0" else "",
-            "--writable",
-        ]
+        ttyd_args = [ttyd_bin, "--port", str(port), "--writable"]
+        # Only add --interface for specific bind address (ttyd binds all by default)
+        if host not in ("0.0.0.0", ""):
+            ttyd_args.extend(["--interface", host])
         if dyslexic:
             ttyd_args.extend(
                 [
@@ -1299,8 +1295,6 @@ def _tui_serve(port: int, host: str = "localhost") -> None:
                 "[dim]Install the font on your device for best results: "
                 "https://opendyslexic.org[/dim]"
             )
-        # Remove empty --interface arg when binding to all interfaces
-        ttyd_args = [a for a in ttyd_args if a != ""]
         ttyd_args.extend(["--", *command.split()])
         console.print(
             f"[bold]Serving studyctl TUI at http://{host}:{port}[/bold]\n"
