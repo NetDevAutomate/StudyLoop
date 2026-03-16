@@ -16,6 +16,7 @@ dependencies = [
 content = ["pymupdf>=1.25", "httpx"]
 notebooklm = ["notebooklm-py>=0.3.4"]
 tui = ["textual>=0.80"]
+web = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
 
 [project.scripts]
 studyctl = "studyctl.cli:cli"
@@ -35,4 +36,4 @@ packages = ["src/studyctl"]
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
-exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py"]  # optional deps not in CI
+exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/web"]  # optional deps not in CI
