@@ -953,22 +953,29 @@ def seed_concepts_from_config() -> int:
         conn.close()
 
 
-class ConceptInfo(NamedTuple):
+class ConceptSummary(NamedTuple):
+    id: str
     name: str
     domain: str
-    description: str
+    description: str | None
 
 
-def list_concepts() -> list[ConceptInfo]:
-    """Return all stored concepts for display."""
+def list_concepts(domain: str | None = None) -> list[ConceptSummary]:
+    """List all concepts, optionally filtered by domain."""
     conn = _connect()
     if not conn:
         return []
     try:
-        rows = conn.execute(
-            "SELECT name, domain, COALESCE(description, '') FROM concepts ORDER BY domain, name"
-        ).fetchall()
-        return [ConceptInfo(*r) for r in rows]
+        if domain:
+            rows = conn.execute(
+                "SELECT id, name, domain, description FROM concepts WHERE domain = ? ORDER BY name",
+                (domain,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, name, domain, description FROM concepts ORDER BY domain, name"
+            ).fetchall()
+        return [ConceptSummary(id=r[0], name=r[1], domain=r[2], description=r[3]) for r in rows]
     except sqlite3.OperationalError:
         return []
     finally:

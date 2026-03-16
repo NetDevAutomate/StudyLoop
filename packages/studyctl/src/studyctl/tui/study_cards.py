@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import time
+from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
 try:
@@ -31,6 +32,13 @@ from studyctl.review_loader import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class StudyMode(StrEnum):
+    """Tracks whether the user is in a normal or retry study session."""
+
+    NORMAL = "normal"
+    RETRY = "retry"
 
 
 class CardPanel(Static):
@@ -108,7 +116,7 @@ class StudyCardsTab(Widget):
 
     current_index = reactive(0)
     voice_enabled = reactive(False)
-    _is_retry = reactive(False, bindings=True)
+    _study_mode: reactive[StudyMode] = reactive(StudyMode.NORMAL, bindings=True)
 
     def __init__(
         self,
@@ -128,7 +136,7 @@ class StudyCardsTab(Widget):
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "retry_wrong":
-            return bool(self._result.wrong_hashes) and not self._is_retry
+            return bool(self._result.wrong_hashes) and self._study_mode is not StudyMode.RETRY
         return True
 
     def compose(self) -> ComposeResult:
@@ -203,7 +211,7 @@ class StudyCardsTab(Widget):
             text = card.front if isinstance(card, Flashcard) else card.question
             self._speak(text)
 
-        retry_tag = " (Retry)" if self._is_retry else ""
+        retry_tag = " (Retry)" if self._study_mode is StudyMode.RETRY else ""
         progress = f"Card {self.current_index + 1}/{len(self._cards)}{retry_tag}"
         if self._result.correct + self._result.incorrect > 0:
             progress += f"  |  Score: {self._result.score_pct:.0f}%"
@@ -229,7 +237,7 @@ class StudyCardsTab(Widget):
             self._result.wrong_hashes.add(card.card_hash)
 
         # Record to DB (skip SM-2 during retry)
-        if not self._is_retry:
+        if self._study_mode is not StudyMode.RETRY:
             card_type = "flashcard" if isinstance(card, Flashcard) else "quiz"
             try:
                 record_card_review(
@@ -265,7 +273,7 @@ class StudyCardsTab(Widget):
             f"  Skipped: {self._result.skipped}",
             f"  Duration: {duration // 60}m {duration % 60}s",
         ]
-        if wrong_count and not self._is_retry:
+        if wrong_count and self._study_mode is not StudyMode.RETRY:
             summary.append(
                 f"\n  [yellow]{wrong_count} cards to review again — press r to retry[/yellow]"
             )
@@ -278,7 +286,7 @@ class StudyCardsTab(Widget):
             self.query_one(f"#{btn_id}", Button).display = False
 
         hint = "[bold]Press q to return[/bold]"
-        if self._result.wrong_hashes and not self._is_retry:
+        if self._result.wrong_hashes and self._study_mode is not StudyMode.RETRY:
             hint = "[bold]Press r to retry wrong, q to return[/bold]"
         self.query_one("#progress-label", Static).update(hint)
 
@@ -367,7 +375,7 @@ class StudyCardsTab(Widget):
 
     def action_retry_wrong(self) -> None:
         """Retry only the incorrectly answered cards."""
-        if not self._result.wrong_hashes or self._is_retry:
+        if not self._result.wrong_hashes or self._study_mode is StudyMode.RETRY:
             return
 
         wrong = self._result.wrong_hashes
@@ -377,7 +385,7 @@ class StudyCardsTab(Widget):
 
         self._cards = retry_cards
         self._result = ReviewResult(total=len(retry_cards))
-        self._is_retry = True
+        self._study_mode = StudyMode.RETRY
         self.current_index = 0
         self._start_time = time.monotonic()
 
