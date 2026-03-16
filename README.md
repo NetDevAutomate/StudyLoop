@@ -4,7 +4,8 @@
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![CI](https://github.com/NetDevAutomate/Socratic-Study-Mentor/actions/workflows/ci.yml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/studyctl)
+![CI](https://github.com/NetDevAutomate/socratic-study-mentor/actions/workflows/ci.yml/badge.svg)
 
 ## What is this?
 
@@ -102,21 +103,48 @@ graph LR
 
 ## Quick Start
 
+### Install (pick one)
+
 ```bash
-git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd Socratic-Study-Mentor
+# PyPI (recommended)
+pip install studyctl
+
+# Homebrew (macOS)
+brew install NetDevAutomate/studyctl/studyctl
+
+# From source
+git clone https://github.com/NetDevAutomate/socratic-study-mentor.git
+cd socratic-study-mentor
 ./scripts/install.sh
 ```
 
-This installs packages, registers CLI tools globally (`studyctl`, `session-export`, `session-sync`, etc.), sets up agent definitions for any detected AI tools, and optionally downloads the voice model for TTS support.
-
-For Ansible or CI (no interactive prompts):
+### 3 Steps to Start
 
 ```bash
-./scripts/install.sh --non-interactive
+studyctl setup      # Interactive configuration wizard
+studyctl web        # Launch the study web app
+studyctl --help     # See all commands
 ```
 
-Other modes: `--tools-only` (just CLI tools), `--agents-only` (just agent definitions).
+### Optional extras
+
+```bash
+pip install 'studyctl[all]'       # Everything (web, tui, content, mcp, notebooklm)
+pip install 'studyctl[web]'       # FastAPI web UI
+pip install 'studyctl[content]'   # PDF splitting + NotebookLM content pipeline
+pip install 'studyctl[mcp]'       # MCP server for AI coding assistants
+```
+
+### From source (advanced)
+
+The install script registers CLI tools globally, sets up agent definitions for any detected AI tools, and optionally downloads the voice model for TTS support.
+
+```bash
+./scripts/install.sh                  # Full install (interactive)
+./scripts/install.sh --non-interactive  # For Ansible/CI
+./scripts/install.sh --tools-only     # Just CLI tools
+./scripts/install.sh --agents-only    # Just agent definitions
+```
 
 Then run the interactive setup wizard:
 

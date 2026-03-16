@@ -35,10 +35,10 @@ studyctl = "studyctl.cli:cli"
 studyctl-mcp = "studyctl.mcp.server:main"
 
 [project.urls]
-Homepage = "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
-Repository = "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
-Issues = "https://github.com/NetDevAutomate/Socratic-Study-Mentor/issues"
-Documentation = "https://github.com/NetDevAutomate/Socratic-Study-Mentor/tree/main/docs"
+Homepage = "https://github.com/NetDevAutomate/socratic-study-mentor"
+Repository = "https://github.com/NetDevAutomate/socratic-study-mentor"
+Issues = "https://github.com/NetDevAutomate/socratic-study-mentor/issues"
+Documentation = "https://github.com/NetDevAutomate/socratic-study-mentor/tree/main/docs"
 
 [build-system]
 requires = ["hatchling"]
