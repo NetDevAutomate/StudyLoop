@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
-import pytest
-from fastapi.testclient import TestClient
+pytest = __import__("pytest")
+pytest.importorskip("fastapi")
 
-from studyctl.web.app import create_app
+from unittest.mock import patch  # noqa: E402
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from studyctl.web.app import create_app  # noqa: E402
 
 if TYPE_CHECKING:
     from pathlib import Path
