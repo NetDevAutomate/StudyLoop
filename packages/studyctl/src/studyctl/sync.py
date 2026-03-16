@@ -7,8 +7,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from .config import MIN_FILE_SIZE, SKIP_FILENAMES, SKIP_PATTERNS, SYNCABLE_EXTENSIONS, Topic
 from .pdf import md_to_pdf
+from .settings import MIN_FILE_SIZE, SKIP_FILENAMES, SKIP_PATTERNS, SYNCABLE_EXTENSIONS, Topic
 from .state import SyncState, file_hash
 
 

@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .config import get_state_dir, get_state_file
+from .settings import get_state_dir, get_state_file
 
 
 @dataclass

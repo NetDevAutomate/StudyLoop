@@ -55,6 +55,7 @@ themeBtn.addEventListener("click", () => {
 
 /* --- Voice toggle --- */
 const voiceBtn = $("#voice-toggle");
+const voiceSelect = $("#voice-select");
 let voicesLoaded = false;
 let preferredVoice = null;
 
@@ -63,12 +64,32 @@ function loadVoices() {
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return;
   voicesLoaded = true;
-  // Prefer natural/premium voices: Siri-like > Samantha > any English
-  preferredVoice =
-    voices.find((v) => v.lang.startsWith("en") && /premium|enhanced|natural/i.test(v.name)) ||
-    voices.find((v) => v.lang.startsWith("en") && /samantha|daniel|karen|moira|tessa|fiona/i.test(v.name)) ||
-    voices.find((v) => v.lang.startsWith("en-") && !v.name.includes("Google")) ||
-    voices.find((v) => v.lang.startsWith("en"));
+
+  // Populate dropdown with English voices
+  const englishVoices = voices.filter((v) => v.lang.startsWith("en"));
+  voiceSelect.innerHTML = "";
+  englishVoices.forEach((v) => {
+    const opt = document.createElement("option");
+    opt.value = v.name;
+    const label = v.name.replace(/Microsoft |Google |Apple /i, "");
+    opt.textContent = v.localService ? label : `${label} (online)`;
+    voiceSelect.appendChild(opt);
+  });
+
+  // Restore saved selection, or auto-pick best voice
+  const saved = localStorage.getItem("voiceName");
+  const savedVoice = saved && englishVoices.find((v) => v.name === saved);
+  if (savedVoice) {
+    preferredVoice = savedVoice;
+    voiceSelect.value = savedVoice.name;
+  } else {
+    preferredVoice =
+      englishVoices.find((v) => /premium|enhanced|natural/i.test(v.name)) ||
+      englishVoices.find((v) => /samantha|daniel|karen|moira|tessa|fiona/i.test(v.name)) ||
+      englishVoices.find((v) => v.lang.startsWith("en-") && !v.name.includes("Google")) ||
+      englishVoices[0] || null;
+    if (preferredVoice) voiceSelect.value = preferredVoice.name;
+  }
 }
 
 if (window.speechSynthesis) {
@@ -76,13 +97,22 @@ if (window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = loadVoices;
 }
 
+voiceSelect.addEventListener("change", () => {
+  const voices = window.speechSynthesis.getVoices();
+  preferredVoice = voices.find((v) => v.name === voiceSelect.value) || null;
+  localStorage.setItem("voiceName", voiceSelect.value);
+  if (state.voiceOn) speakNow("Voice changed");
+});
+
 if (localStorage.getItem("voice") === "true") {
   state.voiceOn = true;
   voiceBtn.classList.add("active");
+  voiceSelect.classList.remove("hidden");
 }
 voiceBtn.addEventListener("click", () => {
   state.voiceOn = !state.voiceOn;
   voiceBtn.classList.toggle("active", state.voiceOn);
+  voiceSelect.classList.toggle("hidden", !state.voiceOn);
   localStorage.setItem("voice", state.voiceOn);
   if (state.voiceOn) {
     // Speak current card if in study view

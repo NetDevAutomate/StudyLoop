@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def _get_study_terms() -> list[str]:
     """Build study terms from configured topics, falling back to defaults."""
     try:
-        from .config import get_topics
+        from .settings import get_topics
 
         topics = get_topics()
         if topics:
@@ -931,7 +931,7 @@ def seed_concepts_from_config() -> int:
         if "concepts" not in tables:
             return 0
 
-        from .config import get_topics
+        from .settings import get_topics
 
         count = 0
         for topic in get_topics():
