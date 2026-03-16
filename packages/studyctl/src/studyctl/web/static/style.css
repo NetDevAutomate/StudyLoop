@@ -234,6 +234,8 @@ main {
   cursor: pointer;
   transition: all 0.3s;
   position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .card:hover { border-color: var(--accent); }
@@ -493,6 +495,8 @@ body.dyslexic .card-content {
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .config-bar select, .config-bar input {
@@ -503,11 +507,19 @@ body.dyslexic .card-content {
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.85rem;
+  min-width: 0;
 }
 
 .config-bar label {
   color: var(--text-muted);
   font-size: 0.85rem;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.config-bar label select {
+  width: 100%;
+  text-overflow: ellipsis;
 }
 
 /* --- History section --- */
