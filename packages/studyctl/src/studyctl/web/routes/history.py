@@ -38,7 +38,7 @@ def get_history() -> list[dict]:
         rows = conn.execute(
             "SELECT course, mode, total, correct, duration_seconds, "
             "started_at, finished_at "
-            "FROM review_sessions ORDER BY started_at DESC LIMIT 100"
+            "FROM review_sessions ORDER BY started_at DESC LIMIT 20"
         ).fetchall()
     finally:
         conn.close()
@@ -49,9 +49,8 @@ def get_history() -> list[dict]:
             "mode": r[1],
             "total": r[2],
             "correct": r[3],
-            "duration_seconds": r[4],
-            "started_at": r[5],
-            "finished_at": r[6],
+            "duration": r[4],
+            "date": r[5][:10] if r[5] else None,
         }
         for r in rows
     ]

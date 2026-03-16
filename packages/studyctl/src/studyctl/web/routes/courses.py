@@ -44,21 +44,24 @@ def list_courses(request: Request) -> list[dict]:
 
 
 @router.get("/sources/{course}")
-def list_sources(request: Request, course: str, mode: str = "flashcards") -> list[dict]:
-    """List unique source names for a course."""
+def list_sources(request: Request, course: str, mode: str = "flashcards") -> list[str]:
+    """List unique source names for a course (flat string array for app.js compat)."""
     courses = discover_directories(_get_dirs(request))
     match = next(((n, p) for n, p in courses if n == course), None)
     if not match:
         return []
     _, path = match
     fc_dir, quiz_dir = find_content_dirs(path)
+    sources: set[str] = set()
     if mode == "flashcards" and fc_dir:
-        cards = load_flashcards(fc_dir)
-        return [{"source": s} for s in sorted({c.source for c in cards})]
-    if mode == "quiz" and quiz_dir:
-        questions = load_quizzes(quiz_dir)
-        return [{"source": s} for s in sorted({q.source for q in questions})]
-    return []
+        for c in load_flashcards(fc_dir):
+            if c.source:
+                sources.add(c.source)
+    elif mode == "quiz" and quiz_dir:
+        for q in load_quizzes(quiz_dir):
+            if q.source:
+                sources.add(q.source)
+    return sorted(sources)
 
 
 @router.get("/stats/{course}")

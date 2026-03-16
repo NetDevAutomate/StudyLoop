@@ -80,11 +80,13 @@ class TestCoursesAPI:
         assert data[0]["flashcard_count"] == 2
         assert data[0]["quiz_count"] == 1
 
-    def test_sources(self, client: TestClient) -> None:
+    def test_sources_returns_flat_strings(self, client: TestClient) -> None:
         resp = client.get("/api/sources/test-course?mode=flashcards")
         assert resp.status_code == 200
         data = resp.json()
+        assert isinstance(data, list)
         assert len(data) >= 1
+        assert isinstance(data[0], str)
 
     def test_stats(self, client: TestClient) -> None:
         resp = client.get("/api/stats/test-course")
