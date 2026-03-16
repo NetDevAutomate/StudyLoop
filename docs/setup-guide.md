@@ -10,6 +10,7 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 - [Obsidian Vault Setup](#obsidian-vault-setup)
 - [NotebookLM Setup](#notebooklm-setup-optional)
 - [Session Database](#session-database)
+- [Content Pipeline](#content-pipeline)
 - [Cross-Machine Sync](#cross-machine-sync)
 - [Scheduling](#scheduling)
 - [Troubleshooting](#troubleshooting)
@@ -397,6 +398,51 @@ session-query list --since 7d    # List recent sessions
 session-query search "python"    # Search across all sessions
 ```
 
+## Content Pipeline
+
+The content pipeline converts PDFs and Obsidian notes into NotebookLM-powered study materials (audio overviews, flashcards, quizzes). It was absorbed from [notebooklm-pdf-by-chapters](https://github.com/andytaylor/notebooklm-pdf-by-chapters) and lives under `studyctl content`.
+
+### Install content dependencies
+
+```bash
+# PDF splitting (pymupdf + httpx)
+uv pip install studyctl[content]
+
+# NotebookLM integration (required for upload/generate/download commands)
+uv pip install studyctl[notebooklm]
+```
+
+### Configure review directories
+
+Point studyctl at the directories where content pipeline outputs land (flashcards, quizzes). These are picked up by `studyctl review`, the web PWA, and the TUI:
+
+```yaml
+# ~/.config/studyctl/config.yaml
+review:
+  directories:
+    - ~/Desktop/ZTM-DE/downloads
+    - ~/Desktop/Python/downloads
+```
+
+### Typical workflow
+
+```bash
+# 1. Split a PDF textbook into per-chapter files
+studyctl content split ~/Books/my-textbook.pdf -o ./chapters
+
+# 2. Upload chapters to NotebookLM and generate audio overviews
+studyctl content process ~/Books/my-textbook.pdf -n NOTEBOOK_ID
+
+# 3. Or use the syllabus workflow for multi-episode podcast generation
+studyctl content syllabus -n NOTEBOOK_ID -o ./chapters
+studyctl content autopilot -o ./chapters
+
+# 4. Convert Obsidian notes to PDFs and upload in one step
+studyctl content from-obsidian ~/Obsidian/Vault/Study/Python
+```
+
+See the [CLI Reference](../README.md#studyctl-content) for all available commands.
+
 ## Cross-Machine Sync
 
 Both tools support syncing state across machines via SSH.
@@ -404,27 +450,22 @@ Both tools support syncing state across machines via SSH.
 ### studyctl state sync
 
 ```bash
-# Initialize sync config
-studyctl state init
-
-# Edit ~/.config/studyctl/sync.yaml to add your remotes
-# Then:
-studyctl state push              # Push local state to remotes
-studyctl state pull              # Pull state from remotes
-studyctl state status            # Check connectivity
+studyctl state push macmini      # Push local state to a named host
+studyctl state pull macbookpro   # Pull state from a named host
+studyctl state status            # Check connectivity to all hosts
+studyctl state init              # Initialize sync config
 ```
 
 ### Session database sync
 
 ```bash
-# Push sessions to a remote machine
-session-sync push user@remote-host
-
-# Pull sessions from a remote machine
-session-sync pull user@remote-host
+session-sync push macmini        # Push sessions to a named host
+session-sync pull macbookpro     # Pull sessions from a named host
+session-sync sync work-macbook   # Two-way sync with a host
+session-sync endpoints           # List all configured remote hosts
 ```
 
-This uses delta sync — only new sessions are transferred, not the entire database.
+Both commands read host definitions from `~/.config/studyctl/config.yaml` (the `hosts` section). See the [Hosts configuration](#hosts--cross-machine-sync) in the README for the full schema. Delta sync transfers only new sessions, not the entire database.
 
 ## Scheduling
 

@@ -90,11 +90,20 @@ socratic-study-mentor/
 │   │   │   │   ├── _review.py      # review, struggles, wins, progress, bridges
 │   │   │   │   ├── _config.py      # config init, config show
 │   │   │   │   ├── _state.py       # state push/pull/status/init
+│   │   │   │   ├── _content.py     # content group (split, process, syllabus, etc.)
 │   │   │   │   ├── _schedule.py    # schedule group + calendar blocks
 │   │   │   │   └── _web.py         # web, tui, docs commands
+│   │   │   ├── content/             # Content pipeline (absorbed from pdf-by-chapters)
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── splitter.py     # PDF splitting by TOC bookmarks or page ranges
+│   │   │   │   ├── notebooklm_client.py  # NotebookLM API (upload, generate, download)
+│   │   │   │   ├── syllabus.py     # Podcast syllabus chunking and state machine
+│   │   │   │   ├── markdown_converter.py # Obsidian markdown → PDF conversion
+│   │   │   │   ├── models.py       # Shared data models (UploadResult, etc.)
+│   │   │   │   └── storage.py      # Course directory management
 │   │   │   ├── services/           # Framework-agnostic service layer
 │   │   │   │   ├── review.py       # Review operations (cards, stats, SM-2)
-│   │   │   │   └── content.py      # Content pipeline (Phase 1)
+│   │   │   │   └── content.py      # Content service wrappers
 │   │   │   ├── settings.py         # All configuration, topics, path resolution
 │   │   │   ├── review_db.py        # SQLite SM-2 spaced repetition (WAL mode)
 │   │   │   ├── review_loader.py    # Flashcard/quiz JSON loader + validation

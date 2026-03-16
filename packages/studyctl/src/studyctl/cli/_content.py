@@ -254,7 +254,7 @@ def syllabus(
         types.append("video")
     state.artifact_types = types
 
-    write_state(state_path, state)
+    write_state(state, state_path)
 
     # Display syllabus table
     table = Table(title=f"Syllabus: {resolved_book_name}")
@@ -308,7 +308,7 @@ def autopilot(output_dir: Path, book_name: str | None, timeout: int) -> None:
 
     # Start generation
     chunk.status = ChunkStatus.GENERATING
-    write_state(state_path, state)
+    write_state(state, state_path)
 
     try:
         asyncio.run(start_chunk_generation(state.notebook_id, chunk, timeout=timeout))
@@ -322,7 +322,7 @@ def autopilot(output_dir: Path, book_name: str | None, timeout: int) -> None:
         chunk.status = ChunkStatus.FAILED
         console.print(f"[red]Episode {chunk.episode} failed: {exc}[/red]")
     finally:
-        write_state(state_path, state)
+        write_state(state, state_path)
 
 
 @content_group.command("status")
