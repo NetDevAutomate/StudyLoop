@@ -1224,23 +1224,48 @@ uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </sp
 uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-k<span class="w"> </span><span class="s2">&quot;test_search&quot;</span>
 </code></pre></div>
 <p>Tests live in:
-- <code>packages/agent-session-tools/tests/</code> — session tools tests
-- <code>tests/</code> — workspace-level integration tests (if any)</p>
+- <code>packages/studyctl/tests/</code> — studyctl CLI and review tests
+- <code>packages/agent-session-tools/tests/</code> — session tools tests</p>
 <h2 id="project-structure">Project Structure<a class="headerlink" href="#project-structure" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>socratic-study-mentor/
 ├── packages/
 │   ├── studyctl/                    # Study pipeline CLI
 │   │   ├── src/studyctl/
-│   │   │   ├── cli.py              # Click CLI commands
-│   │   │   ├── config.py           # Topic configuration
-│   │   │   ├── settings.py         # Config file loader
+│   │   │   ├── cli/                # Click CLI (LazyGroup package)
+│   │   │   │   ├── __init__.py     # Root group + lazy registration
+│   │   │   │   ├── _lazy.py        # LazyGroup class
+│   │   │   │   ├── _shared.py      # Console, helpers, constants
+│   │   │   │   ├── _sync.py        # sync, status, audio, topics, dedup
+│   │   │   │   ├── _review.py      # review, struggles, wins, progress, bridges
+│   │   │   │   ├── _config.py      # config init, config show
+│   │   │   │   ├── _state.py       # state push/pull/status/init
+│   │   │   │   ├── _content.py     # content group (split, process, syllabus, etc.)
+│   │   │   │   ├── _schedule.py    # schedule group + calendar blocks
+│   │   │   │   └── _web.py         # web, tui, docs commands
+│   │   │   ├── content/             # Content pipeline (absorbed from pdf-by-chapters)
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── splitter.py     # PDF splitting by TOC bookmarks or page ranges
+│   │   │   │   ├── notebooklm_client.py  # NotebookLM API (upload, generate, download)
+│   │   │   │   ├── syllabus.py     # Podcast syllabus chunking and state machine
+│   │   │   │   ├── markdown_converter.py # Obsidian markdown → PDF conversion
+│   │   │   │   ├── models.py       # Shared data models (UploadResult, etc.)
+│   │   │   │   └── storage.py      # Course directory management
+│   │   │   ├── services/           # Framework-agnostic service layer
+│   │   │   │   ├── review.py       # Review operations (cards, stats, SM-2)
+│   │   │   │   └── content.py      # Content service wrappers
+│   │   │   ├── settings.py         # All configuration, topics, path resolution
+│   │   │   ├── review_db.py        # SQLite SM-2 spaced repetition (WAL mode)
+│   │   │   ├── review_loader.py    # Flashcard/quiz JSON loader + validation
 │   │   │   ├── sync.py             # NotebookLM sync
 │   │   │   ├── state.py            # Sync state tracking
 │   │   │   ├── history.py          # Session history queries
 │   │   │   ├── scheduler.py        # launchd/cron jobs
 │   │   │   ├── shared.py           # Cross-machine sync
 │   │   │   ├── maintenance.py      # Notebook deduplication
+│   │   │   ├── tui/                # Textual TUI app
+│   │   │   ├── web/                # Web PWA server + static assets
 │   │   │   └── pdf.py              # Markdown→PDF export
+│   │   ├── tests/
 │   │   └── pyproject.toml
 │   └── agent-session-tools/         # Session management CLI
 │       ├── src/agent_session_tools/
@@ -1340,7 +1365,7 @@ uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </sp
 <span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">kubernetes</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">k8s</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">containers</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">orchestration</span><span class="p p-Indicator">]</span>
 </code></pre></div>
 <p>The <code>tags</code> list is used by <code>studyctl struggles</code> and <code>studyctl review</code> to match session content to topics.</p>
-<p>If you want to add default topics that ship with the project, edit <code>packages/studyctl/src/studyctl/config.py</code> and add to the fallback list in <code>get_topics()</code>.</p>
+<p>If you want to add default topics that ship with the project, edit <code>packages/studyctl/src/studyctl/settings.py</code> and add to the fallback list in <code>get_topics()</code>.</p>
 <h2 id="how-to-modify-agent-behaviour">How to Modify Agent Behaviour<a class="headerlink" href="#how-to-modify-agent-behaviour" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

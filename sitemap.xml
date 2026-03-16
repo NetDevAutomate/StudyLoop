@@ -2,74 +2,186 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/index.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/agent-install.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/artefacts.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/audhd-framework.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/audhd-learning-philosophy.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorm-v1.4-features.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/cli-reference.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/contributing.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/mcp.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/network-bridges.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plan-v1.4-features.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/roadmap.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/session-protocol.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/setup-guide.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/socratic-engine.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/voice-output.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/analysis/phase9-spec-analysis.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-15-native-app-brainstorm.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-15-native-app-repackaging-brainstorm.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-15-unified-study-platform-brainstorm.html</loc>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-03-08-test-comprehensive-coverage-plan.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-03-15-consistency-review.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-03-15-feat-tui-polish-documentation-plan.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-03-15-feat-unified-study-platform-plan.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/2026-03-15-acp-research.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/2026-03-15-implementation-patterns.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/2026-03-15-retry-wrong-answers-best-practices.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/click-cli-patterns.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/fastapi-htmx-best-practices.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/mcp-native-app-research.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/mcp-python-server-patterns.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/monetisation-research.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/notebooklm-pdf-by-chapters-analysis.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/pypi-homebrew-packaging.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/repo-research-summary.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/swift-poc-feasibility.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/unified-platform-repo-research.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/research/unified-platform-specflow.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-03-15-architecture-review.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-03-15-deepening-yagni-review.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-03-15-plan-simplicity-review.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-03-15-security-review-unified-study-platform.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-03-15-tui-plan-agent-native-review.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-03-15-tui-plan-architecture-review.html</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-03-15-tui-polish-plan-review.html</loc>
+         <lastmod>2026-03-16</lastmod>
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/2026-03-13-marathon-session-learnings.html</loc>
-         <lastmod>2026-03-15</lastmod>
+         <lastmod>2026-03-16</lastmod>
     </url>
 </urlset>

@@ -1,0 +1,2830 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/fastapi-htmx-best-practices.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>FastAPI + HTMX + Jinja2 Best Practices (2026) - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#fastapi-htmx-jinja2-best-practices-2026" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              FastAPI + HTMX + Jinja2 Best Practices (2026)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Project Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Project Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key principles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mainpy-skeleton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        main.py skeleton
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-htmx-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. HTMX Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. HTMX Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2a-partial-page-updates-the-core-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2a. Partial page updates (the core pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2b-form-submission" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2b. Form submission
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2c-infinite-scroll-artefact-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2c. Infinite scroll (artefact list)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2d-live-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2d. Live search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2e-modal-dialogs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2e. Modal dialogs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2f-out-of-band-oob-swaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2f. Out-of-Band (OOB) swaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2g-history-url-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2g. History / URL updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2h-csrf-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2h. CSRF protection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-htmx-alpinejs-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. HTMX + Alpine.js Together
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. HTMX + Alpine.js Together">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-division-of-responsibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The division of responsibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#script-loading-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Script loading order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reinitializing-alpine-after-htmx-swaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reinitializing Alpine after HTMX swaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flashcard-flip-animation-alpinejs-only-no-server-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flashcard flip animation (Alpine.js only, no server needed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alpinejs-stores-for-shared-client-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alpine.js stores for shared client state
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-fastapi-dependency-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. FastAPI Dependency Injection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. FastAPI Dependency Injection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#4a-database-connection-via-lifespan-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4a. Database connection via lifespan + dependency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4b-dependencies-with-yield-for-per-request-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4b. Dependencies with yield (for per-request resources)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4c-config-via-pydantic-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4c. Config via pydantic-settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-dual-api-json-htmx-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Dual API: JSON + HTMX Endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Dual API: JSON + HTMX Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strategy-a-separate-routers-recommended-for-this-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy A: Separate routers (recommended for this project)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strategy-b-single-endpoint-content-negotiation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy B: Single endpoint, content negotiation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strategy-c-fasthx-library-decorator-based" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy C: fasthx library (decorator-based)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-page-vs-partial-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full page vs partial detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-jinja2-template-inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Jinja2 Template Inheritance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Jinja2 Template Inheritance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basehtml-master-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        base.html (master layout)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#page-template-extends-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Page template (extends base)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partial-template-bare-fragment-no-extends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial template (bare fragment, NO extends)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jinja2-macros-for-reusable-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jinja2 macros for reusable components
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-authentication-http-basic-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Authentication: HTTP Basic Auth
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Authentication: HTTP Basic Auth">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implementation-with-timing-attack-safe-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation with timing-attack-safe comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-globally-or-per-router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply globally or per-router
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skip-auth-for-static-files-and-health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skip auth for static files and health checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-static-files-pwa-service-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Static Files + PWA Service Worker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Static Files + PWA Service Worker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-file-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static file serving
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pwa-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PWA Manifest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#service-worker-swjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Worker (sw.js)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register-the-service-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register the service worker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-websocket-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. WebSocket Support
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. WebSocket Support">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastapi-websocket-for-pomodoro-timer-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FastAPI WebSocket for Pomodoro timer sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-side-alpinejs-native-websocket-not-htmx-ws-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client-side: Alpine.js + native WebSocket (not HTMX ws extension)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-htmx-ws-extension-vs-native-websocket" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to use HTMX ws extension vs native WebSocket
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-sent-events-sse-for-live-dashboard-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server-Sent Events (SSE) for live dashboard updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Performance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Performance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aiosqlite-async-wrapper-around-sync-sqlite3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        aiosqlite: async wrapper around sync sqlite3
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-not-connection-pooling-for-sqlite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why NOT connection pooling for SQLite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uvicorn-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        uvicorn workers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#async-vs-sync-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Async vs sync endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response-caching-for-htmx-fragments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response caching for HTMX fragments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#htmx-specific-performance-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTMX-specific performance tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference-complete-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference: Complete Dependency Graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-libraries-pyprojecttoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Libraries (pyproject.toml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="fastapi-htmx-jinja2-best-practices-2026">FastAPI + HTMX + Jinja2 Best Practices (2026)<a class="headerlink" href="#fastapi-htmx-jinja2-best-practices-2026" title="Permanent link">&para;</a></h1>
+<p>Research compiled from official FastAPI docs, HTMX docs, Alpine.js docs, fasthx library (704 stars),
+aiosqlite PyPI, and community patterns. Targeted at the Socratic Study Mentor web application.</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#1-project-structure">Project Structure</a></li>
+<li><a href="#2-htmx-patterns">HTMX Patterns</a></li>
+<li><a href="#3-htmx--alpinejs-together">HTMX + Alpine.js Together</a></li>
+<li><a href="#4-fastapi-dependency-injection">FastAPI Dependency Injection</a></li>
+<li><a href="#5-dual-api-json--htmx-endpoints">Dual API: JSON + HTMX Endpoints</a></li>
+<li><a href="#6-jinja2-template-inheritance">Jinja2 Template Inheritance</a></li>
+<li><a href="#7-authentication-http-basic-auth">Authentication: HTTP Basic Auth</a></li>
+<li><a href="#8-static-files--pwa-service-worker">Static Files + PWA Service Worker</a></li>
+<li><a href="#9-websocket-support">WebSocket Support</a></li>
+<li><a href="#10-performance">Performance</a></li>
+</ol>
+<hr />
+<h2 id="1-project-structure">1. Project Structure<a class="headerlink" href="#1-project-structure" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: FastAPI official docs ("Bigger Applications - Multiple Files"), community consensus.</p>
+<p>The recommended layout separates routes, templates, static files, and business logic:</p>
+<div class="highlight"><pre><span></span><code>study_web/
+    __init__.py
+    main.py                    # FastAPI app factory, mount statics, include routers
+    config.py                  # Settings via pydantic-settings (BaseSettings)
+    deps.py                    # Shared dependencies: db, auth, config, templates
+    models.py                  # Pydantic models for request/response validation
+    db.py                      # Database connection management (aiosqlite)
+    routers/
+        __init__.py
+        flashcards.py          # /cards/* routes
+        artefacts.py           # /artefacts/* routes (audio/video/PDF)
+        dashboard.py           # /dashboard/* routes
+        settings.py            # /settings/* routes
+        feedback.py            # /feedback/* routes
+        api.py                 # /api/* JSON-only endpoints
+        ws.py                  # WebSocket endpoints
+    templates/
+        base.html              # Master layout with nav, HTMX/Alpine script tags
+        partials/              # HTMX fragment templates (no &lt;html&gt;/&lt;body&gt;)
+            _card.html
+            _card_flip.html
+            _artefact_item.html
+            _progress_chart.html
+            _search_results.html
+            _modal.html
+            _toast.html
+        pages/                 # Full page templates (extend base.html)
+            flashcards.html
+            artefacts.html
+            dashboard.html
+            settings.html
+            feedback.html
+        components/            # Reusable Jinja2 macros
+            _nav.html
+            _pagination.html
+            _form_field.html
+    static/
+        css/
+            style.css
+        js/
+            app.js             # Alpine.js stores, HTMX config
+        img/
+        manifest.json          # PWA manifest
+        sw.js                  # Service worker
+    tests/
+        conftest.py
+        test_flashcards.py
+        test_artefacts.py
+        test_dashboard.py
+</code></pre></div>
+<h3 id="key-principles">Key principles<a class="headerlink" href="#key-principles" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>One router per page/feature</strong> -- each router is an <code>APIRouter</code> with its own prefix and tags.</li>
+<li><strong>Templates split into pages/ and partials/</strong> -- pages extend <code>base.html</code>; partials are bare HTML
+  fragments returned by HTMX endpoints.</li>
+<li><strong>deps.py centralises all <code>Depends()</code> callables</strong> -- avoids circular imports.</li>
+<li><strong>config.py uses <code>pydantic-settings</code></strong> -- loads from env vars / <code>.env</code> file.</li>
+</ul>
+<h3 id="mainpy-skeleton">main.py skeleton<a class="headerlink" href="#mainpy-skeleton" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.staticfiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticFiles</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.templating</span><span class="w"> </span><span class="kn">import</span> <span class="n">Jinja2Templates</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">study_web.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">study_web.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">init_db</span><span class="p">,</span> <span class="n">close_db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">study_web.routers</span><span class="w"> </span><span class="kn">import</span> <span class="n">flashcards</span><span class="p">,</span> <span class="n">artefacts</span><span class="p">,</span> <span class="n">dashboard</span><span class="p">,</span> <span class="n">settings</span> <span class="k">as</span> <span class="n">settings_router</span><span class="p">,</span> <span class="n">feedback</span><span class="p">,</span> <span class="n">api</span><span class="p">,</span> <span class="n">ws</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+    <span class="c1"># Startup: initialise DB connection</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="k">await</span> <span class="n">init_db</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">db_path</span><span class="p">)</span>
+    <span class="k">yield</span>
+    <span class="c1"># Shutdown: close DB connection</span>
+    <span class="k">await</span> <span class="n">close_db</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Study Mentor Web&quot;</span><span class="p">,</span> <span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+
+<span class="c1"># Static files</span>
+<span class="n">app</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/static&quot;</span><span class="p">,</span> <span class="n">StaticFiles</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;study_web/static&quot;</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">)</span>
+
+<span class="c1"># Include routers</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">flashcards</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/cards&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;flashcards&quot;</span><span class="p">])</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">artefacts</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/artefacts&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;artefacts&quot;</span><span class="p">])</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">dashboard</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/dashboard&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;dashboard&quot;</span><span class="p">])</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">settings_router</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/settings&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;settings&quot;</span><span class="p">])</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">feedback</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/feedback&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;feedback&quot;</span><span class="p">])</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;api&quot;</span><span class="p">])</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">ws</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;websocket&quot;</span><span class="p">])</span>
+</code></pre></div>
+<hr />
+<h2 id="2-htmx-patterns">2. HTMX Patterns<a class="headerlink" href="#2-htmx-patterns" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: HTMX official docs v2.x, htmx.org/examples.</p>
+<h3 id="2a-partial-page-updates-the-core-pattern">2a. Partial page updates (the core pattern)<a class="headerlink" href="#2a-partial-page-updates-the-core-pattern" title="Permanent link">&para;</a></h3>
+<p>Every HTMX endpoint returns an HTML <strong>fragment</strong>, not a full page. The fragment replaces
+a targeted DOM element.</p>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Button triggers GET, response replaces #card-container --&gt;</span>
+<span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-get</span><span class="o">=</span><span class="s">&quot;/cards/next&quot;</span>
+        <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+        <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;outerHTML&quot;</span><span class="p">&gt;</span>
+    Next Card
+<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;card-container&quot;</span><span class="p">&gt;</span>
+    {% include &quot;partials/_card.html&quot; %}
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div>
+<p>FastAPI endpoint returns the partial:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/next&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">next_card</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)):</span>
+    <span class="n">card</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_random_card</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+        <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;partials/_card.html&quot;</span><span class="p">,</span>
+        <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;card&quot;</span><span class="p">:</span> <span class="n">card</span><span class="p">},</span>
+    <span class="p">)</span>
+</code></pre></div>
+<h3 id="2b-form-submission">2b. Form submission<a class="headerlink" href="#2b-form-submission" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">form</span> <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/feedback/submit&quot;</span>
+      <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#feedback-result&quot;</span>
+      <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;innerHTML&quot;</span>
+      <span class="na">hx-indicator</span><span class="o">=</span><span class="s">&quot;#spinner&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">textarea</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;message&quot;</span> <span class="na">required</span><span class="p">&gt;&lt;/</span><span class="nt">textarea</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">button</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;submit&quot;</span><span class="p">&gt;</span>Send<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;spinner&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;htmx-indicator&quot;</span><span class="p">&gt;</span>Sending...<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">form</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;feedback-result&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div>
+<p>Server returns a success fragment or validation errors as HTML.</p>
+<h3 id="2c-infinite-scroll-artefact-list">2c. Infinite scroll (artefact list)<a class="headerlink" href="#2c-infinite-scroll-artefact-list" title="Permanent link">&para;</a></h3>
+<p>The last element in the list triggers loading the next page when scrolled into view:</p>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Each page of results --&gt;</span>
+{% for item in artefacts %}
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;artefact-item&quot;</span><span class="p">&gt;</span>{{ item.title }}<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+{% endfor %}
+
+<span class="cm">&lt;!-- Sentinel: triggers next page load when revealed --&gt;</span>
+{% if has_more %}
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">hx-get</span><span class="o">=</span><span class="s">&quot;/artefacts/list?page={{ next_page }}&quot;</span>
+     <span class="na">hx-trigger</span><span class="o">=</span><span class="s">&quot;revealed&quot;</span>
+     <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;afterend&quot;</span>
+     <span class="na">hx-indicator</span><span class="o">=</span><span class="s">&quot;#load-more-spinner&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;load-more-spinner&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;htmx-indicator&quot;</span><span class="p">&gt;</span>Loading...<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+{% endif %}
+</code></pre></div>
+<p><strong>Key</strong>: use <code>hx-trigger="revealed"</code> on the last element. For <code>overflow-y: scroll</code>
+containers, use <code>hx-trigger="intersect once"</code> instead.</p>
+<h3 id="2d-live-search">2d. Live search<a class="headerlink" href="#2d-live-search" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;search&quot;</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;q&quot;</span>
+       <span class="na">placeholder</span><span class="o">=</span><span class="s">&quot;Search artefacts...&quot;</span>
+       <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/artefacts/search&quot;</span>
+       <span class="na">hx-trigger</span><span class="o">=</span><span class="s">&quot;input changed delay:500ms, keyup[key==&#39;Enter&#39;]&quot;</span>
+       <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#search-results&quot;</span>
+       <span class="na">hx-indicator</span><span class="o">=</span><span class="s">&quot;.search-indicator&quot;</span><span class="p">&gt;</span>
+
+<span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;search-indicator htmx-indicator&quot;</span><span class="p">&gt;</span>Searching...<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;search-results&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div>
+<p><strong>Key patterns</strong>:
+- <code>delay:500ms</code> debounces input to avoid flooding the server.
+- <code>changed</code> modifier prevents re-sending on arrow keys / same value.
+- Comma-separated triggers allow Enter key as immediate submit.</p>
+<h3 id="2e-modal-dialogs">2e. Modal dialogs<a class="headerlink" href="#2e-modal-dialogs" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Trigger button --&gt;</span>
+<span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-get</span><span class="o">=</span><span class="s">&quot;/artefacts/42/details&quot;</span>
+        <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;body&quot;</span>
+        <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;beforeend&quot;</span><span class="p">&gt;</span>
+    View Details
+<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+</code></pre></div>
+<p>Server returns the modal fragment appended to <code>&lt;body&gt;</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- partials/_modal.html --&gt;</span>
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;modal-overlay&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;modal-overlay&quot;</span>
+     <span class="na">x-data</span><span class="o">=</span><span class="s">&quot;{ open: true }&quot;</span>
+     <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;open&quot;</span>
+     <span class="na">x-transition:enter</span><span class="o">=</span><span class="s">&quot;transition ease-out duration-200&quot;</span>
+     <span class="na">x-transition:enter-start</span><span class="o">=</span><span class="s">&quot;opacity-0&quot;</span>
+     <span class="na">x-transition:enter-end</span><span class="o">=</span><span class="s">&quot;opacity-100&quot;</span>
+     <span class="na">x-transition:leave</span><span class="o">=</span><span class="s">&quot;transition ease-in duration-150&quot;</span>
+     <span class="na">x-transition:leave-start</span><span class="o">=</span><span class="s">&quot;opacity-100&quot;</span>
+     <span class="na">x-transition:leave-end</span><span class="o">=</span><span class="s">&quot;opacity-0&quot;</span>
+     <span class="err">@</span><span class="na">keydown</span><span class="err">.</span><span class="na">escape</span><span class="err">.</span><span class="na">window</span><span class="o">=</span><span class="s">&quot;open = false; setTimeout(() =&gt; $el.remove(), 200)&quot;</span><span class="p">&gt;</span>
+
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;modal-underlay&quot;</span> <span class="err">@</span><span class="na">click</span><span class="o">=</span><span class="s">&quot;open = false; setTimeout(() =&gt; $el.remove(), 200)&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;modal-content&quot;</span>
+         <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;open&quot;</span>
+         <span class="na">x-transition:enter</span><span class="o">=</span><span class="s">&quot;transition ease-out duration-200&quot;</span>
+         <span class="na">x-transition:enter-start</span><span class="o">=</span><span class="s">&quot;opacity-0 scale-95&quot;</span>
+         <span class="na">x-transition:enter-end</span><span class="o">=</span><span class="s">&quot;opacity-100 scale-100&quot;</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;</span>{{ artefact.title }}<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ artefact.description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">button</span> <span class="err">@</span><span class="na">click</span><span class="o">=</span><span class="s">&quot;open = false; setTimeout(() =&gt; $el.remove(), 200)&quot;</span>
+                <span class="na">class</span><span class="o">=</span><span class="s">&quot;btn&quot;</span><span class="p">&gt;</span>Close<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div>
+<p><strong>Key</strong>: Alpine.js handles the animation/close; HTMX handles fetching the modal content
+from the server. This is the recommended split of concerns.</p>
+<h3 id="2f-out-of-band-oob-swaps">2f. Out-of-Band (OOB) swaps<a class="headerlink" href="#2f-out-of-band-oob-swaps" title="Permanent link">&para;</a></h3>
+<p>Update multiple parts of the page from a single response:</p>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Primary response swapped into hx-target as normal --&gt;</span>
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;card-container&quot;</span><span class="p">&gt;</span>
+    {% include &quot;partials/_card.html&quot; %}
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+
+<span class="cm">&lt;!-- OOB: also update the progress counter --&gt;</span>
+<span class="p">&lt;</span><span class="nt">span</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;progress-count&quot;</span> <span class="na">hx-swap-oob</span><span class="o">=</span><span class="s">&quot;true&quot;</span><span class="p">&gt;</span>
+    {{ completed }} / {{ total }}
+<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+
+<span class="cm">&lt;!-- OOB: also update the streak display --&gt;</span>
+<span class="p">&lt;</span><span class="nt">span</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;streak-display&quot;</span> <span class="na">hx-swap-oob</span><span class="o">=</span><span class="s">&quot;true&quot;</span><span class="p">&gt;</span>
+    Streak: {{ streak }}
+<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</code></pre></div>
+<p><strong>Use case</strong>: After answering a flashcard, update the card AND the progress counter
+AND the streak display in one response. No extra requests needed.</p>
+<h3 id="2g-history-url-updates">2g. History / URL updates<a class="headerlink" href="#2g-history-url-updates" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">a</span> <span class="na">hx-get</span><span class="o">=</span><span class="s">&quot;/cards/deck/python-basics&quot;</span>
+   <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#main-content&quot;</span>
+   <span class="na">hx-push-url</span><span class="o">=</span><span class="s">&quot;true&quot;</span><span class="p">&gt;</span>
+    Python Basics
+<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</code></pre></div>
+<p><strong>Critical rule</strong>: If you push a URL, that URL MUST return a full page when accessed
+directly (e.g., user refreshes or shares the link). Detect HTMX requests via the
+<code>HX-Request</code> header and return partial vs full page accordingly.</p>
+<h3 id="2h-csrf-protection">2h. CSRF protection<a class="headerlink" href="#2h-csrf-protection" title="Permanent link">&para;</a></h3>
+<p>Set CSRF token globally via <code>hx-headers</code> on the <code>&lt;body&gt;</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">body</span> <span class="na">hx-headers</span><span class="o">=</span><span class="s">&#39;{&quot;X-CSRF-Token&quot;: &quot;{{ csrf_token }}&quot;}&#39;</span><span class="p">&gt;</span>
+</code></pre></div>
+<hr />
+<h2 id="3-htmx-alpinejs-together">3. HTMX + Alpine.js Together<a class="headerlink" href="#3-htmx-alpinejs-together" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: HTMX docs "Scripting" section, Alpine.js docs, community patterns.</p>
+<h3 id="the-division-of-responsibility">The division of responsibility<a class="headerlink" href="#the-division-of-responsibility" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Tool</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fetching data from server</td>
+<td>HTMX</td>
+<td>Server returns HTML fragments</td>
+</tr>
+<tr>
+<td>Toggling UI state (dropdowns, tabs)</td>
+<td>Alpine.js</td>
+<td>No server round-trip needed</td>
+</tr>
+<tr>
+<td>Animations &amp; transitions</td>
+<td>Alpine.js</td>
+<td><code>x-transition</code> is declarative CSS</td>
+</tr>
+<tr>
+<td>Card flip animation</td>
+<td>Alpine.js</td>
+<td>Pure client-side state toggle</td>
+</tr>
+<tr>
+<td>Form validation feedback</td>
+<td>HTMX</td>
+<td>Server validates, returns error HTML</td>
+</tr>
+<tr>
+<td>Pomodoro timer display</td>
+<td>Alpine.js</td>
+<td>Client-side countdown, synced via WS</td>
+</tr>
+</tbody>
+</table>
+<h3 id="script-loading-order">Script loading order<a class="headerlink" href="#script-loading-order" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- base.html &lt;head&gt; --&gt;</span>
+<span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;https://unpkg.com/htmx.org@2.0.4&quot;</span>
+        <span class="na">integrity</span><span class="o">=</span><span class="s">&quot;sha384-...&quot;</span>
+        <span class="na">crossorigin</span><span class="o">=</span><span class="s">&quot;anonymous&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">script</span> <span class="na">defer</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</code></pre></div>
+<p>HTMX loads first (synchronous). Alpine loads deferred. They coexist without conflict
+because Alpine operates on <code>x-*</code> attributes and HTMX on <code>hx-*</code> attributes.</p>
+<h3 id="reinitializing-alpine-after-htmx-swaps">Reinitializing Alpine after HTMX swaps<a class="headerlink" href="#reinitializing-alpine-after-htmx-swaps" title="Permanent link">&para;</a></h3>
+<p>When HTMX swaps new HTML into the DOM, Alpine needs to initialize any new <code>x-data</code>
+elements. Alpine.js v3 handles this automatically via MutationObserver -- it detects
+new <code>x-data</code> attributes added to the DOM. <strong>No manual initialization needed.</strong></p>
+<p>However, if you need to run custom JS after an HTMX swap:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// app.js</span>
+<span class="nb">document</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;htmx:afterSwap&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Alpine auto-initializes x-data elements, but you can</span>
+<span class="w">    </span><span class="c1">// run additional setup here if needed</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;HTMX swapped:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">event</span><span class="p">.</span><span class="nx">detail</span><span class="p">.</span><span class="nx">target</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3 id="flashcard-flip-animation-alpinejs-only-no-server-needed">Flashcard flip animation (Alpine.js only, no server needed)<a class="headerlink" href="#flashcard-flip-animation-alpinejs-only-no-server-needed" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- partials/_card.html --&gt;</span>
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">x-data</span><span class="o">=</span><span class="s">&quot;{ flipped: false }&quot;</span>
+     <span class="na">class</span><span class="o">=</span><span class="s">&quot;card-container perspective-1000&quot;</span>
+     <span class="na">id</span><span class="o">=</span><span class="s">&quot;card-{{ card.id }}&quot;</span><span class="p">&gt;</span>
+
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;card-inner transition-transform duration-500&quot;</span>
+         <span class="na">:class</span><span class="o">=</span><span class="s">&quot;flipped ? &#39;rotate-y-180&#39; : &#39;&#39;&quot;</span><span class="p">&gt;</span>
+
+        <span class="cm">&lt;!-- Front face --&gt;</span>
+        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;card-face card-front&quot;</span> <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;!flipped&quot;</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ card.question }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">button</span> <span class="err">@</span><span class="na">click</span><span class="o">=</span><span class="s">&quot;flipped = true&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;btn&quot;</span><span class="p">&gt;</span>Show Answer<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+
+        <span class="cm">&lt;!-- Back face --&gt;</span>
+        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;card-face card-back&quot;</span> <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;flipped&quot;</span> <span class="na">x-transition</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ card.answer }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;rating-buttons&quot;</span><span class="p">&gt;</span>
+                <span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/cards/{{ card.id }}/rate&quot;</span>
+                        <span class="na">hx-vals</span><span class="o">=</span><span class="s">&#39;{&quot;rating&quot;: 1}&#39;</span>
+                        <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+                        <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;outerHTML&quot;</span><span class="p">&gt;</span>
+                    Hard
+                <span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+                <span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/cards/{{ card.id }}/rate&quot;</span>
+                        <span class="na">hx-vals</span><span class="o">=</span><span class="s">&#39;{&quot;rating&quot;: 3}&#39;</span>
+                        <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+                        <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;outerHTML&quot;</span><span class="p">&gt;</span>
+                    Good
+                <span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+                <span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/cards/{{ card.id }}/rate&quot;</span>
+                        <span class="na">hx-vals</span><span class="o">=</span><span class="s">&#39;{&quot;rating&quot;: 5}&#39;</span>
+                        <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+                        <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;outerHTML&quot;</span><span class="p">&gt;</span>
+                    Easy
+                <span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+            <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div>
+<p>CSS for the 3D flip:</p>
+<div class="highlight"><pre><span></span><code><span class="p">.</span><span class="nc">perspective-1000</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">perspective</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="kt">px</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="p">.</span><span class="nc">card-inner</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">transform-style</span><span class="p">:</span><span class="w"> </span><span class="kc">preserve-3d</span><span class="p">;</span><span class="w"> </span><span class="k">position</span><span class="p">:</span><span class="w"> </span><span class="kc">relative</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="p">.</span><span class="nc">rotate-y-180</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">transform</span><span class="p">:</span><span class="w"> </span><span class="nb">rotateY</span><span class="p">(</span><span class="mi">180</span><span class="kt">deg</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="p">.</span><span class="nc">card-face</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">backface-visibility</span><span class="p">:</span><span class="w"> </span><span class="kc">hidden</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="p">.</span><span class="nc">card-back</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">transform</span><span class="p">:</span><span class="w"> </span><span class="nb">rotateY</span><span class="p">(</span><span class="mi">180</span><span class="kt">deg</span><span class="p">);</span><span class="w"> </span><span class="k">position</span><span class="p">:</span><span class="w"> </span><span class="kc">absolute</span><span class="p">;</span><span class="w"> </span><span class="k">inset</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p><strong>Pattern</strong>: Alpine handles the flip (client-side). When the user rates the card,
+HTMX sends the rating to the server and swaps in the next card. Clean separation.</p>
+<h3 id="alpinejs-stores-for-shared-client-state">Alpine.js stores for shared client state<a class="headerlink" href="#alpinejs-stores-for-shared-client-state" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// app.js -- Alpine global store for study session state</span>
+<span class="nb">document</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;alpine:init&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Alpine</span><span class="p">.</span><span class="nx">store</span><span class="p">(</span><span class="s1">&#39;session&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">cardsReviewed</span><span class="o">:</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">streak</span><span class="o">:</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">pomodoroMinutes</span><span class="o">:</span><span class="w"> </span><span class="mf">25</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">pomodoroRunning</span><span class="o">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+
+<span class="w">        </span><span class="nx">incrementReviewed</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">cardsReviewed</span><span class="o">++</span><span class="p">;</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nx">resetStreak</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">streak</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>Access from any component: <code>$store.session.cardsReviewed</code>.</p>
+<hr />
+<h2 id="4-fastapi-dependency-injection">4. FastAPI Dependency Injection<a class="headerlink" href="#4-fastapi-dependency-injection" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: FastAPI official docs (Dependencies, Dependencies with yield, Lifespan Events).</p>
+<h3 id="4a-database-connection-via-lifespan-dependency">4a. Database connection via lifespan + dependency<a class="headerlink" href="#4a-database-connection-via-lifespan-dependency" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># db.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">aiosqlite</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">init_db</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">Connection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create and return an aiosqlite connection. Called at startup.&quot;&quot;&quot;</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="k">await</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">db_path</span><span class="p">))</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">row_factory</span> <span class="o">=</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">Row</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA journal_mode=WAL&quot;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA foreign_keys=ON&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">db</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close_db</span><span class="p">(</span><span class="n">db</span><span class="p">:</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">Connection</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Close the database connection. Called at shutdown.&quot;&quot;&quot;</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># deps.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.templating</span><span class="w"> </span><span class="kn">import</span> <span class="n">Jinja2Templates</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">aiosqlite</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">study_web.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span><span class="p">,</span> <span class="n">get_settings</span>
+
+
+<span class="n">templates</span> <span class="o">=</span> <span class="n">Jinja2Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;study_web/templates&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_db</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">Connection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve the shared DB connection from app state.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_templates</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Jinja2Templates</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the shared templates instance.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">templates</span>
+
+
+<span class="c1"># Type aliases for clean signatures</span>
+<span class="n">DB</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">aiosqlite</span><span class="o">.</span><span class="n">Connection</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)]</span>
+<span class="n">Templates</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Jinja2Templates</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_templates</span><span class="p">)]</span>
+<span class="n">Config</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Settings</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_settings</span><span class="p">)]</span>
+</code></pre></div>
+<p>Usage in routes:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># routers/flashcards.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTMLResponse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">study_web.deps</span><span class="w"> </span><span class="kn">import</span> <span class="n">DB</span><span class="p">,</span> <span class="n">Templates</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
+
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">flashcard_page</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">,</span> <span class="n">tmpl</span><span class="p">:</span> <span class="n">Templates</span><span class="p">):</span>
+    <span class="n">decks</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_fetchall</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM decks&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tmpl</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+        <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;pages/flashcards.html&quot;</span><span class="p">,</span>
+        <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;decks&quot;</span><span class="p">:</span> <span class="n">decks</span><span class="p">},</span>
+    <span class="p">)</span>
+</code></pre></div>
+<h3 id="4b-dependencies-with-yield-for-per-request-resources">4b. Dependencies with yield (for per-request resources)<a class="headerlink" href="#4b-dependencies-with-yield-for-per-request-resources" title="Permanent link">&para;</a></h3>
+<p>If you need a per-request transaction or cursor:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># deps.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncGenerator</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_cursor</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="n">aiosqlite</span><span class="o">.</span><span class="n">Cursor</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Per-request cursor with automatic cleanup.&quot;&quot;&quot;</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span>
+    <span class="n">cursor</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">cursor</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="4c-config-via-pydantic-settings">4c. Config via pydantic-settings<a class="headerlink" href="#4c-config-via-pydantic-settings" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># config.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">BaseSettings</span><span class="p">):</span>
+    <span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;study_data.db&quot;</span>
+    <span class="n">admin_username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;admin&quot;</span>
+    <span class="n">admin_password_hash</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">secret_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;change-me-in-production&quot;</span>
+    <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;env_prefix&quot;</span><span class="p">:</span> <span class="s2">&quot;STUDY_&quot;</span><span class="p">,</span> <span class="s2">&quot;env_file&quot;</span><span class="p">:</span> <span class="s2">&quot;.env&quot;</span><span class="p">}</span>
+
+
+<span class="nd">@lru_cache</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Settings</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Settings</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h2 id="5-dual-api-json-htmx-endpoints">5. Dual API: JSON + HTMX Endpoints<a class="headerlink" href="#5-dual-api-json-htmx-endpoints" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: HTMX docs (Request Headers), FastAPI docs, community patterns.</p>
+<p>HTMX sends the header <code>HX-Request: true</code> with every request. Use this to decide
+whether to return HTML or JSON.</p>
+<h3 id="strategy-a-separate-routers-recommended-for-this-project">Strategy A: Separate routers (recommended for this project)<a class="headerlink" href="#strategy-a-separate-routers-recommended-for-this-project" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># routers/flashcards.py -- HTMX/HTML endpoints</span>
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{card_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_card_html</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">card_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">,</span> <span class="n">tmpl</span><span class="p">:</span> <span class="n">Templates</span><span class="p">):</span>
+    <span class="n">card</span> <span class="o">=</span> <span class="k">await</span> <span class="n">fetch_card</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">card_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tmpl</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+        <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;partials/_card.html&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;card&quot;</span><span class="p">:</span> <span class="n">card</span><span class="p">}</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># routers/api.py -- JSON endpoints</span>
+<span class="n">api_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
+
+<span class="nd">@api_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/cards/</span><span class="si">{card_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_card_json</span><span class="p">(</span><span class="n">card_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CardResponse</span><span class="p">:</span>
+    <span class="n">card</span> <span class="o">=</span> <span class="k">await</span> <span class="n">fetch_card</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">card_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">CardResponse</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">card</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="strategy-b-single-endpoint-content-negotiation">Strategy B: Single endpoint, content negotiation<a class="headerlink" href="#strategy-b-single-endpoint-content-negotiation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{card_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_card</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">card_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">,</span> <span class="n">tmpl</span><span class="p">:</span> <span class="n">Templates</span><span class="p">):</span>
+    <span class="n">card</span> <span class="o">=</span> <span class="k">await</span> <span class="n">fetch_card</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">card_id</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;HX-Request&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tmpl</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+            <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;partials/_card.html&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;card&quot;</span><span class="p">:</span> <span class="n">card</span><span class="p">}</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">CardResponse</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">card</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="strategy-c-fasthx-library-decorator-based">Strategy C: fasthx library (decorator-based)<a class="headerlink" href="#strategy-c-fasthx-library-decorator-based" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://github.com/volfpeter/fasthx">fasthx</a> library (704 stars, actively maintained)
+provides decorators that automatically handle HTMX vs JSON responses:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">fasthx</span><span class="w"> </span><span class="kn">import</span> <span class="n">Jinja</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fasthx.jinja</span><span class="w"> </span><span class="kn">import</span> <span class="n">JinjaContext</span>
+
+<span class="n">jinja</span> <span class="o">=</span> <span class="n">Jinja</span><span class="p">(</span><span class="n">templates</span><span class="p">)</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{card_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nd">@jinja</span><span class="o">.</span><span class="n">hx</span><span class="p">(</span><span class="s2">&quot;partials/_card.html&quot;</span><span class="p">)</span>  <span class="c1"># Returns HTML for HTMX requests</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_card</span><span class="p">(</span><span class="n">card_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Card</span><span class="p">:</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">fetch_card</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">card_id</span><span class="p">)</span>  <span class="c1"># Returns JSON for non-HTMX</span>
+</code></pre></div>
+<p><strong>Recommendation</strong>: Use Strategy A (separate routers) for clarity. Your HTMX routes
+return HTML fragments; your API routes return JSON. No ambiguity, easy to test independently.</p>
+<h3 id="full-page-vs-partial-detection">Full page vs partial detection<a class="headerlink" href="#full-page-vs-partial-detection" title="Permanent link">&para;</a></h3>
+<p>For <code>hx-push-url</code> pages that must work on direct access AND HTMX navigation:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/deck/</span><span class="si">{deck_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">deck_page</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">deck_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">,</span> <span class="n">tmpl</span><span class="p">:</span> <span class="n">Templates</span><span class="p">):</span>
+    <span class="n">deck</span> <span class="o">=</span> <span class="k">await</span> <span class="n">fetch_deck</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">deck_id</span><span class="p">)</span>
+    <span class="n">cards</span> <span class="o">=</span> <span class="k">await</span> <span class="n">fetch_cards</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">deck_id</span><span class="p">)</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;deck&quot;</span><span class="p">:</span> <span class="n">deck</span><span class="p">,</span> <span class="s2">&quot;cards&quot;</span><span class="p">:</span> <span class="n">cards</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;HX-Request&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
+        <span class="c1"># HTMX navigation: return just the content fragment</span>
+        <span class="k">return</span> <span class="n">tmpl</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+            <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;partials/_deck_content.html&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span>
+        <span class="p">)</span>
+    <span class="c1"># Direct access: return full page</span>
+    <span class="k">return</span> <span class="n">tmpl</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+        <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;pages/deck.html&quot;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span>
+    <span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="6-jinja2-template-inheritance">6. Jinja2 Template Inheritance<a class="headerlink" href="#6-jinja2-template-inheritance" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: FastAPI templates docs, Jinja2 official docs, community patterns.</p>
+<h3 id="basehtml-master-layout">base.html (master layout)<a class="headerlink" href="#basehtml-master-layout" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;!DOCTYPE html&gt;</span>
+<span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&quot;en&quot;</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&quot;UTF-8&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;viewport&quot;</span> <span class="na">content</span><span class="o">=</span><span class="s">&quot;width=device-width, initial-scale=1.0&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>{% block title %}Study Mentor{% endblock %}<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- PWA --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&quot;manifest&quot;</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;/static/manifest.json&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;theme-color&quot;</span> <span class="na">content</span><span class="o">=</span><span class="s">&quot;#1a1a2e&quot;</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- CSS --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&quot;stylesheet&quot;</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;/static/css/style.css&quot;</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- HTMX --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;https://unpkg.com/htmx.org@2.0.4&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+    <span class="cm">&lt;!-- Alpine.js --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">script</span> <span class="na">defer</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+
+    {% block head_extra %}{% endblock %}
+<span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">body</span> <span class="na">hx-headers</span><span class="o">=</span><span class="s">&#39;{&quot;X-CSRF-Token&quot;: &quot;{{ csrf_token }}&quot;}&#39;</span>
+      <span class="na">x-data</span>
+      <span class="na">class</span><span class="o">=</span><span class="s">&quot;{% block body_class %}{% endblock %}&quot;</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- Navigation --&gt;</span>
+    {% include &quot;components/_nav.html&quot; %}
+
+    <span class="cm">&lt;!-- Toast notifications (OOB target) --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;toast-container&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;toast-container&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- Main content area --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">main</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;main-content&quot;</span><span class="p">&gt;</span>
+        {% block content %}{% endblock %}
+    <span class="p">&lt;/</span><span class="nt">main</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- App JS (Alpine stores, HTMX config) --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;/static/js/app.js&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+
+    {% block scripts_extra %}{% endblock %}
+<span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</code></pre></div>
+<h3 id="page-template-extends-base">Page template (extends base)<a class="headerlink" href="#page-template-extends-base" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- pages/flashcards.html --&gt;</span>
+{% extends &quot;base.html&quot; %}
+
+{% block title %}Flashcards - Study Mentor{% endblock %}
+
+{% block content %}
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;flashcard-page&quot;</span> <span class="na">x-data</span><span class="o">=</span><span class="s">&quot;{ deckFilter: &#39;all&#39; }&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>Flashcard Review<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- Deck selector --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">select</span> <span class="na">x-model</span><span class="o">=</span><span class="s">&quot;deckFilter&quot;</span>
+            <span class="na">hx-get</span><span class="o">=</span><span class="s">&quot;/cards/deck-cards&quot;</span>
+            <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+            <span class="na">hx-include</span><span class="o">=</span><span class="s">&quot;[name=&#39;deck&#39;]&quot;</span>
+            <span class="na">name</span><span class="o">=</span><span class="s">&quot;deck&quot;</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">option</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;all&quot;</span><span class="p">&gt;</span>All Decks<span class="p">&lt;/</span><span class="nt">option</span><span class="p">&gt;</span>
+        {% for deck in decks %}
+        <span class="p">&lt;</span><span class="nt">option</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;{{ deck.id }}&quot;</span><span class="p">&gt;</span>{{ deck.name }}<span class="p">&lt;/</span><span class="nt">option</span><span class="p">&gt;</span>
+        {% endfor %}
+    <span class="p">&lt;/</span><span class="nt">select</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- Card display area (replaced by HTMX) --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;card-container&quot;</span><span class="p">&gt;</span>
+        {% include &quot;partials/_card.html&quot; %}
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- Progress bar --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;progress-bar&quot;</span><span class="p">&gt;</span>
+        {% include &quot;partials/_progress_chart.html&quot; %}
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+{% endblock %}
+</code></pre></div>
+<h3 id="partial-template-bare-fragment-no-extends">Partial template (bare fragment, NO extends)<a class="headerlink" href="#partial-template-bare-fragment-no-extends" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- partials/_card.html --&gt;</span>
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;card-{{ card.id }}&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;card&quot;</span>
+     <span class="na">x-data</span><span class="o">=</span><span class="s">&quot;{ flipped: false }&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;card-question&quot;</span> <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;!flipped&quot;</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ card.question }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">button</span> <span class="err">@</span><span class="na">click</span><span class="o">=</span><span class="s">&quot;flipped = true&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;btn-flip&quot;</span><span class="p">&gt;</span>Reveal<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;card-answer&quot;</span> <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;flipped&quot;</span> <span class="na">x-transition</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ card.answer }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;rating-row&quot;</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/cards/{{ card.id }}/rate&quot;</span>
+                    <span class="na">hx-vals</span><span class="o">=</span><span class="s">&#39;{&quot;rating&quot;: 1}&#39;</span>
+                    <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+                    <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;outerHTML&quot;</span><span class="p">&gt;</span>Again<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/cards/{{ card.id }}/rate&quot;</span>
+                    <span class="na">hx-vals</span><span class="o">=</span><span class="s">&#39;{&quot;rating&quot;: 3}&#39;</span>
+                    <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+                    <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;outerHTML&quot;</span><span class="p">&gt;</span>Good<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+            <span class="p">&lt;</span><span class="nt">button</span> <span class="na">hx-post</span><span class="o">=</span><span class="s">&quot;/cards/{{ card.id }}/rate&quot;</span>
+                    <span class="na">hx-vals</span><span class="o">=</span><span class="s">&#39;{&quot;rating&quot;: 5}&#39;</span>
+                    <span class="na">hx-target</span><span class="o">=</span><span class="s">&quot;#card-container&quot;</span>
+                    <span class="na">hx-swap</span><span class="o">=</span><span class="s">&quot;outerHTML&quot;</span><span class="p">&gt;</span>Easy<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div>
+<h3 id="jinja2-macros-for-reusable-components">Jinja2 macros for reusable components<a class="headerlink" href="#jinja2-macros-for-reusable-components" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- components/_form_field.html --&gt;</span>
+{% macro form_field(name, label, type=&quot;text&quot;, value=&quot;&quot;, error=&quot;&quot;) %}
+<span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;form-group {% if error %}has-error{% endif %}&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">label</span> <span class="na">for</span><span class="o">=</span><span class="s">&quot;{{ name }}&quot;</span><span class="p">&gt;</span>{{ label }}<span class="p">&lt;/</span><span class="nt">label</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;{{ type }}&quot;</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;{{ name }}&quot;</span> <span class="na">name</span><span class="o">=</span><span class="s">&quot;{{ name }}&quot;</span>
+           <span class="na">value</span><span class="o">=</span><span class="s">&quot;{{ value }}&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;form-control&quot;</span><span class="p">&gt;</span>
+    {% if error %}
+    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;error-text&quot;</span><span class="p">&gt;</span>{{ error }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+    {% endif %}
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+{% endmacro %}
+</code></pre></div>
+<p>Usage:</p>
+<div class="highlight"><pre><span></span><code>{% from &quot;components/_form_field.html&quot; import form_field %}
+{{ form_field(&quot;email&quot;, &quot;Email Address&quot;, type=&quot;email&quot;, error=errors.get(&quot;email&quot;)) }}
+</code></pre></div>
+<hr />
+<h2 id="7-authentication-http-basic-auth">7. Authentication: HTTP Basic Auth<a class="headerlink" href="#7-authentication-http-basic-auth" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: FastAPI advanced security docs.</p>
+<h3 id="implementation-with-timing-attack-safe-comparison">Implementation with timing-attack-safe comparison<a class="headerlink" href="#implementation-with-timing-attack-safe-comparison" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># deps.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">secrets</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.security</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPBasic</span><span class="p">,</span> <span class="n">HTTPBasicCredentials</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">study_web.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_settings</span>
+
+<span class="n">security</span> <span class="o">=</span> <span class="n">HTTPBasic</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">verify_credentials</span><span class="p">(</span>
+    <span class="n">credentials</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">HTTPBasicCredentials</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">security</span><span class="p">)],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Verify HTTP Basic credentials. Returns username if valid.&quot;&quot;&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">get_settings</span><span class="p">()</span>
+
+    <span class="c1"># Timing-attack-safe comparison</span>
+    <span class="n">username_correct</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">compare_digest</span><span class="p">(</span>
+        <span class="n">credentials</span><span class="o">.</span><span class="n">username</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span>
+        <span class="n">settings</span><span class="o">.</span><span class="n">admin_username</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">password_correct</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">compare_digest</span><span class="p">(</span>
+        <span class="n">credentials</span><span class="o">.</span><span class="n">password</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span>
+        <span class="n">settings</span><span class="o">.</span><span class="n">admin_password</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">username_correct</span> <span class="ow">and</span> <span class="n">password_correct</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
+            <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_401_UNAUTHORIZED</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Invalid credentials&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WWW-Authenticate&quot;</span><span class="p">:</span> <span class="s2">&quot;Basic&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">credentials</span><span class="o">.</span><span class="n">username</span>
+
+
+<span class="c1"># Type alias</span>
+<span class="n">AuthUser</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">verify_credentials</span><span class="p">)]</span>
+</code></pre></div>
+<h3 id="apply-globally-or-per-router">Apply globally or per-router<a class="headerlink" href="#apply-globally-or-per-router" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Global: protect all routes</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">verify_credentials</span><span class="p">)])</span>
+
+<span class="c1"># Per-router: protect only settings and feedback</span>
+<span class="n">settings_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">verify_credentials</span><span class="p">)])</span>
+
+<span class="c1"># Per-endpoint:</span>
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">admin_page</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">AuthUser</span><span class="p">):</span>
+    <span class="o">...</span>
+</code></pre></div>
+<h3 id="skip-auth-for-static-files-and-health-checks">Skip auth for static files and health checks<a class="headerlink" href="#skip-auth-for-static-files-and-health-checks" title="Permanent link">&para;</a></h3>
+<p>Static files mounted via <code>app.mount()</code> bypass FastAPI dependencies.
+For health checks, add them before the auth middleware:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">}</span>
+
+<span class="c1"># Then apply auth to everything else via router-level dependencies</span>
+</code></pre></div>
+<hr />
+<h2 id="8-static-files-pwa-service-worker">8. Static Files + PWA Service Worker<a class="headerlink" href="#8-static-files-pwa-service-worker" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: FastAPI static files docs, MDN PWA docs.</p>
+<h3 id="static-file-serving">Static file serving<a class="headerlink" href="#static-file-serving" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.staticfiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticFiles</span>
+
+<span class="c1"># Mount BEFORE routers so /static/* is handled first</span>
+<span class="n">app</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/static&quot;</span><span class="p">,</span> <span class="n">StaticFiles</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;study_web/static&quot;</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>In templates, reference static files via:</p>
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&quot;stylesheet&quot;</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;{{ url_for(&#39;static&#39;, path=&#39;css/style.css&#39;) }}&quot;</span><span class="p">&gt;</span>
+</code></pre></div>
+<h3 id="pwa-manifest">PWA Manifest<a class="headerlink" href="#pwa-manifest" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Socratic Study Mentor&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;short_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;StudyMentor&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;start_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;display&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standalone&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;background_color&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#1a1a2e&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;theme_color&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#1a1a2e&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;icons&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;src&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/static/img/icon-192.png&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;sizes&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;192x192&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;image/png&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;src&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/static/img/icon-512.png&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;sizes&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;512x512&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;image/png&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="service-worker-swjs">Service Worker (sw.js)<a class="headerlink" href="#service-worker-swjs" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">CACHE_NAME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;study-mentor-v1&#39;</span><span class="p">;</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">PRECACHE_URLS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">&#39;/&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;/static/css/style.css&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;/static/js/app.js&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;/static/manifest.json&#39;</span><span class="p">,</span>
+<span class="p">];</span>
+
+<span class="c1">// Install: precache shell assets</span>
+<span class="nx">self</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;install&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">event</span><span class="p">.</span><span class="nx">waitUntil</span><span class="p">(</span>
+<span class="w">        </span><span class="nx">caches</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="nx">CACHE_NAME</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">cache</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">cache</span><span class="p">.</span><span class="nx">addAll</span><span class="p">(</span><span class="nx">PRECACHE_URLS</span><span class="p">))</span>
+<span class="w">    </span><span class="p">);</span>
+<span class="w">    </span><span class="nx">self</span><span class="p">.</span><span class="nx">skipWaiting</span><span class="p">();</span>
+<span class="p">});</span>
+
+<span class="c1">// Activate: clean old caches</span>
+<span class="nx">self</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;activate&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">event</span><span class="p">.</span><span class="nx">waitUntil</span><span class="p">(</span>
+<span class="w">        </span><span class="nx">caches</span><span class="p">.</span><span class="nx">keys</span><span class="p">().</span><span class="nx">then</span><span class="p">((</span><span class="nx">names</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span>
+<span class="w">            </span><span class="nb">Promise</span><span class="p">.</span><span class="nx">all</span><span class="p">(</span>
+<span class="w">                </span><span class="nx">names</span><span class="p">.</span><span class="nx">filter</span><span class="p">((</span><span class="nx">n</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">n</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="nx">CACHE_NAME</span><span class="p">).</span><span class="nx">map</span><span class="p">((</span><span class="nx">n</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">caches</span><span class="p">.</span><span class="ow">delete</span><span class="p">(</span><span class="nx">n</span><span class="p">))</span>
+<span class="w">            </span><span class="p">)</span>
+<span class="w">        </span><span class="p">)</span>
+<span class="w">    </span><span class="p">);</span>
+<span class="w">    </span><span class="nx">self</span><span class="p">.</span><span class="nx">clients</span><span class="p">.</span><span class="nx">claim</span><span class="p">();</span>
+<span class="p">});</span>
+
+<span class="c1">// Fetch: network-first for HTML (HTMX fragments), cache-first for static assets</span>
+<span class="nx">self</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fetch&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">URL</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">pathname</span><span class="p">.</span><span class="nx">startsWith</span><span class="p">(</span><span class="s1">&#39;/static/&#39;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Static assets: cache-first</span>
+<span class="w">        </span><span class="nx">event</span><span class="p">.</span><span class="nx">respondWith</span><span class="p">(</span>
+<span class="w">            </span><span class="nx">caches</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">cached</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span>
+<span class="w">                </span><span class="nx">cached</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">response</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="kd">const</span><span class="w"> </span><span class="nx">clone</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">response</span><span class="p">.</span><span class="nx">clone</span><span class="p">();</span>
+<span class="w">                    </span><span class="nx">caches</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="nx">CACHE_NAME</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">cache</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">cache</span><span class="p">.</span><span class="nx">put</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">,</span><span class="w"> </span><span class="nx">clone</span><span class="p">));</span>
+<span class="w">                    </span><span class="k">return</span><span class="w"> </span><span class="nx">response</span><span class="p">;</span>
+<span class="w">                </span><span class="p">})</span>
+<span class="w">            </span><span class="p">)</span>
+<span class="w">        </span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// HTML/HTMX requests: network-first, fallback to cache</span>
+<span class="w">        </span><span class="nx">event</span><span class="p">.</span><span class="nx">respondWith</span><span class="p">(</span>
+<span class="w">            </span><span class="nx">fetch</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="nx">then</span><span class="p">((</span><span class="nx">response</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="c1">// Only cache GET requests for full pages</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">.</span><span class="nx">method</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;GET&#39;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;HX-Request&#39;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="kd">const</span><span class="w"> </span><span class="nx">clone</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">response</span><span class="p">.</span><span class="nx">clone</span><span class="p">();</span>
+<span class="w">                        </span><span class="nx">caches</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="nx">CACHE_NAME</span><span class="p">).</span><span class="nx">then</span><span class="p">((</span><span class="nx">cache</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">cache</span><span class="p">.</span><span class="nx">put</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">,</span><span class="w"> </span><span class="nx">clone</span><span class="p">));</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                    </span><span class="k">return</span><span class="w"> </span><span class="nx">response</span><span class="p">;</span>
+<span class="w">                </span><span class="p">})</span>
+<span class="w">                </span><span class="p">.</span><span class="k">catch</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">caches</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">))</span>
+<span class="w">        </span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div>
+<p><strong>Key decisions</strong>:
+- Cache-first for static assets (CSS, JS, images) -- fast, versioned via cache name.
+- Network-first for HTML pages -- always fresh, fallback to cached version offline.
+- Do NOT cache HTMX fragment responses in the service worker -- they are partial HTML
+  and would break if served as full pages. Check <code>HX-Request</code> header to skip them.</p>
+<h3 id="register-the-service-worker">Register the service worker<a class="headerlink" href="#register-the-service-worker" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- base.html, before closing &lt;/body&gt; --&gt;</span>
+<span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;serviceWorker&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nx">navigator</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">navigator</span><span class="p">.</span><span class="nx">serviceWorker</span><span class="p">.</span><span class="nx">register</span><span class="p">(</span><span class="s1">&#39;/static/sw.js&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">scope</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;/&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</code></pre></div>
+<p>Note: The service worker file is in <code>/static/sw.js</code> but registered with <code>scope: '/'</code>.
+You need to serve it with the <code>Service-Worker-Allowed: /</code> header, or serve it from
+the root URL:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># main.py -- serve sw.js from root for proper scope</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileResponse</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/sw.js&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">service_worker</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">FileResponse</span><span class="p">(</span>
+        <span class="s2">&quot;study_web/static/sw.js&quot;</span><span class="p">,</span>
+        <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/javascript&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Service-Worker-Allowed&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="9-websocket-support">9. WebSocket Support<a class="headerlink" href="#9-websocket-support" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: FastAPI WebSocket docs, HTMX WebSocket extension docs.</p>
+<h3 id="fastapi-websocket-for-pomodoro-timer-sync">FastAPI WebSocket for Pomodoro timer sync<a class="headerlink" href="#fastapi-websocket-for-pomodoro-timer-sync" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># routers/ws.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">WebSocket</span><span class="p">,</span> <span class="n">WebSocketDisconnect</span><span class="p">,</span> <span class="n">Depends</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PomodoroManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages connected WebSocket clients for Pomodoro sync.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">WebSocket</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">websocket</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">):</span>
+        <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">websocket</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">websocket</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">websocket</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">broadcast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">disconnected</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">ws</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_json</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">disconnected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ws</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ws</span> <span class="ow">in</span> <span class="n">disconnected</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">ws</span><span class="p">)</span>
+
+
+<span class="n">pomodoro_manager</span> <span class="o">=</span> <span class="n">PomodoroManager</span><span class="p">()</span>
+
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">websocket</span><span class="p">(</span><span class="s2">&quot;/pomodoro&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pomodoro_ws</span><span class="p">(</span><span class="n">websocket</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">pomodoro_manager</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">websocket</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">receive_json</span><span class="p">()</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;start&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">pomodoro_manager</span><span class="o">.</span><span class="n">broadcast</span><span class="p">({</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;timer_started&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;minutes&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;minutes&quot;</span><span class="p">,</span> <span class="mi">25</span><span class="p">),</span>
+                <span class="p">})</span>
+            <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;pause&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">pomodoro_manager</span><span class="o">.</span><span class="n">broadcast</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;timer_paused&quot;</span><span class="p">})</span>
+            <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">pomodoro_manager</span><span class="o">.</span><span class="n">broadcast</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;timer_reset&quot;</span><span class="p">})</span>
+
+    <span class="k">except</span> <span class="n">WebSocketDisconnect</span><span class="p">:</span>
+        <span class="n">pomodoro_manager</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="n">websocket</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="client-side-alpinejs-native-websocket-not-htmx-ws-extension">Client-side: Alpine.js + native WebSocket (not HTMX ws extension)<a class="headerlink" href="#client-side-alpinejs-native-websocket-not-htmx-ws-extension" title="Permanent link">&para;</a></h3>
+<p>For the Pomodoro timer, use Alpine.js with native WebSocket rather than HTMX's ws
+extension. The timer is fundamentally a client-side countdown that syncs state -- it
+does not need HTML fragment responses.</p>
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">div</span> <span class="na">x-data</span><span class="o">=</span><span class="s">&quot;pomodoroTimer()&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;pomodoro-widget&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;timer-display&quot;</span> <span class="na">x-text</span><span class="o">=</span><span class="s">&quot;formattedTime&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+
+    <span class="p">&lt;</span><span class="nt">button</span> <span class="err">@</span><span class="na">click</span><span class="o">=</span><span class="s">&quot;start()&quot;</span> <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;!running&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;btn&quot;</span><span class="p">&gt;</span>Start<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">button</span> <span class="err">@</span><span class="na">click</span><span class="o">=</span><span class="s">&quot;pause()&quot;</span> <span class="na">x-show</span><span class="o">=</span><span class="s">&quot;running&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;btn&quot;</span><span class="p">&gt;</span>Pause<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">button</span> <span class="err">@</span><span class="na">click</span><span class="o">=</span><span class="s">&quot;reset()&quot;</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;btn-secondary&quot;</span><span class="p">&gt;</span>Reset<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+
+    <span class="cm">&lt;!-- Settings --&gt;</span>
+    <span class="p">&lt;</span><span class="nt">select</span> <span class="na">x-model</span><span class="err">.</span><span class="na">number</span><span class="o">=</span><span class="s">&quot;duration&quot;</span> <span class="err">@</span><span class="na">change</span><span class="o">=</span><span class="s">&quot;reset()&quot;</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">option</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;25&quot;</span><span class="p">&gt;</span>25 min<span class="p">&lt;/</span><span class="nt">option</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">option</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;15&quot;</span><span class="p">&gt;</span>15 min<span class="p">&lt;/</span><span class="nt">option</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">option</span> <span class="na">value</span><span class="o">=</span><span class="s">&quot;5&quot;</span><span class="p">&gt;</span>5 min break<span class="p">&lt;/</span><span class="nt">option</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">select</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+
+<span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="kd">function</span><span class="w"> </span><span class="nx">pomodoroTimer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">duration</span><span class="o">:</span><span class="w"> </span><span class="mf">25</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">seconds</span><span class="o">:</span><span class="w"> </span><span class="mf">25</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">60</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">running</span><span class="o">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">interval</span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">ws</span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+
+<span class="w">        </span><span class="nx">init</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="sb">`ws://</span><span class="si">${</span><span class="nx">location</span><span class="p">.</span><span class="nx">host</span><span class="si">}</span><span class="sb">/ws/pomodoro`</span><span class="p">);</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="kd">const</span><span class="w"> </span><span class="nx">msg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">msg</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;timer_started&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">this</span><span class="p">.</span><span class="nx">duration</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">msg</span><span class="p">.</span><span class="nx">minutes</span><span class="p">;</span>
+<span class="w">                    </span><span class="k">this</span><span class="p">.</span><span class="nx">seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">msg</span><span class="p">.</span><span class="nx">minutes</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">60</span><span class="p">;</span>
+<span class="w">                    </span><span class="k">this</span><span class="p">.</span><span class="nx">startCountdown</span><span class="p">();</span>
+<span class="w">                </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">msg</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;timer_paused&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">this</span><span class="p">.</span><span class="nx">pauseCountdown</span><span class="p">();</span>
+<span class="w">                </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">msg</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;timer_reset&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">this</span><span class="p">.</span><span class="nx">resetCountdown</span><span class="p">();</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">};</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">get</span><span class="w"> </span><span class="nx">formattedTime</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="kd">const</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">seconds</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">60</span><span class="p">);</span>
+<span class="w">            </span><span class="kd">const</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">seconds</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mf">60</span><span class="p">;</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nb">String</span><span class="p">(</span><span class="nx">m</span><span class="p">).</span><span class="nx">padStart</span><span class="p">(</span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;0&#39;</span><span class="p">)</span><span class="si">}</span><span class="sb">:</span><span class="si">${</span><span class="nb">String</span><span class="p">(</span><span class="nx">s</span><span class="p">).</span><span class="nx">padStart</span><span class="p">(</span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;0&#39;</span><span class="p">)</span><span class="si">}</span><span class="sb">`</span><span class="p">;</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">start</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">ws</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;start&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">minutes</span><span class="o">:</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">duration</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">pause</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">ws</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;pause&#39;</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">reset</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">ws</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;reset&#39;</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">startCountdown</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">running</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">;</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">setInterval</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">seconds</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">this</span><span class="p">.</span><span class="nx">seconds</span><span class="o">--</span><span class="p">;</span>
+<span class="w">                </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">this</span><span class="p">.</span><span class="nx">pauseCountdown</span><span class="p">();</span>
+<span class="w">                    </span><span class="c1">// Notify user timer complete</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">Notification</span><span class="p">.</span><span class="nx">permission</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;granted&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                        </span><span class="ow">new</span><span class="w"> </span><span class="nx">Notification</span><span class="p">(</span><span class="s1">&#39;Pomodoro Complete!&#39;</span><span class="p">);</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">},</span><span class="w"> </span><span class="mf">1000</span><span class="p">);</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">pauseCountdown</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">running</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+<span class="w">            </span><span class="nx">clearInterval</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">interval</span><span class="p">);</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">resetCountdown</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">pauseCountdown</span><span class="p">();</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">duration</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">60</span><span class="p">;</span>
+<span class="w">        </span><span class="p">},</span>
+
+<span class="w">        </span><span class="nx">destroy</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">clearInterval</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">interval</span><span class="p">);</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="nx">ws</span><span class="o">?</span><span class="p">.</span><span class="nx">close</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</code></pre></div>
+<h3 id="when-to-use-htmx-ws-extension-vs-native-websocket">When to use HTMX ws extension vs native WebSocket<a class="headerlink" href="#when-to-use-htmx-ws-extension-vs-native-websocket" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Approach</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pomodoro timer sync</td>
+<td>Native WS + Alpine</td>
+<td>Timer is client-side state, not HTML fragments</td>
+</tr>
+<tr>
+<td>Live notifications</td>
+<td>HTMX SSE extension</td>
+<td>Server pushes HTML fragments for toast messages</td>
+</tr>
+<tr>
+<td>Real-time dashboard</td>
+<td>HTMX SSE extension</td>
+<td>Server pushes updated chart/stat fragments</td>
+</tr>
+<tr>
+<td>Chat (if needed)</td>
+<td>HTMX ws extension</td>
+<td>Messages are HTML fragments from server</td>
+</tr>
+</tbody>
+</table>
+<h3 id="server-sent-events-sse-for-live-dashboard-updates">Server-Sent Events (SSE) for live dashboard updates<a class="headerlink" href="#server-sent-events-sse-for-live-dashboard-updates" title="Permanent link">&para;</a></h3>
+<p>SSE is simpler than WebSockets when the server just pushes updates (no client-to-server):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># routers/dashboard.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingResponse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/stream&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">dashboard_stream</span><span class="p">(</span><span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">event_generator</span><span class="p">():</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_current_stats</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+            <span class="n">html</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;&lt;div id=&quot;live-stats&quot; hx-swap-oob=&quot;true&quot;&gt;</span><span class="si">{</span><span class="n">stats</span><span class="o">.</span><span class="n">html</span><span class="si">}</span><span class="s1">&lt;/div&gt;&#39;</span>
+            <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;event: update</span><span class="se">\n</span><span class="s2">data: </span><span class="si">{</span><span class="n">html</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">StreamingResponse</span><span class="p">(</span>
+        <span class="n">event_generator</span><span class="p">(),</span>
+        <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;text/event-stream&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div>
+<p>Client:</p>
+<div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">div</span> <span class="na">hx-ext</span><span class="o">=</span><span class="s">&quot;sse&quot;</span> <span class="na">sse-connect</span><span class="o">=</span><span class="s">&quot;/dashboard/stream&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;live-stats&quot;</span> <span class="na">sse-swap</span><span class="o">=</span><span class="s">&quot;update&quot;</span><span class="p">&gt;</span>
+        Loading stats...
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div>
+<hr />
+<h2 id="10-performance">10. Performance<a class="headerlink" href="#10-performance" title="Permanent link">&para;</a></h2>
+<p><strong>Source</strong>: aiosqlite docs, FastAPI deployment docs, uvicorn docs.</p>
+<h3 id="aiosqlite-async-wrapper-around-sync-sqlite3">aiosqlite: async wrapper around sync sqlite3<a class="headerlink" href="#aiosqlite-async-wrapper-around-sync-sqlite3" title="Permanent link">&para;</a></h3>
+<p>aiosqlite (v0.22.1, MIT, production-stable) provides an async interface to sqlite3
+using a single shared thread per connection. It does NOT use a thread pool -- there
+is one background thread that serializes all SQL operations.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Pattern: single connection, shared across all requests</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">init_db</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">Connection</span><span class="p">:</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="k">await</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">row_factory</span> <span class="o">=</span> <span class="n">aiosqlite</span><span class="o">.</span><span class="n">Row</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA journal_mode=WAL&quot;</span><span class="p">)</span>   <span class="c1"># Write-Ahead Logging</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA synchronous=NORMAL&quot;</span><span class="p">)</span>  <span class="c1"># Faster writes, safe with WAL</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA cache_size=-64000&quot;</span><span class="p">)</span>    <span class="c1"># 64MB cache</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA busy_timeout=5000&quot;</span><span class="p">)</span>    <span class="c1"># 5s wait on locks</span>
+    <span class="k">return</span> <span class="n">db</span>
+</code></pre></div>
+<h3 id="why-not-connection-pooling-for-sqlite">Why NOT connection pooling for SQLite<a class="headerlink" href="#why-not-connection-pooling-for-sqlite" title="Permanent link">&para;</a></h3>
+<p>SQLite is a file-based database. Connection pooling is a pattern for network databases
+(PostgreSQL, MySQL) where establishing a connection is expensive. For SQLite:</p>
+<ul>
+<li><strong>Single writer</strong>: SQLite allows only one writer at a time. Multiple connections
+  just queue behind the write lock.</li>
+<li><strong>WAL mode</strong>: Allows concurrent reads with a single writer. One connection is sufficient.</li>
+<li><strong>aiosqlite uses one thread</strong>: Additional connections add threads without benefit.</li>
+</ul>
+<p><strong>Recommendation</strong>: Use a single <code>aiosqlite.Connection</code> stored in <code>app.state.db</code>.
+This is the simplest correct pattern for SQLite with FastAPI.</p>
+<p>If you later need higher write throughput, switch to PostgreSQL + asyncpg + connection pool.</p>
+<h3 id="uvicorn-workers">uvicorn workers<a class="headerlink" href="#uvicorn-workers" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Development</span>
+uvicorn<span class="w"> </span>study_web.main:app<span class="w"> </span>--reload<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+
+<span class="c1"># Production: single worker (SQLite constraint)</span>
+uvicorn<span class="w"> </span>study_web.main:app<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span><span class="w"> </span>--workers<span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<p><strong>Critical</strong>: Do NOT use multiple uvicorn workers with SQLite. Each worker would
+open its own database connection, and SQLite's single-writer constraint means they
+would constantly conflict. Use <code>--workers 1</code>.</p>
+<p>If you need multiple workers, use:
+- Multiple workers + PostgreSQL (proper connection pool), OR
+- A reverse proxy (nginx/caddy) in front of a single uvicorn process.</p>
+<h3 id="async-vs-sync-endpoints">Async vs sync endpoints<a class="headerlink" href="#async-vs-sync-endpoints" title="Permanent link">&para;</a></h3>
+<p>FastAPI runs <code>async def</code> endpoints on the main event loop and <code>def</code> endpoints in a
+thread pool. Since aiosqlite is async, use <code>async def</code> for all database-accessing routes:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># CORRECT: async endpoint with aiosqlite</span>
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/cards&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_cards</span><span class="p">(</span><span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">):</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_fetchall</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM cards LIMIT 50&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span>
+
+<span class="c1"># WRONG: sync endpoint blocks the event loop</span>
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/cards&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_cards</span><span class="p">(</span><span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">):</span>
+    <span class="c1"># This would need sync sqlite3, not aiosqlite</span>
+    <span class="o">...</span>
+</code></pre></div>
+<h3 id="response-caching-for-htmx-fragments">Response caching for HTMX fragments<a class="headerlink" href="#response-caching-for-htmx-fragments" title="Permanent link">&para;</a></h3>
+<p>Use ETags or Cache-Control headers for infrequently-changing content:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTMLResponse</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/artefacts/</span><span class="si">{artefact_id}</span><span class="s2">/viewer&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">artefact_viewer</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">artefact_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DB</span><span class="p">,</span> <span class="n">tmpl</span><span class="p">:</span> <span class="n">Templates</span><span class="p">):</span>
+    <span class="n">artefact</span> <span class="o">=</span> <span class="k">await</span> <span class="n">fetch_artefact</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">artefact_id</span><span class="p">)</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">tmpl</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+        <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;partials/_artefact_item.html&quot;</span><span class="p">,</span>
+        <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;artefact&quot;</span><span class="p">:</span> <span class="n">artefact</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="c1"># Cache static artefact descriptions for 5 minutes</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Cache-Control&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;private, max-age=300&quot;</span>
+    <span class="k">return</span> <span class="n">response</span>
+</code></pre></div>
+<h3 id="htmx-specific-performance-tips">HTMX-specific performance tips<a class="headerlink" href="#htmx-specific-performance-tips" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Use <code>hx-indicator</code></strong> to show loading spinners -- prevents double-clicks.</li>
+<li><strong>Use <code>hx-disabled-elt="this"</code></strong> to disable buttons during requests.</li>
+<li><strong>Use <code>hx-swap="outerHTML transition:true"</code></strong> for View Transitions API
+   (smooth page transitions in supporting browsers).</li>
+<li><strong>Preload on hover</strong> with the HTMX preload extension:
+   <div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">body</span> <span class="na">hx-ext</span><span class="o">=</span><span class="s">&quot;preload&quot;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;/cards&quot;</span> <span class="na">preload</span><span class="o">=</span><span class="s">&quot;mouseover&quot;</span><span class="p">&gt;</span>Flashcards<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</code></pre></div></li>
+</ol>
+<hr />
+<h2 id="quick-reference-complete-dependency-graph">Quick Reference: Complete Dependency Graph<a class="headerlink" href="#quick-reference-complete-dependency-graph" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>main.py (app factory)
+    |-- lifespan: init_db() -&gt; app.state.db
+    |-- mount: /static -&gt; StaticFiles
+    |-- include: routers/*.py
+         |-- each router uses:
+              |-- DB (from deps.py -&gt; app.state.db)
+              |-- Templates (from deps.py -&gt; Jinja2Templates)
+              |-- Config (from deps.py -&gt; pydantic-settings)
+              |-- AuthUser (from deps.py -&gt; HTTPBasic verify)
+</code></pre></div>
+<h2 id="key-libraries-pyprojecttoml">Key Libraries (pyproject.toml)<a class="headerlink" href="#key-libraries-pyprojecttoml" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="k">[project]</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;fastapi&gt;=0.115&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;uvicorn[standard]&gt;=0.32&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;jinja2&gt;=3.1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;aiosqlite&gt;=0.22&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;pydantic-settings&gt;=2.7&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;python-multipart&gt;=0.0.18&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># Required for form data</span>
+<span class="p">]</span>
+
+<span class="k">[dependency-groups]</span>
+<span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;httpx&gt;=0.28&quot;</span><span class="p">,</span><span class="w">     </span><span class="c1"># For TestClient async tests</span>
+<span class="w">    </span><span class="s2">&quot;pytest&gt;=8.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;pytest-asyncio&gt;=0.24&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;ruff&gt;=0.8&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
+<hr />
+<h2 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Authority</th>
+<th>Topics Covered</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://fastapi.tiangolo.com">FastAPI Official Docs</a></td>
+<td>Official</td>
+<td>Project structure, DI, templates, auth, WebSocket, middleware</td>
+</tr>
+<tr>
+<td><a href="https://htmx.org/docs/">HTMX Official Docs v2</a></td>
+<td>Official</td>
+<td>All HTMX patterns, OOB swaps, history, CSRF, scripting</td>
+</tr>
+<tr>
+<td><a href="https://htmx.org/examples/">HTMX Examples</a></td>
+<td>Official</td>
+<td>Infinite scroll, active search, modals, click-to-edit</td>
+</tr>
+<tr>
+<td><a href="https://alpinejs.dev">Alpine.js Docs</a></td>
+<td>Official</td>
+<td>x-show, x-transition, x-data, stores</td>
+</tr>
+<tr>
+<td><a href="https://github.com/volfpeter/fasthx">fasthx</a></td>
+<td>Community (704 stars)</td>
+<td>FastAPI+HTMX decorator patterns</td>
+</tr>
+<tr>
+<td><a href="https://pypi.org/project/aiosqlite/">aiosqlite</a></td>
+<td>Community (production-stable)</td>
+<td>Async SQLite patterns</td>
+</tr>
+<tr>
+<td><a href="https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps">MDN PWA Guide</a></td>
+<td>Official</td>
+<td>Service worker caching strategies</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

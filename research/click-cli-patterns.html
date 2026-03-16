@@ -1,0 +1,2520 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/click-cli-patterns.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Click CLI Patterns for Large Applications - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#click-cli-patterns-for-large-applications" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Click CLI Patterns for Large Applications
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-current-state-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Current State Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Current State Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-cli-click-based-1272-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl CLI (Click-based, 1272 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-session-tools-typer-based-6-separate-entry-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent-session-tools (Typer-based, 6 separate entry points)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-multi-module-cli-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Multi-Module CLI Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Multi-Module CLI Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-one-module-per-command-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern: One Module Per Command Group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-__init__py-the-wiring-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root __init__.py — The Wiring Point
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#individual-command-module-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Individual Command Module Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-lazy-loading-for-fast-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Lazy Loading for Fast Startup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Lazy Loading for Fast Startup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lazygroup-from-click-official-docs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LazyGroup (from Click official docs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-triggers-lazy-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Triggers Lazy Loading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nested-lazy-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nested Lazy Groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-plugin-pattern-file-based-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Plugin Pattern (File-Based Discovery)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-typer-to-click-conversion-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Typer-to-Click Conversion Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Typer-to-Click Conversion Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mapping-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mapping Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concrete-conversion-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concrete Conversion Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-differences-to-watch-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Differences to Watch For
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strategy-wrap-instead-of-rewrite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy: Wrap Instead of Rewrite
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-shared-options-and-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Shared Options and Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Shared Options and Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-clickpass_context-with-ctxobj" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: click.pass_context with ctx.obj
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-reusable-option-decorators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Reusable Option Decorators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-3-ctxwith_resource-for-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 3: ctx.with_resource for Cleanup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-sharing-logic-between-cli-and-fastapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Sharing Logic Between CLI and FastAPI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Sharing Logic Between CLI and FastAPI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-service-layer-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Service Layer Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Matters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-click-rich-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Click + Rich Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Click + Rich Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-rich-click-drop-in-replacement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: rich-click (Drop-in Replacement)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-use-rich-directly-current-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Use Rich Directly (Current Approach)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-c-hybrid-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option C: Hybrid (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shared-console-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared Console Instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-error-handling-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Error Handling Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Error Handling Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clicks-exception-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Click's Exception Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-use-clickexception-instead-of-systemexit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern: Use ClickException Instead of SystemExit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-consistent-error-handling-decorator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern: Consistent Error Handling Decorator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-code-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit Code Conventions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-testing-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Testing Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Testing Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-clirunner-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic CliRunner Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-subcommands-and-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Subcommands and Groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-with-context-shared-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing with Context / Shared State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-error-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Error Conditions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-system-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File System Isolation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catch-exceptions-for-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Catch Exceptions for Debugging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-absorbed-typer-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Absorbed Typer Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-recommended-file-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Recommended File Layout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Recommended File Layout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-underscore-prefix-on-cli-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Underscore Prefix on CLI Modules?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entry-point-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry Point (unchanged)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-migration-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Migration Plan
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Migration Plan">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-extract-lazygroup-no-behavior-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Extract LazyGroup (No Behavior Change)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-split-by-group-one-group-at-a-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Split by Group (One Group at a Time)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-convert-typer-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Convert Typer Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-deprecate-standalone-entry-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Deprecate Standalone Entry Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-service-layer-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5: Service Layer (Future)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-real-world-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Real-World Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Real-World Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#large-click-clis-worth-studying" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Large Click CLIs Worth Studying
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prefects-pattern-40-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prefect's Pattern (40+ Commands)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flasks-appgroup-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flask's AppGroup Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary-recommendations-for-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary: Recommendations for studyctl
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="click-cli-patterns-for-large-applications">Click CLI Patterns for Large Applications<a class="headerlink" href="#click-cli-patterns-for-large-applications" title="Permanent link">&para;</a></h1>
+<p>Research findings for reorganizing <code>studyctl</code> (1272-line <code>cli.py</code>) and absorbing 12 Typer-based commands from <code>agent-session-tools</code>.</p>
+<p><strong>Sources</strong>: Click 8.3.x official docs (Context7), rich-click GitHub, current codebase analysis.</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#1-current-state-analysis">Current State Analysis</a></li>
+<li><a href="#2-multi-module-cli-architecture">Multi-Module CLI Architecture</a></li>
+<li><a href="#3-lazy-loading-for-fast-startup">Lazy Loading for Fast Startup</a></li>
+<li><a href="#4-plugin-pattern-file-based-discovery">Plugin Pattern (File-Based Discovery)</a></li>
+<li><a href="#5-typer-to-click-conversion-guide">Typer-to-Click Conversion Guide</a></li>
+<li><a href="#6-shared-options-and-context">Shared Options and Context</a></li>
+<li><a href="#7-sharing-logic-between-cli-and-fastapi">Sharing Logic Between CLI and FastAPI</a></li>
+<li><a href="#8-click--rich-integration">Click + Rich Integration</a></li>
+<li><a href="#9-error-handling-patterns">Error Handling Patterns</a></li>
+<li><a href="#10-testing-patterns">Testing Patterns</a></li>
+<li><a href="#11-recommended-file-layout">Recommended File Layout</a></li>
+<li><a href="#12-migration-plan">Migration Plan</a></li>
+<li><a href="#13-real-world-examples">Real-World Examples</a></li>
+</ol>
+<hr />
+<h2 id="1-current-state-analysis">1. Current State Analysis<a class="headerlink" href="#1-current-state-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="studyctl-cli-click-based-1272-lines">studyctl CLI (Click-based, 1272 lines)<a class="headerlink" href="#studyctl-cli-click-based-1272-lines" title="Permanent link">&para;</a></h3>
+<p>Current command tree:</p>
+<div class="highlight"><pre><span></span><code>studyctl
+  sync          # top-level command
+  status        # top-level command
+  audio         # top-level command
+  topics        # top-level command
+  dedup         # top-level command
+  review        # top-level command
+  struggles     # top-level command
+  wins          # top-level command
+  streaks       # top-level command
+  resume        # top-level command
+  progress-map  # top-level command
+  teachback     # top-level command
+  teachback-history  # top-level command
+  state         # group
+    push / pull / status / init
+  config        # group
+    init / show
+  schedule      # group
+    install / remove / list / add / delete / blocks
+  bridge        # group
+    add / list
+  docs          # group (implied from code)
+    list / open / search
+  web           # top-level command
+  tui           # top-level command
+</code></pre></div>
+<p><strong>Problems</strong>: All commands in one file. 15+ top-level imports loaded on every invocation. No logical grouping for related commands (teachback + teachback-history should be under a group).</p>
+<h3 id="agent-session-tools-typer-based-6-separate-entry-points">agent-session-tools (Typer-based, 6 separate entry points)<a class="headerlink" href="#agent-session-tools-typer-based-6-separate-entry-points" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>session-sync       # typer.Typer() in sync.py
+session-query      # typer.Typer() in query_sessions.py (+ sub-apps: profiles, vscode)
+session-export     # typer.Typer() in export_sessions.py
+session-maint      # typer.Typer() in maintenance.py
+tutor-checkpoint   # standalone function in tutor_checkpoint.py
+study-speak        # typer.Typer() in speak.py
+</code></pre></div>
+<hr />
+<h2 id="2-multi-module-cli-architecture">2. Multi-Module CLI Architecture<a class="headerlink" href="#2-multi-module-cli-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="pattern-one-module-per-command-group">Pattern: One Module Per Command Group<a class="headerlink" href="#pattern-one-module-per-command-group" title="Permanent link">&para;</a></h3>
+<p>The standard Click pattern splits each command group into its own Python module, then registers them with the root group.</p>
+<div class="highlight"><pre><span></span><code>src/studyctl/
+    cli/
+        __init__.py      # root group + lazy registration
+        _root.py         # top-level commands (sync, status, topics)
+        _content.py      # sync, audio, dedup commands
+        _state.py        # state push/pull/status/init
+        _config.py       # config init/show
+        _schedule.py     # schedule install/remove/list/add/delete/blocks
+        _review.py       # review, struggles, wins, streaks, resume
+        _progress.py     # teachback, teachback-history, bridge, progress-map
+        _docs.py         # docs list/open/search
+        _session.py      # absorbed from agent-session-tools
+        _speak.py        # absorbed from agent-session-tools
+</code></pre></div>
+<h3 id="root-__init__py-the-wiring-point">Root <code>__init__.py</code> — The Wiring Point<a class="headerlink" href="#root-__init__py-the-wiring-point" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;studyctl CLI — the main entry point.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._lazy</span><span class="w"> </span><span class="kn">import</span> <span class="n">LazyGroup</span>
+
+
+<span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">(</span>
+    <span class="bp">cls</span><span class="o">=</span><span class="n">LazyGroup</span><span class="p">,</span>
+    <span class="n">lazy_subcommands</span><span class="o">=</span><span class="p">{</span>
+        <span class="c1"># Each value is &quot;module_path.command_object&quot;</span>
+        <span class="s2">&quot;sync&quot;</span><span class="p">:</span>     <span class="s2">&quot;studyctl.cli._content.sync&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;audio&quot;</span><span class="p">:</span>    <span class="s2">&quot;studyctl.cli._content.audio&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dedup&quot;</span><span class="p">:</span>    <span class="s2">&quot;studyctl.cli._content.dedup&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span>   <span class="s2">&quot;studyctl.cli._content.status&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;topics&quot;</span><span class="p">:</span>   <span class="s2">&quot;studyctl.cli._content.topics&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span>    <span class="s2">&quot;studyctl.cli._state.state_group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;config&quot;</span><span class="p">:</span>   <span class="s2">&quot;studyctl.cli._config.config_group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="s2">&quot;studyctl.cli._schedule.schedule_group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;review&quot;</span><span class="p">:</span>   <span class="s2">&quot;studyctl.cli._review.review&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;struggles&quot;</span><span class="p">:</span><span class="s2">&quot;studyctl.cli._review.struggles&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;wins&quot;</span><span class="p">:</span>     <span class="s2">&quot;studyctl.cli._review.wins&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;streaks&quot;</span><span class="p">:</span>  <span class="s2">&quot;studyctl.cli._review.streaks&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;resume&quot;</span><span class="p">:</span>   <span class="s2">&quot;studyctl.cli._review.resume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;teachback&quot;</span><span class="p">:</span><span class="s2">&quot;studyctl.cli._progress.teachback_group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;bridge&quot;</span><span class="p">:</span>   <span class="s2">&quot;studyctl.cli._progress.bridge_group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;progress-map&quot;</span><span class="p">:</span> <span class="s2">&quot;studyctl.cli._progress.progress_map&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;session&quot;</span><span class="p">:</span>  <span class="s2">&quot;studyctl.cli._session.session_group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;speak&quot;</span><span class="p">:</span>    <span class="s2">&quot;studyctl.cli._speak.speak&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;docs&quot;</span><span class="p">:</span>     <span class="s2">&quot;studyctl.cli._docs.docs_group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;web&quot;</span><span class="p">:</span>      <span class="s2">&quot;studyctl.cli._web.web&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tui&quot;</span><span class="p">:</span>      <span class="s2">&quot;studyctl.cli._tui.tui&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">version_option</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cli</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AuDHD study pipeline: sync, review, and track learning.&quot;&quot;&quot;</span>
+
+
+<span class="c1"># Entry point: studyctl = &quot;studyctl.cli:cli&quot;</span>
+</code></pre></div>
+<h3 id="individual-command-module-pattern">Individual Command Module Pattern<a class="headerlink" href="#individual-command-module-pattern" title="Permanent link">&para;</a></h3>
+<p>Each module is self-contained with its own imports:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/cli/_state.py</span>
+<span class="sd">&quot;&quot;&quot;State sync commands — push/pull across machines.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+
+<span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+
+
+<span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;state&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state_group</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cross-machine state sync (via Obsidian vault).&quot;&quot;&quot;</span>
+
+
+<span class="nd">@state_group</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;push&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">&quot;remote&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state_push</span><span class="p">(</span><span class="n">remote</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Push local progress to remote machine(s).&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">push_state</span>  <span class="c1"># &lt;-- lazy import inside command</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">pushed</span> <span class="o">=</span> <span class="n">push_state</span><span class="p">(</span><span class="n">remote</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">ClickException</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="s2">Run &#39;studyctl state init&#39; first&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+    <span class="k">if</span> <span class="n">pushed</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">pushed</span><span class="p">:</span>
+            <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[green]</span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">[/green]&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[dim]Everything up to date[/dim]&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Key insight</strong>: Business logic imports happen INSIDE command functions, not at module top level. This keeps <code>studyctl --help</code> fast because Python only imports the module for the command you actually run.</p>
+<hr />
+<h2 id="3-lazy-loading-for-fast-startup">3. Lazy Loading for Fast Startup<a class="headerlink" href="#3-lazy-loading-for-fast-startup" title="Permanent link">&para;</a></h2>
+<h3 id="lazygroup-from-click-official-docs">LazyGroup (from Click official docs)<a class="headerlink" href="#lazygroup-from-click-official-docs" title="Permanent link">&para;</a></h3>
+<p>This is the <strong>recommended approach</strong> from Click's own documentation:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/cli/_lazy.py</span>
+<span class="sd">&quot;&quot;&quot;LazyGroup — defer subcommand imports until actually needed.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">LazyGroup</span><span class="p">(</span><span class="n">click</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A Click group that lazily loads subcommands on first access.</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        @click.group(cls=LazyGroup, lazy_subcommands={</span>
+<span class="sd">            &quot;sub&quot;: &quot;mypackage.commands.sub_module.sub_command&quot;,</span>
+<span class="sd">        })</span>
+<span class="sd">        def cli():</span>
+<span class="sd">            pass</span>
+
+<span class="sd">    The dict maps command names to dotted import paths.</span>
+<span class="sd">    The last component is the attribute name on the module.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+        <span class="n">lazy_subcommands</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lazy_subcommands</span> <span class="o">=</span> <span class="n">lazy_subcommands</span> <span class="ow">or</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_commands</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge eagerly-registered and lazy command names.&quot;&quot;&quot;</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">list_commands</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+        <span class="n">lazy</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lazy_subcommands</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">base</span> <span class="o">+</span> <span class="n">lazy</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">cmd_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">click</span><span class="o">.</span><span class="n">Command</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cmd_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lazy_subcommands</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lazy_load</span><span class="p">(</span><span class="n">cmd_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_command</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">cmd_name</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_lazy_load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">click</span><span class="o">.</span><span class="n">Command</span><span class="p">:</span>
+        <span class="n">import_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lazy_subcommands</span><span class="p">[</span><span class="n">cmd_name</span><span class="p">]</span>
+        <span class="n">modname</span><span class="p">,</span> <span class="n">cmd_object_name</span> <span class="o">=</span> <span class="n">import_path</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">modname</span><span class="p">)</span>
+        <span class="n">cmd_object</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">cmd_object_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cmd_object</span><span class="p">,</span> <span class="n">click</span><span class="o">.</span><span class="n">BaseCommand</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Lazy loading of </span><span class="si">{</span><span class="n">import_path</span><span class="si">!r}</span><span class="s2"> failed: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;expected click.BaseCommand, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">cmd_object</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">cmd_object</span>
+</code></pre></div>
+<h3 id="what-triggers-lazy-loading">What Triggers Lazy Loading<a class="headerlink" href="#what-triggers-lazy-loading" title="Permanent link">&para;</a></h3>
+<p>Per Click docs, lazy loading is triggered by:</p>
+<ol>
+<li><strong>Command resolution</strong> — <code>studyctl state push</code> loads only <code>_state.py</code></li>
+<li><strong>Help text rendering</strong> — <code>studyctl --help</code> loads ALL modules to get docstrings</li>
+<li><strong>Shell completion</strong> — Tab completion loads modules to discover subcommands</li>
+</ol>
+<p><strong>Mitigation for help</strong>: Put the help string in <code>lazy_subcommands</code> dict or use a <code>LazyGroup</code> that stores help strings separately. For most CLIs, the <code>--help</code> cost is acceptable.</p>
+<h3 id="nested-lazy-groups">Nested Lazy Groups<a class="headerlink" href="#nested-lazy-groups" title="Permanent link">&para;</a></h3>
+<p>Sub-groups can also be lazy. For example, <code>studyctl session</code> can lazily load its own subcommands:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/cli/_session.py</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">,</span>
+    <span class="bp">cls</span><span class="o">=</span><span class="n">LazyGroup</span><span class="p">,</span>
+    <span class="n">lazy_subcommands</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;query&quot;</span><span class="p">:</span>  <span class="s2">&quot;studyctl.cli._session_query.query&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;export&quot;</span><span class="p">:</span> <span class="s2">&quot;studyctl.cli._session_export.export_cmd&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sync&quot;</span><span class="p">:</span>   <span class="s2">&quot;studyctl.cli._session_sync.sync_cmd&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;maint&quot;</span><span class="p">:</span>  <span class="s2">&quot;studyctl.cli._session_maint.maint_group&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">session_group</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manage agent session database.&quot;&quot;&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="4-plugin-pattern-file-based-discovery">4. Plugin Pattern (File-Based Discovery)<a class="headerlink" href="#4-plugin-pattern-file-based-discovery" title="Permanent link">&para;</a></h2>
+<p>For extensible CLIs where commands can be added by dropping files in a folder:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">importlib.util</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PluginGroup</span><span class="p">(</span><span class="n">click</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discovers commands from .py files in a folder.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plugin_folder</span><span class="o">=</span><span class="s2">&quot;commands&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plugin_folder</span> <span class="o">=</span> <span class="n">plugin_folder</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_commands</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+        <span class="n">rv</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plugin_folder</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.py&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">filename</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+                <span class="n">rv</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filename</span><span class="p">[:</span><span class="o">-</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">rv</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">rv</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plugin_folder</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.py&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">spec_from_file_location</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">module_from_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="n">spec</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">exec_module</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">module</span><span class="o">.</span><span class="n">cli</span>
+</code></pre></div>
+<p><strong>When to use</strong>: When you want third-party or user-defined commands. For studyctl, the <code>LazyGroup</code> pattern is more appropriate since all commands are known at development time.</p>
+<hr />
+<h2 id="5-typer-to-click-conversion-guide">5. Typer-to-Click Conversion Guide<a class="headerlink" href="#5-typer-to-click-conversion-guide" title="Permanent link">&para;</a></h2>
+<p>Typer is a thin wrapper around Click. Every Typer app compiles down to Click objects internally. The conversion is mostly mechanical.</p>
+<h3 id="mapping-table">Mapping Table<a class="headerlink" href="#mapping-table" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Typer Pattern</th>
+<th>Click Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app = typer.Typer()</code></td>
+<td><code>@click.group()</code></td>
+</tr>
+<tr>
+<td><code>@app.command()</code></td>
+<td><code>@group.command()</code></td>
+</tr>
+<tr>
+<td><code>app.add_typer(sub, name="x")</code></td>
+<td><code>group.add_command(sub_group, "x")</code></td>
+</tr>
+<tr>
+<td><code>typer.Argument(help="...")</code></td>
+<td><code>@click.argument("name")</code></td>
+</tr>
+<tr>
+<td><code>typer.Option("--flag", help="...")</code></td>
+<td><code>@click.option("--flag", help="...")</code></td>
+</tr>
+<tr>
+<td><code>Annotated[str, typer.Argument(...)]</code></td>
+<td><code>@click.argument("name")</code> on function</td>
+</tr>
+<tr>
+<td><code>Annotated[str, typer.Option(...)]</code></td>
+<td><code>@click.option(...)</code> on function</td>
+</tr>
+<tr>
+<td><code>typer.echo()</code></td>
+<td><code>click.echo()</code></td>
+</tr>
+<tr>
+<td><code>typer.Exit(code=1)</code></td>
+<td><code>raise SystemExit(1)</code> or <code>ctx.exit(1)</code></td>
+</tr>
+<tr>
+<td><code>rich_markup_mode="rich"</code></td>
+<td>Use <code>rich-click</code> or Rich Console directly</td>
+</tr>
+<tr>
+<td><code>add_completion=True</code></td>
+<td>Click has built-in shell completion</td>
+</tr>
+</tbody>
+</table>
+<h3 id="concrete-conversion-example">Concrete Conversion Example<a class="headerlink" href="#concrete-conversion-example" title="Permanent link">&para;</a></h3>
+<p><strong>Before (Typer)</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;session-sync&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Sync sessions.db between machines.&quot;</span><span class="p">)</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">push</span><span class="p">(</span>
+    <span class="n">remote</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="n">help</span><span class="o">=</span><span class="s2">&quot;Target remote&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dry_run</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="s2">&quot;--dry-run&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Show plan&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Push sessions to a remote machine.&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">app</span><span class="p">()</span>
+</code></pre></div>
+<p><strong>After (Click)</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+
+<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">&quot;remote&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;--dry-run&quot;</span><span class="p">,</span> <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Show plan&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">push</span><span class="p">(</span><span class="n">remote</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Push sessions to a remote machine.&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+</code></pre></div>
+<h3 id="key-differences-to-watch-for">Key Differences to Watch For<a class="headerlink" href="#key-differences-to-watch-for" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Type annotations</strong>: Typer uses <code>Annotated[type, metadata]</code> for params. Click uses decorators. Strip annotations, add decorators.</p>
+</li>
+<li>
+<p><strong>Boolean flags</strong>: Typer auto-detects <code>bool</code> params as flags. Click needs explicit <code>is_flag=True</code> or <code>--flag/--no-flag</code>.</p>
+</li>
+<li>
+<p><strong>Enum choices</strong>: Typer auto-converts <code>Enum</code> params. Click needs <code>type=click.Choice([...])</code>.</p>
+</li>
+<li>
+<p><strong>Default from function signature</strong>: Typer reads defaults from function signatures. Click decorators carry their own defaults (which override function defaults).</p>
+</li>
+<li>
+<p><strong>Return values</strong>: Neither framework uses return values (they go to stdout). No change needed.</p>
+</li>
+<li>
+<p><strong>Sub-apps</strong>: <code>app.add_typer(sub_app, name="x")</code> becomes <code>group.add_command(sub_group, "x")</code>.</p>
+</li>
+</ol>
+<h3 id="strategy-wrap-instead-of-rewrite">Strategy: Wrap Instead of Rewrite<a class="headerlink" href="#strategy-wrap-instead-of-rewrite" title="Permanent link">&para;</a></h3>
+<p>Since Typer IS Click underneath, you can actually mix them. A Typer app exposes its Click group via the internal <code>typer.main.get_command()</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typer.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_command</span>
+
+<span class="c1"># This converts a Typer app to a Click Group</span>
+<span class="n">typer_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">click_group</span> <span class="o">=</span> <span class="n">get_command</span><span class="p">(</span><span class="n">typer_app</span><span class="p">)</span>
+
+<span class="c1"># Now register it as a Click subcommand</span>
+<span class="n">cli</span><span class="o">.</span><span class="n">add_command</span><span class="p">(</span><span class="n">click_group</span><span class="p">,</span> <span class="s2">&quot;session-sync&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>However</strong>, this approach couples you to Typer's internals and makes the dependency mandatory. For studyctl, a clean conversion to pure Click is recommended because:
+- studyctl already uses Click
+- Typer adds an unnecessary dependency
+- The conversion is straightforward and mechanical
+- Pure Click gives you full control over lazy loading</p>
+<hr />
+<h2 id="6-shared-options-and-context">6. Shared Options and Context<a class="headerlink" href="#6-shared-options-and-context" title="Permanent link">&para;</a></h2>
+<h3 id="pattern-1-clickpass_context-with-ctxobj">Pattern 1: <code>click.pass_context</code> with <code>ctx.obj</code><a class="headerlink" href="#pattern-1-clickpass_context-with-ctxobj" title="Permanent link">&para;</a></h3>
+<p>Store shared state in the Click context object:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AppState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared state passed through Click context.&quot;&quot;&quot;</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">console</span><span class="p">:</span> <span class="n">Console</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">Console</span><span class="p">)</span>
+
+
+<span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="bp">cls</span><span class="o">=</span><span class="n">LazyGroup</span><span class="p">,</span> <span class="n">lazy_subcommands</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Verbose output&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;--config&quot;</span><span class="p">,</span> <span class="s2">&quot;config_path&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+              <span class="n">envvar</span><span class="o">=</span><span class="s2">&quot;STUDYCTL_CONFIG&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Config file path&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">version_option</span><span class="p">()</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cli</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AuDHD study pipeline.&quot;&quot;&quot;</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">ensure_object</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">obj</span> <span class="o">=</span> <span class="n">AppState</span><span class="p">(</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="n">config_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">config_path</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># Subcommands access it via @click.pass_obj</span>
+<span class="nd">@state_group</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;push&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">&quot;remote&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_obj</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state_push</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">AppState</span><span class="p">,</span> <span class="n">remote</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">app</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[dim]Verbose mode[/dim]&quot;</span><span class="p">)</span>
+    <span class="o">...</span>
+</code></pre></div>
+<h3 id="pattern-2-reusable-option-decorators">Pattern 2: Reusable Option Decorators<a class="headerlink" href="#pattern-2-reusable-option-decorators" title="Permanent link">&para;</a></h3>
+<p>For options that appear on many commands:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/cli/_shared.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">common_options</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator that adds --verbose and --config to any command.&quot;&quot;&quot;</span>
+    <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="s2">&quot;-v&quot;</span><span class="p">,</span> <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Verbose output&quot;</span><span class="p">)</span>
+    <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;--config&quot;</span><span class="p">,</span> <span class="s2">&quot;config_path&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(),</span>
+                  <span class="n">envvar</span><span class="o">=</span><span class="s2">&quot;STUDYCTL_CONFIG&quot;</span><span class="p">)</span>
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">topic_argument</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator that adds a TOPIC_NAME argument.&quot;&quot;&quot;</span>
+    <span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">&quot;topic_name&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+</code></pre></div>
+<p>Usage:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="nd">@common_options</span>
+<span class="nd">@topic_argument</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sync</span><span class="p">(</span><span class="n">topic_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
+</code></pre></div>
+<h3 id="pattern-3-ctxwith_resource-for-cleanup">Pattern 3: <code>ctx.with_resource</code> for Cleanup<a class="headerlink" href="#pattern-3-ctxwith_resource-for-cleanup" title="Permanent link">&para;</a></h3>
+<p>For resources that need cleanup (database connections, temp files):</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cli</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">obj</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">with_resource</span><span class="p">(</span><span class="n">DatabaseConnection</span><span class="p">())</span>
+    <span class="c1"># Automatically cleaned up when CLI exits</span>
+</code></pre></div>
+<hr />
+<h2 id="7-sharing-logic-between-cli-and-fastapi">7. Sharing Logic Between CLI and FastAPI<a class="headerlink" href="#7-sharing-logic-between-cli-and-fastapi" title="Permanent link">&para;</a></h2>
+<h3 id="the-service-layer-pattern">The Service Layer Pattern<a class="headerlink" href="#the-service-layer-pattern" title="Permanent link">&para;</a></h3>
+<p>Business logic lives in service modules, NOT in CLI command functions or FastAPI route handlers. Both entry points call the same functions.</p>
+<div class="highlight"><pre><span></span><code>src/studyctl/
+    services/             # Business logic — no Click or FastAPI imports
+        sync_service.py
+        review_service.py
+        state_service.py
+    cli/                  # Click commands — thin wrappers
+        _content.py
+        _review.py
+    web/                  # FastAPI routes — thin wrappers
+        server.py
+        routes/
+            sync.py
+            review.py
+</code></pre></div>
+<p><strong>Service layer</strong> (framework-agnostic):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/services/review_service.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReviewResult</span><span class="p">:</span>
+    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">due</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">last_studied</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">interval_days</span><span class="p">:</span> <span class="nb">int</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_due_reviews</span><span class="p">(</span><span class="n">days_lookback</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ReviewResult</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pure business logic. No Click, no FastAPI, no Rich.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..history</span><span class="w"> </span><span class="kn">import</span> <span class="n">spaced_repetition_due</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">spaced_repetition_due</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ReviewResult</span><span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">]</span>
+</code></pre></div>
+<p><strong>CLI wrapper</strong> (thin, handles display):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/cli/_review.py</span>
+<span class="nd">@cli</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;--days&quot;</span><span class="p">,</span> <span class="s2">&quot;-d&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">review</span><span class="p">(</span><span class="n">days</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Show topics due for spaced repetition review.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..services.review_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_due_reviews</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">get_due_reviews</span><span class="p">(</span><span class="n">days</span><span class="p">)</span>
+    <span class="c1"># Rich table rendering here</span>
+</code></pre></div>
+<p><strong>FastAPI wrapper</strong> (thin, handles serialization):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/web/routes/review.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">...services.review_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_due_reviews</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/reviews/due&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">due_reviews</span><span class="p">(</span><span class="n">days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">get_due_reviews</span><span class="p">(</span><span class="n">days</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="why-this-matters">Why This Matters<a class="headerlink" href="#why-this-matters" title="Permanent link">&para;</a></h3>
+<p>The current <code>cli.py</code> mixes business logic with display logic. Splitting them:
+- Makes testing easier (test service without CLI overhead)
+- Enables the FastAPI backend to reuse logic
+- Keeps CLI commands short (10-20 lines each)</p>
+<hr />
+<h2 id="8-click-rich-integration">8. Click + Rich Integration<a class="headerlink" href="#8-click-rich-integration" title="Permanent link">&para;</a></h2>
+<h3 id="option-a-rich-click-drop-in-replacement">Option A: <code>rich-click</code> (Drop-in Replacement)<a class="headerlink" href="#option-a-rich-click-drop-in-replacement" title="Permanent link">&para;</a></h3>
+<p>The simplest approach. Replace <code>import click</code> with <code>import rich_click as click</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">rich_click</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">click</span>
+
+<span class="c1"># Everything else stays the same</span>
+<span class="c1"># Help pages are automatically styled with Rich</span>
+</code></pre></div>
+<p>Add to dependencies:
+<div class="highlight"><pre><span></span><code><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;rich-click&gt;=1.8&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1"># replaces both click and rich deps</span>
+<span class="p">]</span>
+</code></pre></div></p>
+<h3 id="option-b-use-rich-directly-current-approach">Option B: Use Rich Directly (Current Approach)<a class="headerlink" href="#option-b-use-rich-directly-current-approach" title="Permanent link">&para;</a></h3>
+<p>studyctl already uses <code>Rich.Console</code> and <code>Rich.Table</code>. This is fine and gives full control. The key patterns:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span>
+
+<span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+
+<span class="c1"># In commands:</span>
+<span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[green]Success[/green]&quot;</span><span class="p">)</span>
+<span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[red]Error[/red]&quot;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">)</span>
+
+<span class="c1"># Tables:</span>
+<span class="n">table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Study Topics&quot;</span><span class="p">)</span>
+<span class="n">table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s2">&quot;cyan&quot;</span><span class="p">)</span>
+<span class="n">table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span>
+<span class="n">table</span><span class="o">.</span><span class="n">add_row</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;[green]active[/green]&quot;</span><span class="p">)</span>
+<span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="option-c-hybrid-recommended">Option C: Hybrid (Recommended)<a class="headerlink" href="#option-c-hybrid-recommended" title="Permanent link">&para;</a></h3>
+<p>Use <code>rich-click</code> for automatic help page styling, and <code>Rich.Console</code> for custom output in commands. They are fully compatible.</p>
+<h3 id="shared-console-instance">Shared Console Instance<a class="headerlink" href="#shared-console-instance" title="Permanent link">&para;</a></h3>
+<p>Create one console per CLI session, pass it through context:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/cli/_shared.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+
+<span class="c1"># Module-level singleton (fine for CLIs — single-threaded)</span>
+<span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+<span class="n">err_console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">(</span><span class="n">stderr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>Import in command modules:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">console</span><span class="p">,</span> <span class="n">err_console</span>
+</code></pre></div>
+<hr />
+<h2 id="9-error-handling-patterns">9. Error Handling Patterns<a class="headerlink" href="#9-error-handling-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="clicks-exception-hierarchy">Click's Exception Hierarchy<a class="headerlink" href="#clicks-exception-hierarchy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BaseException
+  +-- ClickException          (exit_code attribute, calls show())
+  |     +-- UsageError        (malformed command invocation)
+  |     +-- BadParameter      (invalid parameter value)
+  |     +-- FileError         (file not found/not readable)
+  |     +-- NoSuchOption
+  |     +-- MissingParameter
+  +-- Abort                   (prints &quot;Aborted!&quot; to stderr, exit 1)
+</code></pre></div>
+<h3 id="pattern-use-clickexception-instead-of-systemexit">Pattern: Use ClickException Instead of SystemExit<a class="headerlink" href="#pattern-use-clickexception-instead-of-systemexit" title="Permanent link">&para;</a></h3>
+<p>The current code uses <code>raise SystemExit(1)</code> in several places. This works but bypasses Click's error formatting. Better:</p>
+<p><strong>Before</strong> (current):
+<div class="highlight"><pre><span></span><code><span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[red]Score must be 5 values[/red]&quot;</span><span class="p">)</span>
+<span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>After</strong> (idiomatic Click):
+<div class="highlight"><pre><span></span><code><span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">ClickException</span><span class="p">(</span><span class="s2">&quot;Score must be 5 comma-separated values (accuracy,own_words,structure,depth,transfer)&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<p>Or for parameter-specific errors:
+<div class="highlight"><pre><span></span><code><span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">BadParameter</span><span class="p">(</span>
+    <span class="s2">&quot;must be 5 comma-separated integers (1-4)&quot;</span><span class="p">,</span>
+    <span class="n">param_hint</span><span class="o">=</span><span class="s2">&quot;&#39;--score&#39;&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div></p>
+<h3 id="pattern-consistent-error-handling-decorator">Pattern: Consistent Error Handling Decorator<a class="headerlink" href="#pattern-consistent-error-handling-decorator" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl/cli/_shared.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+
+<span class="n">err_console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">(</span><span class="n">stderr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">handle_errors</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Catch common exceptions and convert to Click errors.&quot;&quot;&quot;</span>
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">ClickException</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">PermissionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">ClickException</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Permission denied: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">Abort</span><span class="p">()</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+</code></pre></div>
+<p>Usage:
+<div class="highlight"><pre><span></span><code><span class="nd">@state_group</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;push&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">&quot;remote&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nd">@handle_errors</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">state_push</span><span class="p">(</span><span class="n">remote</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
+</code></pre></div></p>
+<h3 id="exit-code-conventions">Exit Code Conventions<a class="headerlink" href="#exit-code-conventions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Success</td>
+</tr>
+<tr>
+<td>1</td>
+<td>General error (ClickException default)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Usage error (Click auto-handles)</td>
+</tr>
+<tr>
+<td>130</td>
+<td>KeyboardInterrupt (SIGINT)</td>
+</tr>
+</tbody>
+</table>
+<p>Set custom exit codes:
+<div class="highlight"><pre><span></span><code><span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">ClickException</span><span class="p">(</span><span class="s2">&quot;Not configured&quot;</span><span class="p">,</span> <span class="n">exit_code</span><span class="o">=</span><span class="mi">78</span><span class="p">)</span>  <span class="c1"># EX_CONFIG</span>
+</code></pre></div></p>
+<hr />
+<h2 id="10-testing-patterns">10. Testing Patterns<a class="headerlink" href="#10-testing-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="basic-clirunner-setup">Basic CliRunner Setup<a class="headerlink" href="#basic-clirunner-setup" title="Permanent link">&para;</a></h3>
+<p>The current test setup is solid. Keep it:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">click.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">CliRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.cli</span><span class="w"> </span><span class="kn">import</span> <span class="n">cli</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">runner</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">CliRunner</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">CliRunner</span><span class="p">()</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_no_db</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">:</span> <span class="n">pytest</span><span class="o">.</span><span class="n">MonkeyPatch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prevent tests from touching real database.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">studyctl.history</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hist</span>
+    <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setattr</span><span class="p">(</span><span class="n">hist</span><span class="p">,</span> <span class="s2">&quot;_find_db&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="testing-subcommands-and-groups">Testing Subcommands and Groups<a class="headerlink" href="#testing-subcommands-and-groups" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TestStateCommands</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_state_push</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runner</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">,</span> <span class="s2">&quot;push&quot;</span><span class="p">])</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_state_push_with_remote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runner</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">,</span> <span class="s2">&quot;push&quot;</span><span class="p">,</span> <span class="s2">&quot;macbook&quot;</span><span class="p">])</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_state_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runner</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">])</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+</code></pre></div>
+<h3 id="testing-with-context-shared-state">Testing with Context / Shared State<a class="headerlink" href="#testing-with-context-shared-state" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_verbose_mode</span><span class="p">(</span><span class="n">runner</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="s2">&quot;topics&quot;</span><span class="p">])</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_config_override</span><span class="p">(</span><span class="n">runner</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;test-config.yaml&quot;</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;topics: []&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;--config&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">config</span><span class="p">),</span> <span class="s2">&quot;topics&quot;</span><span class="p">])</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+</code></pre></div>
+<h3 id="testing-error-conditions">Testing Error Conditions<a class="headerlink" href="#testing-error-conditions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_bad_score_format</span><span class="p">(</span><span class="n">runner</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span>
+        <span class="s2">&quot;teachback&quot;</span><span class="p">,</span> <span class="s2">&quot;concept&quot;</span><span class="p">,</span> <span class="s2">&quot;-t&quot;</span><span class="p">,</span> <span class="s2">&quot;topic&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--score&quot;</span><span class="p">,</span> <span class="s2">&quot;1,2,3&quot;</span><span class="p">,</span>  <span class="c1"># only 3 values, needs 5</span>
+        <span class="s2">&quot;--type&quot;</span><span class="p">,</span> <span class="s2">&quot;micro&quot;</span><span class="p">,</span>
+    <span class="p">])</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">!=</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="s2">&quot;5 comma-separated&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">output</span> <span class="ow">or</span> <span class="s2">&quot;5 comma-separated&quot;</span> <span class="ow">in</span> <span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">exception</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">exception</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="file-system-isolation">File System Isolation<a class="headerlink" href="#file-system-isolation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_config_init_creates_file</span><span class="p">(</span><span class="n">runner</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">runner</span><span class="o">.</span><span class="n">isolated_filesystem</span><span class="p">():</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="s2">&quot;init&quot;</span><span class="p">],</span> <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;y</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+</code></pre></div>
+<h3 id="catch-exceptions-for-debugging">Catch Exceptions for Debugging<a class="headerlink" href="#catch-exceptions-for-debugging" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_command_doesnt_crash</span><span class="p">(</span><span class="n">runner</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;sync&quot;</span><span class="p">,</span> <span class="s2">&quot;--dry-run&quot;</span><span class="p">],</span> <span class="n">catch_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="c1"># catch_exceptions=False lets pytest show the real traceback</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+</code></pre></div>
+<h3 id="testing-absorbed-typer-commands">Testing Absorbed Typer Commands<a class="headerlink" href="#testing-absorbed-typer-commands" title="Permanent link">&para;</a></h3>
+<p>After conversion, test them exactly like any Click command:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TestSessionCommands</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_session_query_help</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runner</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="s2">&quot;--help&quot;</span><span class="p">])</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="s2">&quot;Query&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">output</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_session_sync_dry_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runner</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">cli</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="s2">&quot;sync&quot;</span><span class="p">,</span> <span class="s2">&quot;--dry-run&quot;</span><span class="p">])</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+</code></pre></div>
+<hr />
+<h2 id="11-recommended-file-layout">11. Recommended File Layout<a class="headerlink" href="#11-recommended-file-layout" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>packages/studyctl/src/studyctl/
+    cli/
+        __init__.py          # Root group with LazyGroup, entry point
+        _lazy.py             # LazyGroup implementation (40 lines)
+        _shared.py           # console, err_console, common decorators
+        _content.py          # sync, audio, dedup, status, topics (~200 lines)
+        _state.py            # state push/pull/status/init (~80 lines)
+        _config.py           # config init/show (~120 lines)
+        _schedule.py         # schedule install/remove/list/add/delete/blocks (~120 lines)
+        _review.py           # review, struggles, wins, streaks, resume (~200 lines)
+        _progress.py         # teachback, teachback-history, bridge, progress-map (~250 lines)
+        _docs.py             # docs list/open/search (~80 lines)
+        _session.py          # absorbed: query, export, sync, maint (~50 lines, lazy sub-group)
+        _session_query.py    # absorbed from agent-session-tools
+        _session_export.py   # absorbed from agent-session-tools
+        _session_sync.py     # absorbed from agent-session-tools
+        _session_maint.py    # absorbed from agent-session-tools
+        _speak.py            # absorbed: study-speak
+        _checkpoint.py       # absorbed: tutor-checkpoint
+        _web.py              # web server launch (~30 lines)
+        _tui.py              # TUI launch (~30 lines)
+    services/                # Business logic (future refactor)
+        review_service.py
+        sync_service.py
+        ...
+    history.py               # Existing, unchanged
+    config.py                # Existing, unchanged
+    ...
+</code></pre></div>
+<h3 id="why-underscore-prefix-on-cli-modules">Why Underscore Prefix on CLI Modules?<a class="headerlink" href="#why-underscore-prefix-on-cli-modules" title="Permanent link">&para;</a></h3>
+<p>Convention from Click community: <code>_module.py</code> signals "internal, not for direct import by users." Only <code>__init__.py</code> is the public API. This prevents accidental <code>from studyctl.cli._state import ...</code> in non-CLI code.</p>
+<h3 id="entry-point-unchanged">Entry Point (unchanged)<a class="headerlink" href="#entry-point-unchanged" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">[project.scripts]</span>
+<span class="n">studyctl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;studyctl.cli:cli&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="12-migration-plan">12. Migration Plan<a class="headerlink" href="#12-migration-plan" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-extract-lazygroup-no-behavior-change">Phase 1: Extract LazyGroup (No Behavior Change)<a class="headerlink" href="#phase-1-extract-lazygroup-no-behavior-change" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create <code>src/studyctl/cli/</code> package</li>
+<li>Add <code>_lazy.py</code> with <code>LazyGroup</code></li>
+<li>Move all existing code to <code>_legacy.py</code> temporarily</li>
+<li>Wire <code>__init__.py</code> to import from <code>_legacy.py</code></li>
+<li>Run all tests -- must pass unchanged</li>
+</ol>
+<h3 id="phase-2-split-by-group-one-group-at-a-time">Phase 2: Split by Group (One Group at a Time)<a class="headerlink" href="#phase-2-split-by-group-one-group-at-a-time" title="Permanent link">&para;</a></h3>
+<p>For each group, in this order:
+1. <code>_state.py</code> (smallest, 4 commands, already a group)
+2. <code>_config.py</code> (2 commands, already a group)
+3. <code>_schedule.py</code> (6 commands, already a group)
+4. <code>_progress.py</code> (bridge group + teachback commands)
+5. <code>_review.py</code> (review + struggles + wins + streaks + resume)
+6. <code>_content.py</code> (sync + audio + dedup + status + topics)
+7. <code>_docs.py</code>, <code>_web.py</code>, <code>_tui.py</code></p>
+<p>Each extraction:
+- Move functions to new module
+- Update <code>__init__.py</code> lazy_subcommands
+- Run tests
+- Verify <code>studyctl --help</code> still works</p>
+<h3 id="phase-3-convert-typer-commands">Phase 3: Convert Typer Commands<a class="headerlink" href="#phase-3-convert-typer-commands" title="Permanent link">&para;</a></h3>
+<p>For each Typer entry point:
+1. Create corresponding <code>_session_*.py</code> Click module
+2. Convert <code>Annotated[type, typer.Option(...)]</code> to <code>@click.option(...)</code>
+3. Convert <code>typer.Typer()</code> groups to <code>@click.group()</code>
+4. Remove <code>typer</code> dependency from converted code
+5. Create <code>_session.py</code> as a lazy sub-group
+6. Add tests using <code>runner.invoke(cli, ["session", "subcommand", ...])</code></p>
+<h3 id="phase-4-deprecate-standalone-entry-points">Phase 4: Deprecate Standalone Entry Points<a class="headerlink" href="#phase-4-deprecate-standalone-entry-points" title="Permanent link">&para;</a></h3>
+<p>Keep old entry points working temporarily:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># In agent-session-tools entry points (deprecated)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="s2">&quot;session-sync is deprecated. Use &#39;studyctl session sync&#39; instead.&quot;</span><span class="p">,</span>
+        <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.cli._session_sync</span><span class="w"> </span><span class="kn">import</span> <span class="n">sync_cmd</span>
+    <span class="n">sync_cmd</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="phase-5-service-layer-future">Phase 5: Service Layer (Future)<a class="headerlink" href="#phase-5-service-layer-future" title="Permanent link">&para;</a></h3>
+<p>Extract business logic from CLI commands into <code>services/</code> modules. This enables:
+- FastAPI route reuse
+- Easier unit testing
+- Cleaner separation of concerns</p>
+<hr />
+<h2 id="13-real-world-examples">13. Real-World Examples<a class="headerlink" href="#13-real-world-examples" title="Permanent link">&para;</a></h2>
+<h3 id="large-click-clis-worth-studying">Large Click CLIs Worth Studying<a class="headerlink" href="#large-click-clis-worth-studying" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Commands</th>
+<th>Pattern Used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="https://github.com/httpie/cli">HTTPie</a></strong></td>
+<td>~20</td>
+<td>Custom Group + plugin system</td>
+</tr>
+<tr>
+<td><strong><a href="https://github.com/conda/conda">Conda</a></strong></td>
+<td>~25</td>
+<td>Plugin-based with conda plugins</td>
+</tr>
+<tr>
+<td><strong><a href="https://github.com/dbt-labs/dbt-core">dbt-core</a></strong></td>
+<td>~15</td>
+<td>Click groups + multi-file</td>
+</tr>
+<tr>
+<td><strong><a href="https://github.com/celery/celery">Celery</a></strong></td>
+<td>~15</td>
+<td>Click multi-command with lazy loading</td>
+</tr>
+<tr>
+<td><strong><a href="https://github.com/pallets/flask">Flask CLI</a></strong></td>
+<td>~8</td>
+<td>Click AppGroup (like LazyGroup)</td>
+</tr>
+<tr>
+<td><strong><a href="https://github.com/PrefectHQ/prefect">Prefect</a></strong></td>
+<td>~40</td>
+<td>Deep nested Click groups</td>
+</tr>
+<tr>
+<td><strong><a href="https://github.com/tiangolo/typer">Typer itself</a></strong></td>
+<td>N/A</td>
+<td>Built ON Click Groups internally</td>
+</tr>
+</tbody>
+</table>
+<h3 id="prefects-pattern-40-commands">Prefect's Pattern (40+ Commands)<a class="headerlink" href="#prefects-pattern-40-commands" title="Permanent link">&para;</a></h3>
+<p>Prefect organizes commands exactly like the recommended pattern above:</p>
+<div class="highlight"><pre><span></span><code>prefect/
+    cli/
+        __init__.py     # Root group
+        _types/         # Shared types
+        agent.py        # `prefect agent` subgroup
+        block.py        # `prefect block` subgroup
+        cloud.py        # `prefect cloud` subgroup
+        deploy.py       # `prefect deploy` command
+        flow.py         # `prefect flow` subgroup
+        work_pool.py    # `prefect work-pool` subgroup
+        ...
+</code></pre></div>
+<h3 id="flasks-appgroup-pattern">Flask's AppGroup Pattern<a class="headerlink" href="#flasks-appgroup-pattern" title="Permanent link">&para;</a></h3>
+<p>Flask extends <code>click.Group</code> with <code>AppGroup</code> which auto-wraps commands. Similar concept to <code>LazyGroup</code> but for plugin discovery:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">Flask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flask.cli</span><span class="w"> </span><span class="kn">import</span> <span class="n">AppGroup</span>
+
+<span class="n">user_cli</span> <span class="o">=</span> <span class="n">AppGroup</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+
+<span class="nd">@user_cli</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_user</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">add_command</span><span class="p">(</span><span class="n">user_cli</span><span class="p">)</span>
+<span class="c1"># Usage: flask user create admin</span>
+</code></pre></div>
+<hr />
+<h2 id="summary-recommendations-for-studyctl">Summary: Recommendations for studyctl<a class="headerlink" href="#summary-recommendations-for-studyctl" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Use LazyGroup</strong> for the root CLI group and any heavy sub-groups (session)</li>
+<li><strong>One file per command group</strong>, underscore-prefixed, max ~250 lines each</li>
+<li><strong>Convert Typer to Click</strong> mechanically (it is mostly decorator swaps)</li>
+<li><strong>Move business logic imports inside command functions</strong> for startup speed</li>
+<li><strong>Use <code>click.ClickException</code></strong> instead of <code>SystemExit(1)</code> for consistent error display</li>
+<li><strong>Consider <code>rich-click</code></strong> as a drop-in for prettier help pages (optional)</li>
+<li><strong>Keep the existing test pattern</strong> (CliRunner + monkeypatch), extend for new groups</li>
+<li><strong>Plan for a service layer</strong> to share logic between CLI and FastAPI</li>
+<li><strong>Migrate incrementally</strong> -- one group at a time, tests passing at every step</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

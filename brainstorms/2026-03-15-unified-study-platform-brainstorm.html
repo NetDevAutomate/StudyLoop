@@ -1,0 +1,1619 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-15-unified-study-platform-brainstorm.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Brainstorm: Unified Study Platform - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#brainstorm-unified-study-platform" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Brainstorm: Unified Study Platform
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-were-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We're Building
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What We&#39;re Building">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-value-proposition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Value Proposition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-approach-not-native-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Approach (Not Native App)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem Statement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-absorb-pdf-by-chapters-into-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Absorb pdf-by-chapters into studyctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-fastapi-backend-for-the-web-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. FastAPI backend for the web UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-vanilla-htmljs-htmx-frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Vanilla HTML/JS + HTMX frontend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-architecture-ai-coding-assistants-remain-the-ai-brain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Architecture: AI coding assistants remain the AI brain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-lan-access-with-optional-password-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. LAN access with optional password protection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-feedback-via-github-issues-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Feedback via GitHub Issues API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-onboarding-agent-ai-guided-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Onboarding agent (AI-guided setup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-three-tier-content-generation-notebooklm-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Three-tier content generation (NotebookLM optional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-course-centric-artefact-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Course-centric artefact storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-package-name-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Package name: studyctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-tui-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. TUI enhancements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-journey-i-have-an-ebook-i-want-to-study" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Journey: "I have an ebook, I want to study"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-were-not-building-yagni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We're NOT Building (YAGNI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resolved-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolved Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#research-documents-preserved-for-future-native-app-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Documents (preserved for future native app phase)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="brainstorm-unified-study-platform">Brainstorm: Unified Study Platform<a class="headerlink" href="#brainstorm-unified-study-platform" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-03-15
+<strong>Status:</strong> Final
+<strong>Participants:</strong> user, Claude
+<strong>Supersedes:</strong> 2026-03-15-native-app-repackaging-brainstorm.md (native Swift -- deferred to Phase 2)</p>
+<hr />
+<h2 id="what-were-building">What We're Building<a class="headerlink" href="#what-were-building" title="Permanent link">&para;</a></h2>
+<p>A unified, polished study platform that merges Socratic-Study-Mentor and notebooklm-pdf-by-chapters into a single installable tool. The platform provides:</p>
+<ol>
+<li><strong>AI coding assistants as the study brain</strong> -- Claude Code, Gemini CLI, Kiro CLI, etc. with Socratic mentor agent definitions</li>
+<li><strong>Web UI as the study review hub</strong> -- flashcards, quizzes, NotebookLM artefacts (audio, video, slides, infographics), chunked PDFs, progress tracking. Accessible from any device on LAN.</li>
+<li><strong>TUI as the terminal study interface</strong> -- same review features for terminal users, with Pomodoro timer, voice toggle, OpenDyslexic font</li>
+<li><strong>Complete content pipeline</strong> -- PDF ebook splitting, NotebookLM upload/generation, Obsidian markdown conversion, artefact download/management</li>
+</ol>
+<h3 id="core-value-proposition">Core Value Proposition<a class="headerlink" href="#core-value-proposition" title="Permanent link">&para;</a></h3>
+<p><strong>The only AuDHD-aware study tool on the market</strong> that combines AI Socratic mentoring with spaced repetition, energy-level adaptation, and a complete content-to-study pipeline. Nothing like this exists.</p>
+<hr />
+<h2 id="why-this-approach-not-native-app">Why This Approach (Not Native App)<a class="headerlink" href="#why-this-approach-not-native-app" title="Permanent link">&para;</a></h2>
+<p>The native Swift app direction (documented in <code>2026-03-15-native-app-repackaging-brainstorm.md</code> with 6 research docs in <code>docs/research/</code>) was explored thoroughly. Decision to defer it because:</p>
+<ol>
+<li><strong>Existing codebase is substantial</strong> -- 696+ tests, working PWA, working TUI, working agent definitions, working session tooling. Rewriting takes 3-6 months to reach parity.</li>
+<li><strong>Real users giving feedback NOW</strong> is more valuable than a perfect native app later. Ship weeks, not months.</li>
+<li><strong>The problems are solvable without a rewrite</strong> -- fragmentation, install difficulty, and interface confusion are packaging/UX problems, not technology problems.</li>
+<li><strong>PWA already works on iOS Safari</strong> -- not App Store polished, but usable today.</li>
+<li><strong>Research is preserved</strong> for when user feedback and usage data justify the native investment.</li>
+</ol>
+<hr />
+<h2 id="problem-statement">Problem Statement<a class="headerlink" href="#problem-statement" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Installation barrier</strong>: Non-technical users can't <code>git clone</code>, install <code>uv</code>, or configure YAML</li>
+<li><strong>Fragmentation</strong>: Two separate repos with no clear journey from "I have an ebook" to "I'm studying"</li>
+<li><strong>Interface confusion</strong>: TUI vs PWA vs CLI vs Agent -- no guidance on which to use when</li>
+<li><strong>Incomplete pipeline</strong>: Content generation (pdf-by-chapters) and study consumption (studyctl) are disconnected</li>
+</ol>
+<hr />
+<h2 id="key-decisions">Key Decisions<a class="headerlink" href="#key-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="1-absorb-pdf-by-chapters-into-studyctl">1. Absorb pdf-by-chapters into studyctl<a class="headerlink" href="#1-absorb-pdf-by-chapters-into-studyctl" title="Permanent link">&para;</a></h3>
+<p>Port ALL 12 CLI commands directly into studyctl as new commands. Kill the separate repo. Full feature parity -- the syllabus autopilot is a key differentiator for ebook-based study.</p>
+<p><strong>What gets absorbed (full scope):</strong></p>
+<table>
+<thead>
+<tr>
+<th>pdf-by-chapters capability</th>
+<th>New studyctl location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PDF splitting (PyMuPDF, TOC bookmarks)</td>
+<td><code>studyctl content split &lt;pdf&gt;</code></td>
+</tr>
+<tr>
+<td>NotebookLM upload/notebook creation</td>
+<td><code>studyctl content upload &lt;pdf&gt;</code></td>
+</tr>
+<tr>
+<td>Audio/video generation + polling</td>
+<td><code>studyctl content generate</code></td>
+</tr>
+<tr>
+<td>Artefact download</td>
+<td><code>studyctl content download</code></td>
+</tr>
+<tr>
+<td>Notebook listing</td>
+<td><code>studyctl content list</code></td>
+</tr>
+<tr>
+<td>Notebook deletion</td>
+<td><code>studyctl content delete</code></td>
+</tr>
+<tr>
+<td>Syllabus generation (LLM-driven)</td>
+<td><code>studyctl content syllabus</code></td>
+</tr>
+<tr>
+<td>Generate next episode (autopilot)</td>
+<td><code>studyctl content autopilot</code></td>
+</tr>
+<tr>
+<td>Generation status/polling</td>
+<td><code>studyctl content status</code></td>
+</tr>
+<tr>
+<td>Obsidian markdown -&gt; PDF conversion</td>
+<td><code>studyctl content from-obsidian &lt;vault-path&gt;</code></td>
+</tr>
+<tr>
+<td>Process (split + upload combined)</td>
+<td><code>studyctl content process &lt;pdf&gt;</code></td>
+</tr>
+<tr>
+<td>Interactive terminal review</td>
+<td>Already exists in studyctl (TUI/PWA)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>New <code>studyctl content</code> command group</strong> unifies the entire pipeline under one CLI.</p>
+<p><strong>Config unification</strong>: Single <code>~/.config/studyctl/config.yaml</code> with a new <code>content</code> section:
+<div class="highlight"><pre><span></span><code><span class="nt">content</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">base_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/study-materials</span><span class="w">       </span><span class="c1"># Single download base path for everything</span>
+<span class="w">  </span><span class="nt">notebooklm</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">default_types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">audio</span><span class="p p-Indicator">]</span><span class="w">           </span><span class="c1"># What to generate by default</span>
+<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">900</span><span class="w">                     </span><span class="c1"># Generation timeout (seconds)</span>
+<span class="w">    </span><span class="nt">inter_episode_gap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span><span class="w">            </span><span class="c1"># Rate limit gap</span>
+</code></pre></div></p>
+<h3 id="2-fastapi-backend-for-the-web-ui">2. FastAPI backend for the web UI<a class="headerlink" href="#2-fastapi-backend-for-the-web-ui" title="Permanent link">&para;</a></h3>
+<p>Replace the stdlib HTTP server with FastAPI. Single process serves:
+- Static PWA files (HTML/JS/CSS)
+- REST API for all study operations
+- WebSocket for live features (Pomodoro timer sync, voice control)
+- File serving for NotebookLM artefacts (audio, video, slides, infographics, PDFs)</p>
+<p><strong>Key API endpoints:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/cards</code></td>
+<td>Flashcards with filtering (source, chapter, due date)</td>
+</tr>
+<tr>
+<td><code>GET /api/quizzes</code></td>
+<td>Quiz questions with filtering</td>
+</tr>
+<tr>
+<td><code>POST /api/review</code></td>
+<td>Submit card grade (SM-2 update)</td>
+</tr>
+<tr>
+<td><code>GET /api/artefacts</code></td>
+<td>List NotebookLM artefacts by course/chapter</td>
+</tr>
+<tr>
+<td><code>GET /api/artefacts/{id}/stream</code></td>
+<td>Stream audio/video file</td>
+</tr>
+<tr>
+<td><code>GET /api/sessions</code></td>
+<td>Session history, streaks, progress</td>
+</tr>
+<tr>
+<td><code>GET /api/content/status</code></td>
+<td>Content pipeline status (generation progress)</td>
+</tr>
+<tr>
+<td><code>POST /api/content/split</code></td>
+<td>Trigger PDF split</td>
+</tr>
+<tr>
+<td><code>POST /api/content/generate</code></td>
+<td>Trigger NotebookLM generation</td>
+</tr>
+<tr>
+<td><code>GET /api/config</code></td>
+<td>Current config (safe fields only)</td>
+</tr>
+<tr>
+<td><code>PUT /api/config</code></td>
+<td>Update config from UI</td>
+</tr>
+<tr>
+<td><code>POST /api/feedback</code></td>
+<td>Submit feedback -&gt; GitHub Issues API</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-vanilla-htmljs-htmx-frontend">3. Vanilla HTML/JS + HTMX frontend<a class="headerlink" href="#3-vanilla-htmljs-htmx-frontend" title="Permanent link">&para;</a></h3>
+<p>No build step, no node_modules. FastAPI serves Jinja2 templates. HTMX handles dynamic page updates. Alpine.js for interactive widgets (card flip, timer, audio controls).</p>
+<p><strong>Artefact display</strong> uses native browser capabilities:
+- Audio (.mp3): <code>&lt;audio controls&gt;</code>
+- Video (.mp4): <code>&lt;video controls&gt;</code>
+- Slides/PDFs: <code>&lt;embed&gt;</code> or pdf.js
+- Infographics: <code>&lt;img&gt;</code></p>
+<h3 id="4-architecture-ai-coding-assistants-remain-the-ai-brain">4. Architecture: AI coding assistants remain the AI brain<a class="headerlink" href="#4-architecture-ai-coding-assistants-remain-the-ai-brain" title="Permanent link">&para;</a></h3>
+<p><strong>No LLM API calls in the web UI.</strong> The AI experience happens through the user's chosen coding assistant (Claude Code, Gemini CLI, Kiro CLI, etc.) with the Socratic mentor agent definition.</p>
+<p><strong>How they connect:</strong>
+- Agent CLI connects to studyctl via MCP (already working today)
+- MCP tools expose study context: current card, progress, energy level, session history
+- Agent CLI provides Socratic questioning, adaptive mentoring, content generation guidance
+- Web UI and TUI handle the non-AI study experience (review, progress, artefacts)</p>
+<p><strong>For users without a coding assistant:</strong> The web UI still works fully for flashcard/quiz review, artefact viewing, and progress tracking. The AI mentoring is an optional enhancement, not a requirement.</p>
+<h3 id="5-lan-access-with-optional-password-protection">5. LAN access with optional password protection<a class="headerlink" href="#5-lan-access-with-optional-password-protection" title="Permanent link">&para;</a></h3>
+<p><code>studyctl web</code> serves on <code>0.0.0.0:8567</code> (LAN accessible).</p>
+<p><strong>Optional authentication:</strong>
+- <code>studyctl web --password</code> prompts for a password at startup
+- Simple HTTP Basic Auth or session-based auth
+- Stored as bcrypt hash in config, never plaintext
+- Config option: <code>web.require_auth: true</code> + <code>web.password_hash: &lt;bcrypt&gt;</code></p>
+<h3 id="6-feedback-via-github-issues-api">6. Feedback via GitHub Issues API<a class="headerlink" href="#6-feedback-via-github-issues-api" title="Permanent link">&para;</a></h3>
+<p>In-app "Submit Bug" and "Submit Feedback" buttons that:
+- Collect: description, category (bug/feature/UX), optional screenshot, app version, OS
+- POST to GitHub Issues API on the repo
+- Pre-fill labels (bug, feedback, from-app)
+- Requires GitHub authentication (OAuth token stored in config, or opens browser for auth)</p>
+<h3 id="7-onboarding-agent-ai-guided-setup">7. Onboarding agent (AI-guided setup)<a class="headerlink" href="#7-onboarding-agent-ai-guided-setup" title="Permanent link">&para;</a></h3>
+<p>The AI coding assistant that the user will study with ALSO helps them set up. An agent skill/command (<code>/study-setup</code> or similar) provides a conversational setup experience:</p>
+<ol>
+<li>Asks what the user wants to learn (courses, subjects, goals)</li>
+<li>Asks what they already know (to build knowledge bridges -- existing <code>bridges</code> feature)</li>
+<li>Asks where their study materials are (ebooks, Obsidian vaults, downloaded courses)</li>
+<li>Walks through NotebookLM setup if they want audio/video artefacts (optional)</li>
+<li>Creates and maintains <code>~/.config/studyctl/config.yaml</code> based on the conversation</li>
+<li>Generates initial flashcards/quizzes from the first PDF chapter as a demo</li>
+<li>Verifies everything works (<code>studyctl content split</code>, <code>studyctl web</code>)</li>
+</ol>
+<p>This is an <strong>agent definition + MCP tools</strong>, not application code. The agent uses <code>studyctl</code> CLI commands as tools. Available for Claude Code, Gemini CLI, Kiro CLI, etc.</p>
+<p><strong>For non-technical users:</strong>
+<div class="highlight"><pre><span></span><code>brew install studyctl
+claude /study-setup     # AI walks through everything conversationally
+</code></pre></div></p>
+<p><strong>For technical users:</strong>
+- <code>uv tool install studyctl</code> (PyPI)
+- Homebrew formula: <code>brew install studyctl</code>
+- Config: <code>studyctl config init</code> (existing interactive CLI)</p>
+<p><strong>Fallback (no AI coding assistant):</strong>
+- <code>studyctl setup</code> -- interactive CLI wizard (non-AI, asks the same questions via prompts)
+- "Getting Started" page in the web UI (first-run experience)</p>
+<h3 id="8-three-tier-content-generation-notebooklm-optional">8. Three-tier content generation (NotebookLM optional)<a class="headerlink" href="#8-three-tier-content-generation-notebooklm-optional" title="Permanent link">&para;</a></h3>
+<p>NotebookLM is an optional content source, not a dependency. Flashcards and quizzes -- the core study artefacts -- are generated by the AI coding assistant directly.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>What generates</th>
+<th>How</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Agent-generated (core)</strong></td>
+<td>Flashcard JSON, quiz JSON</td>
+<td>Agent skill sends chapter text to LLM, receives structured JSON</td>
+<td>Free (uses agent subscription)</td>
+</tr>
+<tr>
+<td><strong>Local TTS (built-in)</strong></td>
+<td>Study audio (.mp3)</td>
+<td>Agent writes study summary, kokoro-onnx converts to speech</td>
+<td>Free (local)</td>
+</tr>
+<tr>
+<td><strong>NotebookLM (optional)</strong></td>
+<td>Podcast audio, video, slides, infographics</td>
+<td><code>studyctl content generate</code> via notebooklm-py</td>
+<td>Free (Google account), unofficial API</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Agent-generated flashcards/quizzes</strong> are better than NotebookLM for this because:
+- No unofficial API dependency
+- Customisable: Socratic style, AuDHD-aware difficulty, topic bridging
+- Works offline with local LLMs
+- Uses the same subscription the user already pays for</p>
+<p><strong>notebooklm-py</strong> remains as an optional dependency (<code>studyctl[notebooklm]</code>). Not forked -- upstream maintained by Stefano Amorelli. Accreditation in README and pyproject.toml.</p>
+<h3 id="9-course-centric-artefact-storage">9. Course-centric artefact storage<a class="headerlink" href="#9-course-centric-artefact-storage" title="Permanent link">&para;</a></h3>
+<p>All artefacts stored under <code>content.base_path</code> in a course-centric structure:</p>
+<div class="highlight"><pre><span></span><code>~/study-materials/
+  python-crash-course/
+    chapters/
+      chapter_01_getting_started.pdf
+      chapter_02_variables.pdf
+    audio/
+      ep01_intro.mp3
+      ep02_variables.mp3
+    flashcards/
+      ch01-flashcards.json
+      ch02-flashcards.json
+    quizzes/
+      ch01-quiz.json
+      ch02-quiz.json
+    video/
+      ep01_intro.mp4
+    slides/
+      ep01_intro.pdf
+    metadata.json  (notebook ID, syllabus state, generation history)
+  aws-saa-c03/
+    ...
+</code></pre></div>
+<p>Each course is self-contained and browsable. The web UI and TUI read this structure. <code>metadata.json</code> tracks NotebookLM notebook IDs, syllabus state, and generation history per course.</p>
+<h3 id="10-package-name-studyctl">10. Package name: <code>studyctl</code><a class="headerlink" href="#10-package-name-studyctl" title="Permanent link">&para;</a></h3>
+<p>PyPI and Homebrew package name: <strong><code>studyctl</code></strong>. Short, memorable, matches the CLI command.
+- <code>brew install studyctl</code>
+- <code>uv tool install studyctl</code>
+- <code>pip install studyctl</code></p>
+<h3 id="11-tui-enhancements">11. TUI enhancements<a class="headerlink" href="#11-tui-enhancements" title="Permanent link">&para;</a></h3>
+<p>Keep the existing Textual TUI, add:
+- Pomodoro timer (countdown, audio chime, notification)
+- Voice toggle (on/off, speak current card/hint/answer)
+- OpenDyslexic font toggle
+- Artefact browser (list and play audio, open PDFs)
+- tmux-friendly: designed to run alongside an agent CLI in a split pane</p>
+<hr />
+<h2 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>                    +-------------------+
+                    |  AI Coding        |
+                    |  Assistants       |
+                    |  (Claude Code,    |
+                    |   Gemini CLI,     |
+                    |   Kiro CLI, etc.) |
+                    +--------+----------+
+                             |
+                         MCP (tools)
+                             |
++----------------------------+-----------------------------+
+|                      studyctl                            |
+|                                                          |
+|  +------------+  +-----------+  +----------------------+ |
+|  | Content    |  | Study     |  | Web UI               | |
+|  | Pipeline   |  | Engine    |  | (FastAPI + HTMX)     | |
+|  |            |  |           |  |                      | |
+|  | - split    |  | - SM-2    |  | - Flashcards/quizzes | |
+|  | - upload   |  | - SQLite  |  | - Artefact viewer    | |
+|  | - generate |  | - history |  | - Progress dashboard | |
+|  | - download |  | - streaks |  | - Config editor      | |
+|  | - obsidian |  | - wins    |  | - Feedback           | |
+|  | - syllabus |  |           |  | - LAN + auth         | |
+|  +------------+  +-----------+  +----------------------+ |
+|                                                          |
+|  +------------+  +-----------+  +----------------------+ |
+|  | Session    |  | TUI       |  | Agent Definitions    | |
+|  | Tools      |  | (Textual) |  | (Socratic Mentor)    | |
+|  |            |  |           |  |                      | |
+|  | - export   |  | - cards   |  | - Claude Code        | |
+|  | - query    |  | - timer   |  | - Gemini CLI         | |
+|  | - sync     |  | - voice   |  | - Kiro CLI           | |
+|  | - maint    |  | - artefacts| | - OpenCode          | |
+|  +------------+  +-----------+  +----------------------+ |
++----------------------------------------------------------+
+</code></pre></div>
+<h3 id="user-journey-i-have-an-ebook-i-want-to-study">User Journey: "I have an ebook, I want to study"<a class="headerlink" href="#user-journey-i-have-an-ebook-i-want-to-study" title="Permanent link">&para;</a></h3>
+<p><strong>Path A: With AI coding assistant (recommended)</strong>
+<div class="highlight"><pre><span></span><code>1. Install:     brew install studyctl
+
+2. Setup:       claude /study-setup
+                  Agent asks: What do you want to learn? Where&#39;s your PDF?
+                  What do you already know? Want NotebookLM audio?
+                  -&gt; Creates config, splits PDF, generates first flashcards
+
+3. Study:       studyctl web    (opens browser -&gt; flashcards, quizzes, audio)
+                   OR
+                studyctl tui    (terminal dashboard)
+
+4. AI Mentor:   claude          (Socratic mentor via MCP -- adapts to energy/mood)
+                   OR
+                gemini / kiro   (same agent definition, different CLI)
+
+5. Generate:    Agent generates flashcards/quizzes from next chapters on demand
+                   OR
+                studyctl content autopilot  (NotebookLM audio/video, optional)
+
+6. Track:       Web UI dashboard / studyctl progress / streaks / wins
+
+7. Feedback:    &quot;Submit Feedback&quot; button in web UI -&gt; GitHub Issue
+</code></pre></div></p>
+<p><strong>Path B: Without AI coding assistant</strong>
+<div class="highlight"><pre><span></span><code>1. Install:     brew install studyctl
+2. Setup:       studyctl setup  (interactive CLI wizard)
+3. Import:      studyctl content split &quot;Python_Crash_Course.pdf&quot;
+4. Generate:    studyctl content autopilot --download  (NotebookLM, optional)
+5. Study:       studyctl web / studyctl tui
+6. Track:       Web UI dashboard / CLI commands
+</code></pre></div></p>
+<hr />
+<h2 id="what-were-not-building-yagni">What We're NOT Building (YAGNI)<a class="headerlink" href="#what-were-not-building-yagni" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Native iOS/macOS/Android app (deferred -- research preserved in docs/research/)</li>
+<li>LLM API calls embedded in the web UI or backend (agent CLIs handle all AI interaction)</li>
+<li>User accounts / cloud backend / server-side authentication</li>
+<li>Collaborative/social features</li>
+<li>Custom LLM fine-tuning</li>
+<li>Forked/maintained copy of notebooklm-py (use upstream as optional dependency)</li>
+<li>Real-time AI chat in the web UI (the AI lives in the terminal agent)</li>
+<li>Voice input in the app (recommend system-level tools: Whispr Flow, macOS Dictation, Warp voice)</li>
+</ul>
+<hr />
+<h2 id="resolved-questions">Resolved Questions<a class="headerlink" href="#resolved-questions" title="Permanent link">&para;</a></h2>
+<p>All original open questions have been resolved:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Question</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>PyPI package name</td>
+<td><strong><code>studyctl</code></strong> -- short, matches CLI command (Decision 10)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>NotebookLM auth</td>
+<td><strong>Optional, not core.</strong> Flashcards/quizzes generated by agent. NotebookLM only for audio/video. Cookie fragility accepted and documented. (Decision 8)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Artefact storage</td>
+<td><strong>Course-centric</strong> under <code>content.base_path</code>. Each course self-contained. (Decision 9)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Absorption scope</td>
+<td><strong>Full -- all 12 commands</strong> ported. Syllabus autopilot is a differentiator. (Decision 1)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Run <code>/ce:plan</code></strong> to create the implementation plan (all questions resolved)</li>
+<li><strong>Phase 1</strong>: Absorb pdf-by-chapters into studyctl, course-centric storage, unified config</li>
+<li><strong>Phase 2</strong>: FastAPI backend + HTMX web UI (artefact viewer, progress dashboard, config editor)</li>
+<li><strong>Phase 3</strong>: Agent-generated flashcards/quizzes skill, onboarding agent (<code>/study-setup</code>)</li>
+<li><strong>Phase 4</strong>: Installation improvements (PyPI as <code>studyctl</code>, Homebrew formula, <code>studyctl setup</code> wizard)</li>
+<li><strong>Phase 5</strong>: TUI enhancements (Pomodoro, voice, artefacts, tmux integration)</li>
+<li><strong>Phase 6</strong>: Feedback mechanism (GitHub Issues API, in-app buttons)</li>
+<li><strong>Phase 7</strong>: LAN auth, polish, documentation for non-technical users</li>
+<li><strong>Future</strong>: Native macOS/iOS app (research preserved in docs/research/)</li>
+</ol>
+<h2 id="research-documents-preserved-for-future-native-app-phase">Research Documents (preserved for future native app phase)<a class="headerlink" href="#research-documents-preserved-for-future-native-app-phase" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCP in native apps</td>
+<td><code>docs/research/mcp-native-app-research.md</code></td>
+</tr>
+<tr>
+<td>ACP maturity</td>
+<td><code>docs/research/2026-03-15-acp-research.md</code></td>
+</tr>
+<tr>
+<td>Swift PoC feasibility</td>
+<td><code>docs/research/swift-poc-feasibility.md</code></td>
+</tr>
+<tr>
+<td>Monetisation models</td>
+<td><code>docs/research/monetisation-research.md</code></td>
+</tr>
+<tr>
+<td>Socratic Study Mentor repo analysis</td>
+<td><code>docs/research/repo-research-summary.md</code></td>
+</tr>
+<tr>
+<td>pdf-by-chapters repo analysis</td>
+<td><code>docs/research/notebooklm-pdf-by-chapters-analysis.md</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

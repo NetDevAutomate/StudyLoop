@@ -1,0 +1,1559 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/2026-03-15-acp-research.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Agent Client Protocol (ACP) Research - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-client-protocol-acp-research" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent Client Protocol (ACP) Research
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-what-is-acp-and-how-does-it-differ-from-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What Is ACP and How Does It Differ from MCP?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. What Is ACP and How Does It Differ from MCP?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-key-distinction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Key Distinction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protocol-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-who-created-acp-governance-and-backing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Who Created ACP? Governance and Backing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-which-agentcli-tools-support-acp-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Which Agent/CLI Tools Support ACP Today?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Which Agent/CLI Tools Support ACP Today?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agents-implement-acp-server-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agents (implement ACP server-side)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clients-implement-acp-client-side-editorsides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clients (implement ACP client-side -- editors/IDEs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-frameworks-with-acp-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Frameworks with ACP Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connectors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-is-there-a-swiftnative-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Is There a Swift/Native SDK?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-how-mature-is-the-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. How Mature Is the Spec?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. How Mature Is the Spec?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#version-assessment-pre-10-actively-evolving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version Assessment: Pre-1.0, Actively Evolving
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#maturity-signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maturity Signals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest Assessment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-should-you-invest-in-acp-now-or-focus-on-mcp-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Should You Invest in ACP Now or Focus on MCP First?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Should You Invest in ACP Now or Focus on MCP First?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-mcp-first-acp-when-you-need-editor-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation: MCP First, ACP When You Need Editor Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommendation: MCP First, ACP When You Need Editor Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#if-you-are-building-a-toolservice-that-ai-agents-consume-database-connector-api-wrapper-file-processor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        If you are building a tool/service that AI agents consume (database connector, API wrapper, file processor):
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#if-you-are-building-a-coding-agent-that-runs-in-editors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        If you are building a coding agent that runs in editors:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#if-you-are-building-a-studylearning-tool-like-socratic-study-mentor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        If you are building a study/learning tool like Socratic Study Mentor:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-can-acp-and-mcp-coexist-in-the-same-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Can ACP and MCP Coexist in the Same Application?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Links
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="agent-client-protocol-acp-research">Agent Client Protocol (ACP) Research<a class="headerlink" href="#agent-client-protocol-acp-research" title="Permanent link">&para;</a></h1>
+<p><strong>Date</strong>: 2026-03-15
+<strong>Sources</strong>: agentclientprotocol.com, GitHub repo, PyPI, crates.io, npm registry</p>
+<hr />
+<h2 id="1-what-is-acp-and-how-does-it-differ-from-mcp">1. What Is ACP and How Does It Differ from MCP?<a class="headerlink" href="#1-what-is-acp-and-how-does-it-differ-from-mcp" title="Permanent link">&para;</a></h2>
+<p><strong>ACP</strong> (Agent Client Protocol) standardises communication between <strong>code editors</strong> and <strong>coding agents</strong>. Think of it as "LSP for AI agents" -- just as the Language Server Protocol decoupled language intelligence from editors, ACP decouples AI coding agents from the editors that host them.</p>
+<p><strong>MCP</strong> (Model Context Protocol) standardises how LLMs access <strong>tools and context</strong> (files, databases, APIs). It sits at a different layer.</p>
+<h3 id="the-key-distinction">The Key Distinction<a class="headerlink" href="#the-key-distinction" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>MCP:  LLM  &lt;--tools/context--&gt;  External Services (databases, APIs, file systems)
+ACP:  Code Editor  &lt;--agent UX--&gt;  Coding Agent (which may itself use MCP tools)
+</code></pre></div>
+<p>ACP and MCP are <strong>complementary, not competing</strong>:</p>
+<ul>
+<li>ACP handles the <strong>editor-to-agent UX layer</strong>: streaming responses, displaying diffs, requesting tool-call permissions, managing sessions, rendering agent plans.</li>
+<li>MCP handles the <strong>agent-to-world data layer</strong>: the agent calls MCP servers to read files, query databases, hit APIs.</li>
+<li>ACP explicitly re-uses MCP JSON types where possible. The ACP schema includes <code>McpCapabilities</code> as a first-class field in <code>AgentCapabilities</code>.</li>
+<li>The ACP architecture page states: "Commonly the code editor will have user-configured MCP servers. When forwarding the prompt from the user, it passes configuration for the [MCP servers] to the agent."</li>
+</ul>
+<h3 id="protocol-mechanics">Protocol Mechanics<a class="headerlink" href="#protocol-mechanics" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>ACP</th>
+<th>MCP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Transport</td>
+<td>JSON-RPC over stdio (local), HTTP/WebSocket (remote, WIP)</td>
+<td>JSON-RPC over stdio, SSE, HTTP</td>
+</tr>
+<tr>
+<td>Direction</td>
+<td>Bidirectional (agent can request permissions from editor)</td>
+<td>Primarily client-to-server</td>
+</tr>
+<tr>
+<td>Session model</td>
+<td>Multi-session per connection, concurrent trains of thought</td>
+<td>Single request/response or streaming</td>
+</tr>
+<tr>
+<td>Content format</td>
+<td>Markdown-first, with structured diff types</td>
+<td>Tool results, resource content</td>
+</tr>
+<tr>
+<td>Primary concern</td>
+<td>Agent UX in editors</td>
+<td>Tool and context access</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-who-created-acp-governance-and-backing">2. Who Created ACP? Governance and Backing<a class="headerlink" href="#2-who-created-acp-governance-and-backing" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Created by</strong>: Zed Industries (makers of the Zed editor)</li>
+<li><strong>Co-steward</strong>: JetBrains (both logos appear as primary sponsors on the ACP website footer)</li>
+<li><strong>GitHub org</strong>: <code>agentclientprotocol</code> (Apache 2.0 license)</li>
+<li><strong>Repo created</strong>: 2025-06-23</li>
+<li><strong>Current stats</strong> (2026-03-15): 2,411 stars, 187 forks, 951 commits</li>
+<li><strong>Governance</strong>: Open contribution under Apache 2.0; no CLA required. Structured contribution process "to ensure changes are well-considered." Community discussion via GitHub Discussions and Zulip (<code>agentclientprotocol.zulipchat.com</code>).</li>
+</ul>
+<p>The backing is significant: Zed + JetBrains gives it access to two major editor ecosystems (Zed natively, JetBrains via IntelliJ platform + Junie). The wide agent adoption (see section 3) suggests strong industry momentum.</p>
+<hr />
+<h2 id="3-which-agentcli-tools-support-acp-today">3. Which Agent/CLI Tools Support ACP Today?<a class="headerlink" href="#3-which-agentcli-tools-support-acp-today" title="Permanent link">&para;</a></h2>
+<h3 id="agents-implement-acp-server-side">Agents (implement ACP server-side)<a class="headerlink" href="#agents-implement-acp-server-side" title="Permanent link">&para;</a></h3>
+<p>The ecosystem is already large (25+ agents listed on the official site):</p>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Claude Agent</strong></td>
+<td>Via Zed's SDK adapter (<code>zed-industries/claude-agent-acp</code>)</td>
+</tr>
+<tr>
+<td><strong>Codex CLI</strong></td>
+<td>Via Zed's adapter (<code>zed-industries/codex-acp</code>)</td>
+</tr>
+<tr>
+<td><strong>Gemini CLI</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>GitHub Copilot</strong></td>
+<td>Public preview (announced 2026-01-28)</td>
+</tr>
+<tr>
+<td><strong>Cursor</strong></td>
+<td>Via CLI ACP mode</td>
+</tr>
+<tr>
+<td><strong>Kiro CLI</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Kimi CLI</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Junie</strong></td>
+<td>JetBrains' agent, native ACP</td>
+</tr>
+<tr>
+<td><strong>Augment Code</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Cline</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Goose</strong> (Block)</td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Docker cagent</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Blackbox AI</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Mistral Vibe</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>fast-agent</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Roo Code</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td><strong>Windsurf</strong></td>
+<td>Native ACP support</td>
+</tr>
+<tr>
+<td>AutoDev, Factory Droid, Minion Code, OpenClaw, AgentPool, fount</td>
+<td>Various levels of support</td>
+</tr>
+</tbody>
+</table>
+<h3 id="clients-implement-acp-client-side-editorsides">Clients (implement ACP client-side -- editors/IDEs)<a class="headerlink" href="#clients-implement-acp-client-side-editorsides" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Zed</strong></td>
+<td>First-class, native</td>
+</tr>
+<tr>
+<td><strong>JetBrains IDEs</strong></td>
+<td>Via Junie integration</td>
+</tr>
+<tr>
+<td><strong>VS Code</strong></td>
+<td>Community/third-party extensions</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agent-frameworks-with-acp-integration">Agent Frameworks with ACP Integration<a class="headerlink" href="#agent-frameworks-with-acp-integration" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>LangChain / LangGraph</strong> -- via Deep Agents ACP</li>
+<li><strong>LlamaIndex</strong> -- via <code>workflows-acp</code> adapter</li>
+<li><strong>Koog</strong> (JetBrains) -- via <code>agents-features-acp</code></li>
+<li><strong>AgentPool</strong>, <strong>LLMling-Agent</strong>, <strong>fast-agent</strong> -- built-in ACP</li>
+</ul>
+<h3 id="connectors">Connectors<a class="headerlink" href="#connectors" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Aptove Bridge</strong> -- bridges stdio-based ACP agents to mobile over WebSocket</li>
+<li><strong>OpenClaw</strong> -- bridges to OpenClaw Gateway</li>
+</ul>
+<hr />
+<h2 id="4-is-there-a-swiftnative-sdk">4. Is There a Swift/Native SDK?<a class="headerlink" href="#4-is-there-a-swiftnative-sdk" title="Permanent link">&para;</a></h2>
+<p><strong>No official Swift SDK exists.</strong> The official SDKs are:</p>
+<table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Package</th>
+<th>Latest Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Python</strong></td>
+<td><code>agent-client-protocol</code> (PyPI)</td>
+<td>0.8.1</td>
+</tr>
+<tr>
+<td><strong>Rust</strong></td>
+<td><code>agent-client-protocol</code> (crates.io)</td>
+<td>0.10.2 (880K downloads)</td>
+</tr>
+<tr>
+<td><strong>TypeScript</strong></td>
+<td><code>@agentclientprotocol/sdk</code> (npm)</td>
+<td>0.16.1</td>
+</tr>
+<tr>
+<td><strong>Kotlin</strong></td>
+<td><code>acp-kotlin</code> (GitHub)</td>
+<td>JVM target, others in progress</td>
+</tr>
+<tr>
+<td><strong>Java</strong></td>
+<td><code>java-sdk</code> (GitHub)</td>
+<td>Available</td>
+</tr>
+</tbody>
+</table>
+<p>The Community Libraries page exists but returned no content when fetched, suggesting it is either empty or rendered client-side only. <strong>No Swift, Go, C#, or .NET SDKs were found</strong> in either official or community listings.</p>
+<p>For a Swift/native macOS implementation, the options would be:
+1. Use the <strong>Rust SDK</strong> via Swift-Rust FFI (UniFFI or direct C bridging)
+2. Implement against the <strong>JSON schema</strong> directly (<code>schema/schema.json</code> in the repo) -- ACP is JSON-RPC, which is straightforward to implement in any language
+3. Wait for a community Swift SDK to emerge</p>
+<hr />
+<h2 id="5-how-mature-is-the-spec">5. How Mature Is the Spec?<a class="headerlink" href="#5-how-mature-is-the-spec" title="Permanent link">&para;</a></h2>
+<h3 id="version-assessment-pre-10-actively-evolving">Version Assessment: Pre-1.0, Actively Evolving<a class="headerlink" href="#version-assessment-pre-10-actively-evolving" title="Permanent link">&para;</a></h3>
+<p><strong>All SDK versions are 0.x</strong> -- none have reached 1.0:
+- Python SDK: 0.8.1
+- Rust crate: 0.10.2
+- TypeScript SDK: 0.16.1
+- (The different version numbers across SDKs suggest they track the schema independently)</p>
+<h3 id="maturity-signals">Maturity Signals<a class="headerlink" href="#maturity-signals" title="Permanent link">&para;</a></h3>
+<p><strong>Positive signals (surprisingly mature for 0.x)</strong>:
+- 951 commits in ~9 months (very active development)
+- 2.4K GitHub stars, 187 forks
+- 25+ agents already support it, including major players (Claude, Copilot, Gemini, Cursor)
+- Comprehensive protocol spec with 15+ sub-sections (initialization, sessions, content, tool calls, file system, terminals, agent plans, slash commands, etc.)
+- 880K Rust crate downloads suggests real production usage
+- Structured contribution process, RFDs (Request for Discussion) system
+- ACP Registry for discovering/installing agents</p>
+<p><strong>Caution signals</strong>:
+- Still 0.x -- breaking changes are expected and likely
+- Remote agent support explicitly described as "work in progress"
+- No formal versioning/compatibility guarantee visible in the spec
+- The SDK version numbers are diverging (0.8 vs 0.10 vs 0.16), which suggests rapid, possibly inconsistent iteration
+- The Python SDK README says "Releases track the upstream ACP schema" -- implying the schema itself is the source of truth and changes frequently
+- <code>ACP_SCHEMA_VERSION=&lt;ref&gt; make gen-all</code> in the Python SDK confirms schema-driven code generation, meaning each schema bump can break things</p>
+<h3 id="honest-assessment">Honest Assessment<a class="headerlink" href="#honest-assessment" title="Permanent link">&para;</a></h3>
+<p>ACP is in a <strong>"late alpha / early beta"</strong> stage. It is far enough along that real products ship with it (Zed, JetBrains IDEs, GitHub Copilot preview), but the spec is still evolving and breaking changes should be expected before 1.0. The adoption momentum is strong enough that it is unlikely to be abandoned, but the API surface is not yet frozen.</p>
+<hr />
+<h2 id="6-should-you-invest-in-acp-now-or-focus-on-mcp-first">6. Should You Invest in ACP Now or Focus on MCP First?<a class="headerlink" href="#6-should-you-invest-in-acp-now-or-focus-on-mcp-first" title="Permanent link">&para;</a></h2>
+<h3 id="recommendation-mcp-first-acp-when-you-need-editor-integration">Recommendation: MCP First, ACP When You Need Editor Integration<a class="headerlink" href="#recommendation-mcp-first-acp-when-you-need-editor-integration" title="Permanent link">&para;</a></h3>
+<p><strong>They solve different problems</strong>, so the answer depends on what you are building:</p>
+<h4 id="if-you-are-building-a-toolservice-that-ai-agents-consume-database-connector-api-wrapper-file-processor">If you are building a <strong>tool/service that AI agents consume</strong> (database connector, API wrapper, file processor):<a class="headerlink" href="#if-you-are-building-a-toolservice-that-ai-agents-consume-database-connector-api-wrapper-file-processor" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Focus on MCP only.</strong> ACP is irrelevant to you. Your tool is consumed by agents, not by editors.</li>
+</ul>
+<h4 id="if-you-are-building-a-coding-agent-that-runs-in-editors">If you are building a <strong>coding agent</strong> that runs in editors:<a class="headerlink" href="#if-you-are-building-a-coding-agent-that-runs-in-editors" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Invest in ACP now.</strong> The adoption is already broad enough that ACP support is becoming table-stakes for editor-integrated agents. Claude, Copilot, Gemini CLI, Cursor, and Kiro all support it. If your agent does not speak ACP, it cannot run in Zed or JetBrains IDEs without custom integration.</li>
+</ul>
+<h4 id="if-you-are-building-a-studylearning-tool-like-socratic-study-mentor">If you are building a <strong>study/learning tool</strong> like Socratic Study Mentor:<a class="headerlink" href="#if-you-are-building-a-studylearning-tool-like-socratic-study-mentor" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>MCP first, ACP later.</strong> Your primary interface is CLI/TUI/PWA, not a code editor. MCP lets agents call your tools. ACP would only matter if you wanted to expose your study agent as an editor panel -- possible but not the primary use case.</li>
+<li>However, the project already has agent support via <code>AGENTS.md</code>, Claude Code <code>/agent</code>, and kiro-cli -- these are proto-ACP patterns. When ACP stabilises, wrapping the study agent as a proper ACP agent would unlock native Zed/JetBrains integration with streaming, diff display, etc.</li>
+</ul>
+<h3 id="decision-matrix">Decision Matrix<a class="headerlink" href="#decision-matrix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Building...</th>
+<th>Invest in ACP?</th>
+<th>Invest in MCP?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tool/service for agents</td>
+<td>No</td>
+<td><strong>Yes</strong></td>
+</tr>
+<tr>
+<td>Coding agent for editors</td>
+<td><strong>Yes, now</strong></td>
+<td>Yes (for tool access)</td>
+</tr>
+<tr>
+<td>CLI/TUI application</td>
+<td>Later</td>
+<td><strong>Yes</strong></td>
+</tr>
+<tr>
+<td>Agent framework/orchestrator</td>
+<td><strong>Yes</strong></td>
+<td><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-can-acp-and-mcp-coexist-in-the-same-application">7. Can ACP and MCP Coexist in the Same Application?<a class="headerlink" href="#7-can-acp-and-mcp-coexist-in-the-same-application" title="Permanent link">&para;</a></h2>
+<p><strong>Yes, and they are designed to.</strong> This is not an either/or choice.</p>
+<p>The ACP architecture explicitly describes the coexistence pattern:</p>
+<ol>
+<li>The <strong>code editor</strong> (ACP client) has user-configured <strong>MCP servers</strong>.</li>
+<li>When the editor sends a prompt to an <strong>ACP agent</strong>, it passes the MCP server configuration along.</li>
+<li>The <strong>ACP agent</strong> connects to MCP servers to access tools and context.</li>
+<li>The agent streams results back to the editor via ACP.</li>
+</ol>
+<div class="highlight"><pre><span></span><code>User in Editor
+    |
+    | (ACP: prompt, sessions, diffs, plans)
+    v
+Coding Agent
+    |
+    | (MCP: tool calls, resource access)
+    v
+MCP Servers (files, databases, APIs)
+</code></pre></div>
+<p>The <code>AgentCapabilities</code> schema includes <code>mcpCapabilities</code> with <code>http</code> and <code>sse</code> boolean fields, meaning an ACP agent explicitly advertises what MCP transports it can handle.</p>
+<p><strong>In practice</strong>: An application can implement an ACP agent (for editor integration) that internally uses MCP clients (for tool access). The protocols operate at different layers and do not conflict.</p>
+<hr />
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What is ACP?</td>
+<td>LSP-like protocol for editor-to-agent communication</td>
+</tr>
+<tr>
+<td>Created by?</td>
+<td>Zed Industries + JetBrains</td>
+</tr>
+<tr>
+<td>Agent support?</td>
+<td>25+ agents including Claude, Copilot, Gemini, Cursor, Kiro</td>
+</tr>
+<tr>
+<td>Swift SDK?</td>
+<td><strong>No.</strong> Rust, Python, TypeScript, Kotlin, Java only</td>
+</tr>
+<tr>
+<td>Maturity?</td>
+<td><strong>0.x pre-release.</strong> Active, well-adopted, but expect breaking changes</td>
+</tr>
+<tr>
+<td>Invest now?</td>
+<td>Only if building editor-integrated agents. Otherwise MCP first</td>
+</tr>
+<tr>
+<td>ACP + MCP coexist?</td>
+<td><strong>Yes, by design.</strong> They complement each other at different layers</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="key-links">Key Links<a class="headerlink" href="#key-links" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Spec site</strong>: https://agentclientprotocol.com/</li>
+<li><strong>GitHub</strong>: https://github.com/agentclientprotocol/agent-client-protocol</li>
+<li><strong>Python SDK</strong>: https://github.com/agentclientprotocol/python-sdk (<code>pip install agent-client-protocol</code>)</li>
+<li><strong>Rust SDK</strong>: https://crates.io/crates/agent-client-protocol</li>
+<li><strong>TypeScript SDK</strong>: https://www.npmjs.com/package/@agentclientprotocol/sdk</li>
+<li><strong>Schema</strong>: https://github.com/agentclientprotocol/agent-client-protocol/blob/main/schema/schema.json</li>
+<li><strong>Community chat</strong>: https://agentclientprotocol.zulipchat.com/</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
