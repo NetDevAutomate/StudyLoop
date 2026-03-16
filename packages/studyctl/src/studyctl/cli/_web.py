@@ -46,21 +46,24 @@ def _strip_markdown(text: str) -> str:
 
 @click.command()
 @click.option("--port", "-p", default=8567, help="Port for web server")
-@click.option(
-    "--host",
-    "-H",
-    default="0.0.0.0",
-    help="Host to bind to (default: 0.0.0.0 for LAN access)",
-)
-def web(port: int, host: str) -> None:
+@click.option("--lan", is_flag=True, help="Expose to LAN (default: localhost only)")
+def web(port: int, lan: bool) -> None:
     """Launch the study PWA in your browser.
 
     Serves flashcard and quiz review as a web app accessible from any
     device on the network. Installable as a PWA (add to home screen).
     Includes OpenDyslexic font toggle for accessibility.
 
-    No extra dependencies required.
+    Requires: uv pip install 'studyctl[web]'
     """
+    try:
+        import uvicorn
+    except ImportError:
+        console.print(
+            "[red]The web server requires FastAPI.[/red]\nInstall: uv pip install 'studyctl[web]'"
+        )
+        return
+
     import yaml
 
     config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
@@ -72,9 +75,14 @@ def web(port: int, host: str) -> None:
         except Exception:
             pass
 
-    from studyctl.web.server import serve
+    from studyctl.web.app import create_app
 
-    serve(host=host, port=port, study_dirs=study_dirs)
+    host = "0.0.0.0" if lan else "127.0.0.1"
+    app = create_app(study_dirs=study_dirs)
+    console.print(f"[bold]Study PWA at http://{host}:{port}[/bold]")
+    if not lan:
+        console.print("[dim]Use --lan to expose to network[/dim]")
+    uvicorn.run(app, host=host, port=port, workers=1, log_level="warning")
 
 
 @click.command()
