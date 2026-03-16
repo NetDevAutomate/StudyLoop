@@ -124,6 +124,25 @@ Replace the path with your actual clone location. The `scripts/install-agents.sh
 
 ---
 
+## Web PWA Voice
+
+The study web app (`studyctl web`) has built-in voice support via the Web Speech API -- no extra dependencies needed. It works on any device with a browser.
+
+**Voice selector dropdown** -- choose from all English voices available on your device. The dropdown appears in the header bar and persists your selection across sessions.
+
+**Two modes:**
+
+- **Read once** -- tap the speaker icon on a card, or press `T`. Reads the current content once.
+- **Auto-voice** -- toggle the header speaker icon, or press `V`. Reads everything automatically as you navigate.
+
+**Best quality voices:**
+
+- **macOS**: System Settings → Accessibility → Spoken Content → Manage Voices → download Samantha (Enhanced) or Siri voices
+- **iOS**: Settings → Accessibility → Spoken Content → Voices → English → download Siri voices
+- **Windows**: Settings → Time & Language → Speech → Manage voices
+
+---
+
 ## CLI Reference
 
 ```bash

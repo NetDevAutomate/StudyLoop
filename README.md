@@ -54,6 +54,9 @@ graph LR
 ## Features
 
 **studyctl** — Study pipeline management
+- Content pipeline — split PDFs by chapter, upload to NotebookLM, generate audio/video/flashcards
+- Syllabus workflow — chunked podcast generation with autopilot and progress tracking
+- Obsidian-to-NotebookLM — convert markdown notes to PDFs and upload in one step
 - Sync Obsidian notes to Google NotebookLM notebooks
 - Spaced repetition scheduling (1/3/7/14/30 day intervals)
 - Struggle topic detection from session history
@@ -169,6 +172,7 @@ See [docs/agent-install.md](docs/agent-install.md) for setup details.
 
 | Feature | Package | Install |
 |---------|---------|---------|
+| Content pipeline | `pymupdf`, `httpx` | `uv pip install studyctl[content]` |
 | NotebookLM sync | `notebooklm-py` | `uv pip install studyctl[notebooklm]` |
 | Semantic search | `sentence-transformers` | `uv pip install agent-session-tools[semantic]` |
 | Token counting | `tiktoken` | `uv pip install agent-session-tools[tokens]` |
@@ -275,6 +279,33 @@ Launch the terminal dashboard with `studyctl tui`. Requires the `[tui]` extra (`
 
 ![TUI Dashboard](images/socratic_mentor_tui.svg)
 
+### studyctl content
+
+```bash
+# PDF splitting
+studyctl content split SOURCE [-o DIR] [-l LEVEL]   # Split PDF by TOC bookmarks
+studyctl content split SOURCE --ranges '1-30,31-60'  # Split by page ranges
+
+# Full pipeline (split + upload)
+studyctl content process SOURCE [-n NOTEBOOK_ID]     # Split PDFs and upload to NotebookLM
+
+# NotebookLM management
+studyctl content list [-n NOTEBOOK_ID]               # List notebooks or sources
+studyctl content generate -n ID -c '1-3'             # Generate audio/video overviews
+studyctl content download -n ID [-o DIR]             # Download artifacts
+studyctl content delete -n ID                        # Delete a notebook
+
+# Syllabus workflow (chunked podcast generation)
+studyctl content syllabus -n ID [-o DIR]             # Generate episode plan from sources
+studyctl content autopilot [-o DIR]                  # Generate next pending episode
+studyctl content status [-o DIR]                     # Show syllabus progress
+
+# Obsidian integration
+studyctl content from-obsidian SOURCE_DIR            # Convert markdown → PDF → NotebookLM
+```
+
+Requires optional dependencies: `uv pip install studyctl[content]` for PDF splitting, plus `uv pip install studyctl[notebooklm]` for NotebookLM commands.
+
 ### agent-session-tools
 
 ```bash
@@ -304,7 +335,6 @@ study-speak TEXT -v af_heart -s 1.2      # Custom voice and speed
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — Why this exists and how it works
 - [MCP Integrations](agents/mcp/README.md) — Calendar, reminders, and other MCP server configs
 - [Voice Output Guide](docs/voice-output.md) — TTS setup, configuration, and agent integration
-- [Concept Graph](docs/concept-graph.md) — How the concept graph connects your study data
 - [Roadmap](docs/roadmap.md) — What's coming in v1.1 and beyond
 - [Contributing](CONTRIBUTING.md) — Development setup and contribution guide
 
