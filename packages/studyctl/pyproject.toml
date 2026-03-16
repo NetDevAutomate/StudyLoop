@@ -50,4 +50,4 @@ packages = ["src/studyctl"]
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
-exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/web", "src/studyctl/mcp"]  # optional deps not in CI
+exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/cli/_web.py", "src/studyctl/web", "src/studyctl/mcp"]  # optional deps not in CI
