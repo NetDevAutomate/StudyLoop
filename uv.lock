@@ -2291,7 +2291,7 @@ wheels = [
 
 [[package]]
 name = "studyctl"
-version = "1.0.0"
+version = "2.0.0"
 source = { editable = "packages/studyctl" }
 dependencies = [
     { name = "click" },
@@ -2300,6 +2300,15 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "mcp", extra = ["cli"] },
+    { name = "notebooklm-py" },
+    { name = "pymupdf" },
+    { name = "textual" },
+    { name = "uvicorn", extra = ["standard"] },
+]
 content = [
     { name = "httpx" },
     { name = "pymupdf" },
@@ -2328,10 +2337,11 @@ requires-dist = [
     { name = "pymupdf", marker = "extra == 'content'", specifier = ">=1.25" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0" },
+    { name = "studyctl", extras = ["content", "web", "notebooklm", "tui", "mcp"], marker = "extra == 'all'" },
     { name = "textual", marker = "extra == 'tui'", specifier = ">=0.80" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'", specifier = ">=0.34" },
 ]
-provides-extras = ["content", "notebooklm", "tui", "web", "mcp"]
+provides-extras = ["content", "notebooklm", "tui", "web", "mcp", "all"]
 
 [[package]]
 name = "sympy"

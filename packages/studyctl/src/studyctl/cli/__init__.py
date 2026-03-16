@@ -22,6 +22,8 @@ from studyctl.cli._lazy import LazyGroup
         "dedup": "studyctl.cli._sync:dedup",
         # _state.py — cross-machine state
         "state": "studyctl.cli._state:state_group",
+        # _setup.py — first-run setup wizard
+        "setup": "studyctl.cli._setup:setup",
         # _config.py — configuration
         "config": "studyctl.cli._config:config_group",
         # _schedule.py — job scheduling + calendar

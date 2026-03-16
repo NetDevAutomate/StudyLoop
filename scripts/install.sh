@@ -213,10 +213,19 @@ fi
 echo ""
 printf "${BOLD}${GREEN}Installation complete!${NC}\n"
 echo ""
+
+# Detect Homebrew and suggest tap for future updates
+if command -v brew &>/dev/null; then
+  echo "Homebrew detected! For easier updates, you can also install via:"
+  echo "  brew install NetDevAutomate/studyctl/studyctl"
+  echo ""
+fi
+
 echo "Next steps:"
-echo "  1. Run 'studyctl config init' to configure your study environment"
+echo "  1. Run 'studyctl setup' to configure your study environment"
 echo "  2. Start a study session:"
 echo "     • kiro-cli: select the 'study-mentor' agent"
 echo "     • Claude Code: /agent socratic-mentor"
 echo "     • Amp: just start amp in the project directory"
-echo "  3. See docs/setup-guide.md for detailed instructions"
+echo "  3. Launch the web UI: studyctl web"
+echo "  4. See docs/setup-guide.md for detailed instructions"
