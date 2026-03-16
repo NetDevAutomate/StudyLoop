@@ -17,9 +17,11 @@ content = ["pymupdf>=1.25", "httpx"]
 notebooklm = ["notebooklm-py>=0.3.4"]
 tui = ["textual>=0.80"]
 web = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
+mcp = ["mcp[cli]>=1.0.0"]
 
 [project.scripts]
 studyctl = "studyctl.cli:cli"
+studyctl-mcp = "studyctl.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
@@ -36,4 +38,4 @@ packages = ["src/studyctl"]
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
-exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/web"]  # optional deps not in CI
+exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/web", "src/studyctl/mcp"]  # optional deps not in CI
