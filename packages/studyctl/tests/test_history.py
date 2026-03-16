@@ -467,12 +467,73 @@ class TestListConcepts:
         result = hist.list_concepts()
         assert len(result) == 3
         # Ordered by domain then name: python/decorators, python/generators, sql/joins
+        assert result[0].id == "2"
         assert result[0].name == "decorators"
         assert result[0].domain == "python"
         assert result[0].description == "function wrappers"
         assert result[1].name == "generators"
         assert result[2].name == "joins"
-        assert result[2].description == ""  # NULL → empty string via COALESCE
+        assert result[2].description is None  # NULL preserved (no COALESCE)
+
+    def test_filters_by_domain(self, tmp_path, monkeypatch):
+        """Passing domain= returns only concepts in that domain, ordered by name."""
+        db_path = _make_migrated_db(tmp_path)
+        _mock_connect_for(db_path, monkeypatch)
+
+        conn = sqlite3.connect(db_path)
+        conn.execute("INSERT INTO concepts (id, name, domain) VALUES ('1', 'generators', 'python')")
+        conn.execute("INSERT INTO concepts (id, name, domain) VALUES ('2', 'decorators', 'python')")
+        conn.execute("INSERT INTO concepts (id, name, domain) VALUES ('3', 'joins', 'sql')")
+        conn.commit()
+        conn.close()
+
+        import studyctl.history as hist
+
+        result = hist.list_concepts(domain="python")
+        assert len(result) == 2
+        assert result[0].name == "decorators"
+        assert result[1].name == "generators"
+        # sql concept should be excluded
+        assert all(c.domain == "python" for c in result)
+
+    def test_domain_filter_no_matches(self, tmp_path, monkeypatch):
+        """Domain filter with no matching concepts returns empty list."""
+        db_path = _make_migrated_db(tmp_path)
+        _mock_connect_for(db_path, monkeypatch)
+
+        conn = sqlite3.connect(db_path)
+        conn.execute("INSERT INTO concepts (id, name, domain) VALUES ('1', 'joins', 'sql')")
+        conn.commit()
+        conn.close()
+
+        import studyctl.history as hist
+
+        result = hist.list_concepts(domain="python")
+        assert result == []
+
+    def test_returns_concept_summary_namedtuple(self, tmp_path, monkeypatch):
+        """Results are ConceptSummary NamedTuples with id, name, domain, description."""
+        db_path = _make_migrated_db(tmp_path)
+        _mock_connect_for(db_path, monkeypatch)
+
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO concepts (id, name, domain, description) "
+            "VALUES ('abc-123', 'decorators', 'python', 'function wrappers')"
+        )
+        conn.commit()
+        conn.close()
+
+        import studyctl.history as hist
+
+        result = hist.list_concepts()
+        assert len(result) == 1
+        concept = result[0]
+        assert isinstance(concept, hist.ConceptSummary)
+        assert concept.id == "abc-123"
+        assert concept.name == "decorators"
+        assert concept.domain == "python"
+        assert concept.description == "function wrappers"
 
     def test_returns_no_db(self, monkeypatch):
         """Returns empty list when no DB connection available."""

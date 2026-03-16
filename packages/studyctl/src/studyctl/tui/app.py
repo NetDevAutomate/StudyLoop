@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, NamedTuple
 
 try:
     from textual.app import App, ComposeResult
@@ -46,6 +46,13 @@ from studyctl.review_loader import (
 )
 
 
+class CourseInfo(NamedTuple):
+    """Typed representation of a discovered course directory."""
+
+    name: str
+    path: Path
+
+
 def _load_session_state() -> dict:
     """Load session state from the JSON file, returning defaults on failure."""
     state_path = Path.home() / ".config" / "studyctl" / "session-state.json"
@@ -55,34 +62,51 @@ def _load_session_state() -> dict:
         return {}
 
 
-class CoursePickerScreen(ModalScreen[tuple[str, Path] | None]):
+class CoursePickerScreen(ModalScreen[CourseInfo | None]):
     """Modal overlay for selecting a course directory."""
+
+    BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
+        ("escape", "cancel", "Cancel"),
+    ]
 
     CSS = """
     CoursePickerScreen {
         align: center middle;
     }
-    #course-picker {
+    #course-picker-box {
         width: 60;
-        max-height: 20;
+        max-height: 24;
         border: round $accent;
         background: $surface;
         padding: 1 2;
     }
+    #course-picker-title {
+        text-style: bold;
+        text-align: center;
+        margin-bottom: 1;
+    }
+    #course-picker {
+        max-height: 18;
+    }
     """
 
-    def __init__(self, courses: list[tuple[str, Path]]) -> None:
+    def __init__(self, courses: list[CourseInfo]) -> None:
         super().__init__()
         self._courses = courses
 
     def compose(self) -> ComposeResult:
-        yield OptionList(
-            *[Option(name) for name, _ in self._courses],
-            id="course-picker",
-        )
+        with Vertical(id="course-picker-box"):
+            yield Static("Select a course", id="course-picker-title")
+            yield OptionList(
+                *[Option(course.name) for course in self._courses],
+                id="course-picker",
+            )
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         self.dismiss(self._courses[event.option_index])
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
 
 
 class StudyApp(App):
@@ -264,7 +288,7 @@ class StudyApp(App):
         table.add_columns("Name", "Domain", "Description")
 
         for concept in list_concepts():
-            table.add_row(concept.name, concept.domain, concept.description)
+            table.add_row(concept.name, concept.domain, concept.description or "")
 
     def _populate_sessions(self) -> None:
         table = self.query_one("#sessions-table", DataTable)
@@ -278,9 +302,13 @@ class StudyApp(App):
                 str(round(stat.get("avg_minutes") or 0)),
             )
 
+    def _discover_courses(self) -> list[CourseInfo]:
+        """Discover courses and wrap raw tuples as CourseInfo."""
+        return [CourseInfo(*t) for t in discover_directories(self._study_dirs)]
+
     def _populate_studycards(self) -> None:
         content = self.query_one("#studycards-content", Static)
-        courses = discover_directories(self._study_dirs)
+        courses = self._discover_courses()
 
         if not courses:
             content.update(
@@ -300,12 +328,13 @@ class StudyApp(App):
             "[bold]Study Cards[/bold]\n",
             f"  Found {len(courses)} course(s):\n",
         ]
-        for name, path in courses:
-            fc_dir, quiz_dir = find_content_dirs(path)
+        for course in courses:
+            fc_dir, quiz_dir = find_content_dirs(course.path)
             fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
             quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
             lines.append(
-                f"  • [bold]{name}[/bold] — {fc_count} flashcards, {quiz_count} quiz questions"
+                f"  • [bold]{course.name}[/bold] — {fc_count} flashcards,"
+                f" {quiz_count} quiz questions"
             )
 
         lines.append("\n  Press [bold]f[/bold] for flashcards / [bold]z[/bold] for quiz")
@@ -313,7 +342,7 @@ class StudyApp(App):
 
     def _launch_study(self, mode: str = "flashcards") -> None:
         """Launch interactive study session."""
-        courses = discover_directories(self._study_dirs)
+        courses = self._discover_courses()
         if not courses:
             self.notify(
                 "No courses found. Configure review.directories in config.yaml",
@@ -329,10 +358,9 @@ class StudyApp(App):
                 lambda result: self._start_session(result, mode) if result else None,
             )
 
-    def _start_session(self, course: tuple[str, Path], mode: str) -> None:
+    def _start_session(self, course: CourseInfo, mode: str) -> None:
         """Start a study session for the selected course."""
-        name, path = course
-        fc_dir, quiz_dir = find_content_dirs(path)
+        fc_dir, quiz_dir = find_content_dirs(course.path)
 
         if mode == "flashcards" and fc_dir:
             cards = shuffle_items(load_flashcards(fc_dir))
@@ -340,7 +368,7 @@ class StudyApp(App):
             cards = shuffle_items(load_quizzes(quiz_dir))
         else:
             self.notify(
-                f"No {mode} content found for {name}",
+                f"No {mode} content found for {course.name}",
                 severity="warning",
             )
             return
@@ -354,7 +382,7 @@ class StudyApp(App):
         # Replace studycards content with the interactive widget
         container = self.query_one("#studycards-container", Vertical)
         container.remove_children()
-        container.mount(StudyCardsTab(cards=cards, course_name=name, mode=mode))
+        container.mount(StudyCardsTab(cards=cards, course_name=course.name, mode=mode))
 
         # Switch to the tab
         tabs = self.query_one(TabbedContent)

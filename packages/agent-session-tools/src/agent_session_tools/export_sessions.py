@@ -168,24 +168,15 @@ def _run_export(
             source_updated = 0
             if source_stats:
                 if isinstance(source_stats, dict):
-                    source_added = source_stats.get("added", 0)
-                    source_updated = source_stats.get("updated", 0)
-                    batch_stats.added += source_added
-                    batch_stats.updated += source_updated
-                    batch_stats.skipped += source_stats.get("skipped", 0)
-                    batch_stats.errors += source_stats.get("errors", 0)
-                else:
-                    source_added = getattr(source_stats, "added", 0)
-                    source_updated = getattr(source_stats, "updated", 0)
-                    batch_stats.added += source_added
-                    batch_stats.updated += source_updated
-                    batch_stats.skipped += getattr(source_stats, "skipped", 0)
-                    batch_stats.errors += getattr(source_stats, "errors", 0)
+                    source_stats = ExportStats(**source_stats)
+                source_added = source_stats.added
+                source_updated = source_stats.updated
+                batch_stats += source_stats
 
             if progress and task is not None:
                 progress.update(
                     task,
-                    description=f"{source.title()}: {source_added} added, {source_updated} updated",
+                    description=f"{source.title()}: +{source_added} added, +{source_updated} updated",
                 )
                 progress.advance(task)
 
