@@ -115,18 +115,18 @@ class TestGetStudyTerms:
         import studyctl.history as hist
 
         # Test fallback by making get_topics return falsy
-        monkeypatch.setattr("studyctl.config.get_topics", lambda: None)
+        monkeypatch.setattr("studyctl.settings.get_topics", lambda: None)
         terms = hist._get_study_terms()
         # When get_topics returns falsy, should fall back to defaults
         assert "spark" in terms
         assert "python" in terms
 
     def test_fallback_on_import_error(self, monkeypatch):
-        import studyctl.config
         import studyctl.history as hist
+        import studyctl.settings
 
         monkeypatch.setattr(
-            studyctl.config,
+            studyctl.settings,
             "get_topics",
             lambda: (_ for _ in ()).throw(RuntimeError("boom")),
         )
@@ -355,7 +355,7 @@ class TestSeedConceptsFromConfig:
 
         import studyctl.history as hist
 
-        monkeypatch.setattr("studyctl.config.get_topics", lambda: fake_topics)
+        monkeypatch.setattr("studyctl.settings.get_topics", lambda: fake_topics)
 
         count = hist.seed_concepts_from_config()
         assert count == 4
@@ -380,7 +380,7 @@ class TestSeedConceptsFromConfig:
             tags: list[str] = field(default_factory=list)
 
         monkeypatch.setattr(
-            "studyctl.config.get_topics",
+            "studyctl.settings.get_topics",
             lambda: [FakeTopic(name="python", tags=["decorators"])],
         )
 
@@ -397,7 +397,7 @@ class TestSeedConceptsFromConfig:
         db_path = _make_migrated_db(tmp_path)
         _mock_connect_for(db_path, monkeypatch)
 
-        monkeypatch.setattr("studyctl.config.get_topics", lambda: [])
+        monkeypatch.setattr("studyctl.settings.get_topics", lambda: [])
 
         import studyctl.history as hist
 
@@ -418,7 +418,7 @@ class TestSeedConceptsFromConfig:
             tags: list[str] = field(default_factory=list)
 
         monkeypatch.setattr(
-            "studyctl.config.get_topics",
+            "studyctl.settings.get_topics",
             lambda: [FakeTopic(name="python", tags=["decorators"])],
         )
         hist.seed_concepts_from_config()

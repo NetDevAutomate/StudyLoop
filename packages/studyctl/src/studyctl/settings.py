@@ -1,6 +1,7 @@
 """Centralized configuration loader for studyctl.
 
 Loads from ~/.config/studyctl/config.yaml with sensible defaults.
+All configuration types, topic mapping, and path resolution live here.
 """
 
 from __future__ import annotations
@@ -11,9 +12,31 @@ from pathlib import Path
 
 import yaml
 
-_CONFIG_PATH = Path(
-    os.environ.get("STUDYCTL_CONFIG", Path.home() / ".config" / "studyctl" / "config.yaml")
-)
+CONFIG_DIR = Path.home() / ".config" / "studyctl"
+DEFAULT_DB = CONFIG_DIR / "sessions.db"
+
+_CONFIG_PATH = Path(os.environ.get("STUDYCTL_CONFIG", CONFIG_DIR / "config.yaml"))
+
+# File extensions we sync as sources
+SYNCABLE_EXTENSIONS = {".md", ".pdf", ".txt"}
+
+# Skip patterns -- files/dirs that are never worth syncing
+SKIP_PATTERNS = {
+    ".space",
+    ".checkpoint.json",
+    "def.json",
+    ".obsidian",
+    "node_modules",
+    "__pycache__",
+}
+
+# Files that are low-value noise (Obsidian metadata, empty templates, etc.)
+SKIP_FILENAMES = {
+    "Courses.md",  # Index file, not content
+}
+
+# Minimum file size to sync (skip empty/stub files)
+MIN_FILE_SIZE = 100  # bytes
 
 
 def _get_username() -> str:
@@ -134,6 +157,112 @@ def load_settings() -> Settings:
         )
 
     return settings
+
+
+# ---------------------------------------------------------------------------
+# Topic mapping (previously in config.py)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class Topic:
+    """A study topic maps to one NotebookLM notebook."""
+
+    name: str
+    display_name: str
+    notebook_id: str | None  # Pre-mapped to existing NotebookLM notebook
+    obsidian_paths: list[Path]
+    tags: list[str] = field(default_factory=list)
+
+
+def get_topics() -> list[Topic]:
+    """Load topics from settings, falling back to defaults (without notebook IDs)."""
+    settings = load_settings()
+    if settings.topics:
+        return [
+            Topic(
+                name=t.slug,
+                display_name=t.name,
+                notebook_id=t.notebook_id or None,
+                obsidian_paths=[t.obsidian_path],
+                tags=t.tags,
+            )
+            for t in settings.topics
+        ]
+
+    # Compute paths from settings for defaults
+    obsidian_base = settings.obsidian_base
+    obsidian_courses = obsidian_base / "Personal" / "2-Areas" / "Study" / "Courses"
+    obsidian_mentoring = obsidian_base / "Personal" / "2-Areas" / "Study" / "Mentoring"
+
+    return [
+        Topic(
+            name="python",
+            display_name="Python Study",
+            notebook_id=None,
+            obsidian_paths=[obsidian_courses / "ArjanCodes", obsidian_mentoring / "Python"],
+            tags=["python", "patterns", "oop", "architecture"],
+        ),
+        Topic(
+            name="sql",
+            display_name="SQL & Database Design",
+            notebook_id=None,
+            obsidian_paths=[obsidian_courses / "DataCamp", obsidian_mentoring / "Databases"],
+            tags=["sql", "postgresql", "athena", "redshift", "database"],
+        ),
+        Topic(
+            name="data-engineering",
+            display_name="Data Engineering",
+            notebook_id=None,
+            obsidian_paths=[
+                obsidian_courses / "ZTM" / "transcripts" / "data-engineering-bootcamp",
+                obsidian_mentoring / "Data-Engineering",
+            ],
+            tags=["etl", "spark", "glue", "airflow", "dbt", "pipeline", "lakehouse"],
+        ),
+        Topic(
+            name="aws-analytics",
+            display_name="AWS Analytics Services",
+            notebook_id=None,
+            obsidian_paths=[
+                obsidian_courses / "ZTM" / "Ai-Engineering-Aws-Sagemaker",
+                obsidian_mentoring / "AWS",
+            ],
+            tags=["athena", "redshift", "glue", "sagemaker", "lake-formation", "emr"],
+        ),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Path helpers (previously in config.py / config_path.py)
+# ---------------------------------------------------------------------------
+
+
+def get_db_path() -> Path:
+    """Get sessions.db path from config, or use default."""
+    config_file = _CONFIG_PATH
+    if config_file.exists():
+        try:
+            data = yaml.safe_load(config_file.read_text()) or {}
+            # Support both old 'database.path' key and new 'session_db' key
+            db_str = data.get("session_db", "")
+            if not db_str:
+                db_str = data.get("database", {}).get("path", "")
+            if db_str:
+                return Path(db_str).expanduser()
+        except Exception:
+            pass
+    return DEFAULT_DB
+
+
+def get_state_dir() -> Path:
+    """Get state directory from settings."""
+    return load_settings().state_dir
+
+
+def get_state_file() -> Path:
+    """Get state file path from settings."""
+    return get_state_dir() / "state.json"
 
 
 def generate_default_config() -> str:

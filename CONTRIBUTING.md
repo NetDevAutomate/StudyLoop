@@ -72,8 +72,8 @@ uv run pytest -k "test_search"
 ```
 
 Tests live in:
+- `packages/studyctl/tests/` — studyctl CLI and review tests
 - `packages/agent-session-tools/tests/` — session tools tests
-- `tests/` — workspace-level integration tests (if any)
 
 ## Project Structure
 
@@ -82,16 +82,32 @@ socratic-study-mentor/
 ├── packages/
 │   ├── studyctl/                    # Study pipeline CLI
 │   │   ├── src/studyctl/
-│   │   │   ├── cli.py              # Click CLI commands
-│   │   │   ├── config.py           # Topic configuration
-│   │   │   ├── settings.py         # Config file loader
+│   │   │   ├── cli/                # Click CLI (LazyGroup package)
+│   │   │   │   ├── __init__.py     # Root group + lazy registration
+│   │   │   │   ├── _lazy.py        # LazyGroup class
+│   │   │   │   ├── _shared.py      # Console, helpers, constants
+│   │   │   │   ├── _sync.py        # sync, status, audio, topics, dedup
+│   │   │   │   ├── _review.py      # review, struggles, wins, progress, bridges
+│   │   │   │   ├── _config.py      # config init, config show
+│   │   │   │   ├── _state.py       # state push/pull/status/init
+│   │   │   │   ├── _schedule.py    # schedule group + calendar blocks
+│   │   │   │   └── _web.py         # web, tui, docs commands
+│   │   │   ├── services/           # Framework-agnostic service layer
+│   │   │   │   ├── review.py       # Review operations (cards, stats, SM-2)
+│   │   │   │   └── content.py      # Content pipeline (Phase 1)
+│   │   │   ├── settings.py         # All configuration, topics, path resolution
+│   │   │   ├── review_db.py        # SQLite SM-2 spaced repetition (WAL mode)
+│   │   │   ├── review_loader.py    # Flashcard/quiz JSON loader + validation
 │   │   │   ├── sync.py             # NotebookLM sync
 │   │   │   ├── state.py            # Sync state tracking
 │   │   │   ├── history.py          # Session history queries
 │   │   │   ├── scheduler.py        # launchd/cron jobs
 │   │   │   ├── shared.py           # Cross-machine sync
 │   │   │   ├── maintenance.py      # Notebook deduplication
+│   │   │   ├── tui/                # Textual TUI app
+│   │   │   ├── web/                # Web PWA server + static assets
 │   │   │   └── pdf.py              # Markdown→PDF export
+│   │   ├── tests/
 │   │   └── pyproject.toml
 │   └── agent-session-tools/         # Session management CLI
 │       ├── src/agent_session_tools/
@@ -201,7 +217,7 @@ topics:
 
 The `tags` list is used by `studyctl struggles` and `studyctl review` to match session content to topics.
 
-If you want to add default topics that ship with the project, edit `packages/studyctl/src/studyctl/config.py` and add to the fallback list in `get_topics()`.
+If you want to add default topics that ship with the project, edit `packages/studyctl/src/studyctl/settings.py` and add to the fallback list in `get_topics()`.
 
 ## How to Modify Agent Behaviour
 

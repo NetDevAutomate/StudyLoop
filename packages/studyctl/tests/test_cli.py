@@ -14,9 +14,12 @@ recently studied. We test both paths explicitly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 from click.testing import CliRunner
 
 from studyctl.cli import cli
@@ -71,9 +74,9 @@ class TestTopics:
             FakeTopic(name="python", display_name="Python Study", notebook_id=None),
             FakeTopic(name="sql", display_name="SQL Mastery", notebook_id="abc123"),
         ]
-        import studyctl.cli as cli_mod
+        import studyctl.cli._sync as sync_mod
 
-        monkeypatch.setattr(cli_mod, "get_topics", lambda: fake_topics)
+        monkeypatch.setattr(sync_mod, "get_topics", lambda: fake_topics)
 
         result = runner.invoke(cli, ["topics"])
         assert result.exit_code == 0
@@ -83,9 +86,9 @@ class TestTopics:
         assert "SQL Mastery" in result.output
 
     def test_topics_empty_list(self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch) -> None:
-        import studyctl.cli as cli_mod
+        import studyctl.cli._sync as sync_mod
 
-        monkeypatch.setattr(cli_mod, "get_topics", lambda: [])
+        monkeypatch.setattr(sync_mod, "get_topics", lambda: [])
 
         result = runner.invoke(cli, ["topics"])
         assert result.exit_code == 0
@@ -106,9 +109,9 @@ class TestReview:
 
     def test_review_nothing_due(self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch) -> None:
         """When spaced_repetition_due returns empty, show the all-clear message."""
-        import studyctl.cli as cli_mod
+        import studyctl.cli._review as review_mod
 
-        monkeypatch.setattr(cli_mod, "spaced_repetition_due", lambda _kw: [])
+        monkeypatch.setattr(review_mod, "spaced_repetition_due", lambda _kw: [])
 
         result = runner.invoke(cli, ["review"])
         assert result.exit_code == 0
@@ -189,9 +192,9 @@ class TestScheduleList:
     def test_schedule_list_no_jobs(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import studyctl.cli as cli_mod
+        import studyctl.cli._schedule as sched_mod
 
-        monkeypatch.setattr(cli_mod, "list_jobs", lambda: [])
+        monkeypatch.setattr(sched_mod, "list_jobs", lambda: [])
 
         result = runner.invoke(cli, ["schedule", "list"])
         assert result.exit_code == 0
@@ -200,10 +203,10 @@ class TestScheduleList:
     def test_schedule_list_with_jobs(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import studyctl.cli as cli_mod
+        import studyctl.cli._schedule as sched_mod
 
         monkeypatch.setattr(
-            cli_mod,
+            sched_mod,
             "list_jobs",
             lambda: [
                 {"name": "session-export", "status": "0"},
@@ -332,13 +335,7 @@ class TestConfigShow:
             )
         )
         monkeypatch.setattr("studyctl.settings._CONFIG_PATH", config_file)
-        # Also point the CLI config_path check at the same file
-        monkeypatch.setattr(
-            "studyctl.cli.Path",
-            type("FakePath", (), {"home": staticmethod(lambda: tmp_path.parent)})
-            if False
-            else Path,
-        )
+        # config show imports settings._CONFIG_PATH which is already monkeypatched above
 
         result = runner.invoke(cli, ["config", "show"])
         assert result.exit_code == 0

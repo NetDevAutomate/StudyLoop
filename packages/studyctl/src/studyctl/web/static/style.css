@@ -88,6 +88,18 @@ header h1 {
 .toggle-btn.active { border-color: var(--accent); color: var(--accent); background: var(--bg-hover); }
 .toggle-btn svg { vertical-align: middle; }
 
+.voice-select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 4px 6px;
+  max-width: 140px;
+  cursor: pointer;
+}
+.voice-select:focus { border-color: var(--accent); outline: none; }
+
 /* --- Nav bar (in study view) --- */
 .nav-bar {
   display: flex;

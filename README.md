@@ -180,27 +180,39 @@ See [docs/agent-install.md](docs/agent-install.md) for setup details.
 ### studyctl
 
 ```bash
-studyctl sync [TOPIC] --all --dry-run   # Sync notes to NotebookLM
-studyctl status [TOPIC]                  # Show sync status
+# Study & review
 studyctl review                          # Check spaced repetition due dates
 studyctl struggles --days 30             # Find recurring struggle topics
 studyctl wins --days 30                  # Show your learning wins
+studyctl streaks                         # Show study streak and consistency
+studyctl resume                          # Where you left off — quick context reload
 studyctl progress CONCEPT -t TOPIC -c LEVEL  # Record progress on a concept
-studyctl schedule-blocks --start 14:00   # Generate .ics calendar study blocks
+studyctl progress-map                    # Visual map of all tracked concepts
+studyctl teachback CONCEPT -t TOPIC -s SCORES --type TYPE  # Record teach-back score
+studyctl teachback-history CONCEPT       # Show teach-back score progression
+
+# Knowledge bridges
+studyctl bridge add SRC TGT -s DOMAIN -t DOMAIN  # Add a knowledge bridge
+studyctl bridge list                     # List knowledge bridges
+
+# NotebookLM sync
+studyctl sync [TOPIC] --all --dry-run    # Sync notes to NotebookLM
+studyctl status [TOPIC]                  # Show sync status
 studyctl topics                          # List configured topics
 studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
+
+# Configuration & scheduling
 studyctl config init                     # Interactive setup wizard
 studyctl config show                     # Display current configuration
-studyctl concepts list [-d DOMAIN]       # List concepts in the graph
-studyctl concepts add NAME -d DOMAIN    # Add a concept
-studyctl concepts relate SRC TGT --type TYPE -d DOMAIN  # Add a relation
-studyctl prereqs CONCEPT -d DOMAIN      # Show prerequisite chain (recursive)
-studyctl related CONCEPT -d DOMAIN      # Show concept neighbourhood
-studyctl state push|pull|status|init     # Cross-machine state sync
-studyctl tui                             # Launch interactive TUI dashboard
-studyctl web [--port PORT] [--host HOST] # Launch study PWA web app
 studyctl schedule install|remove|list    # Manage scheduled jobs
+studyctl schedule-blocks --start 14:00   # Generate .ics calendar study blocks
+studyctl state push|pull|status|init     # Cross-machine state sync
+
+# Interfaces
+studyctl web [--port PORT] [--host HOST] # Launch study PWA web app
+studyctl tui                             # Launch interactive TUI dashboard
+studyctl docs serve|open|list|read       # Browse and read documentation
 ```
 
 ### Web PWA (recommended for multi-device study)
@@ -221,6 +233,7 @@ studyctl web --port 9000        # Custom port
 - Retry wrong answers mode
 - Pomodoro timer (25min study / 5min break with audio chime + notifications)
 - Voice output via Web Speech API — reads questions/answers aloud, works on any device
+- Voice selector dropdown — choose from all English voices available on your device
 - Read-once button (speaker icon on card) or auto-voice toggle (header)
 - OpenDyslexic font toggle for accessibility
 - Dark/light theme toggle
