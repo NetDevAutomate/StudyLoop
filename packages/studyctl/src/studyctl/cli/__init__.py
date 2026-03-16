@@ -38,6 +38,8 @@ from studyctl.cli._lazy import LazyGroup
         "teachback": "studyctl.cli._review:teachback",
         "teachback-history": "studyctl.cli._review:teachback_history_cmd",
         "bridge": "studyctl.cli._review:bridge_group",
+        # _content.py — content pipeline (pdf splitting, NotebookLM, syllabus)
+        "content": "studyctl.cli._content:content_group",
         # _web.py — web UI, TUI, docs
         "web": "studyctl.cli._web:web",
         "tui": "studyctl.cli._web:tui",

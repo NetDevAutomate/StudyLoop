@@ -13,7 +13,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-notebooklm = ["notebooklm-py"]
+content = ["pymupdf>=1.25", "httpx"]
+notebooklm = ["notebooklm-py>=0.3.4"]
 tui = ["textual>=0.80"]
 
 [project.scripts]
@@ -34,4 +35,4 @@ packages = ["src/studyctl"]
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
-exclude = ["src/studyctl/tui"]  # optional dep (textual) not in CI
+exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py"]  # optional deps not in CI

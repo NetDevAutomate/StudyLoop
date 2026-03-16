@@ -85,6 +85,17 @@ class NotebookLMConfig:
 
 
 @dataclass
+class ContentConfig:
+    """Configuration for the content pipeline (pdf-by-chapters absorption)."""
+
+    base_path: Path = field(default_factory=lambda: Path.home() / "study-materials")
+    notebooklm_timeout: int = 900
+    inter_episode_gap: int = 30
+    default_types: list[str] = field(default_factory=lambda: ["audio"])
+    pandoc_path: str = "pandoc"
+
+
+@dataclass
 class Settings:
     """Application settings loaded from config file."""
 
@@ -98,6 +109,7 @@ class Settings:
     sync_user: str = field(default_factory=lambda: _get_username())
     knowledge_domains: KnowledgeDomainsConfig = field(default_factory=KnowledgeDomainsConfig)
     notebooklm: NotebookLMConfig = field(default_factory=NotebookLMConfig)
+    content: ContentConfig = field(default_factory=ContentConfig)
 
 
 def load_settings() -> Settings:
@@ -154,6 +166,17 @@ def load_settings() -> Settings:
     if nlm:
         settings.notebooklm = NotebookLMConfig(
             enabled=bool(nlm.get("enabled", False)),
+        )
+
+    # Content pipeline configuration
+    ct = raw.get("content", {})
+    if ct:
+        settings.content = ContentConfig(
+            base_path=Path(ct.get("base_path", "~/study-materials")).expanduser(),
+            notebooklm_timeout=ct.get("notebooklm_timeout", 900),
+            inter_episode_gap=ct.get("inter_episode_gap", 30),
+            default_types=ct.get("default_types", ["audio"]),
+            pandoc_path=ct.get("pandoc_path", "pandoc"),
         )
 
     return settings
@@ -333,4 +356,12 @@ topics:
 #   secondary:
 #     - domain: cooking
 #       anchors: ["mise en place", "flavour balancing"]
+
+# Content pipeline (studyctl content commands)
+# content:
+#   base_path: ~/study-materials       # Where course directories are stored
+#   notebooklm_timeout: 900            # Timeout for generation (seconds)
+#   inter_episode_gap: 30              # Seconds between episode generations
+#   default_types: [audio]             # Default artifact types to generate
+#   pandoc_path: pandoc                # Path to pandoc binary
 """
