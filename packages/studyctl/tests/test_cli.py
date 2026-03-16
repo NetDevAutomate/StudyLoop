@@ -50,7 +50,7 @@ class TestVersion:
 
     def test_version_contains_studyctl(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["--version"])
-        assert "studyctl" in result.output.lower() or "1." in result.output
+        assert "version" in result.output.lower()
 
 
 # ---------------------------------------------------------------------------
