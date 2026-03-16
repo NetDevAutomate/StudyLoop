@@ -1,0 +1,2075 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/mcp-native-app-research.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>MCP Server in a Native macOS SwiftUI Application - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mcp-server-in-a-native-macos-swiftui-application" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              MCP Server in a Native macOS SwiftUI Application
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#research-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-mcp-transport-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. MCP Transport Mechanisms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. MCP Transport Mechanisms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-stdio-standard-io" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 stdio (Standard I/O)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-streamable-http-recommended-for-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Streamable HTTP (Recommended for .app)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-deprecated-sse-server-sent-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Deprecated: SSE (Server-Sent Events)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-custom-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 Custom Transports
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-how-agent-clis-discover-and-connect-to-mcp-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. How Agent CLIs Discover and Connect to MCP Servers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. How Agent CLIs Discover and Connect to MCP Servers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Claude Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-gemini-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Gemini CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-kiro-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Kiro (AWS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-universal-compatibility-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Universal Compatibility Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-can-a-macos-app-bundle-run-an-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Can a macOS .app Bundle Run an MCP Server?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Can a macOS .app Bundle Run an MCP Server?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-approach-a-embedded-http-server-recommended-for-poc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Approach A: Embedded HTTP Server (Recommended for PoC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-approach-b-cli-helper-binary-stdio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Approach B: CLI Helper Binary + stdio
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-approach-c-hybrid-best-of-both-worlds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Approach C: Hybrid (Best of Both Worlds)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-official-swift-mcp-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Official Swift MCP SDK
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Official Swift MCP SDK">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-available-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Available Transports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-server-setup-basic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Server Setup (Basic)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-registering-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Registering Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-http-server-transport-framework-agnostic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 HTTP Server Transport (Framework-Agnostic)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-complete-http-app-example-swiftnio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 Complete HTTP App Example (SwiftNIO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-simplest-viable-poc-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Simplest Viable PoC Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Simplest Viable PoC Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-architecture-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Architecture Diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-implementation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Implementation Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-minimal-poc-code-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Minimal PoC Code Sketch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-gotchas-and-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Gotchas and Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Gotchas and Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-macos-app-sandbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 macOS App Sandbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-port-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Port Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-app-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 App Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-macos-app-store-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 macOS App Store Review
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#66-firewall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.6 Firewall
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-alternative-approaches-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Alternative Approaches Considered
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Alternative Approaches Considered">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-xpc-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 XPC Service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-unix-domain-socket" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Unix Domain Socket
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-websocket" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 WebSocket
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-embedding-a-pythonnode-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Embedding a Python/Node MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Recommendations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Recommendations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-poc-immediate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For PoC (Immediate)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-production-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Production (Future)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="mcp-server-in-a-native-macos-swiftui-application">MCP Server in a Native macOS SwiftUI Application<a class="headerlink" href="#mcp-server-in-a-native-macos-swiftui-application" title="Permanent link">&para;</a></h1>
+<h2 id="research-summary">Research Summary<a class="headerlink" href="#research-summary" title="Permanent link">&para;</a></h2>
+<p><strong>Date</strong>: 2026-03-15
+<strong>Goal</strong>: Determine how a native macOS .app bundle can run an MCP server that agent CLI tools (Claude Code, Gemini CLI, Kiro) can connect to.
+<strong>Verdict</strong>: Fully viable. The official MCP Swift SDK (Tier 2) provides both HTTP server transports and stdio transport. The recommended PoC approach is <strong>Streamable HTTP on localhost</strong> using <code>StatefulHTTPServerTransport</code>, which all three major CLI agents already support.</p>
+<hr />
+<h2 id="1-mcp-transport-mechanisms">1. MCP Transport Mechanisms<a class="headerlink" href="#1-mcp-transport-mechanisms" title="Permanent link">&para;</a></h2>
+<p>The MCP specification (2025-03-26 and later) defines two standard transports:</p>
+<h3 id="11-stdio-standard-io">1.1 stdio (Standard I/O)<a class="headerlink" href="#11-stdio-standard-io" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Client launches the MCP server as a <strong>subprocess</strong> and communicates via stdin/stdout.</li>
+<li>Messages are newline-delimited JSON-RPC.</li>
+<li>The server MUST NOT write anything to stdout that is not a valid MCP message.</li>
+<li>The server MAY write to stderr for logging (clients MAY capture and forward this).</li>
+<li>Best for: local CLI tools, command-line servers.</li>
+<li><strong>Limitation for .app bundles</strong>: The client must be able to spawn the server as a child process. A macOS .app bundle is not typically launched this way -- you would need a separate CLI binary inside the bundle (e.g., <code>MyApp.app/Contents/MacOS/mcp-server</code>) that the client spawns.</li>
+</ul>
+<h3 id="12-streamable-http-recommended-for-app">1.2 Streamable HTTP (Recommended for .app)<a class="headerlink" href="#12-streamable-http-recommended-for-app" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Server runs as an <strong>independent HTTP process</strong> exposing a single endpoint (e.g., <code>http://127.0.0.1:PORT/mcp</code>).</li>
+<li>Uses HTTP POST for client-to-server messages and optionally SSE (Server-Sent Events) for streaming responses.</li>
+<li>GET requests can establish a standalone SSE stream for server-initiated messages.</li>
+<li>DELETE requests terminate the session.</li>
+<li>Session management via <code>Mcp-Session-Id</code> header (optional but recommended).</li>
+<li><strong>Security requirements</strong>:</li>
+<li>MUST validate <code>Origin</code> header to prevent DNS rebinding attacks.</li>
+<li>When running locally, SHOULD bind only to <code>127.0.0.1</code> (not <code>0.0.0.0</code>).</li>
+<li>SHOULD implement proper authentication for all connections.</li>
+</ul>
+<h3 id="13-deprecated-sse-server-sent-events">1.3 Deprecated: SSE (Server-Sent Events)<a class="headerlink" href="#13-deprecated-sse-server-sent-events" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The old SSE-only transport is <strong>deprecated</strong> as of the 2025-03-26 spec.</li>
+<li>Claude Code still supports it (<code>--transport sse</code>) but recommends HTTP instead.</li>
+<li>Streamable HTTP subsumes SSE functionality.</li>
+</ul>
+<h3 id="14-custom-transports">1.4 Custom Transports<a class="headerlink" href="#14-custom-transports" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The spec explicitly allows custom transports (e.g., Unix domain sockets, WebSocket).</li>
+<li>However, clients must support them -- stick to stdio or Streamable HTTP for broad compatibility.</li>
+</ul>
+<hr />
+<h2 id="2-how-agent-clis-discover-and-connect-to-mcp-servers">2. How Agent CLIs Discover and Connect to MCP Servers<a class="headerlink" href="#2-how-agent-clis-discover-and-connect-to-mcp-servers" title="Permanent link">&para;</a></h2>
+<h3 id="21-claude-code">2.1 Claude Code<a class="headerlink" href="#21-claude-code" title="Permanent link">&para;</a></h3>
+<p><strong>Configuration locations (3 scopes)</strong>:
+- <strong>Local scope</strong>: <code>~/.claude.json</code> (per-project path, default)
+- <strong>Project scope</strong>: <code>.mcp.json</code> at project root (version-controlled, shared with team)
+- <strong>User scope</strong>: <code>~/.claude.json</code> (cross-project, private)</p>
+<p><strong>Three transport options</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Option 1: Remote HTTP (Streamable HTTP) -- RECOMMENDED</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>my-app<span class="w"> </span>http://127.0.0.1:9400/mcp
+
+<span class="c1"># Option 2: SSE (deprecated)</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>--transport<span class="w"> </span>sse<span class="w"> </span>my-app<span class="w"> </span>http://127.0.0.1:9400/sse
+
+<span class="c1"># Option 3: Local stdio</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>--transport<span class="w"> </span>stdio<span class="w"> </span>my-app<span class="w"> </span>--<span class="w"> </span>/path/to/binary<span class="w"> </span>--args
+</code></pre></div>
+<p><strong>JSON configuration format</strong> (via <code>claude mcp add-json</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;my-native-app&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:9400/mcp&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Or for stdio:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;my-native-app&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Applications/MyApp.app/Contents/MacOS/mcp-helper&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="22-gemini-cli">2.2 Gemini CLI<a class="headerlink" href="#22-gemini-cli" title="Permanent link">&para;</a></h3>
+<p><strong>Configuration location</strong>: <code>settings.json</code> in <code>~/.gemini/</code> (user) or <code>.gemini/</code> (project).</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;my-native-app&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;path/to/server&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--arg1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;value1&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;API_KEY&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$MY_API_TOKEN&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./server-directory&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30000</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;trust&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Transport selection</strong>: Gemini CLI supports stdio, SSE, and Streamable HTTP. For HTTP:</p>
+<div class="highlight"><pre><span></span><code>gemini<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>-t<span class="w"> </span>http<span class="w"> </span>my-app<span class="w"> </span>http://127.0.0.1:9400/mcp
+</code></pre></div>
+<h3 id="23-kiro-aws">2.3 Kiro (AWS)<a class="headerlink" href="#23-kiro-aws" title="Permanent link">&para;</a></h3>
+<p><strong>Configuration location</strong>: <code>.kiro/settings.json</code> in the project root or user-level config.</p>
+<p>Kiro uses the same <code>mcpServers</code> format as the ecosystem standard. Supports stdio, SSE, and HTTP transports. Configuration is nearly identical to Gemini CLI and Claude Desktop formats.</p>
+<h3 id="24-universal-compatibility-summary">2.4 Universal Compatibility Summary<a class="headerlink" href="#24-universal-compatibility-summary" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>stdio</th>
+<th>Streamable HTTP</th>
+<th>SSE (deprecated)</th>
+<th>Config File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td><code>.mcp.json</code>, <code>~/.claude.json</code></td>
+</tr>
+<tr>
+<td>Gemini CLI</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td><code>.gemini/settings.json</code></td>
+</tr>
+<tr>
+<td>Kiro</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td><code>.kiro/settings.json</code></td>
+</tr>
+<tr>
+<td>Claude Desktop</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td><code>claude_desktop_config.json</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>All clients support Streamable HTTP</strong>, making it the universal choice.</p>
+<hr />
+<h2 id="3-can-a-macos-app-bundle-run-an-mcp-server">3. Can a macOS .app Bundle Run an MCP Server?<a class="headerlink" href="#3-can-a-macos-app-bundle-run-an-mcp-server" title="Permanent link">&para;</a></h2>
+<p><strong>Yes, absolutely.</strong> There are two viable approaches:</p>
+<h3 id="31-approach-a-embedded-http-server-recommended-for-poc">3.1 Approach A: Embedded HTTP Server (Recommended for PoC)<a class="headerlink" href="#31-approach-a-embedded-http-server-recommended-for-poc" title="Permanent link">&para;</a></h3>
+<p>The SwiftUI app launches a lightweight HTTP server on <code>127.0.0.1:PORT</code> at startup. Agent CLIs connect to it as a remote HTTP MCP server.</p>
+<p><strong>Advantages</strong>:
+- App controls the server lifecycle naturally.
+- No subprocess management needed on the client side.
+- App can provide a UI showing connected clients, tool calls, etc.
+- Server persists as long as the app is running.
+- Works with ALL MCP clients without any special handling.</p>
+<p><strong>Disadvantages</strong>:
+- Need to pick and manage a port (risk of conflicts).
+- Requires the app to be running before the CLI connects.
+- Slightly more complex than stdio for a minimal PoC.</p>
+<h3 id="32-approach-b-cli-helper-binary-stdio">3.2 Approach B: CLI Helper Binary + stdio<a class="headerlink" href="#32-approach-b-cli-helper-binary-stdio" title="Permanent link">&para;</a></h3>
+<p>Bundle a small CLI executable inside the .app that speaks MCP over stdio. Clients spawn this binary as a subprocess.</p>
+<p><strong>Advantages</strong>:
+- Simpler protocol (just stdin/stdout).
+- No port management.
+- Client manages the lifecycle.</p>
+<p><strong>Disadvantages</strong>:
+- The CLI binary is a separate process from the main SwiftUI app. IPC needed between them.
+- Cannot easily share state with the running GUI app (need XPC, Unix socket, or similar).
+- Harder to show status in the GUI.</p>
+<h3 id="33-approach-c-hybrid-best-of-both-worlds">3.3 Approach C: Hybrid (Best of Both Worlds)<a class="headerlink" href="#33-approach-c-hybrid-best-of-both-worlds" title="Permanent link">&para;</a></h3>
+<p>The .app runs the HTTP server. A thin CLI shim binary (also in the bundle) translates stdio to HTTP, allowing clients that prefer stdio to also connect.</p>
+<div class="highlight"><pre><span></span><code>Agent CLI --stdio--&gt; shim binary --HTTP--&gt; SwiftUI app (HTTP MCP server)
+Agent CLI --HTTP--&gt; SwiftUI app (HTTP MCP server) directly
+</code></pre></div>
+<hr />
+<h2 id="4-official-swift-mcp-sdk">4. Official Swift MCP SDK<a class="headerlink" href="#4-official-swift-mcp-sdk" title="Permanent link">&para;</a></h2>
+<p>The <strong>official MCP Swift SDK</strong> (<code>modelcontextprotocol/swift-sdk</code>) is Tier 2 and provides everything needed.</p>
+<h3 id="41-installation">4.1 Installation<a class="headerlink" href="#41-installation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Package.swift</span>
+<span class="n">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">.</span><span class="n">package</span><span class="p">(</span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://github.com/modelcontextprotocol/swift-sdk.git&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.11.0&quot;</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="c1">// Target dependency</span>
+<span class="p">.</span><span class="n">product</span><span class="p">(</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;MCP&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">package</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;swift-sdk&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="42-requirements">4.2 Requirements<a class="headerlink" href="#42-requirements" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Swift 6.0+ (Xcode 16+)</li>
+<li>macOS 13.0+ (Ventura or later)</li>
+<li>iOS 16.0+, watchOS 9.0+, tvOS 16.0+, visionOS 1.0+</li>
+</ul>
+<h3 id="43-available-transports">4.3 Available Transports<a class="headerlink" href="#43-available-transports" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Transport</th>
+<th>Type</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StdioTransport</code></td>
+<td>Client + Server</td>
+<td>Local subprocesses, CLI tools</td>
+</tr>
+<tr>
+<td><code>HTTPClientTransport</code></td>
+<td>Client only</td>
+<td>Connecting to remote servers</td>
+</tr>
+<tr>
+<td><code>StatelessHTTPServerTransport</code></td>
+<td>Server</td>
+<td>Simple request-response, serverless</td>
+</tr>
+<tr>
+<td><code>StatefulHTTPServerTransport</code></td>
+<td>Server</td>
+<td>Full sessions, SSE streaming, resumability</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44-server-setup-basic">4.4 Server Setup (Basic)<a class="headerlink" href="#44-server-setup-basic" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">import</span><span class="w"> </span><span class="nc">MCP</span>
+
+<span class="c1">// Create server with capabilities</span>
+<span class="kd">let</span><span class="w"> </span><span class="nv">server</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">Server</span><span class="p">(</span>
+<span class="w">    </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;MyMacApp&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">capabilities</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span>
+<span class="w">        </span><span class="n">tools</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span><span class="n">listChanged</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1">// Create transport and start</span>
+<span class="kd">let</span><span class="w"> </span><span class="nv">transport</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">StdioTransport</span><span class="p">()</span><span class="w">  </span><span class="c1">// or HTTP transport</span>
+<span class="k">try</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">server</span><span class="p">.</span><span class="n">start</span><span class="p">(</span><span class="n">transport</span><span class="p">:</span><span class="w"> </span><span class="n">transport</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="45-registering-tools">4.5 Registering Tools<a class="headerlink" href="#45-registering-tools" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// List available tools</span>
+<span class="k">await</span><span class="w"> </span><span class="n">server</span><span class="p">.</span><span class="n">withMethodHandler</span><span class="p">(</span><span class="n">ListTools</span><span class="p">.</span><span class="kc">self</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kc">_</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">tools</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="n">Tool</span><span class="p">(</span>
+<span class="w">            </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;get_flashcards&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Get flashcards for the current study topic&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">inputSchema</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">object</span><span class="p">([</span>
+<span class="w">                </span><span class="s">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">object</span><span class="p">([</span>
+<span class="w">                    </span><span class="s">&quot;topic&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;The study topic to get flashcards for&quot;</span><span class="p">),</span>
+<span class="w">                    </span><span class="s">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;Number of flashcards to return&quot;</span><span class="p">)</span>
+<span class="w">                </span><span class="p">])</span>
+<span class="w">            </span><span class="p">])</span>
+<span class="w">        </span><span class="p">)</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span><span class="n">tools</span><span class="p">:</span><span class="w"> </span><span class="n">tools</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// Handle tool calls</span>
+<span class="k">await</span><span class="w"> </span><span class="n">server</span><span class="p">.</span><span class="n">withMethodHandler</span><span class="p">(</span><span class="n">CallTool</span><span class="p">.</span><span class="kc">self</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">params</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="k">switch</span><span class="w"> </span><span class="n">params</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;get_flashcards&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">topic</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">params</span><span class="p">.</span><span class="n">arguments</span><span class="p">?[</span><span class="s">&quot;topic&quot;</span><span class="p">]?.</span><span class="n">stringValue</span><span class="w"> </span><span class="p">??</span><span class="w"> </span><span class="s">&quot;general&quot;</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">flashcards</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">getFlashcards</span><span class="p">(</span><span class="n">topic</span><span class="p">:</span><span class="w"> </span><span class="n">topic</span><span class="p">)</span><span class="w">  </span><span class="c1">// Your implementation</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span>
+<span class="w">            </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="p">[.</span><span class="n">text</span><span class="p">(</span><span class="n">flashcards</span><span class="p">)],</span>
+<span class="w">            </span><span class="n">isError</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">        </span><span class="p">)</span>
+<span class="w">    </span><span class="k">default</span><span class="p">:</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span>
+<span class="w">            </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="p">[.</span><span class="n">text</span><span class="p">(</span><span class="s">&quot;Unknown tool: </span><span class="si">\(</span><span class="n">params</span><span class="p">.</span><span class="n">name</span><span class="si">)</span><span class="s">&quot;</span><span class="p">)],</span>
+<span class="w">            </span><span class="n">isError</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">        </span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="46-http-server-transport-framework-agnostic">4.6 HTTP Server Transport (Framework-Agnostic)<a class="headerlink" href="#46-http-server-transport-framework-agnostic" title="Permanent link">&para;</a></h3>
+<p>The Swift SDK provides framework-agnostic HTTP types. You integrate with any HTTP framework (SwiftNIO, Vapor, Hummingbird, or even Foundation's built-in server):</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// HTTPRequest -- framework-agnostic input</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="nc">HTTPRequest</span><span class="p">:</span><span class="w"> </span><span class="n">Sendable</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">method</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w">          </span><span class="c1">// &quot;GET&quot;, &quot;POST&quot;, &quot;DELETE&quot;</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">headers</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nb">String</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">]</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">Data</span><span class="p">?</span>
+<span class="p">}</span>
+
+<span class="c1">// HTTPResponse -- framework-agnostic output (enum)</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">enum</span><span class="w"> </span><span class="nc">HTTPResponse</span><span class="p">:</span><span class="w"> </span><span class="n">Sendable</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">accepted</span><span class="p">(</span><span class="n">headers</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nb">String</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">])</span><span class="w">     </span><span class="c1">// 202, no body</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">ok</span><span class="p">(</span><span class="n">headers</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nb">String</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">])</span><span class="w">           </span><span class="c1">// 200, no body</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">data</span><span class="p">(</span><span class="n">Data</span><span class="p">,</span><span class="w"> </span><span class="n">headers</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nb">String</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">])</span><span class="w">   </span><span class="c1">// 200 with JSON body</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">stream</span><span class="p">(</span><span class="n">AsyncThrowingStream</span><span class="p">&lt;</span><span class="n">Data</span><span class="p">,</span><span class="w"> </span><span class="n">Error</span><span class="p">&gt;,</span><span class="w"> </span><span class="n">headers</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nb">String</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">])</span><span class="w">  </span><span class="c1">// 200 SSE</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">error</span><span class="p">(</span><span class="n">statusCode</span><span class="p">:</span><span class="w"> </span><span class="nb">Int</span><span class="p">,</span><span class="w"> </span><span class="n">MCPError</span><span class="p">,</span><span class="w"> </span><span class="n">sessionID</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">?)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>StatefulHTTPServerTransport</strong> usage:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="nv">transport</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">StatefulHTTPServerTransport</span><span class="p">()</span>
+<span class="k">try</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">server</span><span class="p">.</span><span class="n">start</span><span class="p">(</span><span class="n">transport</span><span class="p">:</span><span class="w"> </span><span class="n">transport</span><span class="p">)</span>
+
+<span class="c1">// In your HTTP framework handler:</span>
+<span class="kd">let</span><span class="w"> </span><span class="nv">httpRequest</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">HTTPRequest</span><span class="p">(</span>
+<span class="w">    </span><span class="n">method</span><span class="p">:</span><span class="w"> </span><span class="n">request</span><span class="p">.</span><span class="n">method</span><span class="p">.</span><span class="n">rawValue</span><span class="p">,</span>
+<span class="w">    </span><span class="n">headers</span><span class="p">:</span><span class="w"> </span><span class="nb">Dictionary</span><span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">headers</span><span class="p">),</span>
+<span class="w">    </span><span class="n">body</span><span class="p">:</span><span class="w"> </span><span class="n">request</span><span class="p">.</span><span class="n">body</span>
+<span class="p">)</span>
+<span class="kd">let</span><span class="w"> </span><span class="nv">response</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">transport</span><span class="p">.</span><span class="n">handleRequest</span><span class="p">(</span><span class="n">httpRequest</span><span class="p">)</span>
+
+<span class="c1">// Convert response to your framework&#39;s response type</span>
+<span class="k">switch</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="p">{</span>
+<span class="k">case</span><span class="w"> </span><span class="p">.</span><span class="n">stream</span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nv">sseStream</span><span class="p">,</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">headers</span><span class="p">):</span>
+<span class="w">    </span><span class="c1">// Pipe the async stream to the HTTP response body</span>
+<span class="k">case</span><span class="w"> </span><span class="p">.</span><span class="n">data</span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nv">data</span><span class="p">,</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">headers</span><span class="p">):</span>
+<span class="w">    </span><span class="c1">// Return JSON response</span>
+<span class="k">case</span><span class="w"> </span><span class="p">.</span><span class="n">accepted</span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nv">headers</span><span class="p">):</span>
+<span class="w">    </span><span class="c1">// Return 202</span>
+<span class="c1">// ... etc</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="47-complete-http-app-example-swiftnio">4.7 Complete HTTP App Example (SwiftNIO)<a class="headerlink" href="#47-complete-http-app-example-swiftnio" title="Permanent link">&para;</a></h3>
+<p>The SDK includes a full reference implementation using SwiftNIO in <code>Sources/MCPConformance/Server/HTTPApp.swift</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">actor</span><span class="w"> </span><span class="n">HTTPApp</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">struct</span><span class="w"> </span><span class="nc">Configuration</span><span class="p">:</span><span class="w"> </span><span class="n">Sendable</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="nv">host</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;127.0.0.1&quot;</span>
+<span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="nv">port</span><span class="p">:</span><span class="w"> </span><span class="nb">Int</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">3000</span>
+<span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="nv">endpoint</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;/mcp&quot;</span>
+<span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="nv">sessionTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">TimeInterval</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">3600</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Factory creates a new Server + Transport per session</span>
+<span class="w">    </span><span class="kd">typealias</span><span class="w"> </span><span class="n">ServerFactory</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">@</span><span class="n">Sendable</span><span class="w"> </span><span class="p">(</span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="n">StatefulHTTPServerTransport</span><span class="p">)</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="kr">throws</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="n">Server</span>
+
+<span class="w">    </span><span class="c1">// Sessions tracked by session ID</span>
+<span class="w">    </span><span class="kd">struct</span><span class="w"> </span><span class="nc">SessionContext</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">server</span><span class="p">:</span><span class="w"> </span><span class="n">Server</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">transport</span><span class="p">:</span><span class="w"> </span><span class="n">StatefulHTTPServerTransport</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">createdAt</span><span class="p">:</span><span class="w"> </span><span class="n">Date</span>
+<span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="nv">lastAccessedAt</span><span class="p">:</span><span class="w"> </span><span class="n">Date</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This handles:
+- Session creation on first request (no existing <code>Mcp-Session-Id</code>)
+- Session routing for subsequent requests
+- Session cleanup on DELETE or timeout
+- SSE streaming for POST and GET requests</p>
+<hr />
+<h2 id="5-simplest-viable-poc-architecture">5. Simplest Viable PoC Architecture<a class="headerlink" href="#5-simplest-viable-poc-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="51-architecture-diagram">5.1 Architecture Diagram<a class="headerlink" href="#51-architecture-diagram" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>+-------------------------------------------+
+|          macOS SwiftUI App (.app)          |
+|                                           |
+|  +----------------+  +----------------+  |
+|  |  SwiftUI Views |  |  App State     |  |
+|  |  (study cards, |  |  (courses,     |  |
+|  |   progress)    |  |   flashcards)  |  |
+|  +-------+--------+  +-------+--------+  |
+|          |                    |            |
+|  +-------v--------------------v--------+  |
+|  |         MCP Server Layer            |  |
+|  |  (Server + StatefulHTTPTransport)   |  |
+|  |  Tools: get_flashcards,             |  |
+|  |         quiz_me, get_progress,      |  |
+|  |         list_courses                |  |
+|  +-------+----------------------------+  |
+|          |                                |
+|  +-------v----------------------------+   |
+|  |  HTTP Server (SwiftNIO/Foundation) |   |
+|  |  127.0.0.1:9400/mcp               |   |
+|  +------------------------------------+   |
++-------------------------------------------+
+          ^            ^            ^
+          |            |            |
+     Claude Code  Gemini CLI    Kiro CLI
+     (HTTP)       (HTTP)        (HTTP)
+</code></pre></div>
+<h3 id="52-implementation-steps">5.2 Implementation Steps<a class="headerlink" href="#52-implementation-steps" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Create a SwiftUI macOS app</strong> (Xcode, macOS 13+ target).</p>
+</li>
+<li>
+<p><strong>Add the MCP Swift SDK</strong> via Swift Package Manager:
+   <div class="highlight"><pre><span></span><code><span class="p">.</span><span class="n">package</span><span class="p">(</span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://github.com/modelcontextprotocol/swift-sdk.git&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.11.0&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Create an MCPServerManager actor</strong> that:</p>
+</li>
+<li>Initializes the <code>Server</code> with tool capabilities.</li>
+<li>Creates a <code>StatefulHTTPServerTransport</code>.</li>
+<li>Starts listening on <code>127.0.0.1:9400/mcp</code>.</li>
+<li>
+<p>Registers tool handlers that read from the app's shared state.</p>
+</li>
+<li>
+<p><strong>Wire the HTTP layer</strong> using SwiftNIO (the SDK's HTTPApp example) or a simpler approach with Hummingbird/Vapor.</p>
+</li>
+<li>
+<p><strong>Start the server</strong> when the app launches (in the <code>App</code> struct's <code>init</code> or via a <code>.task</code> modifier).</p>
+</li>
+<li>
+<p><strong>Register with agent CLIs</strong>:
+   <div class="highlight"><pre><span></span><code><span class="c1"># Claude Code</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>study-mentor<span class="w"> </span>http://127.0.0.1:9400/mcp
+
+<span class="c1"># Gemini CLI</span>
+gemini<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>-t<span class="w"> </span>http<span class="w"> </span>study-mentor<span class="w"> </span>http://127.0.0.1:9400/mcp
+
+<span class="c1"># Or via .mcp.json in any project:</span>
+<span class="o">{</span>
+<span class="w">  </span><span class="s2">&quot;mcpServers&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;study-mentor&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">      </span><span class="s2">&quot;type&quot;</span>:<span class="w"> </span><span class="s2">&quot;http&quot;</span>,
+<span class="w">      </span><span class="s2">&quot;url&quot;</span>:<span class="w"> </span><span class="s2">&quot;http://127.0.0.1:9400/mcp&quot;</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">  </span><span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></p>
+</li>
+</ol>
+<h3 id="53-minimal-poc-code-sketch">5.3 Minimal PoC Code Sketch<a class="headerlink" href="#53-minimal-poc-code-sketch" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">import</span><span class="w"> </span><span class="nc">SwiftUI</span>
+<span class="kd">import</span><span class="w"> </span><span class="nc">MCP</span>
+
+<span class="p">@</span><span class="n">main</span>
+<span class="kd">struct</span><span class="w"> </span><span class="nc">StudyMentorApp</span><span class="p">:</span><span class="w"> </span><span class="n">App</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">@</span><span class="n">State</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">serverManager</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">MCPServerManager</span><span class="p">()</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">Scene</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">WindowGroup</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">ContentView</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="n">task</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">await</span><span class="w"> </span><span class="n">serverManager</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="p">@</span><span class="n">Observable</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">MCPServerManager</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">isRunning</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">connectedClients</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">0</span>
+
+<span class="w">    </span><span class="kd">func</span><span class="w"> </span><span class="nf">start</span><span class="p">()</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">server</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">Server</span><span class="p">(</span>
+<span class="w">            </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;StudyMentor&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">capabilities</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span>
+<span class="w">                </span><span class="n">tools</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span><span class="n">listChanged</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="w">            </span><span class="p">)</span>
+<span class="w">        </span><span class="p">)</span>
+
+<span class="w">        </span><span class="c1">// Register tools</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">server</span><span class="p">.</span><span class="n">withMethodHandler</span><span class="p">(</span><span class="n">ListTools</span><span class="p">.</span><span class="kc">self</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kc">_</span><span class="w"> </span><span class="k">in</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span><span class="n">tools</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="n">Tool</span><span class="p">(</span>
+<span class="w">                    </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;get_flashcards&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Get flashcards for a study topic&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">inputSchema</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">object</span><span class="p">([</span>
+<span class="w">                        </span><span class="s">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">object</span><span class="p">([</span>
+<span class="w">                            </span><span class="s">&quot;topic&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;Study topic&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="s">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;Number of cards (default 5)&quot;</span><span class="p">)</span>
+<span class="w">                        </span><span class="p">])</span>
+<span class="w">                    </span><span class="p">])</span>
+<span class="w">                </span><span class="p">),</span>
+<span class="w">                </span><span class="n">Tool</span><span class="p">(</span>
+<span class="w">                    </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;quiz_me&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Start an interactive quiz on a topic&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">inputSchema</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">object</span><span class="p">([</span>
+<span class="w">                        </span><span class="s">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">object</span><span class="p">([</span>
+<span class="w">                            </span><span class="s">&quot;topic&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;Quiz topic&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="s">&quot;difficulty&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;easy, medium, or hard&quot;</span><span class="p">)</span>
+<span class="w">                        </span><span class="p">])</span>
+<span class="w">                    </span><span class="p">])</span>
+<span class="w">                </span><span class="p">)</span>
+<span class="w">            </span><span class="p">])</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">server</span><span class="p">.</span><span class="n">withMethodHandler</span><span class="p">(</span><span class="n">CallTool</span><span class="p">.</span><span class="kc">self</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">params</span><span class="w"> </span><span class="k">in</span>
+<span class="w">            </span><span class="k">switch</span><span class="w"> </span><span class="n">params</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;get_flashcards&quot;</span><span class="p">:</span>
+<span class="w">                </span><span class="kd">let</span><span class="w"> </span><span class="nv">topic</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">params</span><span class="p">.</span><span class="n">arguments</span><span class="p">?[</span><span class="s">&quot;topic&quot;</span><span class="p">]?.</span><span class="n">stringValue</span><span class="w"> </span><span class="p">??</span><span class="w"> </span><span class="s">&quot;general&quot;</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span>
+<span class="w">                    </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="p">[.</span><span class="n">text</span><span class="p">(</span><span class="s">&quot;Flashcards for </span><span class="si">\(</span><span class="n">topic</span><span class="si">)</span><span class="s">: ...&quot;</span><span class="p">)],</span>
+<span class="w">                    </span><span class="n">isError</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">                </span><span class="p">)</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;quiz_me&quot;</span><span class="p">:</span>
+<span class="w">                </span><span class="kd">let</span><span class="w"> </span><span class="nv">topic</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">params</span><span class="p">.</span><span class="n">arguments</span><span class="p">?[</span><span class="s">&quot;topic&quot;</span><span class="p">]?.</span><span class="n">stringValue</span><span class="w"> </span><span class="p">??</span><span class="w"> </span><span class="s">&quot;general&quot;</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span>
+<span class="w">                    </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="p">[.</span><span class="n">text</span><span class="p">(</span><span class="s">&quot;Quiz on </span><span class="si">\(</span><span class="n">topic</span><span class="si">)</span><span class="s">: Q1: ...&quot;</span><span class="p">)],</span>
+<span class="w">                    </span><span class="n">isError</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">                </span><span class="p">)</span>
+<span class="w">            </span><span class="k">default</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span>
+<span class="w">                    </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="p">[.</span><span class="n">text</span><span class="p">(</span><span class="s">&quot;Unknown tool&quot;</span><span class="p">)],</span>
+<span class="w">                    </span><span class="n">isError</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">                </span><span class="p">)</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="c1">// Start HTTP server on localhost:9400</span>
+<span class="w">        </span><span class="c1">// (Use SwiftNIO HTTPApp pattern from the SDK, or Hummingbird/Vapor)</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">transport</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">StatefulHTTPServerTransport</span><span class="p">()</span>
+<span class="w">        </span><span class="k">try</span><span class="p">?</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">server</span><span class="p">.</span><span class="n">start</span><span class="p">(</span><span class="n">transport</span><span class="p">:</span><span class="w"> </span><span class="n">transport</span><span class="p">)</span>
+
+<span class="w">        </span><span class="c1">// ... HTTP listener wiring here (see Section 4.7)</span>
+<span class="w">        </span><span class="n">isRunning</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="6-gotchas-and-considerations">6. Gotchas and Considerations<a class="headerlink" href="#6-gotchas-and-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="61-macos-app-sandbox">6.1 macOS App Sandbox<a class="headerlink" href="#61-macos-app-sandbox" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Non-sandboxed apps</strong> (distributed outside the App Store): No restrictions on binding to localhost ports. This is the simplest path for a PoC or developer tool.</li>
+<li><strong>Sandboxed apps</strong> (App Store): Require the <code>com.apple.security.network.server</code> entitlement to listen on network ports, and <code>com.apple.security.network.client</code> to make outbound connections.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Entitlements for sandboxed app --&gt;</span>
+<span class="nt">&lt;key&gt;</span>com.apple.security.network.server<span class="nt">&lt;/key&gt;</span>
+<span class="nt">&lt;true/&gt;</span>
+<span class="nt">&lt;key&gt;</span>com.apple.security.network.client<span class="nt">&lt;/key&gt;</span>
+<span class="nt">&lt;true/&gt;</span>
+</code></pre></div>
+<ul>
+<li>App Sandbox does NOT prevent binding to localhost. The entitlements just need to be declared.</li>
+<li>App Review: Apple allows localhost server functionality for legitimate purposes (developer tools, local integrations). The key is that the app's primary function is clear and the networking is justified.</li>
+</ul>
+<h3 id="62-port-management">6.2 Port Management<a class="headerlink" href="#62-port-management" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Fixed port</strong>: Simplest for a PoC. Pick something unlikely to conflict (e.g., 9400).</li>
+<li><strong>Dynamic port</strong>: Bind to port 0, get the assigned port, and write it to a well-known file (e.g., <code>~/.config/study-mentor/mcp-port</code>). CLI configs would need a wrapper script to read this.</li>
+<li><strong>Bonjour/mDNS</strong>: Could advertise the service, but no MCP clients support discovery this way (yet).</li>
+<li><strong>Recommendation</strong>: Use a fixed port for PoC. Consider a settings UI for the port number.</li>
+</ul>
+<h3 id="63-app-lifecycle">6.3 App Lifecycle<a class="headerlink" href="#63-app-lifecycle" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The HTTP server should start when the app launches and stop when it terminates.</li>
+<li>Consider showing server status in the menu bar or a status indicator in the app.</li>
+<li>Handle the case where the port is already in use (show an error, offer to change port).</li>
+<li>Use <code>ServiceLifecycle</code> (from <code>swift-server/swift-service-lifecycle</code>) for graceful shutdown.</li>
+</ul>
+<h3 id="64-security">6.4 Security<a class="headerlink" href="#64-security" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Bind to 127.0.0.1 only</strong> -- never 0.0.0.0 for a local tool.</li>
+<li><strong>Validate Origin header</strong> on all requests (the SDK's default validation pipeline does this).</li>
+<li>The SDK's <code>StatefulHTTPServerTransport</code> includes sensible defaults:</li>
+<li><code>OriginValidator.localhost()</code> -- rejects non-localhost origins.</li>
+<li><code>AcceptHeaderValidator</code> -- validates content type negotiation.</li>
+<li><code>ContentTypeValidator</code> -- validates request content types.</li>
+<li><code>ProtocolVersionValidator</code> -- validates MCP protocol version.</li>
+<li>For a local-only PoC, no additional auth is needed. For production, consider a bearer token.</li>
+</ul>
+<h3 id="65-macos-app-store-review">6.5 macOS App Store Review<a class="headerlink" href="#65-macos-app-store-review" title="Permanent link">&para;</a></h3>
+<p>If targeting the Mac App Store:
+- The app must have a clear primary purpose beyond being an MCP server.
+- In-app purchases cannot be required to use the MCP tools (they are not digital goods).
+- The networking entitlements are standard and will not cause review issues.
+- Notarization (required for non-App Store distribution) has no issues with localhost servers.</p>
+<h3 id="66-firewall">6.6 Firewall<a class="headerlink" href="#66-firewall" title="Permanent link">&para;</a></h3>
+<ul>
+<li>macOS may prompt the user to allow incoming connections when the app first binds.</li>
+<li>Binding to <code>127.0.0.1</code> (not <code>0.0.0.0</code>) typically avoids this prompt.</li>
+<li>If the prompt appears, the user must allow it for MCP clients to connect.</li>
+</ul>
+<hr />
+<h2 id="7-alternative-approaches-considered">7. Alternative Approaches Considered<a class="headerlink" href="#7-alternative-approaches-considered" title="Permanent link">&para;</a></h2>
+<h3 id="71-xpc-service">7.1 XPC Service<a class="headerlink" href="#71-xpc-service" title="Permanent link">&para;</a></h3>
+<ul>
+<li>macOS-specific IPC, very fast, sandboxed.</li>
+<li>No MCP client supports XPC as a transport. Would require a custom bridge.</li>
+<li>Not recommended for cross-tool compatibility.</li>
+</ul>
+<h3 id="72-unix-domain-socket">7.2 Unix Domain Socket<a class="headerlink" href="#72-unix-domain-socket" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Faster than TCP for local communication.</li>
+<li>No MCP client supports this natively. Would require custom transport on both sides.</li>
+<li>Could be used as a custom transport with a stdio shim, but adds complexity.</li>
+</ul>
+<h3 id="73-websocket">7.3 WebSocket<a class="headerlink" href="#73-websocket" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Not part of the MCP spec.</li>
+<li>Some community implementations exist but not standardized.</li>
+<li>Not recommended.</li>
+</ul>
+<h3 id="74-embedding-a-pythonnode-mcp-server">7.4 Embedding a Python/Node MCP Server<a class="headerlink" href="#74-embedding-a-pythonnode-mcp-server" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The Swift app could spawn a Python or Node MCP server as a subprocess.</li>
+<li>Defeats the purpose of a native app. Adds runtime dependencies.</li>
+<li>Not recommended.</li>
+</ul>
+<hr />
+<h2 id="8-recommendations">8. Recommendations<a class="headerlink" href="#8-recommendations" title="Permanent link">&para;</a></h2>
+<h3 id="for-poc-immediate">For PoC (Immediate)<a class="headerlink" href="#for-poc-immediate" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Use Streamable HTTP transport</strong> with <code>StatefulHTTPServerTransport</code> from the official Swift SDK.</li>
+<li><strong>Bind to <code>127.0.0.1:9400/mcp</code></strong> as a fixed endpoint.</li>
+<li><strong>Do not sandbox</strong> the app initially (distribute via direct download or TestFlight).</li>
+<li><strong>Use SwiftNIO</strong> for the HTTP layer (the SDK includes a reference <code>HTTPApp</code> implementation).</li>
+<li><strong>Register with Claude Code</strong> via <code>claude mcp add --transport http study-mentor http://127.0.0.1:9400/mcp</code>.</li>
+</ol>
+<h3 id="for-production-future">For Production (Future)<a class="headerlink" href="#for-production-future" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add a <strong>menu bar indicator</strong> showing server status and connected clients.</li>
+<li>Implement <strong>configurable port</strong> with auto-detection fallback.</li>
+<li>Add <strong>bearer token authentication</strong> for non-localhost deployments.</li>
+<li>Consider the <strong>hybrid approach</strong> (Section 3.3) with a stdio shim for maximum compatibility.</li>
+<li>Add <strong>Sandbox entitlements</strong> if targeting the Mac App Store.</li>
+<li>Use <strong>ServiceLifecycle</strong> for graceful shutdown.</li>
+<li>Implement <strong>MCP Resources</strong> to expose study materials as browsable resources.</li>
+<li>Implement <strong>MCP Prompts</strong> to provide pre-built study workflows.</li>
+</ol>
+<hr />
+<h2 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Authority</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCP Specification (Transports)</td>
+<td>Official Spec</td>
+<td>https://modelcontextprotocol.io/specification/2025-03-26/basic/transports</td>
+</tr>
+<tr>
+<td>MCP Architecture</td>
+<td>Official Docs</td>
+<td>https://modelcontextprotocol.io/docs/learn/architecture</td>
+</tr>
+<tr>
+<td>MCP Swift SDK</td>
+<td>Official SDK (Tier 2)</td>
+<td>https://github.com/modelcontextprotocol/swift-sdk</td>
+</tr>
+<tr>
+<td>Claude Code MCP Docs</td>
+<td>Official Docs</td>
+<td>https://docs.anthropic.com/en/docs/claude-code/mcp</td>
+</tr>
+<tr>
+<td>Gemini CLI MCP Docs</td>
+<td>Official Docs</td>
+<td>https://geminicli.com/docs/tools/mcp-server</td>
+</tr>
+<tr>
+<td>MCP Build Server Guide</td>
+<td>Official Tutorial</td>
+<td>https://modelcontextprotocol.io/docs/develop/build-server</td>
+</tr>
+<tr>
+<td>MCP Server Concepts</td>
+<td>Official Docs</td>
+<td>https://modelcontextprotocol.io/docs/learn/server-concepts</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

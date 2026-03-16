@@ -1,0 +1,2176 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/pypi-homebrew-packaging.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Publishing studyctl to PyPI and Creating a Homebrew Formula - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#publishing-studyctl-to-pypi-and-creating-a-homebrew-formula" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Publishing studyctl to PyPI and Creating a Homebrew Formula
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-building-from-a-uv-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Building from a uv Workspace
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-pyprojecttoml-for-pypi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. pyproject.toml for PyPI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. pyproject.toml for PyPI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommended-changes-to-packagesstudyctlpyprojecttoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Changes to packages/studyctl/pyproject.toml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-optional-dependencies-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Optional Dependencies / Extras
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Optional Dependencies / Extras">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#structure-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structure Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-users-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Users Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guarding-optional-imports-in-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guarding Optional Imports in Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-homebrew-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Homebrew Formula
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Homebrew Formula">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-languagepythonvirtualenv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern: Language::Python::Virtualenv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-formula-for-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Formula for studyctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-points_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generating-resource-stanzas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generating Resource Stanzas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-homebrew-tap-vs-homebrew-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Homebrew Tap vs homebrew-core
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Homebrew Tap vs homebrew-core">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#homebrew-core-requirements-all-must-be-met" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        homebrew-core Requirements (All Must Be Met)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-start-with-a-personal-tap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation: Start with a Personal Tap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tap-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tap Benefits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-system-dependencies-in-homebrew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. System Dependencies in Homebrew
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. System Dependencies in Homebrew">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-required-vs-optional-system-deps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern: Required vs Optional System Deps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-not-depends_on-for-optional-deps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Not depends_on for Optional Deps?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommended-approach-for-pandocmmdc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Approach for pandoc/mmdc
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-testing-homebrew-formula-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Testing Homebrew Formula Locally
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Testing Homebrew Formula Locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-by-step-testing-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-by-Step Testing Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pre-submission-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-Submission Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-uv-tool-install-vs-pipx-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. uv tool install vs pipx install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. uv tool install vs pipx install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supporting-both-in-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supporting Both in Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-pipx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: pipx
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-pip-in-a-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: pip (in a venv)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macos-homebrew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS: Homebrew
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-hatch-vcs-git-tag-as-source-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: hatch-vcs (Git Tag as Source of Truth)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-for-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation for studyctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workspace-version-bumping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace Version Bumping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-github-actions-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. GitHub Actions Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. GitHub Actions Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#complete-workflow-build-test-publish-to-pypi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Workflow: Build, Test, Publish to PyPI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-up-trusted-publishing-one-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setting Up Trusted Publishing (One-Time)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-using-uv-publish-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: Using uv publish Directly
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference-testpypi-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference: TestPyPI Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-to-create-before-first-publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files to Create Before First Publish
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="publishing-studyctl-to-pypi-and-creating-a-homebrew-formula">Publishing studyctl to PyPI and Creating a Homebrew Formula<a class="headerlink" href="#publishing-studyctl-to-pypi-and-creating-a-homebrew-formula" title="Permanent link">&para;</a></h1>
+<p><strong>Research Date</strong>: 2026-03-15
+<strong>Sources</strong>: PyPA official docs, Homebrew docs, uv docs (Context7), Hatch docs, real Homebrew formulae (ansible, jrnl)</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#1-building-from-a-uv-workspace">Building from a uv Workspace</a></li>
+<li><a href="#2-pyprojecttoml-for-pypi">pyproject.toml for PyPI</a></li>
+<li><a href="#3-optional-dependencies--extras">Optional Dependencies / Extras</a></li>
+<li><a href="#4-homebrew-formula">Homebrew Formula</a></li>
+<li><a href="#5-homebrew-tap-vs-homebrew-core">Homebrew Tap vs homebrew-core</a></li>
+<li><a href="#6-system-dependencies-in-homebrew">System Dependencies in Homebrew</a></li>
+<li><a href="#7-testing-homebrew-formula-locally">Testing Homebrew Formula Locally</a></li>
+<li><a href="#8-uv-tool-install-vs-pipx-install">uv tool install vs pipx install</a></li>
+<li><a href="#9-version-management">Version Management</a></li>
+<li><a href="#10-github-actions-workflow">GitHub Actions Workflow</a></li>
+</ol>
+<hr />
+<h2 id="1-building-from-a-uv-workspace">1. Building from a uv Workspace<a class="headerlink" href="#1-building-from-a-uv-workspace" title="Permanent link">&para;</a></h2>
+<p><strong>Question</strong>: Does <code>uv build</code> work from a workspace member directory?</p>
+<p><strong>Answer</strong>: Yes. Two approaches:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Option A: From workspace root, specify the package</span>
+uv<span class="w"> </span>build<span class="w"> </span>--package<span class="w"> </span>studyctl
+
+<span class="c1"># Option B: From the member directory</span>
+<span class="nb">cd</span><span class="w"> </span>packages/studyctl<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>build
+</code></pre></div>
+<p><strong>Critical recommendation from uv docs</strong>: When publishing, always use <code>--no-sources</code>:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>build<span class="w"> </span>--package<span class="w"> </span>studyctl<span class="w"> </span>--no-sources
+</code></pre></div>
+<p><strong>Why</strong>: <code>--no-sources</code> disables <code>tool.uv.sources</code> resolution. This ensures the package builds correctly outside the workspace (i.e., when installed via pip/uv from PyPI). Without this flag, workspace-local source references could leak into the build, causing failures for end users.</p>
+<p><strong>Output</strong>: Creates <code>dist/studyctl-X.Y.Z.tar.gz</code> and <code>dist/studyctl-X.Y.Z-py3-none-any.whl</code>.</p>
+<hr />
+<h2 id="2-pyprojecttoml-for-pypi">2. pyproject.toml for PyPI<a class="headerlink" href="#2-pyprojecttoml-for-pypi" title="Permanent link">&para;</a></h2>
+<h3 id="recommended-changes-to-packagesstudyctlpyprojecttoml">Recommended Changes to <code>packages/studyctl/pyproject.toml</code><a class="headerlink" href="#recommended-changes-to-packagesstudyctlpyprojecttoml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">[project]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;studyctl&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;1.2.0&quot;</span>
+<span class="n">description</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;AuDHD study pipeline: Obsidian sync, spaced repetition, study plan management&quot;</span>
+<span class="n">requires-python</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&gt;=3.12&quot;</span>
+<span class="n">readme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;README.md&quot;</span>
+<span class="n">license</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;MIT&quot;</span>
+<span class="n">authors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[{</span><span class="n">name</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;Andy Taylor&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">email</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;andy@netdevautomate.dev&quot;</span><span class="p">}]</span>
+<span class="n">keywords</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;study&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;spaced-repetition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;adhd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;education&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;cli&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;obsidian&quot;</span><span class="p">]</span>
+
+<span class="n">classifiers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Development Status :: 4 - Beta&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Environment :: Console&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Intended Audience :: Education&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Intended Audience :: End Users/Desktop&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;License :: OSI Approved :: MIT License&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Operating System :: MacOS&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Operating System :: POSIX :: Linux&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Programming Language :: Python :: 3&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Programming Language :: Python :: 3.12&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Programming Language :: Python :: 3.13&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Topic :: Education&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Typing :: Typed&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;click&gt;=8.1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;rich&gt;=13.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;pyyaml&gt;=6.0&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="k">[project.optional-dependencies]</span>
+<span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;pymupdf&gt;=1.24&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;markitdown&gt;=0.1&quot;</span><span class="p">]</span>
+<span class="n">web</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;fastapi&gt;=0.115&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;uvicorn[standard]&gt;=0.30&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;jinja2&gt;=3.1&quot;</span><span class="p">]</span>
+<span class="n">notebooklm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;notebooklm-py&gt;=0.3&quot;</span><span class="p">]</span>
+<span class="n">tui</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;textual&gt;=0.80&quot;</span><span class="p">]</span>
+<span class="n">all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;studyctl[content,web,notebooklm,tui]&quot;</span><span class="p">]</span>
+
+<span class="k">[project.scripts]</span>
+<span class="n">studyctl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;studyctl.cli:cli&quot;</span>
+
+<span class="k">[project.urls]</span>
+<span class="n">Homepage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/NetDevAutomate/Socratic-Study-Mentor&quot;</span>
+<span class="n">Repository</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/NetDevAutomate/Socratic-Study-Mentor&quot;</span>
+<span class="n">Documentation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/NetDevAutomate/Socratic-Study-Mentor#readme&quot;</span>
+<span class="n">Issues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/NetDevAutomate/Socratic-Study-Mentor/issues&quot;</span>
+<span class="n">Changelog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/NetDevAutomate/Socratic-Study-Mentor/blob/main/CHANGELOG.md&quot;</span>
+
+<span class="k">[build-system]</span>
+<span class="n">requires</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;hatchling&quot;</span><span class="p">]</span>
+<span class="n">build-backend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hatchling.build&quot;</span>
+
+<span class="k">[tool.hatch.build.targets.wheel]</span>
+<span class="n">packages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/studyctl&quot;</span><span class="p">]</span>
+
+<span class="k">[tool.hatch.build.targets.sdist]</span>
+<span class="n">include</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/studyctl&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;README.md&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;LICENSE&quot;</span><span class="p">]</span>
+</code></pre></div>
+<h3 id="key-points">Key Points<a class="headerlink" href="#key-points" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>PEP 639</strong> (Dec 2024): <code>license = "MIT"</code> as a string is the new standard. <code>License::</code> classifiers are deprecated. Hatchling supports this natively.</li>
+<li><strong>readme</strong>: Must be <code>README.md</code> in the <strong>member</strong> directory (<code>packages/studyctl/README.md</code>), not the workspace root. This is what PyPI displays.</li>
+<li><strong>project-urls</strong>: Include <code>Changelog</code> -- PyPI renders this as a sidebar link. <code>Documentation</code> appears prominently.</li>
+<li><strong>classifiers</strong>: Use <code>Development Status :: 4 - Beta</code> until stable. PyPI rejects uploads with <code>Private :: Do Not Upload</code>.</li>
+<li><strong>keywords</strong>: Used by PyPI search. Keep concise and relevant.</li>
+</ul>
+<hr />
+<h2 id="3-optional-dependencies-extras">3. Optional Dependencies / Extras<a class="headerlink" href="#3-optional-dependencies-extras" title="Permanent link">&para;</a></h2>
+<h3 id="structure-pattern">Structure Pattern<a class="headerlink" href="#structure-pattern" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">[project.optional-dependencies]</span>
+<span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;pymupdf&gt;=1.24&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;markitdown&gt;=0.1&quot;</span><span class="p">]</span>
+<span class="n">web</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;fastapi&gt;=0.115&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;uvicorn[standard]&gt;=0.30&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;jinja2&gt;=3.1&quot;</span><span class="p">]</span>
+<span class="n">notebooklm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;notebooklm-py&gt;=0.3&quot;</span><span class="p">]</span>
+<span class="n">tui</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;textual&gt;=0.80&quot;</span><span class="p">]</span>
+<span class="c1"># Meta-extra: installs everything</span>
+<span class="n">all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;studyctl[content,web,notebooklm,tui]&quot;</span><span class="p">]</span>
+</code></pre></div>
+<h3 id="how-users-install">How Users Install<a class="headerlink" href="#how-users-install" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Core only (click + rich + pyyaml)</span>
+pip<span class="w"> </span>install<span class="w"> </span>studyctl
+
+<span class="c1"># With web server</span>
+pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>web<span class="o">]</span>
+
+<span class="c1"># With TUI and content processing</span>
+pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>tui,content<span class="o">]</span>
+
+<span class="c1"># Everything</span>
+pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>all<span class="o">]</span>
+
+<span class="c1"># uv equivalents</span>
+uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>studyctl
+uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[web]&#39;</span>
+uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[all]&#39;</span>
+</code></pre></div>
+<h3 id="guarding-optional-imports-in-code">Guarding Optional Imports in Code<a class="headerlink" href="#guarding-optional-imports-in-code" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># studyctl/web/server.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">start_server</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+        <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+            <span class="s2">&quot;Web features require the &#39;web&#39; extra.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;Install with: pip install studyctl[web]&quot;</span>
+        <span class="p">)</span>
+    <span class="c1"># ... proceed with fastapi</span>
+</code></pre></div>
+<p>Or using a lazy-import pattern with a decorator:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">requires_extra</span><span class="p">(</span><span class="n">extra_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">package</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator that checks for optional dependency availability.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">__import__</span><span class="p">(</span><span class="n">package</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;This command requires the &#39;</span><span class="si">{</span><span class="n">extra_name</span><span class="si">}</span><span class="s2">&#39; extra.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Install with: pip install studyctl[</span><span class="si">{</span><span class="n">extra_name</span><span class="si">}</span><span class="s2">]&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">decorator</span>
+
+<span class="c1"># Usage:</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="nd">@requires_extra</span><span class="p">(</span><span class="s2">&quot;web&quot;</span><span class="p">,</span> <span class="s2">&quot;fastapi&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">serve</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Start the web UI.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.web.server</span><span class="w"> </span><span class="kn">import</span> <span class="n">run</span>
+    <span class="n">run</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h2 id="4-homebrew-formula">4. Homebrew Formula<a class="headerlink" href="#4-homebrew-formula" title="Permanent link">&para;</a></h2>
+<h3 id="pattern-languagepythonvirtualenv">Pattern: <code>Language::Python::Virtualenv</code><a class="headerlink" href="#pattern-languagepythonvirtualenv" title="Permanent link">&para;</a></h3>
+<p>Homebrew Python apps since Python 3.12 <strong>must</strong> use a virtualenv in <code>libexec</code> (PEP 668 compliance). The <code>Language::Python::Virtualenv</code> mixin handles this.</p>
+<h3 id="example-formula-for-studyctl">Example Formula for studyctl<a class="headerlink" href="#example-formula-for-studyctl" title="Permanent link">&para;</a></h3>
+<p>Create as <code>Formula/studyctl.rb</code> in your tap:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Studyctl</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="no">Formula</span>
+<span class="w">  </span><span class="kp">include</span><span class="w"> </span><span class="no">Language</span><span class="o">::</span><span class="no">Python</span><span class="o">::</span><span class="no">Virtualenv</span>
+
+<span class="w">  </span><span class="n">desc</span><span class="w"> </span><span class="s2">&quot;AuDHD study pipeline: spaced repetition, Obsidian sync, study plans&quot;</span>
+<span class="w">  </span><span class="n">homepage</span><span class="w"> </span><span class="s2">&quot;https://github.com/NetDevAutomate/Socratic-Study-Mentor&quot;</span>
+<span class="w">  </span><span class="n">url</span><span class="w"> </span><span class="s2">&quot;https://files.pythonhosted.org/packages/.../studyctl-1.2.0.tar.gz&quot;</span>
+<span class="w">  </span><span class="n">sha256</span><span class="w"> </span><span class="s2">&quot;abc123...&quot;</span>
+<span class="w">  </span><span class="n">license</span><span class="w"> </span><span class="s2">&quot;MIT&quot;</span>
+
+<span class="w">  </span><span class="n">depends_on</span><span class="w"> </span><span class="s2">&quot;libyaml&quot;</span>
+<span class="w">  </span><span class="n">depends_on</span><span class="w"> </span><span class="s2">&quot;python@3.13&quot;</span>
+
+<span class="w">  </span><span class="c1"># Optional system deps -- inform user via caveats</span>
+<span class="w">  </span><span class="n">uses_from_macos</span><span class="w"> </span><span class="s2">&quot;libffi&quot;</span>
+
+<span class="w">  </span><span class="c1"># All Python dependencies as resources</span>
+<span class="w">  </span><span class="c1"># Generated by: brew update-python-resources studyctl</span>
+<span class="w">  </span><span class="n">resource</span><span class="w"> </span><span class="s2">&quot;click&quot;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="s2">&quot;https://files.pythonhosted.org/packages/.../click-8.1.8.tar.gz&quot;</span>
+<span class="w">    </span><span class="n">sha256</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="n">resource</span><span class="w"> </span><span class="s2">&quot;rich&quot;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="s2">&quot;https://files.pythonhosted.org/packages/.../rich-13.9.4.tar.gz&quot;</span>
+<span class="w">    </span><span class="n">sha256</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="n">resource</span><span class="w"> </span><span class="s2">&quot;pyyaml&quot;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="s2">&quot;https://files.pythonhosted.org/packages/.../pyyaml-6.0.2.tar.gz&quot;</span>
+<span class="w">    </span><span class="n">sha256</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="n">resource</span><span class="w"> </span><span class="s2">&quot;markdown-it-py&quot;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="s2">&quot;https://files.pythonhosted.org/packages/.../markdown_it_py-3.0.0.tar.gz&quot;</span>
+<span class="w">    </span><span class="n">sha256</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="n">resource</span><span class="w"> </span><span class="s2">&quot;mdurl&quot;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="s2">&quot;https://files.pythonhosted.org/packages/.../mdurl-0.1.2.tar.gz&quot;</span>
+<span class="w">    </span><span class="n">sha256</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="n">resource</span><span class="w"> </span><span class="s2">&quot;pygments&quot;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="s2">&quot;https://files.pythonhosted.org/packages/.../pygments-2.19.2.tar.gz&quot;</span>
+<span class="w">    </span><span class="n">sha256</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">install</span>
+<span class="w">    </span><span class="n">virtualenv_install_with_resources</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="n">assert_match</span><span class="w"> </span><span class="s2">&quot;Usage&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">shell_output</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">#{</span><span class="n">bin</span><span class="si">}</span><span class="s2">/studyctl --help&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">assert_match</span><span class="w"> </span><span class="n">version</span><span class="o">.</span><span class="n">to_s</span><span class="p">,</span><span class="w"> </span><span class="n">shell_output</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">#{</span><span class="n">bin</span><span class="si">}</span><span class="s2">/studyctl --version&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">caveats</span>
+<span class="w">    </span><span class="o">&lt;&lt;~</span><span class="dl">EOS</span>
+<span class="sh">      studyctl has optional features that require additional tools:</span>
+
+<span class="sh">        Mermaid diagrams:  brew install mermaid-cli</span>
+<span class="sh">        PDF export:        brew install pandoc</span>
+
+<span class="sh">      For the full-featured version with web UI, TUI, and content processing:</span>
+<span class="sh">        pip install studyctl[all]</span>
+<span class="sh">      or:</span>
+<span class="sh">        uv tool install &#39;studyctl[all]&#39;</span>
+<span class="dl">    EOS</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div>
+<h3 id="key-points_1">Key Points<a class="headerlink" href="#key-points_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>virtualenv_install_with_resources</code></strong>: This single method creates a venv in <code>libexec</code>, installs all <code>resource</code> stanzas into it, installs the package itself, and symlinks executables to <code>bin</code>.</li>
+<li><strong><code>brew update-python-resources studyctl</code></strong>: Auto-generates all <code>resource</code> stanzas from PyPI metadata. Run this after publishing to PyPI.</li>
+<li><strong><code>homebrew-pypi-poet</code></strong>: Alternative if <code>brew update-python-resources</code> fails.</li>
+<li><strong>Homebrew formula only installs core deps</strong>. Extras (web, tui, notebooklm, content) are not included -- users who want those use pip/uv directly. Document this in caveats.</li>
+</ul>
+<h3 id="generating-resource-stanzas">Generating Resource Stanzas<a class="headerlink" href="#generating-resource-stanzas" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># After publishing studyctl to PyPI:</span>
+brew<span class="w"> </span>update-python-resources<span class="w"> </span>--print-only<span class="w"> </span>studyctl
+
+<span class="c1"># Or using homebrew-pypi-poet:</span>
+pip<span class="w"> </span>install<span class="w"> </span>homebrew-pypi-poet
+poet<span class="w"> </span>studyctl
+</code></pre></div>
+<hr />
+<h2 id="5-homebrew-tap-vs-homebrew-core">5. Homebrew Tap vs homebrew-core<a class="headerlink" href="#5-homebrew-tap-vs-homebrew-core" title="Permanent link">&para;</a></h2>
+<h3 id="homebrew-core-requirements-all-must-be-met">homebrew-core Requirements (All Must Be Met)<a class="headerlink" href="#homebrew-core-requirements-all-must-be-met" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>Threshold</th>
+<th>studyctl Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stable release</td>
+<td>Not "beta" or "unstable"</td>
+<td>Needs v1.0+ stable</td>
+</tr>
+<tr>
+<td>Maintainable</td>
+<td>Works unpatched on all supported macOS + Linux</td>
+<td>Needs verification</td>
+</tr>
+<tr>
+<td>Known/Notable</td>
+<td>&gt;=75 GitHub stars OR &gt;=30 forks OR &gt;=30 watchers</td>
+<td><strong>Not yet met</strong></td>
+</tr>
+<tr>
+<td>Used by others</td>
+<td>Someone other than author must submit/request</td>
+<td><strong>Not yet met</strong></td>
+</tr>
+<tr>
+<td>Homepage</td>
+<td>Public webpage/README</td>
+<td>Met</td>
+</tr>
+</tbody>
+</table>
+<h3 id="recommendation-start-with-a-personal-tap">Recommendation: Start with a Personal Tap<a class="headerlink" href="#recommendation-start-with-a-personal-tap" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create your tap</span>
+brew<span class="w"> </span>tap-new<span class="w"> </span>NetDevAutomate/homebrew-studyctl
+
+<span class="c1"># This creates:</span>
+<span class="c1"># /opt/homebrew/Library/Taps/NetDevAutomate/homebrew-studyctl/</span>
+<span class="c1">#   Formula/</span>
+<span class="c1">#   .github/workflows/  (auto-generated CI for bottle building)</span>
+
+<span class="c1"># Push to GitHub</span>
+gh<span class="w"> </span>repo<span class="w"> </span>create<span class="w"> </span>NetDevAutomate/homebrew-studyctl<span class="w"> </span>--push<span class="w"> </span>--public<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>--repository<span class="w"> </span>NetDevAutomate/homebrew-studyctl<span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="c1"># Users install via:</span>
+brew<span class="w"> </span>tap<span class="w"> </span>NetDevAutomate/studyctl
+brew<span class="w"> </span>install<span class="w"> </span>studyctl
+<span class="c1"># Or one-liner:</span>
+brew<span class="w"> </span>install<span class="w"> </span>NetDevAutomate/studyctl/studyctl
+</code></pre></div>
+<h3 id="tap-benefits">Tap Benefits<a class="headerlink" href="#tap-benefits" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auto-bottling</strong>: The default <code>.github/workflows/</code> from <code>brew tap-new</code> builds bottles (precompiled binaries) and uploads to GitHub Releases automatically on PR merge.</li>
+<li><strong>Full control</strong>: No review process, any package size/popularity.</li>
+<li><strong>Migration path</strong>: When you hit the thresholds, submit to homebrew-core.</li>
+</ul>
+<hr />
+<h2 id="6-system-dependencies-in-homebrew">6. System Dependencies in Homebrew<a class="headerlink" href="#6-system-dependencies-in-homebrew" title="Permanent link">&para;</a></h2>
+<h3 id="pattern-required-vs-optional-system-deps">Pattern: Required vs Optional System Deps<a class="headerlink" href="#pattern-required-vs-optional-system-deps" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># REQUIRED: Always installed</span>
+<span class="n">depends_on</span><span class="w"> </span><span class="s2">&quot;python@3.13&quot;</span>
+<span class="n">depends_on</span><span class="w"> </span><span class="s2">&quot;libyaml&quot;</span>
+
+<span class="c1"># BUILD-ONLY: Not needed at runtime</span>
+<span class="n">depends_on</span><span class="w"> </span><span class="s2">&quot;rust&quot;</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="ss">:build</span><span class="w">  </span><span class="c1"># if any dep needs compilation</span>
+
+<span class="c1"># FROM MACOS: Use system version if available</span>
+<span class="n">uses_from_macos</span><span class="w"> </span><span class="s2">&quot;libffi&quot;</span>
+
+<span class="c1"># OPTIONAL: Use caveats, NOT depends_on</span>
+<span class="c1"># Homebrew doesn&#39;t support optional deps well -- use caveats instead</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">caveats</span>
+<span class="w">  </span><span class="o">&lt;&lt;~</span><span class="dl">EOS</span>
+<span class="sh">    For Mermaid diagram support:</span>
+<span class="sh">      brew install mermaid-cli</span>
+
+<span class="sh">    For PDF export:</span>
+<span class="sh">      brew install pandoc</span>
+<span class="dl">  EOS</span>
+<span class="k">end</span>
+</code></pre></div>
+<h3 id="why-not-depends_on-for-optional-deps">Why Not <code>depends_on</code> for Optional Deps?<a class="headerlink" href="#why-not-depends_on-for-optional-deps" title="Permanent link">&para;</a></h3>
+<p>Homebrew formulae don't have a concept of optional Python extras. If you add <code>depends_on "pandoc"</code>, <strong>every</strong> user who installs studyctl gets pandoc (200MB+). Instead:</p>
+<ol>
+<li>Homebrew formula installs <strong>core deps only</strong> (click, rich, pyyaml)</li>
+<li>Caveats inform users about optional system tools</li>
+<li>Users who want extras use <code>pip install studyctl[all]</code> or <code>uv tool install 'studyctl[all]'</code></li>
+</ol>
+<h3 id="recommended-approach-for-pandocmmdc">Recommended Approach for pandoc/mmdc<a class="headerlink" href="#recommended-approach-for-pandocmmdc" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">caveats</span>
+<span class="w">  </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">  </span><span class="k">unless</span><span class="w"> </span><span class="no">Formula</span><span class="o">[</span><span class="s2">&quot;pandoc&quot;</span><span class="o">].</span><span class="n">any_version_installed?</span>
+<span class="w">    </span><span class="n">s</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s2">&quot;For PDF export: brew install pandoc</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="w">  </span><span class="k">unless</span><span class="w"> </span><span class="n">which</span><span class="p">(</span><span class="s2">&quot;mmdc&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">s</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s2">&quot;For Mermaid diagrams: brew install mermaid-cli</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="w">  </span><span class="n">s</span><span class="o">.</span><span class="n">empty?</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="kp">nil</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">s</span>
+<span class="k">end</span>
+</code></pre></div>
+<p>Actually, the simpler static caveats approach is preferred by Homebrew maintainers -- dynamic caveats are discouraged.</p>
+<hr />
+<h2 id="7-testing-homebrew-formula-locally">7. Testing Homebrew Formula Locally<a class="headerlink" href="#7-testing-homebrew-formula-locally" title="Permanent link">&para;</a></h2>
+<h3 id="step-by-step-testing-workflow">Step-by-Step Testing Workflow<a class="headerlink" href="#step-by-step-testing-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Create your tap (if not done)</span>
+brew<span class="w"> </span>tap-new<span class="w"> </span>NetDevAutomate/homebrew-studyctl
+
+<span class="c1"># 2. Create the formula file</span>
+<span class="nv">$EDITOR</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>--repository<span class="w"> </span>NetDevAutomate/homebrew-studyctl<span class="k">)</span><span class="s2">/Formula/studyctl.rb&quot;</span>
+
+<span class="c1"># 3. Install from local formula (builds from source)</span>
+brew<span class="w"> </span>install<span class="w"> </span>--verbose<span class="w"> </span>--debug<span class="w"> </span>NetDevAutomate/studyctl/studyctl
+
+<span class="c1"># 4. Run the formula&#39;s test block</span>
+brew<span class="w"> </span><span class="nb">test</span><span class="w"> </span>NetDevAutomate/studyctl/studyctl
+
+<span class="c1"># 5. Audit for style/correctness</span>
+brew<span class="w"> </span>audit<span class="w"> </span>--strict<span class="w"> </span>--online<span class="w"> </span>--new<span class="w"> </span>NetDevAutomate/studyctl/studyctl
+
+<span class="c1"># 6. Check the installed files</span>
+brew<span class="w"> </span>list<span class="w"> </span>NetDevAutomate/studyctl/studyctl
+
+<span class="c1"># 7. Verify the binary works</span>
+studyctl<span class="w"> </span>--help
+studyctl<span class="w"> </span>--version
+
+<span class="c1"># 8. Uninstall and cleanup</span>
+brew<span class="w"> </span>uninstall<span class="w"> </span>NetDevAutomate/studyctl/studyctl
+</code></pre></div>
+<h3 id="pre-submission-checklist">Pre-Submission Checklist<a class="headerlink" href="#pre-submission-checklist" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] <code>brew install</code> succeeds from source</li>
+<li>[ ] <code>brew test</code> passes</li>
+<li>[ ] <code>brew audit --strict --online --new</code> passes with no errors</li>
+<li>[ ] Binary is in PATH and runs correctly</li>
+<li>[ ] <code>--help</code> and <code>--version</code> produce expected output</li>
+<li>[ ] Formula works on both Apple Silicon and Intel (if targeting homebrew-core)</li>
+</ul>
+<hr />
+<h2 id="8-uv-tool-install-vs-pipx-install">8. uv tool install vs pipx install<a class="headerlink" href="#8-uv-tool-install-vs-pipx-install" title="Permanent link">&para;</a></h2>
+<h3 id="comparison">Comparison<a class="headerlink" href="#comparison" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th><code>uv tool install</code></th>
+<th><code>pipx install</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Speed</td>
+<td>10-100x faster (Rust-based)</td>
+<td>Standard pip speed</td>
+</tr>
+<tr>
+<td>Isolation</td>
+<td>Dedicated venv per tool</td>
+<td>Dedicated venv per tool</td>
+</tr>
+<tr>
+<td>Extras support</td>
+<td><code>uv tool install 'studyctl[web]'</code></td>
+<td><code>pipx install 'studyctl[web]'</code></td>
+</tr>
+<tr>
+<td>Python version</td>
+<td>Uses uv-managed Python</td>
+<td>Uses system/pyenv Python</td>
+</tr>
+<tr>
+<td>Binary location</td>
+<td><code>~/.local/bin</code></td>
+<td><code>~/.local/bin</code></td>
+</tr>
+<tr>
+<td>Upgrade</td>
+<td><code>uv tool upgrade studyctl</code></td>
+<td><code>pipx upgrade studyctl</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="supporting-both-in-documentation">Supporting Both in Documentation<a class="headerlink" href="#supporting-both-in-documentation" title="Permanent link">&para;</a></h3>
+<p>Add this to README.md:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Installation</span>
+
+<span class="gu">### Recommended: uv (fastest)</span>
+```bash
+uv tool install studyctl
+
+<span class="gh"># With extras:</span>
+uv tool install &#39;studyctl[web,tui]&#39;
+</code></pre></div>
+<h3 id="alternative-pipx">Alternative: pipx<a class="headerlink" href="#alternative-pipx" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>pipx<span class="w"> </span>install<span class="w"> </span>studyctl
+
+<span class="c1"># With extras:</span>
+pipx<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[web,tui]&#39;</span>
+</code></pre></div>
+<h3 id="alternative-pip-in-a-venv">Alternative: pip (in a venv)<a class="headerlink" href="#alternative-pip-in-a-venv" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>all<span class="o">]</span>
+</code></pre></div>
+<h3 id="macos-homebrew">macOS: Homebrew<a class="headerlink" href="#macos-homebrew" title="Permanent link">&para;</a></h3>
+<p><div class="highlight"><pre><span></span><code>brew<span class="w"> </span>tap<span class="w"> </span>NetDevAutomate/studyctl
+brew<span class="w"> </span>install<span class="w"> </span>studyctl
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>### Key Insight
+
+Both `uv tool install` and `pipx install` work identically from PyPI. No special configuration needed -- publishing to PyPI supports both automatically. The `[project.scripts]` entry point is what both tools use to create the CLI binary.
+
+---
+
+## 9. Version Management
+
+### Recommended: uv version (Single Source of Truth)
+
+Since uv 0.7+, `uv version` manages versions directly in `pyproject.toml`:
+
+```bash
+# View current version
+uv version --package studyctl
+
+# Set exact version
+uv version --package studyctl 1.2.0
+
+# Bump semantically
+uv version --package studyctl --bump patch   # 1.2.0 -&gt; 1.2.1
+uv version --package studyctl --bump minor   # 1.2.0 -&gt; 1.3.0
+uv version --package studyctl --bump major   # 1.2.0 -&gt; 2.0.0
+
+# Preview without changing
+uv version --package studyctl --bump minor --dry-run
+</code></pre></div></p>
+<h3 id="alternative-hatch-vcs-git-tag-as-source-of-truth">Alternative: hatch-vcs (Git Tag as Source of Truth)<a class="headerlink" href="#alternative-hatch-vcs-git-tag-as-source-of-truth" title="Permanent link">&para;</a></h3>
+<p>If you prefer git tags to drive versions:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># packages/studyctl/pyproject.toml</span>
+<span class="k">[project]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;studyctl&quot;</span>
+<span class="n">dynamic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">]</span>
+
+<span class="k">[tool.hatch.version]</span>
+<span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;vcs&quot;</span>
+<span class="n">raw-options</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">root</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;../..&quot;</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1"># point to workspace root where .git lives</span>
+
+<span class="k">[tool.hatch.build.hooks.vcs]</span>
+<span class="n">version-file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src/studyctl/_version.py&quot;</span>
+</code></pre></div>
+<p><strong>Trade-offs</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv version</code> (static)</td>
+<td>Simple, explicit, no plugins needed</td>
+<td>Must remember to bump before tagging</td>
+</tr>
+<tr>
+<td><code>hatch-vcs</code> (dynamic)</td>
+<td>Tag = version, no drift possible</td>
+<td>Extra plugin dep, <code>root</code> path needed for monorepo</td>
+</tr>
+</tbody>
+</table>
+<h3 id="recommendation-for-studyctl">Recommendation for studyctl<a class="headerlink" href="#recommendation-for-studyctl" title="Permanent link">&para;</a></h3>
+<p>Use <strong><code>uv version</code></strong> (static approach). Reasons:
+1. No additional build dependencies
+2. Works naturally with <code>uv build --package studyctl</code>
+3. Version is visible in <code>pyproject.toml</code> (easy to audit)
+4. The release workflow tags after bumping, not the other way around</p>
+<h3 id="workspace-version-bumping">Workspace Version Bumping<a class="headerlink" href="#workspace-version-bumping" title="Permanent link">&para;</a></h3>
+<p>For the workspace root and both members, use a simple script:</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
+<span class="c1"># scripts/bump-version.sh</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
+<span class="nv">VERSION</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">1</span><span class="p">:?Usage: bump-version.sh &lt;version&gt;</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Bumping studyctl to </span><span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span><span class="s2">...&quot;</span>
+uv<span class="w"> </span>version<span class="w"> </span>--package<span class="w"> </span>studyctl<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Done. Don&#39;t forget to:&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;  git add packages/studyctl/pyproject.toml&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;  git commit -m &#39;chore: bump studyctl to </span><span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;  git tag -a v</span><span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span><span class="s2"> -m &#39;Release </span><span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;  git push origin main --tags&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="10-github-actions-workflow">10. GitHub Actions Workflow<a class="headerlink" href="#10-github-actions-workflow" title="Permanent link">&para;</a></h2>
+<h3 id="complete-workflow-build-test-publish-to-pypi">Complete Workflow: Build, Test, Publish to PyPI<a class="headerlink" href="#complete-workflow-build-test-publish-to-pypi" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># .github/workflows/publish-pypi.yml</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish studyctl to PyPI</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;v*&quot;</span><span class="w">  </span><span class="c1"># Triggers on v1.0.0, v1.2.3, etc.</span>
+
+<span class="nt">permissions</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="c1"># Job 1: Run tests before publishing</span>
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="nt">test</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Test</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v6</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">persist-credentials</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install uv</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">astral-sh/setup-uv@v5</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv python install 3.12</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install all workspace packages</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv sync --all-packages</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run tests</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv run pytest packages/studyctl/tests/ -v</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Lint</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv run ruff check packages/studyctl/</span>
+
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="c1"># Job 2: Build distribution packages</span>
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="nt">build</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build distribution</span>
+<span class="w">    </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v6</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">persist-credentials</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install uv</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">astral-sh/setup-uv@v5</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv python install 3.12</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build studyctl sdist and wheel</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv build --package studyctl --no-sources</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Verify dist contents</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">ls -la dist/</span>
+<span class="w">          </span><span class="no"># Ensure both sdist and wheel were created</span>
+<span class="w">          </span><span class="no">test -f dist/studyctl-*.tar.gz</span>
+<span class="w">          </span><span class="no">test -f dist/studyctl-*.whl</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Store distribution packages</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/upload-artifact@v5</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python-package-distributions</span>
+<span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dist/</span>
+
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="c1"># Job 3: Publish to TestPyPI (on all tags)</span>
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="nt">publish-testpypi</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish to TestPyPI</span>
+<span class="w">    </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">testpypi</span>
+<span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://test.pypi.org/p/studyctl</span>
+<span class="w">    </span><span class="nt">permissions</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span><span class="w">  </span><span class="c1"># Required for trusted publishing</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Download distributions</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/download-artifact@v6</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python-package-distributions</span>
+<span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dist/</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish to TestPyPI</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pypa/gh-action-pypi-publish@release/v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">repository-url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://test.pypi.org/legacy/</span>
+
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="c1"># Job 4: Publish to PyPI (on release tags only)</span>
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="nt">publish-pypi</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish to PyPI</span>
+<span class="w">    </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">build</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">publish-testpypi</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pypi</span>
+<span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://pypi.org/p/studyctl</span>
+<span class="w">    </span><span class="nt">permissions</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span><span class="w">  </span><span class="c1"># Required for trusted publishing</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Download distributions</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/download-artifact@v6</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python-package-distributions</span>
+<span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dist/</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish to PyPI</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pypa/gh-action-pypi-publish@release/v1</span>
+
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="c1"># Job 5: Create GitHub Release</span>
+<span class="w">  </span><span class="c1"># ──────────────────────────────────────────────</span>
+<span class="w">  </span><span class="nt">github-release</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Create GitHub Release</span>
+<span class="w">    </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">publish-pypi</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">permissions</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span><span class="w">  </span><span class="c1"># Required for creating releases</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Download distributions</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/download-artifact@v6</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python-package-distributions</span>
+<span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dist/</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Create GitHub Release</span>
+<span class="w">        </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">GITHUB_TOKEN</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.token }}</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">gh release create &quot;${{ github.ref_name }}&quot; dist/* \</span>
+<span class="w">            </span><span class="no">--repo &quot;${{ github.repository }}&quot; \</span>
+<span class="w">            </span><span class="no">--title &quot;studyctl ${{ github.ref_name }}&quot; \</span>
+<span class="w">            </span><span class="no">--generate-notes</span>
+</code></pre></div>
+<h3 id="setting-up-trusted-publishing-one-time">Setting Up Trusted Publishing (One-Time)<a class="headerlink" href="#setting-up-trusted-publishing-one-time" title="Permanent link">&para;</a></h3>
+<p>Trusted Publishing uses OpenID Connect -- no API tokens needed.</p>
+<ol>
+<li><strong>Go to</strong>: https://pypi.org/manage/account/publishing/</li>
+<li><strong>Add a new pending publisher</strong> (before first publish):</li>
+<li>PyPI Project Name: <code>studyctl</code></li>
+<li>Owner: <code>NetDevAutomate</code></li>
+<li>Repository: <code>Socratic-Study-Mentor</code></li>
+<li>Workflow name: <code>publish-pypi.yml</code></li>
+<li>Environment name: <code>pypi</code></li>
+<li><strong>Repeat for TestPyPI</strong>: https://test.pypi.org/manage/account/publishing/</li>
+<li>Same settings but environment name: <code>testpypi</code></li>
+<li><strong>Create GitHub environments</strong>: Settings &gt; Environments &gt; New</li>
+<li>Create <code>pypi</code> and <code>testpypi</code> environments</li>
+<li>Optionally add protection rules (require approval for <code>pypi</code>)</li>
+</ol>
+<h3 id="alternative-using-uv-publish-directly">Alternative: Using uv publish Directly<a class="headerlink" href="#alternative-using-uv-publish-directly" title="Permanent link">&para;</a></h3>
+<p>If you prefer <code>uv publish</code> over the GitHub Action:</p>
+<div class="highlight"><pre><span></span><code><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install uv</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">astral-sh/setup-uv@v5</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish to PyPI</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv publish dist/*</span>
+<span class="w">        </span><span class="c1"># uv publish auto-detects trusted publishing in GitHub Actions</span>
+</code></pre></div>
+<p>Both approaches work. The <code>pypa/gh-action-pypi-publish</code> action is the PyPA-blessed approach and generates PEP 740 attestations automatically since v1.11.0.</p>
+<hr />
+<h2 id="release-checklist">Release Checklist<a class="headerlink" href="#release-checklist" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>1. [ ] Update CHANGELOG.md
+2. [ ] Bump version: ./scripts/bump-version.sh 1.2.0
+3. [ ] Verify build: uv build --package studyctl --no-sources
+4. [ ] Test install: uv run --with ./dist/studyctl-1.2.0-py3-none-any.whl --no-project -- studyctl --version
+5. [ ] Commit: git add -A &amp;&amp; git commit -m &quot;chore: release studyctl 1.2.0&quot;
+6. [ ] Tag: git tag -a v1.2.0 -m &quot;Release 1.2.0&quot;
+7. [ ] Push: git push origin main --tags
+8. [ ] Monitor: GitHub Actions publishes to TestPyPI -&gt; PyPI
+9. [ ] Verify: pip install --index-url https://test.pypi.org/simple/ studyctl
+10. [ ] Update Homebrew tap: brew update-python-resources studyctl
+</code></pre></div>
+<hr />
+<h2 id="quick-reference-testpypi-configuration">Quick Reference: TestPyPI Configuration<a class="headerlink" href="#quick-reference-testpypi-configuration" title="Permanent link">&para;</a></h2>
+<p>For testing before the real release, add to workspace <code>pyproject.toml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[[tool.uv.index]]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;testpypi&quot;</span>
+<span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://test.pypi.org/simple/&quot;</span>
+<span class="n">publish-url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://test.pypi.org/legacy/&quot;</span>
+<span class="n">explicit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+<p>Then:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Build</span>
+uv<span class="w"> </span>build<span class="w"> </span>--package<span class="w"> </span>studyctl<span class="w"> </span>--no-sources
+
+<span class="c1"># Publish to TestPyPI manually (for testing)</span>
+uv<span class="w"> </span>publish<span class="w"> </span>--index<span class="w"> </span>testpypi<span class="w"> </span>--token<span class="w"> </span><span class="nv">$TEST_PYPI_TOKEN</span>
+
+<span class="c1"># Test install from TestPyPI</span>
+uv<span class="w"> </span>run<span class="w"> </span>--index-url<span class="w"> </span>https://test.pypi.org/simple/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--extra-index-url<span class="w"> </span>https://pypi.org/simple/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--with<span class="w"> </span>studyctl<span class="w"> </span>--no-project<span class="w"> </span>--<span class="w"> </span>studyctl<span class="w"> </span>--help
+</code></pre></div>
+<hr />
+<h2 id="files-to-create-before-first-publish">Files to Create Before First Publish<a class="headerlink" href="#files-to-create-before-first-publish" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong><code>packages/studyctl/README.md</code></strong> -- PyPI landing page (supports Markdown)</li>
+<li><strong><code>packages/studyctl/LICENSE</code></strong> -- MIT license text</li>
+<li><strong><code>CHANGELOG.md</code></strong> -- Release history</li>
+<li><strong><code>.github/workflows/publish-pypi.yml</code></strong> -- CI/CD workflow (above)</li>
+<li><strong><code>scripts/bump-version.sh</code></strong> -- Version bumping helper</li>
+<li><strong>Homebrew tap repo</strong> -- <code>NetDevAutomate/homebrew-studyctl</code> on GitHub</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

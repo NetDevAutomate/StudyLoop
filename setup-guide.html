@@ -630,6 +630,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#content-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Content Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-content-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install content dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-review-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure review directories
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1586,6 +1636,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#content-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Content Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-content-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install content dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-review-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure review directories
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1817,6 +1917,7 @@
 <li><a href="#obsidian-vault-setup">Obsidian Vault Setup</a></li>
 <li><a href="#notebooklm-setup-optional">NotebookLM Setup</a></li>
 <li><a href="#session-database">Session Database</a></li>
+<li><a href="#content-pipeline">Content Pipeline</a></li>
 <li><a href="#cross-machine-sync">Cross-Machine Sync</a></li>
 <li><a href="#scheduling">Scheduling</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
@@ -2179,26 +2280,53 @@ session-export<span class="w"> </span>--source<span class="w"> </span>aider
 session-query<span class="w"> </span>list<span class="w"> </span>--since<span class="w"> </span>7d<span class="w">    </span><span class="c1"># List recent sessions</span>
 session-query<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="w">    </span><span class="c1"># Search across all sessions</span>
 </code></pre></div>
+<h2 id="content-pipeline">Content Pipeline<a class="headerlink" href="#content-pipeline" title="Permanent link">&para;</a></h2>
+<p>The content pipeline converts PDFs and Obsidian notes into NotebookLM-powered study materials (audio overviews, flashcards, quizzes). It was absorbed from <a href="https://github.com/andytaylor/notebooklm-pdf-by-chapters">notebooklm-pdf-by-chapters</a> and lives under <code>studyctl content</code>.</p>
+<h3 id="install-content-dependencies">Install content dependencies<a class="headerlink" href="#install-content-dependencies" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># PDF splitting (pymupdf + httpx)</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>content<span class="o">]</span>
+
+<span class="c1"># NotebookLM integration (required for upload/generate/download commands)</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>notebooklm<span class="o">]</span>
+</code></pre></div>
+<h3 id="configure-review-directories">Configure review directories<a class="headerlink" href="#configure-review-directories" title="Permanent link">&para;</a></h3>
+<p>Point studyctl at the directories where content pipeline outputs land (flashcards, quizzes). These are picked up by <code>studyctl review</code>, the web PWA, and the TUI:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># ~/.config/studyctl/config.yaml</span>
+<span class="nt">review</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">directories</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Desktop/ZTM-DE/downloads</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Desktop/Python/downloads</span>
+</code></pre></div>
+<h3 id="typical-workflow">Typical workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Split a PDF textbook into per-chapter files</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span>~/Books/my-textbook.pdf<span class="w"> </span>-o<span class="w"> </span>./chapters
+
+<span class="c1"># 2. Upload chapters to NotebookLM and generate audio overviews</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span>~/Books/my-textbook.pdf<span class="w"> </span>-n<span class="w"> </span>NOTEBOOK_ID
+
+<span class="c1"># 3. Or use the syllabus workflow for multi-episode podcast generation</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>syllabus<span class="w"> </span>-n<span class="w"> </span>NOTEBOOK_ID<span class="w"> </span>-o<span class="w"> </span>./chapters
+studyctl<span class="w"> </span>content<span class="w"> </span>autopilot<span class="w"> </span>-o<span class="w"> </span>./chapters
+
+<span class="c1"># 4. Convert Obsidian notes to PDFs and upload in one step</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/Obsidian/Vault/Study/Python
+</code></pre></div>
+<p>See the <a href="../README.md#studyctl-content">CLI Reference</a> for all available commands.</p>
 <h2 id="cross-machine-sync">Cross-Machine Sync<a class="headerlink" href="#cross-machine-sync" title="Permanent link">&para;</a></h2>
 <p>Both tools support syncing state across machines via SSH.</p>
 <h3 id="studyctl-state-sync">studyctl state sync<a class="headerlink" href="#studyctl-state-sync" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Initialize sync config</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>init
-
-<span class="c1"># Edit ~/.config/studyctl/sync.yaml to add your remotes</span>
-<span class="c1"># Then:</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="w">              </span><span class="c1"># Push local state to remotes</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>pull<span class="w">              </span><span class="c1"># Pull state from remotes</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>status<span class="w">            </span><span class="c1"># Check connectivity</span>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="w"> </span>macmini<span class="w">      </span><span class="c1"># Push local state to a named host</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>pull<span class="w"> </span>macbookpro<span class="w">   </span><span class="c1"># Pull state from a named host</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>status<span class="w">            </span><span class="c1"># Check connectivity to all hosts</span>
+studyctl<span class="w"> </span>state<span class="w"> </span>init<span class="w">              </span><span class="c1"># Initialize sync config</span>
 </code></pre></div>
 <h3 id="session-database-sync">Session database sync<a class="headerlink" href="#session-database-sync" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Push sessions to a remote machine</span>
-session-sync<span class="w"> </span>push<span class="w"> </span>user@remote-host
-
-<span class="c1"># Pull sessions from a remote machine</span>
-session-sync<span class="w"> </span>pull<span class="w"> </span>user@remote-host
+<div class="highlight"><pre><span></span><code>session-sync<span class="w"> </span>push<span class="w"> </span>macmini<span class="w">        </span><span class="c1"># Push sessions to a named host</span>
+session-sync<span class="w"> </span>pull<span class="w"> </span>macbookpro<span class="w">     </span><span class="c1"># Pull sessions from a named host</span>
+session-sync<span class="w"> </span>sync<span class="w"> </span>work-macbook<span class="w">   </span><span class="c1"># Two-way sync with a host</span>
+session-sync<span class="w"> </span>endpoints<span class="w">           </span><span class="c1"># List all configured remote hosts</span>
 </code></pre></div>
-<p>This uses delta sync — only new sessions are transferred, not the entire database.</p>
+<p>Both commands read host definitions from <code>~/.config/studyctl/config.yaml</code> (the <code>hosts</code> section). See the <a href="#hosts--cross-machine-sync">Hosts configuration</a> in the README for the full schema. Delta sync transfers only new sessions, not the entire database.</p>
 <h2 id="scheduling">Scheduling<a class="headerlink" href="#scheduling" title="Permanent link">&para;</a></h2>
 <p>Set up automatic sync so your notes and sessions stay current.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Install all default scheduled jobs</span>

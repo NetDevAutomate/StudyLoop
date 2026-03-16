@@ -1,0 +1,1568 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/2026-03-15-retry-wrong-answers-best-practices.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Research: Retry Wrong Answers / Review Failed Cards in SRS Systems - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#research-retry-wrong-answers-review-failed-cards-in-srs-systems" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Research: Retry Wrong Answers / Review Failed Cards in SRS Systems
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-how-popular-srs-apps-handle-failed-cards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. How Popular SRS Apps Handle Failed Cards
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. How Popular SRS Apps Handle Failed Cards">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-sm-2-algorithm-supermemo-mnemosyne" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 SM-2 Algorithm (SuperMemo, Mnemosyne)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-anki-sm-2-variant-fsrs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Anki (SM-2 variant / FSRS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-mnemosyne" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Mnemosyne
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-consensus-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 Consensus Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-ux-patterns-for-retry-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. UX Patterns for Retry Flows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. UX Patterns for Retry Flows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-when-to-offer-retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 When to Offer Retry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-how-to-present-retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 How to Present Retry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-shuffle-vs-original-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Shuffle vs Original Order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-should-retry-success-count-differently" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Should Retry Success Count Differently?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-database-design-for-tracking-retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Database Design for Tracking Retries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Database Design for Tracking Retries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-option-a-flag-on-existing-table-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Option A: Flag on Existing Table (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-option-b-separate-retry-session-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Option B: Separate Retry Session Row
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-recommended-hybrid-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Recommended Hybrid Approach
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-leech-detection-from-anki" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Leech Detection (from Anki)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-textual-tui-patterns-for-post-session-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Textual TUI Patterns for Post-Session Actions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Textual TUI Patterns for Post-Session Actions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-current-state-in-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Current State in studyctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-recommended-pattern-dynamic-binding-swap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Recommended Pattern: Dynamic Binding Swap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-footer-key-binding-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Footer Key Binding Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-screen-transition-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Screen Transition Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-retry-flow-state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Retry Flow State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-specific-recommendations-for-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Specific Recommendations for studyctl
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Specific Recommendations for studyctl">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-what-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 What to Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-what-not-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 What NOT to Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-database-migration-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Database Migration Plan
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-migration-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Migration Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="research-retry-wrong-answers-review-failed-cards-in-srs-systems">Research: Retry Wrong Answers / Review Failed Cards in SRS Systems<a class="headerlink" href="#research-retry-wrong-answers-review-failed-cards-in-srs-systems" title="Permanent link">&para;</a></h1>
+<p><strong>Date</strong>: 2026-03-15
+<strong>Scope</strong>: How established SRS apps handle retrying failed cards, UX patterns, database design, and Textual TUI implementation patterns.
+<strong>Context</strong>: studyctl already has SM-2 scheduling, <code>card_reviews</code> + <code>review_sessions</code> tables, <code>get_wrong_hashes()</code>, and a Textual TUI with correct/incorrect/skip bindings.</p>
+<hr />
+<h2 id="1-how-popular-srs-apps-handle-failed-cards">1. How Popular SRS Apps Handle Failed Cards<a class="headerlink" href="#1-how-popular-srs-apps-handle-failed-cards" title="Permanent link">&para;</a></h2>
+<h3 id="11-sm-2-algorithm-supermemo-mnemosyne">1.1 SM-2 Algorithm (SuperMemo, Mnemosyne)<a class="headerlink" href="#11-sm-2-algorithm-supermemo-mnemosyne" title="Permanent link">&para;</a></h3>
+<p><strong>Source</strong>: Wozniak 1990, supermemo.com/english/ol/sm2.htm</p>
+<p>SM-2 defines two distinct mechanisms for failed cards:</p>
+<p><strong>Step 6 — Inter-session reset</strong>: If quality response &lt; 3 (i.e., incorrect), start repetitions from the beginning WITHOUT changing the E-Factor. The card's interval resets to I(1)=1, I(2)=6, etc., as if memorised anew. The E-Factor (difficulty) is still updated by the formula, but the interval ladder restarts.</p>
+<p><strong>Step 7 — Intra-session retry (CRITICAL)</strong>: "After each repetition session of a given day, repeat again all items that scored below four in the quality assessment." This is the canonical "retry wrong answers" behaviour:
+- Retries happen at the END of the current day's session (not inline)
+- The threshold is quality &lt; 4 (not just failed — also "serious difficulty" responses)
+- Items are repeated until they score &gt;= 4
+- This is explicitly a same-day, same-session loop</p>
+<p><strong>Your current implementation</strong>: You implement Step 6 (interval reset to 1, ease -= 0.2) but NOT Step 7 (end-of-session retry). This is the gap.</p>
+<h3 id="12-anki-sm-2-variant-fsrs">1.2 Anki (SM-2 variant / FSRS)<a class="headerlink" href="#12-anki-sm-2-variant-fsrs" title="Permanent link">&para;</a></h3>
+<p><strong>Source</strong>: docs.ankiweb.net/studying.html, docs.ankiweb.net/deck-options.html</p>
+<p>Anki uses <strong>inline re-presentation</strong>, not end-of-session retry:</p>
+<ul>
+<li>Pressing "Again" moves the card into a <strong>relearning queue</strong> with configurable steps (default: 10 minutes)</li>
+<li>The card is re-shown within the same study session after the step delay</li>
+<li>Relearning steps work identically to initial learning steps</li>
+<li>Cards cycle through relearning steps until they "graduate" back to review status</li>
+<li>After graduating, the card gets a new interval (default: 1 day minimum, configurable "New Interval" as % of previous)</li>
+</ul>
+<p><strong>Lapse tracking</strong>: Each "Again" press increments a lapse counter. After a threshold (default: 8 lapses), the card becomes a "leech" — either suspended or tagged for reformulation.</p>
+<p><strong>FSRS approach</strong> (modern Anki): FSRS calculates a new post-lapse stability S'_f using a dedicated formula. FSRS recommends AGAINST multiple same-day repetitions: "Evidence shows that repeating a card multiple times in a single day does not significantly contribute to long-term memory." FSRS can control short-term scheduling directly, often giving "Again" an interval of 1+ days.</p>
+<p><strong>Same-day reviews in FSRS-6</strong>: Have a dedicated stability formula: <code>S'(S,G) = S * e^(w17 * (G - 3 + w18)) * S^(-w19)</code>. Stability increases faster when small, converges when large. This means same-day retries have diminishing returns mathematically.</p>
+<h3 id="13-mnemosyne">1.3 Mnemosyne<a class="headerlink" href="#13-mnemosyne" title="Permanent link">&para;</a></h3>
+<p><strong>Source</strong>: mnemosyne-proj.org/principles.php</p>
+<p>Uses a modified SM-2 algorithm. Same fundamental approach: grade 0-2 resets the interval, with same-day retry of failed items. Adds randomness to intervals to prevent clustering.</p>
+<h3 id="14-consensus-summary">1.4 Consensus Summary<a class="headerlink" href="#14-consensus-summary" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>SM-2 (Original)</th>
+<th>Anki (Legacy)</th>
+<th>Anki (FSRS)</th>
+<th>Recommendation for studyctl</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>When retry happens</td>
+<td>End of session</td>
+<td>Inline (after delay)</td>
+<td>Discouraged for same-day</td>
+<td><strong>End of session</strong> (SM-2 Step 7)</td>
+</tr>
+<tr>
+<td>Retry threshold</td>
+<td>Score &lt; 4</td>
+<td>"Again" button</td>
+<td>N/A</td>
+<td><strong>All incorrect cards</strong></td>
+</tr>
+<tr>
+<td>Effect on scheduling</td>
+<td>None (retry is separate)</td>
+<td>Relearning steps</td>
+<td>Separate S'_f formula</td>
+<td><strong>Don't double-penalise</strong></td>
+</tr>
+<tr>
+<td>Retry until</td>
+<td>Score &gt;= 4</td>
+<td>Graduates from steps</td>
+<td>N/A</td>
+<td><strong>Single retry pass</strong></td>
+</tr>
+<tr>
+<td>Long-term effect</td>
+<td>E-Factor already adjusted</td>
+<td>Ease already reduced</td>
+<td>Stability already updated</td>
+<td><strong>Already handled in record_card_review</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-ux-patterns-for-retry-flows">2. UX Patterns for Retry Flows<a class="headerlink" href="#2-ux-patterns-for-retry-flows" title="Permanent link">&para;</a></h2>
+<h3 id="21-when-to-offer-retry">2.1 When to Offer Retry<a class="headerlink" href="#21-when-to-offer-retry" title="Permanent link">&para;</a></h3>
+<p><strong>Proven pattern (SM-2 Step 7)</strong>: After ALL cards in the session are complete, present a summary, then offer to retry wrong answers.</p>
+<p><strong>Why end-of-session, not inline</strong>:
+- Inline delays (Anki-style) require a timer/queue system — over-engineered for a CLI tool
+- End-of-session retry provides spacing (you've seen other cards in between) which aids encoding
+- Cleaner UX: complete flow, then decision point
+- Better for ADHD: clear phases, not context-switching between "new card" and "retry card" mid-flow</p>
+<p><strong>When NOT to retry</strong>:
+- If all cards were correct (obviously)
+- If the user is low-energy (offer to save for next session instead)
+- If there are too many wrong (&gt;50%): the material needs re-study, not just retry</p>
+<h3 id="22-how-to-present-retry">2.2 How to Present Retry<a class="headerlink" href="#22-how-to-present-retry" title="Permanent link">&para;</a></h3>
+<p><strong>Summary screen pattern</strong> (used by Anki, Quizlet, Brainscape):</p>
+<div class="highlight"><pre><span></span><code>Session Complete!
+
+  Score: 7/10 (70%)  |  Duration: 4m 32s
+  Grade: Good
+
+  3 cards answered incorrectly.
+
+  [r] Retry wrong answers  [q] Quit  [d] Dashboard
+</code></pre></div>
+<p><strong>During retry</strong>:
+- Show "Retry 1/3" not "Card 8/10" — make it clear this is a retry pass
+- Show the card normally but add a subtle indicator: <code>[retry]</code> badge or different border colour
+- After retry pass, show a combined summary:
+  <div class="highlight"><pre><span></span><code>Retry Complete!
+  Original: 7/10 (70%)
+  Retry:    2/3 corrected
+  Final:    9/10 (90%)
+</code></pre></div></p>
+<h3 id="23-shuffle-vs-original-order">2.3 Shuffle vs Original Order<a class="headerlink" href="#23-shuffle-vs-original-order" title="Permanent link">&para;</a></h3>
+<p><strong>Shuffle the retry cards</strong>. Rationale:
+- Prevents pattern-based memorisation ("the third wrong one was about X")
+- SM-2 Step 7 doesn't specify order — it just says "repeat again"
+- Anki's relearning queue interleaves with other cards (effective shuffling)
+- Your existing code already shuffles via <code>shuffle_items()</code> in review_loader.py</p>
+<h3 id="24-should-retry-success-count-differently">2.4 Should Retry Success Count Differently?<a class="headerlink" href="#24-should-retry-success-count-differently" title="Permanent link">&para;</a></h3>
+<p><strong>Yes, but subtly</strong>. Three approaches from the literature:</p>
+<ol>
+<li>
+<p><strong>SM-2 approach</strong>: Retry reviews don't affect the E-Factor at all — the damage was already done in the first pass. Retry is purely for same-day reinforcement.</p>
+</li>
+<li>
+<p><strong>Anki approach</strong>: Relearning steps don't change ease factor. Only the initial "Again" press penalises. Graduating from relearning just sets the new (reduced) interval.</p>
+</li>
+<li>
+<p><strong>Recommended for studyctl</strong>: Do NOT call <code>record_card_review()</code> during retry. The first-pass incorrect already:</p>
+</li>
+<li>Reset interval to 1 day</li>
+<li>Reduced ease by 0.2</li>
+<li>Set next_review to tomorrow</li>
+</ol>
+<p>Recording a retry "correct" would overwrite these values and give false confidence. Instead, track retry results separately for display/analytics only.</p>
+<hr />
+<h2 id="3-database-design-for-tracking-retries">3. Database Design for Tracking Retries<a class="headerlink" href="#3-database-design-for-tracking-retries" title="Permanent link">&para;</a></h2>
+<h3 id="31-option-a-flag-on-existing-table-recommended">3.1 Option A: Flag on Existing Table (Recommended)<a class="headerlink" href="#31-option-a-flag-on-existing-table-recommended" title="Permanent link">&para;</a></h3>
+<p>Add an <code>is_retry</code> column to <code>card_reviews</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">is_retry</span><span class="w"> </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">parent_session_id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">review_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+</code></pre></div>
+<p><strong>Pros</strong>: Simple, no new tables, easy to query "all reviews including retries"
+<strong>Cons</strong>: Need to filter out retries when calculating SM-2 scheduling</p>
+<p><strong>Query: Cards I got wrong across all sessions (excluding retries)</strong>:
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">card_hash</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">times_wrong</span><span class="p">,</span>
+<span class="w">       </span><span class="n">GROUP_CONCAT</span><span class="p">(</span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">course</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">courses</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">card_reviews</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">correct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">is_retry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">card_hash</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">times_wrong</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+</code></pre></div></p>
+<p><strong>Query: Retry improvement rate</strong>:
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span>
+<span class="w">    </span><span class="n">cr_orig</span><span class="p">.</span><span class="n">card_hash</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cr_retry</span><span class="p">.</span><span class="n">correct</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">corrected_on_retry</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="n">cr_orig</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="n">cr_retry</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">cr_orig</span><span class="p">.</span><span class="n">card_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cr_retry</span><span class="p">.</span><span class="n">card_hash</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">cr_retry</span><span class="p">.</span><span class="n">is_retry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">cr_retry</span><span class="p">.</span><span class="n">parent_session_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cr_orig</span><span class="p">.</span><span class="n">parent_session_id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">cr_orig</span><span class="p">.</span><span class="n">correct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">cr_orig</span><span class="p">.</span><span class="n">is_retry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+</code></pre></div></p>
+<h3 id="32-option-b-separate-retry-session-row">3.2 Option B: Separate Retry Session Row<a class="headerlink" href="#32-option-b-separate-retry-session-row" title="Permanent link">&para;</a></h3>
+<p>Add <code>session_type</code> and <code>parent_session_id</code> to <code>review_sessions</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">review_sessions</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">session_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;primary&#39;</span><span class="p">;</span>
+<span class="w">  </span><span class="c1">-- Values: &#39;primary&#39;, &#39;retry&#39;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">review_sessions</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">parent_session_id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">review_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+</code></pre></div>
+<p><strong>Pros</strong>: Clean session-level analytics, easy to distinguish "real" sessions from retries
+<strong>Cons</strong>: Slightly more complex to link individual card retries back</p>
+<h3 id="33-recommended-hybrid-approach">3.3 Recommended Hybrid Approach<a class="headerlink" href="#33-recommended-hybrid-approach" title="Permanent link">&para;</a></h3>
+<p>Use BOTH flags — one on sessions, one on card reviews:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Migration: add retry tracking</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">review_sessions</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">session_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;primary&#39;</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">review_sessions</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">parent_session_id</span><span class="w"> </span><span class="nb">INTEGER</span>
+<span class="w">    </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">review_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">is_retry</span><span class="w"> </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">session_id</span><span class="w"> </span><span class="nb">INTEGER</span>
+<span class="w">    </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">review_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+</code></pre></div>
+<p>The <code>session_id</code> foreign key on <code>card_reviews</code> is independently valuable — your current code links cards to sessions by timestamp correlation, which is fragile. An explicit FK makes queries reliable.</p>
+<h3 id="34-leech-detection-from-anki">3.4 Leech Detection (from Anki)<a class="headerlink" href="#34-leech-detection-from-anki" title="Permanent link">&para;</a></h3>
+<p>Track cards that are repeatedly wrong across sessions:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Cards wrong 3+ times across different primary sessions = leeches</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">card_hash</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">session_id</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">sessions_wrong</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">card_reviews</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">correct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">is_retry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">card_hash</span>
+<span class="k">HAVING</span><span class="w"> </span><span class="n">sessions_wrong</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">3</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">sessions_wrong</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+</code></pre></div>
+<p>This maps to Anki's leech concept. These cards likely need reformulation rather than more repetition — surface them to the user.</p>
+<hr />
+<h2 id="4-textual-tui-patterns-for-post-session-actions">4. Textual TUI Patterns for Post-Session Actions<a class="headerlink" href="#4-textual-tui-patterns-for-post-session-actions" title="Permanent link">&para;</a></h2>
+<h3 id="41-current-state-in-studyctl">4.1 Current State in studyctl<a class="headerlink" href="#41-current-state-in-studyctl" title="Permanent link">&para;</a></h3>
+<p><code>_show_summary()</code> in <code>study_cards.py</code> currently:
+1. Calculates duration and score percentage
+2. Displays summary text with grade (Excellent/Good/Needs review)
+3. Shows wrong count
+4. Hides score buttons (correct/incorrect/skip)
+5. Updates progress label to "Press q to return"
+6. Records session to DB</p>
+<p><strong>Missing</strong>: No retry option, no post-session action bindings.</p>
+<h3 id="42-recommended-pattern-dynamic-binding-swap">4.2 Recommended Pattern: Dynamic Binding Swap<a class="headerlink" href="#42-recommended-pattern-dynamic-binding-swap" title="Permanent link">&para;</a></h3>
+<p>Textual supports per-screen and per-widget <code>BINDINGS</code>. The cleanest pattern for post-session actions:</p>
+<p><strong>Approach</strong>: In <code>_show_summary()</code>, swap the active bindings by toggling widget visibility or using <code>action_*</code> methods that check state.</p>
+<p>Key design decisions:
+- Add a <code>Binding("r", "retry_wrong", "Retry Wrong")</code> that is always defined but only active post-session
+- Use Textual's <code>action_retry_wrong</code> to filter <code>_cards</code> to <code>wrong_hashes</code>, reset <code>current_index</code>, and restart the card flow
+- The retry pass should use the SAME <code>StudyCardsTab</code> widget instance (not a new one) to maintain session continuity</p>
+<h3 id="43-footer-key-binding-updates">4.3 Footer Key Binding Updates<a class="headerlink" href="#43-footer-key-binding-updates" title="Permanent link">&para;</a></h3>
+<p>During the session:
+<div class="highlight"><pre><span></span><code>Space: Flip  |  y: Correct  |  n: Incorrect  |  s: Skip  |  h: Hint  |  v: Voice
+</code></pre></div></p>
+<p>After session complete (with wrong answers):
+<div class="highlight"><pre><span></span><code>r: Retry Wrong (3)  |  q: Return  |  d: Dashboard
+</code></pre></div></p>
+<p>After session complete (all correct):
+<div class="highlight"><pre><span></span><code>q: Return  |  d: Dashboard
+</code></pre></div></p>
+<p>After retry complete:
+<div class="highlight"><pre><span></span><code>q: Return  |  d: Dashboard
+</code></pre></div></p>
+<h3 id="44-screen-transition-pattern">4.4 Screen Transition Pattern<a class="headerlink" href="#44-screen-transition-pattern" title="Permanent link">&para;</a></h3>
+<p>Two valid approaches from Textual docs:</p>
+<p><strong>A. In-place state machine</strong> (recommended for studyctl):
+- <code>StudyCardsTab</code> tracks state: <code>reviewing</code> | <code>summary</code> | <code>retrying</code> | <code>retry_summary</code>
+- <code>_show_summary()</code> sets state to <code>summary</code> and shows retry option
+- <code>action_retry_wrong()</code> filters cards, sets state to <code>retrying</code>, restarts flow
+- Bindings check state before acting (e.g., <code>action_mark_correct</code> is no-op in <code>summary</code> state)
+- Avoids screen push/pop complexity</p>
+<p><strong>B. Modal screen</strong> (Textual's <code>push_screen</code> with callback):
+- Push a <code>SessionSummaryScreen</code> that returns a result via <code>dismiss()</code>
+- Result can be <code>"retry"</code>, <code>"quit"</code>, or <code>"dashboard"</code>
+- Callback handles the transition
+- Cleaner separation but more boilerplate for a widget-in-tab scenario</p>
+<p>Approach A fits better because <code>StudyCardsTab</code> is a Widget mounted inside a TabPane, not a Screen. Pushing a modal screen from within a tab widget works but feels awkward. The state machine approach keeps everything self-contained.</p>
+<h3 id="45-retry-flow-state-machine">4.5 Retry Flow State Machine<a class="headerlink" href="#45-retry-flow-state-machine" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>                    +-----------+
+                    | reviewing |
+                    +-----+-----+
+                          |
+                    last card done
+                          |
+                    +-----v-----+
+              +----&gt;| summary   |
+              |     +-----+-----+
+              |           |
+              |     user presses &#39;r&#39;
+              |           |
+              |     +-----v------+
+              |     | retrying   |
+              |     +-----+------+
+              |           |
+              |     last retry card done
+              |           |
+              |     +-----v---------+
+              |     | retry_summary |
+              |     +-----+---------+
+              |           |
+              |     user presses &#39;r&#39; (optional: allow multiple retry passes)
+              |           |
+              +-----------+
+</code></pre></div>
+<hr />
+<h2 id="5-specific-recommendations-for-studyctl">5. Specific Recommendations for studyctl<a class="headerlink" href="#5-specific-recommendations-for-studyctl" title="Permanent link">&para;</a></h2>
+<h3 id="51-what-to-build">5.1 What to Build<a class="headerlink" href="#51-what-to-build" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>End-of-session retry prompt</strong>: After <code>_show_summary()</code>, show "[r] Retry wrong (N)" if wrong_hashes is non-empty</li>
+<li><strong>Single retry pass</strong> (not infinite loop): One retry attempt, then show final combined score</li>
+<li><strong>No SM-2 recording for retries</strong>: Track retry results for display only. The original incorrect already penalised the card's schedule.</li>
+<li><strong>Shuffled retry order</strong>: Use existing <code>shuffle_items()</code> on the filtered wrong cards</li>
+<li><strong>Leech surfacing</strong>: After N sessions where the same card is wrong, notify the user that the card may need reformulation</li>
+</ol>
+<h3 id="52-what-not-to-build">5.2 What NOT to Build<a class="headerlink" href="#52-what-not-to-build" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Inline re-presentation with delays</strong> (Anki-style): Over-engineered for a TUI tool, requires timer infrastructure</li>
+<li><strong>Multiple retry passes in one session</strong>: Diminishing returns per FSRS research. One pass is sufficient.</li>
+<li><strong>Retry affecting scheduling</strong>: Would create "ease inflation" — a retry correct is not the same as a first-attempt correct</li>
+<li><strong>Separate retry screens</strong>: Keep it in the same widget, just filter the card list</li>
+</ul>
+<h3 id="53-database-migration-plan">5.3 Database Migration Plan<a class="headerlink" href="#53-database-migration-plan" title="Permanent link">&para;</a></h3>
+<p>Priority order:
+1. Add <code>session_id</code> FK to <code>card_reviews</code> (independently valuable, fixes timestamp-correlation fragility)
+2. Add <code>session_type</code> + <code>parent_session_id</code> to <code>review_sessions</code>
+3. Add <code>is_retry</code> to <code>card_reviews</code>
+4. Add leech detection query (can be a <code>studyctl leeches</code> CLI command)</p>
+<h3 id="54-migration-compatibility">5.4 Migration Compatibility<a class="headerlink" href="#54-migration-compatibility" title="Permanent link">&para;</a></h3>
+<p>Your existing migration infrastructure in <code>agent-session-tools</code> uses <code>migrations.py</code> with <code>migrate()</code>. The retry columns should follow the same pattern:
+- <code>ALTER TABLE</code> with <code>DEFAULT</code> values so existing data is unaffected
+- New columns are nullable or have sensible defaults
+- No data migration needed — all existing reviews are <code>is_retry=0</code>, <code>session_type='primary'</code></p>
+<hr />
+<h2 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Authority</th>
+<th>Key Contribution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wozniak SM-2 (1990)</td>
+<td>Primary algorithm specification</td>
+<td>Step 6 (reset) + Step 7 (same-day retry)</td>
+</tr>
+<tr>
+<td>Anki Manual - Studying</td>
+<td>Official documentation</td>
+<td>Relearning queue, inline retry with steps</td>
+</tr>
+<tr>
+<td>Anki Manual - Deck Options (Lapses)</td>
+<td>Official documentation</td>
+<td>Relearning steps, minimum interval, leeches</td>
+</tr>
+<tr>
+<td>FSRS Algorithm Wiki</td>
+<td>Algorithm specification</td>
+<td>Same-day review formula, evidence against excessive same-day reps</td>
+</tr>
+<tr>
+<td>Mnemosyne Principles</td>
+<td>Official documentation</td>
+<td>SM-2 variant, same fundamental retry approach</td>
+</tr>
+<tr>
+<td>Textual Screens Guide</td>
+<td>Official documentation</td>
+<td>push_screen/dismiss pattern, dynamic bindings</td>
+</tr>
+<tr>
+<td>studyctl source code</td>
+<td>Project codebase</td>
+<td>Current state: review_db.py, study_cards.py, review_loader.py</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

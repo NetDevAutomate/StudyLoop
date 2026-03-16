@@ -1,0 +1,2209 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/mcp-python-server-patterns.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>MCP Python Server Patterns -- Research (2026-03-15) - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mcp-python-server-patterns-research-2026-03-15" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              MCP Python Server Patterns -- Research (2026-03-15)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-sdk-version-and-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. SDK Version and Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-defining-mcp-tools-with-tool-decorators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Defining MCP Tools with @tool Decorators
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Defining MCP Tools with @tool Decorators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v1-fastmcp-current-stable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1 (FastMCP) -- current stable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v2-mcpserver-pre-alpha-same-decorator-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2 (MCPServer) -- pre-alpha, same decorator API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decorator-options-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decorator options (v1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-structured-output-return-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Structured Output (Return Types)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Structured Output (Return Types)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#advanced-direct-calltoolresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced: Direct CallToolResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-running-as-a-standalone-cli-entry-point-studyctl-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Running as a Standalone CLI Entry Point (studyctl-mcp)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Running as a Standalone CLI Entry Point (studyctl-mcp)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#direct-execution-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direct execution pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pyprojecttoml-entry-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pyproject.toml entry point
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-use-mcp-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: use mcp run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-stdio-vs-http-transport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. stdio vs HTTP Transport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. stdio vs HTTP Transport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stdio-default-recommended-for-local-cli-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stdio (default, recommended for local CLI tools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streamable-http-recommended-for-productionremote-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streamable HTTP (recommended for production/remote deployments)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-for-studyctl-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation for studyctl-mcp
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-client-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Client Registration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Client Registration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gemini CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kiro-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kiro CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-concrete-example-file-processing-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Concrete Example: File Processing Tool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-error-handling-in-mcp-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Error Handling in MCP Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Error Handling in MCP Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-errors-propagate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How errors propagate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#toolerror-explicit-error-signaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ToolError (explicit error signaling)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exception-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exception hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-sharing-state-between-tools-lifespan-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Sharing State Between Tools (Lifespan Pattern)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Sharing State Between Tools (Lifespan Pattern)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v2-typing-improvement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2 typing improvement
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-testing-mcp-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Testing MCP Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Testing MCP Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strategy-1-test-tool-functions-directly-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy 1: Test tool functions directly (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strategy-2-test-via-mcp-client-integration-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy 2: Test via MCP client (integration test)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strategy-3-mcp-inspector-manualexploratory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy 3: MCP Inspector (manual/exploratory)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-coexistence-with-fastapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Coexistence with FastAPI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Coexistence with FastAPI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-streamable-http-transport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Streamable HTTP transport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#important-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-architecture-decision-v1-vs-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Architecture Decision: v1 vs v2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-project-specific-recommendations-for-studyctl-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Project-Specific Recommendations for studyctl-mcp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Project-Specific Recommendations for studyctl-mcp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#proposed-tool-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed tool surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed file structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pyprojecttoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pyproject.toml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="mcp-python-server-patterns-research-2026-03-15">MCP Python Server Patterns -- Research (2026-03-15)<a class="headerlink" href="#mcp-python-server-patterns-research-2026-03-15" title="Permanent link">&para;</a></h1>
+<p>Best practices for building an MCP (Model Context Protocol) server in Python,
+targeting Claude Code, Gemini CLI, and Kiro CLI as consumers.</p>
+<p><strong>Primary source</strong>: MCP Python SDK (<code>mcp</code> on PyPI) -- official repo at
+<code>github.com/modelcontextprotocol/python-sdk</code>.</p>
+<hr />
+<h2 id="1-sdk-version-and-installation">1. SDK Version and Installation<a class="headerlink" href="#1-sdk-version-and-installation" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Detail</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PyPI package</td>
+<td><code>mcp</code></td>
+</tr>
+<tr>
+<td>Current stable</td>
+<td><strong>v1.26.0</strong> (v1.x branch)</td>
+</tr>
+<tr>
+<td>Python requirement</td>
+<td><strong>&gt;=3.10</strong></td>
+</tr>
+<tr>
+<td>v2 status</td>
+<td>Pre-alpha on <code>main</code>, stable release anticipated Q1 2026. <strong>v1.x recommended for production.</strong></td>
+</tr>
+<tr>
+<td>v2 class rename</td>
+<td><code>FastMCP</code> renamed to <code>MCPServer</code> (import from <code>mcp.server.mcpserver</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Install with uv</strong> (recommended):</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;mcp[cli]&quot;</span><span class="w">          </span><span class="c1"># adds to pyproject.toml</span>
+</code></pre></div>
+<p>The <code>[cli]</code> extra includes the <code>mcp</code> CLI for <code>mcp dev</code>, <code>mcp run</code>, <code>mcp install</code>.</p>
+<p><strong>Recommendation for studyctl</strong>: Target v1.x (<code>FastMCP</code>) today. The <code>@mcp.tool()</code> decorator
+API is identical in v2 (<code>MCPServer</code>), so migration is a one-line import change. Both versions
+shown below; v1 is primary, v2 noted where different.</p>
+<hr />
+<h2 id="2-defining-mcp-tools-with-tool-decorators">2. Defining MCP Tools with @tool Decorators<a class="headerlink" href="#2-defining-mcp-tools-with-tool-decorators" title="Permanent link">&para;</a></h2>
+<h3 id="v1-fastmcp-current-stable">v1 (FastMCP) -- current stable<a class="headerlink" href="#v1-fastmcp-current-stable" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span><span class="p">,</span> <span class="n">Context</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">)</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_sessions</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search study sessions by topic.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        query: Natural language search query</span>
+<span class="sd">        limit: Maximum number of results to return</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># The docstring becomes the tool description shown to the LLM.</span>
+    <span class="c1"># Parameter types are inferred from type hints -&gt; JSON Schema.</span>
+    <span class="c1"># Default values become optional parameters.</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">do_search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="v2-mcpserver-pre-alpha-same-decorator-api">v2 (MCPServer) -- pre-alpha, same decorator API<a class="headerlink" href="#v2-mcpserver-pre-alpha-same-decorator-api" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.mcpserver</span><span class="w"> </span><span class="kn">import</span> <span class="n">MCPServer</span><span class="p">,</span> <span class="n">Context</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">MCPServer</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">)</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_sessions</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search study sessions by topic.&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+</code></pre></div>
+<h3 id="key-rules">Key rules<a class="headerlink" href="#key-rules" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Docstring = tool description</strong>. First line is the summary shown to the LLM.</li>
+<li><strong>Type hints = JSON Schema</strong>. <code>str</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>list[str]</code>, <code>dict[str, Any]</code> all work.</li>
+<li><strong>Default values</strong> make parameters optional.</li>
+<li><strong>Async tools</strong> are fully supported: <code>async def my_tool(...) -&gt; str</code>.</li>
+<li><strong>Context injection</strong>: Add a <code>ctx: Context</code> parameter -- it is auto-injected, not exposed to the LLM.</li>
+</ul>
+<h3 id="decorator-options-v1">Decorator options (v1)<a class="headerlink" href="#decorator-options-v1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;custom_name&quot;</span><span class="p">,</span>           <span class="c1"># override function name</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Human-Readable Title&quot;</span><span class="p">,</span> <span class="c1"># UI display name</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Override desc&quot;</span><span class="p">,</span>  <span class="c1"># override docstring</span>
+    <span class="n">structured_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># enable structured JSON output (default: auto-detect)</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="3-structured-output-return-types">3. Structured Output (Return Types)<a class="headerlink" href="#3-structured-output-return-types" title="Permanent link">&para;</a></h2>
+<p>Tools return structured JSON when the return type annotation is compatible:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SessionResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SessionResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve a study session by ID.&quot;&quot;&quot;</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">SessionResult</span><span class="p">(</span><span class="o">**</span><span class="n">row</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Supported structured return types</strong>:
+- Pydantic <code>BaseModel</code> subclasses (recommended)
+- <code>TypedDict</code>
+- <code>dataclass</code>
+- <code>dict[str, T]</code> where T is JSON-serializable
+- Primitives (<code>str</code>, <code>int</code>, <code>float</code>, <code>bool</code>) -- wrapped in <code>{"result": value}</code></p>
+<p>To suppress auto-structured output: <code>@mcp.tool(structured_output=False)</code>.</p>
+<h3 id="advanced-direct-calltoolresult">Advanced: Direct CallToolResult<a class="headerlink" href="#advanced-direct-calltoolresult" title="Permanent link">&para;</a></h3>
+<p>For full control over responses:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mcp.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallToolResult</span><span class="p">,</span> <span class="n">TextContent</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">advanced_query</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CallToolResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run an advanced query with metadata.&quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">run_query</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">CallToolResult</span><span class="p">(</span>
+        <span class="n">content</span><span class="o">=</span><span class="p">[</span><span class="n">TextContent</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">))],</span>
+        <span class="n">_meta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;execution_time_ms&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">},</span>  <span class="c1"># hidden from model, visible to client</span>
+    <span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="4-running-as-a-standalone-cli-entry-point-studyctl-mcp">4. Running as a Standalone CLI Entry Point (<code>studyctl-mcp</code>)<a class="headerlink" href="#4-running-as-a-standalone-cli-entry-point-studyctl-mcp" title="Permanent link">&para;</a></h2>
+<h3 id="direct-execution-pattern">Direct execution pattern<a class="headerlink" href="#direct-execution-pattern" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/studyctl_mcp/server.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>  <span class="c1"># v1</span>
+<span class="c1"># from mcp.server.mcpserver import MCPServer as FastMCP  # v2</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">)</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_sessions</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search study sessions.&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Entry point for the studyctl-mcp CLI.&quot;&quot;&quot;</span>
+    <span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>  <span class="c1"># defaults to stdio transport</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="pyprojecttoml-entry-point">pyproject.toml entry point<a class="headerlink" href="#pyprojecttoml-entry-point" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">[project.scripts]</span>
+<span class="n">studyctl-mcp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;studyctl_mcp.server:main&quot;</span>
+</code></pre></div>
+<p>After <code>uv sync</code>, the <code>studyctl-mcp</code> command is available and runs the MCP
+server over stdio. This is the pattern AI coding assistants expect.</p>
+<h3 id="alternative-use-mcp-run">Alternative: use <code>mcp run</code><a class="headerlink" href="#alternative-use-mcp-run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>mcp<span class="w"> </span>run<span class="w"> </span>src/studyctl_mcp/server.py
+</code></pre></div>
+<p>The <code>mcp run</code> CLI discovers the <code>mcp</code> object in the module and calls <code>.run()</code>.
+The entry-point approach (<code>studyctl-mcp</code>) is preferred for distribution.</p>
+<hr />
+<h2 id="5-stdio-vs-http-transport">5. stdio vs HTTP Transport<a class="headerlink" href="#5-stdio-vs-http-transport" title="Permanent link">&para;</a></h2>
+<h3 id="stdio-default-recommended-for-local-cli-tools">stdio (default, recommended for local CLI tools)<a class="headerlink" href="#stdio-default-recommended-for-local-cli-tools" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>                              <span class="c1"># defaults to stdio</span>
+<span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="s2">&quot;stdio&quot;</span><span class="p">)</span>             <span class="c1"># explicit</span>
+</code></pre></div>
+<ul>
+<li>Communication over stdin/stdout.</li>
+<li>Client spawns the server process and communicates via pipes.</li>
+<li><strong>This is what Claude Code, Gemini CLI, and Kiro CLI expect for local tools.</strong></li>
+<li>Zero configuration, zero network ports.</li>
+<li>One server process per client session.</li>
+</ul>
+<h3 id="streamable-http-recommended-for-productionremote-deployments">Streamable HTTP (recommended for production/remote deployments)<a class="headerlink" href="#streamable-http-recommended-for-productionremote-deployments" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="s2">&quot;streamable-http&quot;</span><span class="p">)</span>
+<span class="c1"># With production options:</span>
+<span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+    <span class="n">transport</span><span class="o">=</span><span class="s2">&quot;streamable-http&quot;</span><span class="p">,</span>
+    <span class="n">stateless_http</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>      <span class="c1"># no session persistence (scalable)</span>
+    <span class="n">json_response</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># JSON instead of SSE streaming</span>
+<span class="p">)</span>
+</code></pre></div>
+<ul>
+<li>Server listens on a network port.</li>
+<li>Multiple clients can connect.</li>
+<li>Supports load balancing.</li>
+<li>Required for remote/cloud deployments.</li>
+</ul>
+<h3 id="recommendation-for-studyctl-mcp">Recommendation for studyctl-mcp<a class="headerlink" href="#recommendation-for-studyctl-mcp" title="Permanent link">&para;</a></h3>
+<p><strong>Use stdio as default</strong> -- it is the universal transport for local CLI tools.
+All three target clients (Claude Code, Gemini CLI, Kiro CLI) support stdio.
+Optionally accept a <code>--transport</code> flag for HTTP mode.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">transport</span> <span class="o">=</span> <span class="s2">&quot;streamable-http&quot;</span> <span class="k">if</span> <span class="s2">&quot;--http&quot;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span> <span class="k">else</span> <span class="s2">&quot;stdio&quot;</span>
+    <span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="6-client-registration">6. Client Registration<a class="headerlink" href="#6-client-registration" title="Permanent link">&para;</a></h2>
+<h3 id="claude-code">Claude Code<a class="headerlink" href="#claude-code" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Method 1: CLI registration (recommended)</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>studyctl<span class="w"> </span>--<span class="w"> </span>studyctl-mcp
+
+<span class="c1"># Method 2: With uv (if not installed as tool)</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>studyctl<span class="w"> </span>--<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span>/path/to/project<span class="w"> </span>studyctl-mcp
+
+<span class="c1"># Method 3: JSON configuration</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>add-json<span class="w"> </span>studyctl<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">  &quot;type&quot;: &quot;stdio&quot;,</span>
+<span class="s1">  &quot;command&quot;: &quot;studyctl-mcp&quot;,</span>
+<span class="s1">  &quot;args&quot;: [],</span>
+<span class="s1">  &quot;env&quot;: {&quot;STUDYCTL_DB&quot;: &quot;/path/to/sessions.db&quot;}</span>
+<span class="s1">}&#39;</span>
+
+<span class="c1"># Verify</span>
+claude<span class="w"> </span>mcp<span class="w"> </span>list
+claude<span class="w"> </span>mcp<span class="w"> </span>get<span class="w"> </span>studyctl
+</code></pre></div>
+<p>Claude Code stores config in <code>.claude/mcp.json</code> (project) or <code>~/.claude/mcp.json</code> (global).</p>
+<h3 id="gemini-cli">Gemini CLI<a class="headerlink" href="#gemini-cli" title="Permanent link">&para;</a></h3>
+<p>Add to <code>~/.gemini/settings.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;studyctl&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;studyctl-mcp&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;STUDYCTL_DB&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/sessions.db&quot;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Gemini CLI supports three transport types: stdio (spawns subprocess), SSE, and
+Streamable HTTP. For local Python tools, stdio is standard.</p>
+<h3 id="kiro-cli">Kiro CLI<a class="headerlink" href="#kiro-cli" title="Permanent link">&para;</a></h3>
+<p>Kiro uses agent config files with MCP server references. In this project,
+agents are defined in <code>agents/kiro/</code> with JSON configs:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;studyctl&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uvx&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--from&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp[cli]&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/path/to/server.py&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Or with an installed entry point:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;studyctl&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;studyctl-mcp&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="7-concrete-example-file-processing-tool">7. Concrete Example: File Processing Tool<a class="headerlink" href="#7-concrete-example-file-processing-tool" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;MCP server that reads flashcard files and returns structured data.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">FastMCP</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">FlashcardResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured result for flashcard queries.&quot;&quot;&quot;</span>
+    <span class="n">cards</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span>
+    <span class="n">total</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">source_file</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_flashcards</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FlashcardResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read flashcards from a markdown file, optionally filtering by topic.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file_path: Path to the markdown flashcard file</span>
+<span class="sd">        topic: Optional topic filter (case-insensitive substring match)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="c1"># Return error as structured data -- the LLM can handle it</span>
+        <span class="k">return</span> <span class="n">FlashcardResult</span><span class="p">(</span><span class="n">cards</span><span class="o">=</span><span class="p">[],</span> <span class="n">total</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">source_file</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="n">content</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+    <span class="n">cards</span> <span class="o">=</span> <span class="n">_parse_markdown_cards</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">topic</span><span class="p">:</span>
+        <span class="n">cards</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cards</span> <span class="k">if</span> <span class="n">topic</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;topic&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+
+    <span class="k">return</span> <span class="n">FlashcardResult</span><span class="p">(</span>
+        <span class="n">cards</span><span class="o">=</span><span class="n">cards</span><span class="p">,</span>
+        <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">cards</span><span class="p">),</span>
+        <span class="n">source_file</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search_sessions</span><span class="p">(</span>
+    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">ctx</span><span class="p">:</span> <span class="n">Context</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># auto-injected, not exposed to LLM</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search past study sessions by topic or content.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        query: Natural language search query</span>
+<span class="sd">        limit: Maximum results (1-50)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Searching for: </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="n">report_progress</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;Querying database...&quot;</span><span class="p">)</span>
+
+    <span class="n">db_path</span> <span class="o">=</span> <span class="n">_get_db_path</span><span class="p">()</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT session_id, topic, summary, timestamp &quot;</span>
+            <span class="s2">&quot;FROM sessions WHERE topic LIKE ? OR summary LIKE ? &quot;</span>
+            <span class="s2">&quot;ORDER BY timestamp DESC LIMIT ?&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;%</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;%</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">limit</span><span class="p">,</span> <span class="mi">50</span><span class="p">)),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="n">report_progress</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;Done&quot;</span><span class="p">)</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">3</span><span class="p">]}</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_markdown_cards</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse Q&amp;A pairs from markdown content.&quot;&quot;&quot;</span>
+    <span class="n">cards</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Q:&quot;</span><span class="p">):</span>
+            <span class="n">question</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">answer</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="ow">and</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;A:&quot;</span><span class="p">):</span>
+                <span class="n">answer</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()[</span><span class="mi">2</span><span class="p">:]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">cards</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;question&quot;</span><span class="p">:</span> <span class="n">question</span><span class="p">,</span> <span class="s2">&quot;answer&quot;</span><span class="p">:</span> <span class="n">answer</span><span class="p">})</span>
+        <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">cards</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_db_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the sessions database path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;~/.config/studyctl/sessions.db&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">())</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h2 id="8-error-handling-in-mcp-tools">8. Error Handling in MCP Tools<a class="headerlink" href="#8-error-handling-in-mcp-tools" title="Permanent link">&para;</a></h2>
+<h3 id="how-errors-propagate">How errors propagate<a class="headerlink" href="#how-errors-propagate" title="Permanent link">&para;</a></h3>
+<p>When a tool function raises an exception, the MCP SDK catches it and returns a
+<code>CallToolResult</code> with <code>isError=True</code> to the client. The LLM sees the error
+message and can decide what to do.</p>
+<h3 id="toolerror-explicit-error-signaling">ToolError (explicit error signaling)<a class="headerlink" href="#toolerror-explicit-error-signaling" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolError</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve a study session.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">session_id</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ToolError</span><span class="p">(</span><span class="s2">&quot;session_id is required&quot;</span><span class="p">)</span>
+
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">_get_db_path</span><span class="p">())</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT * FROM sessions WHERE session_id = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">session_id</span><span class="p">,)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ToolError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">row</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ToolError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Session </span><span class="si">{</span><span class="n">session_id</span><span class="si">!r}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+</code></pre></div>
+<h3 id="exception-hierarchy">Exception hierarchy<a class="headerlink" href="#exception-hierarchy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Exception
+  +-- McpError                          # Protocol-level errors
+  |     +-- UrlElicitationRequiredError # OAuth flow needed
+  +-- FastMCPError                      # Application-level errors
+        +-- ToolError                   # Tool execution errors -&gt; isError=True
+        +-- ResourceError              # Resource access errors
+        +-- ValidationError            # Parameter validation errors
+</code></pre></div>
+<h3 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Raise <code>ToolError</code> for expected failures</strong> (not found, invalid input, DB errors).
+   The SDK converts these to <code>isError=True</code> responses that the LLM can reason about.</li>
+<li><strong>Let unexpected exceptions propagate</strong> -- the SDK catches them and returns a
+   generic error. This prevents silent failures.</li>
+<li><strong>Never return error strings as successful responses</strong> -- use <code>ToolError</code> so the
+   client knows the tool failed.</li>
+<li><strong>Use <code>ctx.error()</code> for logging</strong> alongside raising, if you need server-side logs.</li>
+</ol>
+<hr />
+<h2 id="9-sharing-state-between-tools-lifespan-pattern">9. Sharing State Between Tools (Lifespan Pattern)<a class="headerlink" href="#9-sharing-state-between-tools-lifespan-pattern" title="Permanent link">&para;</a></h2>
+<p>The lifespan pattern initialises shared resources (database connections, config)
+at server startup and cleans them up at shutdown. Tools access them via the
+<code>Context</code> object.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIterator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">FastMCP</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Database</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper around SQLite with connection pooling.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="p">:</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Connection</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">row_factory</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Row</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA journal_mode=WAL&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()]</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AppContext</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared state available to all tools via ctx.request_context.lifespan_context.&quot;&quot;&quot;</span>
+    <span class="n">db</span><span class="p">:</span> <span class="n">Database</span>
+    <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">app_lifespan</span><span class="p">(</span><span class="n">server</span><span class="p">:</span> <span class="n">FastMCP</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">AppContext</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialise shared resources at startup, clean up at shutdown.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+    <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;~/.config/studyctl/config.yaml&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">config_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span> <span class="k">if</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="p">{}</span>
+
+    <span class="n">db</span> <span class="o">=</span> <span class="n">Database</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;~/.config/studyctl/sessions.db&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()))</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">AppContext</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="c1"># Pass lifespan to the server</span>
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">,</span> <span class="n">lifespan</span><span class="o">=</span><span class="n">app_lifespan</span><span class="p">)</span>
+
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_sessions</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search study sessions.&quot;&quot;&quot;</span>
+    <span class="c1"># Access shared database through lifespan context</span>
+    <span class="n">app</span><span class="p">:</span> <span class="n">AppContext</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">request_context</span><span class="o">.</span><span class="n">lifespan_context</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+        <span class="s2">&quot;SELECT session_id, topic, summary FROM sessions WHERE topic LIKE ?&quot;</span><span class="p">,</span>
+        <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;%</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_config</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get a configuration value.&quot;&quot;&quot;</span>
+    <span class="n">app</span><span class="p">:</span> <span class="n">AppContext</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">request_context</span><span class="o">.</span><span class="n">lifespan_context</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="v2-typing-improvement">v2 typing improvement<a class="headerlink" href="#v2-typing-improvement" title="Permanent link">&para;</a></h3>
+<p>In v2, <code>Context</code> accepts type parameters for stronger typing:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.mcpserver</span><span class="w"> </span><span class="kn">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">MCPServer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.session</span><span class="w"> </span><span class="kn">import</span> <span class="n">ServerSession</span>  <span class="c1"># v1 only</span>
+
+<span class="c1"># v1: Context[ServerSession, AppContext]</span>
+<span class="c1"># v2: Context[AppContext]  (simplified)</span>
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_tool</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Context</span><span class="p">[</span><span class="n">AppContext</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">request_context</span><span class="o">.</span><span class="n">lifespan_context</span>
+    <span class="o">...</span>
+</code></pre></div>
+<hr />
+<h2 id="10-testing-mcp-tools">10. Testing MCP Tools<a class="headerlink" href="#10-testing-mcp-tools" title="Permanent link">&para;</a></h2>
+<h3 id="strategy-1-test-tool-functions-directly-recommended">Strategy 1: Test tool functions directly (recommended)<a class="headerlink" href="#strategy-1-test-tool-functions-directly-recommended" title="Permanent link">&para;</a></h3>
+<p>Since <code>@mcp.tool()</code> decorated functions are regular Python functions, test the
+underlying logic directly:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># tests/test_tools.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">studyctl_mcp.server</span><span class="w"> </span><span class="kn">import</span> <span class="n">_parse_markdown_cards</span><span class="p">,</span> <span class="n">read_flashcards</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_parse_markdown_cards</span><span class="p">():</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;Q: What is MCP?</span><span class="se">\n</span><span class="s2">A: Model Context Protocol</span><span class="se">\n\n</span><span class="s2">Q: Transport?</span><span class="se">\n</span><span class="s2">A: stdio or HTTP&quot;</span>
+    <span class="n">cards</span> <span class="o">=</span> <span class="n">_parse_markdown_cards</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">cards</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="k">assert</span> <span class="n">cards</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;question&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;What is MCP?&quot;</span>
+    <span class="k">assert</span> <span class="n">cards</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;answer&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Model Context Protocol&quot;</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_read_flashcards_missing_file</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">read_flashcards</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;nonexistent.md&quot;</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">total</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">cards</span> <span class="o">==</span> <span class="p">[]</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_read_flashcards_with_topic_filter</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+    <span class="n">md</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;cards.md&quot;</span>
+    <span class="n">md</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;Q: Python Q1</span><span class="se">\n</span><span class="s2">A: Answer 1</span><span class="se">\n</span><span class="s2">Q: Rust Q1</span><span class="se">\n</span><span class="s2">A: Answer 2</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">read_flashcards</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">md</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">total</span> <span class="o">==</span> <span class="mi">2</span>
+</code></pre></div>
+<h3 id="strategy-2-test-via-mcp-client-integration-test">Strategy 2: Test via MCP client (integration test)<a class="headerlink" href="#strategy-2-test-via-mcp-client-integration-test" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># tests/test_mcp_integration.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClientSession</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.client.stdio</span><span class="w"> </span><span class="kn">import</span> <span class="n">stdio_client</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">asyncio</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_mcp_server_tools</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Integration test: spawn server, list tools, call one.&quot;&quot;&quot;</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">stdio_client</span><span class="p">(</span>
+        <span class="n">command</span><span class="o">=</span><span class="s2">&quot;studyctl-mcp&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;uv&quot;, args=[&quot;run&quot;, &quot;studyctl-mcp&quot;]</span>
+    <span class="p">)</span> <span class="k">as</span> <span class="p">(</span><span class="n">read_stream</span><span class="p">,</span> <span class="n">write_stream</span><span class="p">):</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">ClientSession</span><span class="p">(</span><span class="n">read_stream</span><span class="p">,</span> <span class="n">write_stream</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+            <span class="c1"># List tools</span>
+            <span class="n">tools</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">list_tools</span><span class="p">()</span>
+            <span class="n">tool_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tools</span><span class="o">.</span><span class="n">tools</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="s2">&quot;search_sessions&quot;</span> <span class="ow">in</span> <span class="n">tool_names</span>
+
+            <span class="c1"># Call a tool</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">call_tool</span><span class="p">(</span>
+                <span class="s2">&quot;search_sessions&quot;</span><span class="p">,</span>
+                <span class="n">arguments</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">isError</span>
+</code></pre></div>
+<h3 id="strategy-3-mcp-inspector-manualexploratory">Strategy 3: MCP Inspector (manual/exploratory)<a class="headerlink" href="#strategy-3-mcp-inspector-manualexploratory" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Launch the interactive inspector UI</span>
+uv<span class="w"> </span>run<span class="w"> </span>mcp<span class="w"> </span>dev<span class="w"> </span>src/studyctl_mcp/server.py
+
+<span class="c1"># With editable install for live reloading</span>
+uv<span class="w"> </span>run<span class="w"> </span>mcp<span class="w"> </span>dev<span class="w"> </span>src/studyctl_mcp/server.py<span class="w"> </span>--with-editable<span class="w"> </span>.
+</code></pre></div>
+<p>The Inspector provides a web UI to list tools, call them interactively, and
+inspect request/response payloads.</p>
+<hr />
+<h2 id="11-coexistence-with-fastapi">11. Coexistence with FastAPI<a class="headerlink" href="#11-coexistence-with-fastapi" title="Permanent link">&para;</a></h2>
+<p>An MCP server can share a process with FastAPI using ASGI mounting. This is
+useful if <code>studyctl</code> has a web API and you want MCP on the same process.</p>
+<h3 id="using-streamable-http-transport">Using Streamable HTTP transport<a class="headerlink" href="#using-streamable-http-transport" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">contextlib</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mount</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>  <span class="c1"># v1</span>
+
+<span class="c1"># Create MCP server</span>
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">)</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_sessions</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search study sessions.&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+<span class="c1"># Create FastAPI app</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;StudyCtl API&quot;</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">}</span>
+
+<span class="c1"># Mount MCP under /mcp path</span>
+<span class="nd">@contextlib</span><span class="o">.</span><span class="n">asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">mcp</span><span class="o">.</span><span class="n">session_manager</span><span class="o">.</span><span class="n">run</span><span class="p">():</span>
+        <span class="k">yield</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+<span class="n">app</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/api&quot;</span><span class="p">,</span> <span class="n">api</span><span class="p">)</span>
+<span class="n">app</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/mcp&quot;</span><span class="p">,</span> <span class="n">mcp</span><span class="o">.</span><span class="n">streamable_http_app</span><span class="p">())</span>
+
+<span class="c1"># Run with: uvicorn studyctl_mcp.app:app --reload</span>
+</code></pre></div>
+<p>Clients connect to <code>http://localhost:8000/mcp</code> for MCP, <code>http://localhost:8000/api</code> for REST.</p>
+<h3 id="important-notes">Important notes<a class="headerlink" href="#important-notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>ASGI mounting only works with <strong>Streamable HTTP</strong> transport, not stdio.</li>
+<li>For stdio (the normal case for CLI tools), MCP must be the only thing on stdin/stdout.</li>
+<li>If you need both stdio MCP and a web server, run them as <strong>separate processes</strong>.</li>
+</ul>
+<hr />
+<h2 id="12-architecture-decision-v1-vs-v2">12. Architecture Decision: v1 vs v2<a class="headerlink" href="#12-architecture-decision-v1-vs-v2" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Factor</th>
+<th>v1 (<code>FastMCP</code>)</th>
+<th>v2 (<code>MCPServer</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stability</td>
+<td>Stable, production-ready</td>
+<td>Pre-alpha</td>
+</tr>
+<tr>
+<td>Import</td>
+<td><code>mcp.server.fastmcp.FastMCP</code></td>
+<td><code>mcp.server.mcpserver.MCPServer</code></td>
+</tr>
+<tr>
+<td>Tool API</td>
+<td><code>@mcp.tool()</code></td>
+<td><code>@mcp.tool()</code> (identical)</td>
+</tr>
+<tr>
+<td>Context</td>
+<td><code>Context[ServerSession, AppContext]</code></td>
+<td><code>Context[AppContext]</code></td>
+</tr>
+<tr>
+<td>CLI support</td>
+<td><code>mcp run</code>, <code>mcp dev</code>, <code>mcp install</code></td>
+<td>Same</td>
+</tr>
+<tr>
+<td>ASGI mounting</td>
+<td><code>.sse_app()</code>, <code>.streamable_http_app()</code></td>
+<td><code>.streamable_http_app()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation</strong>: Start with v1 (<code>FastMCP</code>). The decorator API is identical.
+When v2 ships stable, migration is:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Before (v1):</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span><span class="p">,</span> <span class="n">Context</span>
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">)</span>
+
+<span class="c1"># After (v2):</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.mcpserver</span><span class="w"> </span><span class="kn">import</span> <span class="n">MCPServer</span><span class="p">,</span> <span class="n">Context</span>
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">MCPServer</span><span class="p">(</span><span class="s2">&quot;studyctl&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="13-project-specific-recommendations-for-studyctl-mcp">13. Project-Specific Recommendations for studyctl-mcp<a class="headerlink" href="#13-project-specific-recommendations-for-studyctl-mcp" title="Permanent link">&para;</a></h2>
+<h3 id="proposed-tool-surface">Proposed tool surface<a class="headerlink" href="#proposed-tool-surface" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>search_sessions</code></td>
+<td>Full-text search over study sessions</td>
+<td>JSON array of sessions</td>
+</tr>
+<tr>
+<td><code>get_session</code></td>
+<td>Retrieve a single session by ID</td>
+<td>Session JSON</td>
+</tr>
+<tr>
+<td><code>list_topics</code></td>
+<td>List all studied topics with counts</td>
+<td>JSON array</td>
+</tr>
+<tr>
+<td><code>get_progress</code></td>
+<td>Learning progress for a topic</td>
+<td>Progress JSON with scores</td>
+</tr>
+<tr>
+<td><code>read_flashcards</code></td>
+<td>Read flashcards from a file</td>
+<td>Structured card data</td>
+</tr>
+<tr>
+<td><code>review_card</code></td>
+<td>Record a flashcard review result</td>
+<td>Confirmation</td>
+</tr>
+<tr>
+<td><code>get_concept_graph</code></td>
+<td>Concept relationships for a topic</td>
+<td>Graph JSON</td>
+</tr>
+</tbody>
+</table>
+<h3 id="proposed-file-structure">Proposed file structure<a class="headerlink" href="#proposed-file-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>packages/studyctl-mcp/
+  pyproject.toml
+  src/
+    studyctl_mcp/
+      __init__.py
+      server.py          # FastMCP instance + tool definitions
+      tools/
+        __init__.py
+        sessions.py      # search_sessions, get_session
+        progress.py      # get_progress, list_topics
+        flashcards.py    # read_flashcards, review_card
+        concepts.py      # get_concept_graph
+      state.py           # AppContext dataclass + lifespan
+</code></pre></div>
+<h3 id="pyprojecttoml">pyproject.toml<a class="headerlink" href="#pyprojecttoml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">[project]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;studyctl-mcp&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">requires-python</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&gt;=3.10&quot;</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;mcp[cli]&gt;=1.20&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;pyyaml&gt;=6.0&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="k">[project.scripts]</span>
+<span class="n">studyctl-mcp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;studyctl_mcp.server:main&quot;</span>
+
+<span class="k">[build-system]</span>
+<span class="n">requires</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;hatchling&quot;</span><span class="p">]</span>
+<span class="n">build-backend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hatchling.build&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Authority</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCP Python SDK README (v1)</td>
+<td>Official</td>
+<td>github.com/modelcontextprotocol/python-sdk (v1.x branch)</td>
+</tr>
+<tr>
+<td>MCP Python SDK README.v2.md</td>
+<td>Official (pre-alpha)</td>
+<td>github.com/modelcontextprotocol/python-sdk (main branch)</td>
+</tr>
+<tr>
+<td>MCP official quickstart</td>
+<td>Official</td>
+<td>modelcontextprotocol.io/quickstart/server</td>
+</tr>
+<tr>
+<td>MCP transports spec</td>
+<td>Official</td>
+<td>modelcontextprotocol.io/specification/2025-06-18/basic/transports</td>
+</tr>
+<tr>
+<td>Claude Code MCP docs</td>
+<td>Official</td>
+<td>docs.claude.com/en/docs/claude-code/mcp</td>
+</tr>
+<tr>
+<td>Gemini CLI MCP docs</td>
+<td>Official</td>
+<td>ai.google.dev/gemini-api/docs/gemini-cli/mcp-servers</td>
+</tr>
+<tr>
+<td>PyPI <code>mcp</code> package</td>
+<td>Official</td>
+<td>pypi.org/project/mcp/</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

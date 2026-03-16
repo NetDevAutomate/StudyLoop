@@ -1,0 +1,2431 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/unified-platform-specflow.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Unified Study Platform -- Spec Flow Analysis - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#unified-study-platform-spec-flow-analysis" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Unified Study Platform -- Spec Flow Analysis
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#user-flow-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Flow Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flow-by-flow-deep-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow-by-Flow Deep Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Flow-by-Flow Deep Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flow-1-content-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FLOW 1: Content Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FLOW 1: Content Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-user-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 User Journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-state-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 State Transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-critical-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Critical Gaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-2-agent-generated-flashcards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FLOW 2: Agent-Generated Flashcards
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FLOW 2: Agent-Generated Flashcards">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-user-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 User Journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-critical-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Critical Gaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-3-web-ui-study-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FLOW 3: Web UI Study Session
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FLOW 3: Web UI Study Session">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-user-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 User Journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-current-state-vs-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Current State vs Spec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-critical-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Critical Gaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-4-onboarding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FLOW 4: Onboarding
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FLOW 4: Onboarding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-user-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 User Journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-critical-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Critical Gaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-5-tui-study-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FLOW 5: TUI Study Session
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FLOW 5: TUI Study Session">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Current State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-gaps-specific-to-unified-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Gaps Specific to Unified Platform
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flow-permutations-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow Permutations Matrix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Flow Permutations Matrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#content-pipeline-permutations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Pipeline Permutations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-ui-permutations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web UI Permutations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onboarding-permutations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Onboarding Permutations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#missing-elements-and-gaps-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing Elements and Gaps Summary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Missing Elements and Gaps Summary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#category-data-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: Data Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-state-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: State Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-ux-and-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: UX and Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#critical-questions-requiring-clarification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Critical Questions Requiring Clarification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Critical Questions Requiring Clarification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#priority-1-critical-blocks-implementation-or-creates-securitydata-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority 1: Critical (blocks implementation or creates security/data risks)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-2-important-significantly-affects-ux-or-maintainability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority 2: Important (significantly affects UX or maintainability)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-3-nice-to-have-improves-clarity-but-has-reasonable-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority 3: Nice-to-have (improves clarity but has reasonable defaults)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Next Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended Next Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#immediate-before-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate (before implementation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#short-term-during-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Short-term (during implementation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-term-post-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Medium-term (post-merge)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-existing-code-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix: Existing Code References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="unified-study-platform-spec-flow-analysis">Unified Study Platform -- Spec Flow Analysis<a class="headerlink" href="#unified-study-platform-spec-flow-analysis" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-03-15
+<strong>Analyst:</strong> Spec Flow Analyzer Agent
+<strong>Scope:</strong> Five proposed flows for merging <code>notebooklm-pdf-by-chapters</code> + <code>Socratic-Study-Mentor</code> into a unified platform with FastAPI web UI</p>
+<hr />
+<h2 id="user-flow-overview">User Flow Overview<a class="headerlink" href="#user-flow-overview" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>graph TB
+    subgraph "FLOW 1: Content Pipeline"
+        F1A[studyctl content split Book.pdf] --&gt; F1B[Chapter PDFs in course dir]
+        F1B --&gt; F1C[studyctl content upload]
+        F1C --&gt; F1D[Chapters in NotebookLM]
+        F1D --&gt; F1E[studyctl content autopilot --download]
+        F1E --&gt; F1F[Audio/Video/Flashcards/Quizzes in course dir]
+        F1G[studyctl content from-obsidian ~/vault/] --&gt; F1H[MD to PDF via pandoc]
+        F1H --&gt; F1C
+    end
+
+    subgraph "FLOW 2: Agent Flashcards"
+        F2A[Agent connects via MCP] --&gt; F2B[Skill sends chapter text to LLM]
+        F2B --&gt; F2C[Structured JSON response]
+        F2C --&gt; F2D[flashcards/ and quizzes/ in course dir]
+    end
+
+    subgraph "FLOW 3: Web UI"
+        F3A[studyctl web] --&gt; F3B[FastAPI on 0.0.0.0:8567]
+        F3B --&gt; F3C[Course picker]
+        F3C --&gt; F3D[Flashcard/Quiz review]
+        F3C --&gt; F3E[Artefact viewer]
+        F3C --&gt; F3F[Progress dashboard]
+        F3C --&gt; F3G[Config editor]
+        F3C --&gt; F3H[Feedback submission]
+    end
+
+    subgraph "FLOW 4: Onboarding"
+        F4A[Non-technical: claude /study-setup] --&gt; F4C[~/.config/studyctl/config.yaml]
+        F4B[Technical: studyctl setup] --&gt; F4C
+    end
+
+    subgraph "FLOW 5: TUI"
+        F5A[studyctl tui] --&gt; F5B[Textual dashboard]
+        F5B --&gt; F5C[StudyCards / Pomodoro / Voice / Artefacts]
+    end
+
+    F1F --&gt; F3D
+    F1F --&gt; F5C
+    F2D --&gt; F3D
+    F2D --&gt; F5C
+    F4C --&gt; F1A
+    F4C --&gt; F3A
+    F4C --&gt; F5A</code></pre>
+<hr />
+<h2 id="flow-by-flow-deep-analysis">Flow-by-Flow Deep Analysis<a class="headerlink" href="#flow-by-flow-deep-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="flow-1-content-pipeline">FLOW 1: Content Pipeline<a class="headerlink" href="#flow-1-content-pipeline" title="Permanent link">&para;</a></h3>
+<h4 id="11-user-journeys">1.1 User Journeys<a class="headerlink" href="#11-user-journeys" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Journey</th>
+<th>Entry Point</th>
+<th>Steps</th>
+<th>Exit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1A</td>
+<td>PDF Ebook to Audio Podcast</td>
+<td><code>studyctl content split "Book.pdf"</code></td>
+<td>split -&gt; upload -&gt; autopilot --download</td>
+<td>Audio MP3s in course dir</td>
+</tr>
+<tr>
+<td>1B</td>
+<td>PDF Ebook to Full Study Materials</td>
+<td><code>studyctl content split "Book.pdf"</code></td>
+<td>split -&gt; upload -&gt; autopilot --download (audio+video+flashcards+quizzes)</td>
+<td>All artefact types</td>
+</tr>
+<tr>
+<td>1C</td>
+<td>Obsidian Notes to Study Materials</td>
+<td><code>studyctl content from-obsidian ~/vault/notes/</code></td>
+<td>md-&gt;PDF -&gt; upload -&gt; generate</td>
+<td>Audio + flashcards + quizzes</td>
+</tr>
+<tr>
+<td>1D</td>
+<td>Resume Interrupted Generation</td>
+<td><code>studyctl content autopilot --resume</code></td>
+<td>Skip completed chapters, continue</td>
+<td>Remaining artefacts</td>
+</tr>
+<tr>
+<td>1E</td>
+<td>Re-upload After Note Changes</td>
+<td><code>studyctl content upload --changed</code></td>
+<td>Detect changed files, re-upload</td>
+<td>Updated NotebookLM sources</td>
+</tr>
+</tbody>
+</table>
+<h4 id="12-state-transitions">1.2 State Transitions<a class="headerlink" href="#12-state-transitions" title="Permanent link">&para;</a></h4>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; RawPDF: User has ebook PDF
+    [*] --&gt; ObsidianNotes: User has markdown notes
+    RawPDF --&gt; ChapterPDFs: content split
+    ObsidianNotes --&gt; ConvertedPDFs: content from-obsidian (pandoc)
+    ChapterPDFs --&gt; Uploaded: content upload
+    ConvertedPDFs --&gt; Uploaded: content upload
+    Uploaded --&gt; Generating: content autopilot
+    Generating --&gt; Generated: Poll until complete
+    Generated --&gt; Downloaded: --download flag
+    Downloaded --&gt; ReviewReady: JSON files in course dir
+    ReviewReady --&gt; [*]: User studies via web/tui
+
+    Generating --&gt; PartialFailure: Cookie expiry / rate limit
+    PartialFailure --&gt; Generating: --resume
+    PartialFailure --&gt; ManualFix: User refreshes cookie</code></pre>
+<h4 id="13-critical-gaps">1.3 Critical Gaps<a class="headerlink" href="#13-critical-gaps" title="Permanent link">&para;</a></h4>
+<p><strong>GAP-1.1: Course directory structure not specified</strong>
+- Where exactly does <code>content split</code> write chapter PDFs? The spec says "course-centric directory" but does not define the directory layout.
+- Current <code>pdf-by-chapters</code> writes to <code>./chapters/</code> relative to CWD. The unified tool needs a deterministic, configurable location.
+- <strong>Proposed convention needed</strong>: <code>~/.local/share/studyctl/courses/{book-slug}/chapters/</code>, <code>flashcards/</code>, <code>quizzes/</code>, <code>downloads/</code>? Or relative to Obsidian vault? Or configurable per-course in config.yaml?</p>
+<p><strong>GAP-1.2: <code>content split</code> -- PDF without TOC bookmarks</strong>
+- The spec lists this as an edge case but provides no resolution.
+- <code>pdf-by-chapters</code> uses <code>PyMuPDF get_toc()</code> which returns an empty list for PDFs without bookmarks.
+- Options: (a) Fail with helpful error, (b) Fall back to page-count-based splitting (every N pages), (c) Use LLM to detect chapter boundaries from text, (d) Allow manual page ranges via <code>--ranges "1-30,31-60,61-90"</code>.
+- <strong>Impact</strong>: Without this, a significant proportion of technical ebooks (scanned PDFs, older publications) are unsupported.</p>
+<p><strong>GAP-1.3: <code>content upload</code> -- NotebookLM authentication model</strong>
+- Current <code>notebooklm-py</code> uses browser cookies (Secure-1PSID etc.). These expire unpredictably.
+- The spec mentions "cookie expiry mid-generation" but does not specify: (a) How the user provides/refreshes cookies initially, (b) How the system detects expiry vs other failures, (c) Whether there is a re-auth prompt or the user must manually update a cookie file.
+- The <code>notebooklm-py</code> library has no OAuth flow -- it is cookie-based. This is fragile.</p>
+<p><strong>GAP-1.4: <code>content autopilot</code> -- Generation failure modes</strong>
+- NotebookLM generation is asynchronous and takes 15+ minutes per artefact type per chapter range.
+- What happens when: (a) One chapter fails but others succeed? (b) Rate limiting kicks in (daily quota ~20-25 for infographics/slides)? (c) Network drops mid-poll? (d) The process is killed (Ctrl+C) during generation?
+- Need: Idempotent resume, per-chapter state tracking, graceful partial completion.</p>
+<p><strong>GAP-1.5: <code>content from-obsidian</code> -- External tool dependencies</strong>
+- Requires <code>pandoc</code>, <code>mermaid-cli</code> (mmdc), and <code>typst</code> installed.
+- What if they are not installed? Currently <code>pdf-by-chapters</code> fails with a subprocess error.
+- Need: Dependency check at startup with actionable install instructions per platform.</p>
+<p><strong>GAP-1.6: Relationship between <code>content split</code> and existing <code>sync</code> command</strong>
+- The current <code>studyctl sync</code> uploads Obsidian notes to NotebookLM.
+- <code>content from-obsidian</code> does a similar thing but via the pdf-by-chapters pipeline.
+- These overlap. Is <code>sync</code> being replaced? Deprecated? Running in parallel?
+- <strong>Impact</strong>: Users will be confused about which command to use.</p>
+<p><strong>GAP-1.7: Large PDF handling (1000+ pages)</strong>
+- Splitting a 1000-page PDF produces potentially 40-80 chapter PDFs.
+- NotebookLM has source limits per notebook (currently 50 sources).
+- What is the chunking strategy? One notebook per N chapters? Multiple notebooks?
+- Memory usage during split: PyMuPDF should handle this, but no streaming is mentioned.</p>
+<hr />
+<h3 id="flow-2-agent-generated-flashcards">FLOW 2: Agent-Generated Flashcards<a class="headerlink" href="#flow-2-agent-generated-flashcards" title="Permanent link">&para;</a></h3>
+<h4 id="21-user-journeys">2.1 User Journeys<a class="headerlink" href="#21-user-journeys" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Journey</th>
+<th>Actor</th>
+<th>Steps</th>
+<th>Exit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2A</td>
+<td>Agent generates flashcards for a chapter</td>
+<td>AI coding agent</td>
+<td>Connect MCP -&gt; invoke skill -&gt; LLM generates JSON -&gt; save to course dir</td>
+<td>JSON files in flashcards/</td>
+</tr>
+<tr>
+<td>2B</td>
+<td>Agent generates quiz for a chapter</td>
+<td>AI coding agent</td>
+<td>Connect MCP -&gt; invoke skill -&gt; LLM generates JSON -&gt; save to course dir</td>
+<td>JSON files in quizzes/</td>
+</tr>
+<tr>
+<td>2C</td>
+<td>Agent updates existing flashcards</td>
+<td>AI coding agent</td>
+<td>Load existing JSON -&gt; merge/update -&gt; save</td>
+<td>Updated JSON</td>
+</tr>
+<tr>
+<td>2D</td>
+<td>User triggers generation from CLI</td>
+<td>User</td>
+<td><code>studyctl content generate-cards --chapter 3</code></td>
+<td>JSON files</td>
+</tr>
+</tbody>
+</table>
+<h4 id="22-critical-gaps">2.2 Critical Gaps<a class="headerlink" href="#22-critical-gaps" title="Permanent link">&para;</a></h4>
+<p><strong>GAP-2.1: MCP skill definition not specified</strong>
+- What is the MCP tool name? What parameters does it accept?
+- What is the input: raw chapter text, chapter PDF path, or chapter identifier?
+- What is the output: the JSON file path, or the JSON content?
+- Which LLM is used for generation? Is it configurable (Claude, GPT-4, Gemini)?</p>
+<p><strong>GAP-2.2: Flashcard JSON schema validation</strong>
+- The current JSON format is defined by convention: <code>{"title": "...", "cards": [{"front": "...", "back": "..."}]}</code> for flashcards, <code>{"title": "...", "questions": [{"question": "...", "answerOptions": [...]}]}</code> for quizzes.
+- No JSON Schema file exists. No validation on load (just try/except).
+- LLMs produce malformed JSON frequently. What happens when: (a) The JSON is syntactically invalid? (b) The JSON is valid but missing required fields? (c) The "isCorrect" field is missing from quiz options? (d) Multiple options are marked correct?
+- Need: A formal JSON Schema, validation on write (from agent), graceful degradation on read.</p>
+<p><strong>GAP-2.3: Card deduplication and versioning</strong>
+- If the agent generates flashcards for the same chapter twice, what happens?
+- Current loader globs <code>*flashcards.json</code> -- duplicate files means duplicate cards.
+- The <code>card_hash</code> is <code>sha256(front_text)[:16]</code> -- so identical front text deduplicates in SM-2 tracking, but the card still appears twice in the deck.
+- Need: File naming convention that prevents duplicates, or a merge strategy.</p>
+<p><strong>GAP-2.4: Chapter text extraction</strong>
+- The skill "sends chapter text to LLM" but how is chapter text extracted from the PDF?
+- Is this PyMuPDF text extraction? OCR for scanned PDFs? What about images, diagrams, code blocks?
+- Character limits for LLM context windows -- a 30-page chapter might be 15,000+ tokens.</p>
+<p><strong>GAP-2.5: Quality control</strong>
+- Generated flashcards may be low quality (too vague, factually wrong, trivial).
+- Is there a review/approval step? Or are they immediately available for study?
+- The <code>docs/research/flashcards-wrong-answers-best-practices.md</code> exists -- has this been incorporated?</p>
+<hr />
+<h3 id="flow-3-web-ui-study-session">FLOW 3: Web UI Study Session<a class="headerlink" href="#flow-3-web-ui-study-session" title="Permanent link">&para;</a></h3>
+<h4 id="31-user-journeys">3.1 User Journeys<a class="headerlink" href="#31-user-journeys" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Journey</th>
+<th>Steps</th>
+<th>Exit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3A</td>
+<td>Quick flashcard session</td>
+<td>web -&gt; course picker -&gt; flashcards -&gt; flip/rate cards -&gt; session summary</td>
+<td>Return to courses</td>
+</tr>
+<tr>
+<td>3B</td>
+<td>Quiz session</td>
+<td>web -&gt; course picker -&gt; quiz -&gt; answer questions -&gt; session summary</td>
+<td>Return to courses</td>
+</tr>
+<tr>
+<td>3C</td>
+<td>Due cards review</td>
+<td>web -&gt; course picker (due badge) -&gt; due cards only -&gt; review -&gt; summary</td>
+<td>Return to courses</td>
+</tr>
+<tr>
+<td>3D</td>
+<td>Wrong answer retry</td>
+<td>Session summary -&gt; "Review wrong answers" -&gt; retry session (SM-2 skipped)</td>
+<td>Return to courses</td>
+</tr>
+<tr>
+<td>3E</td>
+<td>Filtered study</td>
+<td>web -&gt; course picker -&gt; select source/chapter -&gt; filtered session</td>
+<td>Return to courses</td>
+</tr>
+<tr>
+<td>3F</td>
+<td>Artefact playback</td>
+<td>web -&gt; course -&gt; artefact viewer -&gt; play audio/video</td>
+<td>Return to course</td>
+</tr>
+<tr>
+<td>3G</td>
+<td>Progress check</td>
+<td>web -&gt; dashboard -&gt; heatmap + history + stats</td>
+<td>Stay on dashboard</td>
+</tr>
+<tr>
+<td>3H</td>
+<td>Config edit</td>
+<td>web -&gt; settings -&gt; update config.yaml</td>
+<td>Saved config</td>
+</tr>
+<tr>
+<td>3I</td>
+<td>Bug report</td>
+<td>web -&gt; feedback -&gt; submit issue</td>
+<td>GitHub issue created</td>
+</tr>
+</tbody>
+</table>
+<h4 id="32-current-state-vs-spec">3.2 Current State vs Spec<a class="headerlink" href="#32-current-state-vs-spec" title="Permanent link">&para;</a></h4>
+<p>The web UI already exists as a stdlib <code>http.server</code> implementation (not FastAPI). Key findings:</p>
+<table>
+<thead>
+<tr>
+<th>Spec Requirement</th>
+<th>Current State</th>
+<th>Gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FastAPI on 0.0.0.0:8567</td>
+<td>stdlib HTTPServer on 0.0.0.0:8567</td>
+<td><strong>Major</strong>: Spec says FastAPI, implementation is stdlib. Which is the plan?</td>
+</tr>
+<tr>
+<td><code>--password</code> LAN auth</td>
+<td>Not implemented</td>
+<td><strong>Missing entirely</strong></td>
+</tr>
+<tr>
+<td>Artefact viewer (audio, video, PDF, infographic)</td>
+<td>Not implemented</td>
+<td><strong>Missing entirely</strong></td>
+</tr>
+<tr>
+<td>Config editor</td>
+<td>Not implemented</td>
+<td><strong>Missing entirely</strong></td>
+</tr>
+<tr>
+<td>Feedback -&gt; GitHub Issues</td>
+<td>Not implemented</td>
+<td><strong>Missing entirely</strong></td>
+</tr>
+<tr>
+<td>Flashcard review + SM-2</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>Quiz review</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>Progress dashboard + heatmap</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>Pomodoro timer</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>Voice (Web Speech API)</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>PWA + service worker</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>OpenDyslexic toggle</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>Dark/light theme</td>
+<td>Implemented</td>
+<td>Working</td>
+</tr>
+</tbody>
+</table>
+<h4 id="33-critical-gaps">3.3 Critical Gaps<a class="headerlink" href="#33-critical-gaps" title="Permanent link">&para;</a></h4>
+<p><strong>GAP-3.1: FastAPI vs stdlib -- architectural decision needed</strong>
+- The spec says "FastAPI starts on 0.0.0.0:8567" but the current implementation is <code>http.server.HTTPServer</code>.
+- FastAPI requires <code>uvicorn</code> as an ASGI server, adding a dependency.
+- The current implementation deliberately avoids external dependencies ("no external dependencies" per docstring).
+- <strong>Decision needed</strong>: Migrate to FastAPI (adds deps, gains async, middleware, validation, OpenAPI docs) or stay with stdlib (zero deps, simpler, already working)?
+- If FastAPI: this is a rewrite of server.py, not an enhancement.</p>
+<p><strong>GAP-3.2: <code>--password</code> LAN authentication -- design not specified</strong>
+- What authentication scheme? Basic Auth? Token-based? Session cookie?
+- Where is the password stored? In config.yaml? As a CLI argument only (ephemeral)?
+- Is it per-session or persistent?
+- What happens when an unauthenticated user accesses the UI? Redirect to login page? 401?
+- Can the password be changed from the config editor (circular dependency if so)?
+- Is HTTPS required for password security on LAN? (HTTP sends credentials in cleartext.)</p>
+<p><strong>GAP-3.3: Artefact viewer -- file serving and security</strong>
+- Audio/video/PDF/infographic files are on the local filesystem.
+- The web server needs to serve these files. Currently it only serves from <code>STATIC_DIR</code>.
+- Need: A route like <code>/api/artefacts/{course}/{filename}</code> that serves from the course directory.
+- <strong>Security</strong>: This creates a file serving endpoint. Without path validation, it is a directory traversal vulnerability. Need strict path validation (no <code>../</code>, must be within configured course directories).
+- What file formats are supported? MP3, MP4, PDF, PNG/JPEG? What about WebM, OGG?
+- How large are video files? Streaming (Range header support) is needed for large videos.</p>
+<p><strong>GAP-3.4: Config editor -- scope and safety</strong>
+- Which config values are editable from the UI? All of config.yaml? A subset?
+- Editing config.yaml from the web UI while the server is running: does the server hot-reload config?
+- What validation is performed on edits? (e.g., user enters an invalid path)
+- Concurrent editing: what if two LAN users edit config simultaneously?
+- <strong>Security</strong>: A config editor accessible over LAN is a significant attack surface. An attacker on the LAN could change <code>session_db</code> to point to a malicious path, or modify <code>sync_remote</code> to exfiltrate data.</p>
+<p><strong>GAP-3.5: GitHub Issues feedback -- authentication</strong>
+- The GitHub Issues API requires authentication (personal access token).
+- Where is the token stored? In config.yaml? In <code>.env</code>?
+- What is the issue template? Title, body, labels?
+- What happens if the token is missing or expired? Graceful fallback?
+- Rate limiting: GitHub API has rate limits (60 unauthenticated, 5000 authenticated per hour).</p>
+<p><strong>GAP-3.6: Multiple users on LAN -- data conflicts</strong>
+- The spec mentions this edge case but provides no resolution.
+- The SQLite database is at <code>~/.config/studyctl/sessions.db</code> on the server machine.
+- Multiple concurrent HTTP requests from different browsers all write to the same DB.
+- SQLite handles concurrent reads well but has write contention with WAL mode.
+- Is WAL mode enabled? Current code does <code>sqlite3.connect(path)</code> without <code>PRAGMA journal_mode=WAL</code>.
+- SM-2 calculations are non-atomic: read previous review, compute new interval, insert. A race condition between two users reviewing the same card could produce incorrect intervals.
+- <strong>Bigger question</strong>: Is this a single-user tool being used on LAN for convenience (e.g., phone + laptop), or a genuinely multi-user tool? The SM-2 tracking has no user_id column.</p>
+<p><strong>GAP-3.7: Service worker cache invalidation</strong>
+- Current <code>sw.js</code> caches static assets (<code>/</code>, <code>/style.css</code>, <code>/app.js</code>, <code>/manifest.json</code>).
+- API calls (<code>/api/*</code>) bypass the cache.
+- But the cache version is hardcoded as <code>studyctl-v1</code>. After a software update, users get stale cached assets until the service worker updates.
+- Need: Cache busting strategy (version bump, or content-hash filenames).</p>
+<hr />
+<h3 id="flow-4-onboarding">FLOW 4: Onboarding<a class="headerlink" href="#flow-4-onboarding" title="Permanent link">&para;</a></h3>
+<h4 id="41-user-journeys">4.1 User Journeys<a class="headerlink" href="#41-user-journeys" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Journey</th>
+<th>Actor</th>
+<th>Entry</th>
+<th>Steps</th>
+<th>Exit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4A</td>
+<td>Non-technical onboarding</td>
+<td>New user + Claude Code</td>
+<td><code>claude /study-setup</code></td>
+<td>Agent asks questions conversationally -&gt; writes config.yaml</td>
+<td>Ready to use</td>
+</tr>
+<tr>
+<td>4B</td>
+<td>Technical onboarding</td>
+<td>Developer</td>
+<td><code>studyctl setup</code></td>
+<td>Interactive CLI wizard -&gt; writes config.yaml</td>
+<td>Ready to use</td>
+</tr>
+<tr>
+<td>4C</td>
+<td>Existing user migration</td>
+<td>User with pdf-by-chapters</td>
+<td>Unknown</td>
+<td>Migrate existing courses/notebooks</td>
+<td>Unified config</td>
+</tr>
+<tr>
+<td>4D</td>
+<td>Re-onboarding</td>
+<td>User changing settings</td>
+<td><code>studyctl setup</code> or <code>studyctl config init</code></td>
+<td>Update existing config</td>
+<td>Updated config</td>
+</tr>
+</tbody>
+</table>
+<h4 id="42-critical-gaps">4.2 Critical Gaps<a class="headerlink" href="#42-critical-gaps" title="Permanent link">&para;</a></h4>
+<p><strong>GAP-4.1: <code>studyctl setup</code> vs <code>studyctl config init</code> -- naming collision</strong>
+- The spec says onboarding uses <code>studyctl setup</code>.
+- The current codebase has <code>studyctl config init</code> which already does interactive setup.
+- Are these the same command? Different? Is <code>setup</code> an alias for <code>config init</code>?
+- The README documents <code>studyctl config init</code>. Changing the command name breaks docs and muscle memory.</p>
+<p><strong>GAP-4.2: <code>claude /study-setup</code> -- agent skill definition</strong>
+- What does this agent skill do that <code>studyctl config init</code> does not?
+- Does it call <code>studyctl config init</code> under the hood, or write config.yaml directly?
+- What questions does it ask? The current <code>config init</code> asks about: knowledge bridging, NotebookLM integration, Obsidian vault path.
+- The spec says "conversational" -- does it detect the user's study goals and suggest topics?
+- How does it handle errors (e.g., user provides a path that does not exist)?</p>
+<p><strong>GAP-4.3: Migration from <code>pdf-by-chapters</code></strong>
+- Users of the standalone <code>pdf-by-chapters</code> tool have: courses in arbitrary directories, notebook IDs in their shell history/notes, generated artefacts in <code>./downloads/</code>.
+- How do they migrate? Is there a <code>studyctl migrate --from-pdf-by-chapters</code>?
+- What about the <code>pdf-by-chapters</code> config (if any)?
+- If not addressed, existing users will have two tools and not know which to use.</p>
+<p><strong>GAP-4.4: First-run experience without config</strong>
+- What happens when a user runs <code>studyctl web</code> or <code>studyctl tui</code> without having run setup?
+- Currently the TUI reads config.yaml and falls back to empty defaults.
+- The web UI shows "No courses found" with config instructions.
+- Should the tool auto-detect and offer to run setup? Or just show the empty state?</p>
+<p><strong>GAP-4.5: Config schema versioning</strong>
+- The unified platform adds new config sections (content pipeline paths, web auth, etc.).
+- Old config.yaml files from pre-merge installations will lack these sections.
+- Is there a config migration mechanism? Schema version field?
+- What happens when new code reads old config? Silent defaults? Warning?</p>
+<hr />
+<h3 id="flow-5-tui-study-session">FLOW 5: TUI Study Session<a class="headerlink" href="#flow-5-tui-study-session" title="Permanent link">&para;</a></h3>
+<h4 id="51-current-state">5.1 Current State<a class="headerlink" href="#51-current-state" title="Permanent link">&para;</a></h4>
+<p>The TUI is already well-implemented with:
+- StudyCards tab with flashcard/quiz review
+- Spaced repetition tracking
+- Voice output via study-speak
+- OpenDyslexic font toggle
+- Pomodoro timer (from experimental modules)
+- Concept graph viewer
+- Progress dashboard (struggles, wins, due reviews)</p>
+<h4 id="52-gaps-specific-to-unified-platform">5.2 Gaps Specific to Unified Platform<a class="headerlink" href="#52-gaps-specific-to-unified-platform" title="Permanent link">&para;</a></h4>
+<p><strong>GAP-5.1: Artefact browser in TUI</strong>
+- The spec mentions "artefact browser" in TUI but the current TUI has no artefact playback.
+- Playing audio in a Textual TUI requires spawning an external player (e.g., <code>afplay</code> on macOS, <code>mpv</code>, <code>ffplay</code>).
+- PDF viewing in terminal: not feasible. Open in external viewer?
+- Video: same as audio, external player.
+- This is fundamentally different from the web UI where the browser handles media natively.</p>
+<p><strong>GAP-5.2: TUI and Web UI feature parity</strong>
+- The spec implies both UIs offer similar features. But their capabilities differ fundamentally:
+  - Web: native media playback, heatmap visualisation, config editor
+  - TUI: keyboard-driven, tmux-friendly, no media playback
+- Need: Clear statement of which features are web-only, TUI-only, or both.</p>
+<hr />
+<h2 id="flow-permutations-matrix">Flow Permutations Matrix<a class="headerlink" href="#flow-permutations-matrix" title="Permanent link">&para;</a></h2>
+<h3 id="content-pipeline-permutations">Content Pipeline Permutations<a class="headerlink" href="#content-pipeline-permutations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Variations</th>
+<th>Current Handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PDF type</td>
+<td>Has TOC bookmarks / No bookmarks / Scanned (images only) / Password protected</td>
+<td>Only TOC bookmarks handled</td>
+</tr>
+<tr>
+<td>PDF size</td>
+<td>Small (&lt;100 pages) / Medium (100-500) / Large (500-1000) / Huge (1000+)</td>
+<td>Not differentiated</td>
+</tr>
+<tr>
+<td>Source type</td>
+<td>PDF ebook / Obsidian markdown / Mixed</td>
+<td>PDF and markdown separate paths</td>
+</tr>
+<tr>
+<td>NotebookLM state</td>
+<td>Authenticated / Cookie expired / Rate limited / Service down</td>
+<td>No error differentiation</td>
+</tr>
+<tr>
+<td>Generation scope</td>
+<td>Audio only / Video only / All artefact types / Flashcards only</td>
+<td><code>--no-video</code> flag exists in pdf-by-chapters</td>
+</tr>
+<tr>
+<td>Resume state</td>
+<td>Fresh start / Partial completion / All complete</td>
+<td><code>--resume</code> mentioned but not specified</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>Online / Slow / Intermittent / Offline</td>
+<td>No offline handling for pipeline</td>
+</tr>
+<tr>
+<td>Disk space</td>
+<td>Ample / Low / Full</td>
+<td>No space checks</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web-ui-permutations">Web UI Permutations<a class="headerlink" href="#web-ui-permutations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Variations</th>
+<th>Current Handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User auth</td>
+<td>No password / Password set / Wrong password</td>
+<td>Not implemented</td>
+</tr>
+<tr>
+<td>Device</td>
+<td>Desktop browser / Mobile browser / Tablet / PWA installed</td>
+<td>Responsive CSS exists</td>
+</tr>
+<tr>
+<td>Courses</td>
+<td>No courses / One course / Many courses / Course with 0 cards</td>
+<td>Empty state handled</td>
+</tr>
+<tr>
+<td>Session</td>
+<td>First time / Returning (has history) / Due cards available</td>
+<td>Due badge implemented</td>
+</tr>
+<tr>
+<td>Concurrent</td>
+<td>Single user / Same user multi-device / Multiple users</td>
+<td>No multi-user support</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>Online / Offline (PWA cache) / Server stops mid-session</td>
+<td>Basic SW cache only</td>
+</tr>
+<tr>
+<td>Browser</td>
+<td>Chrome / Firefox / Safari / Safari iOS</td>
+<td>Not tested cross-browser</td>
+</tr>
+</tbody>
+</table>
+<h3 id="onboarding-permutations">Onboarding Permutations<a class="headerlink" href="#onboarding-permutations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Variations</th>
+<th>Current Handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User type</td>
+<td>Non-technical (agent) / Technical (CLI)</td>
+<td>Both paths proposed</td>
+</tr>
+<tr>
+<td>Prior state</td>
+<td>Fresh install / Existing config / Migrating from pdf-by-chapters</td>
+<td>Only fresh/existing</td>
+</tr>
+<tr>
+<td>Dependencies</td>
+<td>All installed / Missing pandoc / Missing notebooklm-py / Missing textual</td>
+<td>Partial import guards</td>
+</tr>
+<tr>
+<td>Platform</td>
+<td>macOS / Linux / WSL</td>
+<td>macOS primary, Linux secondary</td>
+</tr>
+<tr>
+<td>Agent CLI</td>
+<td>Claude Code / Gemini / Kiro / None installed</td>
+<td>Not differentiated for setup</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="missing-elements-and-gaps-summary">Missing Elements and Gaps Summary<a class="headerlink" href="#missing-elements-and-gaps-summary" title="Permanent link">&para;</a></h2>
+<h3 id="category-data-architecture">Category: Data Architecture<a class="headerlink" href="#category-data-architecture" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Gap</th>
+<th>Impact</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DA-1</td>
+<td>Course directory structure not defined</td>
+<td>Developers cannot implement content pipeline without knowing where files go</td>
+<td>Critical</td>
+</tr>
+<tr>
+<td>DA-2</td>
+<td>No formal JSON Schema for flashcard/quiz format</td>
+<td>LLM-generated content may be malformed, causing runtime errors</td>
+<td>Critical</td>
+</tr>
+<tr>
+<td>DA-3</td>
+<td>card_reviews has no user_id column</td>
+<td>Multi-user LAN access creates merged/conflicted SM-2 data</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>DA-4</td>
+<td>Config schema versioning absent</td>
+<td>Old configs break silently on upgrade</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>DA-5</td>
+<td>No content manifest or pipeline state file defined</td>
+<td>Cannot implement resume/idempotency</td>
+<td>Critical</td>
+</tr>
+</tbody>
+</table>
+<h3 id="category-security">Category: Security<a class="headerlink" href="#category-security" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Gap</th>
+<th>Impact</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SE-1</td>
+<td>LAN auth scheme not specified</td>
+<td>Cannot implement <code>--password</code> flag</td>
+<td>Critical</td>
+</tr>
+<tr>
+<td>SE-2</td>
+<td>Artefact file serving creates directory traversal risk</td>
+<td>Attacker on LAN reads arbitrary files</td>
+<td>Critical</td>
+</tr>
+<tr>
+<td>SE-3</td>
+<td>Config editor over LAN allows remote config modification</td>
+<td>Attacker can alter DB paths, sync targets</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>SE-4</td>
+<td>GitHub token storage not specified</td>
+<td>Feedback feature cannot be implemented</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>SE-5</td>
+<td>HTTP-only serving sends password in cleartext on LAN</td>
+<td>Password can be sniffed on WiFi</td>
+<td>Important</td>
+</tr>
+</tbody>
+</table>
+<h3 id="category-error-handling">Category: Error Handling<a class="headerlink" href="#category-error-handling" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Gap</th>
+<th>Impact</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EH-1</td>
+<td>NotebookLM cookie expiry detection and recovery</td>
+<td>User stuck when generation fails mid-pipeline</td>
+<td>Critical</td>
+</tr>
+<tr>
+<td>EH-2</td>
+<td>PDF without TOC -- no fallback strategy</td>
+<td>Common ebooks rejected with unhelpful error</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>EH-3</td>
+<td>External tool dependency checking (pandoc, mmdc, typst)</td>
+<td>Confusing subprocess errors</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>EH-4</td>
+<td>Rate limit handling for NotebookLM (daily quota ~20-25)</td>
+<td>Silent failures during autopilot</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>EH-5</td>
+<td>Large PDF memory/time handling</td>
+<td>Process killed by OOM or user gives up</td>
+<td>Nice-to-have</td>
+</tr>
+</tbody>
+</table>
+<h3 id="category-state-management">Category: State Management<a class="headerlink" href="#category-state-management" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Gap</th>
+<th>Impact</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SM-1</td>
+<td>Pipeline state persistence for resume/idempotency</td>
+<td>Cannot resume interrupted autopilot</td>
+<td>Critical</td>
+</tr>
+<tr>
+<td>SM-2</td>
+<td>SQLite WAL mode not enabled</td>
+<td>Write contention with concurrent web requests</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>SM-3</td>
+<td>Service worker cache invalidation strategy</td>
+<td>Users get stale UI after updates</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>SM-4</td>
+<td>Cross-machine sync for content pipeline data (course dirs, artefacts)</td>
+<td>Only sessions.db syncs, not study materials</td>
+<td>Important</td>
+</tr>
+</tbody>
+</table>
+<h3 id="category-ux-and-integration">Category: UX and Integration<a class="headerlink" href="#category-ux-and-integration" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Gap</th>
+<th>Impact</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UX-1</td>
+<td><code>studyctl setup</code> vs <code>studyctl config init</code> naming</td>
+<td>User confusion, doc inconsistency</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>UX-2</td>
+<td><code>content from-obsidian</code> vs <code>sync</code> command overlap</td>
+<td>Users do not know which to use</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>UX-3</td>
+<td>TUI artefact browser feasibility (terminal media playback)</td>
+<td>Feature may be unimplementable as described</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>UX-4</td>
+<td>Migration path from standalone pdf-by-chapters</td>
+<td>Existing users abandoned</td>
+<td>Important</td>
+</tr>
+<tr>
+<td>UX-5</td>
+<td>Web/TUI feature parity expectations not set</td>
+<td>Users expect features that do not exist in their chosen UI</td>
+<td>Nice-to-have</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="critical-questions-requiring-clarification">Critical Questions Requiring Clarification<a class="headerlink" href="#critical-questions-requiring-clarification" title="Permanent link">&para;</a></h2>
+<h3 id="priority-1-critical-blocks-implementation-or-creates-securitydata-risks">Priority 1: Critical (blocks implementation or creates security/data risks)<a class="headerlink" href="#priority-1-critical-blocks-implementation-or-creates-securitydata-risks" title="Permanent link">&para;</a></h3>
+<p><strong>Q1. What is the canonical course directory structure?</strong>
+Where does each pipeline step write its output? The entire content pipeline, agent flashcard generation, web UI, and TUI all need to agree on where files live. Without this, nothing integrates.
+- <em>If unanswered</em>: I would assume <code>~/.local/share/studyctl/courses/{slug}/</code> with subdirs <code>chapters/</code>, <code>flashcards/</code>, <code>quizzes/</code>, <code>downloads/</code> (audio/video/infographic).
+- <em>Example ambiguity</em>: User runs <code>studyctl content split "Clean-Code.pdf"</code> -- does it create <code>~/.local/share/studyctl/courses/clean-code/chapters/</code> or <code>./clean-code/chapters/</code> in CWD?</p>
+<p><strong>Q2. FastAPI or stdlib http.server?</strong>
+The spec says FastAPI. The implementation uses stdlib with zero dependencies. Which is the target? This is a fork-in-the-road decision that affects every subsequent web feature.
+- <em>If unanswered</em>: I would keep stdlib (already working, zero deps) and add the missing features incrementally.
+- <em>Impact</em>: FastAPI means rewriting server.py, adding uvicorn + fastapi to dependencies, and potentially breaking the "optional dependency" model (web UI currently requires no extras).</p>
+<p><strong>Q3. How does <code>--password</code> authentication work?</strong>
+What auth scheme (Basic Auth, session cookie, bearer token)? Where is the password stored (CLI arg only, config.yaml, environment variable)? Is HTTPS required?
+- <em>If unanswered</em>: I would implement HTTP Basic Auth with the password as a CLI argument only (not persisted), with a warning that HTTP sends credentials in cleartext.
+- <em>Example</em>: <code>studyctl web --password mysecret</code> -- user accesses http://192.168.1.10:8567 from phone, browser prompts for password.</p>
+<p><strong>Q4. What is the pipeline state persistence format?</strong>
+The <code>autopilot</code> command needs to track which chapters have been uploaded, which artefacts have been generated, and which have been downloaded. What is the state file format and location?
+- <em>If unanswered</em>: I would assume a <code>.pipeline-state.json</code> in the course directory (similar to the existing <code>docs/artefacts/.pipeline-state.json</code>).
+- <em>Impact</em>: Without this, <code>--resume</code> cannot be implemented, and any interruption requires starting over.</p>
+<p><strong>Q5. How is artefact file serving secured against directory traversal?</strong>
+The web server needs to serve audio/video/PDF files from course directories. How do we prevent path traversal attacks?
+- <em>If unanswered</em>: I would implement strict allowlisting: resolve the requested path, verify it is a child of a configured course directory, reject anything else.</p>
+<p><strong>Q6. What is the MCP skill definition for flashcard generation?</strong>
+Tool name, parameters, input format, output format, which LLM, error handling.
+- <em>If unanswered</em>: Cannot implement Flow 2 at all.</p>
+<h3 id="priority-2-important-significantly-affects-ux-or-maintainability">Priority 2: Important (significantly affects UX or maintainability)<a class="headerlink" href="#priority-2-important-significantly-affects-ux-or-maintainability" title="Permanent link">&para;</a></h3>
+<p><strong>Q7. What happens when a PDF has no TOC bookmarks?</strong>
+Fail with error? Fallback to page-based splitting? Prompt user for manual ranges?
+- <em>If unanswered</em>: Fail with a clear error message and suggest <code>--ranges</code> flag for manual specification.</p>
+<p><strong>Q8. Is <code>studyctl sync</code> being replaced by <code>studyctl content from-obsidian</code>?</strong>
+They have significant overlap (both sync Obsidian notes to NotebookLM). Having both creates confusion.
+- <em>If unanswered</em>: I would deprecate <code>sync</code> in favour of the unified <code>content</code> subcommand group.</p>
+<p><strong>Q9. Is this a single-user or multi-user tool?</strong>
+The LAN access feature suggests multi-user, but there is no user_id anywhere in the data model.
+- <em>If unanswered</em>: I would assume single-user (same person on multiple devices), and document this explicitly.</p>
+<p><strong>Q10. What is the migration story for existing pdf-by-chapters users?</strong>
+How do they bring existing courses, notebooks, and generated artefacts into the unified tool?
+- <em>If unanswered</em>: I would add a <code>studyctl migrate --from-pdf-by-chapters &lt;dir&gt;</code> command that copies/links artefacts into the new course structure.</p>
+<p><strong>Q11. How does cross-machine sync work for content pipeline data?</strong>
+Currently only <code>sessions.db</code> and <code>state.json</code> sync via SSH/rsync. Course directories with PDFs, audio, and video can be gigabytes.
+- <em>If unanswered</em>: I would sync only metadata (pipeline state, flashcard/quiz JSON) and not media files. Each machine runs its own generation.</p>
+<p><strong>Q12. How does the config editor handle concurrent access and validation?</strong>
+What config fields are editable? How are invalid values rejected? What about concurrent edits?
+- <em>If unanswered</em>: I would scope the config editor to safe fields only (review directories, theme, TUI preferences) and use file locking.</p>
+<h3 id="priority-3-nice-to-have-improves-clarity-but-has-reasonable-defaults">Priority 3: Nice-to-have (improves clarity but has reasonable defaults)<a class="headerlink" href="#priority-3-nice-to-have-improves-clarity-but-has-reasonable-defaults" title="Permanent link">&para;</a></h3>
+<p><strong>Q13. Should the TUI artefact browser open external players or embed playback?</strong>
+Terminal-based media playback is extremely limited. External players work but break the tmux split workflow.
+- <em>If unanswered</em>: External players via <code>open</code> (macOS) / <code>xdg-open</code> (Linux).</p>
+<p><strong>Q14. What is the service worker cache busting strategy?</strong>
+Version bump manually? Content-hash filenames? No-cache for app shell?
+- <em>If unanswered</em>: Bump the CACHE version string in sw.js on each release.</p>
+<p><strong>Q15. Should generated flashcards/quizzes go through a review/approval step?</strong>
+Or are they immediately available for study?
+- <em>If unanswered</em>: Immediately available, with a "flag bad card" feature for later cleanup.</p>
+<p><strong>Q16. What cross-browser testing is required for the PWA?</strong>
+Chrome, Firefox, Safari, Safari iOS? PWA install on Android vs iOS?
+- <em>If unanswered</em>: Chrome + Safari (iOS) as primary targets.</p>
+<hr />
+<h2 id="recommended-next-steps">Recommended Next Steps<a class="headerlink" href="#recommended-next-steps" title="Permanent link">&para;</a></h2>
+<h3 id="immediate-before-implementation">Immediate (before implementation)<a class="headerlink" href="#immediate-before-implementation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Define course directory structure</strong> (Q1) -- This is the integration contract between all five flows. Write it as an ADR.</p>
+</li>
+<li>
+<p><strong>Decide FastAPI vs stdlib</strong> (Q2) -- This determines the server architecture for all web features. Given the current working stdlib implementation and the zero-dependency philosophy, I would challenge the FastAPI requirement: what does FastAPI give you that stdlib does not? If the answer is "middleware for auth and validation," consider whether a thin wrapper around stdlib achieves the same with fewer dependencies.</p>
+</li>
+<li>
+<p><strong>Design the authentication scheme</strong> (Q3) -- Before building the config editor or feedback features.</p>
+</li>
+<li>
+<p><strong>Write a JSON Schema for flashcard/quiz format</strong> -- This is the contract between the content pipeline, agent skills, and review UIs. Formalize it.</p>
+</li>
+<li>
+<p><strong>Define the MCP skill interface</strong> (Q6) -- Without this, Flow 2 cannot be designed, let alone implemented.</p>
+</li>
+</ol>
+<h3 id="short-term-during-implementation">Short-term (during implementation)<a class="headerlink" href="#short-term-during-implementation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Implement pipeline state persistence</strong> -- <code>.pipeline-state.json</code> per course with chapter-level tracking.</p>
+</li>
+<li>
+<p><strong>Add WAL mode to SQLite connections</strong> -- One-line fix: <code>conn.execute("PRAGMA journal_mode=WAL")</code> after connect.</p>
+</li>
+<li>
+<p><strong>Add path validation for artefact serving</strong> -- Before exposing any file-serving endpoint.</p>
+</li>
+<li>
+<p><strong>Resolve sync vs content command overlap</strong> -- Deprecation notice or rename.</p>
+</li>
+<li>
+<p><strong>Add dependency checks</strong> -- At startup of content pipeline commands, verify pandoc/mmdc/typst are installed.</p>
+</li>
+</ol>
+<h3 id="medium-term-post-merge">Medium-term (post-merge)<a class="headerlink" href="#medium-term-post-merge" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Add PDF-without-TOC fallback</strong> -- Page-based splitting with <code>--ranges</code> flag.</p>
+</li>
+<li>
+<p><strong>Add config migration</strong> -- Schema version field, upgrade on load.</p>
+</li>
+<li>
+<p><strong>Add pdf-by-chapters migration command</strong> -- For existing users.</p>
+</li>
+<li>
+<p><strong>Cross-browser testing</strong> -- Particularly Safari iOS PWA behaviour.</p>
+</li>
+<li>
+<p><strong>Document feature parity matrix</strong> -- What works in web vs TUI vs CLI.</p>
+</li>
+</ol>
+<hr />
+<h2 id="appendix-existing-code-references">Appendix: Existing Code References<a class="headerlink" href="#appendix-existing-code-references" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>File Path</th>
+<th>Relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web server</td>
+<td><code>packages/studyctl/src/studyctl/web/server.py</code></td>
+<td>Current stdlib implementation, all API routes</td>
+</tr>
+<tr>
+<td>Review DB (SM-2)</td>
+<td><code>packages/studyctl/src/studyctl/review_db.py</code></td>
+<td>Card reviews, spaced repetition, session recording</td>
+</tr>
+<tr>
+<td>Review loader</td>
+<td><code>packages/studyctl/src/studyctl/review_loader.py</code></td>
+<td>JSON format contract, directory discovery</td>
+</tr>
+<tr>
+<td>TUI app</td>
+<td><code>packages/studyctl/src/studyctl/tui/app.py</code></td>
+<td>Current TUI dashboard</td>
+</tr>
+<tr>
+<td>TUI study cards</td>
+<td><code>packages/studyctl/src/studyctl/tui/study_cards.py</code></td>
+<td>Flashcard/quiz review in TUI</td>
+</tr>
+<tr>
+<td>CLI entry point</td>
+<td><code>packages/studyctl/src/studyctl/cli.py</code></td>
+<td>All current CLI commands</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td><code>packages/studyctl/src/studyctl/settings.py</code></td>
+<td>Config loading and schema</td>
+</tr>
+<tr>
+<td>Cross-machine sync</td>
+<td><code>packages/studyctl/src/studyctl/shared.py</code></td>
+<td>SSH/rsync state sync</td>
+</tr>
+<tr>
+<td>Obsidian sync</td>
+<td><code>packages/studyctl/src/studyctl/sync.py</code></td>
+<td>Current NotebookLM sync engine</td>
+</tr>
+<tr>
+<td>Config path</td>
+<td><code>packages/studyctl/src/studyctl/config_path.py</code></td>
+<td>DB path resolution</td>
+</tr>
+<tr>
+<td>pdf-by-chapters analysis</td>
+<td><code>docs/research/notebooklm-pdf-by-chapters-analysis.md</code></td>
+<td>Integration points and user journeys</td>
+</tr>
+<tr>
+<td>Architecture review</td>
+<td><code>.claude/handoffs/2026-03-15-architecture-review-implementation-plan.md</code></td>
+<td>Schema ownership, migration safety</td>
+</tr>
+<tr>
+<td>Code review items</td>
+<td><code>code-review-plan-items.md</code></td>
+<td>Known bugs in get_due_cards SQL, connection patterns</td>
+</tr>
+<tr>
+<td>Native app handoff</td>
+<td><code>.claude/handoffs/2026-03-15-180000-native-app-handoff.md</code></td>
+<td>JSON format contract, architecture decisions</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

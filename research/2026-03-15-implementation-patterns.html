@@ -1,0 +1,1545 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/2026-03-15-implementation-patterns.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Implementation Patterns Research - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#implementation-patterns-research" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Implementation Patterns Research
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-sm-2-retry-semantics-should-retry-rounds-record-to-sm-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. SM-2 Retry Semantics: Should Retry Rounds Record to SM-2?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. SM-2 Retry Semantics: Should Retry Rounds Record to SM-2?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-original-sm-2-specification-wozniak-1990" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Original SM-2 Specification (Wozniak 1990)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-anki-handles-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Anki Handles It
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-fsrs-handles-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How FSRS Handles It
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-for-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation for studyctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-sqlite-row_number-window-function-for-most-recent-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. SQLite ROW_NUMBER() Window Function for Most-Recent Review
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. SQLite ROW_NUMBER() Window Function for Most-Recent Review">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Bug
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-correct-pattern-row_number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Correct Pattern: ROW_NUMBER()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-correct" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Is Correct
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-on-small-datasets-10k-rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance on Small Datasets (&lt;10K rows)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-get_course_stats-correlated-subquery-also-affected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The get_course_stats Correlated Subquery (Also Affected)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-contextlibsuppress-narrowing-never-crash-tui-but-log-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. contextlib.suppress Narrowing: Never Crash TUI, But Log Diagnostics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. contextlib.suppress Narrowing: Never Crash TUI, But Log Diagnostics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-pattern-problematic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Pattern (Problematic)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-practice-narrow-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practice: Narrow + Log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exception-type-narrowing-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exception Type Narrowing Guide
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-the-voicetts-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For the Voice/TTS Path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-rich-progress-bar-per-source-tracking-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Rich Progress Bar: Per-Source Tracking Pattern
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Rich Progress Bar: Per-Source Tracking Pattern">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-taskfields-for-per-iteration-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern: task.fields for Per-Iteration Metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-multiple-tasks-for-parallel-style-display" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern: Multiple Tasks for Parallel-Style Display
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-api-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key API Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary-application-to-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary: Application to studyctl
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Summary: Application to studyctl">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="implementation-patterns-research">Implementation Patterns Research<a class="headerlink" href="#implementation-patterns-research" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-03-15
+<strong>Context:</strong> studyctl TUI Phase 9 polish — SM-2 retry semantics, SQLite query correctness, error handling, progress bars</p>
+<hr />
+<h2 id="1-sm-2-retry-semantics-should-retry-rounds-record-to-sm-2">1. SM-2 Retry Semantics: Should Retry Rounds Record to SM-2?<a class="headerlink" href="#1-sm-2-retry-semantics-should-retry-rounds-record-to-sm-2" title="Permanent link">&para;</a></h2>
+<h3 id="the-original-sm-2-specification-wozniak-1990">The Original SM-2 Specification (Wozniak 1990)<a class="headerlink" href="#the-original-sm-2-specification-wozniak-1990" title="Permanent link">&para;</a></h3>
+<p>Step 7 of the SM-2 algorithm states:</p>
+<blockquote>
+<p>"After each repetition session of a given day repeat again all items that scored below four in the quality assessment."</p>
+</blockquote>
+<p>This is an <strong>in-session drill loop</strong> — a same-day re-presentation of failed items. The key question: does the retry response update the E-Factor and scheduling?</p>
+<p><strong>Answer from the original algorithm: No, only the first presentation counts for scheduling.</strong></p>
+<p>Steps 3-6 govern interval scheduling and E-Factor updates. Step 7 is a separate mechanism — it ensures the learner leaves the session having seen the correct answer for every card, but it does not feed back into the scheduling formula. The E-Factor was already modified in Step 5, and the interval was already reset in Step 6 (for grades &lt; 3).</p>
+<h3 id="how-anki-handles-it">How Anki Handles It<a class="headerlink" href="#how-anki-handles-it" title="Permanent link">&para;</a></h3>
+<p>Anki separates cards into <strong>learning/relearning</strong> and <strong>review</strong> queues:</p>
+<ul>
+<li>When you press <strong>Again</strong> on a review card, it enters the <strong>relearning queue</strong> with short-term steps (e.g., 10 minutes).</li>
+<li>The card's <strong>ease factor is reduced once</strong> at the moment of lapse (by 20% by default via "New Interval" setting).</li>
+<li>Subsequent Again presses during relearning <strong>do not further reduce ease</strong> — this is Anki's explicit fix for "ease hell" in SM-2.</li>
+<li>The card must pass through all relearning steps before graduating back to review.</li>
+</ul>
+<p><strong>Source:</strong> Anki FAQ: "Successive failures while cards are in learning do not result in further decreases to the card's ease."</p>
+<h3 id="how-fsrs-handles-it">How FSRS Handles It<a class="headerlink" href="#how-fsrs-handles-it" title="Permanent link">&para;</a></h3>
+<p>FSRS v6 has an explicit <strong>same-day review formula</strong>:</p>
+<div class="highlight"><pre><span></span><code>S&#39;(S,G) = S * e^(w17 * (G - 3 + w18)) * S^(-w19)
+</code></pre></div>
+<p>Same-day reviews DO update stability, but with a <strong>separate, attenuated formula</strong> that converges (cannot grow unboundedly). This acknowledges that same-day repetition has diminishing returns for long-term memory.</p>
+<p><strong>Source:</strong> FSRS-6 wiki, open-spaced-repetition/fsrs4anki</p>
+<h3 id="recommendation-for-studyctl">Recommendation for studyctl<a class="headerlink" href="#recommendation-for-studyctl" title="Permanent link">&para;</a></h3>
+<p><strong>Do NOT record retry-round answers to SM-2 scheduling.</strong> Rationale:</p>
+<ol>
+<li><strong>Original SM-2</strong> treats Step 7 as a drill, not a scheduling event.</li>
+<li><strong>Anki</strong> explicitly prevents relearning failures from compounding ease penalties.</li>
+<li><strong>FSRS</strong> uses a separate attenuated formula for same-day reviews — acknowledging they are fundamentally different from spaced reviews.</li>
+<li><strong>Practical:</strong> Recording retries as full reviews would artificially inflate review counts and potentially create "ease hell" for difficult cards.</li>
+</ol>
+<p><strong>Implementation pattern:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_record_answer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">correct</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_retry</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Record answer. Retry-round answers update session stats but NOT SM-2.&quot;&quot;&quot;</span>
+    <span class="n">card</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cards</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_index</span><span class="p">]</span>
+    <span class="n">elapsed_ms</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_card_start_time</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">correct</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="o">.</span><span class="n">correct</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="o">.</span><span class="n">incorrect</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_retry</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="o">.</span><span class="n">wrong_hashes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">card</span><span class="o">.</span><span class="n">card_hash</span><span class="p">)</span>
+
+    <span class="c1"># Only record to SM-2 on first presentation — retries are drill-only</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_retry</span><span class="p">:</span>
+        <span class="n">card_type</span> <span class="o">=</span> <span class="s2">&quot;flashcard&quot;</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">card</span><span class="p">,</span> <span class="n">Flashcard</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;quiz&quot;</span>
+        <span class="k">with</span> <span class="n">_safe_db_write</span><span class="p">():</span>
+            <span class="n">record_card_review</span><span class="p">(</span>
+                <span class="n">course</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_course</span><span class="p">,</span>
+                <span class="n">card_type</span><span class="o">=</span><span class="n">card_type</span><span class="p">,</span>
+                <span class="n">card_hash</span><span class="o">=</span><span class="n">card</span><span class="o">.</span><span class="n">card_hash</span><span class="p">,</span>
+                <span class="n">correct</span><span class="o">=</span><span class="n">correct</span><span class="p">,</span>
+                <span class="n">response_time_ms</span><span class="o">=</span><span class="n">elapsed_ms</span><span class="p">,</span>
+            <span class="p">)</span>
+</code></pre></div>
+<p>The <code>ReviewResult</code> tracks <code>wrong_hashes</code> from the <strong>first pass only</strong>. The retry round lets the user drill those cards but does not call <code>record_card_review()</code>.</p>
+<hr />
+<h2 id="2-sqlite-row_number-window-function-for-most-recent-review">2. SQLite ROW_NUMBER() Window Function for Most-Recent Review<a class="headerlink" href="#2-sqlite-row_number-window-function-for-most-recent-review" title="Permanent link">&para;</a></h2>
+<h3 id="the-bug">The Bug<a class="headerlink" href="#the-bug" title="Permanent link">&para;</a></h3>
+<p>The current <code>get_due_cards()</code> uses this pattern:</p>
+<div class="highlight"><pre><span></span><code><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">card_hash</span>
+<span class="k">HAVING</span><span class="w"> </span><span class="n">reviewed_at</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">MAX</span><span class="p">(</span><span class="n">reviewed_at</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>This is non-deterministic in SQLite.</strong> When using <code>GROUP BY</code>, SQLite picks values for non-aggregated columns from an <strong>arbitrary row</strong> in the group (per SQLite docs on "bare columns"). The <code>HAVING</code> clause filters <em>after</em> grouping, but <code>reviewed_at</code> in the <code>HAVING</code> refers to the arbitrary row's value, not the row with the actual MAX.</p>
+<p>In practice this works <em>sometimes</em> because SQLite's query planner often picks the last-inserted row, but it is <strong>not guaranteed</strong> and will break silently with index changes or query plan changes.</p>
+<h3 id="the-correct-pattern-row_number">The Correct Pattern: ROW_NUMBER()<a class="headerlink" href="#the-correct-pattern-row_number" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> SQLite official docs, "Built-in Window Functions":</p>
+<blockquote>
+<p><code>row_number()</code> — The number of the row within the current partition. Rows are numbered starting from 1 in the order defined by the ORDER BY clause in the window definition.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">card_hash</span><span class="p">,</span><span class="w"> </span><span class="n">correct</span><span class="p">,</span><span class="w"> </span><span class="n">ease_factor</span><span class="p">,</span><span class="w"> </span><span class="n">interval_days</span><span class="p">,</span><span class="w"> </span><span class="n">next_review</span><span class="p">,</span><span class="w"> </span><span class="n">review_count</span>
+<span class="k">FROM</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span>
+<span class="w">        </span><span class="n">cr</span><span class="p">.</span><span class="n">card_hash</span><span class="p">,</span>
+<span class="w">        </span><span class="n">cr</span><span class="p">.</span><span class="n">correct</span><span class="p">,</span>
+<span class="w">        </span><span class="n">cr</span><span class="p">.</span><span class="n">ease_factor</span><span class="p">,</span>
+<span class="w">        </span><span class="n">cr</span><span class="p">.</span><span class="n">interval_days</span><span class="p">,</span>
+<span class="w">        </span><span class="n">cr</span><span class="p">.</span><span class="n">next_review</span><span class="p">,</span>
+<span class="w">        </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="n">OVER</span><span class="w"> </span><span class="p">(</span><span class="n">PARTITION</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cr</span><span class="p">.</span><span class="n">card_hash</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">review_count</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ROW_NUMBER</span><span class="p">()</span><span class="w"> </span><span class="n">OVER</span><span class="w"> </span><span class="p">(</span>
+<span class="w">            </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cr</span><span class="p">.</span><span class="n">card_hash</span>
+<span class="w">            </span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cr</span><span class="p">.</span><span class="n">reviewed_at</span><span class="w"> </span><span class="k">DESC</span>
+<span class="w">        </span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">rn</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="n">cr</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">cr</span><span class="p">.</span><span class="n">course</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span>
+<span class="p">)</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">rn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">next_review</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="o">?</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">next_review</span><span class="w"> </span><span class="k">ASC</span>
+</code></pre></div>
+<h3 id="why-this-is-correct">Why This Is Correct<a class="headerlink" href="#why-this-is-correct" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>ROW_NUMBER() OVER (PARTITION BY card_hash ORDER BY reviewed_at DESC)</code> assigns <code>rn=1</code> to the <strong>most recent review</strong> for each card — deterministically.</li>
+<li>The outer <code>WHERE rn = 1</code> picks exactly one row per card.</li>
+<li><code>COUNT(*) OVER (PARTITION BY cr.card_hash)</code> gives total review count without a separate subquery.</li>
+<li>All column values come from the <strong>actual most-recent row</strong>, not an arbitrary group member.</li>
+</ol>
+<h3 id="performance-on-small-datasets-10k-rows">Performance on Small Datasets (&lt;10K rows)<a class="headerlink" href="#performance-on-small-datasets-10k-rows" title="Permanent link">&para;</a></h3>
+<p>Window functions in SQLite use an <strong>in-memory sort</strong> per partition. For &lt;10K rows:</p>
+<ul>
+<li>The sort is O(n log n) on the full result set, which for 10K rows completes in &lt;1ms.</li>
+<li>The existing index <code>idx_card_reviews_hash</code> on <code>(card_hash)</code> helps the WHERE filter.</li>
+<li>Adding a composite index <code>(course, card_hash, reviewed_at DESC)</code> would make this a covering index but is unnecessary at &lt;10K rows.</li>
+<li><strong>Bottom line:</strong> No measurable performance difference from the GROUP BY approach at this scale. Correctness is the reason to switch, not performance.</li>
+</ul>
+<h3 id="the-get_course_stats-correlated-subquery-also-affected">The <code>get_course_stats</code> Correlated Subquery (Also Affected)<a class="headerlink" href="#the-get_course_stats-correlated-subquery-also-affected" title="Permanent link">&para;</a></h3>
+<p>The existing mastered count query has the same bug:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- BUGGY: same bare-column issue</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">reviewed_at</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">SELECT</span><span class="w"> </span><span class="k">MAX</span><span class="p">(</span><span class="n">reviewed_at</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">card_reviews</span><span class="w"> </span><span class="n">cr2</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">cr2</span><span class="p">.</span><span class="n">card_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cr1</span><span class="p">.</span><span class="n">card_hash</span><span class="p">)</span>
+</code></pre></div>
+<p>Replace with the same ROW_NUMBER() CTE pattern:</p>
+<div class="highlight"><pre><span></span><code><span class="k">WITH</span><span class="w"> </span><span class="n">latest</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="n">card_hash</span><span class="p">,</span><span class="w"> </span><span class="n">interval_days</span><span class="p">,</span>
+<span class="w">           </span><span class="n">ROW_NUMBER</span><span class="p">()</span><span class="w"> </span><span class="n">OVER</span><span class="w"> </span><span class="p">(</span><span class="n">PARTITION</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">card_hash</span><span class="w"> </span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">reviewed_at</span><span class="w"> </span><span class="k">DESC</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">rn</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">card_reviews</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">course</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span>
+<span class="p">)</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">card_hash</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">latest</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">rn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">interval_days</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">30</span>
+</code></pre></div>
+<hr />
+<h2 id="3-contextlibsuppress-narrowing-never-crash-tui-but-log-diagnostics">3. contextlib.suppress Narrowing: Never Crash TUI, But Log Diagnostics<a class="headerlink" href="#3-contextlibsuppress-narrowing-never-crash-tui-but-log-diagnostics" title="Permanent link">&para;</a></h2>
+<h3 id="current-pattern-problematic">Current Pattern (Problematic)<a class="headerlink" href="#current-pattern-problematic" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="n">record_card_review</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<p>This swallows <strong>everything</strong> — including <code>TypeError</code> from bad arguments, <code>PermissionError</code> from locked DB, <code>sqlite3.DatabaseError</code> from corruption. You get zero diagnostic signal.</p>
+<h3 id="best-practice-narrow-log">Best Practice: Narrow + Log<a class="headerlink" href="#best-practice-narrow-log" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> Python contextlib docs — <code>suppress(*exceptions)</code> accepts specific exception classes.</p>
+<p>The pattern for "never crash the TUI but log diagnostics":</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">suppress</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_safe_db_write</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Suppress DB write failures in TUI — study flow must not break.</span>
+
+<span class="sd">    Narrows to specific exceptions that can legitimately occur during</span>
+<span class="sd">    normal operation (locked DB, missing file, disk full).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">suppress</span><span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span><span class="p">)</span>
+</code></pre></div>
+<p>Then wrap each call site with a <strong>try/except that logs before suppressing</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_record_answer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">correct</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># ... stats tracking ...</span>
+
+    <span class="n">card_type</span> <span class="o">=</span> <span class="s2">&quot;flashcard&quot;</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">card</span><span class="p">,</span> <span class="n">Flashcard</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;quiz&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">record_card_review</span><span class="p">(</span>
+            <span class="n">course</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_course</span><span class="p">,</span>
+            <span class="n">card_type</span><span class="o">=</span><span class="n">card_type</span><span class="p">,</span>
+            <span class="n">card_hash</span><span class="o">=</span><span class="n">card</span><span class="o">.</span><span class="n">card_hash</span><span class="p">,</span>
+            <span class="n">correct</span><span class="o">=</span><span class="n">correct</span><span class="p">,</span>
+            <span class="n">response_time_ms</span><span class="o">=</span><span class="n">elapsed_ms</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to record review for </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">card</span><span class="o">.</span><span class="n">card_hash</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+    <span class="c1"># TypeError, ValueError, etc. will still propagate — those are bugs, not runtime failures</span>
+</code></pre></div>
+<h3 id="exception-type-narrowing-guide">Exception Type Narrowing Guide<a class="headerlink" href="#exception-type-narrowing-guide" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Exception</th>
+<th>Cause</th>
+<th>Should Suppress?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sqlite3.OperationalError</code></td>
+<td>DB locked, disk full, table missing</td>
+<td>Yes — runtime</td>
+</tr>
+<tr>
+<td><code>sqlite3.DatabaseError</code></td>
+<td>Corruption, malformed DB</td>
+<td>Yes — runtime</td>
+</tr>
+<tr>
+<td><code>sqlite3.IntegrityError</code></td>
+<td>Constraint violation (duplicate)</td>
+<td>Yes — runtime</td>
+</tr>
+<tr>
+<td><code>OSError</code></td>
+<td>File not found, permission denied</td>
+<td>Yes — runtime</td>
+</tr>
+<tr>
+<td><code>TypeError</code></td>
+<td>Wrong argument types (code bug)</td>
+<td><strong>No</strong> — bug</td>
+</tr>
+<tr>
+<td><code>ValueError</code></td>
+<td>Invalid data (code bug)</td>
+<td><strong>No</strong> — bug</td>
+</tr>
+<tr>
+<td><code>AttributeError</code></td>
+<td>Missing attribute (code bug)</td>
+<td><strong>No</strong> — bug</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule of thumb:</strong> Suppress exceptions that come from the <strong>environment</strong> (disk, DB, permissions). Let exceptions from <strong>code bugs</strong> propagate so they surface during development.</p>
+<h3 id="for-the-voicetts-path">For the Voice/TTS Path<a class="headerlink" href="#for-the-voicetts-path" title="Permanent link">&para;</a></h3>
+<p>The <code>except Exception: pass</code> in <code>_speak()</code> is similarly broad but has a different justification — TTS involves optional external dependencies (kokoro). The narrowing here:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_speak</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voice_config</span><span class="p">()</span>
+        <span class="c1"># ... kokoro setup ...</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Voice unavailable: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+</code></pre></div>
+<p><code>ImportError</code> covers missing kokoro. <code>OSError</code> covers audio device issues. <code>RuntimeError</code> covers kokoro internal failures.</p>
+<hr />
+<h2 id="4-rich-progress-bar-per-source-tracking-pattern">4. Rich Progress Bar: Per-Source Tracking Pattern<a class="headerlink" href="#4-rich-progress-bar-per-source-tracking-pattern" title="Permanent link">&para;</a></h2>
+<h3 id="the-problem">The Problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h3>
+<p>You want to show <strong>per-iteration stats</strong> (e.g., "source X: 3 correct, 1 failed") alongside <strong>cumulative stats</strong> (e.g., "Total: 15/20 exported") in a Rich progress bar.</p>
+<h3 id="pattern-taskfields-for-per-iteration-metadata">Pattern: task.fields for Per-Iteration Metadata<a class="headerlink" href="#pattern-taskfields-for-per-iteration-metadata" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> Rich docs, "Columns" section:</p>
+<blockquote>
+<p>"Additional fields passed via keyword arguments to <code>update()</code> are stored in <code>task.fields</code>. You can add them to a format string with the following syntax: <code>{task.fields[extra]}</code>"</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">rich.progress</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BarColumn</span><span class="p">,</span>
+    <span class="n">MofNCompleteColumn</span><span class="p">,</span>
+    <span class="n">Progress</span><span class="p">,</span>
+    <span class="n">SpinnerColumn</span><span class="p">,</span>
+    <span class="n">TextColumn</span><span class="p">,</span>
+    <span class="n">TimeElapsedColumn</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">export_with_progress</span><span class="p">(</span><span class="n">sources</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Source</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ExportStats</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Export sources with per-source and cumulative progress tracking.&quot;&quot;&quot;</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">ExportStats</span><span class="p">()</span>
+
+    <span class="n">progress</span> <span class="o">=</span> <span class="n">Progress</span><span class="p">(</span>
+        <span class="n">SpinnerColumn</span><span class="p">(),</span>
+        <span class="n">TextColumn</span><span class="p">(</span><span class="s2">&quot;[progress.description]</span><span class="si">{task.description}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="n">BarColumn</span><span class="p">(),</span>
+        <span class="n">MofNCompleteColumn</span><span class="p">(),</span>
+        <span class="n">TextColumn</span><span class="p">(</span><span class="s2">&quot;[dim]</span><span class="si">{task.fields[status]}</span><span class="s2">[/dim]&quot;</span><span class="p">),</span>
+        <span class="n">TimeElapsedColumn</span><span class="p">(),</span>
+    <span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">progress</span><span class="p">:</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">progress</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span>
+            <span class="s2">&quot;Exporting&quot;</span><span class="p">,</span>
+            <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">),</span>
+            <span class="n">status</span><span class="o">=</span><span class="s2">&quot;starting...&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">:</span>
+            <span class="c1"># Update description to show current source</span>
+            <span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="n">task</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[cyan]</span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">[/cyan]&quot;</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;ok:</span><span class="si">{</span><span class="n">stats</span><span class="o">.</span><span class="n">success</span><span class="si">}</span><span class="s2"> err:</span><span class="si">{</span><span class="n">stats</span><span class="o">.</span><span class="n">errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">export_one</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">success</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">except</span> <span class="n">ExportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">errors</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">source</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+
+            <span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="n">task</span><span class="p">,</span>
+                <span class="n">advance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;ok:</span><span class="si">{</span><span class="n">stats</span><span class="o">.</span><span class="n">success</span><span class="si">}</span><span class="s2"> err:</span><span class="si">{</span><span class="n">stats</span><span class="o">.</span><span class="n">errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">stats</span>
+</code></pre></div>
+<h3 id="pattern-multiple-tasks-for-parallel-style-display">Pattern: Multiple Tasks for Parallel-Style Display<a class="headerlink" href="#pattern-multiple-tasks-for-parallel-style-display" title="Permanent link">&para;</a></h3>
+<p>If you want each source as its own row (useful when sources have sub-steps):</p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">Progress</span><span class="p">(</span>
+    <span class="n">SpinnerColumn</span><span class="p">(),</span>
+    <span class="n">TextColumn</span><span class="p">(</span><span class="s2">&quot;[progress.description]</span><span class="si">{task.description}</span><span class="s2">&quot;</span><span class="p">),</span>
+    <span class="n">BarColumn</span><span class="p">(),</span>
+    <span class="n">MofNCompleteColumn</span><span class="p">(),</span>
+    <span class="n">TextColumn</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{task.fields[detail]}</span><span class="s2">&quot;</span><span class="p">),</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">progress</span><span class="p">:</span>
+    <span class="c1"># Overall task</span>
+    <span class="n">overall</span> <span class="o">=</span> <span class="n">progress</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="s2">&quot;Overall&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">),</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">:</span>
+        <span class="c1"># Per-source task (auto-removes when done via visible=False)</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">progress</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">total</span><span class="o">=</span><span class="n">source</span><span class="o">.</span><span class="n">step_count</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;loading...&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">source</span><span class="o">.</span><span class="n">steps</span><span class="p">:</span>
+            <span class="n">process</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+            <span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">advance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="n">step</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># Hide completed sub-task</span>
+        <span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">overall</span><span class="p">,</span> <span class="n">advance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Last: </span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="key-api-points">Key API Points<a class="headerlink" href="#key-api-points" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>progress.update(task_id, advance=N)</code> — increment completed by N</li>
+<li><code>progress.update(task_id, completed=N)</code> — set completed to exact value</li>
+<li><code>progress.update(task_id, description="...", **fields)</code> — update any field</li>
+<li><code>task.fields[key]</code> — accessible in format strings via <code>{task.fields[key]}</code></li>
+<li><code>progress.add_task(..., visible=False)</code> — create hidden task (show later)</li>
+<li><code>Progress.get_default_columns()</code> — returns defaults so you can extend, not replace</li>
+</ul>
+<hr />
+<h2 id="summary-application-to-studyctl">Summary: Application to studyctl<a class="headerlink" href="#summary-application-to-studyctl" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Current Code</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SM-2 retry</td>
+<td>No retry loop exists yet</td>
+<td>Add <code>is_retry</code> flag; retries skip <code>record_card_review()</code></td>
+</tr>
+<tr>
+<td>ROW_NUMBER</td>
+<td><code>GROUP BY ... HAVING reviewed_at = MAX(reviewed_at)</code></td>
+<td>CTE with <code>ROW_NUMBER() OVER (PARTITION BY card_hash ORDER BY reviewed_at DESC)</code></td>
+</tr>
+<tr>
+<td>suppress narrowing</td>
+<td><code>suppress(Exception)</code> (2 sites) + bare <code>except Exception: pass</code> (1 site)</td>
+<td><code>except (OSError, sqlite3.Error)</code> + <code>logger.warning()</code></td>
+</tr>
+<tr>
+<td>Progress bar</td>
+<td>N/A (future export polish)</td>
+<td><code>task.fields[status]</code> for per-iteration stats in format string</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Wozniak 1990</strong> — SM-2 Algorithm, Steps 1-7: https://super-memory.com/english/ol/sm2.htm</li>
+<li><strong>Anki FAQ</strong> — SM-2 modifications and ease hell prevention: https://faqs.ankiweb.net/what-spaced-repetition-algorithm.html</li>
+<li><strong>Anki Manual</strong> — Deck Options, Lapses, Relearning Steps: https://docs.ankiweb.net/deck-options.html</li>
+<li><strong>FSRS-6 Wiki</strong> — Same-day review formula: https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm</li>
+<li><strong>SQLite Docs</strong> — Window Functions, ROW_NUMBER(): https://www.sqlite.org/windowfunctions.html</li>
+<li><strong>Python Docs</strong> — contextlib.suppress: https://docs.python.org/3/library/contextlib.html</li>
+<li><strong>Rich Docs</strong> — Progress Display, Columns, task.fields: https://rich.readthedocs.io/en/stable/progress.html</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

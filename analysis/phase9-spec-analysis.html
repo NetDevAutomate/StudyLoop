@@ -1,0 +1,1594 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/analysis/phase9-spec-analysis.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Phase 9 + Phase 1 Cleanup -- Spec Flow Analysis - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#phase-9-phase-1-cleanup-spec-flow-analysis" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Phase 9 + Phase 1 Cleanup -- Spec Flow Analysis
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-dependency-graph-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Dependency Graph (Implementation Order)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-item-by-item-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Item-by-Item Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Item-by-Item Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#item-8c-phase-1-leftover-export-progress-bar-cumulative-stats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 8c (Phase 1 leftover): Export progress bar cumulative stats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-1-update-readmemd-with-tui-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 1: Update README.md with TUI section
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-2-fix-screenshot-filename-typo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 2: Fix screenshot filename typo
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-3-update-setup-guidemd-with-tui-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 3: Update setup-guide.md with TUI installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-4-update-cli-referencemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 4: Update cli-reference.md
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-5-course-picker-for-multiple-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 5: Course Picker for Multiple Directories
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Item 5: Course Picker for Multiple Directories">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edge-cases-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Cases Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-6-retry-wrong-flag-for-pdf-by-chapters-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 6: --retry-wrong flag for pdf-by-chapters review
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-7-review-wrong-answers-mode-r-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 7: "Review Wrong Answers" Mode (r key)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Item 7: &#34;Review Wrong Answers&#34; Mode (r key)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-flow-happy-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Flow (Happy Path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edge-cases-matrix_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Cases Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-8-fix-29-pre-existing-test-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 8: Fix 29 Pre-existing Test Failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-9-implement-list_concepts-in-historypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item 9: Implement list_concepts() in history.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-missing-elements-and-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Missing Elements and Gaps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Missing Elements and Gaps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#category-screenshotassets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: Screenshot/Assets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-state-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: State Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category: Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-critical-questions-requiring-clarification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Critical Questions Requiring Clarification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Critical Questions Requiring Clarification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critical-blocks-implementation-or-creates-data-integrity-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CRITICAL (blocks implementation or creates data integrity risks)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#important-significantly-affects-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IMPORTANT (significantly affects UX)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nice-to-have-improves-clarity-but-has-reasonable-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NICE-TO-HAVE (improves clarity but has reasonable defaults)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-recommended-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Recommended Implementation Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-revised-item-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Revised Item Count
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="phase-9-phase-1-cleanup-spec-flow-analysis">Phase 9 + Phase 1 Cleanup -- Spec Flow Analysis<a class="headerlink" href="#phase-9-phase-1-cleanup-spec-flow-analysis" title="Permanent link">&para;</a></h1>
+<p><strong>Analyst</strong>: spec-flow-analyzer | <strong>Date</strong>: 2026-03-15 | <strong>Status</strong>: Analysis only, no code</p>
+<hr />
+<h2 id="1-dependency-graph-implementation-order">1. Dependency Graph (Implementation Order)<a class="headerlink" href="#1-dependency-graph-implementation-order" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>graph TD
+    A["8: Fix test failures&lt;br/&gt;(21 collection errors)"] --&gt; B["9: Implement list_concepts()"]
+    A --&gt; C["1: Update README.md"]
+    D["2: Fix screenshot filename typo"] --&gt; C
+    D --&gt; E["3: Update setup-guide.md"]
+    D --&gt; F["4: Update cli-reference.md"]
+    G["5: Course picker"] --&gt; H["7: Review Wrong Answers mode"]
+    I["8c: Fix export progress bar"] -.-&gt; |independent| A
+    J["6: --retry-wrong (EXTERNAL)"] -.-&gt; |excluded| H
+
+    style J fill:#f66,stroke:#333
+    style A fill:#6f6,stroke:#333
+    style I fill:#ff6,stroke:#333</code></pre>
+<p><strong>Critical path</strong>: Items 8 (tests) and 2 (typo) are prerequisites. Items 5 and 7 are the most complex new features.</p>
+<hr />
+<h2 id="2-item-by-item-analysis">2. Item-by-Item Analysis<a class="headerlink" href="#2-item-by-item-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="item-8c-phase-1-leftover-export-progress-bar-cumulative-stats">Item 8c (Phase 1 leftover): Export progress bar cumulative stats<a class="headerlink" href="#item-8c-phase-1-leftover-export-progress-bar-cumulative-stats" title="Permanent link">&para;</a></h3>
+<p><strong>Confirmed bug location</strong>: <code>packages/agent-session-tools/src/agent_session_tools/export_sessions.py</code>, inside <code>_run_export()</code>.</p>
+<p>The progress bar update uses <code>batch_stats.added</code> (cumulative) with <code>source.title()</code> as label:
+<div class="highlight"><pre><span></span><code>description=f&quot;{source.title()}: {batch_stats.added} added, {batch_stats.updated} updated&quot;
+</code></pre></div>
+This means when processing Kiro after Claude, it shows "Kiro: 48 added" where 48 includes Claude's count.</p>
+<p><strong>Fix is straightforward</strong>: Use <code>source_stats</code> (per-source) instead of <code>batch_stats</code> (cumulative) in the progress description. But there is a gap:</p>
+<ul>
+<li><strong>Gap</strong>: What if <code>source_stats</code> is <code>None</code> (exporter returned nothing)? The progress description would fail.</li>
+<li><strong>Gap</strong>: Should the final summary line also show per-source breakdown, or just totals?</li>
+<li><strong>Gap</strong>: For single-source exports (<code>--sources claude</code>), no progress bar is created (<code>len(sources) &gt; 1</code> guard). Is this intentional?</li>
+</ul>
+<h3 id="item-1-update-readmemd-with-tui-section">Item 1: Update README.md with TUI section<a class="headerlink" href="#item-1-update-readmemd-with-tui-section" title="Permanent link">&para;</a></h3>
+<p><strong>Current state</strong>: README exists with CLI Reference section. No TUI section. Screenshot referenced as <code>images/soctractic_mentor_tui.png</code> but the actual images/ directory only contains <code>Socratic_Mentor_Agent.jpg</code> -- no TUI screenshot exists yet.</p>
+<p><strong>Critical gap</strong>: The screenshot does not exist. The spec says to add a screenshot reference, but the file needs to be captured first. This blocks the README update.</p>
+<h3 id="item-2-fix-screenshot-filename-typo">Item 2: Fix screenshot filename typo<a class="headerlink" href="#item-2-fix-screenshot-filename-typo" title="Permanent link">&para;</a></h3>
+<p><strong>Moot</strong>: The file <code>images/soctractic_mentor_tui.png</code> does not exist on disk. The typo is only in the roadmap text. When the screenshot is eventually taken, just name it correctly from the start: <code>images/socratic_mentor_tui.png</code>.</p>
+<p><strong>Recommendation</strong>: This item collapses into Item 1 -- just use the correct filename when creating the screenshot.</p>
+<h3 id="item-3-update-setup-guidemd-with-tui-installation">Item 3: Update setup-guide.md with TUI installation<a class="headerlink" href="#item-3-update-setup-guidemd-with-tui-installation" title="Permanent link">&para;</a></h3>
+<p><strong>Straightforward</strong> but depends on Item 2 being resolved. Needs to document:
+- <code>uv pip install 'studyctl[tui]'</code> or <code>uv sync --all-packages</code> with tui extra
+- <code>review.directories</code> config format in <code>~/.config/studyctl/config.yaml</code>
+- Key bindings reference</p>
+<p><strong>Gap</strong>: The <code>[tui]</code> extra needs to be verified in pyproject.toml. Is it defined? Current studyctl pyproject.toml should be checked for <code>[project.optional-dependencies]</code> tui group.</p>
+<h3 id="item-4-update-cli-referencemd">Item 4: Update cli-reference.md<a class="headerlink" href="#item-4-update-cli-referencemd" title="Permanent link">&para;</a></h3>
+<p><strong>Straightforward</strong>. Document <code>studyctl tui</code> command. Current CLI reference already lists many commands but not <code>tui</code>.</p>
+<h3 id="item-5-course-picker-for-multiple-directories">Item 5: Course Picker for Multiple Directories<a class="headerlink" href="#item-5-course-picker-for-multiple-directories" title="Permanent link">&para;</a></h3>
+<p><strong>Current behaviour</strong>: <code>_launch_study()</code> in <code>app.py</code> calls <code>discover_directories()</code> and takes <code>courses[0]</code> with a TODO comment. The studycards tab displays all courses in a list but always launches the first one.</p>
+<h4 id="edge-cases-matrix">Edge Cases Matrix<a class="headerlink" href="#edge-cases-matrix" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Current Behaviour</th>
+<th>Expected Behaviour</th>
+<th>Gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 courses</td>
+<td>Error notification</td>
+<td>Same</td>
+<td>OK (handled)</td>
+</tr>
+<tr>
+<td>1 course</td>
+<td>Uses first (only) course</td>
+<td>Skip picker, launch directly</td>
+<td>Needs spec: skip picker or show it?</td>
+</tr>
+<tr>
+<td>2-5 courses</td>
+<td>Uses first, ignores rest</td>
+<td>Show picker</td>
+<td>Core feature</td>
+</tr>
+<tr>
+<td>10+ courses</td>
+<td>Uses first</td>
+<td>Show picker</td>
+<td>Scrolling/search needed?</td>
+</tr>
+<tr>
+<td>Course has flashcards but no quizzes</td>
+<td>Mode-dependent</td>
+<td>?</td>
+<td>What happens when user picks quiz mode for flashcard-only course?</td>
+</tr>
+<tr>
+<td>Course has 0 loadable cards (corrupt JSON)</td>
+<td>Empty session</td>
+<td>?</td>
+<td>Show error or skip course in picker?</td>
+</tr>
+<tr>
+<td>Config directory no longer exists</td>
+<td>Silently skipped by <code>discover_directories()</code></td>
+<td>Same</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Symlinked directories</td>
+<td><code>Path.is_dir()</code> follows symlinks</td>
+<td>Works</td>
+<td>OK</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical questions for course picker</strong>:</p>
+<ol>
+<li><strong>UI widget choice</strong>: Textual <code>Select</code>, <code>OptionList</code>, <code>RadioSet</code>, or custom? The TUI already uses <code>TabbedContent</code> and <code>DataTable</code>. An <code>OptionList</code> would be most consistent.</li>
+<li><strong>When to show</strong>: Always before launching study, or only when <code>len(courses) &gt; 1</code>?</li>
+<li><strong>Keyboard navigation</strong>: Arrow keys + Enter? Number keys for quick select?</li>
+<li><strong>Remember last choice</strong>: Should the picker default to the last-used course? This would need state persistence.</li>
+<li><strong>Course with wrong mode content</strong>: If user presses <code>f</code> (flashcards) but selected course only has quizzes, current code shows a notification error. Should the picker filter courses by available mode content?</li>
+</ol>
+<h3 id="item-6-retry-wrong-flag-for-pdf-by-chapters-review">Item 6: --retry-wrong flag for pdf-by-chapters review<a class="headerlink" href="#item-6-retry-wrong-flag-for-pdf-by-chapters-review" title="Permanent link">&para;</a></h3>
+<p><strong>EXCLUDE</strong>: This is in an external repo (<code>notebooklm-pdf-by-chapters</code>). The spec itself notes "EXTERNAL REPO - may need to exclude." Confirmed: this repo's codebase has no <code>pdf-by-chapters</code> code. This item belongs in that repo's backlog.</p>
+<h3 id="item-7-review-wrong-answers-mode-r-key">Item 7: "Review Wrong Answers" Mode (r key)<a class="headerlink" href="#item-7-review-wrong-answers-mode-r-key" title="Permanent link">&para;</a></h3>
+<p><strong>Current state</strong>:
+- <code>StudyCardsTab.BINDINGS</code> has no <code>r</code> key binding
+- <code>_show_summary()</code> displays wrong count but offers no retry mechanism
+- <code>review_db.get_wrong_hashes()</code> exists and returns card hashes from the most recent session
+- <code>ReviewResult.wrong_hashes</code> accumulates incorrect card hashes during a session</p>
+<h4 id="user-flow-happy-path">User Flow (Happy Path)<a class="headerlink" href="#user-flow-happy-path" title="Permanent link">&para;</a></h4>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User
+    participant TUI as StudyCardsTab
+    participant DB as review_db
+
+    U-&gt;&gt;TUI: Complete session (all cards answered)
+    TUI-&gt;&gt;TUI: _show_summary() displays results
+    TUI-&gt;&gt;TUI: Show "Press r to review wrong answers"
+    U-&gt;&gt;TUI: Press 'r'
+    TUI-&gt;&gt;TUI: Filter _cards to only wrong_hashes
+    TUI-&gt;&gt;TUI: Reset index, start new mini-session
+    U-&gt;&gt;TUI: Complete wrong-answers review
+    TUI-&gt;&gt;TUI: _show_summary() again
+    Note over TUI: Can press 'r' again if still wrong?</code></pre>
+<h4 id="edge-cases-matrix_1">Edge Cases Matrix<a class="headerlink" href="#edge-cases-matrix_1" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Expected Behaviour</th>
+<th>Gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 wrong answers</td>
+<td>Hide/disable 'r' option in summary</td>
+<td>Not specified</td>
+</tr>
+<tr>
+<td>All answers wrong</td>
+<td>Review entire deck again</td>
+<td>Infinite loop risk? Cap retries?</td>
+</tr>
+<tr>
+<td>User presses 'r' mid-session (not at summary)</td>
+<td>Ignore or show "complete session first"</td>
+<td>Binding scope unclear</td>
+</tr>
+<tr>
+<td>Wrong answers review has its own wrong answers</td>
+<td>Allow nested retry?</td>
+<td>Recursion depth unclear</td>
+</tr>
+<tr>
+<td>Session was all skipped (0 correct, 0 incorrect)</td>
+<td>No wrong answers technically</td>
+<td>Should skipped cards be reviewable?</td>
+</tr>
+<tr>
+<td>User quits mid-wrong-review</td>
+<td>Partial results recorded to DB?</td>
+<td>State management unclear</td>
+</tr>
+<tr>
+<td>Voice was enabled in original session</td>
+<td>Carry over to wrong review?</td>
+<td>Implicit yes, but needs confirmation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical questions</strong>:</p>
+<ol>
+<li><strong>Binding scope</strong>: Should <code>r</code> be on <code>StudyCardsTab</code> (only visible during study) or <code>StudyApp</code> (global)? Since it only makes sense at session completion, it should be on <code>StudyCardsTab</code> and only active when summary is displayed.</li>
+<li><strong>DB recording</strong>: Should wrong-answer review sessions be recorded as separate <code>review_sessions</code> rows, or appended to the original session?</li>
+<li><strong>SM-2 impact</strong>: Re-reviewing a wrong card and getting it correct should update the card's ease factor. Current <code>record_card_review()</code> handles this, but does <code>record_session()</code> handle the supplementary session?</li>
+<li><strong>Recursion limit</strong>: If a user keeps getting cards wrong and pressing <code>r</code>, is there a cap? Suggest: show <code>r</code> option only if <code>wrong_count &gt; 0</code> and <code>wrong_count &lt; total</code> (to prevent infinite full-deck replay).</li>
+<li><strong>Card ordering</strong>: Should wrong answers be re-shuffled or presented in original order?</li>
+</ol>
+<h3 id="item-8-fix-29-pre-existing-test-failures">Item 8: Fix 29 Pre-existing Test Failures<a class="headerlink" href="#item-8-fix-29-pre-existing-test-failures" title="Permanent link">&para;</a></h3>
+<p><strong>ALREADY RESOLVED per MEMORY.md</strong>: "The '29 pre-existing failures' were actually: 18 collection errors (agent-session-tools not installed) + 9 import errors (same cause) + 2 stale assertions. Root cause was single missing <code>uv sync --all-packages</code>."</p>
+<p><strong>Current state</strong> (verified just now): <code>62 tests collected, 21 errors in 0.24s</code> -- all 21 are collection ERRORs in agent-session-tools and studyctl tests, which is consistent with packages not being installed in the current environment.</p>
+<p><strong>Recommendation</strong>: Remove this item from Phase 9. It was fixed. The 21 collection errors visible now are simply because <code>uv sync --all-packages</code> was not run in this environment. Running it would resolve them. This is a dev setup issue, not a code bug.</p>
+<h3 id="item-9-implement-list_concepts-in-historypy">Item 9: Implement list_concepts() in history.py<a class="headerlink" href="#item-9-implement-list_concepts-in-historypy" title="Permanent link">&para;</a></h3>
+<p><strong>Current state</strong>: <code>tui/app.py</code> line 166 has <code># list_concepts not yet implemented -- show empty table</code> with a <code>pass</code> statement. The concepts tab exists with columns "Name", "Domain", "Description" but is always empty.</p>
+<p><strong>Context</strong>: The CLI already has <code>studyctl concepts list [-d DOMAIN]</code> and <code>studyctl concepts add</code>. This implies a concept graph store exists. The <code>history.py</code> module has <code>record_progress()</code> which writes to <code>study_progress</code> table, and there are concept-related CLI commands.</p>
+<p><strong>Gaps</strong>:
+1. <strong>Where does concept data live?</strong> Is it in <code>sessions.db</code> or a separate store? The <code>_populate_concepts()</code> method needs a data source.
+2. <strong>What is the schema?</strong> The table expects Name, Domain, Description -- does the existing concept graph store these fields?
+3. <strong>Should it query <code>study_progress</code> or a concept graph table?</strong> These are different things -- progress tracks confidence per concept, while a concept graph stores relationships.
+4. <strong>Domain filtering</strong>: The CLI has <code>-d DOMAIN</code> flag. Should the TUI concepts tab show all domains or have a domain filter?</p>
+<hr />
+<h2 id="3-missing-elements-and-gaps">3. Missing Elements and Gaps<a class="headerlink" href="#3-missing-elements-and-gaps" title="Permanent link">&para;</a></h2>
+<h3 id="category-screenshotassets">Category: Screenshot/Assets<a class="headerlink" href="#category-screenshotassets" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Impact</th>
+<th>Current State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TUI screenshot does not exist</td>
+<td>Blocks README update (Item 1)</td>
+<td>Only <code>Socratic_Mentor_Agent.jpg</code> in images/</td>
+</tr>
+<tr>
+<td>No process defined for taking screenshot</td>
+<td>Manual step easily forgotten</td>
+<td>Textual has <code>app.save_screenshot()</code> for automation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="category-error-handling">Category: Error Handling<a class="headerlink" href="#category-error-handling" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Impact</th>
+<th>Current State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Course picker: course with no content for selected mode</td>
+<td>User frustration</td>
+<td>Current code shows notification, but picker should prevent this</td>
+</tr>
+<tr>
+<td>Wrong answers review: 0 wrong answers</td>
+<td>Confusing UX if 'r' is shown</td>
+<td>Need conditional display</td>
+</tr>
+<tr>
+<td><code>list_concepts()</code>: no data source</td>
+<td>Empty table with no explanation</td>
+<td>Shows blank concepts tab</td>
+</tr>
+<tr>
+<td>Export progress: <code>source_stats</code> is None</td>
+<td>Progress bar shows stale description</td>
+<td>Need None guard</td>
+</tr>
+</tbody>
+</table>
+<h3 id="category-state-management">Category: State Management<a class="headerlink" href="#category-state-management" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Impact</th>
+<th>Current State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wrong-answer review session recording</td>
+<td>SM-2 accuracy affected</td>
+<td>Unclear if supplementary session gets its own <code>review_sessions</code> row</td>
+</tr>
+<tr>
+<td>Course picker: remember last selection</td>
+<td>UX friction on repeated launches</td>
+<td>Not specified</td>
+</tr>
+<tr>
+<td>StudyCardsTab lifecycle after review-wrong</td>
+<td>Widget replacement logic unclear</td>
+<td><code>_launch_study</code> replaces container children</td>
+</tr>
+</tbody>
+</table>
+<h3 id="category-documentation">Category: Documentation<a class="headerlink" href="#category-documentation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Impact</th>
+<th>Current State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[tui]</code> extra not verified in pyproject.toml</td>
+<td>Install instructions may be wrong</td>
+<td>Need to confirm optional-dependency group</td>
+</tr>
+<tr>
+<td>Key binding 'r' not in any docs</td>
+<td>Discoverability</td>
+<td>No docs reference yet</td>
+</tr>
+<tr>
+<td>Course picker interaction model</td>
+<td>Implementer ambiguity</td>
+<td>Not specified</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-critical-questions-requiring-clarification">4. Critical Questions Requiring Clarification<a class="headerlink" href="#4-critical-questions-requiring-clarification" title="Permanent link">&para;</a></h2>
+<h3 id="critical-blocks-implementation-or-creates-data-integrity-risks">CRITICAL (blocks implementation or creates data integrity risks)<a class="headerlink" href="#critical-blocks-implementation-or-creates-data-integrity-risks" title="Permanent link">&para;</a></h3>
+<p><strong>Q1</strong>: For Item 7 (Review Wrong Answers), should the wrong-answer review be recorded as a new <code>review_sessions</code> row or update the existing one? This affects SM-2 interval calculations. If it is a new session, <code>get_wrong_hashes()</code> (which queries the "most recent session") will return hashes from the wrong-answer review, not the original. This could create a confusing feedback loop.</p>
+<p><em>Default assumption if unanswered</em>: Record as new session with a <code>mode</code> value of "retry" to distinguish from original sessions. Update <code>get_wrong_hashes()</code> to exclude retry sessions when determining what to retry.</p>
+<p><strong>Q2</strong>: For Item 9 (list_concepts), what is the data source? The CLI has <code>concepts list</code> and <code>concepts add</code> commands -- where do they store data? Without knowing the backing store, <code>list_concepts()</code> cannot be implemented.</p>
+<p><em>Default assumption</em>: There is a <code>concepts</code> table in <code>sessions.db</code> or a separate graph store. Need to trace the <code>concepts</code> CLI commands to find the store.</p>
+<h3 id="important-significantly-affects-ux">IMPORTANT (significantly affects UX)<a class="headerlink" href="#important-significantly-affects-ux" title="Permanent link">&para;</a></h3>
+<p><strong>Q3</strong>: For Item 5 (Course Picker), should the picker be shown every time or only when multiple courses exist? Single-course users should not be slowed down.</p>
+<p><em>Default assumption</em>: Skip picker for single course, show for 2+.</p>
+<p><strong>Q4</strong>: For Item 5, should the course picker filter by mode (flashcards vs quiz) to prevent selecting a course that has no content for the chosen mode?</p>
+<p><em>Default assumption</em>: Yes, filter. Show only courses with content matching the requested mode.</p>
+<p><strong>Q5</strong>: For Item 7, should pressing 'r' when all answers are wrong replay the entire deck? This could create an infinite loop for struggling users.</p>
+<p><em>Default assumption</em>: Allow it but show a gentler message: "All cards were incorrect. Consider reviewing the material before retrying." Cap at 3 consecutive retries of the full deck.</p>
+<h3 id="nice-to-have-improves-clarity-but-has-reasonable-defaults">NICE-TO-HAVE (improves clarity but has reasonable defaults)<a class="headerlink" href="#nice-to-have-improves-clarity-but-has-reasonable-defaults" title="Permanent link">&para;</a></h3>
+<p><strong>Q6</strong>: For Item 1, should the TUI screenshot be auto-generated via <code>app.save_screenshot()</code> in a test/script, or manually captured?</p>
+<p><em>Default assumption</em>: Manual capture, but document the Textual screenshot API for future automation.</p>
+<p><strong>Q7</strong>: For Item 8c, should the final export summary show per-source breakdowns (e.g., "Claude: 12 added, Kiro: 36 added") or just fix the progress bar and keep the aggregate final line?</p>
+<p><em>Default assumption</em>: Fix progress bar to per-source, keep aggregate final line, add per-source breakdown as well.</p>
+<hr />
+<h2 id="5-recommended-implementation-order">5. Recommended Implementation Order<a class="headerlink" href="#5-recommended-implementation-order" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Item 8 -- Remove from spec</strong> (already fixed per MEMORY.md; 21 errors are env setup)</li>
+<li><strong>Item 6 -- Remove from spec</strong> (external repo; track in pdf-by-chapters backlog)</li>
+<li><strong>Item 2 -- Collapse into Item 1</strong> (screenshot does not exist yet, just name it correctly)</li>
+<li><strong>Item 8c</strong> -- Fix export progress bar (independent, quick win, Phase 1 cleanup)</li>
+<li><strong>Item 9</strong> -- Implement <code>list_concepts()</code> (need to identify data source first)</li>
+<li><strong>Item 5</strong> -- Course picker (Textual <code>OptionList</code> widget, moderate complexity)</li>
+<li><strong>Item 7</strong> -- Review Wrong Answers (depends on 5 for course context, moderate complexity)</li>
+<li><strong>Items 1, 3, 4</strong> -- Documentation updates (do last, after features are stable)</li>
+</ol>
+<hr />
+<h2 id="6-revised-item-count">6. Revised Item Count<a class="headerlink" href="#6-revised-item-count" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Original</th>
+<th>Revised</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>9 items + 1 Phase 1</td>
+<td>7 items</td>
+<td>Item 8 resolved, Item 6 excluded, Item 2 collapsed</td>
+</tr>
+<tr>
+<td>3 doc items</td>
+<td>3 doc items</td>
+<td>Unchanged but should be done last</td>
+</tr>
+<tr>
+<td>1 bug fix</td>
+<td>1 bug fix</td>
+<td>8c still valid</td>
+</tr>
+<tr>
+<td>3 features</td>
+<td>3 features</td>
+<td>Items 5, 7, 9</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

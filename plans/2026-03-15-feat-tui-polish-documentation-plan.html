@@ -1,0 +1,1812 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-03-15-feat-tui-polish-documentation-plan.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>TUI Polish, Documentation & Phase 1 Cleanup - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tui-polish-documentation-phase-1-cleanup" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              TUI Polish, Documentation & Phase 1 Cleanup
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enhancement-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enhancement Summary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enhancement Summary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-improvements-from-re-deepening" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Improvements from Re-Deepening
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-review-corrections-5-review-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Post-Review Corrections (5 review agents)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-considerations-discovered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Considerations Discovered
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#review-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review Summary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Review Summary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simplifications-applied-from-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simplifications Applied (from review)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-statement-motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem Statement / Motivation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposed-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed Solution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Solution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#excluded-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Excluded Items
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technical Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#batch-a-bug-fix-code-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch A: Bug Fix + Code Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Batch A: Bug Fix + Code Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a1-fix-session-export-progress-bar-phase-1-item-8c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A1. Fix session-export progress bar (Phase 1 item 8c)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-insights-a1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Insights (A1)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research Insights (A1)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a2-implement-list_concepts-in-historypy-phase-9-item-9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2. Implement list_concepts() in history.py (Phase 9 item 9)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-insights-a2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Insights (A2)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research Insights (A2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a3-course-picker-for-multiple-directories-phase-9-item-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A3. Course picker for multiple directories (Phase 9 item 5)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-insights-a3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Insights (A3)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research Insights (A3)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a4-review-wrong-answers-mode-phase-9-item-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A4. "Review Wrong Answers" mode (Phase 9 item 7)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-insights-a4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Insights (A4)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research Insights (A4)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a5-fix-get_due_cards-correctness-bug-discovered-during-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A5. Fix get_due_cards() correctness bug (discovered during review)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-insights-a5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Insights (A5)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research Insights (A5)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a6-narrow-suppressexception-discovered-during-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A6. Narrow suppress(Exception) (discovered during review)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-insights-a6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Insights (A6)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-b-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch B: Documentation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Batch B: Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#b1-capture-tui-screenshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B1. Capture TUI screenshot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b2-update-readmemd-with-tui-section-phase-9-item-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B2. Update README.md with TUI section (Phase 9 item 1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b3-update-docssetup-guidemd-phase-9-item-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B3. Update docs/setup-guide.md (Phase 9 item 3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b4-update-docscli-referencemd-phase-9-item-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B4. Update docs/cli-reference.md (Phase 9 item 4)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-wide-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System-Wide Impact
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance Criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#success-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Success Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies &amp; Risks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred-items-separate-prs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deferred Items (separate PRs)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources &amp; References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="tui-polish-documentation-phase-1-cleanup">TUI Polish, Documentation &amp; Phase 1 Cleanup<a class="headerlink" href="#tui-polish-documentation-phase-1-cleanup" title="Permanent link">&para;</a></h1>
+<h2 id="enhancement-summary">Enhancement Summary<a class="headerlink" href="#enhancement-summary" title="Permanent link">&para;</a></h2>
+<p><strong>Re-deepened on:</strong> 2026-03-15
+<strong>Agents used (8):</strong> Learnings researcher, Framework docs researcher, Best practices researcher, Python reviewer, Architecture strategist, Simplicity reviewer, Performance oracle, Security sentinel</p>
+<h3 id="key-improvements-from-re-deepening">Key Improvements from Re-Deepening<a class="headerlink" href="#key-improvements-from-re-deepening" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Execution order changed</strong> — A5 (correctness bug) now first; affects downstream features</li>
+<li><strong>A6 scope expanded</strong> — 3 call sites (not 2), catch <code>(OSError, sqlite3.Error)</code> not just <code>sqlite3.Error</code></li>
+<li><strong>A3 enhanced</strong> — <code>ModalScreen[ReturnType]</code> pattern from Textual docs, <code>event.option_index</code> (not <code>option_id</code>)</li>
+<li><strong>A4 tightened</strong> — single <code>if not self._is_retry:</code> guard, <code>reactive(bindings=True)</code> auto-refresh, decoupled from A3</li>
+<li><strong>Security: PASS</strong> — no actionable vulnerabilities for local desktop app threat model</li>
+</ol>
+<h3 id="post-review-corrections-5-review-agents">Post-Review Corrections (5 review agents)<a class="headerlink" href="#post-review-corrections-5-review-agents" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>A3 fix:</strong> <code>event.option_id</code> → <code>event.option_index</code> (option_id is <code>str | None</code>, can be None)</li>
+<li><strong>A4 fix:</strong> <code>wrong_hashes</code> set change requires <code>review_loader.py</code> too (<code>.append()</code> → <code>.add()</code>)</li>
+<li><strong>A5 simplified:</strong> Deferred composite index (zero rows, premature) and <code>get_course_stats()</code> fix (correlated subquery IS deterministic)</li>
+<li><strong>A3 simplified:</strong> Dropped <code>count_flashcards()</code> recommendation (zero files on disk, fabricated perf numbers)</li>
+<li><strong>New deferred:</strong> CLI wrappers for SM-2 subsystem (6 of 14 capabilities are TUI-only)</li>
+</ul>
+<h3 id="new-considerations-discovered">New Considerations Discovered<a class="headerlink" href="#new-considerations-discovered" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>_speak()</code> method (line ~280) has 3rd <code>except Exception: pass</code> — include in A6</li>
+<li><code>wrong_hashes</code> should be <code>set[str]</code> not <code>list[str]</code> for O(1) membership tests (change in both <code>review_loader.py</code> and <code>study_cards.py</code>)</li>
+</ul>
+<h2 id="review-summary">Review Summary<a class="headerlink" href="#review-summary" title="Permanent link">&para;</a></h2>
+<p><strong>Reviewed on:</strong> 2026-03-15
+<strong>Agents:</strong> Python reviewer, Architecture strategist, Simplicity reviewer, Performance oracle, Security sentinel, Learnings researcher</p>
+<h3 id="simplifications-applied-from-review">Simplifications Applied (from review)<a class="headerlink" href="#simplifications-applied-from-review" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Dropped <code>session_id</code> FK migration</strong> — retry uses in-memory <code>wrong_hashes</code> list, no DB round-trip</li>
+<li><strong>Dropped <code>concepts.py</code> extraction</strong> — <code>list_concepts()</code> goes in <code>history.py</code> (only 3 concept functions)</li>
+<li><strong>3-field NamedTuple</strong> replaces Concept dataclass (no consumer needs <code>id</code> or <code>relation_count</code>)</li>
+<li><strong>2 states + boolean</strong> replaces 4-state enum (retry_summary = summary with r key disabled)</li>
+<li><strong>4-line A1 fix</strong> — defer ExportStats normalisation to separate PR</li>
+<li><strong>Added:</strong> <code>get_due_cards()</code> correctness fix (GROUP BY semantics bug)</li>
+<li><strong>Added:</strong> <code>suppress(Exception)</code> narrowing + logging (2-line fix)</li>
+</ol>
+<p><strong>Estimated new code:</strong> ~100 lines (down from 116 after post-review simplifications)</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Complete Phase 9 (TUI Polish &amp; Documentation) and the remaining Phase 1 bug (item 8c). This covers documentation updates for the new StudyCards TUI, implementing missing functionality (<code>list_concepts()</code>, course picker, review wrong answers mode), and fixing the session-export progress bar bug.</p>
+<h2 id="problem-statement-motivation">Problem Statement / Motivation<a class="headerlink" href="#problem-statement-motivation" title="Permanent link">&para;</a></h2>
+<p>Phase 8 delivered a working StudyCards TUI with SM-2 spaced repetition, but documentation hasn't been updated to reflect it. Several features referenced in code are stubs (<code>list_concepts()</code> returns nothing, Concepts tab is empty, no course picker for multi-course setups). The session-export progress bar displays misleading cumulative stats labelled as the current source.</p>
+<h2 id="proposed-solution">Proposed Solution<a class="headerlink" href="#proposed-solution" title="Permanent link">&para;</a></h2>
+<p>Seven work items plus two small correctness fixes, across two batches. Two TODO items excluded.</p>
+<h3 id="excluded-items">Excluded Items<a class="headerlink" href="#excluded-items" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>TODO Item</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8 — Fix 29 pre-existing test failures</td>
+<td>Already resolved. Root cause was missing <code>uv sync --all-packages</code>.</td>
+</tr>
+<tr>
+<td>6 — Add <code>--retry-wrong</code> flag to <code>pdf-by-chapters review</code></td>
+<td>External repo. Out of scope.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="item-dependencies">Item Dependencies<a class="headerlink" href="#item-dependencies" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TD
+    E["A5: Fix get_due_cards()"] --&gt; C
+    A["A1: Fix export progress bar"] --&gt; DOCS
+    B["A2: Implement list_concepts()"] --&gt; DOCS
+    C["A3: Course picker"] --&gt; SS
+    D["A4: Review Wrong Answers mode"] --&gt; SS
+    F["A6: Narrow suppress(Exception)"] --&gt; SS
+    SS["Capture TUI screenshot"] --&gt; DOCS["B2-B4: Documentation updates"]
+
+    style E fill:#e63946,color:#fff
+    style A fill:#f4a261
+    style B fill:#f4a261
+    style C fill:#2a9d8f,color:#fff
+    style D fill:#2a9d8f,color:#fff
+    style F fill:#457b9d,color:#fff
+    style SS fill:#e9c46a
+    style DOCS fill:#264653,color:#fff</code></pre>
+<p><strong>Execution order:</strong> A5 first, then {A1, A2, A6} in parallel, then {A3, A4} in parallel, then B1-B4.</p>
+<p>A5 must execute first — it fixes a correctness bug that affects downstream features. A1, A2, and A6 are independent of each other and can be parallelised. A3 and A4 are also independent — A4 does NOT depend on A3 (it reuses <code>self._course</code> already set at session start). All code items must complete before B1 (screenshot capture).</p>
+<h2 id="technical-considerations">Technical Considerations<a class="headerlink" href="#technical-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="batch-a-bug-fix-code-features">Batch A: Bug Fix + Code Features<a class="headerlink" href="#batch-a-bug-fix-code-features" title="Permanent link">&para;</a></h3>
+<h4 id="a1-fix-session-export-progress-bar-phase-1-item-8c">A1. Fix session-export progress bar (Phase 1 item 8c)<a class="headerlink" href="#a1-fix-session-export-progress-bar-phase-1-item-8c" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>packages/agent-session-tools/src/agent_session_tools/export_sessions.py</code></p>
+<p><strong>Bug:</strong> Line 182 displays <code>batch_stats.added</code> (cumulative across all sources) labelled with the current source name.</p>
+<p><strong>Fix:</strong> Capture per-source values into local variables before accumulating into <code>batch_stats</code>, then display the locals. ~4 lines changed.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Before accumulating into batch_stats, save per-source values</span>
+<span class="n">source_added</span> <span class="o">=</span> <span class="n">source_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;added&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source_stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">source_stats</span><span class="o">.</span><span class="n">added</span>
+<span class="n">source_updated</span> <span class="o">=</span> <span class="n">source_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;updated&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source_stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">source_stats</span><span class="o">.</span><span class="n">updated</span>
+<span class="c1"># ... accumulate into batch_stats ...</span>
+<span class="c1"># Display per-source (not cumulative)</span>
+<span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">source_added</span><span class="si">}</span><span class="s2"> added, </span><span class="si">{</span><span class="n">source_updated</span><span class="si">}</span><span class="s2"> updated&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Note:</strong> The <code>isinstance(source_stats, dict)</code> dual-type pattern is a pre-existing smell. <code>ExportStats</code> already defines <code>__iadd__</code> — normalising all exporters to return <code>ExportStats</code> would eliminate the dict branch entirely. However, that belongs in a separate PR — don't couple a cross-exporter API change to a display bug fix.</p>
+<h3 id="research-insights-a1">Research Insights (A1)<a class="headerlink" href="#research-insights-a1" title="Permanent link">&para;</a></h3>
+<p><strong>Rich progress per-source tracking (from best practices research):</strong> For richer displays, Rich supports <code>task.fields</code> with format strings: <code>progress.update(task_id, advance=1, status=f"ok:{n}")</code>. Not needed for this 4-line fix but useful if progress display gets more complex later.</p>
+<p><strong>Acceptance criteria:</strong>
+- [ ] Progress bar shows per-source counts: "Kiro: 10 added", "Claude Code: 5 added"
+- [ ] Final summary still shows correct totals
+- [ ] Existing tests pass</p>
+<hr />
+<h4 id="a2-implement-list_concepts-in-historypy-phase-9-item-9">A2. Implement <code>list_concepts()</code> in history.py (Phase 9 item 9)<a class="headerlink" href="#a2-implement-list_concepts-in-historypy-phase-9-item-9" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>packages/studyctl/src/studyctl/history.py</code></p>
+<p><strong>Context:</strong> The TUI has an empty Concepts tab with a <code>pass</code> stub at <code>app.py:162-167</code>. The <code>concepts</code> table already exists (confirmed via migration tests).</p>
+<p><strong>Implementation:</strong> Add <code>list_concepts()</code> to <code>history.py</code> next to the existing <code>seed_concepts_from_config()</code> and <code>migrate_knowledge_bridges_to_concepts()</code> functions. Return a 3-field NamedTuple matching the display columns — no <code>id</code> or <code>relation_count</code> (no consumer needs them).</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NamedTuple</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ConceptInfo</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">list_concepts</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ConceptInfo</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all stored concepts for display.&quot;&quot;&quot;</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">_connect</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT name, domain, COALESCE(description, &#39;&#39;) FROM concepts ORDER BY domain, name&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">ConceptInfo</span><span class="p">(</span><span class="o">*</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
+    <span class="k">except</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">OperationalError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+<p>Wire into <code>_populate_concepts()</code> in <code>app.py</code> to populate the DataTable.</p>
+<h3 id="research-insights-a2">Research Insights (A2)<a class="headerlink" href="#research-insights-a2" title="Permanent link">&para;</a></h3>
+<p><strong>NamedTuple is the right choice (simplicity reviewer confirmed):</strong> The only consumer is <code>_populate_concepts()</code> which calls <code>table.add_row(name, domain, description)</code>. A NamedTuple is cheap, self-documenting, and already simpler than the dataclass it replaced. No further reduction needed.</p>
+<p><strong>Architecture note:</strong> Architecture reviewer pushes back on adding to history.py (950 lines, 25 functions, SRP violation). However, the simplicity reviewer's threshold — "extract when there are 5+ concept functions" — is pragmatic. There are currently 3 concept functions (<code>seed_concepts_from_config</code>, <code>migrate_bridges_to_graph</code>, and now <code>list_concepts</code>). Extract if a 4th is added.</p>
+<p><strong>Acceptance criteria:</strong>
+- [ ] <code>list_concepts()</code> returns stored concepts as <code>list[ConceptInfo]</code>
+- [ ] TUI Concepts tab populates from <code>list_concepts()</code>
+- [ ] Works with empty database (returns empty list, no crash)</p>
+<hr />
+<h4 id="a3-course-picker-for-multiple-directories-phase-9-item-5">A3. Course picker for multiple directories (Phase 9 item 5)<a class="headerlink" href="#a3-course-picker-for-multiple-directories-phase-9-item-5" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>packages/studyctl/src/studyctl/tui/app.py</code> (picker logic) + <code>study_cards.py</code> (unchanged)</p>
+<p><strong>Design:</strong>
+- Picker logic lives in <code>_launch_study()</code> on the parent App, NOT in <code>StudyCardsTab</code>
+- If single directory: skip picker, launch directly (current behaviour)
+- If multiple directories: show <code>ModalScreen[ReturnType]</code> with <code>OptionList</code> for selection
+- If no directories configured: show error with config file path
+- Invalid/empty directories: skip with warning, show remaining</p>
+<p><strong>Course name normalisation:</strong> Use directory basename consistently in both picker and <code>record_card_review()</code>. This is critical for A4's retry filtering.</p>
+<h3 id="research-insights-a3">Research Insights (A3)<a class="headerlink" href="#research-insights-a3" title="Permanent link">&para;</a></h3>
+<p><strong>Textual ModalScreen pattern (from framework docs research):</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">textual.screen</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModalScreen</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">textual.widgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptionList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">textual.widgets.option_list</span><span class="w"> </span><span class="kn">import</span> <span class="n">Option</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CoursePickerScreen</span><span class="p">(</span><span class="n">ModalScreen</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">courses</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_courses</span> <span class="o">=</span> <span class="n">courses</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">compose</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ComposeResult</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">OptionList</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">Option</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_courses</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_option_list_option_selected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">OptionList</span><span class="o">.</span><span class="n">OptionSelected</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dismiss</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_courses</span><span class="p">[</span><span class="n">event</span><span class="o">.</span><span class="n">option_index</span><span class="p">])</span>
+</code></pre></div></p>
+<p>Parent receives result via callback:
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_launch_study</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;flashcards&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">courses</span> <span class="o">=</span> <span class="n">discover_directories</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_study_dirs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">courses</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_session</span><span class="p">(</span><span class="n">courses</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mode</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">courses</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push_screen</span><span class="p">(</span><span class="n">CoursePickerScreen</span><span class="p">(</span><span class="n">courses</span><span class="p">),</span> <span class="k">lambda</span> <span class="n">result</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_session</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span> <span class="k">if</span> <span class="n">result</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+</code></pre></div></p>
+<p><strong><code>reactive(bindings=True)</code> pattern:</strong> Auto-calls <code>refresh_bindings()</code> on change — no manual calls needed. Use this for the <code>_is_retry</code> flag in A4.</p>
+<p><strong>Note on <code>event.option_index</code> (from post-review):</strong> Use <code>event.option_index</code> (always <code>int</code>) instead of <code>event.option_id</code> (typed <code>str | None</code>, can be None). This eliminates the need for <code>id=str(i)</code> in Option constructors and avoids a potential <code>TypeError</code>.</p>
+<p><strong>Acceptance criteria:</strong>
+- [ ] Single directory: no picker, launches directly
+- [ ] Multiple directories: picker shown with course names (directory basenames)
+- [ ] Invalid/empty directories skipped with warning
+- [ ] Selected course loads correctly into existing review flow</p>
+<hr />
+<h4 id="a4-review-wrong-answers-mode-phase-9-item-7">A4. "Review Wrong Answers" mode (Phase 9 item 7)<a class="headerlink" href="#a4-review-wrong-answers-mode-phase-9-item-7" title="Permanent link">&para;</a></h4>
+<p><strong>Files:</strong> <code>packages/studyctl/src/studyctl/tui/study_cards.py</code> + <code>packages/studyctl/src/studyctl/review_loader.py</code> (wrong_hashes type change)</p>
+<p><strong>Key insight (from simplicity review):</strong> After session completion, <code>self._result.wrong_hashes</code> is already in memory. Pass it directly to the retry flow — no DB round-trip, no migration needed.</p>
+<p><strong>Design:</strong>
+- Two-state model: <code>reviewing</code> / <code>summary</code> + <code>self._is_retry: bool</code>
+- In <code>summary</code> state, <code>r</code> key triggers retry: filter cards by <code>wrong_hashes</code>, reset index, set <code>_is_retry = True</code>
+- When <code>_is_retry = True</code>: header shows "(Retry)", <code>r</code> key disabled via <code>check_action</code>, SM-2 <code>record_card_review()</code> is skipped
+- No nested retries — retry completion shows final score and returns to summary
+- Retry sessions still recorded in <code>review_sessions</code> for history (but no special <code>is_retry</code> column needed — SM-2 scheduling is simply not called)</p>
+<p><strong>Why no migration:</strong> Both <code>reviewed_at</code> and <code>started_at</code> use <code>datetime.now(UTC)</code> on the same machine in the same process. There is no clock skew. The in-memory approach is simpler and eliminates the entire migration, signature changes, and call-site updates. Add <code>session_id</code> FK in a future PR if cross-session analytics ever need it.</p>
+<p><strong>SM-2 canonical pattern (Wozniak 1990, Step 7):</strong> "After each session, repeat all items scoring below 4." The original incorrect already penalised the card (interval=1, ease-=0.2). Recording a retry "correct" would overwrite those values and create false confidence. This is well-established in Anki, SuperMemo, and FSRS research.</p>
+<h3 id="research-insights-a4">Research Insights (A4)<a class="headerlink" href="#research-insights-a4" title="Permanent link">&para;</a></h3>
+<p><strong>SM-2 retry confirmed by 3 sources (best practices research):</strong>
+- <strong>Wozniak 1990:</strong> Step 7 is explicitly a drill loop, not a scheduling event
+- <strong>Anki:</strong> Prevents relearning failures from compounding ease factor
+- <strong>FSRS-6:</strong> Uses a separate attenuated formula for same-day reviews (we skip entirely — simpler and correct)</p>
+<p><strong>Simplification (from simplicity reviewer):</strong> SM-2 skip is a single <code>if not self._is_retry:</code> guard around the existing <code>record_card_review()</code> call at line 218. The <code>r</code> key naturally does nothing when <code>wrong_hashes</code> is empty — no need for explicit <code>check_action</code> binding removal. However, <code>check_action</code> hiding the <code>r</code> key from the footer when there are no wrong answers is better UX.</p>
+<p><strong><code>reactive(bindings=True)</code> for auto-refresh:</strong>
+<div class="highlight"><pre><span></span><code><span class="n">_is_retry</span> <span class="o">=</span> <span class="n">reactive</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">bindings</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># auto-calls refresh_bindings on change</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parameters</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">object</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;retry_wrong&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="o">.</span><span class="n">wrong_hashes</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_retry</span>
+    <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div></p>
+<p><strong><code>wrong_hashes</code> should be <code>set[str]</code> (Python reviewer):</strong> For O(1) membership tests during card filtering. Change <code>ReviewResult.wrong_hashes</code> from <code>list[str]</code> to <code>set[str]</code> with <code>field(default_factory=set)</code>. The <code>append</code> call becomes <code>add</code>.</p>
+<p><strong>A4 does NOT depend on A3 (simplicity reviewer):</strong> Retry reuses <code>self._course</code> which is already set when the first session starts via <code>courses[0]</code>. A4 can be shipped before A3 if desired.</p>
+<p><strong>Edge cases:</strong>
+- No wrong answers → <code>r</code> key hidden via <code>check_action</code>, "All correct!" shown
+- All wrong → retry includes all cards
+- User quits mid-retry → partial progress lost (acceptable — no SM-2 writes during retry anyway)</p>
+<p><strong>Acceptance criteria:</strong>
+- [ ] <code>r</code> key binding shown in footer only when wrong answers exist and not already in retry
+- [ ] Retry loads only incorrectly answered cards from in-memory set
+- [ ] SM-2 scheduling NOT called during retry (single <code>if not self._is_retry:</code> guard)
+- [ ] Header shows "(Retry)" indicator
+- [ ] No nested retries — retry completion returns to summary</p>
+<hr />
+<h4 id="a5-fix-get_due_cards-correctness-bug-discovered-during-review">A5. Fix <code>get_due_cards()</code> correctness bug (discovered during review)<a class="headerlink" href="#a5-fix-get_due_cards-correctness-bug-discovered-during-review" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>packages/studyctl/src/studyctl/review_db.py</code></p>
+<p><strong>Bug:</strong> The query uses <code>HAVING reviewed_at = MAX(reviewed_at)</code> with a GROUP BY that makes <code>correct</code> non-deterministic in SQLite. At scale this returns incorrect spaced repetition state.</p>
+<p><strong>Fix:</strong> Use <code>ROW_NUMBER() OVER (PARTITION BY card_hash ORDER BY reviewed_at DESC)</code> window function to reliably get the most recent review per card.</p>
+<h3 id="research-insights-a5">Research Insights (A5)<a class="headerlink" href="#research-insights-a5" title="Permanent link">&para;</a></h3>
+<p><strong>Confirmed non-deterministic (best practices research + Python reviewer):</strong> SQLite's GROUP BY picks bare column values from an arbitrary row in the group when those columns aren't in aggregate functions. The <code>correct</code>, <code>ease_factor</code>, and <code>interval_days</code> values are unreliable.</p>
+<p><strong><code>get_course_stats()</code> is NOT the same bug (post-review correction):</strong> Line 249-258 uses a correlated subquery <code>WHERE reviewed_at = (SELECT MAX(reviewed_at)...)</code> which IS deterministic — it pins to a specific card_hash. It's slower but not incorrect. Deferred to separate cleanup.</p>
+<p><strong>Concrete fix:</strong>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_due_cards</span><span class="p">(</span><span class="n">course</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">CardProgress</span><span class="p">]:</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">db_path</span> <span class="ow">or</span> <span class="n">_get_db</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">ensure_tables</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">today</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        WITH latest AS (</span>
+<span class="sd">            SELECT card_hash, correct, ease_factor, interval_days, next_review,</span>
+<span class="sd">                   COUNT(*) OVER (PARTITION BY card_hash) as review_count,</span>
+<span class="sd">                   ROW_NUMBER() OVER (PARTITION BY card_hash ORDER BY reviewed_at DESC) as rn</span>
+<span class="sd">            FROM card_reviews</span>
+<span class="sd">            WHERE course = ?</span>
+<span class="sd">        )</span>
+<span class="sd">        SELECT card_hash, correct, ease_factor, interval_days, next_review, review_count</span>
+<span class="sd">        FROM latest</span>
+<span class="sd">        WHERE rn = 1 AND next_review &lt;= ?</span>
+<span class="sd">        ORDER BY next_review ASC</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">course</span><span class="p">,</span> <span class="n">today</span><span class="p">),</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">CardProgress</span><span class="p">(</span>
+            <span class="n">card_hash</span><span class="o">=</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">last_correct</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="n">ease_factor</span><span class="o">=</span><span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+            <span class="n">interval_days</span><span class="o">=</span><span class="n">r</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+            <span class="n">next_review</span><span class="o">=</span><span class="n">r</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span>
+            <span class="n">review_count</span><span class="o">=</span><span class="n">r</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span>
+    <span class="p">]</span>
+</code></pre></div></p>
+<p><strong>Composite index deferred (post-review):</strong> At zero rows, adding <code>(card_hash, reviewed_at DESC)</code> is premature optimization. The existing <code>idx_card_reviews_hash</code> on <code>(card_hash)</code> is sufficient. Add the composite index when data volume warrants it.</p>
+<p><strong>Acceptance criteria:</strong>
+- [ ] <code>get_due_cards()</code> uses ROW_NUMBER() window function for correct most-recent-review logic
+- [ ] Existing review_db tests pass</p>
+<hr />
+<h4 id="a6-narrow-suppressexception-discovered-during-review">A6. Narrow <code>suppress(Exception)</code> (discovered during review)<a class="headerlink" href="#a6-narrow-suppressexception-discovered-during-review" title="Permanent link">&para;</a></h4>
+<p><strong>File:</strong> <code>packages/studyctl/src/studyctl/tui/study_cards.py</code></p>
+<p><strong>3 call sites (expanded from 2):</strong>
+1. <code>_record_answer()</code> line ~218: <code>contextlib.suppress(Exception)</code> around <code>record_card_review()</code>
+2. <code>_show_summary()</code> line ~263: <code>contextlib.suppress(Exception)</code> around <code>record_session()</code>
+3. <code>_speak()</code> line ~280: <code>except Exception: pass</code> around TTS import/execution</p>
+<h3 id="research-insights-a6">Research Insights (A6)<a class="headerlink" href="#research-insights-a6" title="Permanent link">&para;</a></h3>
+<p><strong>Catch environment exceptions, let code bugs propagate (best practices research):</strong>
+- DB operations: catch <code>(sqlite3.Error, OSError)</code> — covers locked DB, missing file, disk full, permission denied
+- TTS operations: catch <code>(ImportError, OSError, RuntimeError)</code> — covers missing kokoro, audio device errors, thread issues
+- Let <code>TypeError</code>, <code>ValueError</code>, <code>AttributeError</code> propagate — these indicate actual bugs</p>
+<p><strong>Concrete fix for DB sites (lines ~218, ~263):</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Replace: with contextlib.suppress(Exception):</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">record_card_review</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="k">except</span> <span class="p">(</span><span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Failed to record card review: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Concrete fix for TTS site (line ~280):</strong>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_speak</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">agent_session_tools.speak</span><span class="w"> </span><span class="kn">import</span> <span class="n">_get_tts_config</span><span class="p">,</span> <span class="n">_speak_kokoro</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">_get_tts_config</span><span class="p">()</span>
+        <span class="n">voice</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;voice&quot;</span><span class="p">,</span> <span class="s2">&quot;am_michael&quot;</span><span class="p">)</span>
+        <span class="n">speed</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;speed&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+        <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">_speak_kokoro</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">text</span><span class="p">,),</span> <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;voice&quot;</span><span class="p">:</span> <span class="n">voice</span><span class="p">,</span> <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="n">speed</span><span class="p">},</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Voice unavailable: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Security improvement (security sentinel):</strong> A6 is a net positive — prevents silent swallowing of unexpected errors that could mask corruption. If successful, consider applying the same pattern to <code>agent-session-tools</code> exporters in a follow-up.</p>
+<p><strong>Acceptance criteria:</strong>
+- [ ] <code>suppress(Exception)</code> replaced at all 3 call sites with specific exception types
+- [ ] DB operations catch <code>(sqlite3.Error, OSError)</code>
+- [ ] TTS operations catch <code>(ImportError, OSError, RuntimeError)</code>
+- [ ] All exceptions logged at debug level
+- [ ] Code bugs (<code>TypeError</code>, <code>ValueError</code>, <code>AttributeError</code>) propagate naturally</p>
+<hr />
+<h3 id="batch-b-documentation">Batch B: Documentation<a class="headerlink" href="#batch-b-documentation" title="Permanent link">&para;</a></h3>
+<h4 id="b1-capture-tui-screenshot">B1. Capture TUI screenshot<a class="headerlink" href="#b1-capture-tui-screenshot" title="Permanent link">&para;</a></h4>
+<p>Capture after all Batch A items. Save as <code>images/socratic_mentor_tui.png</code> (correct spelling — the typo <code>soctractic</code> in TODO.md was for a file that never existed).</p>
+<h4 id="b2-update-readmemd-with-tui-section-phase-9-item-1">B2. Update README.md with TUI section (Phase 9 item 1)<a class="headerlink" href="#b2-update-readmemd-with-tui-section-phase-9-item-1" title="Permanent link">&para;</a></h4>
+<p>Add: what TUI does, screenshot, <code>studyctl tui</code> launch command, key bindings summary, voice toggle mention.</p>
+<h4 id="b3-update-docssetup-guidemd-phase-9-item-3">B3. Update docs/setup-guide.md (Phase 9 item 3)<a class="headerlink" href="#b3-update-docssetup-guidemd-phase-9-item-3" title="Permanent link">&para;</a></h4>
+<p>Add: TUI installation, <code>review.directories</code> config example, voice toggle requires <code>[tts]</code> extra.</p>
+<h4 id="b4-update-docscli-referencemd-phase-9-item-4">B4. Update docs/cli-reference.md (Phase 9 item 4)<a class="headerlink" href="#b4-update-docscli-referencemd-phase-9-item-4" title="Permanent link">&para;</a></h4>
+<p>Add: <code>studyctl tui</code> command, key bindings reference table (including <code>r</code> for retry), course picker behaviour.</p>
+<h2 id="system-wide-impact">System-Wide Impact<a class="headerlink" href="#system-wide-impact" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Interaction graph:</strong> Course picker adds directory resolution in <code>_launch_study()</code> before constructing <code>StudyCardsTab</code>. Retry adds a boolean flag controlling SM-2 writes and footer bindings. No schema changes.</li>
+<li><strong>Error propagation:</strong> Config errors surface as Textual messages. <code>try/except (sqlite3.Error, OSError)</code> with logging replaces silent suppression. Code bugs propagate.</li>
+<li><strong>State lifecycle risks:</strong> Retry is in-memory only — no DB state to corrupt. <code>list_concepts()</code> is read-only.</li>
+<li><strong>API surface parity:</strong> <code>list_concepts()</code> serves both CLI and TUI via <code>history.py</code>.</li>
+</ul>
+<h2 id="acceptance-criteria">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[x] A5: <code>get_due_cards()</code> uses ROW_NUMBER() window function for correctness</li>
+<li>[x] A1: Export progress bar shows per-source stats (4-line fix)</li>
+<li>[x] A2: <code>list_concepts()</code> implemented in <code>history.py</code>, TUI Concepts tab populated</li>
+<li>[x] A3: Course picker works for single/multi/zero directory configs</li>
+<li>[x] A4: Review Wrong Answers mode (<code>r</code> key) with in-memory filtering, no SM-2 impact</li>
+<li>[x] A6: <code>suppress(Exception)</code> narrowed at all 3 call sites with specific types + logging</li>
+<li>[x] B1: Screenshot captured via headless Textual (<code>images/socratic_mentor_tui.svg</code>)</li>
+<li>[x] B2-B4: README, setup-guide, cli-reference updated with TUI docs</li>
+<li>[x] All existing tests pass (<code>uv sync --all-packages &amp;&amp; pytest</code>) — 480 passed</li>
+<li>[x] New tests for <code>list_concepts()</code> and <code>get_due_cards()</code> window function</li>
+</ul>
+<h2 id="success-metrics">Success Metrics<a class="headerlink" href="#success-metrics" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Zero stubs or empty tabs in the TUI</li>
+<li>Documentation covers all <code>studyctl tui</code> functionality</li>
+<li>README screenshot shows current TUI state</li>
+<li>Phase 1 fully complete (no remaining items)</li>
+<li>Phase 9 complete except item 6 (external repo, tracked separately)</li>
+</ul>
+<h2 id="dependencies-risks">Dependencies &amp; Risks<a class="headerlink" href="#dependencies-risks" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Course name mismatch between picker and card_reviews</td>
+<td>Use directory basename consistently; add assertion test</td>
+</tr>
+<tr>
+<td>Screenshot requires manual capture</td>
+<td>Plan as final step after all code changes</td>
+</tr>
+<tr>
+<td>Textual version compatibility</td>
+<td>Pin to current version; test on macOS</td>
+</tr>
+<tr>
+<td>Connection leaks in review_db.py</td>
+<td>All functions use bare close() — deferred to separate cleanup</td>
+</tr>
+</tbody>
+</table>
+<h2 id="deferred-items-separate-prs">Deferred Items (separate PRs)<a class="headerlink" href="#deferred-items-separate-prs" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExportStats</code> normalisation across all exporters</td>
+<td>Good cleanup but separate concern from the display bug. <code>__iadd__</code> already exists.</td>
+</tr>
+<tr>
+<td><code>session_id</code> FK on <code>card_reviews</code></td>
+<td>Not needed for in-process retry; add when cross-session analytics require it</td>
+</tr>
+<tr>
+<td><code>concepts.py</code> module extraction</td>
+<td>3 concept functions in 950-line history.py. Extract at 4+ (architecture reviewer wants now, simplicity reviewer says wait)</td>
+</tr>
+<tr>
+<td>Connection management (context managers)</td>
+<td>All review_db.py functions have bare close() — connection leaks on exceptions. Fix in separate commit.</td>
+</tr>
+<tr>
+<td>Schema ownership documentation</td>
+<td>Process artifact</td>
+</tr>
+<tr>
+<td>Pre-existing bugs in <code>ensure_tables()</code> / <code>_get_db()</code></td>
+<td>Preparatory cleanup, separate commit</td>
+</tr>
+<tr>
+<td><code>ensure_tables()</code> redundant calls</td>
+<td>Module-level <code>_tables_ensured</code> flag would eliminate DDL on every function call</td>
+</tr>
+<tr>
+<td><code>suppress(Exception)</code> in agent-session-tools exporters</td>
+<td>Same pattern as A6; apply if A6 proves successful</td>
+</tr>
+<tr>
+<td><code>studyctl cards</code> CLI subcommand group</td>
+<td>6 of 14 SM-2 capabilities are TUI-only. Library layer is agent-ready but needs CLI wrappers (~80 lines).</td>
+</tr>
+<tr>
+<td><code>get_course_stats()</code> window function</td>
+<td>Correlated subquery IS deterministic (not broken like <code>get_due_cards</code>). Slower but correct.</td>
+</tr>
+<tr>
+<td>Composite index <code>(card_hash, reviewed_at DESC)</code></td>
+<td>Zero rows exist; premature optimization. Add when data volume warrants it.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sources-references">Sources &amp; References<a class="headerlink" href="#sources-references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Export bug:</strong> <code>packages/agent-session-tools/src/agent_session_tools/export_sessions.py:182</code></li>
+<li><strong>TUI source:</strong> <code>packages/studyctl/src/studyctl/tui/study_cards.py</code></li>
+<li><strong>Review DB:</strong> <code>packages/studyctl/src/studyctl/review_db.py</code></li>
+<li><strong>History:</strong> <code>packages/studyctl/src/studyctl/history.py</code></li>
+<li><strong>Migration pattern:</strong> <code>packages/agent-session-tools/src/agent_session_tools/migrations.py</code> (decorator-based, PRAGMA column check)</li>
+<li><strong>ExportStats template:</strong> <code>packages/agent-session-tools/src/agent_session_tools/exporters/base.py</code></li>
+<li><strong>SM-2 retry research:</strong> <code>docs/research/2026-03-15-retry-wrong-answers-best-practices.md</code></li>
+<li><strong>SM-2 implementation patterns:</strong> <code>docs/research/2026-03-15-implementation-patterns.md</code></li>
+<li><strong>SM-2 algorithm:</strong> Wozniak 1990 — Step 7 (end-of-session repeat for items &lt; 4)</li>
+<li><strong>Textual patterns reference:</strong> <code>docs/research/textual-patterns-reference.py</code></li>
+<li><strong>Textual docs:</strong> ModalScreen, OptionList, <code>check_action</code>/<code>refresh_bindings</code>, <code>reactive(bindings=True)</code></li>
+<li><strong>Marathon learnings:</strong> <code>docs/solutions/2026-03-13-marathon-session-learnings.md</code></li>
+<li><strong>Architecture review:</strong> <code>docs/reviews/2026-03-15-tui-plan-architecture-review.md</code></li>
+<li><strong>Python review:</strong> <code>code-review-plan-items.md</code></li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

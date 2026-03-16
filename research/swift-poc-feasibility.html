@@ -1,0 +1,2258 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/research/swift-poc-feasibility.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Swift/SwiftUI PoC Feasibility Study: Flashcard App with Claude API - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#swiftswiftui-poc-feasibility-study-flashcard-app-with-claude-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Swift/SwiftUI PoC Feasibility Study: Flashcard App with Claude API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Executive Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-swiftui-learning-curve-for-a-python-developer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. SwiftUI Learning Curve for a Python Developer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. SwiftUI Learning Curve for a Python Developer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#honest-assessment-moderate-to-steep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest Assessment: Moderate-to-Steep
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paradigm-shifts-hardest-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Paradigm Shifts (Hardest First)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-biggest-traps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Biggest Traps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-will-feel-familiar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Will Feel Familiar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommended-learning-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Learning Path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-realistic-timeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Realistic Timeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Realistic Timeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#with-ai-pair-programming-claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With AI Pair Programming (Claude Code)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#without-ai-pair-programming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Without AI Pair Programming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-risk-xcode-friction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Risk: Xcode Friction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-key-swift-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Key Swift Packages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Key Swift Packages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternatives-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternatives Considered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#packageswift-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package.swift Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-pdfkit-chapter-extraction-how-well-does-it-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. PDFKit Chapter Extraction: How Well Does It Work?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. PDFKit Chapter Extraction: How Well Does It Work?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-good" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Good
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-gotchas-critical-based-on-your-pymupdf-experience" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Gotchas (Critical -- Based on Your PyMuPDF Experience)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pdfkit-chapter-extraction-pattern-swift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PDFKit Chapter Extraction Pattern (Swift)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comparison-pdfkit-vs-pymupdf-your-existing-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison: PDFKit vs PyMuPDF (Your Existing Tool)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-calling-claude-api-from-swift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Calling Claude API from Swift
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Calling Claude API from Swift">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-official-anthropic-swift-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No Official Anthropic Swift SDK
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-option-swiftanthropic-community-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Option: SwiftAnthropic (Community Package)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-raw-urlsession" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: Raw URLSession
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-key-security-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Key Security Note
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-recommended-project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Recommended Project Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Recommended Project Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#xcode-multiplatform-app-macos-ios-shared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Xcode Multiplatform App (macOS + iOS Shared)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-architectural-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Architectural Decisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-swift-specific-gotchas-for-a-python-developer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Swift-Specific Gotchas for a Python Developer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Swift-Specific Gotchas for a Python Developer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#asyncawait-differences-from-python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        async/await Differences from Python
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#type-system-shock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Type System Shock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#xcode-specific-pain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Xcode-Specific Pain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#string-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        String Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-the-elephant-in-the-room-should-you-even-do-this-in-swift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. The Elephant in the Room: Should You Even Do This in Swift?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. The Elephant in the Room: Should You Even Do This in Swift?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#arguments-for-swiftswiftui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments FOR Swift/SwiftUI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arguments-against-extend-python-stack-instead" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arguments AGAINST (Extend Python Stack Instead)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-hybrid-option-best-of-both-worlds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Hybrid Option (Best of Both Worlds)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-decision-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Decision Framework
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-recommended-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Recommended Resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Recommended Resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#essential-readdo-these" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Essential (Read/Do These)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#package-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-when-stuck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference When Stuck
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-a-swiftui-card-flip-animation-it-really-is-this-simple" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix A: SwiftUI Card Flip Animation (It Really Is This Simple)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-b-grdb-record-example-flashcard-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix B: GRDB Record Example (Flashcard Model)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="swiftswiftui-poc-feasibility-study-flashcard-app-with-claude-api">Swift/SwiftUI PoC Feasibility Study: Flashcard App with Claude API<a class="headerlink" href="#swiftswiftui-poc-feasibility-study-flashcard-app-with-claude-api" title="Permanent link">&para;</a></h1>
+<p><strong>Date</strong>: 2026-03-15
+<strong>Context</strong>: Evaluating whether a Python developer (experienced, new to Swift) can build a macOS SwiftUI flashcard app PoC with PDF extraction, Claude API integration, SQLite storage, and localhost server for future MCP integration.</p>
+<hr />
+<h2 id="executive-summary">Executive Summary<a class="headerlink" href="#executive-summary" title="Permanent link">&para;</a></h2>
+<p><strong>Verdict: Feasible, with caveats.</strong> The PoC is achievable in 2-4 weeks with AI pair programming. The biggest risks are not the individual components (all well-supported) but the compound learning curve of Swift's type system + SwiftUI's declarative paradigm + Xcode's tooling, all at once. The ecosystem has every package you need. The question is whether this is the <em>right</em> tool for the job vs. extending the existing Python/web stack.</p>
+<hr />
+<h2 id="1-swiftui-learning-curve-for-a-python-developer">1. SwiftUI Learning Curve for a Python Developer<a class="headerlink" href="#1-swiftui-learning-curve-for-a-python-developer" title="Permanent link">&para;</a></h2>
+<h3 id="honest-assessment-moderate-to-steep">Honest Assessment: Moderate-to-Steep<a class="headerlink" href="#honest-assessment-moderate-to-steep" title="Permanent link">&para;</a></h3>
+<p>SwiftUI is approachable for simple UIs but becomes confusing fast when you hit its sharp edges. Here are the paradigm shifts, ranked by difficulty:</p>
+<h3 id="paradigm-shifts-hardest-first">Paradigm Shifts (Hardest First)<a class="headerlink" href="#paradigm-shifts-hardest-first" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Shift</th>
+<th>Python Equivalent</th>
+<th>Swift Reality</th>
+<th>Pain Level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Type system strictness</strong></td>
+<td>Duck typing, <code>Any</code></td>
+<td>Generics, protocols, associated types, <code>some View</code> opaque types</td>
+<td>HIGH</td>
+</tr>
+<tr>
+<td><strong>Value vs Reference semantics</strong></td>
+<td>Everything is a reference</td>
+<td><code>struct</code> (value, copied) vs <code>class</code> (reference, shared). SwiftUI views are ALL structs.</td>
+<td>HIGH</td>
+</tr>
+<tr>
+<td><strong>Reactive/Declarative UI</strong></td>
+<td>Imperative (Textual is closest)</td>
+<td>Views are a <em>function of state</em>. You never mutate the UI directly.</td>
+<td>MEDIUM-HIGH</td>
+</tr>
+<tr>
+<td><strong>Property wrappers for state</strong></td>
+<td>No equivalent</td>
+<td><code>@State</code>, <code>@Binding</code>, <code>@Observable</code>, <code>@Environment</code> -- each has specific rules about ownership and scope</td>
+<td>MEDIUM-HIGH</td>
+</tr>
+<tr>
+<td><strong>Optionals everywhere</strong></td>
+<td><code>None</code> with duck typing</td>
+<td><code>String?</code> vs <code>String</code> are different types. Force-unwrapping (<code>!</code>) crashes. Must use <code>if let</code>, <code>guard let</code>, or <code>??</code></td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td><strong>Closures as first-class</strong></td>
+<td>Lambdas, but limited</td>
+<td>Trailing closure syntax, <code>@escaping</code>, capture lists <code>[weak self]</code></td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td><strong>Protocol-oriented design</strong></td>
+<td>ABC/Protocols (PEP 544)</td>
+<td>Protocols are central. <code>Codable</code>, <code>Identifiable</code>, <code>Hashable</code> conformance required constantly</td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td><strong>Swift concurrency</strong></td>
+<td><code>asyncio</code></td>
+<td><code>async/await</code> + <code>Task</code> + <code>@MainActor</code> + actors. Similar concepts, different execution model.</td>
+<td>LOW-MEDIUM</td>
+</tr>
+<tr>
+<td><strong>Error handling</strong></td>
+<td><code>try/except</code></td>
+<td><code>do { try } catch</code> -- similar pattern, less flexible (no bare <code>except</code>)</td>
+<td>LOW</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-biggest-traps">The Biggest Traps<a class="headerlink" href="#the-biggest-traps" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>"Cannot assign to property: 'self' is immutable"</strong> -- SwiftUI views are structs. You cannot mutate properties directly. Must use <code>@State</code> or <code>@Binding</code>. This will confuse you repeatedly in week 1.</p>
+</li>
+<li>
+<p><strong>Opaque return types (<code>some View</code>)</strong> -- Every SwiftUI view body returns <code>some View</code>. The compiler infers the concrete type. When you get type errors, the messages are <em>atrocious</em> and point to the wrong line.</p>
+</li>
+<li>
+<p><strong>SwiftUI view identity and lifecycle</strong> -- Views are recreated constantly. State must live outside the view in <code>@State</code>, <code>@StateObject</code>/<code>@Observable</code>, or the environment. Coming from Python where objects persist, this is deeply unintuitive.</p>
+</li>
+<li>
+<p><strong>Xcode vs your editor</strong> -- You <em>must</em> use Xcode for SwiftUI development (previews, Interface Builder integration, signing). There is no "just use VS Code" escape hatch for a macOS app. Xcode's autocomplete and error reporting are... uneven.</p>
+</li>
+</ol>
+<h3 id="what-will-feel-familiar">What Will Feel Familiar<a class="headerlink" href="#what-will-feel-familiar" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>async/await</code> maps reasonably well from Python's <code>asyncio</code></li>
+<li>Pattern matching (<code>switch</code>/<code>case</code>) is powerful and similar to Python 3.10+ <code>match</code></li>
+<li>String interpolation: <code>"Hello \(name)"</code> vs <code>f"Hello {name}"</code></li>
+<li>Package management (SPM) is similar in concept to <code>uv</code>/<code>pip</code>, just via Xcode UI or <code>Package.swift</code></li>
+</ul>
+<h3 id="recommended-learning-path">Recommended Learning Path<a class="headerlink" href="#recommended-learning-path" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Apple's "Introducing SwiftUI" tutorial</strong> (2-3 hours) -- Builds a real app, teaches fundamentals</li>
+<li><strong>Hacking with Swift: "SwiftUI by Example"</strong> (reference, dip in as needed) -- ~600 pages of examples</li>
+<li><strong>Swift Concurrency by Example</strong> (Hacking with Swift) -- When you hit async/networking</li>
+<li><strong>Swift.org "Value and Reference Types"</strong> article -- Critical mental model shift</li>
+</ol>
+<hr />
+<h2 id="2-realistic-timeline">2. Realistic Timeline<a class="headerlink" href="#2-realistic-timeline" title="Permanent link">&para;</a></h2>
+<h3 id="with-ai-pair-programming-claude-code">With AI Pair Programming (Claude Code)<a class="headerlink" href="#with-ai-pair-programming-claude-code" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Duration</th>
+<th>What You Build</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Week 0.5</strong>: Swift/SwiftUI basics</td>
+<td>2-3 days</td>
+<td>Apple tutorial app, experiment with <code>@State</code>, <code>@Observable</code>, navigation</td>
+</tr>
+<tr>
+<td><strong>Week 1</strong>: PDF + Data model</td>
+<td>3-4 days</td>
+<td>PDFKit chapter extraction, GRDB schema, Codable models</td>
+</tr>
+<tr>
+<td><strong>Week 1.5</strong>: Claude API integration</td>
+<td>2-3 days</td>
+<td>SwiftAnthropic setup, prompt engineering, JSON parsing</td>
+</tr>
+<tr>
+<td><strong>Week 2</strong>: Flashcard UI</td>
+<td>3-4 days</td>
+<td>Card flip animation, grading buttons, deck navigation</td>
+</tr>
+<tr>
+<td><strong>Week 2.5</strong>: Polish + Server</td>
+<td>2-3 days</td>
+<td>Local HTTP server (Vapor), review scheduling (SM-2), error handling</td>
+</tr>
+<tr>
+<td><strong>Week 3</strong>: Integration testing</td>
+<td>2-3 days</td>
+<td>End-to-end flow, edge cases, crash fixes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total: 2.5-4 weeks</strong> (assuming 4-6 hours/day, with AI assistance).</p>
+<h3 id="without-ai-pair-programming">Without AI Pair Programming<a class="headerlink" href="#without-ai-pair-programming" title="Permanent link">&para;</a></h3>
+<p>Double it. 5-8 weeks. Most of the extra time is spent deciphering Swift compiler errors and understanding SwiftUI's state management model.</p>
+<h3 id="key-risk-xcode-friction">Key Risk: Xcode Friction<a class="headerlink" href="#key-risk-xcode-friction" title="Permanent link">&para;</a></h3>
+<p>Budget extra time for:
+- Xcode project configuration (signing, capabilities, entitlements)
+- SwiftUI preview crashes (they happen constantly)
+- SPM dependency resolution failures
+- Debugging with LLDB instead of <code>print()</code> debugging (though <code>print()</code> works fine for a PoC)</p>
+<hr />
+<h2 id="3-key-swift-packages">3. Key Swift Packages<a class="headerlink" href="#3-key-swift-packages" title="Permanent link">&para;</a></h2>
+<h3 id="required">Required<a class="headerlink" href="#required" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Purpose</th>
+<th>Maturity</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PDFKit</strong> (Apple framework)</td>
+<td>PDF loading, text extraction, outline/TOC</td>
+<td>Built-in</td>
+<td>No package needed. Part of macOS/iOS SDK.</td>
+</tr>
+<tr>
+<td><strong>SwiftAnthropic</strong></td>
+<td>Claude API client</td>
+<td>Good (232 stars)</td>
+<td>Community-maintained. Supports Messages API, streaming, vision, PDF, function calling, extended thinking. SPM install. iOS 15+/macOS 12+.</td>
+</tr>
+<tr>
+<td><strong>GRDB.swift</strong></td>
+<td>SQLite database</td>
+<td>Excellent (8.3k stars, 11k+ commits)</td>
+<td>The gold standard for Swift SQLite. Migrations, Codable records, database observation for SwiftUI, async support.</td>
+</tr>
+<tr>
+<td><strong>Vapor</strong></td>
+<td>HTTP server</td>
+<td>Excellent (26k stars)</td>
+<td>Full-featured web framework. Overkill for a localhost endpoint but well-documented and battle-tested.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="alternatives-considered">Alternatives Considered<a class="headerlink" href="#alternatives-considered" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Instead of...</th>
+<th>Consider...</th>
+<th>Trade-off</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SwiftAnthropic</td>
+<td>Raw <code>URLSession</code> + REST API</td>
+<td>More control, but you rewrite JSON parsing, streaming, error handling. Not worth it for a PoC.</td>
+</tr>
+<tr>
+<td>GRDB.swift</td>
+<td>SwiftData (Apple)</td>
+<td>SwiftData is newer, Apple-native, but less flexible for raw SQL. GRDB is better if you want SQLite control similar to Python's <code>sqlite3</code>.</td>
+</tr>
+<tr>
+<td>GRDB.swift</td>
+<td>SQLite.swift</td>
+<td>GRDB is more actively maintained and has better SwiftUI integration.</td>
+</tr>
+<tr>
+<td>Vapor</td>
+<td>Hummingbird</td>
+<td>Lighter weight, but less documentation. Vapor has better learning resources.</td>
+</tr>
+<tr>
+<td>Vapor</td>
+<td><code>swift-nio</code> raw</td>
+<td>Way too low-level for a PoC. Use Vapor.</td>
+</tr>
+<tr>
+<td>Vapor</td>
+<td>Embassy / Swifter</td>
+<td>Simpler HTTP servers, but less maintained.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="packageswift-dependencies">Package.swift Dependencies<a class="headerlink" href="#packageswift-dependencies" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Package.swift (or via Xcode Add Package Dependency)</span>
+<span class="n">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">.</span><span class="n">package</span><span class="p">(</span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://github.com/jamesrochabrun/SwiftAnthropic&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">package</span><span class="p">(</span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://github.com/groue/GRDB.swift&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;7.0.0&quot;</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">package</span><span class="p">(</span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://github.com/vapor/vapor&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;4.0.0&quot;</span><span class="p">),</span>
+<span class="p">]</span>
+</code></pre></div>
+<hr />
+<h2 id="4-pdfkit-chapter-extraction-how-well-does-it-work">4. PDFKit Chapter Extraction: How Well Does It Work?<a class="headerlink" href="#4-pdfkit-chapter-extraction-how-well-does-it-work" title="Permanent link">&para;</a></h2>
+<h3 id="the-good">The Good<a class="headerlink" href="#the-good" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>PDFKit is a mature Apple framework</strong> (ships with macOS since 10.4, iOS since 11.0). No third-party dependency needed.</li>
+<li><code>PDFDocument</code> provides <code>outlineRoot</code> which gives access to the PDF's Table of Contents / bookmarks as a tree of <code>PDFOutline</code> objects.</li>
+<li>Each <code>PDFOutline</code> node has a <code>label</code> (chapter title), <code>destination</code> (page reference), and <code>numberOfChildren</code> for sub-chapters.</li>
+<li><code>PDFPage.string</code> extracts the full text content of a page.</li>
+</ul>
+<h3 id="the-gotchas-critical-based-on-your-pymupdf-experience">The Gotchas (Critical -- Based on Your PyMuPDF Experience)<a class="headerlink" href="#the-gotchas-critical-based-on-your-pymupdf-experience" title="Permanent link">&para;</a></h3>
+<p>You already know these from <code>notebooklm-pdf-by-chapters</code>, but they apply equally in Swift:</p>
+<ol>
+<li>
+<p><strong>Not all PDFs have TOC bookmarks.</strong> Many ebooks and scanned PDFs have zero outline entries. <code>outlineRoot</code> will be <code>nil</code>. You need a fallback strategy (regex-based chapter detection on text, or user-specified page ranges).</p>
+</li>
+<li>
+<p><strong>TOC accuracy varies wildly.</strong> Publisher-generated TOCs are usually accurate. Author-generated ones may point to wrong pages, have inconsistent nesting levels, or use non-standard labeling.</p>
+</li>
+<li>
+<p><strong>Text extraction quality depends on the PDF.</strong> Native-text PDFs work well. Scanned/OCR PDFs produce garbage or nothing. PDFKit does NOT include OCR -- you would need Apple's Vision framework (<code>VNRecognizeTextRequest</code>) for scanned pages.</p>
+</li>
+<li>
+<p><strong>Page ranges between chapters.</strong> PDFKit outlines give you the <em>start</em> page of each chapter. You must calculate the end page as "next chapter start - 1" (same logic as your Python splitter).</p>
+</li>
+<li>
+<p><strong>Multi-column layouts and figures.</strong> <code>PDFPage.string</code> extracts text in reading order, which may interleave columns or include figure captions in unexpected positions.</p>
+</li>
+</ol>
+<h3 id="pdfkit-chapter-extraction-pattern-swift">PDFKit Chapter Extraction Pattern (Swift)<a class="headerlink" href="#pdfkit-chapter-extraction-pattern-swift" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">import</span><span class="w"> </span><span class="nc">PDFKit</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nf">extractChapters</span><span class="p">(</span><span class="n">from</span><span class="w"> </span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="n">URL</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="p">[(</span><span class="n">title</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="n">text</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">)]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">guard</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="bp">PDFDocument</span><span class="p">(</span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="n">url</span><span class="p">),</span>
+<span class="w">          </span><span class="kd">let</span><span class="w"> </span><span class="nv">outline</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">document</span><span class="p">.</span><span class="n">outlineRoot</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="c1">// No TOC available</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">chapters</span><span class="p">:</span><span class="w"> </span><span class="p">[(</span><span class="n">title</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">,</span><span class="w"> </span><span class="n">text</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="p">)]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[]</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mf">0.</span><span class="p">.&lt;</span><span class="n">outline</span><span class="p">.</span><span class="n">numberOfChildren</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">guard</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">child</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">outline</span><span class="p">.</span><span class="n">child</span><span class="p">(</span><span class="n">at</span><span class="p">:</span><span class="w"> </span><span class="n">i</span><span class="p">),</span>
+<span class="w">              </span><span class="kd">let</span><span class="w"> </span><span class="nv">title</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">child</span><span class="p">.</span><span class="n">label</span><span class="p">,</span>
+<span class="w">              </span><span class="kd">let</span><span class="w"> </span><span class="nv">destination</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">child</span><span class="p">.</span><span class="n">destination</span><span class="p">,</span>
+<span class="w">              </span><span class="kd">let</span><span class="w"> </span><span class="nv">startPage</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">destination</span><span class="p">.</span><span class="n">page</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">startIndex</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">document</span><span class="p">.</span><span class="n">index</span><span class="p">(</span><span class="k">for</span><span class="p">:</span><span class="w"> </span><span class="n">startPage</span><span class="p">)</span>
+
+<span class="w">        </span><span class="c1">// End page = next chapter start or end of document</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">endIndex</span><span class="p">:</span><span class="w"> </span><span class="nb">Int</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">outline</span><span class="p">.</span><span class="n">numberOfChildren</span><span class="p">,</span>
+<span class="w">           </span><span class="kd">let</span><span class="w"> </span><span class="nv">nextChild</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">outline</span><span class="p">.</span><span class="n">child</span><span class="p">(</span><span class="n">at</span><span class="p">:</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">),</span>
+<span class="w">           </span><span class="kd">let</span><span class="w"> </span><span class="nv">nextDest</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">nextChild</span><span class="p">.</span><span class="n">destination</span><span class="p">,</span>
+<span class="w">           </span><span class="kd">let</span><span class="w"> </span><span class="nv">nextPage</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">nextDest</span><span class="p">.</span><span class="n">page</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">endIndex</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">document</span><span class="p">.</span><span class="n">index</span><span class="p">(</span><span class="k">for</span><span class="p">:</span><span class="w"> </span><span class="n">nextPage</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">endIndex</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">document</span><span class="p">.</span><span class="n">pageCount</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="c1">// Extract text from page range</span>
+<span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="nv">text</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="n">pageIndex</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">startIndex</span><span class="p">...</span><span class="n">endIndex</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">page</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">document</span><span class="p">.</span><span class="n">page</span><span class="p">(</span><span class="n">at</span><span class="p">:</span><span class="w"> </span><span class="n">pageIndex</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">text</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">page</span><span class="p">.</span><span class="n">string</span><span class="w"> </span><span class="p">??</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">                </span><span class="n">text</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="n">chapters</span><span class="p">.</span><span class="n">append</span><span class="p">((</span><span class="n">title</span><span class="p">:</span><span class="w"> </span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">text</span><span class="p">:</span><span class="w"> </span><span class="n">text</span><span class="p">))</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">chapters</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="comparison-pdfkit-vs-pymupdf-your-existing-tool">Comparison: PDFKit vs PyMuPDF (Your Existing Tool)<a class="headerlink" href="#comparison-pdfkit-vs-pymupdf-your-existing-tool" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>PDFKit (Swift)</th>
+<th>PyMuPDF (Python)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TOC extraction</td>
+<td><code>outlineRoot</code> tree</td>
+<td><code>doc.get_toc()</code> list</td>
+</tr>
+<tr>
+<td>Text extraction</td>
+<td><code>page.string</code></td>
+<td><code>page.get_text()</code></td>
+</tr>
+<tr>
+<td>OCR support</td>
+<td>No (need Vision framework)</td>
+<td>Yes (via Tesseract integration)</td>
+</tr>
+<tr>
+<td>PDF splitting/saving</td>
+<td>Not built-in (need CGContext)</td>
+<td><code>doc.select()</code> + <code>save()</code></td>
+</tr>
+<tr>
+<td>Cross-platform</td>
+<td>macOS/iOS only</td>
+<td>Everywhere</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Good</td>
+<td>Excellent</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bottom line</strong>: PDFKit handles TOC extraction and text extraction well for well-formed PDFs. It is roughly equivalent to PyMuPDF for your use case, minus the ability to save split chapter PDFs (which you do not need for the flashcard app -- you just need the text).</p>
+<hr />
+<h2 id="5-calling-claude-api-from-swift">5. Calling Claude API from Swift<a class="headerlink" href="#5-calling-claude-api-from-swift" title="Permanent link">&para;</a></h2>
+<h3 id="no-official-anthropic-swift-sdk">No Official Anthropic Swift SDK<a class="headerlink" href="#no-official-anthropic-swift-sdk" title="Permanent link">&para;</a></h3>
+<p>As of March 2026, Anthropic provides official SDKs for: <strong>Python, TypeScript, Java, Go, Ruby, C#, PHP</strong>. There is no official Swift SDK.</p>
+<h3 id="best-option-swiftanthropic-community-package">Best Option: SwiftAnthropic (Community Package)<a class="headerlink" href="#best-option-swiftanthropic-community-package" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Repository</strong>: https://github.com/jamesrochabrun/SwiftAnthropic</li>
+<li><strong>Stars</strong>: 232 (active development, 137 commits)</li>
+<li><strong>Platform support</strong>: iOS 15+, macOS 12+, Linux (via AsyncHTTPClient)</li>
+<li><strong>License</strong>: MIT</li>
+</ul>
+<p><strong>Supported Anthropic endpoints:</strong>
+- Messages API (create, stream)
+- Function calling (tool use)
+- Vision (image input)
+- PDF support (direct PDF input)
+- Prompt caching
+- Extended thinking
+- Token counting
+- Web search tool
+- Text editor tool</p>
+<p><strong>Usage example (Messages API):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kd">import</span><span class="w"> </span><span class="nc">SwiftAnthropic</span>
+
+<span class="kd">let</span><span class="w"> </span><span class="nv">service</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">AnthropicServiceFactory</span><span class="p">.</span><span class="n">service</span><span class="p">(</span><span class="n">apiKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-api-key&quot;</span><span class="p">)</span>
+
+<span class="kd">let</span><span class="w"> </span><span class="nv">message</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">MessageParameter</span><span class="p">(</span>
+<span class="w">    </span><span class="n">model</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">claude4Sonnet</span><span class="p">,</span><span class="w">  </span><span class="c1">// Check for latest model constants</span>
+<span class="w">    </span><span class="n">messages</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">.</span><span class="kd">init</span><span class="p">(</span><span class="n">role</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">text</span><span class="p">(</span><span class="s">&quot;Extract flashcards from this text as JSON...&quot;</span><span class="p">))</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="n">maxTokens</span><span class="p">:</span><span class="w"> </span><span class="mi">4096</span>
+<span class="p">)</span>
+
+<span class="kd">let</span><span class="w"> </span><span class="nv">response</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">service</span><span class="p">.</span><span class="n">createMessage</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Streaming:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="nv">stream</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">service</span><span class="p">.</span><span class="n">streamMessage</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+<span class="k">for</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">event</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Handle streaming events</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="alternative-raw-urlsession">Alternative: Raw URLSession<a class="headerlink" href="#alternative-raw-urlsession" title="Permanent link">&para;</a></h3>
+<p>If SwiftAnthropic does not cover your needs, the Anthropic REST API is straightforward:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nv">request</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">URLRequest</span><span class="p">(</span><span class="n">url</span><span class="p">:</span><span class="w"> </span><span class="n">URL</span><span class="p">(</span><span class="n">string</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://api.anthropic.com/v1/messages&quot;</span><span class="p">)</span><span class="o">!</span><span class="p">)</span>
+<span class="n">request</span><span class="p">.</span><span class="n">httpMethod</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;POST&quot;</span>
+<span class="n">request</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">forHTTPHeaderField</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;content-type&quot;</span><span class="p">)</span>
+<span class="n">request</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="s">&quot;your-api-key&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">forHTTPHeaderField</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;x-api-key&quot;</span><span class="p">)</span>
+<span class="n">request</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="s">&quot;2023-06-01&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">forHTTPHeaderField</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;anthropic-version&quot;</span><span class="p">)</span>
+
+<span class="kd">let</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nb">String</span><span class="p">:</span><span class="w"> </span><span class="nb">Any</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;claude-sonnet-4-20250514&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;max_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4096</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="s">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p">]]</span>
+<span class="p">]</span>
+<span class="n">request</span><span class="p">.</span><span class="n">httpBody</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="n">JSONSerialization</span><span class="p">.</span><span class="n">data</span><span class="p">(</span><span class="n">withJSONObject</span><span class="p">:</span><span class="w"> </span><span class="n">body</span><span class="p">)</span>
+
+<span class="kd">let</span><span class="w"> </span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="kc">_</span><span class="p">)</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">URLSession</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="n">data</span><span class="p">(</span><span class="k">for</span><span class="p">:</span><span class="w"> </span><span class="n">request</span><span class="p">)</span>
+<span class="kd">let</span><span class="w"> </span><span class="nv">response</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="n">JSONDecoder</span><span class="p">().</span><span class="n">decode</span><span class="p">(</span><span class="n">AnthropicResponse</span><span class="p">.</span><span class="kc">self</span><span class="p">,</span><span class="w"> </span><span class="n">from</span><span class="p">:</span><span class="w"> </span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Recommendation</strong>: Use SwiftAnthropic for the PoC. It handles streaming, error types, and model constants. Only fall back to raw URLSession if you hit a blocking issue.</p>
+<h3 id="api-key-security-note">API Key Security Note<a class="headerlink" href="#api-key-security-note" title="Permanent link">&para;</a></h3>
+<p>SwiftAnthropic's README warns: "Your API key is a secret! Do not expose it in client-side code." For a local-only macOS PoC, storing the key in an environment variable or macOS Keychain is fine. For distribution, you would need a backend proxy.</p>
+<hr />
+<h2 id="6-recommended-project-structure">6. Recommended Project Structure<a class="headerlink" href="#6-recommended-project-structure" title="Permanent link">&para;</a></h2>
+<h3 id="xcode-multiplatform-app-macos-ios-shared">Xcode Multiplatform App (macOS + iOS Shared)<a class="headerlink" href="#xcode-multiplatform-app-macos-ios-shared" title="Permanent link">&para;</a></h3>
+<p>Xcode's "Multiplatform" app template creates the right structure automatically:</p>
+<div class="highlight"><pre><span></span><code>FlashcardApp/
+  FlashcardApp.xcodeproj
+
+  Shared/                          # All shared SwiftUI code
+    FlashcardApp.swift             # @main App entry point
+    ContentView.swift              # Root navigation
+
+    Models/
+      Flashcard.swift              # Codable + GRDB Record
+      Deck.swift                   # Collection of flashcards
+      ReviewSession.swift          # SM-2 review data
+      Chapter.swift                # Extracted PDF chapter
+
+    Views/
+      DeckListView.swift           # List of flashcard decks
+      FlashcardView.swift          # Single card with flip animation
+      ReviewView.swift             # Card review session with grading
+      PDFImportView.swift          # File picker + chapter selection
+      ProgressView.swift           # Review statistics
+
+    ViewModels/                    # @Observable classes
+      DeckViewModel.swift          # Business logic for deck operations
+      ReviewViewModel.swift        # SM-2 scheduling logic
+      ImportViewModel.swift        # PDF extraction + Claude API orchestration
+
+    Services/
+      ClaudeService.swift          # SwiftAnthropic wrapper
+      PDFExtractor.swift           # PDFKit chapter extraction
+      DatabaseService.swift        # GRDB setup, migrations, queries
+      ReviewScheduler.swift        # SM-2 algorithm implementation
+
+    Database/
+      AppDatabase.swift            # GRDB DatabaseQueue setup
+      Migrations.swift             # Schema migrations
+
+  macOS/                           # macOS-specific
+    macOSApp.swift                 # Platform-specific entry (if needed)
+    MenuBarView.swift              # macOS menu bar extras
+
+  iOS/                             # iOS-specific
+    iOSApp.swift                   # Platform-specific entry (if needed)
+
+  Server/                          # Vapor localhost server
+    ServerMain.swift               # Vapor app setup
+    Routes.swift                   # API endpoints for MCP
+
+  Resources/
+    Assets.xcassets                # App icons, colors
+
+  Tests/
+    FlashcardAppTests/
+      PDFExtractorTests.swift
+      ReviewSchedulerTests.swift
+      DatabaseTests.swift
+</code></pre></div>
+<h3 id="key-architectural-decisions">Key Architectural Decisions<a class="headerlink" href="#key-architectural-decisions" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>MVVM pattern</strong> -- Standard for SwiftUI apps. Views observe ViewModels, ViewModels call Services.</p>
+</li>
+<li>
+<p><strong><code>@Observable</code> macro (iOS 17+ / macOS 14+)</strong> -- The modern way to make objects observable in SwiftUI. Replaces the older <code>ObservableObject</code> + <code>@Published</code> pattern. Since this is a new app, use the new API.</p>
+</li>
+<li>
+<p><strong>GRDB over SwiftData</strong> -- SwiftData is Apple's newer ORM, but GRDB gives you direct SQLite access similar to Python's <code>sqlite3</code> module. Better for someone who already thinks in SQL.</p>
+</li>
+<li>
+<p><strong>Vapor as a separate target</strong> -- The localhost server should be a separate executable target in your Xcode project (or a separate Swift package). Do not embed Vapor inside the SwiftUI app process for production, though for a PoC it is fine to run it in-process on a background thread.</p>
+</li>
+<li>
+<p><strong>Platform branching with <code>#if os(macOS)</code></strong> -- Use conditional compilation for platform-specific features (e.g., <code>NSOpenPanel</code> for file picking on macOS vs <code>.fileImporter()</code> on iOS).</p>
+</li>
+</ol>
+<hr />
+<h2 id="7-swift-specific-gotchas-for-a-python-developer">7. Swift-Specific Gotchas for a Python Developer<a class="headerlink" href="#7-swift-specific-gotchas-for-a-python-developer" title="Permanent link">&para;</a></h2>
+<h3 id="memory-management">Memory Management<a class="headerlink" href="#memory-management" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>ARC (Automatic Reference Counting)</strong>, not garbage collection. Similar to Python's reference counting but without a cycle collector.</li>
+<li><strong>Retain cycles are YOUR problem.</strong> If object A holds a strong reference to B, and B holds a strong reference to A, neither gets deallocated. Use <code>[weak self]</code> in closures.</li>
+<li><strong>For a PoC, you probably will not hit this.</strong> Retain cycles matter in long-running apps with complex object graphs. A flashcard app with a few view models is unlikely to leak significantly.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1">// WRONG: potential retain cycle</span>
+<span class="n">service</span><span class="p">.</span><span class="n">onComplete</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kc">self</span><span class="p">.</span><span class="n">updateUI</span><span class="p">()</span><span class="w">  </span><span class="c1">// self captured strongly</span>
+<span class="p">}</span>
+
+<span class="c1">// RIGHT: weak capture</span>
+<span class="n">service</span><span class="p">.</span><span class="n">onComplete</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="kr">weak</span><span class="w"> </span><span class="kc">self</span><span class="p">]</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="kc">self</span><span class="p">?.</span><span class="n">updateUI</span><span class="p">()</span><span class="w">  </span><span class="c1">// self captured weakly, nil-checked</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="asyncawait-differences-from-python">async/await Differences from Python<a class="headerlink" href="#asyncawait-differences-from-python" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Python asyncio</th>
+<th>Swift Concurrency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>async def</code> / <code>await</code></td>
+<td><code>func x() async</code> / <code>await x()</code></td>
+</tr>
+<tr>
+<td>Event loop (explicit with <code>asyncio.run()</code>)</td>
+<td>Runtime-managed (no explicit loop)</td>
+</tr>
+<tr>
+<td><code>asyncio.gather()</code></td>
+<td><code>async let</code> or <code>TaskGroup</code></td>
+</tr>
+<tr>
+<td><code>asyncio.Task()</code></td>
+<td><code>Task { }</code></td>
+</tr>
+<tr>
+<td>No thread safety guarantees</td>
+<td><code>@Sendable</code>, <code>actor</code> isolation</td>
+</tr>
+<tr>
+<td>GIL means single-threaded</td>
+<td>True parallelism</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The big difference</strong>: Swift's concurrency is <em>thread-safe by default</em>. The compiler enforces <code>Sendable</code> conformance -- you cannot pass non-thread-safe types across concurrency boundaries. This causes confusing compiler errors early on.</p>
+<p><strong><code>@MainActor</code></strong>: SwiftUI views run on the main thread. Any <code>@Observable</code> class that updates the UI must be <code>@MainActor</code>. This is like Python's "update the UI from the main thread" rule, but enforced at compile time.</p>
+<div class="highlight"><pre><span></span><code><span class="p">@</span><span class="n">MainActor</span>
+<span class="p">@</span><span class="n">Observable</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">DeckViewModel</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">flashcards</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="n">Flashcard</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[]</span>
+
+<span class="w">    </span><span class="kd">func</span><span class="w"> </span><span class="nf">loadCards</span><span class="p">()</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// This runs on the main actor</span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="nv">cards</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">DatabaseService</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="n">fetchCards</span><span class="p">()</span><span class="w">  </span><span class="c1">// async call</span>
+<span class="w">        </span><span class="kc">self</span><span class="p">.</span><span class="n">flashcards</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">cards</span><span class="w">  </span><span class="c1">// Safe: we&#39;re on @MainActor</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="type-system-shock">Type System Shock<a class="headerlink" href="#type-system-shock" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>No <code>Any</code> escape hatch</strong> (well, there is <code>Any</code>, but using it is a code smell and loses all type safety).</li>
+<li><strong>Generics are pervasive.</strong> SwiftUI's <code>View</code> protocol uses associated types (<code>Body</code>). Error messages about generic constraints are notoriously unhelpful.</li>
+<li><strong><code>Codable</code> is your friend.</strong> Swift's <code>Codable</code> protocol (= <code>Encodable &amp; Decodable</code>) auto-generates JSON serialization for structs. Much less boilerplate than Python's <code>dataclasses</code> + manual JSON handling.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1">// This single declaration gives you JSON encode/decode for free</span>
+<span class="kd">struct</span><span class="w"> </span><span class="nc">Flashcard</span><span class="p">:</span><span class="w"> </span><span class="n">Codable</span><span class="p">,</span><span class="w"> </span><span class="n">Identifiable</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="n">UUID</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">question</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">answer</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">difficulty</span><span class="p">:</span><span class="w"> </span><span class="nb">Int</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">nextReviewDate</span><span class="p">:</span><span class="w"> </span><span class="n">Date</span>
+<span class="p">}</span>
+
+<span class="c1">// Decode from JSON</span>
+<span class="kd">let</span><span class="w"> </span><span class="nv">flashcard</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="n">JSONDecoder</span><span class="p">().</span><span class="n">decode</span><span class="p">(</span><span class="n">Flashcard</span><span class="p">.</span><span class="kc">self</span><span class="p">,</span><span class="w"> </span><span class="n">from</span><span class="p">:</span><span class="w"> </span><span class="n">jsonData</span><span class="p">)</span>
+
+<span class="c1">// Encode to JSON</span>
+<span class="kd">let</span><span class="w"> </span><span class="nv">data</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="n">JSONEncoder</span><span class="p">().</span><span class="n">encode</span><span class="p">(</span><span class="n">flashcard</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="xcode-specific-pain">Xcode-Specific Pain<a class="headerlink" href="#xcode-specific-pain" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Build times.</strong> Swift compilation is slower than Python interpretation. A clean build of a medium project takes 30-60 seconds. Incremental builds are faster but still noticeable.</p>
+</li>
+<li>
+<p><strong>Preview crashes.</strong> SwiftUI previews are powerful but fragile. They crash on runtime errors, async code issues, and sometimes for no apparent reason. When previews break, use the simulator instead.</p>
+</li>
+<li>
+<p><strong>Code signing.</strong> Even for local development, Xcode requires a signing identity. Free Apple ID works, but you will see warnings and capability limitations.</p>
+</li>
+<li>
+<p><strong>No REPL-driven development.</strong> Python's <code>python -i</code> or Jupyter workflow does not exist. Swift has a REPL (<code>swift</code> command) and Playgrounds, but they do not support SwiftUI or framework imports well. Your feedback loop is: edit -&gt; build -&gt; run/preview.</p>
+</li>
+</ol>
+<h3 id="string-handling">String Handling<a class="headerlink" href="#string-handling" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Swift strings are Unicode-correct by default (like Python 3), but indexing is different.</li>
+<li>No <code>string[5]</code> integer indexing. Must use <code>String.Index</code> types.</li>
+<li>String interpolation: <code>"Card \(index) of \(total)"</code> -- similar to f-strings.</li>
+</ul>
+<h3 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Swift                          // Python equivalent</span>
+<span class="k">do</span><span class="w"> </span><span class="p">{</span><span class="w">                              </span><span class="c1">// try:</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">data</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="n">loadPDF</span><span class="p">()</span><span class="w">      </span><span class="c1">//     data = load_pdf()</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">cards</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">try</span><span class="w"> </span><span class="n">parse</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="w">   </span><span class="c1">//     cards = parse(data)</span>
+<span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="n">PDFError</span><span class="p">.</span><span class="n">noOutline</span><span class="w"> </span><span class="p">{</span><span class="w">      </span><span class="c1">// except PDFError as e:</span>
+<span class="w">    </span><span class="bp">print</span><span class="p">(</span><span class="s">&quot;No TOC found&quot;</span><span class="p">)</span><span class="w">         </span><span class="c1">//     if isinstance(e, NoOutline):</span>
+<span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">{</span><span class="w">                         </span><span class="c1">// except Exception as e:</span>
+<span class="w">    </span><span class="bp">print</span><span class="p">(</span><span class="s">&quot;Error: </span><span class="si">\(</span><span class="n">error</span><span class="si">)</span><span class="s">&quot;</span><span class="p">)</span><span class="w">      </span><span class="c1">//     print(f&quot;Error: {e}&quot;)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The <code>try</code> keyword must appear before every throwing call (unlike Python where one <code>try</code> block covers everything). This is verbose but makes error sources explicit.</p>
+<hr />
+<h2 id="8-the-elephant-in-the-room-should-you-even-do-this-in-swift">8. The Elephant in the Room: Should You Even Do This in Swift?<a class="headerlink" href="#8-the-elephant-in-the-room-should-you-even-do-this-in-swift" title="Permanent link">&para;</a></h2>
+<h3 id="arguments-for-swiftswiftui">Arguments FOR Swift/SwiftUI<a class="headerlink" href="#arguments-for-swiftswiftui" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Native macOS feel (menus, keyboard shortcuts, drag-and-drop, system PDF handling)</li>
+<li>PDFKit is a first-class citizen on macOS -- no third-party dependency for PDF handling</li>
+<li>SwiftUI animations (card flip) are trivial compared to web CSS/JS</li>
+<li>Learning Swift adds a valuable skill for potential iOS/macOS app distribution</li>
+<li>Local-first architecture with GRDB is fast and private</li>
+<li>Future: distribute via Mac App Store or TestFlight</li>
+</ul>
+<h3 id="arguments-against-extend-python-stack-instead">Arguments AGAINST (Extend Python Stack Instead)<a class="headerlink" href="#arguments-against-extend-python-stack-instead" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>You already have PDF chapter extraction in Python</strong> (<code>notebooklm-pdf-by-chapters</code> with PyMuPDF)</li>
+<li><strong>You already have a working study system</strong> (Socratic Study Mentor with Textual TUI + PWA)</li>
+<li><strong>The web PWA already has flashcards, Pomodoro, voice</strong> -- adding card flip animation to the PWA is a few hours of CSS</li>
+<li><strong>Python + Claude API is a known quantity</strong> -- official SDK, well-tested</li>
+<li><strong>Learning Swift is a significant investment</strong> for what might be a PoC that stays a PoC</li>
+<li><strong>Cross-platform</strong>: The Python/web version works everywhere. A Swift app is Apple-only</li>
+<li><strong>MCP integration is Python-native</strong> -- the MCP SDK is Python/TypeScript, not Swift</li>
+</ul>
+<h3 id="the-hybrid-option-best-of-both-worlds">The Hybrid Option (Best of Both Worlds)<a class="headerlink" href="#the-hybrid-option-best-of-both-worlds" title="Permanent link">&para;</a></h3>
+<p>Keep the Python backend (PDF extraction, Claude API, SQLite, MCP server) and build a <strong>thin SwiftUI frontend</strong> that talks to it via localhost HTTP:</p>
+<div class="highlight"><pre><span></span><code>Python Backend (existing code)          SwiftUI Frontend (new)
+  - PDF extraction (PyMuPDF)              - Native macOS UI
+  - Claude API (official SDK)             - Card flip animations
+  - SQLite (existing schema)              - Grading interface
+  - FastAPI/MCP server                    - Reads from localhost API
+</code></pre></div>
+<p>This approach:
+- Reuses all your existing Python code
+- Gives you native macOS UI where it matters (the flashcard review experience)
+- Limits Swift learning to just SwiftUI views + URLSession networking
+- Timeline: ~1-1.5 weeks instead of 3-4</p>
+<hr />
+<h2 id="9-decision-framework">9. Decision Framework<a class="headerlink" href="#9-decision-framework" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>If your goal is...</th>
+<th>Then...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Learn Swift properly</td>
+<td>Build the full Swift PoC. Accept the 3-4 week timeline.</td>
+</tr>
+<tr>
+<td>Ship a better flashcard experience fast</td>
+<td>Extend the PWA with better animations, or build the hybrid option.</td>
+</tr>
+<tr>
+<td>Eventually publish on the App Store</td>
+<td>Full Swift is the right investment. Start with the PoC.</td>
+</tr>
+<tr>
+<td>Explore MCP integration</td>
+<td>Stay in Python. MCP tooling is Python/TS-first.</td>
+</tr>
+<tr>
+<td>Scratch the curiosity itch</td>
+<td>Start with Swift Playgrounds + the Apple SwiftUI tutorial. See if you enjoy it before committing to a full PoC.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-recommended-resources">10. Recommended Resources<a class="headerlink" href="#10-recommended-resources" title="Permanent link">&para;</a></h2>
+<h3 id="essential-readdo-these">Essential (Read/Do These)<a class="headerlink" href="#essential-readdo-these" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Apple "Introducing SwiftUI" tutorial</strong>: https://developer.apple.com/tutorials/swiftui</li>
+<li><strong>Hacking with Swift "SwiftUI by Example"</strong>: https://www.hackingwithswift.com/quick-start/swiftui (free, ~600 pages)</li>
+<li><strong>Swift.org "Value and Reference Types"</strong>: https://www.swift.org/documentation/articles/value-and-reference-types.html</li>
+<li><strong>Hacking with Swift "Swift Concurrency by Example"</strong>: https://www.hackingwithswift.com/quick-start/concurrency</li>
+</ol>
+<h3 id="package-documentation">Package Documentation<a class="headerlink" href="#package-documentation" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>GRDB.swift</strong>: https://github.com/groue/GRDB.swift (8.3k stars, excellent docs with SwiftUI integration guides)</li>
+<li><strong>SwiftAnthropic</strong>: https://github.com/jamesrochabrun/SwiftAnthropic (community Claude API client)</li>
+<li><strong>Vapor</strong>: https://github.com/vapor/vapor (26k stars, docs at https://docs.vapor.codes)</li>
+</ol>
+<h3 id="reference-when-stuck">Reference When Stuck<a class="headerlink" href="#reference-when-stuck" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Hacking with Swift "Common SwiftUI Errors"</strong>: https://www.hackingwithswift.com/quick-start/swiftui/common-swiftui-errors-and-how-to-fix-them</li>
+<li><strong>Apple PDFKit docs</strong>: https://developer.apple.com/documentation/pdfkit</li>
+</ol>
+<hr />
+<h2 id="appendix-a-swiftui-card-flip-animation-it-really-is-this-simple">Appendix A: SwiftUI Card Flip Animation (It Really Is This Simple)<a class="headerlink" href="#appendix-a-swiftui-card-flip-animation-it-really-is-this-simple" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">struct</span><span class="w"> </span><span class="nc">FlashcardView</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">question</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">answer</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<span class="w">    </span><span class="p">@</span><span class="n">State</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">isFlipped</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ZStack</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Front (question)</span>
+<span class="w">            </span><span class="n">CardFace</span><span class="p">(</span><span class="n">text</span><span class="p">:</span><span class="w"> </span><span class="n">question</span><span class="p">,</span><span class="w"> </span><span class="n">color</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">blue</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="n">opacity</span><span class="p">(</span><span class="n">isFlipped</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="n">rotation3DEffect</span><span class="p">(</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">isFlipped</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="mi">180</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">                    </span><span class="n">axis</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">z</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">                </span><span class="p">)</span>
+
+<span class="w">            </span><span class="c1">// Back (answer)</span>
+<span class="w">            </span><span class="n">CardFace</span><span class="p">(</span><span class="n">text</span><span class="p">:</span><span class="w"> </span><span class="n">answer</span><span class="p">,</span><span class="w"> </span><span class="n">color</span><span class="p">:</span><span class="w"> </span><span class="p">.</span><span class="n">green</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="n">opacity</span><span class="p">(</span><span class="n">isFlipped</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">                </span><span class="p">.</span><span class="n">rotation3DEffect</span><span class="p">(</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">isFlipped</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="o">-</span><span class="mi">180</span><span class="p">),</span>
+<span class="w">                    </span><span class="n">axis</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">z</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">                </span><span class="p">)</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="p">.</span><span class="n">onTapGesture</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">withAnimation</span><span class="p">(.</span><span class="n">spring</span><span class="p">(</span><span class="n">duration</span><span class="p">:</span><span class="w"> </span><span class="mf">0.6</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">isFlipped</span><span class="p">.</span><span class="n">toggle</span><span class="p">()</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">CardFace</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">text</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="nv">color</span><span class="p">:</span><span class="w"> </span><span class="n">Color</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">RoundedRectangle</span><span class="p">(</span><span class="n">cornerRadius</span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="n">fill</span><span class="p">(</span><span class="n">color</span><span class="p">.</span><span class="n">opacity</span><span class="p">(</span><span class="mf">0.15</span><span class="p">))</span>
+<span class="w">            </span><span class="p">.</span><span class="n">overlay</span><span class="p">(</span>
+<span class="w">                </span><span class="n">Text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">font</span><span class="p">(.</span><span class="n">title2</span><span class="p">)</span>
+<span class="w">                    </span><span class="p">.</span><span class="n">padding</span><span class="p">()</span>
+<span class="w">            </span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="n">frame</span><span class="p">(</span><span class="n">width</span><span class="p">:</span><span class="w"> </span><span class="mi">400</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="p">:</span><span class="w"> </span><span class="mi">300</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="n">shadow</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This is genuinely one of SwiftUI's strengths. The equivalent in HTML/CSS/JS is significantly more code.</p>
+<hr />
+<h2 id="appendix-b-grdb-record-example-flashcard-model">Appendix B: GRDB Record Example (Flashcard Model)<a class="headerlink" href="#appendix-b-grdb-record-example-flashcard-model" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">import</span><span class="w"> </span><span class="nc">GRDB</span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">Flashcard</span><span class="p">:</span><span class="w"> </span><span class="n">Codable</span><span class="p">,</span><span class="w"> </span><span class="n">Identifiable</span><span class="p">,</span><span class="w"> </span><span class="n">FetchableRecord</span><span class="p">,</span><span class="w"> </span><span class="n">PersistableRecord</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">id</span><span class="p">:</span><span class="w"> </span><span class="nb">Int64</span><span class="p">?</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">deckId</span><span class="p">:</span><span class="w"> </span><span class="nb">Int64</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">question</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">answer</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">easeFactor</span><span class="p">:</span><span class="w"> </span><span class="nb">Double</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">2.5</span><span class="w">       </span><span class="c1">// SM-2</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">interval</span><span class="p">:</span><span class="w"> </span><span class="nb">Int</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">0</span><span class="w">              </span><span class="c1">// Days until next review</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">repetitions</span><span class="p">:</span><span class="w"> </span><span class="nb">Int</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">nextReviewDate</span><span class="p">:</span><span class="w"> </span><span class="n">Date</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">Date</span><span class="p">()</span>
+
+<span class="w">    </span><span class="c1">// Auto-generate column names from properties</span>
+<span class="w">    </span><span class="kd">static</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">databaseTableName</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;flashcard&quot;</span>
+
+<span class="w">    </span><span class="c1">// Auto-set id after insert</span>
+<span class="w">    </span><span class="kr">mutating</span><span class="w"> </span><span class="kd">func</span><span class="w"> </span><span class="nf">didInsert</span><span class="p">(</span><span class="kc">_</span><span class="w"> </span><span class="n">inserted</span><span class="p">:</span><span class="w"> </span><span class="n">InsertionSuccess</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">id</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">inserted</span><span class="p">.</span><span class="n">rowID</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Migration</span>
+<span class="kd">var</span><span class="w"> </span><span class="nv">migrator</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">DatabaseMigrator</span><span class="p">()</span>
+<span class="n">migrator</span><span class="p">.</span><span class="n">registerMigration</span><span class="p">(</span><span class="s">&quot;v1&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="k">try</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">create</span><span class="p">(</span><span class="n">table</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;flashcard&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">autoIncrementedPrimaryKey</span><span class="p">(</span><span class="s">&quot;id&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">column</span><span class="p">(</span><span class="s">&quot;deckId&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">.</span><span class="n">integer</span><span class="p">).</span><span class="n">notNull</span><span class="p">()</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">column</span><span class="p">(</span><span class="s">&quot;question&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">.</span><span class="n">text</span><span class="p">).</span><span class="n">notNull</span><span class="p">()</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">column</span><span class="p">(</span><span class="s">&quot;answer&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">.</span><span class="n">text</span><span class="p">).</span><span class="n">notNull</span><span class="p">()</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">column</span><span class="p">(</span><span class="s">&quot;easeFactor&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">.</span><span class="n">double</span><span class="p">).</span><span class="n">notNull</span><span class="p">().</span><span class="n">defaults</span><span class="p">(</span><span class="n">to</span><span class="p">:</span><span class="w"> </span><span class="mf">2.5</span><span class="p">)</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">column</span><span class="p">(</span><span class="s">&quot;interval&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">.</span><span class="n">integer</span><span class="p">).</span><span class="n">notNull</span><span class="p">().</span><span class="n">defaults</span><span class="p">(</span><span class="n">to</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">column</span><span class="p">(</span><span class="s">&quot;repetitions&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">.</span><span class="n">integer</span><span class="p">).</span><span class="n">notNull</span><span class="p">().</span><span class="n">defaults</span><span class="p">(</span><span class="n">to</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="n">t</span><span class="p">.</span><span class="n">column</span><span class="p">(</span><span class="s">&quot;nextReviewDate&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">.</span><span class="n">datetime</span><span class="p">).</span><span class="n">notNull</span><span class="p">()</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This maps almost 1:1 to how you define models in Python with dataclasses + sqlite3. GRDB's <code>Codable</code> integration means zero manual column mapping.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

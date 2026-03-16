@@ -1,0 +1,1532 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-15-native-app-repackaging-brainstorm.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Brainstorm: Native App Repackaging - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#brainstorm-native-app-repackaging" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Brainstorm: Native App Repackaging
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-were-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We're Building
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What We&#39;re Building">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-value-proposition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Value Proposition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Approach
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why This Approach">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem Statement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-native-swiftui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Native SwiftUI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-not-alternatives-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Not (Alternatives Considered)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-clean-break-from-python-codebase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Clean break from Python codebase
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-replace-notebooklm-with-official-llm-apis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Replace NotebookLM with official LLM APIs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-two-mode-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Two-mode architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-pluggable-llm-backend-cost-conscious" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Pluggable LLM backend (cost-conscious)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-content-input-pdf-obsidian-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Content input: PDF + Obsidian first
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-poc-first-approach-validated-by-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. PoC-first approach (validated by research)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#shared-swift-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared Swift Package
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resolved-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolved Questions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resolved Questions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-mcp-server-in-a-macos-app-viable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. MCP server in a macOS app -- VIABLE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-acp-defer-mcp-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. ACP -- DEFER (MCP first)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-monetisation-freemium-byok-one-time-premium" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Monetisation -- Freemium + BYOK + One-Time Premium
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-swiftswiftui-learning-curve-realistic-with-ai-pairing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Swift/SwiftUI learning curve -- REALISTIC WITH AI PAIRING
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-data-migration-from-python-clean-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Data migration from Python -- CLEAN START
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions-remaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Questions (Remaining)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Open Questions (Remaining)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-hybrid-vs-pure-swift-for-poc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Hybrid vs Pure Swift for PoC?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-provider-specific-api-differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Provider-specific API differences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-ios-timeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. iOS timeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-were-not-building-yagni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We're NOT Building (YAGNI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#research-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="brainstorm-native-app-repackaging">Brainstorm: Native App Repackaging<a class="headerlink" href="#brainstorm-native-app-repackaging" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-03-15
+<strong>Status:</strong> Draft
+<strong>Participants:</strong> user, Claude</p>
+<hr />
+<h2 id="what-were-building">What We're Building<a class="headerlink" href="#what-were-building" title="Permanent link">&para;</a></h2>
+<p>A native macOS SwiftUI app (with iOS to follow) that unifies the currently fragmented Socratic Study Mentor and notebooklm-pdf-by-chapters into a single, installable study product. The app replaces the current "clone two repos, install uv, configure YAML" experience with a downloadable app that non-technical learners can use immediately, while retaining power-user depth via MCP/ACP integration with agent CLI tools.</p>
+<h3 id="core-value-proposition">Core Value Proposition<a class="headerlink" href="#core-value-proposition" title="Permanent link">&para;</a></h3>
+<p><strong>Live AI-powered Socratic tutoring</strong> that adapts to your energy level, learning style, and neurodivergent needs (AuDHD-aware). Not just flashcard review -- an AI mentor that questions, probes, and guides understanding in real-time.</p>
+<hr />
+<h2 id="why-this-approach">Why This Approach<a class="headerlink" href="#why-this-approach" title="Permanent link">&para;</a></h2>
+<h3 id="problem-statement">Problem Statement<a class="headerlink" href="#problem-statement" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Installation barrier</strong>: Non-technical users can't install Python, uv, clone repos, or configure YAML</li>
+<li><strong>Fragmentation</strong>: Two separate repos (study consumption vs content generation) with no clear user journey connecting them</li>
+<li><strong>Interface confusion</strong>: TUI vs PWA vs CLI vs Agent -- users don't know which to use</li>
+<li><strong>NotebookLM dependency</strong>: Unofficial cookie-based API is fragile, and the roundabout pipeline (markdown -&gt; PDF -&gt; upload -&gt; generate -&gt; download) is unnecessary for flashcard/quiz generation</li>
+</ol>
+<h3 id="why-native-swiftui">Why Native SwiftUI<a class="headerlink" href="#why-native-swiftui" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Single downloadable app (.app bundle) -- no Python, no terminal, no configuration</li>
+<li>PDFKit is built into macOS/iOS -- native PDF chapter splitting</li>
+<li>Shared SwiftUI codebase for macOS + iOS</li>
+<li>App Store distribution enables monetisation</li>
+<li>Homebrew cask for power-user installation</li>
+<li>MCP server can run natively alongside the app</li>
+</ul>
+<h3 id="why-not-alternatives-considered">Why Not (Alternatives Considered)<a class="headerlink" href="#why-not-alternatives-considered" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Alternative</th>
+<th>Why not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Improve Python packaging (Homebrew formula + PyPI)</strong></td>
+<td>Solves install friction but not the fragmentation or interface confusion. Still requires terminal comfort.</td>
+</tr>
+<tr>
+<td><strong>Desktop wrapper (Electron/Tauri)</strong></td>
+<td>Heavy runtime, not native feel, still bundles Python or needs backend</td>
+</tr>
+<tr>
+<td><strong>PWA-only</strong></td>
+<td>Already built and works, but limited iOS capabilities, can't run MCP server, no App Store monetisation path</td>
+</tr>
+<tr>
+<td><strong>Native shell + Python engine</strong></td>
+<td>PythonKit doesn't work on iOS. Embedding Python runtime in iOS app is painful and App Store review risky. Creates throwaway bridge code.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="key-decisions">Key Decisions<a class="headerlink" href="#key-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="1-clean-break-from-python-codebase">1. Clean break from Python codebase<a class="headerlink" href="#1-clean-break-from-python-codebase" title="Permanent link">&para;</a></h3>
+<p>The Python repos (Socratic-Study-Mentor, notebooklm-pdf-by-chapters) served as prototypes. The new Swift project starts fresh, porting:
+- <strong>Algorithms</strong>: SM-2 spaced repetition (~50 lines), flashcard/quiz JSON format
+- <strong>Data formats</strong>: Flashcard JSON schema, quiz JSON schema, SQLite review database schema
+- <strong>UX patterns</strong>: Energy-level adaptation, AuDHD-aware session flow, Socratic questioning methodology
+- <strong>Agent definitions</strong>: Socratic mentor personality, session protocol (these are markdown, language-agnostic)</p>
+<p>The Python repos remain archived as reference. No gradual migration -- clean cut.</p>
+<h3 id="2-replace-notebooklm-with-official-llm-apis">2. Replace NotebookLM with official LLM APIs<a class="headerlink" href="#2-replace-notebooklm-with-official-llm-apis" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Old (NotebookLM)</th>
+<th>New (Native)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flashcard generation</td>
+<td>Upload PDF -&gt; NotebookLM generates</td>
+<td>Send chapter text to Claude/Gemini API -&gt; structured JSON output</td>
+</tr>
+<tr>
+<td>Quiz generation</td>
+<td>Same roundabout pipeline</td>
+<td>Same direct API approach</td>
+</tr>
+<tr>
+<td>PDF splitting</td>
+<td>PyMuPDF (Python)</td>
+<td>PDFKit (Apple native framework)</td>
+</tr>
+<tr>
+<td>Markdown import</td>
+<td>pandoc + mermaid-cli + typst -&gt; PDF -&gt; upload</td>
+<td>Read .md files directly, send text to LLM</td>
+</tr>
+<tr>
+<td>Audio podcasts</td>
+<td>NotebookLM deep-dive (unique)</td>
+<td>Dropped from MVP. Optional NotebookLM integration later if needed.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-two-mode-architecture">3. Two-mode architecture<a class="headerlink" href="#3-two-mode-architecture" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>LLM Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Study mode</strong> (daily use)</td>
+<td>Yes -- live AI</td>
+<td>Socratic mentoring, adaptive questioning, energy-level awareness. This IS the product differentiator.</td>
+</tr>
+<tr>
+<td><strong>Offline review</strong> (fallback)</td>
+<td>No</td>
+<td>Review previously-studied cards, spaced repetition scheduling. Works without LLM connection.</td>
+</tr>
+<tr>
+<td><strong>Generation mode</strong> (occasional)</td>
+<td>Yes</td>
+<td>Import new PDF/Obsidian content, generate flashcards/quizzes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4-pluggable-llm-backend-cost-conscious">4. Pluggable LLM backend (cost-conscious)<a class="headerlink" href="#4-pluggable-llm-backend-cost-conscious" title="Permanent link">&para;</a></h3>
+<p><strong>macOS primary path -- agent CLI via MCP (free with existing subscriptions):</strong>
+- App runs an MCP server exposing tools: generate-flashcards, next-review-card, grade-response, socratic-question, etc.
+- User's existing agent CLI (Claude Code, Gemini CLI, Kiro CLI, Kimi CLI, etc.) connects via MCP
+- LLM intelligence comes from the agent's subscription -- no extra API cost
+- ACP (Agent Client Protocol) support planned alongside MCP for broader agent compatibility</p>
+<p><strong>macOS/iOS fallback -- direct API calls:</strong>
+- User provides API key (Claude, Gemini, OpenAI, OpenRouter, Z.AI, Moonshot, etc.)
+- OpenAI-compatible API format as the common interface (most providers support it)
+- Pay-per-use cost, but works without an agent CLI</p>
+<p><strong>iOS primary path:</strong>
+- Direct API calls (no agent CLI available on iOS)
+- Same multi-provider support as fallback path above</p>
+<h3 id="5-content-input-pdf-obsidian-first">5. Content input: PDF + Obsidian first<a class="headerlink" href="#5-content-input-pdf-obsidian-first" title="Permanent link">&para;</a></h3>
+<p><strong>MVP</strong>: Open PDF (PDFKit splits by TOC), import Obsidian .md files directly
+<strong>Future</strong>: EPUB, plain text, web URLs (universal document import)</p>
+<h3 id="6-poc-first-approach-validated-by-research">6. PoC-first approach (validated by research)<a class="headerlink" href="#6-poc-first-approach-validated-by-research" title="Permanent link">&para;</a></h3>
+<p>Before committing to the full native app, build a minimal PoC (~2.5-4 weeks with AI pair programming) that validates:
+1. SwiftUI app opens a PDF and lists chapters via <strong>PDFKit</strong> <code>PDFOutline</code>
+2. Sends chapter text to Claude API via <strong>SwiftAnthropic</strong> -&gt; receives flashcards as structured JSON
+3. Displays flashcards with flip + grade (SM-2 basics) in SwiftUI, stored in <strong>GRDB.swift</strong> SQLite
+4. Exposes one MCP tool via <strong>MCP Swift SDK</strong> + SwiftNIO HTTP on <code>127.0.0.1:9400/mcp</code></p>
+<p><strong>Kill criteria</strong>: If any step requires &gt;1 week of fighting the framework, reassess. Fallback: hybrid Python backend + SwiftUI frontend (1.5 week validation).</p>
+<hr />
+<h2 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>+------------------------------------------+
+|           SwiftUI App (macOS/iOS)         |
+|                                          |
+|  +----------+  +----------+  +--------+  |
+|  | PDF      |  | Study    |  | LLM    |  |
+|  | Import   |  | Engine   |  | Router |  |
+|  | (PDFKit) |  | (SM-2,   |  |        |  |
+|  |          |  |  SQLite) |  |        |  |
+|  +----------+  +----------+  +---+----+  |
+|                                  |        |
++----------------------------------+--------+
+                                   |
+                    +--------------+--------------+
+                    |              |               |
+              +-----+----+  +-----+-----+  +------+------+
+              | MCP      |  | Direct    |  | Local LLM   |
+              | Server   |  | API       |  | (future)    |
+              | (agent   |  | (Claude,  |  | (MLX/Ollama)|
+              | CLI)     |  | Gemini,   |  |             |
+              +----------+  | OpenRouter|  +-------------+
+                            | etc.)     |
+                            +-----------+
+</code></pre></div>
+<h3 id="shared-swift-package">Shared Swift Package<a class="headerlink" href="#shared-swift-package" title="Permanent link">&para;</a></h3>
+<p>A Swift package containing the core logic, shared between macOS and iOS targets:
+- <code>StudyEngine</code>: SM-2 algorithm, card scheduling, progress tracking
+- <code>ContentImport</code>: PDFKit chapter splitting, Obsidian markdown parsing
+- <code>LLMRouter</code>: Protocol-based LLM abstraction (MCP, direct API, local)
+- <code>DataStore</code>: SQLite via GRDB.swift, flashcard/quiz JSON Codable models
+- <code>SocraticMentor</code>: Session protocol, energy adaptation, questioning methodology</p>
+<hr />
+<h2 id="resolved-questions">Resolved Questions<a class="headerlink" href="#resolved-questions" title="Permanent link">&para;</a></h2>
+<h3 id="1-mcp-server-in-a-macos-app-viable">1. MCP server in a macOS app -- VIABLE<a class="headerlink" href="#1-mcp-server-in-a-macos-app-viable" title="Permanent link">&para;</a></h3>
+<p><strong>Research</strong>: <code>docs/research/mcp-native-app-research.md</code></p>
+<ul>
+<li><strong>Official Swift MCP SDK exists</strong> (<code>modelcontextprotocol/swift-sdk</code>, v0.11.0+, Tier 2)</li>
+<li><strong>Recommended transport</strong>: Streamable HTTP on <code>127.0.0.1:9400/mcp</code> using <code>StatefulHTTPServerTransport</code> + SwiftNIO</li>
+<li><strong>Agent CLI registration</strong>: <code>claude mcp add --transport http study-mentor http://127.0.0.1:9400/mcp</code> (similar for Gemini CLI, Kiro CLI)</li>
+<li><strong>All major agent CLIs support HTTP transport</strong> (Claude Code, Gemini CLI, Kiro CLI, Kimi CLI)</li>
+<li><strong>Key gotchas</strong>: Bind to <code>127.0.0.1</code> (not <code>0.0.0.0</code>) to avoid firewall prompts; sandboxed apps need <code>com.apple.security.network.server</code> entitlement; use fixed port for PoC</li>
+<li><strong>Verdict</strong>: This is straightforward. The Swift MCP SDK includes a complete SwiftNIO reference implementation.</li>
+</ul>
+<h3 id="2-acp-defer-mcp-first">2. ACP -- DEFER (MCP first)<a class="headerlink" href="#2-acp-defer-mcp-first" title="Permanent link">&para;</a></h3>
+<p><strong>Research</strong>: <code>docs/research/2026-03-15-acp-research.md</code></p>
+<ul>
+<li><strong>ACP is a different layer</strong>: MCP = agent-to-tools; ACP = editor-to-agent. They coexist by design.</li>
+<li><strong>Created by Zed Industries, co-stewarded by JetBrains</strong>. 2.4K stars, 951 commits, Apache 2.0.</li>
+<li><strong>Massive agent adoption</strong>: Claude Agent, GitHub Copilot, Gemini CLI, Cursor, Kiro, Kimi -- 25+ agents.</li>
+<li><strong>No Swift SDK</strong>. Official SDKs: Python, Rust, TypeScript, Kotlin, Java. Would need Rust FFI or raw JSON-RPC.</li>
+<li><strong>Pre-1.0</strong> (all SDKs 0.x) but not going away given adoption.</li>
+<li><strong>Verdict</strong>: ACP would only matter for native Zed/JetBrains panel integration -- a future nice-to-have. MCP covers the agent CLI use case completely. Defer ACP to post-MVP.</li>
+</ul>
+<h3 id="3-monetisation-freemium-byok-one-time-premium">3. Monetisation -- Freemium + BYOK + One-Time Premium<a class="headerlink" href="#3-monetisation-freemium-byok-one-time-premium" title="Permanent link">&para;</a></h3>
+<p><strong>Research</strong>: <code>docs/research/monetisation-research.md</code></p>
+<ul>
+<li><strong>Recommended model</strong>: Free app with BYOK for AI features + optional one-time $29.99 premium purchase for advanced non-AI features (PDF batch import, advanced analytics, multi-device sync)</li>
+<li><strong>Precedent</strong>: BoltAI, TypingMind -- one-time purchase BYOK apps on Mac App Store. Apple accepts BYOK as "user configuration", not content purchase.</li>
+<li><strong>Apple Small Business Program</strong>: 15% commission (not 30%) under $1M revenue</li>
+<li><strong>Distribution</strong>: Homebrew cask (primary for power users) + direct download + Mac App Store. All can coexist.</li>
+<li><strong>Direct API calls, never proxy user keys</strong> -- avoids GDPR processor obligations and ToS risk</li>
+<li><strong>Provider note</strong>: OpenRouter is the most BYOK-friendly provider. Google Gemini has "not for consumer use" clause and 18+ restriction -- risk for a study app. Prioritise Claude, OpenAI, OpenRouter.</li>
+<li><strong>No backend needed</strong> for MVP -- all client-side. Backend only if adding user accounts/sync later.</li>
+</ul>
+<h3 id="4-swiftswiftui-learning-curve-realistic-with-ai-pairing">4. Swift/SwiftUI learning curve -- REALISTIC WITH AI PAIRING<a class="headerlink" href="#4-swiftswiftui-learning-curve-realistic-with-ai-pairing" title="Permanent link">&para;</a></h3>
+<p><strong>Research</strong>: <code>docs/research/swift-poc-feasibility.md</code></p>
+<ul>
+<li><strong>Timeline</strong>: 2.5-4 weeks with AI pair programming (Claude Code), 5-8 weeks without</li>
+<li><strong>Hardest paradigm shifts</strong>: Strict type system, value vs reference semantics (SwiftUI views are structs), reactive state management (<code>@State</code>, <code>@Observable</code>, <code>@Binding</code>). Week 1 will feel slow.</li>
+<li><strong>No official Anthropic Swift SDK</strong> -- use community <code>SwiftAnthropic</code> (232 stars, supports Messages API, streaming, function calling)</li>
+<li><strong>Key packages</strong>: PDFKit (built-in), SwiftAnthropic (Claude API), GRDB.swift (SQLite, 8.3K stars), Vapor or SwiftNIO (HTTP server), MCP Swift SDK</li>
+<li><strong>PDFKit</strong>: Reliably reads TOC bookmarks via <code>PDFOutline</code> -- same gotchas as PyMuPDF (missing TOCs in some PDFs)</li>
+<li><strong>Alternative flagged</strong>: Hybrid approach (Python backend on localhost + thin SwiftUI frontend) could validate the UX in ~1.5 weeks instead of 3-4. Worth considering as a stepping stone.</li>
+<li><strong>Verdict</strong>: Doable but challenging. AI pair programming is essential. The hybrid option is a pragmatic fallback if pure Swift feels too slow.</li>
+</ul>
+<h3 id="5-data-migration-from-python-clean-start">5. Data migration from Python -- CLEAN START<a class="headerlink" href="#5-data-migration-from-python-clean-start" title="Permanent link">&para;</a></h3>
+<p>Given this targets a new (non-technical) user base, no migration needed. The Python tool's existing users are technical enough to export/re-import if needed. The SQLite schema and JSON formats will be documented for manual migration.</p>
+<hr />
+<h2 id="open-questions-remaining">Open Questions (Remaining)<a class="headerlink" href="#open-questions-remaining" title="Permanent link">&para;</a></h2>
+<h3 id="1-hybrid-vs-pure-swift-for-poc">1. Hybrid vs Pure Swift for PoC?<a class="headerlink" href="#1-hybrid-vs-pure-swift-for-poc" title="Permanent link">&para;</a></h3>
+<p>The Swift PoC research flagged that a Python backend + SwiftUI frontend hybrid could validate the UX in 1.5 weeks vs 3-4 weeks for pure Swift. However, the hybrid reintroduces the Python dependency we're trying to eliminate. Is the hybrid worth it as a time-boxed stepping stone, or should we commit to pure Swift from day one?</p>
+<h3 id="2-provider-specific-api-differences">2. Provider-specific API differences<a class="headerlink" href="#2-provider-specific-api-differences" title="Permanent link">&para;</a></h3>
+<p>OpenAI-compatible format covers most providers, but Claude uses a different API format. SwiftAnthropic handles Claude; for OpenRouter/others we'd need a separate OpenAI-compatible client. How much multi-provider work goes into the PoC vs deferred?</p>
+<h3 id="3-ios-timeline">3. iOS timeline<a class="headerlink" href="#3-ios-timeline" title="Permanent link">&para;</a></h3>
+<p>macOS app first is clear. But when does iOS become a priority? After macOS MVP ships? After monetisation is validated? This affects whether we invest in the shared Swift package architecture upfront.</p>
+<hr />
+<h2 id="what-were-not-building-yagni">What We're NOT Building (YAGNI)<a class="headerlink" href="#what-were-not-building-yagni" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Cloud backend / user accounts (at least not for MVP)</li>
+<li>Android app (Apple-first)</li>
+<li>Collaborative/social features</li>
+<li>NotebookLM podcast generation (dropped from core, optional future plugin)</li>
+<li>TUI (terminal UI was a proof of concept)</li>
+<li>Custom LLM fine-tuning</li>
+<li>Video/infographic generation</li>
+</ul>
+<hr />
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Resolve remaining open questions</strong> (hybrid vs pure Swift, multi-provider scope for PoC, iOS timeline)</li>
+<li><strong>Build PoC</strong> (~2.5-4 weeks with Claude Code AI pairing) -- SwiftUI + PDFKit + SwiftAnthropic + GRDB + MCP Swift SDK</li>
+<li><strong>If PoC succeeds</strong>: <code>/ce:plan</code> for full MVP with monetisation (freemium + BYOK + $29.99 premium)</li>
+<li><strong>If PoC struggles at week 2</strong>: Fall back to hybrid (Python backend + SwiftUI frontend) for UX validation</li>
+<li><strong>If hybrid also struggles</strong>: Fall back to improved Python packaging (merge repos, Homebrew formula, better PWA)</li>
+</ol>
+<h2 id="research-documents">Research Documents<a class="headerlink" href="#research-documents" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCP in native apps</td>
+<td><code>docs/research/mcp-native-app-research.md</code></td>
+</tr>
+<tr>
+<td>ACP maturity</td>
+<td><code>docs/research/2026-03-15-acp-research.md</code></td>
+</tr>
+<tr>
+<td>Swift PoC feasibility</td>
+<td><code>docs/research/swift-poc-feasibility.md</code></td>
+</tr>
+<tr>
+<td>Monetisation models</td>
+<td><code>docs/research/monetisation-research.md</code></td>
+</tr>
+<tr>
+<td>Socratic Study Mentor repo analysis</td>
+<td><code>docs/research/repo-research-summary.md</code></td>
+</tr>
+<tr>
+<td>pdf-by-chapters repo analysis</td>
+<td><code>docs/research/notebooklm-pdf-by-chapters-analysis.md</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
