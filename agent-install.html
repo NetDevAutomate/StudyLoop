@@ -414,6 +414,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ai-guided-setup-recommended-for-new-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI-Guided Setup (Recommended for New Users)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-are-ai-agents" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1364,6 +1375,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ai-guided-setup-recommended-for-new-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI-Guided Setup (Recommended for New Users)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-are-ai-agents" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1866,6 +1888,15 @@
 <li><a href="#skills-reference">Skills Reference</a></li>
 <li><a href="#uninstalling">Uninstalling</a></li>
 </ul>
+<h2 id="ai-guided-setup-recommended-for-new-users">AI-Guided Setup (Recommended for New Users)<a class="headerlink" href="#ai-guided-setup-recommended-for-new-users" title="Permanent link">&para;</a></h2>
+<p>The <strong>install-mentor agent</strong> can guide you through the entire setup process conversationally. It detects your environment, installs packages, configures studyctl, and verifies everything works using <code>studyctl doctor</code>.</p>
+<p>The prompt lives at <a href="../agents/shared/install-mentor.md"><code>agents/shared/install-mentor.md</code></a> and works with any AI coding tool. To use it:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># In Claude Code — just ask:</span>
+<span class="c1"># &quot;Read agents/shared/install-mentor.md and follow it to set up studyctl&quot;</span>
+
+<span class="c1"># Or in any AI tool that can run shell commands, paste the prompt contents</span>
+</code></pre></div>
+<p>The install-mentor uses <code>studyctl doctor --json</code> as its contract — it parses the health check output and fixes issues automatically (up to 3 iterations).</p>
 <h2 id="what-are-ai-agents">What are AI Agents?<a class="headerlink" href="#what-are-ai-agents" title="Permanent link">&para;</a></h2>
 <p>AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.</p>
 <p>This project ships agents for five platforms:
