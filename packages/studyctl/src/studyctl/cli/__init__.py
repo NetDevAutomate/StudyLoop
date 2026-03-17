@@ -46,6 +46,11 @@ from studyctl.cli._lazy import LazyGroup
         "web": "studyctl.cli._web:web",
         "tui": "studyctl.cli._web:tui",
         "docs": "studyctl.cli._web:docs_group",
+        # _doctor.py — diagnostic health checks
+        "doctor": "studyctl.cli._doctor:doctor",
+        # _upgrade.py — update check + upgrade apply
+        "update": "studyctl.cli._upgrade:update",
+        "upgrade": "studyctl.cli._upgrade:upgrade",
     },
 )
 @click.version_option()
