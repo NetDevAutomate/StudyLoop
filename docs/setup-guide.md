@@ -544,7 +544,56 @@ obsidian_base: /mnt/c/Users/YourName/Obsidian
 
 For better performance, consider keeping the vault inside WSL2's native filesystem (`~/Obsidian/`) and syncing with Obsidian Sync or Git.
 
+## Verify Installation
+
+After installing and configuring, run the health check to make sure everything is working:
+
+```bash
+studyctl doctor
+```
+
+This checks Python version, installed packages, config validity, databases, optional dependencies, and AI agent definitions. You'll see a colour-coded table:
+
+- Green tick = healthy
+- Yellow ! = warning (often auto-fixable)
+- Red cross = failure (needs attention)
+- Blue i = informational (optional)
+
+If issues are found:
+
+```bash
+studyctl upgrade              # Fix auto-fixable issues (packages, DB, agents)
+studyctl upgrade --dry-run    # Preview changes first
+```
+
+For machine-readable output (used by CI pipelines and AI agents):
+
+```bash
+studyctl doctor --json
+```
+
+### AI-Guided Setup
+
+If you're using an AI coding assistant, the **install-mentor agent** can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs `studyctl doctor`, and fixes issues.
+
+The prompt lives at `agents/shared/install-mentor.md` and works with any AI tool that can run shell commands — Claude Code, Kiro CLI, Gemini CLI, OpenCode, or Amp.
+
+To use it in Claude Code:
+```
+Read agents/shared/install-mentor.md and follow its instructions to set up studyctl
+```
+
 ## Troubleshooting
+
+### First step: run `studyctl doctor`
+
+Before investigating specific issues, always start with the health check:
+
+```bash
+studyctl doctor
+```
+
+This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run `studyctl upgrade` to resolve them.
 
 ### `studyctl: command not found`
 
