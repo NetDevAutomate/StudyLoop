@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "agents": {
+    "claude/socratic-mentor.md": {
+      "hash": "0b93a65d2b3ad4c5",
+      "updated": "2026-03-17"
+    },
+    "claude/study-audio.md": {
+      "hash": "ef4fd0ff75aa5b24",
+      "updated": "2026-03-17"
+    },
+    "claude/study-generate.md": {
+      "hash": "56a0e6db18d2cbfa",
+      "updated": "2026-03-17"
+    },
+    "claude/study-setup.md": {
+      "hash": "37a5a1a2de2e6ec0",
+      "updated": "2026-03-17"
+    },
+    "gemini/study-mentor.md": {
+      "hash": "d506cc0d73f78efc",
+      "updated": "2026-03-17"
+    },
+    "kiro/study-mentor.json": {
+      "hash": "1894ff3e4ad66fb1",
+      "updated": "2026-03-17"
+    },
+    "opencode/study-mentor.md": {
+      "hash": "e7ab505118e5eddf",
+      "updated": "2026-03-17"
+    },
+    "shared/audhd-framework.md": {
+      "hash": "b348d17a8d545288",
+      "updated": "2026-03-17"
+    },
+    "shared/break-science.md": {
+      "hash": "74541a44431f7f6a",
+      "updated": "2026-03-17"
+    },
+    "shared/knowledge-bridging.md": {
+      "hash": "d7905e0fc036a404",
+      "updated": "2026-03-17"
+    },
+    "shared/network-bridges.md": {
+      "hash": "eebe8a4ec9de6330",
+      "updated": "2026-03-17"
+    },
+    "shared/session-protocol.md": {
+      "hash": "6ff4bee83801a67a",
+      "updated": "2026-03-17"
+    },
+    "shared/socratic-engine.md": {
+      "hash": "044281e8c81723de",
+      "updated": "2026-03-17"
+    },
+    "shared/teach-back-protocol.md": {
+      "hash": "46f5d9fd8cd1155b",
+      "updated": "2026-03-17"
+    },
+    "shared/wind-down-protocol.md": {
+      "hash": "c4e79730c2dde3ac",
+      "updated": "2026-03-17"
+    }
+  }
+}
