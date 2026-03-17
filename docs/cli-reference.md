@@ -11,21 +11,26 @@ studyctl review                          # Check spaced repetition due dates
 studyctl struggles --days 30             # Find recurring struggle topics
 studyctl wins --days 30                  # Show your learning wins
 studyctl progress CONCEPT -t TOPIC -c LEVEL  # Record progress on a concept
+studyctl progress-map                    # Visual map of all tracked concepts
+studyctl resume                          # Where you left off (auto-context)
+studyctl streaks                         # Study streak and consistency stats
+studyctl teachback CONCEPT -t TOPIC -s SCORES --type TYPE  # Record teach-back score
+studyctl teachback-history CONCEPT       # Show teach-back score progression
+studyctl bridge add SRC TGT -s DOMAIN -t DOMAIN  # Add a knowledge bridge
+studyctl bridge list                     # List knowledge bridges
 studyctl schedule-blocks --start 14:00   # Generate .ics calendar study blocks
 studyctl topics                          # List configured topics
 studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
-studyctl resume                          # Where you left off (auto-context)
-studyctl streaks                         # Study streak and consistency stats
-studyctl progress-map                    # Visual map of all tracked concepts
 studyctl state push|pull|status|init     # Cross-machine state sync
 studyctl schedule install|remove|list|add|delete  # Manage scheduled jobs
 studyctl config init                     # Interactive setup wizard
 studyctl config show                     # Display current configuration
+studyctl web [--port PORT] [--host HOST] # Launch study web app
+studyctl tui                             # Launch interactive TUI dashboard
 studyctl docs serve [--port PORT]        # Serve docs site locally
 studyctl docs open                       # Build and open docs in browser
 studyctl docs list                       # List available doc pages
-studyctl tui                             # Launch interactive TUI dashboard
 studyctl docs read PAGE                  # Read a page aloud via study-speak
 ```
 
