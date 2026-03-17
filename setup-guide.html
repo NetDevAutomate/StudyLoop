@@ -2002,7 +2002,7 @@
 </ul>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Python 3.10+</strong> (studyctl requires 3.12+, agent-session-tools works with 3.10+)</li>
+<li><strong>Python 3.12+</strong> (both studyctl and agent-session-tools require 3.12+)</li>
 <li><strong><a href="https://docs.astral.sh/uv/">uv</a></strong> — Python package manager</li>
 <li><strong>Obsidian</strong> — for study notes (any vault structure works)</li>
 <li><strong>Optional</strong>: <code>notebooklm-py</code> for Google NotebookLM sync</li>
@@ -2015,7 +2015,7 @@
 ./scripts/install.sh
 </code></pre></div>
 <p>This will:
-1. Verify Python 3.10+ is installed
+1. Verify Python 3.12+ is installed
 2. Install <code>uv</code> if not already available
 3. Run <code>uv sync</code> to install both packages
 4. Run <code>install-agents.sh</code> to set up AI agent definitions
@@ -2425,7 +2425,7 @@ studyctl<span class="w"> </span>schedule<span class="w"> </span>add<span class="
 <h3 id="prerequisites_1">Prerequisites<a class="headerlink" href="#prerequisites_1" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Install WSL2 with Ubuntu: <code>wsl --install -d Ubuntu</code></li>
-<li>Inside WSL2, install Python 3.10+ and uv:
+<li>Inside WSL2, install Python 3.12+ and uv:
    <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
 </code></pre></div></li>
 <li>Clone and install as normal (all commands run inside WSL2)</li>
