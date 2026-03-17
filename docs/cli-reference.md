@@ -29,6 +29,37 @@ studyctl tui                             # Launch interactive TUI dashboard
 studyctl docs read PAGE                  # Read a page aloud via study-speak
 ```
 
+### Health & Updates
+
+Check your installation and keep it current:
+
+```bash
+studyctl doctor                          # Full health check (Rich table)
+studyctl doctor --json                   # JSON output (for AI agents and CI)
+studyctl doctor --quiet                  # One-line summary
+studyctl doctor --category core          # Check specific category only
+studyctl update                          # Check for available updates (no changes)
+studyctl update --json                   # Machine-readable update info
+studyctl upgrade                         # Apply all available updates
+studyctl upgrade --dry-run               # Preview what would change
+studyctl upgrade --component packages    # Upgrade only packages
+studyctl upgrade --component database    # Run DB migrations only
+studyctl upgrade --component agents      # Update agent definitions only
+studyctl upgrade --force                 # Upgrade even if already current
+```
+
+**Exit codes for `studyctl doctor`:**
+
+| Code | Meaning |
+|------|---------|
+| `0` | All checks pass — installation is healthy |
+| `1` | Warnings or failures that can be fixed — run `studyctl upgrade` |
+| `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
+
+**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `updates` (PyPI versions).
+
+**AI-guided setup:** The install-mentor agent at `agents/shared/install-mentor.md` uses `studyctl doctor --json` to walk users through setup conversationally. It works with any AI coding tool (Claude Code, Kiro, Gemini CLI, OpenCode, Amp).
+
 ### Confidence Levels
 
 Used with `studyctl progress`:

@@ -122,9 +122,31 @@ cd socratic-study-mentor
 
 ```bash
 studyctl setup      # Interactive configuration wizard
+studyctl doctor     # Verify everything is healthy
 studyctl web        # Launch the study web app
-studyctl --help     # See all commands
 ```
+
+### Verify your install
+
+`studyctl doctor` checks your entire installation — Python version, packages, config, databases, optional dependencies, and agent definitions. Run it any time something feels off:
+
+```bash
+studyctl doctor             # Rich table with pass/warn/fail indicators
+studyctl doctor --json      # Machine-readable output (used by AI agents)
+studyctl doctor --quiet     # One-line summary
+```
+
+If issues are found, `studyctl upgrade` fixes what it can automatically:
+
+```bash
+studyctl update             # Check what's available (no changes)
+studyctl upgrade            # Apply fixes (packages, DB migrations, agents)
+studyctl upgrade --dry-run  # Preview changes first
+```
+
+### AI-guided setup
+
+If you're using an AI coding assistant (Claude Code, Kiro, Gemini CLI, etc.), the **install-mentor agent** can walk you through the entire setup conversationally. It uses `studyctl doctor --json` to detect issues and fix them automatically. See [agents/shared/install-mentor.md](agents/shared/install-mentor.md).
 
 ### Optional extras
 
@@ -233,6 +255,13 @@ studyctl status [TOPIC]                  # Show sync status
 studyctl topics                          # List configured topics
 studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
+
+# Health & updates
+studyctl doctor                          # Check installation health
+studyctl doctor --json                   # Machine-readable diagnostics
+studyctl update                          # Check for available updates
+studyctl upgrade                         # Apply updates (packages, DB, agents)
+studyctl upgrade --dry-run               # Preview what would change
 
 # Configuration & scheduling
 studyctl config init                     # Interactive setup wizard
@@ -361,6 +390,7 @@ study-speak TEXT -v af_heart -s 1.2      # Custom voice and speed
 ## Documentation
 
 - [Setup Guide](docs/setup-guide.md) — Installation, configuration, Obsidian setup
+- [Install Mentor](agents/shared/install-mentor.md) — AI-guided setup agent (works with any AI coding tool)
 - [Agent Installation](docs/agent-install.md) — AI agent setup for kiro-cli, Claude Code, Gemini CLI, OpenCode, and Amp
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — Why this exists and how it works
 - [MCP Integrations](agents/mcp/README.md) — Calendar, reminders, and other MCP server configs
