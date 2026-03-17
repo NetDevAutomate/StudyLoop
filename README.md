@@ -23,7 +23,7 @@ An open-source study toolkit designed specifically for AuDHD learners. It combin
 graph LR
     subgraph "Study Materials"
         OB[Obsidian Vault]
-        NLM[NotebookLM<br/>optional]
+        NLM[NotebookLM<br>optional]
     end
 
     subgraph "CLI Tools"
