@@ -1,6 +1,6 @@
 # Roadmap
 
-## v1.0 — Foundation (current)
+## v1.0 — Foundation
 
 - [x] Monorepo with studyctl + agent-session-tools
 - [x] Kiro CLI + Claude Code agent definitions
@@ -100,19 +100,19 @@ Features designed specifically for AuDHD brains, ranked by impact.
 
 ## v1.2 — Community & Polish
 
-- [ ] PyPI publishing
+- [x] PyPI publishing (v2.0 — OIDC trusted publishing)
 - [ ] Additional test coverage (exporters, scheduler, CLI commands, speak, PDF)
 - [ ] VSCode integration (fix circular import)
-- [ ] TUI interface (textual)
+- [x] TUI interface (textual) (v1.5)
 - [ ] Watchdog file watcher for auto-sync
 - [ ] Community-contributed study topics
 - [ ] Localisation support
 - [x] TTS voice output (kokoro-tts / ltts integration)
 - [x] MkDocs documentation site (font toggle, Nord colours, reading preferences, 7 admonition types, `studyctl docs` CLI)
 - [x] Gemini CLI / OpenCode / Amp agents (unified shared framework)
-- [ ] CI Python version matrix (3.12, 3.13)
-- [ ] GitHub Pages deployment workflow
-- [ ] CHANGELOG.md and release automation
+- [x] CI Python version matrix (3.12, 3.13)
+- [x] GitHub Pages deployment workflow
+- [x] CHANGELOG.md and release automation (git-cliff + release.yml)
 - [ ] `query_sessions.py` refactor — split into CLI, formatters, resolver modules
 
 ## v1.3 — AuDHD Intelligence (from review)
@@ -187,3 +187,49 @@ Bug fixes, agent framework unification, and documentation polish.
 - [x] **Config viewer**: `studyctl config show` with Rich tables
 - [x] **Docs site**: `studyctl docs serve/open/list/read` commands
 - [x] **Agent installation integration**: `install-agents.sh` called from `config init` flow
+
+## v2.0 — Unified Platform
+
+Monorepo restructure, content pipeline absorption, packaging, and infrastructure hardening.
+
+- [x] **Phase 0**: Config consolidation (`settings.py` single source), CLI split into `cli/` package with LazyGroup (12 modules), WAL mode on all SQLite connections, service layer (`services/review.py`, `services/content.py`), JSON contract formalised
+- [x] **Phase 1**: Content absorption — 7 modules from pdf-by-chapters (`splitter`, `notebooklm_client`, `syllabus`, `markdown_converter`, `models`, `storage`), 10 CLI commands under `studyctl content`, 76 tests
+- [x] **Phase 4**: PyPI publishing (`studyctl` on PyPI), Homebrew personal tap (`NetDevAutomate/studyctl/studyctl`), OIDC trusted publishing, `studyctl setup` wizard
+- [x] **327 tests**, 4 skipped (optional deps)
+
+## v2.1 — Health & Self-Update (current)
+
+Diagnostic engine, self-update mechanism, and AI-guided setup for non-technical users.
+
+- [x] **`studyctl doctor`** — 19 health checks across 7 categories (core, database, config, agents, deps, voice, updates). Rich table output, `--json` for AI agents/CI, `--quiet` for scripts, `--category` for filtering. Exit codes: 0=healthy, 1=actionable, 2=core failure.
+- [x] **`studyctl update`** — check for available updates (always exit 0, informational)
+- [x] **`studyctl upgrade`** — apply updates with `--dry-run`, `--component`, `--force`. Package manager detection (uv/brew/pip), DB backup with 30-day pruning, agent definition updates.
+- [x] **Install-mentor agent** — tool-agnostic AI-guided setup prompt (`agents/shared/install-mentor.md`). Uses `studyctl doctor --json` as contract, fix loop capped at 3 iterations. Works with Claude Code, Kiro, Gemini CLI, OpenCode, Amp.
+- [x] **Agent manifest** — `agents/manifest.json` tracks SHA-256 hashes of all agent definitions. `scripts/update-agent-manifest.py` regenerates.
+- [x] **Documentation** — README, CLI reference, setup guide, agent-install all updated for non-technical users.
+
+## Next
+
+### Phase 6: CI/CD Pipeline
+
+Nightly drift detection, pre-release gate, and Docker image pipeline. Spec at `docs/ci-cd-pipeline.md`.
+
+- [ ] Nightly: fresh install on Ubuntu + macOS, `studyctl doctor --json` as gate
+- [ ] Pre-release: upgrade path N-1 -> N, triggered on release tags
+- [ ] Docker: `studyctl-web` image with server-side TTS, health check via doctor
+- [ ] `compatibility.json` for pre-flight version checks
+
+### Phase 7: Docker Web + Server-Side TTS
+
+- [ ] Docker image running `studyctl web` with kokoro-onnx TTS
+- [ ] FastAPI audio endpoint for browser playback
+
+### Phase 2: FastAPI Web UI
+
+- [ ] Replace stdlib HTTP server with FastAPI
+- [ ] HTMX + Alpine.js frontend, artefact viewer, progress dashboard
+
+### Phase 3: MCP Agent Integration
+
+- [ ] FastMCP v1 server with stdio transport
+- [ ] Flashcard/quiz generation tools, study context, onboarding agent

@@ -17,15 +17,20 @@
 | 8 | StudyCards TUI (review_loader, review_db, SM-2, voice toggle) | Done |
 | 9 | TUI polish & PWA web app (Pomodoro, voice, accessibility) | Done |
 | Phase 0 | Pre-work: config consolidation, CLI split, WAL mode, service layer | Done |
+| Phase 1 | Content absorption: 7 modules, 10 CLI commands, 76 tests | Done |
+| Phase 4 | PyPI + Homebrew tap live, OIDC trusted publishing | Done |
+| Phase 5 | Doctor/upgrade/install-mentor: 3 CLI commands, 7 checker modules | Done |
 | Fixes | Export progress bar (A1), list_concepts (A2), course picker (A3), retry wrong (A4), SQL/connection leaks (A5), narrow exceptions (A6) | Done |
 
 ## Unified Platform Plan -- Next Phases
 
-### Phase 1: Content Absorption (next)
+### Phase 6: CI/CD Pipeline (next)
 
-Absorb all 12 pdf-by-chapters commands into `studyctl content` group. Course-centric storage, Typer-to-Click conversion, service layer population.
+Nightly drift detection, pre-release gate, Docker image pipeline. Spec at `docs/ci-cd-pipeline.md`.
 
-See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 1
+### Phase 7: Docker Web + Server-Side TTS
+
+Docker image running `studyctl web` with kokoro-onnx server-side TTS.
 
 ### Phase 2: FastAPI Web UI
 
@@ -38,12 +43,6 @@ See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 2
 FastMCP v1 server with stdio transport. Flashcard/quiz generation tools, study context tools, onboarding agent skill.
 
 See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 3
-
-### Phase 4: Packaging & Documentation
-
-PyPI as `studyctl`, Homebrew personal tap, `studyctl setup` wizard, user documentation rewrite.
-
-See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 4
 
 ## Standalone Items (not blocked by phases)
 
