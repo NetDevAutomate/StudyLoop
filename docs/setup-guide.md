@@ -17,7 +17,7 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 
 ## Prerequisites
 
-- **Python 3.10+** (studyctl requires 3.12+, agent-session-tools works with 3.10+)
+- **Python 3.12+** (both studyctl and agent-session-tools require 3.12+)
 - **[uv](https://docs.astral.sh/uv/)** — Python package manager
 - **Obsidian** — for study notes (any vault structure works)
 - **Optional**: `notebooklm-py` for Google NotebookLM sync
@@ -34,7 +34,7 @@ cd socratic-study-mentor
 ```
 
 This will:
-1. Verify Python 3.10+ is installed
+1. Verify Python 3.12+ is installed
 2. Install `uv` if not already available
 3. Run `uv sync` to install both packages
 4. Run `install-agents.sh` to set up AI agent definitions
@@ -494,7 +494,7 @@ The toolkit runs on Windows via WSL2 (Windows Subsystem for Linux).
 ### Prerequisites
 
 1. Install WSL2 with Ubuntu: `wsl --install -d Ubuntu`
-2. Inside WSL2, install Python 3.10+ and uv:
+2. Inside WSL2, install Python 3.12+ and uv:
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
