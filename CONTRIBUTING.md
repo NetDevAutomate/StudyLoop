@@ -37,7 +37,7 @@ Pre-commit runs automatically on each commit:
 - **Linter/formatter**: [ruff](https://docs.astral.sh/ruff/) (configured in each `pyproject.toml`)
 - **Type checker**: [pyright](https://github.com/microsoft/pyright) in basic mode
 - **Line length**: 100 characters
-- **Target**: Python 3.10+ (agent-session-tools), Python 3.12+ (studyctl)
+- **Target**: Python 3.12+ (both studyctl and agent-session-tools)
 
 Run checks manually:
 

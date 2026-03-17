@@ -5,7 +5,7 @@
 #   1. Go to https://pypi.org/manage/project/studyctl/settings/publishing/
 #   2. Add GitHub as trusted publisher:
 #      - Owner: NetDevAutomate
-#      - Repository: Socratic-Study-Mentor
+#      - Repository: socratic-study-mentor
 #      - Workflow: publish.yml
 #      - Environment: (leave blank)
 

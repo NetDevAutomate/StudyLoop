@@ -10,9 +10,9 @@ class Studyctl < Formula
   include Language::Python::Virtualenv
 
   desc "AuDHD-aware study tool with AI Socratic mentoring and spaced repetition"
-  homepage "https://github.com/NetDevAutomate/Socratic-Study-Mentor"
-  url "https://files.pythonhosted.org/packages/source/s/studyctl/studyctl-2.0.0.tar.gz"
-  sha256 "PLACEHOLDER_SHA256"
+  homepage "https://github.com/NetDevAutomate/socratic-study-mentor"
+  url "https://files.pythonhosted.org/packages/source/s/studyctl/studyctl-2.1.0.tar.gz"
+  sha256 "PLACEHOLDER_SHA256_UPDATE_AFTER_PYPI_PUBLISH"
   license "MIT"
 
   depends_on "python@3.12"

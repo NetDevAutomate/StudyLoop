@@ -181,8 +181,8 @@ This asks three core questions: whether to enable knowledge bridging (leveraging
 Browse the full docs locally with AuDHD-friendly design (OpenDyslexic font toggle, Nord colour scheme, reading preferences):
 
 ```bash
-uv pip install 'socratic-study-mentor[docs]'
-mkdocs serve
+cd socratic-study-mentor
+uv run mkdocs serve
 # Open http://localhost:8000
 ```
 
@@ -395,7 +395,7 @@ study-speak TEXT -v af_heart -s 1.2      # Custom voice and speed
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — Why this exists and how it works
 - [MCP Integrations](agents/mcp/README.md) — Calendar, reminders, and other MCP server configs
 - [Voice Output Guide](docs/voice-output.md) — TTS setup, configuration, and agent integration
-- [Roadmap](docs/roadmap.md) — What's coming in v1.1 and beyond
+- [Roadmap](docs/roadmap.md) — Feature roadmap and release history
 - [Contributing](CONTRIBUTING.md) — Development setup and contribution guide
 
 ## Contributing

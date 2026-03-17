@@ -15,6 +15,21 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Gemini CLI, OpenCo
 - [Skills Reference](#skills-reference)
 - [Uninstalling](#uninstalling)
 
+## AI-Guided Setup (Recommended for New Users)
+
+The **install-mentor agent** can guide you through the entire setup process conversationally. It detects your environment, installs packages, configures studyctl, and verifies everything works using `studyctl doctor`.
+
+The prompt lives at [`agents/shared/install-mentor.md`](../agents/shared/install-mentor.md) and works with any AI coding tool. To use it:
+
+```bash
+# In Claude Code — just ask:
+# "Read agents/shared/install-mentor.md and follow it to set up studyctl"
+
+# Or in any AI tool that can run shell commands, paste the prompt contents
+```
+
+The install-mentor uses `studyctl doctor --json` as its contract — it parses the health check output and fixes issues automatically (up to 3 iterations).
+
 ## What are AI Agents?
 
 AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.
