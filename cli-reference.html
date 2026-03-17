@@ -1118,21 +1118,26 @@ studyctl<span class="w"> </span>review<span class="w">                          
 studyctl<span class="w"> </span>struggles<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">             </span><span class="c1"># Find recurring struggle topics</span>
 studyctl<span class="w"> </span>wins<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">                  </span><span class="c1"># Show your learning wins</span>
 studyctl<span class="w"> </span>progress<span class="w"> </span>CONCEPT<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-c<span class="w"> </span>LEVEL<span class="w">  </span><span class="c1"># Record progress on a concept</span>
+studyctl<span class="w"> </span>progress-map<span class="w">                    </span><span class="c1"># Visual map of all tracked concepts</span>
+studyctl<span class="w"> </span>resume<span class="w">                          </span><span class="c1"># Where you left off (auto-context)</span>
+studyctl<span class="w"> </span>streaks<span class="w">                         </span><span class="c1"># Study streak and consistency stats</span>
+studyctl<span class="w"> </span>teachback<span class="w"> </span>CONCEPT<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-s<span class="w"> </span>SCORES<span class="w"> </span>--type<span class="w"> </span>TYPE<span class="w">  </span><span class="c1"># Record teach-back score</span>
+studyctl<span class="w"> </span>teachback-history<span class="w"> </span>CONCEPT<span class="w">       </span><span class="c1"># Show teach-back score progression</span>
+studyctl<span class="w"> </span>bridge<span class="w"> </span>add<span class="w"> </span>SRC<span class="w"> </span>TGT<span class="w"> </span>-s<span class="w"> </span>DOMAIN<span class="w"> </span>-t<span class="w"> </span>DOMAIN<span class="w">  </span><span class="c1"># Add a knowledge bridge</span>
+studyctl<span class="w"> </span>bridge<span class="w"> </span>list<span class="w">                     </span><span class="c1"># List knowledge bridges</span>
 studyctl<span class="w"> </span>schedule-blocks<span class="w"> </span>--start<span class="w"> </span><span class="m">14</span>:00<span class="w">   </span><span class="c1"># Generate .ics calendar study blocks</span>
 studyctl<span class="w"> </span>topics<span class="w">                          </span><span class="c1"># List configured topics</span>
 studyctl<span class="w"> </span>audio<span class="w"> </span>TOPIC<span class="w">                     </span><span class="c1"># Generate NotebookLM audio overview</span>
 studyctl<span class="w"> </span>dedup<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">   </span><span class="c1"># Remove duplicate notebook sources</span>
-studyctl<span class="w"> </span>resume<span class="w">                          </span><span class="c1"># Where you left off (auto-context)</span>
-studyctl<span class="w"> </span>streaks<span class="w">                         </span><span class="c1"># Study streak and consistency stats</span>
-studyctl<span class="w"> </span>progress-map<span class="w">                    </span><span class="c1"># Visual map of all tracked concepts</span>
 studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="p">|</span>pull<span class="p">|</span>status<span class="p">|</span>init<span class="w">     </span><span class="c1"># Cross-machine state sync</span>
 studyctl<span class="w"> </span>schedule<span class="w"> </span>install<span class="p">|</span>remove<span class="p">|</span>list<span class="p">|</span>add<span class="p">|</span>delete<span class="w">  </span><span class="c1"># Manage scheduled jobs</span>
 studyctl<span class="w"> </span>config<span class="w"> </span>init<span class="w">                     </span><span class="c1"># Interactive setup wizard</span>
 studyctl<span class="w"> </span>config<span class="w"> </span>show<span class="w">                     </span><span class="c1"># Display current configuration</span>
+studyctl<span class="w"> </span>web<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--host<span class="w"> </span>HOST<span class="o">]</span><span class="w"> </span><span class="c1"># Launch study web app</span>
+studyctl<span class="w"> </span>tui<span class="w">                             </span><span class="c1"># Launch interactive TUI dashboard</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span>serve<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w">        </span><span class="c1"># Serve docs site locally</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span>open<span class="w">                       </span><span class="c1"># Build and open docs in browser</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span>list<span class="w">                       </span><span class="c1"># List available doc pages</span>
-studyctl<span class="w"> </span>tui<span class="w">                             </span><span class="c1"># Launch interactive TUI dashboard</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span><span class="nb">read</span><span class="w"> </span>PAGE<span class="w">                  </span><span class="c1"># Read a page aloud via study-speak</span>
 </code></pre></div>
 <h3 id="health-updates">Health &amp; Updates<a class="headerlink" href="#health-updates" title="Permanent link">&para;</a></h3>
