@@ -621,6 +621,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#health-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health &amp; Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#confidence-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -983,6 +994,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#health-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health &amp; Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#confidence-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1113,6 +1135,46 @@ studyctl<span class="w"> </span>docs<span class="w"> </span>list<span class="w">
 studyctl<span class="w"> </span>tui<span class="w">                             </span><span class="c1"># Launch interactive TUI dashboard</span>
 studyctl<span class="w"> </span>docs<span class="w"> </span><span class="nb">read</span><span class="w"> </span>PAGE<span class="w">                  </span><span class="c1"># Read a page aloud via study-speak</span>
 </code></pre></div>
+<h3 id="health-updates">Health &amp; Updates<a class="headerlink" href="#health-updates" title="Permanent link">&para;</a></h3>
+<p>Check your installation and keep it current:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check (Rich table)</span>
+studyctl<span class="w"> </span>doctor<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># JSON output (for AI agents and CI)</span>
+studyctl<span class="w"> </span>doctor<span class="w"> </span>--quiet<span class="w">                  </span><span class="c1"># One-line summary</span>
+studyctl<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>core<span class="w">          </span><span class="c1"># Check specific category only</span>
+studyctl<span class="w"> </span>update<span class="w">                          </span><span class="c1"># Check for available updates (no changes)</span>
+studyctl<span class="w"> </span>update<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># Machine-readable update info</span>
+studyctl<span class="w"> </span>upgrade<span class="w">                         </span><span class="c1"># Apply all available updates</span>
+studyctl<span class="w"> </span>upgrade<span class="w"> </span>--dry-run<span class="w">               </span><span class="c1"># Preview what would change</span>
+studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>packages<span class="w">    </span><span class="c1"># Upgrade only packages</span>
+studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>database<span class="w">    </span><span class="c1"># Run DB migrations only</span>
+studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>agents<span class="w">      </span><span class="c1"># Update agent definitions only</span>
+studyctl<span class="w"> </span>upgrade<span class="w"> </span>--force<span class="w">                 </span><span class="c1"># Upgrade even if already current</span>
+</code></pre></div>
+<p><strong>Exit codes for <code>studyctl doctor</code>:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>All checks pass — installation is healthy</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Warnings or failures that can be fixed — run <code>studyctl upgrade</code></td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Core failure — a fundamental component is broken (e.g. wrong Python version)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Check categories:</strong> <code>core</code> (Python, packages, config), <code>database</code> (review DB, sessions DB), <code>config</code> (Obsidian vault, review dirs, pandoc), <code>deps</code> (optional packages), <code>agents</code> (AI tool definitions), <code>updates</code> (PyPI versions).</p>
+<p><strong>AI-guided setup:</strong> The install-mentor agent at <code>agents/shared/install-mentor.md</code> uses <code>studyctl doctor --json</code> to walk users through setup conversationally. It works with any AI coding tool (Claude Code, Kiro, Gemini CLI, OpenCode, Amp).</p>
 <h3 id="confidence-levels">Confidence Levels<a class="headerlink" href="#confidence-levels" title="Permanent link">&para;</a></h3>
 <p>Used with <code>studyctl progress</code>:</p>
 <table>
