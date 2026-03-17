@@ -272,6 +272,8 @@ studyctl web --port 9000        # Custom port
 - PWA installable — add to home screen on iOS/Android
 - Keyboard shortcuts: `Space` flip, `Y`/`N` answer, `T` read aloud, `V` auto-voice, `S` skip, `R` retry
 
+<img src="images/studyctl_web_ui_quizz.png" alt="Web UI Quiz Mode" width="700">
+
 **Voice setup:** The PWA uses your device's built-in text-to-speech. For best quality, download enhanced voices: Settings → Accessibility → Spoken Content → Voices → English → download Samantha (Enhanced) or Siri voices.
 
 **Config:**
@@ -305,7 +307,7 @@ Launch the terminal dashboard with `studyctl tui`. Requires the `[tui]` extra (`
 | `h` | Show hint (quiz mode) |
 | `q` | Quit |
 
-![TUI Dashboard](images/socratic_mentor_tui.svg)
+<img src="images/socratic_mentor_tui.svg" alt="TUI Dashboard" width="700">
 
 ### studyctl content
 
