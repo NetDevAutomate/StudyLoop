@@ -802,6 +802,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verify Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-guided-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI-Guided Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -812,6 +840,17 @@
   
     <nav class="md-nav" aria-label="Troubleshooting">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#first-step-run-studyctl-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First step: run studyctl doctor
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#studyctl-command-not-found" class="md-nav__link">
@@ -1808,6 +1847,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verify Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-guided-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI-Guided Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1818,6 +1885,17 @@
   
     <nav class="md-nav" aria-label="Troubleshooting">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#first-step-run-studyctl-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First step: run studyctl doctor
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#studyctl-command-not-found" class="md-nav__link">
@@ -2418,7 +2496,36 @@ studyctl<span class="w"> </span>schedule<span class="w"> </span>add<span class="
 <div class="highlight"><pre><span></span><code><span class="nt">obsidian_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/mnt/c/Users/YourName/Obsidian</span>
 </code></pre></div>
 <p>For better performance, consider keeping the vault inside WSL2's native filesystem (<code>~/Obsidian/</code>) and syncing with Obsidian Sync or Git.</p>
+<h2 id="verify-installation">Verify Installation<a class="headerlink" href="#verify-installation" title="Permanent link">&para;</a></h2>
+<p>After installing and configuring, run the health check to make sure everything is working:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>doctor
+</code></pre></div>
+<p>This checks Python version, installed packages, config validity, databases, optional dependencies, and AI agent definitions. You'll see a colour-coded table:</p>
+<ul>
+<li>Green tick = healthy</li>
+<li>Yellow ! = warning (often auto-fixable)</li>
+<li>Red cross = failure (needs attention)</li>
+<li>Blue i = informational (optional)</li>
+</ul>
+<p>If issues are found:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>upgrade<span class="w">              </span><span class="c1"># Fix auto-fixable issues (packages, DB, agents)</span>
+studyctl<span class="w"> </span>upgrade<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># Preview changes first</span>
+</code></pre></div>
+<p>For machine-readable output (used by CI pipelines and AI agents):</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>doctor<span class="w"> </span>--json
+</code></pre></div>
+<h3 id="ai-guided-setup">AI-Guided Setup<a class="headerlink" href="#ai-guided-setup" title="Permanent link">&para;</a></h3>
+<p>If you're using an AI coding assistant, the <strong>install-mentor agent</strong> can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs <code>studyctl doctor</code>, and fixes issues.</p>
+<p>The prompt lives at <code>agents/shared/install-mentor.md</code> and works with any AI tool that can run shell commands — Claude Code, Kiro CLI, Gemini CLI, OpenCode, or Amp.</p>
+<p>To use it in Claude Code:
+<div class="highlight"><pre><span></span><code>Read agents/shared/install-mentor.md and follow its instructions to set up studyctl
+</code></pre></div></p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="first-step-run-studyctl-doctor">First step: run <code>studyctl doctor</code><a class="headerlink" href="#first-step-run-studyctl-doctor" title="Permanent link">&para;</a></h3>
+<p>Before investigating specific issues, always start with the health check:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>doctor
+</code></pre></div>
+<p>This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run <code>studyctl upgrade</code> to resolve them.</p>
 <h3 id="studyctl-command-not-found"><code>studyctl: command not found</code><a class="headerlink" href="#studyctl-command-not-found" title="Permanent link">&para;</a></h3>
 <p>The package isn't on your PATH. Either:
 - Run via <code>uv run studyctl</code> instead
