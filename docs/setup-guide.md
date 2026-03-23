@@ -137,37 +137,6 @@ Two voice modes in the PWA:
 
 **Accessibility:** The `Aa` button toggles [OpenDyslexic](https://opendyslexic.org) font. The sun icon toggles light/dark theme. Both are persisted across sessions.
 
-### TUI Dashboard (terminal)
-
-The terminal TUI requires the `[tui]` extra:
-
-```bash
-uv pip install studyctl[tui]
-studyctl tui
-```
-
-Optional TUI settings:
-
-```yaml
-# ~/.config/studyctl/config.yaml
-tui:
-  theme: dracula              # Any Textual theme (dracula, nord, tokyo-night, etc.)
-  dyslexic_friendly: true     # Wider spacing, more padding (also toggle with o key)
-```
-
-Voice output in the TUI requires the `[tts]` extra on `agent-session-tools`:
-
-```bash
-uv tool install "./packages/agent-session-tools[tts]"
-```
-
-**Dyslexic-friendly mode** in the terminal — for best results, set your terminal font to [OpenDyslexic](https://opendyslexic.org):
-
-- **iTerm2**: Preferences → Profiles → Text → Font → select OpenDyslexic
-- **Terminal.app**: Preferences → Profiles → Font → Change → select OpenDyslexic
-- **Windows Terminal**: Settings → Profiles → Appearance → Font face → OpenDyslexic
-- **VS Code terminal**: `"terminal.integrated.fontFamily": "OpenDyslexic"`
-
 ### Hosts — Cross-Machine Sync
 
 #### Prerequisites: Passwordless SSH
@@ -241,15 +210,9 @@ hosts:
 | `state_json` | Path to studyctl state file |
 | `sessions_db` | Path to the AI session SQLite database |
 
-Both `studyctl state push/pull` and `session-sync push/pull/sync` use this config:
+Use `session-sync` for cross-machine database sync:
 
 ```bash
-# studyctl
-studyctl state push macmini
-studyctl state pull macbookpro
-studyctl state status
-
-# session-sync (same host names, same config)
 session-sync push macmini
 session-sync pull macbookpro
 session-sync sync work-macbook
@@ -446,15 +409,6 @@ See the [CLI Reference](../README.md#studyctl-content) for all available command
 ## Cross-Machine Sync
 
 Both tools support syncing state across machines via SSH.
-
-### studyctl state sync
-
-```bash
-studyctl state push macmini      # Push local state to a named host
-studyctl state pull macbookpro   # Pull state from a named host
-studyctl state status            # Check connectivity to all hosts
-studyctl state init              # Initialize sync config
-```
 
 ### Session database sync
 

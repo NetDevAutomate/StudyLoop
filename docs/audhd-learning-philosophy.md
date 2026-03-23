@@ -314,7 +314,7 @@ If 70% questions feels too intense, edit the agent persona to shift the ratio. S
 
 ### Change the concept bridges
 
-The default bridges assume a networking background. If you're coming from a different domain, run `studyctl config init` to configure your primary expertise domain, then use `studyctl bridge add` to create specific concept bridges.
+The default bridges assume a networking background. If you're coming from a different domain, run `studyctl config init` to configure your primary expertise domain. The AI agents will then use your configured domain to draw analogies during Socratic sessions.
 
 ### Modify session types
 

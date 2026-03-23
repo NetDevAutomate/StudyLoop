@@ -1,5 +1,7 @@
 # Roadmap
 
+> ⚠️ **Compaction (March 2026)**: The project was stripped to 4 core features: Socratic AI sessions, content pipeline (NotebookLM), flashcard/quiz review (PWA), and session intelligence (export + search + sync). Features listed below as completed may have been archived — see `docs/plans/compaction-plan.md` for details. The TUI dashboard, scheduler, calendar, knowledge bridges DB, teach-back scoring DB, win/streak tracking CLI commands, and state push/pull CLI were removed. Agent support was consolidated to Claude Code, Kiro, Gemini, and OpenCode.
+
 ## v1.0 — Foundation
 
 - [x] Monorepo with studyctl + agent-session-tools
