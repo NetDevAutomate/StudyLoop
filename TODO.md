@@ -1,7 +1,16 @@
-# Socratic Study Mentor -- Active Backlog
+# Socratic Study Mentor — Active Backlog
 
 > Single source of truth for outstanding work.
-> For Phase 1-4 implementation details, see `docs/plans/2026-03-15-feat-unified-study-platform-plan.md`.
+> For compaction rationale, see `docs/plans/compaction-plan.md`.
+
+## Core Features (maintained)
+
+| Feature | Status |
+|---------|--------|
+| Socratic AI sessions (Claude, Kiro, Gemini, OpenCode) | ✅ Active |
+| Content pipeline → NotebookLM (split, process, autopilot) | ✅ Active |
+| Flashcard/quiz review (PWA web app, SM-2) | ✅ Active |
+| Session intelligence (export, search, sync) | ✅ Active |
 
 ## Completed (summary)
 
@@ -14,17 +23,17 @@
 | 5 | Documentation & install polish (README, agent-install, roadmap) | Done |
 | 6 | Centralised artefact store (GitHub Pages, config, store module) | Done |
 | 7 | Unified config & cross-machine sync (hosts, SSH, install scripts) | Done |
-| 8 | StudyCards TUI (review_loader, review_db, SM-2, voice toggle) | Done |
-| 9 | TUI polish & PWA web app (Pomodoro, voice, accessibility) | Done |
+| 8 | StudyCards TUI (review_loader, review_db, SM-2, voice toggle) | Done (archived in compaction) |
+| 9 | TUI polish & PWA web app (Pomodoro, voice, accessibility) | Done (TUI archived, PWA kept) |
 | Phase 0 | Pre-work: config consolidation, CLI split, WAL mode, service layer | Done |
 | Phase 1 | Content absorption: 7 modules, 10 CLI commands, 76 tests | Done |
 | Phase 4 | PyPI + Homebrew tap live, OIDC trusted publishing | Done |
 | Phase 5 | Doctor/upgrade/install-mentor: 3 CLI commands, 7 checker modules | Done |
-| Fixes | Export progress bar (A1), list_concepts (A2), course picker (A3), retry wrong (A4), SQL/connection leaks (A5), narrow exceptions (A6) | Done |
+| Compaction | Strip to 4 core features, 13 CLI commands, fix doctor tests | Done |
 
-## Unified Platform Plan -- Next Phases
+## Next
 
-### Phase 6: CI/CD Pipeline (next)
+### Phase 6: CI/CD Pipeline
 
 Nightly drift detection, pre-release gate, Docker image pipeline. Spec at `docs/ci-cd-pipeline.md`.
 
@@ -32,28 +41,27 @@ Nightly drift detection, pre-release gate, Docker image pipeline. Spec at `docs/
 
 Docker image running `studyctl web` with kokoro-onnx server-side TTS.
 
-### Phase 2: FastAPI Web UI
-
-Replace stdlib HTTP server with FastAPI. HTMX + Alpine.js frontend, artefact viewer, progress dashboard. Migrate all 11 existing routes.
-
-See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 2
-
-### Phase 3: MCP Agent Integration
-
-FastMCP v1 server with stdio transport. Flashcard/quiz generation tools, study context tools, onboarding agent skill.
-
-See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 3
-
 ## Standalone Items (not blocked by phases)
 
 - [ ] Obsidian export: convert flashcard JSON to Obsidian `#flashcard` format (Spaced Repetition plugin compatible)
+
+## Archived Features (in git history, restore on demand)
+
+- TUI dashboard (`studyctl tui`)
+- Scheduler (launchd/cron management)
+- Calendar .ics generation (`schedule-blocks`)
+- Win tracking / streaks / progress-map CLI commands
+- Knowledge bridges DB + CLI commands
+- Teach-back scoring DB + CLI commands
+- State push/pull CLI (merged into `session-sync`)
+- Crush + Amp agent definitions
+- 5 extra Claude agent files (consolidated to `socratic-mentor.md`)
 
 ## Deferred (add when real demand appears)
 
 - LAN password auth (`--password` flag + HTTP Basic Auth)
 - Config editor web UI
 - GitHub Issues API feedback
-- TUI artefact browser
 - Native iOS/macOS app (research in `docs/research/swift-poc-feasibility.md`)
 - AWS cloud sync (Cognito, DynamoDB, push notifications)
 
@@ -61,13 +69,11 @@ See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 3
 
 | Item | Location |
 |------|----------|
+| Compaction Plan | `docs/plans/compaction-plan.md` |
 | Unified Platform Plan | `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` |
-| Brainstorm (decisions) | `docs/brainstorms/2026-03-15-unified-study-platform-brainstorm.md` |
-| Code Review Items | `code-review-plan-items.md` |
 | CLI Package | `packages/studyctl/src/studyctl/cli/` |
 | Services Layer | `packages/studyctl/src/studyctl/services/` |
 | Settings (config) | `packages/studyctl/src/studyctl/settings.py` |
 | Review DB (SM-2) | `packages/studyctl/src/studyctl/review_db.py` |
-| TUI Source | `packages/studyctl/src/studyctl/tui/` |
 | Web PWA | `packages/studyctl/src/studyctl/web/` |
 | Hosts Config | `~/.config/studyctl/config.yaml` |
