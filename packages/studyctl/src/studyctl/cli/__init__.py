@@ -1,4 +1,4 @@
-"""studyctl CLI — sync, plan, and schedule study sessions.
+"""studyctl CLI — AuDHD study pipeline.
 
 Split into submodules with LazyGroup for fast startup.
 Commands are only imported when invoked.
@@ -20,32 +20,17 @@ from studyctl.cli._lazy import LazyGroup
         "audio": "studyctl.cli._sync:audio",
         "topics": "studyctl.cli._sync:topics",
         "dedup": "studyctl.cli._sync:dedup",
-        # _state.py — cross-machine state
-        "state": "studyctl.cli._state:state_group",
         # _setup.py — first-run setup wizard
         "setup": "studyctl.cli._setup:setup",
         # _config.py — configuration
         "config": "studyctl.cli._config:config_group",
-        # _schedule.py — job scheduling + calendar
-        "schedule": "studyctl.cli._schedule:schedule_group",
-        "schedule-blocks": "studyctl.cli._schedule:schedule_blocks",
-        # _review.py — spaced repetition, progress, teachback, bridges
+        # _review.py — spaced repetition
         "review": "studyctl.cli._review:review",
         "struggles": "studyctl.cli._review:struggles",
-        "wins": "studyctl.cli._review:wins",
-        "progress": "studyctl.cli._review:progress",
-        "resume": "studyctl.cli._review:resume",
-        "streaks": "studyctl.cli._review:streaks",
-        "progress-map": "studyctl.cli._review:progress_map",
-        "teachback": "studyctl.cli._review:teachback",
-        "teachback-history": "studyctl.cli._review:teachback_history_cmd",
-        "bridge": "studyctl.cli._review:bridge_group",
         # _content.py — content pipeline (pdf splitting, NotebookLM, syllabus)
         "content": "studyctl.cli._content:content_group",
-        # _web.py — web UI, TUI, docs
+        # _web.py — web UI
         "web": "studyctl.cli._web:web",
-        "tui": "studyctl.cli._web:tui",
-        "docs": "studyctl.cli._web:docs_group",
         # _doctor.py — diagnostic health checks
         "doctor": "studyctl.cli._doctor:doctor",
         # _upgrade.py — update check + upgrade apply
@@ -55,7 +40,7 @@ from studyctl.cli._lazy import LazyGroup
 )
 @click.version_option()
 def cli() -> None:
-    """studyctl — AuDHD study pipeline: Obsidian\u2192NotebookLM sync and study management."""
+    """studyctl — AuDHD study pipeline: content, review, and session tracking."""
 
 
 __all__ = ["cli"]
