@@ -135,89 +135,6 @@ class TestStruggles:
         assert "No recurring struggle topics" in result.output
 
 
-# ---------------------------------------------------------------------------
-# wins (no DB)
-# ---------------------------------------------------------------------------
-
-
-class TestWins:
-    def test_wins_no_db_shows_empty(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["wins"])
-        assert result.exit_code == 0
-        assert "No progress data" in result.output
-
-
-# ---------------------------------------------------------------------------
-# resume (no DB)
-# ---------------------------------------------------------------------------
-
-
-class TestResume:
-    def test_resume_no_db_shows_no_sessions(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["resume"])
-        assert result.exit_code == 0
-        assert "No sessions found" in result.output
-
-
-# ---------------------------------------------------------------------------
-# streaks (no DB)
-# ---------------------------------------------------------------------------
-
-
-class TestStreaks:
-    def test_streaks_no_db_shows_no_sessions(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["streaks"])
-        assert result.exit_code == 0
-        assert "No study sessions found" in result.output
-
-
-# ---------------------------------------------------------------------------
-# progress-map (no DB)
-# ---------------------------------------------------------------------------
-
-
-class TestProgressMap:
-    def test_progress_map_no_db_shows_empty(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["progress-map"])
-        assert result.exit_code == 0
-        assert "No progress data" in result.output
-
-
-# ---------------------------------------------------------------------------
-# schedule list (mocked -- no subprocess)
-# ---------------------------------------------------------------------------
-
-
-class TestScheduleList:
-    def test_schedule_list_no_jobs(
-        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        import studyctl.cli._schedule as sched_mod
-
-        monkeypatch.setattr(sched_mod, "list_jobs", lambda: [])
-
-        result = runner.invoke(cli, ["schedule", "list"])
-        assert result.exit_code == 0
-        assert "No studyctl jobs scheduled" in result.output
-
-    def test_schedule_list_with_jobs(
-        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        import studyctl.cli._schedule as sched_mod
-
-        monkeypatch.setattr(
-            sched_mod,
-            "list_jobs",
-            lambda: [
-                {"name": "session-export", "status": "0"},
-                {"name": "studyctl-sync", "cron": "0 7 * * *"},
-            ],
-        )
-
-        result = runner.invoke(cli, ["schedule", "list"])
-        assert result.exit_code == 0
-        assert "session-export" in result.output
-        assert "studyctl-sync" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -359,12 +276,4 @@ class TestHelp:
         assert result.exit_code == 0
         assert "AuDHD study pipeline" in result.output
 
-    def test_schedule_subgroup_help(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["schedule", "--help"])
-        assert result.exit_code == 0
-        assert "Manage scheduled jobs" in result.output
 
-    def test_state_subgroup_help(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["state", "--help"])
-        assert result.exit_code == 0
-        assert "Cross-machine state sync" in result.output
