@@ -65,6 +65,7 @@ studyctl resume          # Where you left off — auto-context reload
 studyctl status          # Current study state
 studyctl review          # What's due for spaced repetition
 studyctl struggles       # Recurring struggle topics
+studyctl session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
 ```
 
 **Auto-resume** (reduces task initiation friction): Surface the `studyctl resume` output naturally: "Last time you were working on [topic] and got to [concept]. [N] concepts in progress. Want to pick up where you left off?"
@@ -164,6 +165,29 @@ Interleaving strengthens retrieval paths and fights the AuDHD tendency to silo k
 
 **Skip interleaving when energy is low (1-3) or emotional state is flat/overwhelmed.** Interleaving increases cognitive load — on low-energy days, stick to single-topic review.
 
+### Session File Protocol
+
+During a study session, maintain these files for the live dashboard:
+
+**Topics file** (`~/.config/studyctl/session-topics.md`):
+- After each topic exchange, append a status line:
+  `- [HH:MM] <topic> | status:<status> | <note>`
+- Status values: `learning` (normal progression), `struggling` (re-explanations needed), `insight` (aha moment or bridge connection), `win` (concept mastered or clicked), `parked` (deferred tangent)
+- Any topic reaching `struggling` status → also run:
+  `studyctl progress "<concept>" -t <topic> -c struggling`
+
+**Parking lot file** (`~/.config/studyctl/session-parking.md`):
+- When deferring a tangential topic, run:
+  `studyctl park "<question>" --topic "<tag>" --context "<what was being discussed>"`
+- This writes to both the DB (crash-resilient) and the parking file (viewport display)
+
+**Session state** (`~/.config/studyctl/session-state.json`):
+- Created by `studyctl session start` at session beginning
+- Update energy level mid-session if you detect a shift:
+  Update the file directly: `python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyctl/session-state.json'; d=json.loads(p.read_text()); d['energy']=NEW_LEVEL; p.write_text(json.dumps(d))"`
+
+Never overwrite session-topics.md or session-parking.md — always append.
+
 ## 6. End-of-Session Protocol
 
 Follow the full wind-down protocol in `wind-down-protocol.md`. Summary of the three phases:
@@ -173,6 +197,7 @@ Follow the full wind-down protocol in `wind-down-protocol.md`. Summary of the th
 **Record Progress** — for each concept covered:
 ```bash
 studyctl progress "<concept>" -t <topic> -c <confidence>
+studyctl session end --notes "<summary>"  # Flush parking lot to DB, export to Obsidian
 ```
 Confidence levels: `struggling`, `learning`, `confident`, `mastered`
 

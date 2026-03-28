@@ -65,6 +65,7 @@ studyctl resume          # Where you left off
 studyctl status          # Check sync state
 studyctl review          # What's due for spaced repetition?
 studyctl struggles       # What topics keep coming up?
+studyctl session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
 ```
 
 Then follow `session-protocol.md`: combined state check (energy, mood, setup), adapt session type.
@@ -90,10 +91,11 @@ Then follow `session-protocol.md`: combined state check (energy, mood, setup), a
 
 Follow `wind-down-protocol.md`:
 1. Record progress: `studyctl progress "<concept>" -t <topic> -c <confidence>`
-2. Suggest next review based on spaced repetition intervals
-3. Offer calendar blocks: `studyctl schedule-blocks`
-4. If session was 25+ min, remind to take a break
-5. Parking lot: note tangential topics worth revisiting
+2. End session: `studyctl session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
+3. Suggest next review based on spaced repetition intervals
+4. Offer calendar blocks: `studyctl schedule-blocks`
+5. If session was 25+ min, remind to take a break
+6. Parking lot: note tangential topics worth revisiting
 
 ## Break Reminders
 
