@@ -82,8 +82,9 @@ Follow `agents/shared/session-protocol.md`. Summary:
    ```
 3. Combined state check: "How are you arriving today? Energy, mood, setup — one or two words each is fine."
 4. Write energy level to state file
-5. Adapt session based on energy/emotional/sensory state (see `session-protocol.md` tables)
-6. If they just say "let's go", use defaults and adapt as you observe
+5. If cmux MCP tools are available, set up the visual dashboard (see `session-protocol.md` cmux Dashboard Protocol)
+6. Adapt session based on energy/emotional/sensory state (see `session-protocol.md` tables)
+7. If they just say "let's go", use defaults and adapt as you observe
 
 ## Session Types
 
