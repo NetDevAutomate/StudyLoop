@@ -50,17 +50,23 @@ def create_app(study_dirs: list[str] | None = None) -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
 
     # Register API routes
-    from studyctl.web.routes import artefacts, cards, courses, history
+    from studyctl.web.routes import artefacts, cards, courses, history, session
 
     app.include_router(courses.router, prefix="/api")
     app.include_router(cards.router, prefix="/api")
     app.include_router(history.router, prefix="/api")
+    app.include_router(session.router, prefix="/api")
     app.include_router(artefacts.router)
 
     # Serve index.html at root
     @app.get("/")
     async def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
+
+    # Serve session dashboard
+    @app.get("/session")
+    async def session_page() -> FileResponse:
+        return FileResponse(STATIC_DIR / "session.html")
 
     # Mount static files LAST (catch-all)
     app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
