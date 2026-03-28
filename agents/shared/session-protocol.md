@@ -188,6 +188,97 @@ During a study session, maintain these files for the live dashboard:
 
 Never overwrite session-topics.md or session-parking.md — always append.
 
+### cmux Dashboard Protocol
+
+If cmux MCP tools are available (check for `mcp__cmux__list_surfaces` or equivalent), use them to create a live visual dashboard alongside the study session. **Always write to file-IPC regardless** — cmux is additive, not a replacement.
+
+#### At session start (after `studyctl session start`)
+
+1. Rename the current tab:
+   - `rename_tab(surface=current, title="Study: {topic}")`
+
+2. Create the dashboard pane:
+   - `new_split(direction="right", type="terminal", title="Dashboard")` → save the returned surface ref
+
+3. Set sidebar status indicators:
+   - `set_status(key="Energy", value="{level}/10", color="#a6e3a1", icon="⚡")`
+   - `set_status(key="Wins", value="0", color="#a6e3a1", icon="✓")`
+   - `set_status(key="Parked", value="0", color="#585b70", icon="○")`
+   - `set_status(key="Review", value="0", color="#f9e2af", icon="▲")`
+
+4. Initialise the timer:
+   - `set_progress(value=0.0, label="Session: 0 min")`
+
+5. Write a header to the dashboard pane:
+   - `send_input(surface=dashboard, text="━━━ Study Session: {topic} ━━━\nEnergy: {level}/10\n")`
+
+#### During session — live updates
+
+After each topic exchange, alongside the file-IPC append:
+
+**Topic status update:**
+```
+send_input(surface=dashboard, text="{icon} [{time}] {topic} — {note}")
+```
+Where icon matches the status: `✓` win, `★` insight, `◆` learning, `▲` struggling, `○` parked
+
+**Counter updates** (increment as events occur):
+```
+set_status(key="Wins", value="{count}")      # on win or insight
+set_status(key="Parked", value="{count}")    # on park
+set_status(key="Review", value="{count}")    # on struggling
+```
+
+**Timer progression** (update every ~5 minutes or at natural pause points):
+
+Energy-adaptive color thresholds:
+| Energy | Green phase | Amber phase | Red phase |
+|--------|------------|-------------|-----------|
+| High (7-10) | 0-25 min | 25-50 min | 50+ min |
+| Medium (4-6) | 0-20 min | 20-40 min | 40+ min |
+| Low (1-3) | 0-15 min | 15-30 min | 30+ min |
+
+```
+set_progress(value={elapsed/threshold}, label="Session: {elapsed} min")
+```
+
+**Break reminders** (at amber→red transition):
+```
+notify(title="Break time", body="Your brain's been at this for a while. Just flagging it.")
+```
+PDA-sensitive: information, not instruction. Send once, don't repeat.
+
+**Energy shift detected:**
+```
+set_status(key="Energy", value="{new_level}/10", color="{new_color}")
+```
+Colors: green (#a6e3a1) for 7-10, amber (#f9e2af) for 4-6, red (#f38ba8) for 1-3.
+
+#### At session end
+
+1. Write summary to dashboard pane:
+```
+send_input(surface=dashboard, text="\n━━━ SESSION COMPLETE — {duration} min ━━━")
+send_input(surface=dashboard, text="\n✓ WINS")
+send_input(surface=dashboard, text="  ✓ {win_topic} — {note}")  # for each win
+send_input(surface=dashboard, text="\n▲ FOR NEXT SESSION")
+send_input(surface=dashboard, text="  ▲ {struggle_topic} — {note}")  # for each struggle
+send_input(surface=dashboard, text="\n○ PARKED: {count} topic(s) for future sessions")
+send_input(surface=dashboard, text="\n🧠 Stand up. Walk to the kitchen. Put the kettle on.\nAvoid your phone for 10-15 min — your brain will replay this at 20x speed.")
+```
+
+2. Mark progress complete:
+   - `set_progress(value=1.0, label="Session complete")`
+
+3. Run `studyctl session end` (DB writes, file cleanup)
+
+#### Fallback
+
+If cmux MCP tools are not available (e.g., running outside cmux, or on Linux):
+- Skip all cmux MCP calls silently — no errors, no warnings
+- File-IPC writes still happen (web PWA and Textual TUI consume them)
+- The session works identically, just without the visual dashboard panes
+
 ## 6. End-of-Session Protocol
 
 Follow the full wind-down protocol in `wind-down-protocol.md`. Summary of the three phases:
