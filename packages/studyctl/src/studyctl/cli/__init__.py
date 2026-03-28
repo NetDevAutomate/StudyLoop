@@ -24,13 +24,20 @@ from studyctl.cli._lazy import LazyGroup
         "setup": "studyctl.cli._setup:setup",
         # _config.py — configuration
         "config": "studyctl.cli._config:config_group",
-        # _review.py — spaced repetition
+        # _review.py — spaced repetition, progress, wins, streaks
         "review": "studyctl.cli._review:review",
         "struggles": "studyctl.cli._review:struggles",
+        "wins": "studyctl.cli._review:wins",
+        "progress": "studyctl.cli._review:progress",
+        "resume": "studyctl.cli._review:resume",
+        "streaks": "studyctl.cli._review:streaks",
         # _content.py — content pipeline (pdf splitting, NotebookLM, syllabus)
         "content": "studyctl.cli._content:content_group",
         # _web.py — web UI
         "web": "studyctl.cli._web:web",
+        # _session.py — live study session management
+        "session": "studyctl.cli._session:session_group",
+        "park": "studyctl.cli._session:park",
         # _doctor.py — diagnostic health checks
         "doctor": "studyctl.cli._doctor:doctor",
         # _upgrade.py — update check + upgrade apply
