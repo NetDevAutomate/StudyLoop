@@ -645,6 +645,255 @@ body.dyslexic .card-content {
 .heatmap-day.l3 { background: rgba(122,162,247,0.75); }
 .heatmap-day.l4 { background: var(--accent); }
 
+/* --- Session Dashboard --- */
+.header-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.session-dashboard {
+  width: 100%;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Timer */
+.session-timer {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 16px 24px;
+  transition: border-color 0.5s;
+}
+
+.session-timer.phase-green { border-color: var(--green); }
+.session-timer.phase-amber { border-color: var(--yellow); }
+.session-timer.phase-red { border-color: var(--red); }
+
+.timer-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timer-icon { font-size: 1.2rem; }
+
+.timer-time {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 70px;
+}
+
+.timer-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.timer-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s linear, background-color 0.5s;
+}
+
+.timer-bar-fill.phase-green { background: var(--green); }
+.timer-bar-fill.phase-amber { background: var(--yellow); }
+.timer-bar-fill.phase-red { background: var(--red); }
+
+.timer-message {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Session metadata */
+.session-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 24px;
+  background: var(--bg-card);
+  border-left: 2px solid var(--border);
+  border-right: 2px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.meta-topic {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.meta-energy {
+  color: var(--text-muted);
+}
+
+.meta-status {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* Activity feed */
+.activity-feed {
+  background: var(--bg-card);
+  border-left: 2px solid var(--border);
+  border-right: 2px solid var(--border);
+  padding: 16px 24px;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px 0;
+}
+
+.activity-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  border-bottom: 1px solid rgba(59, 66, 97, 0.3);
+}
+
+.activity-item:last-child { border-bottom: none; }
+
+.activity-shape {
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.activity-time {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.activity-text { flex: 1; }
+
+/* Status colors (shapes + colors together for accessibility) */
+.status-win .activity-shape,
+.status-insight .activity-shape { color: var(--green); }
+.status-win .activity-text,
+.status-insight .activity-text { color: var(--green); }
+
+.status-learning .activity-shape { color: var(--accent); }
+
+.status-struggling .activity-shape { color: var(--yellow); }
+.status-struggling .activity-text { color: var(--yellow); }
+
+.status-parked .activity-shape { color: var(--text-muted); }
+.status-parked .activity-text { color: var(--text-muted); }
+
+/* Counter bar */
+.counter-bar {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 14px 24px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.counter-wins { color: var(--green); }
+.counter-parked { color: var(--text-muted); }
+.counter-review { color: var(--yellow); }
+
+/* Session summary (replaces activity feed on session end) */
+.session-summary {
+  min-height: 200px;
+  max-height: none;
+}
+
+.summary-header h2 {
+  font-size: 1.3rem;
+  color: var(--accent);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.session-summary h3 {
+  font-size: 1rem;
+  margin: 16px 0 8px;
+  color: var(--text);
+}
+
+.session-summary ul {
+  list-style: none;
+  padding: 0;
+}
+
+.session-summary li {
+  padding: 4px 0;
+  font-size: 0.95rem;
+}
+
+.session-summary li.status-win { color: var(--green); }
+.session-summary li.status-struggling { color: var(--yellow); }
+.session-summary li.status-parked { color: var(--text-muted); }
+
+.summary-cta {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(158, 206, 106, 0.08);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Session active indicator (for main app link) */
+.session-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(158, 206, 106, 0.1);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  color: var(--green);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.session-indicator:hover {
+  background: rgba(158, 206, 106, 0.2);
+}
+
+.session-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
 /* --- Responsive --- */
 @media (max-width: 600px) {
   header { padding: 12px 16px; }
@@ -654,4 +903,10 @@ body.dyslexic .card-content {
   .summary-stats { gap: 16px; }
   .summary-actions { flex-direction: column; }
   .shortcuts { display: none; }
+
+  .session-timer { padding: 12px 16px; }
+  .timer-time { font-size: 1.3rem; }
+  .session-meta { padding: 8px 16px; flex-direction: column; gap: 4px; }
+  .activity-feed { padding: 12px 16px; }
+  .counter-bar { gap: 12px; padding: 10px 16px; font-size: 0.8rem; }
 }
