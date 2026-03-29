@@ -120,6 +120,7 @@ def _handle_start(
         send_keys,
         session_exists,
         split_pane,
+        switch_client,
     )
 
     # --- Pre-flight checks ---
@@ -206,16 +207,20 @@ def _handle_start(
     # Create tmux session
     main_pane = create_session(session_name)
 
-    # Load studyctl tmux config if it exists
-    tmux_conf = SESSION_DIR / "tmux-studyctl.conf"
-    if tmux_conf.exists():
-        import contextlib
+    # Load studyctl tmux config (bundled with the package)
+    import contextlib
+    from pathlib import Path
 
+    bundled_conf = Path(__file__).parent.parent / "data" / "tmux-studyctl.conf"
+    user_conf = SESSION_DIR / "tmux-studyctl.conf"
+    # User override takes precedence, then bundled
+    tmux_conf = user_conf if user_conf.exists() else bundled_conf
+    if tmux_conf.exists():
         with contextlib.suppress(Exception):
             load_config(tmux_conf)
 
-    # Split for sidebar (right pane, 35 columns)
-    sidebar_pane = split_pane(session_name, direction="right", size=35)
+    # Split for sidebar (right pane, 25% width)
+    sidebar_pane = split_pane(main_pane, direction="right", size=25, percentage=True)
 
     # Launch agent in main pane
     persona_file = build_persona_file(mode, topic, energy)
@@ -223,7 +228,12 @@ def _handle_start(
     send_keys(main_pane, agent_cmd)
 
     # Launch sidebar in sidebar pane
-    send_keys(sidebar_pane, "uv run studyctl sidebar")
+    # Use sys.executable to ensure we run with the same Python/venv,
+    # and -m so it works regardless of working directory.
+    import sys
+
+    sidebar_cmd_str = f"{sys.executable} -m studyctl.tui.sidebar"
+    send_keys(sidebar_pane, sidebar_cmd_str)
 
     # Focus main pane (agent)
     select_pane(main_pane)
@@ -253,14 +263,13 @@ def _handle_start(
         console.print("  Dashboard: http://localhost:8567/session")
     console.print()
 
-    # Attach to tmux (replaces this process)
-    if not is_in_tmux():
-        attach(session_name)
+    # Connect to the study session
+    if is_in_tmux():
+        # Already in tmux — switch the current client to the new session
+        switch_client(session_name)
     else:
-        console.print(
-            f"[dim]Already in tmux. Switch to the session: "
-            f"tmux switch-client -t {session_name}[/dim]"
-        )
+        # Not in tmux — attach (replaces this process via os.execvp)
+        attach(session_name)
 
 
 def _handle_resume(ctx: click.Context) -> None:
@@ -288,10 +297,12 @@ def _handle_resume(ctx: click.Context) -> None:
     topic = state.get("topic", "unknown")
     console.print(f"[green]Resuming:[/green] {topic}")
 
-    if not is_in_tmux():
-        attach(session_name)
+    if is_in_tmux():
+        from studyctl.tmux import switch_client
+
+        switch_client(session_name)
     else:
-        console.print(f"[dim]Already in tmux. Switch: tmux switch-client -t {session_name}[/dim]")
+        attach(session_name)
 
 
 def _handle_end(_ctx: click.Context) -> None:

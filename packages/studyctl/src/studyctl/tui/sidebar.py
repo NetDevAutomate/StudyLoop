@@ -328,3 +328,7 @@ def run_sidebar() -> None:
     """Entry point for the sidebar app."""
     app = SidebarApp()
     app.run()
+
+
+if __name__ == "__main__":
+    run_sidebar()

@@ -106,22 +106,26 @@ def split_pane(
     target: str,
     direction: str = "right",
     size: int = 30,
+    *,
+    percentage: bool = False,
 ) -> str:
     """Split a pane. Returns the new pane ID (never positional index).
 
     Args:
         target: Session name or pane ID to split.
         direction: "right" for horizontal, "below" for vertical.
-        size: Column/row count for the new pane.
+        size: Column/row count, or percentage if ``percentage=True``.
+        percentage: If True, ``size`` is treated as a percentage (e.g. 25 = 25%).
     """
     flag = "-h" if direction == "right" else "-v"
+    size_str = f"{size}%" if percentage else str(size)
     result = _tmux(
         "split-window",
         flag,
         "-t",
         target,
         "-l",
-        str(size),
+        size_str,
         "-P",
         "-F",
         "#{pane_id}",
@@ -181,6 +185,14 @@ def display_popup(
 def kill_session(name: str) -> None:
     """Kill a tmux session by name. No-op if it doesn't exist."""
     _tmux("kill-session", "-t", name)
+
+
+def switch_client(name: str) -> None:
+    """Switch the current tmux client to a different session.
+
+    Use this when already inside tmux (``is_in_tmux() is True``).
+    """
+    _tmux("switch-client", "-t", name, check=True)
 
 
 def attach(name: str) -> None:
