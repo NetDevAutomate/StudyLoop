@@ -57,6 +57,11 @@ graph LR
         OA[OpenCode]
     end
 
+    subgraph "Live Session"
+        IPC["IPC Files<br/>(state, topics, parking)"]
+        SSE["Web Dashboard<br/>(SSE + HTMX)"]
+    end
+
     OB -->|sync| SC
     SC -->|upload| NLM
     SC -->|spaced repetition| DB
@@ -65,6 +70,8 @@ graph LR
     KA -->|Socratic sessions| DB
     GA -->|Socratic sessions| DB
     OA -->|Socratic sessions| DB
+    CA -->|writes| IPC
+    IPC -->|polls| SSE
 ```
 
 ## CLI Reference
@@ -72,6 +79,12 @@ graph LR
 ### studyctl
 
 ```bash
+# Live study sessions
+studyctl session start -t TOPIC -e 7  # Start session (DB + IPC files)
+studyctl session status                # Timer, topics, parking lot
+studyctl session end                   # End session, show summary
+studyctl park "question"               # Park tangential topic
+
 # Content pipeline
 studyctl content split SOURCE       # Split PDF by chapters
 studyctl content process SOURCE     # Split + upload to NotebookLM
@@ -116,15 +129,18 @@ session-sync push/pull/sync HOST     # Cross-machine sync
 
 Launch with `studyctl web`. Accessible from any device on the network.
 
-- Flashcard and quiz review with SM-2 spaced repetition
-- Source/chapter filter and card count limiter
+**Flashcard review:**
+- SM-2 spaced repetition with source/chapter filter
 - Session history with 90-day study heatmap
-- Pomodoro timer with audio chime
-- Voice output via Web Speech API
-- OpenDyslexic font toggle
-- Dark/light theme
+- Pomodoro timer, voice output, OpenDyslexic font toggle
 - PWA installable — add to home screen
-- Keyboard: `Space` flip, `Y`/`N` answer, `T` read aloud
+
+**Live session dashboard** (`/session`):
+- Real-time activity feed via SSE (Server-Sent Events)
+- Timer with energy-adaptive colour phases (green/amber/red)
+- Topic counters (wins, parked, review)
+- Session summary on completion
+- HTMX + Alpine.js — no build step
 
 ## Optional Extras
 

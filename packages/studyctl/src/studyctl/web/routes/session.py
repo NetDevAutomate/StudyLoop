@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from html import escape
 from typing import TYPE_CHECKING
 
@@ -11,6 +10,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from studyctl.session_state import (
+    PARKING_FILE,
+    STATE_FILE,
+    TOPICS_FILE,
     parse_parking_file,
     parse_topics_file,
     read_session_state,
@@ -197,18 +199,22 @@ async def session_stream(request: Request) -> StreamingResponse:
     """
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        last_hash = ""
+        last_mtimes: tuple[float, float, float] = (0.0, 0.0, 0.0)
         while True:
             if await request.is_disconnected():
                 break
-            state = _get_full_state()
-            current_hash = json.dumps(state, sort_keys=True, default=str)
-            if current_hash != last_hash:
+            # O(1) change detection: 3 stat() calls instead of full JSON serialisation
+            mtimes = tuple(
+                f.stat().st_mtime if f.exists() else 0.0
+                for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE)
+            )
+            if mtimes != last_mtimes:
+                state = _get_full_state()
                 html = _render_update(state)
                 # SSE format: event name + data (newlines in data escaped)
                 escaped = html.replace("\n", "")
                 yield f"event: session-update\ndata: {escaped}\n\n"
-                last_hash = current_hash
+                last_mtimes = mtimes  # type: ignore[assignment]
             await asyncio.sleep(2)
 
     return StreamingResponse(

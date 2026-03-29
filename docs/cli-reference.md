@@ -2,9 +2,15 @@
 
 ## studyctl
 
-Study pipeline management — content, review, and session tracking.
+Study pipeline management — content, review, sessions, and tracking.
 
 ```bash
+# Live study sessions
+studyctl session start -t TOPIC -e 7    # Start session (DB + IPC files)
+studyctl session status                  # Timer, topics, parking lot
+studyctl session end [-n NOTES]          # End session, show summary
+studyctl park QUESTION [-t TOPIC]        # Park tangential topic
+
 # Content pipeline
 studyctl content split SOURCE            # Split PDF by chapters
 studyctl content process SOURCE          # Split + upload to NotebookLM
@@ -35,6 +41,18 @@ studyctl upgrade                         # Apply all available updates
 # Web
 studyctl web [--port PORT] [--host HOST] # Launch study web app (PWA)
 ```
+
+### Live Sessions
+
+```bash
+studyctl session start -t "Decorators" -e 7    # Start with topic + energy
+studyctl session status                         # Show timer, activity, parking
+studyctl session end -n "Got through closures"  # End with optional notes
+studyctl park "How does asyncio compare?"       # Park a question mid-session
+studyctl park "GIL vs multiprocessing" -t python
+```
+
+During a session, the AI agent writes to IPC files (`session-state.json`, `session-topics.md`, `session-parking.md`). The web dashboard at `/session` polls these via SSE for live updates.
 
 ### Health & Updates
 

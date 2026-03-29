@@ -27,12 +27,12 @@ def session_start(topic: str, energy: int) -> None:
     from studyctl.history import start_study_session
     from studyctl.session_state import (
         PARKING_FILE,
-        SESSION_DIR,
         TOPICS_FILE,
+        _ensure_session_dir,
         write_session_state,
     )
 
-    SESSION_DIR.mkdir(parents=True, exist_ok=True)
+    _ensure_session_dir()
 
     # Map integer energy to label for history.py
     if energy <= 3:
@@ -58,9 +58,9 @@ def session_start(topic: str, energy: int) -> None:
         }
     )
 
-    # Create empty IPC files for the dashboard
-    TOPICS_FILE.touch()
-    PARKING_FILE.touch()
+    # Create empty IPC files for the dashboard (0600 permissions)
+    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+    PARKING_FILE.touch(mode=0o600, exist_ok=True)
 
     console.print(f"[bold green]Session started:[/bold green] {topic} (energy: {energy}/10)")
     console.print(f"  Session ID: [dim]{study_id}[/dim]")
