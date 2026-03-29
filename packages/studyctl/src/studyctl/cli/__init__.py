@@ -38,6 +38,9 @@ from studyctl.cli._lazy import LazyGroup
         # _session.py — live study session management
         "session": "studyctl.cli._session:session_group",
         "park": "studyctl.cli._session:park",
+        # _study.py — unified study session (tmux + agent + sidebar)
+        "study": "studyctl.cli._study:study",
+        "sidebar": "studyctl.cli._study:sidebar_cmd",
         # _doctor.py — diagnostic health checks
         "doctor": "studyctl.cli._doctor:doctor",
         # _upgrade.py — update check + upgrade apply
