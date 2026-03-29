@@ -1,0 +1,108 @@
+"""Agent launcher — detect installed AI agents and build launch commands.
+
+Currently Claude-only. The dict structure makes adding Gemini/Kiro/OpenCode
+a one-entry change when we can test against the actual binaries.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import shutil
+import tempfile
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+PERSONA_DIR = Path(__file__).parent.parent.parent.parent / "agents" / "shared" / "personas"
+
+AGENT_REGISTRY: dict[str, dict[str, str]] = {
+    "claude": {
+        "binary": "claude",
+        "check": "claude --version",
+        "launch": "claude --append-system-prompt-file {persona_file}",
+    },
+    # gemini, kiro, opencode: add when testing against actual binaries.
+    # Each requires pre-created config files in their agent directories.
+}
+
+
+def detect_agents() -> list[str]:
+    """Return names of installed agents, in priority order."""
+    found: list[str] = []
+    for name, info in AGENT_REGISTRY.items():
+        if shutil.which(info["binary"]):
+            found.append(name)
+    return found
+
+
+def get_default_agent() -> str | None:
+    """Return the first available agent, or None."""
+    agents = detect_agents()
+    return agents[0] if agents else None
+
+
+def build_persona_file(mode: str, topic: str, energy: int) -> Path:
+    """Create a temporary persona file with session-specific instructions.
+
+    Uses ``mkstemp`` with 0600 permissions (security review N-04).
+    Returns the path to the temp file. Caller should clean up on session end.
+    """
+    # Load the mode-specific persona template
+    persona_path = PERSONA_DIR / f"{mode}.md"
+    template = persona_path.read_text() if persona_path.exists() else _default_persona(mode)
+
+    # Inject session context
+    content = f"""# Study Session Context
+
+**Topic:** {topic}
+**Energy:** {energy}/10
+**Mode:** {mode}
+
+---
+
+{template}
+"""
+    fd, path = tempfile.mkstemp(
+        prefix="studyctl-persona-",
+        suffix=".md",
+        dir=tempfile.gettempdir(),
+    )
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(content)
+    return Path(path)
+
+
+def get_launch_command(agent: str, persona_file: Path) -> str:
+    """Build the shell command to launch an agent with a persona.
+
+    Raises:
+        KeyError: If the agent is not in the registry.
+    """
+    info = AGENT_REGISTRY[agent]
+    return info["launch"].format(persona_file=persona_file)
+
+
+def _default_persona(mode: str) -> str:
+    """Fallback persona when no persona file exists for the mode."""
+    if mode == "co-study":
+        return (
+            "You are a study companion. The user is driving — watching videos, "
+            "reading docs, or doing exercises. Stay available but don't interrupt. "
+            "When asked questions, use the Socratic method. Keep answers concise.\n\n"
+            "Check the session IPC files for context:\n"
+            "- ~/.config/studyctl/session-state.json\n"
+            "- ~/.config/studyctl/session-topics.md\n"
+            "- ~/.config/studyctl/session-parking.md\n"
+        )
+    # Default: study mode
+    return (
+        "You are a Socratic study mentor. Drive the session — ask questions, "
+        "probe understanding, use the 70/30 balance (70% questions, 30% strategic "
+        "information). Adapt to the student's energy level.\n\n"
+        "Check the session IPC files for context:\n"
+        "- ~/.config/studyctl/session-state.json\n"
+        "- ~/.config/studyctl/session-topics.md\n"
+        "- ~/.config/studyctl/session-parking.md\n"
+    )
