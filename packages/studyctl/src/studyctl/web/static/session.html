@@ -43,9 +43,19 @@
             <div class="timer-bar-fill" :class="timerPhase"
                  :style="`width: ${progress}%`"></div>
           </div>
+          <div class="timer-controls">
+            <button class="timer-btn" @click="togglePause()"
+                    :title="paused ? 'Resume' : 'Pause'"
+                    x-text="paused ? '\u25b6' : '\u23f8'"></button>
+            <button class="timer-btn" @click="resetTimer()" title="Reset">
+              &#8634;
+            </button>
+          </div>
         </div>
-        <div class="timer-message" x-show="message" x-text="message"
-             x-transition.opacity></div>
+        <div class="timer-message" x-show="message || paused" x-transition.opacity>
+          <span x-show="paused" class="timer-paused-label">Paused</span>
+          <span x-show="message && !paused" x-text="message"></span>
+        </div>
       </div>
 
       <!-- Session metadata (OOB swap target) -->
@@ -94,6 +104,8 @@
       message: '',
       messageTimeout: null,
       sessionActive: false,
+      paused: false,
+      pausedAt: 0,
 
       async init() {
         try {
@@ -114,8 +126,36 @@
         }
       },
 
+      togglePause() {
+        if (!this.sessionActive) return;
+        if (this.paused) {
+          /* Resume: shift startTime forward by the paused duration */
+          const pauseDuration = Date.now() - this.pausedAt;
+          this.startTime = new Date(this.startTime.getTime() + pauseDuration);
+          this.paused = false;
+          this.interval = setInterval(() => this.tick(), 1000);
+        } else {
+          /* Pause: stop ticking, record when we paused */
+          this.paused = true;
+          this.pausedAt = Date.now();
+          clearInterval(this.interval);
+        }
+      },
+
+      resetTimer() {
+        if (!this.sessionActive) return;
+        this.startTime = new Date();
+        this.elapsed = 0;
+        this.paused = false;
+        this._shownAmber = false;
+        this._shownRed = false;
+        this.message = '';
+        clearInterval(this.interval);
+        this.interval = setInterval(() => this.tick(), 1000);
+      },
+
       tick() {
-        if (!this.startTime) return;
+        if (!this.startTime || this.paused) return;
         this.elapsed = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
         this.checkThresholds();
       },
