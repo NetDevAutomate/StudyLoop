@@ -705,11 +705,40 @@ body.dyslexic .card-content {
 .timer-bar-fill.phase-amber { background: var(--yellow); }
 .timer-bar-fill.phase-red { background: var(--red); }
 
+.timer-controls {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.timer-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.timer-btn:hover { border-color: var(--accent); color: var(--text); }
+
 .timer-message {
   margin-top: 8px;
   font-size: 0.85rem;
   color: var(--text-muted);
   font-style: italic;
+}
+
+.timer-paused-label {
+  color: var(--yellow);
+  font-weight: 600;
+  font-style: normal;
 }
 
 /* Session metadata */

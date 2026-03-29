@@ -16,11 +16,26 @@ logger = logging.getLogger(__name__)
 
 
 def _connect() -> sqlite3.Connection:
-    """Get a connection to the session DB with WAL mode and busy timeout."""
+    """Get a connection to the session DB with WAL mode and busy timeout.
+
+    Ensures the parked_topics table exists by running agent-session-tools
+    migrations on first connect.
+    """
     conn = sqlite3.connect(str(get_db_path()))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
+
+    # Ensure parked_topics table exists (migration v14)
+    try:
+        conn.execute("SELECT 1 FROM parked_topics LIMIT 0")
+    except sqlite3.OperationalError:
+        try:
+            from agent_session_tools.migrations import migrate
+
+            migrate(conn)
+        except Exception:
+            logger.warning("Could not run migrations — parked_topics table may be missing")
     return conn
 
 
