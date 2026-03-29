@@ -79,10 +79,10 @@ graph LR
 ### studyctl
 
 ```bash
-# Live study sessions
-studyctl session start -t TOPIC -e 7  # Start session (DB + IPC files)
-studyctl session status                # Timer, topics, parking lot
-studyctl session end                   # End session, show summary
+# Study sessions (tmux + AI agent + sidebar)
+studyctl study "topic" --energy 7      # Full tmux environment in one command
+studyctl study --resume                # Reattach to existing session
+studyctl study --end                   # End session cleanly
 studyctl park "question"               # Park tangential topic
 
 # Content pipeline

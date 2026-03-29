@@ -5,11 +5,18 @@
 Study pipeline management — content, review, sessions, and tracking.
 
 ```bash
-# Live study sessions
+# Study sessions (tmux + AI agent + Textual sidebar)
+studyctl study "topic" --energy 7        # Full tmux environment in one command
+studyctl study "topic" --mode co-study   # Co-study mode (user drives)
+studyctl study --resume                  # Reattach to existing session
+studyctl study --end                     # End session cleanly
+studyctl study "topic" --web             # Also start web dashboard
+studyctl park QUESTION [-t TOPIC]        # Park tangential topic
+
+# Low-level session commands (used internally by study)
 studyctl session start -t TOPIC -e 7    # Start session (DB + IPC files)
 studyctl session status                  # Timer, topics, parking lot
 studyctl session end [-n NOTES]          # End session, show summary
-studyctl park QUESTION [-t TOPIC]        # Park tangential topic
 
 # Content pipeline
 studyctl content split SOURCE            # Split PDF by chapters
@@ -42,17 +49,41 @@ studyctl upgrade                         # Apply all available updates
 studyctl web [--port PORT] [--host HOST] # Launch study web app (PWA)
 ```
 
-### Live Sessions
+### Study Sessions
+
+The primary entry point is `studyctl study`, which creates a complete tmux-based study environment:
 
 ```bash
-studyctl session start -t "Decorators" -e 7    # Start with topic + energy
-studyctl session status                         # Show timer, activity, parking
-studyctl session end -n "Got through closures"  # End with optional notes
-studyctl park "How does asyncio compare?"       # Park a question mid-session
-studyctl park "GIL vs multiprocessing" -t python
+studyctl study "Python Decorators" --energy 7          # Socratic mentor session
+studyctl study "Spark Internals" --mode co-study       # User-driven co-study
+studyctl study "topic" --timer pomodoro                # Override default timer
+studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
+studyctl study --resume                                # Reattach to existing session
+studyctl study --end                                   # End session cleanly
+studyctl park "How does asyncio compare?"              # Park mid-session
 ```
 
-During a session, the AI agent writes to IPC files (`session-state.json`, `session-topics.md`, `session-parking.md`). The web dashboard at `/session` polls these via SSE for live updates.
+**What `studyctl study` creates:**
+- tmux session with agent pane (left) + Textual sidebar (right)
+- AI agent launched with mode-specific persona
+- Sidebar shows timer, activity feed, counters
+- IPC files for dashboard viewports (`session-state.json`, `session-topics.md`, `session-parking.md`)
+- Optional web dashboard at `/session` via `--web`
+
+**Modes:**
+
+| Mode | Flag | Timer default | Agent role |
+|------|------|---------------|------------|
+| Study | (default) | Elapsed | Socratic mentor drives |
+| Co-study | `--mode co-study` | Pomodoro | User drives, agent available |
+
+**Low-level session commands** (used internally by `studyctl study`):
+
+```bash
+studyctl session start -t "Decorators" -e 7    # Start session record
+studyctl session status                         # Show current state
+studyctl session end -n "Got through closures"  # End with notes
+```
 
 ### Health & Updates
 
