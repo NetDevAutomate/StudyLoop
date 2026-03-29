@@ -7,6 +7,7 @@ Viewports (TUI, Web PWA) poll them for live updates.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,12 +44,25 @@ def read_session_state() -> dict:
         return {}
 
 
+def _ensure_session_dir() -> None:
+    """Ensure SESSION_DIR exists with 0700 permissions (owner-only access)."""
+    SESSION_DIR.mkdir(parents=True, exist_ok=True)
+    SESSION_DIR.chmod(0o700)
+
+
+def _write_file_secure(path: Path, content: str) -> None:
+    """Write content to a file with 0600 permissions (owner-only read/write)."""
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(content)
+
+
 def write_session_state(updates: dict) -> None:
     """Atomic read-merge-write of session state. Creates file if missing."""
-    SESSION_DIR.mkdir(parents=True, exist_ok=True)
+    _ensure_session_dir()
     current = read_session_state()
     current.update(updates)
-    STATE_FILE.write_text(json.dumps(current, indent=2, default=str))
+    _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
 
 
 def parse_topics_file() -> list[TopicEntry]:
@@ -110,15 +124,17 @@ def parse_parking_file() -> list[ParkingEntry]:
 
 def append_topic(time: str, topic: str, status: str, note: str) -> None:
     """Append a topic entry to session-topics.md."""
-    SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    with TOPICS_FILE.open("a") as f:
+    _ensure_session_dir()
+    fd = os.open(str(TOPICS_FILE), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(fd, "a") as f:
         f.write(f"- [{time}] {topic} | status:{status} | {note}\n")
 
 
 def append_parking(question: str) -> None:
     """Append a parking lot entry to session-parking.md."""
-    SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    with PARKING_FILE.open("a") as f:
+    _ensure_session_dir()
+    fd = os.open(str(PARKING_FILE), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(fd, "a") as f:
         f.write(f"- {question}\n")
 
 

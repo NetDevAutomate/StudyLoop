@@ -576,6 +576,16 @@ def migrate_v14(conn: sqlite3.Connection) -> None:
     """)
 
 
+@migration(15, "Add unique constraint to prevent parking lot duplication")
+def migrate_v15(conn: sqlite3.Connection) -> None:
+    """Prevent duplicate parked topics when session_end re-inserts entries
+    already written by the park CLI command during the session."""
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_session_question
+        ON parked_topics (study_session_id, question)
+    """)
+
+
 def check_migration_status(db_path: Path) -> dict:
     """Check migration status without modifying database.
 

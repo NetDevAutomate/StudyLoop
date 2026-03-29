@@ -52,7 +52,7 @@ def park_topic(
         conn = _connect()
         try:
             cursor = conn.execute(
-                """INSERT INTO parked_topics
+                """INSERT OR IGNORE INTO parked_topics
                    (study_session_id, session_id, topic_tag, question, context, created_by)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (study_session_id, session_id, topic_tag, question, context, created_by),
