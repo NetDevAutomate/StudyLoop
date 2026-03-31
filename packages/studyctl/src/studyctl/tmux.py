@@ -73,30 +73,28 @@ def session_exists(name: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def create_session(name: str) -> str:
+def create_session(name: str, command: str | None = None) -> str:
     """Create a detached tmux session. Returns the initial pane ID.
+
+    Args:
+        name: Session name.
+        command: Optional command to run in the initial pane. Runs
+            directly (no shell prompt or visible command in scrollback).
 
     Does NOT specify ``-x``/``-y`` — the session inherits dimensions
     from the attaching client, so split percentages work correctly
     relative to the actual terminal size.
 
-    Uses a file lock to prevent concurrent creation races (e.g. two
-    terminals running ``studyctl study`` simultaneously).
+    Uses a file lock to prevent concurrent creation races.
     """
     LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(LOCK_FILE, "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         try:
-            result = _tmux(
-                "new-session",
-                "-d",
-                "-s",
-                name,
-                "-P",
-                "-F",
-                "#{pane_id}",
-                check=True,
-            )
+            args = ["new-session", "-d", "-s", name, "-P", "-F", "#{pane_id}"]
+            if command:
+                args.append(command)
+            result = _tmux(*args, check=True)
             return result.stdout.strip()
         finally:
             fcntl.flock(f, fcntl.LOCK_UN)
@@ -108,6 +106,7 @@ def split_pane(
     size: int = 30,
     *,
     percentage: bool = False,
+    command: str | None = None,
 ) -> str:
     """Split a pane. Returns the new pane ID (never positional index).
 
@@ -116,10 +115,12 @@ def split_pane(
         direction: "right" for horizontal, "below" for vertical.
         size: Column/row count, or percentage if ``percentage=True``.
         percentage: If True, ``size`` is treated as a percentage (e.g. 25 = 25%).
+        command: Optional command to run in the new pane. Runs directly
+            (no shell prompt or visible command in scrollback).
     """
     flag = "-h" if direction == "right" else "-v"
     size_str = f"{size}%" if percentage else str(size)
-    result = _tmux(
+    args = [
         "split-window",
         flag,
         "-t",
@@ -129,8 +130,10 @@ def split_pane(
         "-P",
         "-F",
         "#{pane_id}",
-        check=True,
-    )
+    ]
+    if command:
+        args.append(command)
+    result = _tmux(*args, check=True)
     return result.stdout.strip()
 
 
