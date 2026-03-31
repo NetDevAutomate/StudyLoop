@@ -215,17 +215,16 @@ def _handle_start(
     # initial pane — no shell prompt, no visible command in scrollback.
     main_pane = create_session(session_name, command=agent_cmd)
 
-    # Load studyctl tmux config overlay (only study-specific settings,
-    # respects user's existing theme/prefix/keybindings)
+    # Load user's studyctl tmux overlay if they've explicitly created one.
+    # We do NOT auto-load a bundled config — it would clobber the user's
+    # theme (catppuccin, dracula, etc.), prefix, and keybindings.
+    # The bundled data/tmux-studyctl.conf serves as a reference/template.
     import contextlib
-    from pathlib import Path
 
-    bundled_conf = Path(__file__).parent.parent / "data" / "tmux-studyctl.conf"
     user_conf = SESSION_DIR / "tmux-studyctl.conf"
-    tmux_conf = user_conf if user_conf.exists() else bundled_conf
-    if tmux_conf.exists():
+    if user_conf.exists():
         with contextlib.suppress(Exception):
-            load_config(tmux_conf)
+            load_config(user_conf)
 
     # --- Switch/attach FIRST so tmux resizes to the actual terminal ---
     # This ensures the split percentage is calculated against the real
