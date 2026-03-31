@@ -73,13 +73,19 @@ def session_exists(name: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def create_session(name: str, command: str | None = None) -> str:
+def create_session(
+    name: str,
+    command: str | None = None,
+    cwd: str | None = None,
+) -> str:
     """Create a detached tmux session. Returns the initial pane ID.
 
     Args:
         name: Session name.
         command: Optional command to run in the initial pane. Runs
             directly (no shell prompt or visible command in scrollback).
+        cwd: Working directory for the session. If set, the initial
+            pane starts in this directory.
 
     Does NOT specify ``-x``/``-y`` — the session inherits dimensions
     from the attaching client, so split percentages work correctly
@@ -91,7 +97,10 @@ def create_session(name: str, command: str | None = None) -> str:
     with open(LOCK_FILE, "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         try:
-            args = ["new-session", "-d", "-s", name, "-P", "-F", "#{pane_id}"]
+            args = ["new-session", "-d", "-s", name]
+            if cwd:
+                args.extend(["-c", cwd])
+            args.extend(["-P", "-F", "#{pane_id}"])
             if command:
                 args.append(command)
             result = _tmux(*args, check=True)
