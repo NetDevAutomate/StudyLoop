@@ -13,10 +13,10 @@ import time as time_mod
 from datetime import UTC, datetime
 from typing import ClassVar
 
+from textual import work
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.widgets import Static
-from textual.worker import work
 
 from studyctl.session_state import (
     PARKING_FILE,
