@@ -117,7 +117,6 @@ def _handle_start(
         kill_session,
         load_config,
         select_pane,
-        send_keys,
         session_exists,
         split_pane,
         switch_client,
@@ -204,10 +203,20 @@ def _handle_start(
     if session_exists(session_name):
         kill_session(session_name)
 
-    # Create detached tmux session (no -x/-y — inherits from client)
-    main_pane = create_session(session_name)
+    # Build commands before creating panes
+    persona_file = build_persona_file(mode, topic, energy)
+    agent_cmd = get_launch_command(agent, persona_file)
 
-    # Load studyctl tmux config (bundled with the package)
+    import sys
+
+    sidebar_cmd = f"{sys.executable} -m studyctl.tui.sidebar"
+
+    # Create session with the agent command running directly in the
+    # initial pane — no shell prompt, no visible command in scrollback.
+    main_pane = create_session(session_name, command=agent_cmd)
+
+    # Load studyctl tmux config overlay (only study-specific settings,
+    # respects user's existing theme/prefix/keybindings)
     import contextlib
     from pathlib import Path
 
@@ -224,22 +233,16 @@ def _handle_start(
     already_in_tmux = is_in_tmux()
     if already_in_tmux:
         switch_client(session_name)
-    # (If not in tmux, we'll attach at the end via os.execvp — split
-    #  happens at default size but tmux will reflow on attach.)
 
     # Split for sidebar (right pane, 25% width)
-    sidebar_pane = split_pane(main_pane, direction="right", size=25, percentage=True)
-
-    # Launch agent in main pane
-    persona_file = build_persona_file(mode, topic, energy)
-    agent_cmd = get_launch_command(agent, persona_file)
-    send_keys(main_pane, agent_cmd)
-
-    # Launch sidebar in sidebar pane
-    import sys
-
-    sidebar_cmd_str = f"{sys.executable} -m studyctl.tui.sidebar"
-    send_keys(sidebar_pane, sidebar_cmd_str)
+    # command= runs directly — no shell prompt or visible command.
+    sidebar_pane = split_pane(
+        main_pane,
+        direction="right",
+        size=25,
+        percentage=True,
+        command=sidebar_cmd,
+    )
 
     # Focus main pane (agent)
     select_pane(main_pane)
