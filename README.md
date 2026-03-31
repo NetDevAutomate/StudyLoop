@@ -81,8 +81,8 @@ graph LR
 ```bash
 # Study sessions (tmux + AI agent + sidebar)
 studyctl study "topic" --energy 7      # Full tmux environment in one command
-studyctl study --resume                # Reattach to existing session
-studyctl study --end                   # End session cleanly
+studyctl study --resume                # Resume conversation from history
+studyctl study --end                   # End session (quit Claude also works)
 studyctl park "question"               # Park tangential topic
 
 # Content pipeline
