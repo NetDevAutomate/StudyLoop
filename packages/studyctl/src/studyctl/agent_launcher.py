@@ -14,7 +14,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-PERSONA_DIR = Path(__file__).parent.parent.parent.parent / "agents" / "shared" / "personas"
+# Persona files live in the repo at agents/shared/personas/.
+# Traverse up from src/studyctl/agent_launcher.py → repo root.
+# Falls back to inline defaults if not found (e.g. pip install).
+_REPO_ROOT = Path(__file__).parent.parent.parent.parent.parent
+PERSONA_DIR = _REPO_ROOT / "agents" / "shared" / "personas"
 
 AGENT_REGISTRY: dict[str, dict[str, str]] = {
     "claude": {
