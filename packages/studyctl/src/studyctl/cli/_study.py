@@ -204,7 +204,7 @@ def _handle_start(
     if session_exists(session_name):
         kill_session(session_name)
 
-    # Create tmux session
+    # Create detached tmux session (no -x/-y — inherits from client)
     main_pane = create_session(session_name)
 
     # Load studyctl tmux config (bundled with the package)
@@ -213,11 +213,19 @@ def _handle_start(
 
     bundled_conf = Path(__file__).parent.parent / "data" / "tmux-studyctl.conf"
     user_conf = SESSION_DIR / "tmux-studyctl.conf"
-    # User override takes precedence, then bundled
     tmux_conf = user_conf if user_conf.exists() else bundled_conf
     if tmux_conf.exists():
         with contextlib.suppress(Exception):
             load_config(tmux_conf)
+
+    # --- Switch/attach FIRST so tmux resizes to the actual terminal ---
+    # This ensures the split percentage is calculated against the real
+    # terminal width, not the detached default (80x24).
+    already_in_tmux = is_in_tmux()
+    if already_in_tmux:
+        switch_client(session_name)
+    # (If not in tmux, we'll attach at the end via os.execvp — split
+    #  happens at default size but tmux will reflow on attach.)
 
     # Split for sidebar (right pane, 25% width)
     sidebar_pane = split_pane(main_pane, direction="right", size=25, percentage=True)
@@ -228,8 +236,6 @@ def _handle_start(
     send_keys(main_pane, agent_cmd)
 
     # Launch sidebar in sidebar pane
-    # Use sys.executable to ensure we run with the same Python/venv,
-    # and -m so it works regardless of working directory.
     import sys
 
     sidebar_cmd_str = f"{sys.executable} -m studyctl.tui.sidebar"
@@ -253,22 +259,9 @@ def _handle_start(
     if web:
         _start_web_background(session_name)
 
-    # --- Print session info ---
-
-    console.print(f"\n[bold green]Study session started:[/bold green] {topic}")
-    console.print(f"  Mode: {mode} | Timer: {timer} | Energy: {energy}/10")
-    console.print(f"  Agent: {agent}")
-    console.print(f"  tmux: {session_name}")
-    if web:
-        console.print("  Dashboard: http://localhost:8567/session")
-    console.print()
-
-    # Connect to the study session
-    if is_in_tmux():
-        # Already in tmux — switch the current client to the new session
-        switch_client(session_name)
-    else:
-        # Not in tmux — attach (replaces this process via os.execvp)
+    # --- Attach if not already in tmux ---
+    if not already_in_tmux:
+        # Replaces this process via os.execvp — no code runs after this
         attach(session_name)
 
 

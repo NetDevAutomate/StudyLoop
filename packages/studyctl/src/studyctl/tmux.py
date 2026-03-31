@@ -73,8 +73,12 @@ def session_exists(name: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def create_session(name: str, width: int = 200, height: int = 50) -> str:
+def create_session(name: str) -> str:
     """Create a detached tmux session. Returns the initial pane ID.
+
+    Does NOT specify ``-x``/``-y`` — the session inherits dimensions
+    from the attaching client, so split percentages work correctly
+    relative to the actual terminal size.
 
     Uses a file lock to prevent concurrent creation races (e.g. two
     terminals running ``studyctl study`` simultaneously).
@@ -88,10 +92,6 @@ def create_session(name: str, width: int = 200, height: int = 50) -> str:
                 "-d",
                 "-s",
                 name,
-                "-x",
-                str(width),
-                "-y",
-                str(height),
                 "-P",
                 "-F",
                 "#{pane_id}",

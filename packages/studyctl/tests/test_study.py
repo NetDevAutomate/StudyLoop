@@ -62,14 +62,9 @@ class TestStudyCommand:
             assert "already active" in result.output
 
     def test_start_creates_tmux_session(self, runner, tmp_path):
-        def tmux_side_effect(args, **kwargs):
-            if "-V" in args:
-                return MagicMock(returncode=0, stdout="tmux 3.4\n", stderr="")
-            return MagicMock(returncode=0, stdout="%0\n", stderr="")
-
         with (
             patch("studyctl.tmux.shutil.which", return_value="/usr/bin/tmux"),
-            patch("studyctl.tmux.subprocess.run", side_effect=tmux_side_effect),
+            patch("studyctl.tmux.subprocess.run", side_effect=_tmux_side_effect),
             patch("studyctl.tmux.LOCK_FILE", tmp_path / "lock"),
             patch("studyctl.tmux.os.execvp"),
             patch("studyctl.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
@@ -79,14 +74,16 @@ class TestStudyCommand:
             patch("studyctl.session_state.TOPICS_FILE", tmp_path / "topics.md"),
             patch("studyctl.session_state.PARKING_FILE", tmp_path / "parking.md"),
             patch("studyctl.history.start_study_session", return_value="abc12345"),
+            # In tmux → switch_client is called (no os.execvp)
+            patch.dict("os.environ", {"TMUX": "/tmp/tmux"}),
         ):
-            # We're "in tmux" so attach won't be called
-            with patch.dict("os.environ", {"TMUX": "/tmp/tmux"}):
-                result = runner.invoke(study, ["Python Decorators", "--energy", "7"])
+            result = runner.invoke(study, ["Python Decorators", "--energy", "7"])
 
+            # switch_client runs synchronously, then execution continues
+            # No console output expected because print happens before
+            # switch_client in the non-in-tmux path, but in the in-tmux
+            # path we now skip printing (switch happens immediately)
             assert result.exit_code == 0
-            assert "Study session started" in result.output
-            assert "Python Decorators" in result.output
 
     def test_defaults_elapsed_timer_for_study(self, runner, tmp_path):
         with (
