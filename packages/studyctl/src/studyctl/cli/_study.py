@@ -473,11 +473,20 @@ def _cleanup_session() -> None:
 
 def _start_web_background(_session_name: str) -> None:
     """Start the web dashboard as a background process."""
+    import shutil
     import subprocess
+    import sys
 
+    # Use the studyctl entry point if installed, otherwise python -m
+    studyctl_bin = shutil.which("studyctl")
+    cmd = (
+        [studyctl_bin, "web", "--port", "8567"]
+        if studyctl_bin
+        else [sys.executable, "-m", "studyctl.cli", "web", "--port", "8567"]
+    )
     try:
         proc = subprocess.Popen(
-            ["uv", "run", "studyctl", "web", "--port", "8567"],
+            cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
