@@ -21,9 +21,11 @@ AGENT_REGISTRY: dict[str, dict[str, str]] = {
         "binary": "claude",
         "check": "claude --version",
         "launch": "claude --append-system-prompt-file {persona_file}",
+        "resume": "claude -r --append-system-prompt-file {persona_file}",
     },
     # gemini, kiro, opencode: add when testing against actual binaries.
     # Each requires pre-created config files in their agent directories.
+    # Resume flags: kiro-cli chat --resume, etc.
 }
 
 
@@ -74,14 +76,26 @@ def build_persona_file(mode: str, topic: str, energy: int) -> Path:
     return Path(path)
 
 
-def get_launch_command(agent: str, persona_file: Path) -> str:
+def get_launch_command(
+    agent: str,
+    persona_file: Path,
+    *,
+    resume: bool = False,
+) -> str:
     """Build the shell command to launch an agent with a persona.
+
+    Args:
+        agent: Agent name (e.g. "claude").
+        persona_file: Path to the persona file.
+        resume: If True, use the agent's resume command (e.g. ``claude -r``)
+            to continue the previous conversation in the session directory.
 
     Raises:
         KeyError: If the agent is not in the registry.
     """
     info = AGENT_REGISTRY[agent]
-    return info["launch"].format(persona_file=persona_file)
+    template = info["resume"] if resume and "resume" in info else info["launch"]
+    return template.format(persona_file=persona_file)
 
 
 def _default_persona(mode: str) -> str:

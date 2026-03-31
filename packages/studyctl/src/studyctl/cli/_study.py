@@ -199,13 +199,24 @@ def _handle_start(
     short_id = study_id[:8] if study_id else "unknown"
     session_name = f"study-{slug}-{short_id}"
 
-    # Clean up stale session with same name
+    # Create persistent session directory for agent conversation history.
+    # Each session gets its own directory so Claude's .claude/, Kiro's .kiro/
+    # etc. are preserved. `studyctl study --resume` can then pass -r to
+    # resume the actual AI conversation, not just reattach tmux.
+    session_dir = SESSION_DIR / "sessions" / session_name
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if this is a resume into an existing session directory
+    # (has .claude/ from a previous conversation)
+    is_resuming = (session_dir / ".claude").exists()
+
+    # Clean up stale tmux session with same name
     if session_exists(session_name):
         kill_session(session_name)
 
     # Build commands before creating panes
     persona_file = build_persona_file(mode, topic, energy)
-    agent_cmd = get_launch_command(agent, persona_file)
+    agent_cmd = get_launch_command(agent, persona_file, resume=is_resuming)
 
     import sys
 
@@ -224,9 +235,13 @@ def _handle_start(
         f'"'
     )
 
-    # Create session with the wrapped agent command running directly in
-    # the initial pane — no shell prompt, no visible command in scrollback.
-    main_pane = create_session(session_name, command=wrapped_agent_cmd)
+    # Create session in the session directory — agent conversation history
+    # (.claude/, .kiro/, etc.) is preserved here across sessions.
+    main_pane = create_session(
+        session_name,
+        command=wrapped_agent_cmd,
+        cwd=str(session_dir),
+    )
 
     # Load user's studyctl tmux overlay if they've explicitly created one.
     # We do NOT auto-load a bundled config — it would clobber the user's
@@ -266,6 +281,8 @@ def _handle_start(
             "tmux_main_pane": main_pane,
             "tmux_sidebar_pane": sidebar_pane,
             "persona_file": str(persona_file),
+            "session_dir": str(session_dir),
+            "agent": agent,
         }
     )
 
@@ -281,36 +298,62 @@ def _handle_start(
 
 
 def _handle_resume(ctx: click.Context) -> None:
-    """Resume an existing study session."""
+    """Resume an existing study session.
+
+    Two resume scenarios:
+    1. tmux session still alive → reattach/switch to it
+    2. tmux session dead but session dir exists → create new tmux session
+       with ``-r`` flag to resume the AI conversation from history
+    """
     from studyctl.session_state import read_session_state
     from studyctl.tmux import attach, is_in_tmux, session_exists
 
     state = read_session_state()
     session_name = state.get("tmux_session")
+    session_dir = state.get("session_dir")
 
     if not session_name:
         console.print("[yellow]No active session to resume.[/yellow]")
         ctx.exit(1)
         return
 
-    if not session_exists(session_name):
-        console.print(
-            f"[yellow]tmux session '{session_name}' no longer exists.[/yellow]\n"
-            "  The session may have been killed externally.\n"
-            "  End it: [bold]studyctl study --end[/bold]"
-        )
-        ctx.exit(1)
+    # Scenario 1: tmux session is still alive — just reconnect
+    if session_exists(session_name):
+        topic = state.get("topic", "unknown")
+        console.print(f"[green]Resuming:[/green] {topic}")
+
+        if is_in_tmux():
+            from studyctl.tmux import switch_client
+
+            switch_client(session_name)
+        else:
+            attach(session_name)
         return
 
-    topic = state.get("topic", "unknown")
-    console.print(f"[green]Resuming:[/green] {topic}")
+    # Scenario 2: tmux session dead but session dir preserved
+    # Rebuild the tmux session with -r to resume the AI conversation
+    from pathlib import Path
 
-    if is_in_tmux():
-        from studyctl.tmux import switch_client
+    if session_dir and Path(session_dir).exists():
+        topic = state.get("topic", "unknown")
+        agent = state.get("agent", "claude")
+        mode = state.get("mode", "study")
+        energy = state.get("energy", 5)
+        timer = state.get("timer_mode", "elapsed")
+        console.print(
+            f"[green]Resuming conversation:[/green] {topic}\n"
+            f"  [dim]Rebuilding tmux session with conversation history[/dim]"
+        )
+        # Restart with the same parameters — _handle_start will detect
+        # the existing .claude/ dir and pass -r to the agent
+        _handle_start(ctx, topic, agent, mode, timer, energy, web=False)
+        return
 
-        switch_client(session_name)
-    else:
-        attach(session_name)
+    console.print(
+        f"[yellow]tmux session '{session_name}' no longer exists.[/yellow]\n"
+        "  End it: [bold]studyctl study --end[/bold]"
+    )
+    ctx.exit(1)
 
 
 def _handle_end(_ctx: click.Context) -> None:
