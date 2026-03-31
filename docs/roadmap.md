@@ -218,7 +218,7 @@ Live study session with real-time dashboard, parking lot, and timer.
 - [x] **Phase 1.5 — cmux**: Agent protocol for cmux MCP pane control (macOS/Ghostty)
 - [x] **Phase 2 — Web Dashboard**: SSE-powered live dashboard (`/session`), HTMX + Alpine.js, energy-adaptive timer, activity feed with visual language, session summary, artefact viewer, 14 tests
 - [x] **Bugs fixed**: Parking deduplication (migration v15 + `INSERT OR IGNORE`), IPC file permissions (0700/0600), CORS wildcard removed, SSE mtime optimization, timer pause/reset controls, auto-migrate parked_topics
-- [x] **Phase 1 — Unified Session**: `studyctl study` single command, tmux session runtime (`tmux.py`), agent launcher (`agent_launcher.py`, Claude-only), Textual sidebar (`tui/sidebar.py`), `--resume`/`--end`/`--web`, agent personas (`study.md`, `co-study.md`), 39 tests.
+- [x] **Phase 1 — Unified Session**: `studyctl study` single command, tmux session runtime (`tmux.py`), agent launcher (`agent_launcher.py`, Claude-only), Textual sidebar (`tui/sidebar.py`), `--resume`/`--end`/`--web`, agent personas (`study.md`, `co-study.md`), persistent session directories with conversation history resume (`claude -r`), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.
 - [ ] **Phase 2 — Polish**: Energy streaks, break suggestions, parked topic warmup, vendored HTMX/Alpine.js
 - [ ] **Phase 3 — Devices**: ttyd via nginx proxy, pyrage + Keychain password, web terminal embed, LAN access
 

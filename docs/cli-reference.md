@@ -58,17 +58,24 @@ studyctl study "Python Decorators" --energy 7          # Socratic mentor session
 studyctl study "Spark Internals" --mode co-study       # User-driven co-study
 studyctl study "topic" --timer pomodoro                # Override default timer
 studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
-studyctl study --resume                                # Reattach to existing session
+studyctl study --resume                                # Resume conversation (-r)
 studyctl study --end                                   # End session cleanly
 studyctl park "How does asyncio compare?"              # Park mid-session
 ```
 
 **What `studyctl study` creates:**
 - tmux session with agent pane (left) + Textual sidebar (right)
-- AI agent launched with mode-specific persona
-- Sidebar shows timer, activity feed, counters
-- IPC files for dashboard viewports (`session-state.json`, `session-topics.md`, `session-parking.md`)
+- AI agent launched with mode-specific persona (clean pane, no visible command)
+- Persistent session directory at `~/.config/studyctl/sessions/{name}/` — preserves AI conversation history (`.claude/`, `.kiro/`, etc.)
+- Sidebar shows timer, activity feed, counters (keyboard: `p` pause, `r` reset, `Q` end session)
+- IPC files for dashboard viewports
 - Optional web dashboard at `/session` via `--web`
+
+**Session lifecycle:**
+- **Start:** `studyctl study "topic"` — creates tmux session, agent, sidebar
+- **Exit:** quit Claude normally (`/exit`, Ctrl+C) — auto-cleans up tmux, IPC files, switches back to previous session. Session directory preserved.
+- **Resume:** `studyctl study --resume` — if tmux alive, reattaches. If ended, rebuilds tmux and passes `-r` to the agent to continue the conversation from history.
+- **End explicitly:** `studyctl study --end` or sidebar `Q` — same cleanup as quitting Claude
 
 **Modes:**
 
