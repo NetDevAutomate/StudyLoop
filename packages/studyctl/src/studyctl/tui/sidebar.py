@@ -209,14 +209,15 @@ class SidebarApp(App[None]):
     BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
         ("p", "toggle_pause", "Pause/Resume"),
         ("r", "reset_timer", "Reset"),
-        ("q", "quit", "Quit"),
+        ("Q", "end_session", "End Session"),
+        ("q", "quit", "Quit sidebar"),
     ]
 
     def compose(self) -> ComposeResult:
         yield TimerWidget(id="timer")
         yield ActivityFeed(id="activity")
         yield CounterBar(id="counters")
-        yield Static("[dim]p:pause  r:reset  q:quit[/]", id="status")
+        yield Static("[dim]p:pause  r:reset  Q:end session[/]", id="status")
 
     def on_mount(self) -> None:
         self._poll_ipc_files()
@@ -322,6 +323,13 @@ class SidebarApp(App[None]):
                 "total_paused_seconds": 0,
             }
         )
+
+    def action_end_session(self) -> None:
+        """End the entire study session (agent + sidebar + tmux)."""
+        from studyctl.cli._study import _cleanup_session
+
+        _cleanup_session()
+        self.exit()
 
 
 def run_sidebar() -> None:

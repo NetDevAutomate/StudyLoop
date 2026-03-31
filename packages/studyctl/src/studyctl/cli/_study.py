@@ -209,11 +209,24 @@ def _handle_start(
 
     import sys
 
-    sidebar_cmd = f"{sys.executable} -m studyctl.tui.sidebar"
+    python = sys.executable
+    sidebar_cmd = f"{python} -m studyctl.tui.sidebar"
 
-    # Create session with the agent command running directly in the
-    # initial pane — no shell prompt, no visible command in scrollback.
-    main_pane = create_session(session_name, command=agent_cmd)
+    # Wrap the agent command so that when the agent exits (user quits
+    # Claude, types /exit, or Ctrl+C), the session cleans up automatically.
+    # This is the key UX for non-technical users — just quit the agent
+    # and everything tidies itself up.
+    wrapped_agent_cmd = (
+        f"{agent_cmd}; "
+        f'{python} -c "'
+        f"from studyctl.cli._study import _cleanup_session; "
+        f"_cleanup_session()"
+        f'"'
+    )
+
+    # Create session with the wrapped agent command running directly in
+    # the initial pane — no shell prompt, no visible command in scrollback.
+    main_pane = create_session(session_name, command=wrapped_agent_cmd)
 
     # Load user's studyctl tmux overlay if they've explicitly created one.
     # We do NOT auto-load a bundled config — it would clobber the user's
@@ -308,7 +321,7 @@ def _handle_end(_ctx: click.Context) -> None:
         read_session_state,
         write_session_state,
     )
-    from studyctl.tmux import kill_session, session_exists
+    from studyctl.tmux import is_in_tmux, kill_session, session_exists, switch_client
 
     state = read_session_state()
     study_id = state.get("study_session_id")
@@ -339,11 +352,15 @@ def _handle_end(_ctx: click.Context) -> None:
     from studyctl.session_state import SESSION_DIR
 
     oneline = SESSION_DIR / "session-oneline.txt"
-    if oneline.exists():
-        with contextlib.suppress(OSError):
-            oneline.unlink()
+    with contextlib.suppress(OSError):
+        oneline.unlink()
 
     console.print(f"[bold]Session ended:[/bold] {topic}")
+
+    # Switch back to previous tmux session before killing
+    if is_in_tmux() and session_name:
+        with contextlib.suppress(Exception):
+            switch_client(":{previous}")
 
     # Kill tmux session
     if session_name and session_exists(session_name):
@@ -352,6 +369,63 @@ def _handle_end(_ctx: click.Context) -> None:
 
     # Clear IPC files
     clear_session_files()
+
+
+def _cleanup_session() -> None:
+    """Auto-cleanup when the agent process exits.
+
+    Called by the wrapper shell command in the main tmux pane. This runs
+    inside the tmux session, so it can switch the client back before
+    killing the session.
+    """
+    import contextlib
+    import os
+
+    from studyctl.history import end_study_session
+    from studyctl.session_state import (
+        SESSION_DIR,
+        clear_session_files,
+        read_session_state,
+        write_session_state,
+    )
+    from studyctl.tmux import kill_session, session_exists, switch_client
+
+    state = read_session_state()
+    study_id = state.get("study_session_id")
+    session_name = state.get("tmux_session")
+    persona_file = state.get("persona_file")
+
+    if not study_id:
+        return
+
+    # End the DB session
+    with contextlib.suppress(Exception):
+        end_study_session(study_id)
+
+    # Signal dashboard summary view
+    with contextlib.suppress(Exception):
+        write_session_state({"mode": "ended"})
+
+    # Clean up temp files
+    if persona_file:
+        with contextlib.suppress(OSError):
+            os.unlink(persona_file)
+    oneline = SESSION_DIR / "session-oneline.txt"
+    with contextlib.suppress(OSError):
+        oneline.unlink()
+
+    # Switch tmux client back to the previous session before killing
+    with contextlib.suppress(Exception):
+        switch_client(":{previous}")
+
+    # Kill the study tmux session
+    if session_name and session_exists(session_name):
+        with contextlib.suppress(Exception):
+            kill_session(session_name)
+
+    # Clear IPC files
+    with contextlib.suppress(Exception):
+        clear_session_files()
 
 
 def _start_web_background(_session_name: str) -> None:
