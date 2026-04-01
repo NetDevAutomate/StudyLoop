@@ -174,6 +174,14 @@ def set_option(target: str, option: str, value: str) -> None:
     _tmux("set-option", "-t", target, option, value, check=True)
 
 
+def set_environment(target: str, name: str, value: str) -> None:
+    """Set an environment variable for a tmux session.
+
+    New panes in this session will inherit the variable.
+    """
+    _tmux("set-environment", "-t", target, name, value, check=True)
+
+
 def select_pane(target: str) -> None:
     """Focus a specific pane."""
     _tmux("select-pane", "-t", target, check=True)

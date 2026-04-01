@@ -228,6 +228,9 @@ def _handle_start(
 
     session_dir.mkdir(parents=True, exist_ok=True)
 
+    import stat
+    import sys
+
     # Write a CLAUDE.md so Claude knows this is a study session directory
     # and doesn't waste time exploring for project context.
     claude_md = session_dir / "CLAUDE.md"
@@ -238,6 +241,14 @@ def _handle_start(
             "Do not search for code or project files here.\n\n"
             "Use `studyctl topic` to log topics and `studyctl park` to park questions.\n"
         )
+
+    # Create a studyctl wrapper in the session directory that uses the
+    # correct Python (the one running this process). Without this, the
+    # Homebrew-installed studyctl (old version) shadows the dev version
+    # and `studyctl topic` fails with "unknown command".
+    wrapper = session_dir / "studyctl"
+    wrapper.write_text(f'#!/bin/sh\nexec {sys.executable} -m studyctl.cli "$@"\n')
+    wrapper.chmod(wrapper.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     # Clean up stale tmux session with same name
     if session_exists(session_name):
@@ -260,11 +271,14 @@ def _handle_start(
     python = sys.executable
     sidebar_cmd = f"{python} -m studyctl.tui.sidebar"
 
+    # Prepend session dir to PATH so the studyctl wrapper is found
+    # (the agent spawns bash subprocesses that need to find studyctl).
+    path_prefix = f"export PATH={session_dir}:$PATH; "
+
     # Wrap the agent command so that when the agent exits (user quits
     # Claude, types /exit, or Ctrl+C), the session cleans up automatically.
-    # This is the key UX for non-technical users — just quit the agent
-    # and everything tidies itself up.
     wrapped_agent_cmd = (
+        f"{path_prefix}"
         f"{agent_cmd}; "
         f'{python} -c "'
         f"from studyctl.cli._study import _cleanup_session; "
@@ -279,6 +293,14 @@ def _handle_start(
         command=wrapped_agent_cmd,
         cwd=str(session_dir),
     )
+
+    # Set PATH for all panes in this session so the studyctl wrapper
+    # in the session dir is found first (before any globally installed
+    # older version). Uses tmux set-environment so ALL panes inherit it.
+    from studyctl.tmux import set_environment
+
+    current_path = os.environ.get("PATH", "")
+    set_environment(session_name, "PATH", f"{session_dir}:{current_path}")
 
     # Load user's studyctl tmux overlay if they've explicitly created one.
     # We do NOT auto-load a bundled config — it would clobber the user's
