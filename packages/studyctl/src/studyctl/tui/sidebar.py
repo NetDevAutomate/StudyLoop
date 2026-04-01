@@ -416,7 +416,28 @@ class SidebarApp(App[None]):
         )
 
     def action_end_session(self) -> None:
-        """End the entire study session (agent + sidebar + tmux)."""
+        """End the entire study session (agent + sidebar + tmux).
+
+        Sends SIGTERM to the agent pane first so Claude writes its
+        conversation history, then runs cleanup after a brief pause.
+        """
+        import contextlib
+
+        from studyctl.session_state import read_session_state
+        from studyctl.tmux import _tmux
+
+        state = read_session_state()
+        main_pane = state.get("tmux_main_pane")
+
+        # Send C-c to the agent pane to trigger graceful shutdown.
+        # This lets Claude write its conversation history before we
+        # kill the tmux session.
+        if main_pane:
+            with contextlib.suppress(Exception):
+                _tmux("send-keys", "-t", main_pane, "C-c")
+                # Give Claude a moment to write history
+                time_mod.sleep(2)
+
         from studyctl.cli._study import _cleanup_session
 
         _cleanup_session()
