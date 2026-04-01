@@ -97,8 +97,17 @@ def _handle_start(
     timer: str,
     energy: int,
     web: bool,
+    *,
+    resume_session_name: str | None = None,
+    resume_session_dir: str | None = None,
 ) -> None:
-    """Start a new study session with tmux environment."""
+    """Start a new study session with tmux environment.
+
+    Args:
+        resume_session_name: If resuming, reuse this tmux session name
+            (same directory with .claude/ history).
+        resume_session_dir: If resuming, reuse this session directory.
+    """
     from studyctl.agent_launcher import build_persona_file, detect_agents, get_launch_command
     from studyctl.history import start_study_session
     from studyctl.session_state import (
@@ -194,21 +203,23 @@ def _handle_start(
 
     # --- Build tmux session ---
 
-    # Generate session name: study-{slug}-{short_id}
-    slug = topic.lower().replace(" ", "-")[:20]
-    short_id = study_id[:8] if study_id else "unknown"
-    session_name = f"study-{slug}-{short_id}"
+    if resume_session_name and resume_session_dir:
+        # Resuming: reuse existing session name and directory
+        # so we land in the same .claude/ conversation history
+        from pathlib import Path
 
-    # Create persistent session directory for agent conversation history.
-    # Each session gets its own directory so Claude's .claude/, Kiro's .kiro/
-    # etc. are preserved. `studyctl study --resume` can then pass -r to
-    # resume the actual AI conversation, not just reattach tmux.
-    session_dir = SESSION_DIR / "sessions" / session_name
+        session_name = resume_session_name
+        session_dir = Path(resume_session_dir)
+        is_resuming = True
+    else:
+        # New session: generate fresh name and directory
+        slug = topic.lower().replace(" ", "-")[:20]
+        short_id = study_id[:8] if study_id else "unknown"
+        session_name = f"study-{slug}-{short_id}"
+        session_dir = SESSION_DIR / "sessions" / session_name
+        is_resuming = (session_dir / ".claude").exists()
+
     session_dir.mkdir(parents=True, exist_ok=True)
-
-    # Check if this is a resume into an existing session directory
-    # (has .claude/ from a previous conversation)
-    is_resuming = (session_dir / ".claude").exists()
 
     # Clean up stale tmux session with same name
     if session_exists(session_name):
@@ -351,9 +362,18 @@ def _handle_resume(ctx: click.Context) -> None:
         )
         # Clear stale state so _handle_start doesn't see "already active"
         clear_session_files()
-        # Restart with the same parameters — _handle_start will detect
-        # the existing .claude/ dir and pass -r to the agent
-        _handle_start(ctx, topic, agent, mode, timer, energy, web=False)
+        # Rebuild tmux in the SAME session directory (preserves .claude/ history)
+        _handle_start(
+            ctx,
+            topic,
+            agent,
+            mode,
+            timer,
+            energy,
+            web=False,
+            resume_session_name=session_name,
+            resume_session_dir=session_dir,
+        )
         return
 
     console.print(
@@ -384,8 +404,13 @@ def _handle_end(_ctx: click.Context) -> None:
 
     topic = state.get("topic", "unknown")
 
-    # End the DB session
-    end_study_session(study_id)
+    # Capture session context before ending
+    from studyctl.session_state import parse_parking_file, parse_topics_file
+
+    notes = _build_session_notes(parse_topics_file(), parse_parking_file())
+
+    # End the DB session with captured notes
+    end_study_session(study_id, notes=notes)
 
     # Signal dashboard summary view
     write_session_state({"mode": "ended"})
@@ -421,6 +446,36 @@ def _handle_end(_ctx: click.Context) -> None:
     clear_session_files()
 
 
+def _build_session_notes(
+    topics: list,
+    parking: list,
+) -> str:
+    """Build a summary of the session for the DB notes field.
+
+    This is what ``--resume`` uses to give the agent context about
+    where the conversation was when the session ended.
+    """
+    lines: list[str] = []
+
+    wins = [t for t in topics if t.status in ("win", "insight")]
+    struggles = [t for t in topics if t.status == "struggling"]
+    learning = [t for t in topics if t.status == "learning"]
+
+    if wins:
+        lines.append("Wins: " + ", ".join(t.topic for t in wins))
+    if learning:
+        lines.append("In progress: " + ", ".join(t.topic for t in learning))
+    if struggles:
+        lines.append("Struggling: " + ", ".join(t.topic for t in struggles))
+    if parking:
+        lines.append("Parked: " + ", ".join(p.question for p in parking))
+
+    if not lines:
+        lines.append("No topics recorded during session.")
+
+    return "\n".join(lines)
+
+
 def _cleanup_session() -> None:
     """Auto-cleanup when the agent process exits.
 
@@ -435,6 +490,8 @@ def _cleanup_session() -> None:
     from studyctl.session_state import (
         SESSION_DIR,
         clear_session_files,
+        parse_parking_file,
+        parse_topics_file,
         read_session_state,
         write_session_state,
     )
@@ -448,9 +505,17 @@ def _cleanup_session() -> None:
     if not study_id:
         return
 
-    # End the DB session
+    # Capture session context as notes before ending.
+    # This is what --resume uses to give the agent context about
+    # where the conversation left off.
+    notes = _build_session_notes(
+        parse_topics_file(),
+        parse_parking_file(),
+    )
+
+    # End the DB session with captured notes
     with contextlib.suppress(Exception):
-        end_study_session(study_id)
+        end_study_session(study_id, notes=notes)
 
     # Signal dashboard summary view
     with contextlib.suppress(Exception):
