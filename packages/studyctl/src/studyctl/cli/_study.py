@@ -234,7 +234,15 @@ def _handle_start(
 
     # Build commands before creating panes
     persona_file = build_persona_file(mode, topic, energy, previous_notes=previous_notes)
-    agent_cmd = get_launch_command(agent, persona_file, resume=is_resuming)
+
+    # Allow integration tests to inject a mock agent command
+    import os
+
+    test_agent_cmd = os.environ.get("STUDYCTL_TEST_AGENT_CMD")
+    if test_agent_cmd:
+        agent_cmd = test_agent_cmd.format(persona_file=persona_file)
+    else:
+        agent_cmd = get_launch_command(agent, persona_file, resume=is_resuming)
 
     import sys
 
