@@ -621,10 +621,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#health-updates" class="md-nav__link">
+  <a href="#study-sessions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Health &amp; Updates
+        Study Sessions
       
     </span>
   </a>
@@ -632,10 +632,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#confidence-levels" class="md-nav__link">
+  <a href="#health-updates" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Confidence Levels
+        Health &amp; Updates
       
     </span>
   </a>
@@ -658,17 +658,6 @@
     <span class="md-ellipsis">
       
         Web PWA
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tui-dashboard-terminal" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TUI Dashboard (terminal)
       
     </span>
   </a>
@@ -994,10 +983,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#health-updates" class="md-nav__link">
+  <a href="#study-sessions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Health &amp; Updates
+        Study Sessions
       
     </span>
   </a>
@@ -1005,10 +994,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#confidence-levels" class="md-nav__link">
+  <a href="#health-updates" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Confidence Levels
+        Health &amp; Updates
       
     </span>
   </a>
@@ -1031,17 +1020,6 @@
     <span class="md-ellipsis">
       
         Web PWA
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tui-dashboard-terminal" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TUI Dashboard (terminal)
       
     </span>
   </a>
@@ -1111,49 +1089,112 @@
 
 <h1 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h1>
 <h2 id="studyctl">studyctl<a class="headerlink" href="#studyctl" title="Permanent link">&para;</a></h2>
-<p>Study pipeline management — sync notes, spaced repetition, progress tracking.</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>sync<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">   </span><span class="c1"># Sync notes to NotebookLM</span>
+<p>Study pipeline management — content, review, sessions, and tracking.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Study sessions (tmux + AI agent + Textual sidebar)</span>
+studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w">        </span><span class="c1"># Full tmux environment in one command</span>
+studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study<span class="w">   </span><span class="c1"># Co-study mode (user drives)</span>
+studyctl<span class="w"> </span>study<span class="w"> </span>--resume<span class="w">                  </span><span class="c1"># Reattach to existing session</span>
+studyctl<span class="w"> </span>study<span class="w"> </span>--end<span class="w">                     </span><span class="c1"># End session cleanly</span>
+studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--web<span class="w">             </span><span class="c1"># Also start web dashboard</span>
+studyctl<span class="w"> </span>park<span class="w"> </span>QUESTION<span class="w"> </span><span class="o">[</span>-t<span class="w"> </span>TOPIC<span class="o">]</span><span class="w">        </span><span class="c1"># Park tangential topic</span>
+
+<span class="c1"># Low-level session commands (used internally by study)</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session (DB + IPC files)</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>status<span class="w">                  </span><span class="c1"># Timer, topics, parking lot</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span><span class="o">[</span>-n<span class="w"> </span>NOTES<span class="o">]</span><span class="w">          </span><span class="c1"># End session, show summary</span>
+
+<span class="c1"># Content pipeline</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span>SOURCE<span class="w">            </span><span class="c1"># Split PDF by chapters</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span>SOURCE<span class="w">          </span><span class="c1"># Split + upload to NotebookLM</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>autopilot<span class="w">               </span><span class="c1"># Generate next pending episode</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>DIR<span class="w">       </span><span class="c1"># Markdown → PDF → NotebookLM</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>status<span class="w">                  </span><span class="c1"># Show content pipeline status</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>syllabus<span class="w">                </span><span class="c1"># Manage syllabus workflow</span>
+
+<span class="c1"># Sync &amp; topics</span>
+studyctl<span class="w"> </span>sync<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># Sync notes to NotebookLM</span>
 studyctl<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w">                  </span><span class="c1"># Show sync status</span>
-studyctl<span class="w"> </span>review<span class="w">                          </span><span class="c1"># Check spaced repetition due dates</span>
-studyctl<span class="w"> </span>struggles<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">             </span><span class="c1"># Find recurring struggle topics</span>
-studyctl<span class="w"> </span>wins<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">                  </span><span class="c1"># Show your learning wins</span>
-studyctl<span class="w"> </span>progress<span class="w"> </span>CONCEPT<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-c<span class="w"> </span>LEVEL<span class="w">  </span><span class="c1"># Record progress on a concept</span>
-studyctl<span class="w"> </span>progress-map<span class="w">                    </span><span class="c1"># Visual map of all tracked concepts</span>
-studyctl<span class="w"> </span>resume<span class="w">                          </span><span class="c1"># Where you left off (auto-context)</span>
-studyctl<span class="w"> </span>streaks<span class="w">                         </span><span class="c1"># Study streak and consistency stats</span>
-studyctl<span class="w"> </span>teachback<span class="w"> </span>CONCEPT<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-s<span class="w"> </span>SCORES<span class="w"> </span>--type<span class="w"> </span>TYPE<span class="w">  </span><span class="c1"># Record teach-back score</span>
-studyctl<span class="w"> </span>teachback-history<span class="w"> </span>CONCEPT<span class="w">       </span><span class="c1"># Show teach-back score progression</span>
-studyctl<span class="w"> </span>bridge<span class="w"> </span>add<span class="w"> </span>SRC<span class="w"> </span>TGT<span class="w"> </span>-s<span class="w"> </span>DOMAIN<span class="w"> </span>-t<span class="w"> </span>DOMAIN<span class="w">  </span><span class="c1"># Add a knowledge bridge</span>
-studyctl<span class="w"> </span>bridge<span class="w"> </span>list<span class="w">                     </span><span class="c1"># List knowledge bridges</span>
-studyctl<span class="w"> </span>schedule-blocks<span class="w"> </span>--start<span class="w"> </span><span class="m">14</span>:00<span class="w">   </span><span class="c1"># Generate .ics calendar study blocks</span>
 studyctl<span class="w"> </span>topics<span class="w">                          </span><span class="c1"># List configured topics</span>
 studyctl<span class="w"> </span>audio<span class="w"> </span>TOPIC<span class="w">                     </span><span class="c1"># Generate NotebookLM audio overview</span>
 studyctl<span class="w"> </span>dedup<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">   </span><span class="c1"># Remove duplicate notebook sources</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="p">|</span>pull<span class="p">|</span>status<span class="p">|</span>init<span class="w">     </span><span class="c1"># Cross-machine state sync</span>
-studyctl<span class="w"> </span>schedule<span class="w"> </span>install<span class="p">|</span>remove<span class="p">|</span>list<span class="p">|</span>add<span class="p">|</span>delete<span class="w">  </span><span class="c1"># Manage scheduled jobs</span>
-studyctl<span class="w"> </span>config<span class="w"> </span>init<span class="w">                     </span><span class="c1"># Interactive setup wizard</span>
+
+<span class="c1"># Review</span>
+studyctl<span class="w"> </span>review<span class="w">                          </span><span class="c1"># Check spaced repetition due dates</span>
+studyctl<span class="w"> </span>struggles<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">             </span><span class="c1"># Find recurring struggle topics</span>
+
+<span class="c1"># Configuration &amp; health</span>
+studyctl<span class="w"> </span>setup<span class="w">                           </span><span class="c1"># Interactive setup wizard</span>
+studyctl<span class="w"> </span>config<span class="w"> </span>init<span class="w">                     </span><span class="c1"># Interactive config (3 questions)</span>
 studyctl<span class="w"> </span>config<span class="w"> </span>show<span class="w">                     </span><span class="c1"># Display current configuration</span>
-studyctl<span class="w"> </span>web<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--host<span class="w"> </span>HOST<span class="o">]</span><span class="w"> </span><span class="c1"># Launch study web app</span>
-studyctl<span class="w"> </span>tui<span class="w">                             </span><span class="c1"># Launch interactive TUI dashboard</span>
-studyctl<span class="w"> </span>docs<span class="w"> </span>serve<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w">        </span><span class="c1"># Serve docs site locally</span>
-studyctl<span class="w"> </span>docs<span class="w"> </span>open<span class="w">                       </span><span class="c1"># Build and open docs in browser</span>
-studyctl<span class="w"> </span>docs<span class="w"> </span>list<span class="w">                       </span><span class="c1"># List available doc pages</span>
-studyctl<span class="w"> </span>docs<span class="w"> </span><span class="nb">read</span><span class="w"> </span>PAGE<span class="w">                  </span><span class="c1"># Read a page aloud via study-speak</span>
+studyctl<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check</span>
+studyctl<span class="w"> </span>update<span class="w">                          </span><span class="c1"># Check for available updates</span>
+studyctl<span class="w"> </span>upgrade<span class="w">                         </span><span class="c1"># Apply all available updates</span>
+
+<span class="c1"># Web</span>
+studyctl<span class="w"> </span>web<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--host<span class="w"> </span>HOST<span class="o">]</span><span class="w"> </span><span class="c1"># Launch study web app (PWA)</span>
+</code></pre></div>
+<h3 id="study-sessions">Study Sessions<a class="headerlink" href="#study-sessions" title="Permanent link">&para;</a></h3>
+<p>The primary entry point is <code>studyctl study</code>, which creates a complete tmux-based study environment:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w">          </span><span class="c1"># Socratic mentor session</span>
+studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Spark Internals&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study<span class="w">       </span><span class="c1"># User-driven co-study</span>
+studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--timer<span class="w"> </span>pomodoro<span class="w">                </span><span class="c1"># Override default timer</span>
+studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>claude<span class="w"> </span>--web<span class="w">            </span><span class="c1"># Explicit agent + web dashboard</span>
+studyctl<span class="w"> </span>study<span class="w"> </span>--resume<span class="w">                                </span><span class="c1"># Resume conversation (-r)</span>
+studyctl<span class="w"> </span>study<span class="w"> </span>--end<span class="w">                                   </span><span class="c1"># End session cleanly</span>
+studyctl<span class="w"> </span>park<span class="w"> </span><span class="s2">&quot;How does asyncio compare?&quot;</span><span class="w">              </span><span class="c1"># Park mid-session</span>
+</code></pre></div>
+<p><strong>What <code>studyctl study</code> creates:</strong>
+- tmux session with agent pane (left) + Textual sidebar (right)
+- AI agent launched with mode-specific persona (clean pane, no visible command)
+- Persistent session directory at <code>~/.config/studyctl/sessions/{name}/</code> — preserves AI conversation history (<code>.claude/</code>, <code>.kiro/</code>, etc.)
+- Sidebar shows timer, activity feed, counters (keyboard: <code>p</code> pause, <code>r</code> reset, <code>Q</code> end session)
+- IPC files for dashboard viewports
+- Optional web dashboard at <code>/session</code> via <code>--web</code></p>
+<p><strong>Session lifecycle:</strong>
+- <strong>Start:</strong> <code>studyctl study "topic"</code> — creates tmux session, agent, sidebar
+- <strong>Exit:</strong> quit Claude normally (<code>/exit</code>, Ctrl+C) — auto-cleans up tmux, IPC files, switches back to previous session. Session directory preserved.
+- <strong>Resume:</strong> <code>studyctl study --resume</code> — if tmux alive, reattaches. If ended, rebuilds tmux and passes <code>-r</code> to the agent to continue the conversation from history.
+- <strong>End explicitly:</strong> <code>studyctl study --end</code> or sidebar <code>Q</code> — same cleanup as quitting Claude</p>
+<p><strong>Modes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Flag</th>
+<th>Timer default</th>
+<th>Agent role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Study</td>
+<td>(default)</td>
+<td>Elapsed</td>
+<td>Socratic mentor drives</td>
+</tr>
+<tr>
+<td>Co-study</td>
+<td><code>--mode co-study</code></td>
+<td>Pomodoro</td>
+<td>User drives, agent available</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Low-level session commands</strong> (used internally by <code>studyctl study</code>):</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;Decorators&quot;</span><span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session record</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>status<span class="w">                         </span><span class="c1"># Show current state</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;Got through closures&quot;</span><span class="w">  </span><span class="c1"># End with notes</span>
 </code></pre></div>
 <h3 id="health-updates">Health &amp; Updates<a class="headerlink" href="#health-updates" title="Permanent link">&para;</a></h3>
-<p>Check your installation and keep it current:</p>
 <div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check (Rich table)</span>
 studyctl<span class="w"> </span>doctor<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># JSON output (for AI agents and CI)</span>
 studyctl<span class="w"> </span>doctor<span class="w"> </span>--quiet<span class="w">                  </span><span class="c1"># One-line summary</span>
 studyctl<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>core<span class="w">          </span><span class="c1"># Check specific category only</span>
-studyctl<span class="w"> </span>update<span class="w">                          </span><span class="c1"># Check for available updates (no changes)</span>
 studyctl<span class="w"> </span>update<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># Machine-readable update info</span>
-studyctl<span class="w"> </span>upgrade<span class="w">                         </span><span class="c1"># Apply all available updates</span>
 studyctl<span class="w"> </span>upgrade<span class="w"> </span>--dry-run<span class="w">               </span><span class="c1"># Preview what would change</span>
 studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>packages<span class="w">    </span><span class="c1"># Upgrade only packages</span>
 studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>database<span class="w">    </span><span class="c1"># Run DB migrations only</span>
 studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>agents<span class="w">      </span><span class="c1"># Update agent definitions only</span>
-studyctl<span class="w"> </span>upgrade<span class="w"> </span>--force<span class="w">                 </span><span class="c1"># Upgrade even if already current</span>
 </code></pre></div>
 <p><strong>Exit codes for <code>studyctl doctor</code>:</strong></p>
 <table>
@@ -1179,40 +1220,11 @@ studyctl<span class="w"> </span>upgrade<span class="w"> </span>--force<span clas
 </tbody>
 </table>
 <p><strong>Check categories:</strong> <code>core</code> (Python, packages, config), <code>database</code> (review DB, sessions DB), <code>config</code> (Obsidian vault, review dirs, pandoc), <code>deps</code> (optional packages), <code>agents</code> (AI tool definitions), <code>updates</code> (PyPI versions).</p>
-<p><strong>AI-guided setup:</strong> The install-mentor agent at <code>agents/shared/install-mentor.md</code> uses <code>studyctl doctor --json</code> to walk users through setup conversationally. It works with any AI coding tool (Claude Code, Kiro, Gemini CLI, OpenCode, Amp).</p>
-<h3 id="confidence-levels">Confidence Levels<a class="headerlink" href="#confidence-levels" title="Permanent link">&para;</a></h3>
-<p>Used with <code>studyctl progress</code>:</p>
-<table>
-<thead>
-<tr>
-<th>Level</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>struggling</code></td>
-<td>Can't solve without heavy guidance</td>
-</tr>
-<tr>
-<td><code>learning</code></td>
-<td>Getting it with some scaffolding</td>
-</tr>
-<tr>
-<td><code>confident</code></td>
-<td>Can apply independently</td>
-</tr>
-<tr>
-<td><code>mastered</code></td>
-<td>Can teach it to others</td>
-</tr>
-</tbody>
-</table>
 <h3 id="spaced-repetition-intervals">Spaced Repetition Intervals<a class="headerlink" href="#spaced-repetition-intervals" title="Permanent link">&para;</a></h3>
 <p>Review schedule: <strong>1 → 3 → 7 → 14 → 30 days</strong></p>
 <p><code>studyctl review</code> shows what's due based on when you last recorded progress.</p>
 <h3 id="web-pwa">Web PWA<a class="headerlink" href="#web-pwa" title="Permanent link">&para;</a></h3>
-<p><code>studyctl web</code> launches a progressive web app for flashcard and quiz review. No extra dependencies. LAN accessible by default.</p>
+<p><code>studyctl web</code> launches a progressive web app for flashcard and quiz review. LAN accessible by default.</p>
 <div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>web<span class="w">                    </span><span class="c1"># Serve on 0.0.0.0:8567</span>
 studyctl<span class="w"> </span>web<span class="w"> </span>--port<span class="w"> </span><span class="m">9000</span><span class="w">        </span><span class="c1"># Custom port</span>
 studyctl<span class="w"> </span>web<span class="w"> </span>--host<span class="w"> </span>localhost<span class="w">   </span><span class="c1"># Local only</span>
@@ -1277,73 +1289,17 @@ studyctl<span class="w"> </span>web<span class="w"> </span>--host<span class="w"
 <p><strong>Voice:</strong> Uses Web Speech API (browser built-in). Two modes:
 - <strong>Read once</strong> — speaker icon on card or <code>T</code> key
 - <strong>Auto-voice</strong> — header toggle or <code>V</code> key (reads everything automatically)</p>
-<p>For best voice quality, download enhanced voices in OS settings (Accessibility → Spoken Content → Voices).</p>
-<h3 id="tui-dashboard-terminal">TUI Dashboard (terminal)<a class="headerlink" href="#tui-dashboard-terminal" title="Permanent link">&para;</a></h3>
-<p><code>studyctl tui</code> launches a terminal dashboard. Requires <code>uv pip install studyctl[tui]</code>.</p>
-<table>
-<thead>
-<tr>
-<th>Key</th>
-<th>Action</th>
-<th>When</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>d</code>/<code>r</code>/<code>c</code>/<code>s</code></td>
-<td>Switch tabs</td>
-<td>Always</td>
-</tr>
-<tr>
-<td><code>f</code>/<code>z</code></td>
-<td>Start flashcards/quiz</td>
-<td>Always</td>
-</tr>
-<tr>
-<td><code>Space</code></td>
-<td>Flip card</td>
-<td>During review</td>
-</tr>
-<tr>
-<td><code>y</code>/<code>n</code></td>
-<td>Correct/incorrect</td>
-<td>After flip</td>
-</tr>
-<tr>
-<td><code>r</code></td>
-<td>Retry wrong answers</td>
-<td>After session</td>
-</tr>
-<tr>
-<td><code>v</code></td>
-<td>Toggle voice</td>
-<td>During review</td>
-</tr>
-<tr>
-<td><code>o</code></td>
-<td>Toggle OpenDyslexic</td>
-<td>Always</td>
-</tr>
-<tr>
-<td><code>q</code></td>
-<td>Quit</td>
-<td>Always</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Course picker:</strong> Modal appears when multiple directories configured. <strong>Retry mode:</strong> SM-2 scheduling not updated during retry.</p>
 <hr />
 <h2 id="agent-session-tools">agent-session-tools<a class="headerlink" href="#agent-session-tools" title="Permanent link">&para;</a></h2>
-<p>AI session export, search, and management.</p>
+<p>AI session export, search, and cross-machine sync.</p>
 <div class="highlight"><pre><span></span><code>session-export<span class="w"> </span><span class="o">[</span>--source<span class="w"> </span>SOURCE<span class="o">]</span><span class="w">         </span><span class="c1"># Export AI sessions to SQLite</span>
 session-query<span class="w"> </span>search<span class="w"> </span>QUERY<span class="w">               </span><span class="c1"># Full-text search across sessions</span>
 session-query<span class="w"> </span>list<span class="w"> </span>--since<span class="w"> </span>7d<span class="w">            </span><span class="c1"># List recent sessions</span>
 session-query<span class="w"> </span>show<span class="w"> </span>SESSION_ID<span class="w">            </span><span class="c1"># Show session details</span>
 session-query<span class="w"> </span>context<span class="w"> </span>SESSION_ID<span class="w">         </span><span class="c1"># Generate context for resuming</span>
 session-query<span class="w"> </span>stats<span class="w">                      </span><span class="c1"># Database statistics</span>
-session-sync<span class="w"> </span>push<span class="p">|</span>pull<span class="w"> </span>REMOTE<span class="w">            </span><span class="c1"># Sync database across machines</span>
+session-sync<span class="w"> </span>push<span class="p">|</span>pull<span class="p">|</span>sync<span class="w"> </span>REMOTE<span class="w">       </span><span class="c1"># Sync database across machines</span>
 session-maint<span class="w"> </span>vacuum<span class="p">|</span>reindex<span class="p">|</span>schema<span class="p">|</span>archive<span class="w">  </span><span class="c1"># Database maintenance</span>
-tutor-checkpoint<span class="w"> </span>code<span class="w"> </span>--skill<span class="w"> </span>SKILL<span class="w">      </span><span class="c1"># Record study progress</span>
 study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span><span class="o">[</span>-v<span class="w"> </span>VOICE<span class="o">]</span><span class="w"> </span><span class="o">[</span>-s<span class="w"> </span>SPEED<span class="o">]</span><span class="w"> </span><span class="c1"># Speak text aloud using TTS</span>
 </code></pre></div>
 <h3 id="supported-sources">Supported Sources<a class="headerlink" href="#supported-sources" title="Permanent link">&para;</a></h3>
@@ -1380,10 +1336,6 @@ study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span
 <td>LiteLLM</td>
 </tr>
 <tr>
-<td><code>bedrock</code></td>
-<td>Bedrock Proxy</td>
-</tr>
-<tr>
 <td><code>repoprompt</code></td>
 <td>RepoPrompt</td>
 </tr>
@@ -1392,7 +1344,6 @@ study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span
 <h3 id="optional-extras">Optional Extras<a class="headerlink" href="#optional-extras" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>semantic<span class="o">]</span><span class="w">  </span><span class="c1"># Vector embeddings search</span>
 uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>tokens<span class="o">]</span><span class="w">    </span><span class="c1"># Token counting</span>
-uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>tui<span class="o">]</span><span class="w">                   </span><span class="c1"># TUI interface</span>
 </code></pre></div>
 
 

@@ -1,0 +1,1251 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/architecture-decisions/parallel-research-catches-pre-implementation-assumptions.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Unified session architecture: 9 research agents corrected 5 plan assumptions - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#parallel-research-catches-pre-implementation-assumptions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Unified session architecture: 9 research agents corrected 5 plan assumptions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#investigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Investigation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Solution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#finding-1-ttyd-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding 1: ttyd Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-2-age-encryption-cli-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding 2: age Encryption CLI Automation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-3-ai-agent-cli-system-prompt-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding 3: AI Agent CLI System Prompt Injection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-4-tmux-config-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding 4: tmux Config Overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-5-distributed-timer-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding 5: Distributed Timer State
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prevention-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prevention Strategies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prevention Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-core-pattern-unverified-cli-capability-assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Core Pattern: Unverified CLI Capability Assumptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-finding-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-Finding Prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#general-protocol-for-plan-authorship" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Protocol for Plan Authorship
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="parallel-research-catches-pre-implementation-assumptions">Parallel Research Catches Pre-Implementation Assumptions<a class="headerlink" href="#parallel-research-catches-pre-implementation-assumptions" title="Permanent link">&para;</a></h1>
+<h2 id="problem">Problem<a class="headerlink" href="#problem" title="Permanent link">&para;</a></h2>
+<p>Nine architectural assumptions underpinning the unified session dashboard plan were unverified before planning. During the parallel research and review phase (9 agents: tmux scripting, ttyd auth, AI CLI invocation, 1Password/age, catppuccin tmux, security sentinel, architecture strategist, performance oracle, code simplicity reviewer), five critical assumptions proved false. Each was capable of causing runtime failures, security issues, or unnecessary complexity if implemented as designed.</p>
+<h2 id="investigation">Investigation<a class="headerlink" href="#investigation" title="Permanent link">&para;</a></h2>
+<p>Nine parallel research agents probed the following areas:</p>
+<ul>
+<li>ttyd process credential passing mechanisms</li>
+<li>age/rage encryption CLI automation</li>
+<li>AI agent CLI flag support for system prompt injection</li>
+<li>tmux <code>-f</code> flag behaviour with running servers</li>
+<li>Distributed timer state coordination patterns</li>
+<li>Catppuccin tmux theme vendoring and configuration</li>
+<li>Security review of LAN exposure, IPC files, iframe embedding</li>
+<li>Performance review of SSE polling, tmux status bar, Rich sidebar rendering</li>
+<li>Simplicity review of scope, phasing, and abstraction choices</li>
+</ul>
+<h2 id="root-cause">Root Cause<a class="headerlink" href="#root-cause" title="Permanent link">&para;</a></h2>
+<p>Each false assumption shared the same failure mode: relying on GitHub issue discussions, documentation fragments, or intuitive CLI design rather than verifying actual implemented behaviour against installed binaries.</p>
+<h2 id="solution">Solution<a class="headerlink" href="#solution" title="Permanent link">&para;</a></h2>
+<h3 id="finding-1-ttyd-authentication">Finding 1: ttyd Authentication<a class="headerlink" href="#finding-1-ttyd-authentication" title="Permanent link">&para;</a></h3>
+<p><strong>False assumption</strong>: <code>TTYD_CREDENTIAL</code> environment variable passes auth credentials without <code>ps aux</code> exposure.</p>
+<p><strong>Reality</strong>: <code>TTYD_CREDENTIAL</code> was mentioned in a GitHub issue (#872) but never merged into official ttyd. The <code>--credential user:password</code> flag is the only built-in auth, and it exposes the password in <code>ps aux</code>.</p>
+<p><strong>Correct pattern</strong>: Unix socket + reverse proxy with htpasswd:
+<div class="highlight"><pre><span></span><code><span class="c1"># ttyd binds to socket only — never touches credentials</span>
+ttyd<span class="w"> </span>--interface<span class="w"> </span>/tmp/ttyd-studyctl.sock<span class="w"> </span>-W<span class="w"> </span>tmux<span class="w"> </span>attach<span class="w"> </span>-t<span class="w"> </span>study
+
+<span class="c1"># nginx handles auth</span>
+location<span class="w"> </span>/terminal/<span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>auth_basic<span class="w"> </span><span class="s2">&quot;Study Session&quot;</span><span class="p">;</span>
+<span class="w">    </span>auth_basic_user_file<span class="w"> </span>/home/user/.config/studyctl/.ttyd-htpasswd<span class="p">;</span>
+<span class="w">    </span>proxy_pass<span class="w"> </span>http://unix:/tmp/ttyd-studyctl.sock<span class="p">;</span>
+<span class="w">    </span>proxy_http_version<span class="w"> </span><span class="m">1</span>.1<span class="p">;</span>
+<span class="w">    </span>proxy_set_header<span class="w"> </span>Upgrade<span class="w"> </span><span class="nv">$http_upgrade</span><span class="p">;</span>
+<span class="w">    </span>proxy_set_header<span class="w"> </span>Connection<span class="w"> </span><span class="s2">&quot;upgrade&quot;</span><span class="p">;</span>
+<span class="w">    </span>add_header<span class="w"> </span>Content-Security-Policy<span class="w"> </span><span class="s2">&quot;frame-ancestors &#39;self&#39;&quot;</span><span class="w"> </span>always<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></p>
+<h3 id="finding-2-age-encryption-cli-automation">Finding 2: age Encryption CLI Automation<a class="headerlink" href="#finding-2-age-encryption-cli-automation" title="Permanent link">&para;</a></h3>
+<p><strong>False assumption</strong>: <code>age --decrypt</code> can be driven via subprocess to retrieve passwords programmatically.</p>
+<p><strong>Reality</strong>: The age CLI opens <code>/dev/tty</code> directly for passphrase input. There is no stdin/flag path for the passphrase — subprocess automation is blocked by design.</p>
+<p><strong>Correct pattern</strong>: <code>pyrage</code> (Python bindings to Rust <code>rage</code>) + macOS Keychain:
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyrage</span><span class="w"> </span><span class="kn">import</span> <span class="n">passphrase</span> <span class="k">as</span> <span class="n">age_passphrase</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+
+<span class="c1"># Retrieve encryption key from macOS Keychain (Touch ID unlock)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+    <span class="p">[</span><span class="s2">&quot;security&quot;</span><span class="p">,</span> <span class="s2">&quot;find-generic-password&quot;</span><span class="p">,</span> <span class="s2">&quot;-a&quot;</span><span class="p">,</span> <span class="s2">&quot;studyctl&quot;</span><span class="p">,</span> <span class="s2">&quot;-s&quot;</span><span class="p">,</span> <span class="s2">&quot;studyctl-age-key&quot;</span><span class="p">,</span> <span class="s2">&quot;-w&quot;</span><span class="p">],</span>
+    <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">enc_key</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+<span class="c1"># Decrypt in-process — no subprocess, no /dev/tty</span>
+<span class="n">encrypted</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;~/.config/studyctl/lan.age&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+<span class="n">password</span> <span class="o">=</span> <span class="n">age_passphrase</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">encrypted</span><span class="p">,</span> <span class="n">enc_key</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+</code></pre></div></p>
+<h3 id="finding-3-ai-agent-cli-system-prompt-injection">Finding 3: AI Agent CLI System Prompt Injection<a class="headerlink" href="#finding-3-ai-agent-cli-system-prompt-injection" title="Permanent link">&para;</a></h3>
+<p><strong>False assumption</strong>: All AI agent CLIs support system prompt injection via a CLI flag.</p>
+<p><strong>Reality</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Persona mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude</td>
+<td><code>--append-system-prompt-file /path/to/file</code> (preserves built-in tool awareness)</td>
+</tr>
+<tr>
+<td>Gemini</td>
+<td><code>GEMINI.md</code> file in working directory (auto-loaded)</td>
+</tr>
+<tr>
+<td>Kiro</td>
+<td><code>.kiro/agents/*.json</code> config file with <code>"prompt"</code> field</td>
+</tr>
+<tr>
+<td>OpenCode</td>
+<td><code>.opencode/agents/*.md</code> config file with YAML frontmatter</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Correct pattern</strong>: Two-phase launcher — ensure config files exist, then spawn:
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">launch_agent</span><span class="p">(</span><span class="n">agent</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">session_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">persona_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Phase 1: ensure agent config exists in tool-specific location</span>
+    <span class="k">match</span> <span class="n">agent</span><span class="p">:</span>
+        <span class="k">case</span> <span class="s2">&quot;claude&quot;</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># uses --append-system-prompt-file at spawn time</span>
+        <span class="k">case</span> <span class="s2">&quot;gemini&quot;</span><span class="p">:</span>
+            <span class="p">(</span><span class="n">session_dir</span> <span class="o">/</span> <span class="s2">&quot;GEMINI.md&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">persona_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+        <span class="k">case</span> <span class="s2">&quot;kiro&quot;</span><span class="p">:</span>
+            <span class="n">kiro_dir</span> <span class="o">=</span> <span class="n">session_dir</span> <span class="o">/</span> <span class="s2">&quot;.kiro&quot;</span> <span class="o">/</span> <span class="s2">&quot;agents&quot;</span>
+            <span class="n">kiro_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="p">(</span><span class="n">kiro_dir</span> <span class="o">/</span> <span class="s2">&quot;study.json&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="n">persona_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">()})</span>
+            <span class="p">)</span>
+    <span class="c1"># Phase 2: spawn with agent&#39;s own invocation pattern</span>
+    <span class="o">...</span>
+</code></pre></div></p>
+<p>Ship Claude-only initially. Add other agents as their invocation patterns are verified against actual binaries.</p>
+<h3 id="finding-4-tmux-config-overlay">Finding 4: tmux Config Overlay<a class="headerlink" href="#finding-4-tmux-config-overlay" title="Permanent link">&para;</a></h3>
+<p><strong>False assumption</strong>: <code>tmux -f custom.conf new-session</code> applies a per-session config.</p>
+<p><strong>Reality</strong>: <code>-f</code> is a server-level flag. If a tmux server is already running when the command is issued, <code>-f</code> is <strong>silently ignored</strong> — the existing server config wins.</p>
+<p><strong>Correct pattern</strong>:
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="c1"># Create session first, then apply config via source-file</span>
+<span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;tmux&quot;</span><span class="p">,</span> <span class="s2">&quot;new-session&quot;</span><span class="p">,</span> <span class="s2">&quot;-d&quot;</span><span class="p">,</span> <span class="s2">&quot;-s&quot;</span><span class="p">,</span> <span class="n">session_name</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;tmux&quot;</span><span class="p">,</span> <span class="s2">&quot;source-file&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/studyctl-tmux.conf&quot;</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Capture pane IDs at creation — NEVER reference by index (they shift)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+    <span class="p">[</span><span class="s2">&quot;tmux&quot;</span><span class="p">,</span> <span class="s2">&quot;split-window&quot;</span><span class="p">,</span> <span class="s2">&quot;-h&quot;</span><span class="p">,</span> <span class="s2">&quot;-P&quot;</span><span class="p">,</span> <span class="s2">&quot;-F&quot;</span><span class="p">,</span> <span class="s2">&quot;#</span><span class="si">{pane_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;-t&quot;</span><span class="p">,</span> <span class="n">session_name</span><span class="p">],</span>
+    <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">pane_id</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>  <span class="c1"># e.g. &quot;%3&quot; — stable for pane lifetime</span>
+
+<span class="c1"># Attach by replacing the current process (no zombie parent)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">execvp</span><span class="p">(</span><span class="s2">&quot;tmux&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;tmux&quot;</span><span class="p">,</span> <span class="s2">&quot;attach-session&quot;</span><span class="p">,</span> <span class="s2">&quot;-t&quot;</span><span class="p">,</span> <span class="n">session_name</span><span class="p">])</span>
+</code></pre></div></p>
+<h3 id="finding-5-distributed-timer-state">Finding 5: Distributed Timer State<a class="headerlink" href="#finding-5-distributed-timer-state" title="Permanent link">&para;</a></h3>
+<p><strong>False assumption</strong>: The sidebar process is the authoritative timer, writing <code>elapsed_seconds</code> to the state file every 60s. The web dashboard resyncs when drift exceeds 30s.</p>
+<p><strong>Reality</strong>: This is a distributed state coordination problem for a personal timer where +/-30s accuracy is irrelevant. The complexity has no payoff.</p>
+<p><strong>Correct pattern</strong>: Store instants, compute elapsed everywhere:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;started_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-28T09:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;paused_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_paused_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_elapsed</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">started</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;started_at&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;paused_at&quot;</span><span class="p">]:</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;paused_at&quot;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">started</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">-</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;total_paused_seconds&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p>Both the sidebar and web dashboard call <code>compute_elapsed()</code> independently against the same state file. Because <code>started_at</code> is the single source of truth, both surfaces produce identical values — zero drift by construction. The reconciliation protocol is deleted entirely.</p>
+<h2 id="prevention-strategies">Prevention Strategies<a class="headerlink" href="#prevention-strategies" title="Permanent link">&para;</a></h2>
+<h3 id="the-core-pattern-unverified-cli-capability-assumptions">The Core Pattern: Unverified CLI Capability Assumptions<a class="headerlink" href="#the-core-pattern-unverified-cli-capability-assumptions" title="Permanent link">&para;</a></h3>
+<p>Before encoding any CLI tool behaviour as a plan assumption, treat it as an untested hypothesis. The cost of a 5-minute verification is trivially lower than discovering the assumption is wrong mid-implementation.</p>
+<h3 id="per-finding-prevention">Per-Finding Prevention<a class="headerlink" href="#per-finding-prevention" title="Permanent link">&para;</a></h3>
+<p><strong>1. ttyd TTYD_CREDENTIAL</strong>: For any CLI tool's configuration interface (env vars, flags, config files), verify against <code>--help</code> output or the tool's man page before committing it to a plan. Environment variable support is rarely documented in <code>--help</code> but is often absent.</p>
+<div class="highlight"><pre><span></span><code>ttyd<span class="w"> </span>--help<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>cred
+strings<span class="w"> </span><span class="k">$(</span>which<span class="w"> </span>ttyd<span class="k">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>credential<span class="w">  </span><span class="c1"># last resort</span>
+</code></pre></div>
+<p><strong>2. age requires TTY</strong>: Any tool that handles secrets or passphrases has a high prior probability of requiring TTY interaction intentionally (as a security feature). Always verify non-interactive invocation is supported before designing an automation flow around it.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>age<span class="w"> </span>--passphrase<span class="w"> </span>-<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w">  </span><span class="c1"># does it accept stdin?</span>
+age<span class="w"> </span>--help<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-iE<span class="w"> </span><span class="s1">&#39;passphrase|batch|non-interactive|stdin&#39;</span>
+</code></pre></div>
+<p><strong>3. Agent CLI flags diverge</strong>: Agent CLI interfaces are not standardised. Treat each agent binary as a separate verification target. Create a capability matrix at design time.</p>
+<div class="highlight"><pre><span></span><code>claude<span class="w"> </span>--help<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>system
+gemini<span class="w"> </span>--help<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>system
+<span class="c1"># If the flag doesn&#39;t appear in --help, it doesn&#39;t exist.</span>
+</code></pre></div>
+<p><strong>4. tmux <code>-f</code> is server-level</strong>: For any tool that distinguishes server/session/window/pane scope, verify which scope a configuration mechanism applies to before using it for isolation.</p>
+<div class="highlight"><pre><span></span><code>tmux<span class="w"> </span>new-session<span class="w"> </span>-d<span class="w"> </span>-s<span class="w"> </span>test1
+tmux<span class="w"> </span>-f<span class="w"> </span>/tmp/other.conf<span class="w"> </span>new-session<span class="w"> </span>-d<span class="w"> </span>-s<span class="w"> </span>test2<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w">  </span><span class="c1"># silently ignored?</span>
+tmux<span class="w"> </span>show-options<span class="w"> </span>-g<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-5<span class="w">  </span><span class="c1"># confirm options reflect running server</span>
+</code></pre></div>
+<p><strong>5. Distributed timer unnecessary</strong>: Before designing a synchronisation protocol, ask: "can this be computed from a single source of truth rather than merged from multiple sources?" Write the read-side formula first. If it's <code>f(shared_state, now())</code> with no merge logic, reconciliation is unnecessary.</p>
+<h3 id="general-protocol-for-plan-authorship">General Protocol for Plan Authorship<a class="headerlink" href="#general-protocol-for-plan-authorship" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>List all CLI tools the plan depends on.</strong> For each, identify every capability being assumed.</li>
+<li><strong>Classify each assumption</strong> as: <em>Verified</em> (ran the command), <em>High-confidence</em> (in <code>--help</code>/man page), or <em>Assumed</em> (inferred from docs/memory/similar tools).</li>
+<li><strong>Promote every <em>Assumed</em> item to a pre-implementation spike.</strong> A 10-line bash script that exercises exactly the capability the plan requires.</li>
+<li><strong>Security and TTY assumptions deserve extra scepticism.</strong> Tools handling secrets are intentionally hostile to automation. Assume they require TTY unless proven otherwise.</li>
+<li><strong>Scope assumptions deserve extra scepticism.</strong> Multiplexers, daemons, and servers frequently have server/session/process distinctions that are non-obvious.</li>
+</ol>
+<p><strong>The meta-pattern</strong>: A plan that cannot be verified incrementally against real binaries before implementation begins is a plan that contains hidden integration tests. Surface them early.</p>
+<h2 id="related-documentation">Related Documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Brainstorm (session architecture)</strong>: <code>docs/brainstorms/2026-03-29-unified-session-architecture-brainstorm.md</code></li>
+<li><strong>Plan (partially deepened)</strong>: <code>docs/plans/2026-03-29-feat-unified-session-architecture-plan.md</code></li>
+<li><strong>Original dashboard brainstorm</strong>: <code>docs/brainstorms/2026-03-28-live-study-session-dashboard-brainstorm.md</code></li>
+<li><strong>Security review</strong>: <code>docs/reviews/2026-03-15-security-review-unified-study-platform.md</code></li>
+<li><strong>Architecture review</strong>: <code>docs/reviews/2026-03-15-architecture-review.md</code></li>
+<li><strong>Marathon session learnings</strong>: <code>docs/solutions/2026-03-13-marathon-session-learnings.md</code></li>
+<li><strong>FastAPI+HTMX research</strong>: <code>docs/research/fastapi-htmx-best-practices.md</code></li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

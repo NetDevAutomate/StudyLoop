@@ -69,6 +69,10 @@
          <lastmod>2026-04-01</lastmod>
     </url>
     <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/system-overview.html</loc>
+         <lastmod>2026-04-01</lastmod>
+    </url>
+    <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/voice-output.html</loc>
          <lastmod>2026-04-01</lastmod>
     </url>
@@ -86,6 +90,14 @@
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-15-unified-study-platform-brainstorm.html</loc>
+         <lastmod>2026-04-01</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-28-live-study-session-dashboard-brainstorm.html</loc>
+         <lastmod>2026-04-01</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-29-unified-session-architecture-brainstorm.html</loc>
          <lastmod>2026-04-01</lastmod>
     </url>
     <url>
@@ -194,6 +206,10 @@
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/2026-03-13-marathon-session-learnings.html</loc>
+         <lastmod>2026-04-01</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/architecture-decisions/parallel-research-catches-pre-implementation-assumptions.html</loc>
          <lastmod>2026-04-01</lastmod>
     </url>
     <url>

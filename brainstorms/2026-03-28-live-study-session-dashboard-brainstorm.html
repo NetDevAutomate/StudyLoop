@@ -1,0 +1,1388 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-03-28-live-study-session-dashboard-brainstorm.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Live Study Session Dashboard - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#live-study-session-dashboard" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Live Study Session Dashboard
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-were-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We're Building
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What We&#39;re Building">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cmux-added-2026-03-28-post-brainstorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cmux (added 2026-03-28, post-brainstorm)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Approach
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-agent-initiated-sessions-no-explicit-start-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Agent-initiated sessions, no explicit start question
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-combined-activity-pane-topics-insights-wins-parking-lot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Combined activity pane (topics + insights + wins + parking lot)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-agent-declares-topic-status-dashboard-just-renders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Agent declares topic status, dashboard just renders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-energy-adaptive-timer-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Energy-adaptive timer thresholds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-session-end-summary-view-wind-down-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Session end: summary view + wind-down protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-file-ipc-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. File-IPC protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-viewport-parity-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Viewport parity contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-database-changes-migration-v14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Database changes (migration v14)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Approach
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="live-study-session-dashboard">Live Study Session Dashboard<a class="headerlink" href="#live-study-session-dashboard" title="Permanent link">&para;</a></h1>
+<h2 id="what-were-building">What We're Building<a class="headerlink" href="#what-were-building" title="Permanent link">&para;</a></h2>
+<p>A real-time study session dashboard that provides ambient visual prompts to AuDHD learners during AI-mentored study sessions. The dashboard shows an energy-adaptive timer, color-coded topic tracking with struggle/insight indicators, a parking lot for tangential questions, and a mini-wins counter — all driven by the AI agent writing to shared files, with the user passively viewing.</p>
+<p>Three viewports, prioritised by implementation cost:
+- <strong>cmux native</strong> (cmux users) — agent controls panes directly via MCP tools. Zero new application code. Highest priority.
+- <strong>Web PWA</strong> (non-technical users / mobile) — browser tab, works on phone as ambient dashboard
+- <strong>Textual TUI</strong> (terminal users without cmux) — lowest priority, cmux covers this use case better</p>
+<p>The file-IPC protocol remains the persistence layer for all viewports. cmux adds a direct MCP channel where the agent writes to panes without file polling.</p>
+<h3 id="cmux-added-2026-03-28-post-brainstorm">cmux (added 2026-03-28, post-brainstorm)<a class="headerlink" href="#cmux-added-2026-03-28-post-brainstorm" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/manaflow-ai/cmux">cmux</a> is a Ghostty-based terminal with an MCP server that gives the AI agent programmatic control over panes, progress bars, status indicators, notifications, and embedded browser surfaces. Since it's already installed and running, it eliminates the three problems that led us to reject tmux/Zellij:</p>
+<ol>
+<li>No external install needed (already running)</li>
+<li>Agent has direct MCP control over panes (<code>new_split</code>, <code>send_input</code>, <code>set_status</code>, <code>set_progress</code>, <code>notify</code>)</li>
+<li>User doesn't interact with the multiplexer — agent controls everything</li>
+</ol>
+<p>Key MCP tools that map to our dashboard design:</p>
+<table>
+<thead>
+<tr>
+<th>Dashboard feature</th>
+<th>cmux MCP tool</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Timer progress bar</td>
+<td><code>set_progress</code></td>
+<td>Sidebar progress 0.0→1.0, color via energy thresholds</td>
+</tr>
+<tr>
+<td>Wins/Parked/Review counters</td>
+<td><code>set_status</code></td>
+<td>Sidebar key-value pairs with hex colors and icons</td>
+</tr>
+<tr>
+<td>Topic activity pane</td>
+<td><code>new_split</code> + <code>send_input</code></td>
+<td>Split pane, write formatted topic lines</td>
+</tr>
+<tr>
+<td>Break reminders</td>
+<td><code>notify</code></td>
+<td>Banner notification — PDA-sensitive, information not instruction</td>
+</tr>
+<tr>
+<td>Tab naming</td>
+<td><code>rename_tab</code></td>
+<td>"Study: Spark Internals"</td>
+</tr>
+<tr>
+<td>Session summary</td>
+<td><code>send_input</code></td>
+<td>Write summary view to the dashboard pane</td>
+</tr>
+<tr>
+<td>Embedded web dashboard</td>
+<td><code>browser_surface</code></td>
+<td>Open web PWA in a cmux browser pane</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-this-approach">Why This Approach<a class="headerlink" href="#why-this-approach" title="Permanent link">&para;</a></h2>
+<p>From a 5-agent codebase review (2026-03-28), the three biggest gaps in the current system are:</p>
+<ol>
+<li><strong>Parking lot has zero persistence</strong> — documented in 4 agent framework files but no DB table, no CLI, no API. Tangential topics are lost when sessions end.</li>
+<li><strong>No intra-session visual feedback</strong> — <code>studyctl wins</code>, <code>struggles</code>, <code>resume</code> exist as cross-session analytics but nothing shows progress in real time during a session.</li>
+<li><strong>The "any topic" bridge configure flow was never implemented</strong> — architecture supports it but the interactive setup command doesn't exist.</li>
+</ol>
+<p>The dashboard closes gaps 1 and 2. Gap 3 is a separate but related piece of work.</p>
+<h2 id="key-decisions">Key Decisions<a class="headerlink" href="#key-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="1-agent-initiated-sessions-no-explicit-start-question">1. Agent-initiated sessions, no explicit start question<a class="headerlink" href="#1-agent-initiated-sessions-no-explicit-start-question" title="Permanent link">&para;</a></h3>
+<p>The agent defaults to structured study mode with the timer running. No "structured or body doubling?" question — that's a demand that creates friction for PDA-sensitive users. If the agent detects low energy or disengagement mid-session (short answers, flat affect), it shifts to body doubling mode and the dashboard adapts: timer stays (hyperfocus protection), but topic tracking dims and check-ins become minimal.</p>
+<p><strong>Rationale:</strong> The Express Start protocol already says "skip the full protocol if the learner dives in." Consistent with existing AuDHD framework. Observation &gt; interrogation.</p>
+<h3 id="2-combined-activity-pane-topics-insights-wins-parking-lot">2. Combined activity pane (topics + insights + wins + parking lot)<a class="headerlink" href="#2-combined-activity-pane-topics-insights-wins-parking-lot" title="Permanent link">&para;</a></h3>
+<p>One unified pane rather than 4-5 separate panes. Color coding does the cognitive work:</p>
+<div class="highlight"><pre><span></span><code>┌───────────────────────────────────────────────┐
+│ ⏱  23:41  [████████████░░░░]  🟢              │
+├───────────────────────────────────────────────┤
+│ SESSION ACTIVITY                              │
+│ 🟢 Figured out Spark partitioning             │  ← Win
+│ 🟡 SQL window functions (re-explained twice)  │  ← Struggling (amber)
+│ 🟢 Connected ECMP → partition distribution    │  ← Bridge insight
+│ 🔴 Spark shuffle internals (3rd attempt)      │  ← Sustained struggle (red)
+│ ⬜ Parked: GIL vs multiprocessing             │  ← Deferred tangent
+├───────────────────────────────────────────────┤
+│ 🏆 WINS: 3  │  📌 PARKED: 1  │  ⚠️ REVIEW: 2 │
+└───────────────────────────────────────────────┘
+</code></pre></div>
+<p><strong>Rationale:</strong> Multiple panes = more visual noise. AuDHD users need "not overwhelming." One stream with colors is scannable peripherally. The wins counter at the bottom is always visible — the RSD antidote.</p>
+<h3 id="3-agent-declares-topic-status-dashboard-just-renders">3. Agent declares topic status, dashboard just renders<a class="headerlink" href="#3-agent-declares-topic-status-dashboard-just-renders" title="Permanent link">&para;</a></h3>
+<p>The agent writes structured status to <code>session-topics.md</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">-</span><span class="w"> </span>[09:14] Spark partitioning | status:learning | Basic concepts clicked
+<span class="k">-</span><span class="w"> </span>[09:31] SQL window functions | status:struggling | Re-explained PARTITION BY twice
+<span class="k">-</span><span class="w"> </span>[09:45] ECMP → partition distribution | status:insight | Student-generated bridge
+<span class="k">-</span><span class="w"> </span>[09:52] Spark shuffle | status:struggling | Third attempt at explanation
+<span class="k">-</span><span class="w"> </span>[10:03] Spark shuffle | status:win | Finally grasped it after code example
+</code></pre></div>
+<p>Status values: <code>learning</code>, <code>struggling</code>, <code>insight</code>, <code>win</code>, <code>parked</code></p>
+<p>The dashboard parses these lines and renders with appropriate colors. No struggle-detection algorithm in the viewport — the agent has the conversational context to make this judgment. The viewport stays dumb and reliable.</p>
+<p><strong>Amber/red auto-logging:</strong> Any topic that reaches <code>struggling</code> status gets automatically written to the session DB as a struggle topic (feeds into <code>studyctl struggles</code> and spaced repetition scheduling). This happens in the agent protocol, not the dashboard.</p>
+<h3 id="4-energy-adaptive-timer-thresholds">4. Energy-adaptive timer thresholds<a class="headerlink" href="#4-energy-adaptive-timer-thresholds" title="Permanent link">&para;</a></h3>
+<p>Timer color transitions match the existing break-science.md intervals:</p>
+<table>
+<thead>
+<tr>
+<th>Energy</th>
+<th>Green → Amber</th>
+<th>Amber → Red</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>High (7-10)</td>
+<td>25 min</td>
+<td>50 min</td>
+<td>break-science.md micro/short intervals</td>
+</tr>
+<tr>
+<td>Medium (4-6)</td>
+<td>20 min</td>
+<td>40 min</td>
+<td>break-science.md micro/short intervals</td>
+</tr>
+<tr>
+<td>Low (1-3)</td>
+<td>15 min</td>
+<td>30 min</td>
+<td>break-science.md micro/short intervals</td>
+</tr>
+</tbody>
+</table>
+<p>Energy level comes from <code>session-state.json</code> (written by agent at session start, updated if energy shifts mid-session). Timer reads the energy value and adjusts thresholds dynamically.</p>
+<p>Timer messaging is PDA-sensitive (information, not instruction):
+- Green → Amber: no message (just the color shift)
+- Amber → Red: subtle text: "Your brain's been at this for a while."
+- Red sustained: "Just flagging it." (then back off)</p>
+<h3 id="5-session-end-summary-view-wind-down-protocol">5. Session end: summary view + wind-down protocol<a class="headerlink" href="#5-session-end-summary-view-wind-down-protocol" title="Permanent link">&para;</a></h3>
+<p>When the agent signals session end, the dashboard transitions to a summary view:</p>
+<div class="highlight"><pre><span></span><code>┌───────────────────────────────────────────────┐
+│ SESSION COMPLETE — 47 minutes                 │
+├───────────────────────────────────────────────┤
+│ 🏆 WINS                                      │
+│ ✓ Figured out Spark partitioning              │
+│ ✓ Connected ECMP → partition distribution     │
+│ ✓ Spark shuffle — grasped after code example  │
+├───────────────────────────────────────────────┤
+│ 📚 FOR NEXT SESSION                           │
+│ ⚠️ SQL window functions — needs more practice │
+│ 📌 GIL vs multiprocessing — parked            │
+├───────────────────────────────────────────────┤
+│ 🧠 CONSOLIDATION                              │
+│ Stand up. Walk to the kitchen. Put the        │
+│ kettle on. Avoid your phone for 10-15 min —   │
+│ your brain will replay this at 20x speed.     │
+└───────────────────────────────────────────────┘
+</code></pre></div>
+<p>This reflects the wind-down protocol (already in <code>wind-down-protocol.md</code>):
+- Phase 1: Session wrap — wins, struggles, parking lot
+- Phase 2: Consolidation guidance — concrete first step (ADHD transition support)
+- Phase 3: Next session suggestion — what to review, when</p>
+<p>The wins section is prominent and first. The struggles are framed as "for next session" not "you failed at." The consolidation guidance uses the concrete-first-step pattern from the existing protocol.</p>
+<h3 id="6-file-ipc-protocol">6. File-IPC protocol<a class="headerlink" href="#6-file-ipc-protocol" title="Permanent link">&para;</a></h3>
+<p>The agent writes to files in <code>~/.config/studyctl/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+<th>Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>session-state.json</code></td>
+<td>Session metadata (energy, topic, mode, study_session_id)</td>
+<td>JSON</td>
+</tr>
+<tr>
+<td><code>session-topics.md</code></td>
+<td>Topic tracking with status indicators</td>
+<td>Markdown with structured <code>[time] topic \| status:X \| note</code> lines</td>
+</tr>
+<tr>
+<td><code>session-parking.md</code></td>
+<td>Parking lot items (agent appends, never overwrites)</td>
+<td>Markdown bullet list</td>
+</tr>
+</tbody>
+</table>
+<p>Both viewports poll these files (2s interval for TUI via <code>run_worker</code>, polling endpoint for web PWA).</p>
+<p>At session end:
+1. <code>session-topics.md</code> → Obsidian vault as session notes (with frontmatter: date, topic, duration, wins count)
+2. <code>session-parking.md</code> → parsed → inserted into <code>parked_topics</code> table (migration v14) with <code>status='pending'</code>
+3. Struggle topics → written to <code>study_progress</code> with appropriate confidence level
+4. Both temp files archived/deleted</p>
+<h3 id="7-viewport-parity-contract">7. Viewport parity contract<a class="headerlink" href="#7-viewport-parity-contract" title="Permanent link">&para;</a></h3>
+<p>All three viewports MUST support the core dashboard features:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>cmux native</th>
+<th>Web PWA</th>
+<th>Textual TUI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Energy-adaptive timer</td>
+<td><code>set_progress</code> (sidebar)</td>
+<td>Alpine.js (client)</td>
+<td><code>reactive</code> widget</td>
+</tr>
+<tr>
+<td>Combined activity pane</td>
+<td><code>send_input</code> to split pane</td>
+<td>SSE + HTMX</td>
+<td><code>RichLog</code> widget</td>
+</tr>
+<tr>
+<td>Color-coded status</td>
+<td><code>set_status</code> with hex colors</td>
+<td>CSS variables</td>
+<td>Rich markup</td>
+</tr>
+<tr>
+<td>Summary counters</td>
+<td><code>set_status</code> key-values</td>
+<td>OOB swaps</td>
+<td>Counter widget</td>
+</tr>
+<tr>
+<td>Break reminders</td>
+<td><code>notify</code> banner</td>
+<td>Browser notification</td>
+<td>Terminal bell</td>
+</tr>
+<tr>
+<td>Session end summary</td>
+<td><code>send_input</code> summary view</td>
+<td>HTML template swap</td>
+<td><code>ContentSwitcher</code></td>
+</tr>
+<tr>
+<td>Wind-down protocol</td>
+<td>Displayed in activity pane</td>
+<td>Displayed in page</td>
+<td>Displayed in widget</td>
+</tr>
+</tbody>
+</table>
+<p>cmux only:
+- Sidebar progress bar (native, always visible)
+- Sidebar status indicators (native, always visible)
+- Embedded browser pane (<code>browser_surface</code> for web PWA alongside terminal)
+- Spawn additional agents (<code>spawn_agent</code>)</p>
+<p>Web PWA only:
+- Mobile layout (phone as ambient dashboard)
+- Dyslexic font toggle (existing)
+- Touch-friendly controls
+- Flashcard/quiz review (existing)</p>
+<p>Textual TUI only (lowest priority — cmux covers terminal users):
+- Keyboard shortcuts for quick actions
+- Standalone terminal app (no cmux dependency)</p>
+<h3 id="8-database-changes-migration-v14">8. Database changes (migration v14)<a class="headerlink" href="#8-database-changes-migration-v14" title="Permanent link">&para;</a></h3>
+<p>New <code>parked_topics</code> table:</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">parked_topics</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTOINCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">study_session_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">study_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">sessions</span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">topic_tag</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">question</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">context</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">status</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;pending&#39;</span>
+<span class="w">        </span><span class="k">CHECK</span><span class="p">(</span><span class="n">status</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;pending&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;scheduled&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;resolved&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;dismissed&#39;</span><span class="p">)),</span>
+<span class="w">    </span><span class="n">scheduled_for</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">resolved_at</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">parked_at</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="s1">&#39;now&#39;</span><span class="p">)),</span>
+<span class="w">    </span><span class="n">created_by</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;agent&#39;</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Status lifecycle: <code>pending → scheduled → resolved</code> or <code>pending → dismissed</code></p>
+<p>Six API functions in <code>history.py</code>: <code>park_topic()</code>, <code>get_parked_topics()</code>, <code>get_unscheduled_parked_topics()</code>, <code>schedule_parked_topic()</code>, <code>resolve_parked_topic()</code>, <code>dismiss_parked_topic()</code>.</p>
+<h2 id="open-questions">Open Questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Accessibility:</strong> DECIDED — use shapes + colors together. Icon vocabulary:</li>
+<li><code>✓</code> Win (green) — mastered or insight moment</li>
+<li><code>▲</code> Struggling (amber/red) — needs re-explanation or repeated questions</li>
+<li><code>◆</code> Learning (neutral/blue) — normal topic progression</li>
+<li><code>○</code> Parked (grey) — tangential, deferred to future session</li>
+<li><code>★</code> Insight (green) — aha moment or bridge connection
+   Information is never color-only. Shapes carry meaning independently for colorblind users.</li>
+<li><strong>Sound:</strong> Should the timer color transitions have an optional subtle audio cue? The TTS system already exists (<code>study-speak</code>). A soft chime at amber might help users who aren't watching the screen.</li>
+<li><strong>Multiple viewports simultaneously:</strong> Can a user have both the web PWA and TUI open? Since both poll the same files, this should work — but we should test for race conditions on the polling endpoint.</li>
+<li><strong>Offline/crash recovery:</strong> If the session crashes without running the end protocol, parked topics should already be in the DB (written immediately on <code>park_topic()</code>, not batched at session end). The temp files remain on disk for manual recovery. Need to confirm this pattern.</li>
+<li><strong>Bridge configure flow:</strong> Should <code>studyctl bridge configure</code> (the interactive 4-step discovery for non-networking users) be part of this work or a separate effort? It's related but not blocking.</li>
+</ol>
+<h2 id="implementation-approach">Implementation Approach<a class="headerlink" href="#implementation-approach" title="Permanent link">&para;</a></h2>
+<p><strong>Recommended: cmux native first (nearly free), then Web PWA, Textual TUI last.</strong></p>
+<p>cmux requires almost zero new application code — the agent calls MCP tools directly. This validates the dashboard concept immediately with the primary user. The web PWA follows for mobile/browser users. Textual TUI drops to lowest priority since cmux covers terminal users better.</p>
+<p>Phased:
+1. <strong>Foundation</strong> — Migration v14, file-IPC protocol, <code>studyctl session start/end</code> CLI, agent protocol updates — <strong>DONE</strong> (committed <code>72b1ec5</code>)
+2. <strong>cmux native viewport</strong> — Agent protocol additions for MCP tool calls during sessions. Dashboard pane layout, sidebar progress/status, notifications. Near-zero code — primarily agent prompt engineering.
+3. <strong>Web PWA live session mode</strong> — SSE endpoint, session activity pane, Alpine.js energy-adaptive timer, summary view
+4. <strong>Polish</strong> — Obsidian export, <code>suggest.py</code> backport for parking lot surfacing, bridge configure
+5. <strong>Textual TUI session view</strong> (if needed) — Same layout, <code>run_worker</code> polling, Rich markup for colors</p>
+<p>Base branch: <code>compact/core-only</code> with <code>resume</code> and <code>streaks</code> added back.</p>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<p>→ <code>/ce:plan</code> for implementation details</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
