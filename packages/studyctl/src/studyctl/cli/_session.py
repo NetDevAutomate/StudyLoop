@@ -188,6 +188,50 @@ def session_status() -> None:
     )
 
 
+@click.command("topic")
+@click.argument("name")
+@click.option(
+    "--status",
+    "-s",
+    default="learning",
+    type=click.Choice(["learning", "struggling", "insight", "win", "parked"]),
+    help="Topic status.",
+)
+@click.option("--note", "-n", default="", help="Brief note about progress.")
+def topic_cmd(name: str, status: str, note: str) -> None:
+    """Log a topic to the session activity feed.
+
+    Used by AI agents to update the sidebar and web dashboard in real time.
+
+    Examples:
+
+        studyctl topic "Closures" --status learning --note "grasping the basics"
+
+        studyctl topic "Decorators" --status win --note "can write property decorator"
+    """
+    from datetime import datetime
+
+    from studyctl.session_state import append_topic, read_session_state
+
+    state = read_session_state()
+    if not state.get("study_session_id"):
+        console.print("[yellow]No active session. Start one with 'studyctl study'.[/yellow]")
+        return
+
+    time_str = datetime.now().strftime("%H:%M")
+    append_topic(time_str, name, status, note)
+
+    shapes = {
+        "win": "\u2713",
+        "insight": "\u2605",
+        "learning": "\u25c6",
+        "struggling": "\u25b2",
+        "parked": "\u25cb",
+    }
+    shape = shapes.get(status, "\u25c6")
+    console.print(f"[dim]{shape} {name}[/dim]")
+
+
 @click.command("park")
 @click.argument("question")
 @click.option("--topic", "-t", default=None, help="Topic tag for the parked item.")

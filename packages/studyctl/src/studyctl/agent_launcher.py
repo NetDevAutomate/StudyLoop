@@ -48,8 +48,21 @@ def get_default_agent() -> str | None:
     return agents[0] if agents else None
 
 
-def build_persona_file(mode: str, topic: str, energy: int) -> Path:
+def build_persona_file(
+    mode: str,
+    topic: str,
+    energy: int,
+    *,
+    previous_notes: str | None = None,
+) -> Path:
     """Create a temporary persona file with session-specific instructions.
+
+    Args:
+        mode: Session mode (study, co-study).
+        topic: Study topic.
+        energy: Energy level 1-10.
+        previous_notes: If resuming, notes from the previous session
+            (topics covered, wins, struggles, parked questions).
 
     Uses ``mkstemp`` with 0600 permissions (security review N-04).
     Returns the path to the temp file. Caller should clean up on session end.
@@ -57,6 +70,24 @@ def build_persona_file(mode: str, topic: str, energy: int) -> Path:
     # Load the mode-specific persona template
     persona_path = PERSONA_DIR / f"{mode}.md"
     template = persona_path.read_text() if persona_path.exists() else _default_persona(mode)
+
+    # Build resume context if available
+    resume_section = ""
+    if previous_notes:
+        resume_section = f"""
+## Resuming Previous Session
+
+This is a RESUMED session. Here's what was covered last time:
+
+{previous_notes}
+
+Pick up where we left off. Don't re-introduce the topic from scratch —
+reference specific items from the previous session and ask where the
+student wants to continue.
+
+---
+
+"""
 
     # Inject session context
     content = f"""# Study Session Context
@@ -66,7 +97,7 @@ def build_persona_file(mode: str, topic: str, energy: int) -> Path:
 **Mode:** {mode}
 
 ---
-
+{resume_section}
 {template}
 """
     fd, path = tempfile.mkstemp(
