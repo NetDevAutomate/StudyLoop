@@ -413,6 +413,32 @@ class TestCleanup:
             desc="state marked as ended after agent exit",
         )
 
+    @pytest.mark.xfail(reason="Textual captures Q differently than tmux send-keys S-q")
+    def test_sidebar_q_sends_exit_to_agent(self, tmp_path):
+        """Pressing Q in the sidebar sends /exit to the agent pane."""
+        agent = _make_mock_agent(tmp_path)
+        info = _start_session(agent)
+        sidebar_pane = info["sidebar_pane"]
+        session_name = info["session_name"]
+
+        # Wait for sidebar to render (any content means Textual is up)
+        _wait_for(
+            lambda: len(_capture_pane(sidebar_pane).strip()) > 0,
+            timeout=10,
+            desc="sidebar to render",
+        )
+
+        # Send Q (uppercase, shift) to the sidebar pane
+        _tmux("send-keys", "-t", sidebar_pane, "S-q")
+
+        # The sidebar sends /exit to the agent pane, agent exits,
+        # wrapper runs cleanup. Wait for session to end.
+        _wait_for(
+            lambda: not _session_exists(session_name) or _read_state().get("mode") == "ended",
+            timeout=20,
+            desc="session ended after sidebar Q",
+        )
+
     def test_explicit_end_command(self, tmp_path):
         """studyctl study --end cleans up session."""
         agent = _make_mock_agent(tmp_path)
