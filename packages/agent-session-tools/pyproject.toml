@@ -122,7 +122,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
 markers = [
-    "live: marks tests that require live database (deselect with '-m \"not live\"')",
+    "integration: requires external infrastructure (tmux, real DB, network)",
 ]
 
 [tool.coverage.run]

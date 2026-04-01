@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from agent_session_tools.exporters.litellm import LitellmExporter
-from agent_session_tools.migrations import migrate
 
 
 # ---------------------------------------------------------------------------
@@ -135,14 +134,6 @@ def _create_empty_litellm_db(db_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def migrated_db(temp_db):
-    """Return (conn, db_path) with migrations applied."""
-    conn, db_path = temp_db
-    migrate(conn)
-    return conn, db_path
 
 
 @pytest.fixture()

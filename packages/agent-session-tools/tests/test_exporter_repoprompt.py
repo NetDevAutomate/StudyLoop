@@ -9,20 +9,11 @@ from agent_session_tools.exporters.repoprompt import (
     RepoPromptExporter,
     cf_timestamp_to_iso,
 )
-from agent_session_tools.migrations import migrate
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def migrated_db(temp_db):
-    """Return (conn, db_path) with migrations applied."""
-    conn, db_path = temp_db
-    migrate(conn)
-    return conn, db_path
 
 
 @pytest.fixture()
