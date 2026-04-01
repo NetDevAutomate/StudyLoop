@@ -678,3 +678,116 @@ class TestWrapperScript:
         content = wrapper.read_text()
         assert "python" in content.lower()
         assert "-m studyctl.cli" in content
+
+
+# ---------------------------------------------------------------------------
+# Test: E2E Experience Verification
+# ---------------------------------------------------------------------------
+
+
+class TestExperienceVerification:
+    """Verify user-facing experience, not just plumbing.
+
+    These tests go beyond checking IPC files to verify what the user
+    actually sees in the terminal and what data flows across sessions.
+    """
+
+    def test_sidebar_pane_renders_topics(self, tmp_path):
+        """Topics logged by the agent appear in the sidebar PANE, not just IPC files."""
+        agent = _make_mock_agent(tmp_path)
+        info = _start_session(agent)
+
+        _wait_for(
+            lambda: TOPICS_FILE.exists() and "First-class" in TOPICS_FILE.read_text(),
+            desc="topics logged to IPC",
+        )
+        time.sleep(7)
+
+        content = _capture_pane(info["sidebar_pane"])
+        assert any(marker in content for marker in ["Closures", "First-class", "W:", "L:"]), (
+            f"Sidebar pane should render topic data but got:\n{content}"
+        )
+
+    def test_cleanup_notes_flow_into_resume_persona(self, tmp_path):
+        """Full chain: topics -> cleanup -> DB notes -> resume persona."""
+        agent = _make_mock_agent(tmp_path)
+        info = _start_session(agent)
+        original_name = info["session_name"]
+
+        _wait_for(
+            lambda: TOPICS_FILE.exists() and "First-class" in TOPICS_FILE.read_text(),
+            desc="topics logged before end",
+        )
+        _studyctl("study", "--end")
+        _wait_for(
+            lambda: not _session_exists(original_name),
+            timeout=10,
+            desc="original session killed",
+        )
+
+        agent2 = _make_mock_agent(tmp_path, name="mock-agent-chain.sh")
+        _studyctl(
+            "study",
+            "--resume",
+            env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
+        )
+        _wait_for(STATE_FILE.exists, desc="resumed state file")
+        state = _read_state()
+
+        persona_path = state.get("persona_file")
+        assert persona_path, "Resumed session should have a persona file"
+        persona = Path(persona_path)
+        assert persona.exists(), f"Persona file not found at {persona_path}"
+
+        persona_content = persona.read_text()
+        has_topic_ref = "Closures" in persona_content or "First-class" in persona_content
+        has_resume_section = "Resuming" in persona_content or "Previous" in persona_content
+        assert has_topic_ref or has_resume_section, (
+            f"Resume persona should reference session 1 topics.\n"
+            f"Persona content (first 800 chars):\n{persona_content[:800]}"
+        )
+
+    def test_resume_flag_strictly_present(self, tmp_path):
+        """Resume must reuse session directory -- no OR fallback allowed."""
+        agent = _make_fast_agent(tmp_path)
+        info = _start_session(agent)
+        original_dir = info["session_dir"]
+        original_name = info["session_name"]
+
+        _wait_for(
+            lambda: not _session_exists(original_name) or _read_state().get("mode") == "ended",
+            timeout=20,
+            desc="session ended",
+        )
+
+        agent2 = _make_mock_agent(tmp_path, name="mock-resume-strict.sh")
+        _studyctl(
+            "study",
+            "--resume",
+            env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
+        )
+        _wait_for(STATE_FILE.exists, desc="resumed state file")
+        state = _read_state()
+
+        assert state.get("session_dir") == original_dir, (
+            f"Resume should reuse {original_dir}, got {state.get('session_dir')}"
+        )
+
+    def test_sidebar_shows_elapsed_time(self, tmp_path):
+        """Sidebar should display a non-zero elapsed time after a few seconds."""
+        import re
+
+        agent = _make_mock_agent(tmp_path)
+        info = _start_session(agent)
+
+        _wait_for(
+            lambda: len(_capture_pane(info["sidebar_pane"]).strip()) > 0,
+            timeout=10,
+            desc="sidebar to render",
+        )
+        time.sleep(5)
+
+        content = _capture_pane(info["sidebar_pane"])
+        has_time = bool(re.search(r"\d+:\d{2}", content))
+        has_elapsed = "elapsed" in content.lower() or "timer" in content.lower()
+        assert has_time or has_elapsed, f"Sidebar should show elapsed time but got:\n{content}"

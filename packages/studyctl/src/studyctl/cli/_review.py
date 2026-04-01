@@ -1,4 +1,4 @@
-"""Review commands — spaced repetition, progress, and struggle detection."""
+"""Review commands — spaced repetition, progress, struggle detection, and knowledge bridges."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from rich.table import Table
 
 from studyctl.cli._shared import TOPIC_KEYWORDS, console
 from studyctl.history import (
+    get_bridges,
+    record_bridge,
     spaced_repetition_due,
     struggle_topics,
 )
@@ -219,3 +221,82 @@ def streaks() -> None:
         console.print(
             "\n  [dim]No session today or yesterday. Start one to keep your streak going![/dim]"
         )
+
+
+# --- Knowledge bridges ---
+
+
+@click.group(name="bridge")
+def bridge_group() -> None:
+    """Manage knowledge bridges between domains."""
+
+
+@bridge_group.command(name="add")
+@click.argument("source")
+@click.option("--source-domain", "-s", required=True, help="Source domain (e.g. networking).")
+@click.argument("target")
+@click.option("--target-domain", "-t", required=True, help="Target domain (e.g. python).")
+@click.option("--mapping", "-m", required=True, help="How concepts relate.")
+@click.option(
+    "--quality",
+    "-q",
+    type=click.Choice(["strong", "moderate", "weak"]),
+    default="moderate",
+    help="Bridge quality.",
+)
+def bridge_add(
+    source: str,
+    source_domain: str,
+    target: str,
+    target_domain: str,
+    mapping: str,
+    quality: str,
+) -> None:
+    """Add a knowledge bridge between two concepts.
+
+    Example::
+
+        studyctl bridge add "ECMP" -s networking \\
+            "Spark partitions" -t python -m "Both distribute"
+    """
+    if record_bridge(source, source_domain, target, target_domain, mapping, quality, "student"):
+        console.print(
+            f"[green]Bridge added:[/green] "
+            f"{source} ({source_domain}) \u2192 {target} ({target_domain})"
+        )
+    else:
+        console.print("[red]Failed to add bridge. Check your session database.[/red]")
+
+
+@bridge_group.command(name="list")
+@click.option("--source-domain", "-s", default=None, help="Filter by source domain.")
+@click.option("--target-domain", "-t", default=None, help="Filter by target domain.")
+@click.option("--quality", "-q", default=None, help="Filter by quality.")
+def bridge_list(source_domain: str | None, target_domain: str | None, quality: str | None) -> None:
+    """List knowledge bridges."""
+    bridges = get_bridges(target_domain=target_domain, source_domain=source_domain, quality=quality)
+    if not bridges:
+        console.print("[dim]No bridges found. Use 'studyctl bridge add' to create some.[/dim]")
+        return
+
+    table = Table(title="Knowledge Bridges")
+    table.add_column("Source", style="cyan")
+    table.add_column("Domain")
+    table.add_column("\u2192")
+    table.add_column("Target", style="green")
+    table.add_column("Domain")
+    table.add_column("Mapping")
+    table.add_column("Quality")
+
+    for b in bridges:
+        table.add_row(
+            b["source_concept"],
+            b["source_domain"],
+            "\u2192",
+            b["target_concept"],
+            b["target_domain"],
+            b["mapping"],
+            b["quality"],
+        )
+
+    console.print(table)
