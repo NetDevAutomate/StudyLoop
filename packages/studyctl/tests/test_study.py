@@ -139,20 +139,22 @@ class TestStudyEnd:
             patch("studyctl.session_state.read_session_state", return_value=state),
             patch("studyctl.session_state.STATE_FILE") as sf,
             patch("studyctl.session_state.SESSION_DIR") as sd,
+            patch("studyctl.session_state.TOPICS_FILE") as tf,
+            patch("studyctl.session_state.PARKING_FILE") as pf,
             patch("studyctl.history.end_study_session") as end,
             patch("studyctl.session_state._write_file_secure"),
             patch("studyctl.session_state._ensure_session_dir"),
-            patch("studyctl.session_state.clear_session_files") as clear,
             patch("studyctl.tmux.subprocess.run") as tmux_run,
         ):
             sf.exists.return_value = True
             sd.__truediv__ = MagicMock(return_value=MagicMock(exists=MagicMock(return_value=False)))
-            tmux_run.return_value = MagicMock(returncode=0)  # session_exists + kill
+            tf.unlink = MagicMock()
+            pf.unlink = MagicMock()
+            tmux_run.return_value = MagicMock(returncode=0)
             result = runner.invoke(study, ["--end"])
 
             assert "Session ended" in result.output
             end.assert_called_once_with("abc123", notes="No topics recorded during session.")
-            clear.assert_called_once()
 
 
 class TestStudyResume:

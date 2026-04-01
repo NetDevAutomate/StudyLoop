@@ -394,8 +394,6 @@ def _handle_resume(ctx: click.Context) -> None:
     from pathlib import Path
 
     if session_dir and Path(session_dir).exists():
-        from studyctl.session_state import clear_session_files
-
         topic = state.get("topic", "unknown")
         agent = state.get("agent", "claude")
         mode = state.get("mode", "study")
@@ -411,8 +409,7 @@ def _handle_resume(ctx: click.Context) -> None:
             f"[green]Resuming conversation:[/green] {topic}\n"
             f"  [dim]Rebuilding tmux session with conversation history[/dim]"
         )
-        # Clear stale state so _handle_start doesn't see "already active"
-        clear_session_files()
+        # State file has mode=ended, is_session_active() returns False — no need to clear
         # Rebuild tmux in the SAME session directory (preserves conversation history)
         _handle_start(
             ctx,
@@ -439,7 +436,6 @@ def _handle_end(_ctx: click.Context) -> None:
     """End the current study session cleanly."""
     from studyctl.history import end_study_session
     from studyctl.session_state import (
-        clear_session_files,
         read_session_state,
         write_session_state,
     )
@@ -494,8 +490,14 @@ def _handle_end(_ctx: click.Context) -> None:
         kill_session(session_name)
         console.print(f"  tmux session '{session_name}' closed.")
 
-    # Clear IPC files
-    clear_session_files()
+    # Clear transient IPC files but KEEP session-state.json (with mode=ended).
+    # The state file is needed by --resume to find the session directory
+    # and metadata. It's cleared when a new session starts.
+    from studyctl.session_state import PARKING_FILE, TOPICS_FILE
+
+    for f in [TOPICS_FILE, PARKING_FILE, oneline]:
+        with contextlib.suppress(OSError):
+            f.unlink()
 
 
 def _get_previous_session_notes(study_id: str | None) -> str | None:
@@ -558,8 +560,9 @@ def _cleanup_session() -> None:
 
     from studyctl.history import end_study_session
     from studyctl.session_state import (
+        PARKING_FILE,
         SESSION_DIR,
-        clear_session_files,
+        TOPICS_FILE,
         parse_parking_file,
         parse_topics_file,
         read_session_state,
@@ -608,9 +611,11 @@ def _cleanup_session() -> None:
         with contextlib.suppress(Exception):
             kill_session(session_name)
 
-    # Clear IPC files
-    with contextlib.suppress(Exception):
-        clear_session_files()
+    # Clear transient IPC files but KEEP session-state.json (mode=ended).
+    # Needed by --resume to find the session directory.
+    for f in [TOPICS_FILE, PARKING_FILE, oneline]:
+        with contextlib.suppress(OSError):
+            f.unlink()
 
 
 def _start_web_background(_session_name: str) -> None:
