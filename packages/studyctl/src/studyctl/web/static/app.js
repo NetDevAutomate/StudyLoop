@@ -173,9 +173,10 @@ async function showCourses() {
   state.isRetry = false;
   stopSpeaking();
 
-  const [courses, history] = await Promise.all([
+  const [courses, history, sessionState] = await Promise.all([
     api("/api/courses"),
     api("/api/history"),
+    api("/api/session/state").catch(() => ({})),
   ]);
 
   if (courses.length === 0) {
@@ -234,8 +235,16 @@ async function showCourses() {
       </div>
     </div>` : "";
 
+  const sessionBanner = sessionState.study_session_id
+    ? `<a href="/session" class="session-indicator">
+        <span class="session-pulse"></span>
+        Live session: ${escHtml(sessionState.topic || "Study")}
+      </a>`
+    : "";
+
   app.innerHTML = `
     <div style="width:100%;max-width:800px">
+      ${sessionBanner}
       <div class="courses">${courseCards}</div>
       ${heatmapDays ? `
         <div class="heatmap-section">
