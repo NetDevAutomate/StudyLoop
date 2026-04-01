@@ -38,6 +38,7 @@ from studyctl.cli._lazy import LazyGroup
         # _session.py — live study session management
         "session": "studyctl.cli._session:session_group",
         "park": "studyctl.cli._session:park",
+        "topic": "studyctl.cli._session:topic_cmd",
         # _study.py — unified study session (tmux + agent + sidebar)
         "study": "studyctl.cli._study:study",
         "sidebar": "studyctl.cli._study:sidebar_cmd",

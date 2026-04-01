@@ -100,6 +100,7 @@ def _handle_start(
     *,
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
+    previous_notes: str | None = None,
 ) -> None:
     """Start a new study session with tmux environment.
 
@@ -107,6 +108,8 @@ def _handle_start(
         resume_session_name: If resuming, reuse this tmux session name
             (same directory with .claude/ history).
         resume_session_dir: If resuming, reuse this session directory.
+        previous_notes: If resuming, notes from the previous session
+            to inject into the agent persona.
     """
     from studyctl.agent_launcher import build_persona_file, detect_agents, get_launch_command
     from studyctl.history import start_study_session
@@ -230,7 +233,7 @@ def _handle_start(
         kill_session(session_name)
 
     # Build commands before creating panes
-    persona_file = build_persona_file(mode, topic, energy)
+    persona_file = build_persona_file(mode, topic, energy, previous_notes=previous_notes)
     agent_cmd = get_launch_command(agent, persona_file, resume=is_resuming)
 
     import sys
@@ -354,19 +357,22 @@ def _handle_resume(ctx: click.Context) -> None:
 
         topic = state.get("topic", "unknown")
         agent = state.get("agent", "claude")
-        # mode may be "ended" from cleanup — restore the original mode
         mode = state.get("mode", "study")
         if mode == "ended":
             mode = "study"
         energy = state.get("energy", 5)
         timer = state.get("timer_mode", "elapsed")
+
+        # Fetch previous session notes from DB for agent context
+        previous_notes = _get_previous_session_notes(state.get("study_session_id"))
+
         console.print(
             f"[green]Resuming conversation:[/green] {topic}\n"
             f"  [dim]Rebuilding tmux session with conversation history[/dim]"
         )
         # Clear stale state so _handle_start doesn't see "already active"
         clear_session_files()
-        # Rebuild tmux in the SAME session directory (preserves .claude/ history)
+        # Rebuild tmux in the SAME session directory (preserves conversation history)
         _handle_start(
             ctx,
             topic,
@@ -377,6 +383,7 @@ def _handle_resume(ctx: click.Context) -> None:
             web=False,
             resume_session_name=session_name,
             resume_session_dir=session_dir,
+            previous_notes=previous_notes,
         )
         return
 
@@ -448,6 +455,24 @@ def _handle_end(_ctx: click.Context) -> None:
 
     # Clear IPC files
     clear_session_files()
+
+
+def _get_previous_session_notes(study_id: str | None) -> str | None:
+    """Fetch the notes from a previous study session in the DB."""
+    if not study_id:
+        return None
+    try:
+        import sqlite3
+
+        from studyctl.settings import get_db_path
+
+        conn = sqlite3.connect(str(get_db_path()))
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT notes FROM study_sessions WHERE id = ?", (study_id,)).fetchone()
+        conn.close()
+        return row["notes"] if row and row["notes"] else None
+    except Exception:
+        return None
 
 
 def _build_session_notes(
