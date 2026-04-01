@@ -146,6 +146,32 @@ def _make_mock_agent(tmp_path: Path, *, name: str = "mock-agent.sh") -> str:
     return str(script)
 
 
+def _make_wrapper_agent(tmp_path: Path) -> str:
+    """Create a mock agent that uses the session dir's studyctl wrapper.
+
+    This is the realistic test — Claude Code calls ``studyctl topic``
+    which resolves to the wrapper script at ``$SESSION_DIR/studyctl``.
+    If the wrapper is broken (e.g. missing __main__.py), this fails.
+    """
+    script = tmp_path / "wrapper-agent.sh"
+    script.write_text(
+        textwrap.dedent("""\
+        #!/bin/bash
+        # Wrapper agent: uses the studyctl wrapper from the session dir
+        # (same as what Claude Code does in a real session)
+        sleep 2
+        studyctl topic "Wrapper Test" --status learning --note "via wrapper"
+        sleep 1
+        studyctl park "Does the wrapper actually work?"
+        # Wait for exit
+        trap 'exit 0' INT TERM
+        while true; do sleep 1; done
+    """)
+    )
+    script.chmod(0o755)
+    return str(script)
+
+
 def _make_fast_agent(tmp_path: Path) -> str:
     """Create a minimal agent that exits quickly (for cleanup/resume tests)."""
     script = tmp_path / "fast-agent.sh"
@@ -537,3 +563,56 @@ class TestErrorHandling:
             env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
         )
         assert "already active" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Test: Wrapper Script (realistic agent interaction)
+# ---------------------------------------------------------------------------
+
+
+class TestWrapperScript:
+    """Verify the studyctl wrapper in the session directory works.
+
+    This is the most realistic test — the mock agent calls ``studyctl``
+    which resolves to the wrapper script at ``$SESSION_DIR/studyctl``,
+    exactly as Claude Code does in a real study session. If the wrapper
+    is broken (missing __main__.py, wrong Python path, etc.), these fail.
+    """
+
+    def test_wrapper_agent_can_log_topics(self, tmp_path):
+        """Agent using session dir wrapper can call studyctl topic."""
+        agent = _make_wrapper_agent(tmp_path)
+        _start_session(agent)
+
+        _wait_for(
+            lambda: TOPICS_FILE.exists() and "Wrapper Test" in TOPICS_FILE.read_text(),
+            timeout=15,
+            desc="topic logged via session dir wrapper",
+        )
+        assert "status:learning" in TOPICS_FILE.read_text()
+
+    def test_wrapper_agent_can_park_topics(self, tmp_path):
+        """Agent using session dir wrapper can call studyctl park."""
+        agent = _make_wrapper_agent(tmp_path)
+        _start_session(agent)
+
+        _wait_for(
+            lambda: PARKING_FILE.exists() and PARKING_FILE.stat().st_size > 0,
+            timeout=15,
+            desc="parked topic via session dir wrapper",
+        )
+        assert "wrapper" in PARKING_FILE.read_text().lower()
+
+    def test_wrapper_script_exists_and_executable(self, tmp_path):
+        """The studyctl wrapper is created in the session dir."""
+        agent = _make_wrapper_agent(tmp_path)
+        info = _start_session(agent)
+
+        wrapper = Path(info["session_dir"]) / "studyctl"
+        assert wrapper.exists()
+        assert os.access(wrapper, os.X_OK)
+
+        # Wrapper should point to a valid Python
+        content = wrapper.read_text()
+        assert "python" in content.lower()
+        assert "-m studyctl.cli" in content
