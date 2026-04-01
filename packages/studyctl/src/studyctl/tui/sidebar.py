@@ -109,13 +109,68 @@ def _timer_phase(elapsed_secs: int, energy: int) -> str:
     return "red"
 
 
+# Pomodoro cycle: 25 focus, 5 break, repeated 4 times, then 15 long break.
+# All durations in seconds.
+POMODORO_FOCUS = 25 * 60
+POMODORO_SHORT_BREAK = 5 * 60
+POMODORO_LONG_BREAK = 15 * 60
+POMODORO_CYCLE_LENGTH = 4  # long break after this many focus blocks
+
+
+def _pomodoro_state(elapsed_secs: int) -> tuple[str, int, int, int]:
+    """Compute pomodoro state from total elapsed seconds.
+
+    Returns:
+        (phase, remaining_secs, cycle_number, block_in_cycle)
+        phase: "focus" | "short_break" | "long_break"
+        remaining_secs: seconds left in current phase
+        cycle_number: which full cycle (1-based)
+        block_in_cycle: which focus block within the cycle (1-4)
+    """
+    # One full cycle = 4x(focus + short_break) - last short_break + long_break
+    # = 4*25 + 3*5 + 15 = 130 min
+    single_block = POMODORO_FOCUS + POMODORO_SHORT_BREAK  # 30 min
+    full_cycle = (single_block * POMODORO_CYCLE_LENGTH) - POMODORO_SHORT_BREAK + POMODORO_LONG_BREAK
+
+    cycle_number = elapsed_secs // full_cycle + 1
+    pos_in_cycle = elapsed_secs % full_cycle
+
+    # Walk through the blocks in the cycle
+    for block_idx in range(POMODORO_CYCLE_LENGTH):
+        # Focus phase
+        if pos_in_cycle < POMODORO_FOCUS:
+            remaining = POMODORO_FOCUS - pos_in_cycle
+            return ("focus", remaining, cycle_number, block_idx + 1)
+        pos_in_cycle -= POMODORO_FOCUS
+
+        # Break phase (short for blocks 1-3, long for block 4)
+        if block_idx < POMODORO_CYCLE_LENGTH - 1:
+            if pos_in_cycle < POMODORO_SHORT_BREAK:
+                remaining = POMODORO_SHORT_BREAK - pos_in_cycle
+                return ("short_break", remaining, cycle_number, block_idx + 1)
+            pos_in_cycle -= POMODORO_SHORT_BREAK
+        else:
+            if pos_in_cycle < POMODORO_LONG_BREAK:
+                remaining = POMODORO_LONG_BREAK - pos_in_cycle
+                return ("long_break", remaining, cycle_number, block_idx + 1)
+            pos_in_cycle -= POMODORO_LONG_BREAK
+
+    # Shouldn't reach here, but safety: start a new focus
+    return ("focus", POMODORO_FOCUS, cycle_number + 1, 1)
+
+
 # ---------------------------------------------------------------------------
 # Widgets
 # ---------------------------------------------------------------------------
 
 
 class TimerWidget(Static):
-    """Energy-adaptive timer with pause/resume/reset."""
+    """Energy-adaptive timer with pause/resume/reset.
+
+    Two modes:
+    - **elapsed**: counts up, colour transitions at energy thresholds
+    - **pomodoro**: 25/5/25/5/25/5/25/15 cycle, counts down within each phase
+    """
 
     elapsed: reactive[int] = reactive(0)
     paused: reactive[bool] = reactive(False)
@@ -123,15 +178,37 @@ class TimerWidget(Static):
     timer_mode: reactive[str] = reactive("elapsed")
 
     def render(self) -> str:
+        indicator = " [bold red]PAUSED[/]" if self.paused else ""
+
+        if self.timer_mode == "pomodoro":
+            return self._render_pomodoro() + indicator
+        return self._render_elapsed() + indicator
+
+    def _render_elapsed(self) -> str:
+        """Count-up timer with energy-adaptive colour phases."""
         mins, secs = divmod(self.elapsed, 60)
         hours, mins = divmod(mins, 60)
         phase = _timer_phase(self.elapsed, self.energy)
         colour = {"green": "green", "amber": "yellow", "red": "red"}.get(phase, "white")
-        indicator = " [bold red]PAUSED[/]" if self.paused else ""
-
         time_str = f"{hours}:{mins:02d}:{secs:02d}" if hours else f"{mins:02d}:{secs:02d}"
+        return f"[bold {colour}]{time_str}[/]"
 
-        return f"[bold {colour}]{time_str}[/]{indicator}"
+    def _render_pomodoro(self) -> str:
+        """Countdown timer with focus/break cycle display."""
+        phase, remaining, _cycle, block = _pomodoro_state(self.elapsed)
+        mins, secs = divmod(remaining, 60)
+
+        if phase == "focus":
+            colour = "green"
+            label = f"FOCUS {block}/{POMODORO_CYCLE_LENGTH}"
+        elif phase == "short_break":
+            colour = "cyan"
+            label = "BREAK"
+        else:
+            colour = "magenta"
+            label = "LONG BREAK"
+
+        return f"[bold {colour}]{mins:02d}:{secs:02d}[/] [{colour}]{label}[/]"
 
 
 class ActivityFeed(Static):
@@ -282,15 +359,29 @@ class SidebarApp(App[None]):
         elapsed: int,
     ) -> None:
         """Write pre-formatted one-line status for tmux status bar."""
+        import contextlib
+
         topic = state.get("topic", "?")[:20]
         energy = state.get("energy", "?")
         wins = sum(1 for t in topics if t.status in ("win", "insight"))
         review = sum(1 for t in topics if t.status == "struggling")
         parked = len(parking)
-        mins, secs = divmod(elapsed, 60)
-        line = f"{topic} | {mins:02d}:{secs:02d} | E:{energy} | W:{wins} P:{parked} R:{review}"
-        import contextlib
 
+        timer_mode = state.get("timer_mode", "elapsed")
+        if timer_mode == "pomodoro":
+            phase, remaining, _cycle, block = _pomodoro_state(elapsed)
+            r_mins, r_secs = divmod(remaining, 60)
+            if phase == "focus":
+                timer_str = f"{r_mins:02d}:{r_secs:02d} F{block}"
+            elif phase == "short_break":
+                timer_str = f"{r_mins:02d}:{r_secs:02d} BRK"
+            else:
+                timer_str = f"{r_mins:02d}:{r_secs:02d} LONG"
+        else:
+            mins, secs = divmod(elapsed, 60)
+            timer_str = f"{mins:02d}:{secs:02d}"
+
+        line = f"{topic} | {timer_str} | E:{energy} | W:{wins} P:{parked} R:{review}"
         with contextlib.suppress(OSError):
             (SESSION_DIR / "session-oneline.txt").write_text(line)
 
