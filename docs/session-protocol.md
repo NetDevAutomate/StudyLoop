@@ -72,7 +72,7 @@ studyctl review          # What's due for spaced repetition
 studyctl struggles       # Recurring struggle topics
 ```
 
-If `studyctl wins` has recent entries, the agent surfaces one: "By the way — you mastered [concept] last week. That's real progress."
+If spaced repetition data shows concepts moving to longer intervals, the agent surfaces one: "By the way — you mastered [concept] last week. That's real progress."
 
 ---
 
@@ -146,7 +146,7 @@ Confidence levels: `struggling` → `learning` → `confident` → `mastered`
 Based on spaced repetition intervals (1/3/7/14/30 days):
 
 - "You should review [concept] again in 3 days."
-- Offer calendar block: `studyctl schedule-blocks --start <time>`
+- "Run `studyctl review` to see all upcoming due dates."
 
 !!! micro-celebration "Session Close"
     "You covered [N] concepts today. [Specific win]."

@@ -1,5 +1,7 @@
 # Roadmap
 
+> ⚠️ **Compaction (March 2026)**: The project was stripped to 4 core features: Socratic AI sessions, content pipeline (NotebookLM), flashcard/quiz review (PWA), and session intelligence (export + search + sync). Features listed below as completed may have been archived — see `docs/plans/compaction-plan.md` for details. The TUI dashboard, scheduler, calendar, knowledge bridges DB, teach-back scoring DB, win/streak tracking CLI commands, and state push/pull CLI were removed. Agent support was consolidated to Claude Code, Kiro, Gemini, and OpenCode.
+
 ## v1.0 — Foundation
 
 - [x] Monorepo with studyctl + agent-session-tools
@@ -208,6 +210,18 @@ Diagnostic engine, self-update mechanism, and AI-guided setup for non-technical 
 - [x] **Agent manifest** — `agents/manifest.json` tracks SHA-256 hashes of all agent definitions. `scripts/update-agent-manifest.py` regenerates.
 - [x] **Documentation** — README, CLI reference, setup guide, agent-install all updated for non-technical users.
 
+## v2.2 — Live Session Dashboard (in progress)
+
+Live study session with real-time dashboard, parking lot, and timer.
+
+- [x] **Phase 1 — Foundation**: Session CLI (`session start/end/status`, `park`), file-IPC protocol (`session-state.json`, `session-topics.md`, `session-parking.md`), parking lot persistence (migration v14), auto-migration on connect
+- [x] **Phase 1.5 — cmux**: Agent protocol for cmux MCP pane control (macOS/Ghostty)
+- [x] **Phase 2 — Web Dashboard**: SSE-powered live dashboard (`/session`), HTMX + Alpine.js, energy-adaptive timer, activity feed with visual language, session summary, artefact viewer, 14 tests
+- [x] **Bugs fixed**: Parking deduplication (migration v15 + `INSERT OR IGNORE`), IPC file permissions (0700/0600), CORS wildcard removed, SSE mtime optimization, timer pause/reset controls, auto-migrate parked_topics
+- [x] **Phase 1 — Unified Session**: `studyctl study` single command, tmux session runtime (`tmux.py`), agent launcher (`agent_launcher.py`, Claude-only), Textual sidebar (`tui/sidebar.py`), `--resume`/`--end`/`--web`, agent personas (`study.md`, `co-study.md`), persistent session directories with conversation history resume (`claude -r`), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.
+- [ ] **Phase 2 — Polish**: Energy streaks, break suggestions, parked topic warmup, vendored HTMX/Alpine.js
+- [ ] **Phase 3 — Devices**: ttyd via nginx proxy, pyrage + Keychain password, web terminal embed, LAN access
+
 ## Next
 
 ### Phase 6: CI/CD Pipeline
@@ -223,11 +237,6 @@ Nightly drift detection, pre-release gate, and Docker image pipeline. Spec at `d
 
 - [ ] Docker image running `studyctl web` with kokoro-onnx TTS
 - [ ] FastAPI audio endpoint for browser playback
-
-### Phase 2: FastAPI Web UI
-
-- [ ] Replace stdlib HTTP server with FastAPI
-- [ ] HTMX + Alpine.js frontend, artefact viewer, progress dashboard
 
 ### Phase 3: MCP Agent Integration
 
