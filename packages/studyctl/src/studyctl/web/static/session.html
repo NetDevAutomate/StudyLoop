@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1b26">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Study Session</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+  <!-- HTMX + SSE extension -->
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1><a href="/" class="header-link">Socratic Study Mentor</a></h1>
+    <div class="header-controls">
+      <a href="/" class="toggle-btn" title="Back to courses">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- Session dashboard — Alpine.js timer + HTMX SSE feed -->
+    <div class="session-dashboard"
+         x-data="sessionTimer()"
+         x-init="init()">
+
+      <!-- Timer bar -->
+      <div class="session-timer" :class="timerPhase">
+        <div class="timer-display">
+          <span class="timer-icon" x-text="timerIcon"></span>
+          <span class="timer-time" x-text="display"></span>
+          <div class="timer-bar-track">
+            <div class="timer-bar-fill" :class="timerPhase"
+                 :style="`width: ${progress}%`"></div>
+          </div>
+          <div class="timer-controls">
+            <button class="timer-btn" @click="togglePause()"
+                    :title="paused ? 'Resume' : 'Pause'"
+                    x-text="paused ? '\u25b6' : '\u23f8'"></button>
+            <button class="timer-btn" @click="resetTimer()" title="Reset">
+              &#8634;
+            </button>
+          </div>
+        </div>
+        <div class="timer-message" x-show="message || paused" x-transition.opacity>
+          <span x-show="paused" class="timer-paused-label">Paused</span>
+          <span x-show="message && !paused" x-text="message"></span>
+        </div>
+      </div>
+
+      <!-- Session metadata (OOB swap target) -->
+      <div id="session-meta" class="session-meta">
+        <span class="meta-topic" x-text="topic">Loading...</span>
+        <span class="meta-energy">&#9889; Energy: <span x-text="energy + '/10'"></span></span>
+      </div>
+
+      <!-- Activity feed (SSE swap target) -->
+      <div hx-ext="sse" sse-connect="/api/session/stream" sse-close="close">
+        <div id="activity-feed" class="activity-feed" sse-swap="session-update">
+          <p class="activity-empty">Connecting to session...</p>
+        </div>
+      </div>
+
+      <!-- Counter bar (OOB swap targets) -->
+      <div class="counter-bar">
+        <span id="counter-wins" class="counter counter-wins">&#10003; WINS: 0</span>
+        <span id="counter-parked" class="counter counter-parked">&#9675; PARKED: 0</span>
+        <span id="counter-review" class="counter counter-review">&#9650; REVIEW: 0</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  /* Energy-adaptive timer thresholds (from break-science.md) */
+  const THRESHOLDS = {
+    high:   { green: 25, amber: 50 },  /* energy 7-10 */
+    medium: { green: 20, amber: 40 },  /* energy 4-6 */
+    low:    { green: 15, amber: 30 },  /* energy 1-3 */
+  };
+
+  function energyBand(energy) {
+    if (energy >= 7) return 'high';
+    if (energy >= 4) return 'medium';
+    return 'low';
+  }
+
+  function sessionTimer() {
+    return {
+      startTime: null,
+      energy: 5,
+      topic: 'Loading...',
+      elapsed: 0,
+      interval: null,
+      message: '',
+      messageTimeout: null,
+      sessionActive: false,
+      paused: false,
+      pausedAt: 0,
+
+      async init() {
+        try {
+          const res = await fetch('/api/session/state');
+          const state = await res.json();
+          if (state.study_session_id) {
+            this.energy = state.energy || 5;
+            this.topic = state.topic || 'Study Session';
+            this.startTime = state.start_time ? new Date(state.start_time) : new Date();
+            this.sessionActive = true;
+            this.tick();
+            this.interval = setInterval(() => this.tick(), 1000);
+          } else {
+            this.topic = 'No active session';
+          }
+        } catch {
+          this.topic = 'Could not load session';
+        }
+      },
+
+      togglePause() {
+        if (!this.sessionActive) return;
+        if (this.paused) {
+          /* Resume: shift startTime forward by the paused duration */
+          const pauseDuration = Date.now() - this.pausedAt;
+          this.startTime = new Date(this.startTime.getTime() + pauseDuration);
+          this.paused = false;
+          this.interval = setInterval(() => this.tick(), 1000);
+        } else {
+          /* Pause: stop ticking, record when we paused */
+          this.paused = true;
+          this.pausedAt = Date.now();
+          clearInterval(this.interval);
+        }
+      },
+
+      resetTimer() {
+        if (!this.sessionActive) return;
+        this.startTime = new Date();
+        this.elapsed = 0;
+        this.paused = false;
+        this._shownAmber = false;
+        this._shownRed = false;
+        this.message = '';
+        clearInterval(this.interval);
+        this.interval = setInterval(() => this.tick(), 1000);
+      },
+
+      tick() {
+        if (!this.startTime || this.paused) return;
+        this.elapsed = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
+        this.checkThresholds();
+      },
+
+      checkThresholds() {
+        const mins = this.elapsed / 60;
+        const band = energyBand(this.energy);
+        const th = THRESHOLDS[band];
+
+        /* Show message once at each threshold crossing */
+        if (mins >= th.amber && !this._shownRed) {
+          this._shownRed = true;
+          this.showMessage("Your brain's been at this for a while. Just flagging it.");
+        } else if (mins >= th.green && !this._shownAmber) {
+          this._shownAmber = true;
+          /* Amber: silent color shift only, no text for high energy */
+          if (this.energy < 7) {
+            this.showMessage("Good stretch of focus. A micro-break soon?");
+          }
+        }
+      },
+
+      showMessage(msg) {
+        this.message = msg;
+        clearTimeout(this.messageTimeout);
+        this.messageTimeout = setTimeout(() => { this.message = ''; }, 15000);
+      },
+
+      get display() {
+        const m = Math.floor(this.elapsed / 60);
+        const s = this.elapsed % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      },
+
+      get progress() {
+        if (!this.sessionActive) return 0;
+        const mins = this.elapsed / 60;
+        const band = energyBand(this.energy);
+        const th = THRESHOLDS[band];
+        /* Progress fills to 100% at the amber threshold */
+        return Math.min(100, (mins / th.amber) * 100);
+      },
+
+      get timerPhase() {
+        if (!this.sessionActive) return 'phase-idle';
+        const mins = this.elapsed / 60;
+        const band = energyBand(this.energy);
+        const th = THRESHOLDS[band];
+        if (mins >= th.amber) return 'phase-red';
+        if (mins >= th.green) return 'phase-amber';
+        return 'phase-green';
+      },
+
+      get timerIcon() {
+        if (!this.sessionActive) return '\u23f1';
+        const phase = this.timerPhase;
+        if (phase === 'phase-red') return '\ud83d\udfe5';
+        if (phase === 'phase-amber') return '\ud83d\udfe7';
+        return '\ud83d\udfe9';
+      },
+
+      destroy() {
+        clearInterval(this.interval);
+        clearTimeout(this.messageTimeout);
+      }
+    };
+  }
+
+  /* Request notification permission for break reminders */
+  if ('Notification' in window && Notification.permission === 'default') {
+    /* Defer to avoid blocking — only ask on first session page visit */
+    setTimeout(() => Notification.requestPermission(), 3000);
+  }
+  </script>
+</body>
+</html>

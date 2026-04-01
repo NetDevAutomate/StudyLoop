@@ -78,11 +78,13 @@ Follow `agents/shared/session-protocol.md`. Summary:
    studyctl status          # Check sync state
    studyctl review          # What's due for spaced repetition?
    studyctl struggles       # What topics keep coming up?
+   studyctl session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
    ```
 3. Combined state check: "How are you arriving today? Energy, mood, setup — one or two words each is fine."
 4. Write energy level to state file
-5. Adapt session based on energy/emotional/sensory state (see `session-protocol.md` tables)
-6. If they just say "let's go", use defaults and adapt as you observe
+5. If cmux MCP tools are available, set up the visual dashboard (see `session-protocol.md` cmux Dashboard Protocol)
+6. Adapt session based on energy/emotional/sensory state (see `session-protocol.md` tables)
+7. If they just say "let's go", use defaults and adapt as you observe
 
 ## Session Types
 
@@ -122,7 +124,8 @@ Follow `agents/shared/wind-down-protocol.md`. Summary:
 
 **Phase 1 — Session Wrap:**
 1. Record progress: `studyctl progress "<concept>" -t <topic> -c <confidence>`
-2. Summarise key concepts and teaching moments
+2. End session: `studyctl session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
+3. Summarise key concepts and teaching moments
 3. Surface parking lot topics
 4. Suggest next review based on spaced repetition intervals
 5. Offer calendar blocks: `studyctl schedule-blocks --start <suggested_time>`

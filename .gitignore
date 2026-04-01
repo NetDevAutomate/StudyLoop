@@ -480,3 +480,5 @@ docs/plans/
 
 # Artefacts (served from artefact-store, not committed to source repo)
 docs/artefacts/
+pytest-of-*/
+uv-*.lock
