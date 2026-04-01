@@ -7,7 +7,6 @@ import pytest
 
 import agent_session_tools.exporters.gemini as gemini_mod
 from agent_session_tools.exporters.gemini import GeminiCliExporter
-from agent_session_tools.migrations import migrate
 
 
 # ---------------------------------------------------------------------------
@@ -32,14 +31,6 @@ def _write_session_file(chats_dir: Path, session_id: str, messages: list[dict]) 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def migrated_db(temp_db):
-    """Return (conn, db_path) with migrations applied."""
-    conn, db_path = temp_db
-    migrate(conn)
-    return conn, db_path
 
 
 @pytest.fixture()

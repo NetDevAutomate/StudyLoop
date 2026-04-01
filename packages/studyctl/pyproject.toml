@@ -47,6 +47,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/studyctl"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
+markers = [
+    "integration: requires external infrastructure (tmux, real DB, network)",
+]
+
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"

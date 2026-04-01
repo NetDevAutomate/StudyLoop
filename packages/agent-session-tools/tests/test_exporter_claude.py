@@ -21,20 +21,11 @@ from pathlib import Path
 import pytest
 
 from agent_session_tools.exporters.claude import ClaudeCodeExporter
-from agent_session_tools.migrations import migrate
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def migrated_db(temp_db):
-    """Return a temp_db with all migrations applied so exporter columns exist."""
-    conn, db_path = temp_db
-    migrate(conn)
-    return conn, db_path
 
 
 @pytest.fixture()

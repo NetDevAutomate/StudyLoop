@@ -16,7 +16,6 @@ from pathlib import Path
 import pytest
 
 from agent_session_tools.exporters.kiro import KiroCliExporter, _extract_text
-from agent_session_tools.migrations import migrate
 
 
 # ---------------------------------------------------------------------------
@@ -97,14 +96,6 @@ def _make_conversation(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def migrated_db(temp_db):
-    """Return a temp_db with all migrations applied so exporter columns exist."""
-    conn, db_path = temp_db
-    migrate(conn)
-    return conn, db_path
 
 
 @pytest.fixture()
