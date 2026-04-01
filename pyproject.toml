@@ -22,6 +22,7 @@ dev = [
     "ruff>=0.8",
     "pyright>=1.1",
     "pre-commit>=4.0",
+    "httpx>=0.28.1",
 ]
 
 [build-system]

@@ -63,7 +63,7 @@ The autistic cognitive style processes bottom-up: granular details first, then p
 
 Watch for: "I should already know this", "This is taking me too long"
 
-**Response:** Reframe with evidence. Run `studyctl wins` and surface recent mastered concepts. Keep celebrations factual and specific — empty praise triggers AuDHD suspicion.
+**Response:** Reframe with evidence. Review spaced repetition progress via `studyctl review` and surface concepts that have moved to longer intervals (indicating mastery). Keep celebrations factual and specific — empty praise triggers AuDHD suspicion.
 
 ---
 

@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 13
+CURRENT_VERSION = 14
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -553,6 +553,37 @@ def migrate_v13(conn: sqlite3.Connection) -> None:
             "ALTER TABLE study_progress ADD COLUMN concept_id TEXT "
             "REFERENCES concepts(id)"
         )
+
+
+@migration(14, "Add parked_topics table for parking lot persistence")
+def migrate_v14(conn: sqlite3.Connection) -> None:
+    """Add table for persisting parking lot questions across sessions."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS parked_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            study_session_id TEXT REFERENCES study_sessions(id) ON DELETE SET NULL,
+            session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+            topic_tag TEXT,
+            question TEXT NOT NULL,
+            context TEXT,
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
+            scheduled_for TEXT,
+            resolved_at TEXT,
+            parked_at TEXT NOT NULL DEFAULT (datetime('now')),
+            created_by TEXT DEFAULT 'agent'
+        )
+    """)
+
+
+@migration(15, "Add unique constraint to prevent parking lot duplication")
+def migrate_v15(conn: sqlite3.Connection) -> None:
+    """Prevent duplicate parked topics when session_end re-inserts entries
+    already written by the park CLI command during the session."""
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_session_question
+        ON parked_topics (study_session_id, question)
+    """)
 
 
 def check_migration_status(db_path: Path) -> dict:

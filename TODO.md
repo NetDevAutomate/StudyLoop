@@ -1,73 +1,114 @@
-# Socratic Study Mentor -- Active Backlog
+# Socratic Study Mentor — Active Backlog
 
 > Single source of truth for outstanding work.
-> For Phase 1-4 implementation details, see `docs/plans/2026-03-15-feat-unified-study-platform-plan.md`.
+> System overview: `docs/system-overview.md`
+
+## Core Features (maintained)
+
+| Feature | Status |
+|---------|--------|
+| Socratic AI sessions (Claude, Kiro, Gemini, OpenCode) | Active |
+| Content pipeline → NotebookLM (split, process, autopilot) | Active |
+| Flashcard/quiz review (PWA web app, SM-2) | Active |
+| Session intelligence (export, search, sync) | Active |
+| Live study sessions (`studyctl study` + tmux + sidebar) | Active |
 
 ## Completed (summary)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Fix broken code (spaced repetition, progress, config) | Done |
-| 2 | Unify agent framework (5 platforms, shared docs) | Done |
-| 3 | AuDHD methodology (emotional regulation, parking lot, etc.) | Done |
-| 4 | Documentation site (MkDocs Material, font toggle, custom admonitions) | Done |
-| 5 | Documentation & install polish (README, agent-install, roadmap) | Done |
-| 6 | Centralised artefact store (GitHub Pages, config, store module) | Done |
-| 7 | Unified config & cross-machine sync (hosts, SSH, install scripts) | Done |
-| 8 | StudyCards TUI (review_loader, review_db, SM-2, voice toggle) | Done |
-| 9 | TUI polish & PWA web app (Pomodoro, voice, accessibility) | Done |
-| Phase 0 | Pre-work: config consolidation, CLI split, WAL mode, service layer | Done |
+| 1-9 | Foundation, agents, AuDHD methodology, docs, artefacts, config, TUI, PWA | Done |
+| Phase 0 | Config consolidation, CLI split, WAL mode, service layer | Done |
 | Phase 1 | Content absorption: 7 modules, 10 CLI commands, 76 tests | Done |
-| Phase 4 | PyPI + Homebrew tap live, OIDC trusted publishing | Done |
+| Phase 4 | PyPI + Homebrew tap, OIDC trusted publishing | Done |
 | Phase 5 | Doctor/upgrade/install-mentor: 3 CLI commands, 7 checker modules | Done |
-| Fixes | Export progress bar (A1), list_concepts (A2), course picker (A3), retry wrong (A4), SQL/connection leaks (A5), narrow exceptions (A6) | Done |
+| Compaction | Strip to 4 core features, 13 CLI commands | Done |
 
-## Unified Platform Plan -- Next Phases
+### v2.2 — Live Session Dashboard (on `feat+live-session-dashboard` branch)
 
-### Phase 6: CI/CD Pipeline (next)
+| Item | Status |
+|------|--------|
+| Session CLI (`session start/end/status`, `park`) + IPC protocol | Done |
+| cmux agent protocol (Phase 1.5) | Done |
+| Web dashboard — SSE + HTMX + Alpine.js (`/session`) | Done |
+| Bug fixes — parking dedup, IPC permissions 0700/0600, CORS, SSE mtime | Done |
+| `studyctl study` — tmux session, agent launcher (Claude), Textual sidebar | Done |
+| Agent personas (`study.md`, `co-study.md`) | Done |
+| Auto-cleanup on agent exit + sidebar `Q` end session | Done |
+| Persistent session directories with conversation resume (`claude -r`) | Done |
+| Pomodoro countdown timer (25/5/25/5/25/5/25/15 cycle) | Done |
+| Catppuccin-compatible tmux overlay (no theme clobbering) | Done |
+| System overview doc (`docs/system-overview.md`) | Done |
+| **359 tests pass, all pre-commit hooks pass** | |
+
+**Not yet merged to main. Pending: test `--resume` in a real study session, then squash-merge + release v2.2.0.**
+
+## Next
+
+### v2.2 — Remaining Polish (Phase 2)
+
+- [ ] Vendor HTMX + Alpine.js into `web/static/` (remove CDN, enable offline PWA)
+- [ ] Parked topic warmup at session start (surface unresolved topics from previous sessions)
+- [ ] Break suggestions at timer threshold crossings (from `break-science.md`)
+- [ ] Energy streaks — correlate energy levels with session outcomes in `studyctl streaks`
+
+### Phase 6: CI/CD Pipeline
 
 Nightly drift detection, pre-release gate, Docker image pipeline. Spec at `docs/ci-cd-pipeline.md`.
 
+- [ ] Nightly: fresh install on Ubuntu + macOS, `studyctl doctor --json` as gate
+- [ ] Pre-release: upgrade path N-1 → N, triggered on release tags
+- [ ] Docker: `studyctl-web` image with server-side TTS, health check via doctor
+
+### Phase 3: Devices (ttyd + LAN access)
+
+- [ ] ttyd via nginx/Caddy proxy (Unix socket, htpasswd auth)
+- [ ] pyrage + macOS Keychain for password management
+- [ ] Web terminal embed (iframe with LAN IP, `frame-ancestors` CSP)
+- [ ] `studyctl study --lan` flag
+
 ### Phase 7: Docker Web + Server-Side TTS
 
-Docker image running `studyctl web` with kokoro-onnx server-side TTS.
-
-### Phase 2: FastAPI Web UI
-
-Replace stdlib HTTP server with FastAPI. HTMX + Alpine.js frontend, artefact viewer, progress dashboard. Migrate all 11 existing routes.
-
-See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 2
-
-### Phase 3: MCP Agent Integration
-
-FastMCP v1 server with stdio transport. Flashcard/quiz generation tools, study context tools, onboarding agent skill.
-
-See: `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` -- Phase 3
+- [ ] Docker image running `studyctl web` with kokoro-onnx TTS
+- [ ] FastAPI audio endpoint for browser playback
 
 ## Standalone Items (not blocked by phases)
 
 - [ ] Obsidian export: convert flashcard JSON to Obsidian `#flashcard` format (Spaced Repetition plugin compatible)
+- [ ] Merge `feat+live-session-dashboard` to main + release v2.2.0
+- [ ] Textual sidebar tests (using Textual test framework)
+
+## Archived Features (in git history, restore on demand)
+
+- TUI dashboard (`studyctl tui`) — replaced by Textual sidebar in tmux
+- Scheduler (launchd/cron management)
+- Calendar .ics generation (`schedule-blocks`)
+- Knowledge bridges DB + CLI commands
+- Teach-back scoring DB + CLI commands
+- Crush + Amp agent definitions
 
 ## Deferred (add when real demand appears)
 
-- LAN password auth (`--password` flag + HTTP Basic Auth)
+- LAN password auth (Phase 3 — ttyd + pyrage + Keychain)
 - Config editor web UI
-- GitHub Issues API feedback
-- TUI artefact browser
-- Native iOS/macOS app (research in `docs/research/swift-poc-feasibility.md`)
+- Native iOS/macOS app
 - AWS cloud sync (Cognito, DynamoDB, push notifications)
+- Agents: Gemini, Kiro, OpenCode launch commands (add when testing against binaries)
 
 ## Key File References
 
 | Item | Location |
 |------|----------|
-| Unified Platform Plan | `docs/plans/2026-03-15-feat-unified-study-platform-plan.md` |
-| Brainstorm (decisions) | `docs/brainstorms/2026-03-15-unified-study-platform-brainstorm.md` |
-| Code Review Items | `code-review-plan-items.md` |
+| System Overview | `docs/system-overview.md` |
+| Session Architecture Plan | `docs/plans/2026-03-29-feat-unified-session-architecture-plan.md` |
 | CLI Package | `packages/studyctl/src/studyctl/cli/` |
+| Study Orchestrator | `packages/studyctl/src/studyctl/cli/_study.py` |
+| tmux Wrapper | `packages/studyctl/src/studyctl/tmux.py` |
+| Agent Launcher | `packages/studyctl/src/studyctl/agent_launcher.py` |
+| Textual Sidebar | `packages/studyctl/src/studyctl/tui/sidebar.py` |
+| Web PWA + Session Dashboard | `packages/studyctl/src/studyctl/web/` |
+| Agent Personas | `agents/shared/personas/` |
 | Services Layer | `packages/studyctl/src/studyctl/services/` |
-| Settings (config) | `packages/studyctl/src/studyctl/settings.py` |
 | Review DB (SM-2) | `packages/studyctl/src/studyctl/review_db.py` |
-| TUI Source | `packages/studyctl/src/studyctl/tui/` |
-| Web PWA | `packages/studyctl/src/studyctl/web/` |
-| Hosts Config | `~/.config/studyctl/config.yaml` |
+| Config | `~/.config/studyctl/config.yaml` |
+| Session Directories | `~/.config/studyctl/sessions/` |
