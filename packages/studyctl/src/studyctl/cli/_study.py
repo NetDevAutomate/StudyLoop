@@ -203,11 +203,11 @@ def _handle_start(
 
     # --- Build tmux session ---
 
+    from pathlib import Path
+
     if resume_session_name and resume_session_dir:
         # Resuming: reuse existing session name and directory
-        # so we land in the same .claude/ conversation history
-        from pathlib import Path
-
+        # so claude -r finds the same conversation history
         session_name = resume_session_name
         session_dir = Path(resume_session_dir)
         is_resuming = True
@@ -217,7 +217,11 @@ def _handle_start(
         short_id = study_id[:8] if study_id else "unknown"
         session_name = f"study-{slug}-{short_id}"
         session_dir = SESSION_DIR / "sessions" / session_name
-        is_resuming = (session_dir / ".claude").exists()
+        # Claude Code stores history in ~/.claude/projects/{mangled-path}/,
+        # not .claude/ in cwd. Check if a project dir exists for this session.
+        claude_project_key = str(session_dir).replace("/", "-").lstrip("-")
+        claude_project_dir = Path.home() / ".claude" / "projects" / claude_project_key
+        is_resuming = claude_project_dir.exists()
 
     session_dir.mkdir(parents=True, exist_ok=True)
 
