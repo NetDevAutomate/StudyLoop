@@ -335,15 +335,22 @@ def _handle_resume(ctx: click.Context) -> None:
     from pathlib import Path
 
     if session_dir and Path(session_dir).exists():
+        from studyctl.session_state import clear_session_files
+
         topic = state.get("topic", "unknown")
         agent = state.get("agent", "claude")
+        # mode may be "ended" from cleanup — restore the original mode
         mode = state.get("mode", "study")
+        if mode == "ended":
+            mode = "study"
         energy = state.get("energy", 5)
         timer = state.get("timer_mode", "elapsed")
         console.print(
             f"[green]Resuming conversation:[/green] {topic}\n"
             f"  [dim]Rebuilding tmux session with conversation history[/dim]"
         )
+        # Clear stale state so _handle_start doesn't see "already active"
+        clear_session_files()
         # Restart with the same parameters — _handle_start will detect
         # the existing .claude/ dir and pass -r to the agent
         _handle_start(ctx, topic, agent, mode, timer, energy, web=False)

@@ -146,6 +146,9 @@ def clear_session_files() -> None:
 
 
 def is_session_active() -> bool:
-    """Check if there's an active session (state file exists with a study_session_id)."""
+    """Check if there's an active session (not ended, not stale)."""
     state = read_session_state()
-    return bool(state.get("study_session_id"))
+    if not state.get("study_session_id"):
+        return False
+    # Session marked as ended by cleanup — not active
+    return state.get("mode") != "ended"
