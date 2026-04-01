@@ -481,17 +481,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#tui-dashboard-terminal" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TUI Dashboard (terminal)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -690,17 +679,6 @@
   
     <nav class="md-nav" aria-label="Cross-Machine Sync">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#studyctl-state-sync" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        studyctl state sync
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#session-database-sync" class="md-nav__link">
@@ -1526,17 +1504,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#tui-dashboard-terminal" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TUI Dashboard (terminal)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1735,17 +1702,6 @@
   
     <nav class="md-nav" aria-label="Cross-Machine Sync">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#studyctl-state-sync" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        studyctl state sync
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#session-database-sync" class="md-nav__link">
@@ -2092,27 +2048,6 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 - <strong>Read once</strong> — tap the speaker icon on a card, or press <code>T</code>. Reads the current content once.
 - <strong>Auto-voice</strong> — toggle the header speaker icon, or press <code>V</code>. Reads everything automatically as you navigate.</p>
 <p><strong>Accessibility:</strong> The <code>Aa</code> button toggles <a href="https://opendyslexic.org">OpenDyslexic</a> font. The sun icon toggles light/dark theme. Both are persisted across sessions.</p>
-<h3 id="tui-dashboard-terminal">TUI Dashboard (terminal)<a class="headerlink" href="#tui-dashboard-terminal" title="Permanent link">&para;</a></h3>
-<p>The terminal TUI requires the <code>[tui]</code> extra:</p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="o">[</span>tui<span class="o">]</span>
-studyctl<span class="w"> </span>tui
-</code></pre></div>
-<p>Optional TUI settings:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># ~/.config/studyctl/config.yaml</span>
-<span class="nt">tui</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">theme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dracula</span><span class="w">              </span><span class="c1"># Any Textual theme (dracula, nord, tokyo-night, etc.)</span>
-<span class="w">  </span><span class="nt">dyslexic_friendly</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">     </span><span class="c1"># Wider spacing, more padding (also toggle with o key)</span>
-</code></pre></div>
-<p>Voice output in the TUI requires the <code>[tts]</code> extra on <code>agent-session-tools</code>:</p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;./packages/agent-session-tools[tts]&quot;</span>
-</code></pre></div>
-<p><strong>Dyslexic-friendly mode</strong> in the terminal — for best results, set your terminal font to <a href="https://opendyslexic.org">OpenDyslexic</a>:</p>
-<ul>
-<li><strong>iTerm2</strong>: Preferences → Profiles → Text → Font → select OpenDyslexic</li>
-<li><strong>Terminal.app</strong>: Preferences → Profiles → Font → Change → select OpenDyslexic</li>
-<li><strong>Windows Terminal</strong>: Settings → Profiles → Appearance → Font face → OpenDyslexic</li>
-<li><strong>VS Code terminal</strong>: <code>"terminal.integrated.fontFamily": "OpenDyslexic"</code></li>
-</ul>
 <h3 id="hosts-cross-machine-sync">Hosts — Cross-Machine Sync<a class="headerlink" href="#hosts-cross-machine-sync" title="Permanent link">&para;</a></h3>
 <h4 id="prerequisites-passwordless-ssh">Prerequisites: Passwordless SSH<a class="headerlink" href="#prerequisites-passwordless-ssh" title="Permanent link">&para;</a></h4>
 <p>Cross-machine sync uses SSH and rsync under the hood. <strong>Passwordless SSH must be configured</strong> between all machines before sync will work. If you're prompted for a password, sync will hang or fail.</p>
@@ -2200,14 +2135,8 @@ ssh<span class="w"> </span>user@192.168.1.22<span class="w"> </span><span class=
 </tr>
 </tbody>
 </table>
-<p>Both <code>studyctl state push/pull</code> and <code>session-sync push/pull/sync</code> use this config:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># studyctl</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="w"> </span>macmini
-studyctl<span class="w"> </span>state<span class="w"> </span>pull<span class="w"> </span>macbookpro
-studyctl<span class="w"> </span>state<span class="w"> </span>status
-
-<span class="c1"># session-sync (same host names, same config)</span>
-session-sync<span class="w"> </span>push<span class="w"> </span>macmini
+<p>Use <code>session-sync</code> for cross-machine database sync:</p>
+<div class="highlight"><pre><span></span><code>session-sync<span class="w"> </span>push<span class="w"> </span>macmini
 session-sync<span class="w"> </span>pull<span class="w"> </span>macbookpro
 session-sync<span class="w"> </span>sync<span class="w"> </span>work-macbook
 session-sync<span class="w"> </span>endpoints<span class="w">            </span><span class="c1"># list all remote hosts</span>
@@ -2392,12 +2321,6 @@ studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<spa
 <p>See the <a href="../README.md#studyctl-content">CLI Reference</a> for all available commands.</p>
 <h2 id="cross-machine-sync">Cross-Machine Sync<a class="headerlink" href="#cross-machine-sync" title="Permanent link">&para;</a></h2>
 <p>Both tools support syncing state across machines via SSH.</p>
-<h3 id="studyctl-state-sync">studyctl state sync<a class="headerlink" href="#studyctl-state-sync" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>state<span class="w"> </span>push<span class="w"> </span>macmini<span class="w">      </span><span class="c1"># Push local state to a named host</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>pull<span class="w"> </span>macbookpro<span class="w">   </span><span class="c1"># Pull state from a named host</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>status<span class="w">            </span><span class="c1"># Check connectivity to all hosts</span>
-studyctl<span class="w"> </span>state<span class="w"> </span>init<span class="w">              </span><span class="c1"># Initialize sync config</span>
-</code></pre></div>
 <h3 id="session-database-sync">Session database sync<a class="headerlink" href="#session-database-sync" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>session-sync<span class="w"> </span>push<span class="w"> </span>macmini<span class="w">        </span><span class="c1"># Push sessions to a named host</span>
 session-sync<span class="w"> </span>pull<span class="w"> </span>macbookpro<span class="w">     </span><span class="c1"># Pull sessions from a named host</span>

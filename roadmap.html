@@ -1104,6 +1104,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#v22-live-session-dashboard-in-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.2 — Live Session Dashboard (in progress)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1131,17 +1142,6 @@
     <span class="md-ellipsis">
       
         Phase 7: Docker Web + Server-Side TTS
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-2-fastapi-web-ui" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 2: FastAPI Web UI
       
     </span>
   </a>
@@ -1520,6 +1520,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#v22-live-session-dashboard-in-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.2 — Live Session Dashboard (in progress)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1547,17 +1558,6 @@
     <span class="md-ellipsis">
       
         Phase 7: Docker Web + Server-Side TTS
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-2-fastapi-web-ui" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 2: FastAPI Web UI
       
     </span>
   </a>
@@ -1598,6 +1598,9 @@
 
 
 <h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>⚠️ <strong>Compaction (March 2026)</strong>: The project was stripped to 4 core features: Socratic AI sessions, content pipeline (NotebookLM), flashcard/quiz review (PWA), and session intelligence (export + search + sync). Features listed below as completed may have been archived — see <code>docs/plans/compaction-plan.md</code> for details. The TUI dashboard, scheduler, calendar, knowledge bridges DB, teach-back scoring DB, win/streak tracking CLI commands, and state push/pull CLI were removed. Agent support was consolidated to Claude Code, Kiro, Gemini, and OpenCode.</p>
+</blockquote>
 <h2 id="v10-foundation">v1.0 — Foundation<a class="headerlink" href="#v10-foundation" title="Permanent link">&para;</a></h2>
 <ul>
 <li>[x] Monorepo with studyctl + agent-session-tools</li>
@@ -1795,6 +1798,17 @@
 <li>[x] <strong>Agent manifest</strong> — <code>agents/manifest.json</code> tracks SHA-256 hashes of all agent definitions. <code>scripts/update-agent-manifest.py</code> regenerates.</li>
 <li>[x] <strong>Documentation</strong> — README, CLI reference, setup guide, agent-install all updated for non-technical users.</li>
 </ul>
+<h2 id="v22-live-session-dashboard-in-progress">v2.2 — Live Session Dashboard (in progress)<a class="headerlink" href="#v22-live-session-dashboard-in-progress" title="Permanent link">&para;</a></h2>
+<p>Live study session with real-time dashboard, parking lot, and timer.</p>
+<ul>
+<li>[x] <strong>Phase 1 — Foundation</strong>: Session CLI (<code>session start/end/status</code>, <code>park</code>), file-IPC protocol (<code>session-state.json</code>, <code>session-topics.md</code>, <code>session-parking.md</code>), parking lot persistence (migration v14), auto-migration on connect</li>
+<li>[x] <strong>Phase 1.5 — cmux</strong>: Agent protocol for cmux MCP pane control (macOS/Ghostty)</li>
+<li>[x] <strong>Phase 2 — Web Dashboard</strong>: SSE-powered live dashboard (<code>/session</code>), HTMX + Alpine.js, energy-adaptive timer, activity feed with visual language, session summary, artefact viewer, 14 tests</li>
+<li>[x] <strong>Bugs fixed</strong>: Parking deduplication (migration v15 + <code>INSERT OR IGNORE</code>), IPC file permissions (0700/0600), CORS wildcard removed, SSE mtime optimization, timer pause/reset controls, auto-migrate parked_topics</li>
+<li>[x] <strong>Phase 1 — Unified Session</strong>: <code>studyctl study</code> single command, tmux session runtime (<code>tmux.py</code>), agent launcher (<code>agent_launcher.py</code>, Claude-only), Textual sidebar (<code>tui/sidebar.py</code>), <code>--resume</code>/<code>--end</code>/<code>--web</code>, agent personas (<code>study.md</code>, <code>co-study.md</code>), persistent session directories with conversation history resume (<code>claude -r</code>), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.</li>
+<li>[ ] <strong>Phase 2 — Polish</strong>: Energy streaks, break suggestions, parked topic warmup, vendored HTMX/Alpine.js</li>
+<li>[ ] <strong>Phase 3 — Devices</strong>: ttyd via nginx proxy, pyrage + Keychain password, web terminal embed, LAN access</li>
+</ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <h3 id="phase-6-cicd-pipeline">Phase 6: CI/CD Pipeline<a class="headerlink" href="#phase-6-cicd-pipeline" title="Permanent link">&para;</a></h3>
 <p>Nightly drift detection, pre-release gate, and Docker image pipeline. Spec at <code>docs/ci-cd-pipeline.md</code>.</p>
@@ -1808,11 +1822,6 @@
 <ul>
 <li>[ ] Docker image running <code>studyctl web</code> with kokoro-onnx TTS</li>
 <li>[ ] FastAPI audio endpoint for browser playback</li>
-</ul>
-<h3 id="phase-2-fastapi-web-ui">Phase 2: FastAPI Web UI<a class="headerlink" href="#phase-2-fastapi-web-ui" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[ ] Replace stdlib HTTP server with FastAPI</li>
-<li>[ ] HTMX + Alpine.js frontend, artefact viewer, progress dashboard</li>
 </ul>
 <h3 id="phase-3-mcp-agent-integration">Phase 3: MCP Agent Integration<a class="headerlink" href="#phase-3-mcp-agent-integration" title="Permanent link">&para;</a></h3>
 <ul>

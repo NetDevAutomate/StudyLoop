@@ -1,0 +1,1499 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/system-overview.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>System Overview — How Everything Connects - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#system-overview-how-everything-connects" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              System Overview — How Everything Connects
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-big-picture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Big Picture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-deep-dives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Deep-Dives
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component Deep-Dives">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-content-pipeline-from-notes-to-notebooklm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Content Pipeline — From Notes to NotebookLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-study-sessions-one-command-full-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Study Sessions — One Command, Full Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-review-system-spaced-repetition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Review System — Spaced Repetition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-session-intelligence-cross-session-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Session Intelligence — Cross-Session Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-agent-protocol-how-ai-mentors-behave" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Agent Protocol — How AI Mentors Behave
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-stores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Stores
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end-workflow-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-End Workflow Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="system-overview-how-everything-connects">System Overview — How Everything Connects<a class="headerlink" href="#system-overview-how-everything-connects" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>A complete map of the studyctl ecosystem: from Obsidian notes to AI study sessions to spaced repetition.</p>
+</blockquote>
+<hr />
+<h2 id="the-big-picture">The Big Picture<a class="headerlink" href="#the-big-picture" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>graph TB
+    subgraph "Content Creation"
+        OV["Obsidian Vault&lt;br/&gt;(course notes, .md)"]
+        PDF["PDF Textbooks"]
+    end
+
+    subgraph "Content Pipeline"
+        SYNC["studyctl sync&lt;br/&gt;(hash-based change detection)"]
+        CONTENT["studyctl content&lt;br/&gt;(split, process, from-obsidian)"]
+        PANDOC["pandoc + typst&lt;br/&gt;(markdown to PDF)"]
+    end
+
+    subgraph "Google NotebookLM"
+        NB["NotebookLM Notebook&lt;br/&gt;(per-topic)"]
+        ART["Generated Artefacts&lt;br/&gt;(audio, video, slides,&lt;br/&gt;quizzes, flashcards)"]
+    end
+
+    subgraph "Review System"
+        FC["Flashcard/Quiz JSON&lt;br/&gt;(downloaded artefacts)"]
+        SM2["SM-2 Spaced Repetition&lt;br/&gt;(card_reviews table)"]
+        WEB["Web PWA&lt;br/&gt;localhost:8567"]
+    end
+
+    subgraph "Study Sessions"
+        STUDY["studyctl study 'topic'"]
+        TMUX["tmux Session"]
+        AGENT["AI Agent&lt;br/&gt;(Claude Code)"]
+        SIDEBAR["Textual Sidebar&lt;br/&gt;(timer, activity, counters)"]
+        DASH["Live Dashboard&lt;br/&gt;/session (SSE + HTMX)"]
+    end
+
+    subgraph "Session Intelligence"
+        EXPORT["session-export&lt;br/&gt;(import AI conversations)"]
+        QUERY["session-query&lt;br/&gt;(search, context, continue)"]
+        SSYNC["session-sync&lt;br/&gt;(cross-machine SSH)"]
+    end
+
+    DB[(sessions.db&lt;br/&gt;SQLite)]
+    IPC["IPC Files&lt;br/&gt;(state, topics, parking)"]
+
+    OV --&gt;|"studyctl sync"| SYNC
+    OV --&gt;|"studyctl content from-obsidian"| CONTENT
+    PDF --&gt;|"studyctl content split/process"| CONTENT
+    SYNC --&gt; PANDOC --&gt;|upload chapters| NB
+    CONTENT --&gt; PANDOC
+    CONTENT --&gt;|upload + generate| NB
+    NB --&gt;|generate| ART
+    ART --&gt;|download| FC
+    FC --&gt; SM2
+    SM2 --&gt; WEB
+    WEB --&gt; DB
+
+    STUDY --&gt; TMUX
+    TMUX --&gt; AGENT
+    TMUX --&gt; SIDEBAR
+    STUDY -.-&gt;|"--web"| DASH
+    AGENT --&gt;|writes| IPC
+    SIDEBAR --&gt;|polls| IPC
+    DASH --&gt;|polls SSE| IPC
+    AGENT --&gt; DB
+    SIDEBAR --&gt;|session-oneline.txt| TMUX
+
+    AGENT -.-&gt;|"AI coding sessions"| EXPORT
+    EXPORT --&gt; DB
+    QUERY --&gt; DB
+    SSYNC --&gt;|"SSH delta"| DB
+
+    style DB fill:#89b4fa,color:#1e1e2e
+    style IPC fill:#f5a97f,color:#1e1e2e
+    style NB fill:#a6da95,color:#1e1e2e</code></pre>
+<hr />
+<h2 id="component-deep-dives">Component Deep-Dives<a class="headerlink" href="#component-deep-dives" title="Permanent link">&para;</a></h2>
+<h3 id="1-content-pipeline-from-notes-to-notebooklm">1. Content Pipeline — From Notes to NotebookLM<a class="headerlink" href="#1-content-pipeline-from-notes-to-notebooklm" title="Permanent link">&para;</a></h3>
+<p>The content pipeline turns your study materials into AI-generated learning artefacts.</p>
+<pre class="mermaid"><code>flowchart LR
+    subgraph "Sources"
+        A["Obsidian .md files"]
+        B["PDF textbooks"]
+    end
+
+    subgraph "Processing"
+        C["markdown_converter.py&lt;br/&gt;(pandoc + typst + mmdc)"]
+        D["splitter.py&lt;br/&gt;(PyMuPDF TOC split)"]
+    end
+
+    subgraph "NotebookLM"
+        E["notebooklm_client.py&lt;br/&gt;(notebooklm-py library)"]
+        F["Per-topic Notebook"]
+        G["Audio Overview"]
+        H["Quiz JSON"]
+        I["Flashcard JSON"]
+        J["Video / Slides"]
+    end
+
+    A --&gt;|"content from-obsidian&lt;br/&gt;or sync"| C
+    C --&gt;|"chapter PDFs"| D
+    B --&gt;|"content split"| D
+    D --&gt;|"upload chapters"| E
+    E --&gt; F
+    F --&gt;|generate| G
+    F --&gt;|generate| H
+    F --&gt;|generate| I
+    F --&gt;|generate| J</code></pre>
+<p><strong>Two paths to NotebookLM:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>studyctl sync TOPIC</code></td>
+<td>Hash-based change detection, syncs only modified files. Converts .md to PDF via pandoc.</td>
+<td>Ongoing sync as you take notes</td>
+</tr>
+<tr>
+<td><code>studyctl content from-obsidian DIR</code></td>
+<td>Full pipeline: markdown to PDF, split by chapter, upload, generate artefacts, download</td>
+<td>First-time processing of a course</td>
+</tr>
+<tr>
+<td><code>studyctl content process PDF</code></td>
+<td>Split PDF by TOC, upload chapters, generate artefacts</td>
+<td>Processing a textbook</td>
+</tr>
+<tr>
+<td><code>studyctl content split PDF</code></td>
+<td>Just split a PDF by chapter bookmarks</td>
+<td>Prep step before manual upload</td>
+</tr>
+</tbody>
+</table>
+<p><strong>NotebookLM gotchas:</strong>
+- Generation takes 15+ minutes for slides/video (timeout must be &gt;= 900s)
+- Daily quota ~20-25 for infographics/slides (Pro tier)
+- Sequential generation with 30s gap between types to avoid rate limits</p>
+<hr />
+<h3 id="2-study-sessions-one-command-full-environment">2. Study Sessions — One Command, Full Environment<a class="headerlink" href="#2-study-sessions-one-command-full-environment" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as User
+    participant CLI as studyctl study
+    participant DB as sessions.db
+    participant TMUX as tmux
+    participant AGENT as Claude Code
+    participant TUI as Textual Sidebar
+    participant IPC as IPC Files
+    participant WEB as Web Dashboard
+
+    U-&gt;&gt;CLI: studyctl study "Decorators" --energy 7
+    CLI-&gt;&gt;DB: start_study_session()
+    CLI-&gt;&gt;IPC: Write session-state.json + empty topics/parking
+    CLI-&gt;&gt;TMUX: Create session (cwd=sessions/study-decorators-xxx/)
+    CLI-&gt;&gt;TMUX: Split pane 75/25
+    TMUX-&gt;&gt;AGENT: Main pane: claude --append-system-prompt-file persona.md
+    TMUX-&gt;&gt;TUI: Sidebar pane: python -m studyctl.tui.sidebar
+
+    loop Every 2 seconds
+        TUI-&gt;&gt;IPC: stat() mtime check
+        IPC--&gt;&gt;TUI: Update timer, activity, counters
+        TUI-&gt;&gt;TMUX: Write session-oneline.txt (status bar)
+    end
+
+    Note over AGENT,IPC: Agent writes topics + parking during session
+
+    opt --web flag
+        CLI-&gt;&gt;WEB: Start uvicorn background
+        loop SSE every 2 seconds
+            WEB-&gt;&gt;IPC: stat() mtime check
+            IPC--&gt;&gt;WEB: Push HTML fragments via SSE
+        end
+    end
+
+    U-&gt;&gt;AGENT: /exit or Ctrl+C
+    AGENT-&gt;&gt;CLI: Wrapper runs _cleanup_session()
+    CLI-&gt;&gt;DB: end_study_session()
+    CLI-&gt;&gt;IPC: Clear IPC files
+    CLI-&gt;&gt;TMUX: Switch to previous session
+    CLI-&gt;&gt;TMUX: Kill study session
+
+    Note over U: Session dir preserved with .claude/ history</code></pre>
+<p><strong>Session directory structure:</strong>
+<div class="highlight"><pre><span></span><code>~/.config/studyctl/sessions/
+  study-python-decorators-abc12345/
+    .claude/          # Claude conversation history (preserved!)
+  study-spark-internals-xyz98765/
+    .claude/          # Separate conversation
+</code></pre></div></p>
+<p><strong>Resume flow:</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># tmux still alive → reattach</span>
+studyctl<span class="w"> </span>study<span class="w"> </span>--resume
+
+<span class="c1"># tmux dead, session dir preserved → rebuild + claude -r</span>
+studyctl<span class="w"> </span>study<span class="w"> </span>--resume
+<span class="c1"># Claude: &quot;Last time we covered closures, you were about to...&quot;</span>
+</code></pre></div></p>
+<hr />
+<h3 id="3-review-system-spaced-repetition">3. Review System — Spaced Repetition<a class="headerlink" href="#3-review-system-spaced-repetition" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart TB
+    subgraph "Content Sources"
+        NLM["NotebookLM artefacts&lt;br/&gt;(quiz.json, flashcards.json)"]
+        DIR["config.yaml&lt;br/&gt;review.directories[]"]
+    end
+
+    subgraph "Review Engine"
+        LOAD["review_loader.py&lt;br/&gt;(discover + parse JSON)"]
+        SM2["SM-2 Algorithm&lt;br/&gt;(ease_factor, interval_days)"]
+        HASH["Card identity:&lt;br/&gt;SHA256(content)[:16]"]
+    end
+
+    subgraph "Interfaces"
+        PWA["Web PWA&lt;br/&gt;(localhost:8567)"]
+        RCLI["studyctl review&lt;br/&gt;(CLI due dates)"]
+        MCP["MCP Server&lt;br/&gt;(agent tool access)"]
+    end
+
+    DB[(sessions.db&lt;br/&gt;card_reviews&lt;br/&gt;review_sessions)]
+
+    NLM --&gt; DIR
+    DIR --&gt; LOAD
+    LOAD --&gt; HASH
+    HASH --&gt; SM2
+    SM2 --&gt; DB
+    DB --&gt; PWA
+    DB --&gt; RCLI
+    DB --&gt; MCP</code></pre>
+<p><strong>Web PWA features:</strong>
+- Flashcard flip (Space), answer (Y/N), read aloud (T)
+- Source/chapter filter, card count limiter
+- 90-day study heatmap
+- Pomodoro timer with audio chime
+- OpenDyslexic font toggle, dark/light theme
+- Installable as PWA on phone/tablet</p>
+<hr />
+<h3 id="4-session-intelligence-cross-session-learning">4. Session Intelligence — Cross-Session Learning<a class="headerlink" href="#4-session-intelligence-cross-session-learning" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart LR
+    subgraph "AI Sessions"
+        CC["Claude Code"]
+        KI["Kiro CLI"]
+        GE["Gemini CLI"]
+    end
+
+    subgraph "Export"
+        EX["session-export&lt;br/&gt;(incremental, per-source)"]
+    end
+
+    subgraph "Query"
+        FTS["FTS5 Full-Text Search&lt;br/&gt;(BM25 ranking)"]
+        CTX["Context Export&lt;br/&gt;(markdown/xml/summary)"]
+        CONT["Continue&lt;br/&gt;(resume/branch/summarize)"]
+    end
+
+    subgraph "Sync"
+        PUSH["session-sync push"]
+        PULL["session-sync pull"]
+    end
+
+    DB[(sessions.db)]
+    REMOTE[(Remote DB&lt;br/&gt;via SSH)]
+
+    CC --&gt;|"~/.claude/projects/"| EX
+    KI --&gt; EX
+    GE --&gt;|"~/.gemini/tmp/"| EX
+    EX --&gt; DB
+
+    DB --&gt; FTS
+    DB --&gt; CTX
+    DB --&gt; CONT
+
+    DB --&gt;|"SQL delta over SSH"| PUSH --&gt; REMOTE
+    REMOTE --&gt;|"SQL delta over SSH"| PULL --&gt; DB</code></pre>
+<p><strong>Key commands:</strong>
+<div class="highlight"><pre><span></span><code>session-export<span class="w">                          </span><span class="c1"># Import all AI sessions</span>
+session-query<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;decorators&quot;</span><span class="w">       </span><span class="c1"># Full-text search</span>
+session-query<span class="w"> </span>context<span class="w"> </span>SESSION_ID<span class="w">        </span><span class="c1"># Export for LLM consumption</span>
+session-query<span class="w"> </span><span class="k">continue</span><span class="w"> </span>SESSION_ID<span class="w">       </span><span class="c1"># Resume context</span>
+session-sync<span class="w"> </span>push<span class="w"> </span>mac-mini<span class="w">              </span><span class="c1"># Push to remote</span>
+session-sync<span class="w"> </span>pull<span class="w"> </span>mac-mini<span class="w">              </span><span class="c1"># Pull from remote</span>
+</code></pre></div></p>
+<hr />
+<h3 id="5-agent-protocol-how-ai-mentors-behave">5. Agent Protocol — How AI Mentors Behave<a class="headerlink" href="#5-agent-protocol-how-ai-mentors-behave" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart TB
+    subgraph "Shared Protocols"
+        SP["session-protocol.md&lt;br/&gt;(session lifecycle)"]
+        SE["socratic-engine.md&lt;br/&gt;(70/30 questioning)"]
+        AF["audhd-framework.md&lt;br/&gt;(energy/emotion/sensory)"]
+        BS["break-science.md&lt;br/&gt;(energy-adaptive breaks)"]
+        KB["knowledge-bridging.md&lt;br/&gt;(domain analogies)"]
+        TB["teach-back-protocol.md&lt;br/&gt;(5-dimension scoring)"]
+        WD["wind-down-protocol.md&lt;br/&gt;(end-of-session)"]
+    end
+
+    subgraph "Personas"
+        PS["study.md&lt;br/&gt;(Socratic, agent drives)"]
+        PC["co-study.md&lt;br/&gt;(companion, user drives)"]
+    end
+
+    subgraph "Per-Agent Config"
+        CLAUDE["agents/claude/&lt;br/&gt;socratic-mentor.md"]
+        GEMINI["agents/gemini/&lt;br/&gt;study-mentor.md"]
+        KIRO["agents/kiro/&lt;br/&gt;rules"]
+    end
+
+    SP --&gt; PS
+    SP --&gt; PC
+    SE --&gt; PS
+    SE --&gt; PC
+    AF --&gt; PS
+    AF --&gt; PC
+    BS --&gt; PS
+    KB --&gt; PS
+    TB --&gt; PS
+    WD --&gt; PS
+
+    PS --&gt; CLAUDE
+    PC --&gt; CLAUDE
+    PS --&gt; GEMINI
+    PS --&gt; KIRO</code></pre>
+<hr />
+<h2 id="data-stores">Data Stores<a class="headerlink" href="#data-stores" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>Location</th>
+<th>What's in it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessions.db</code></td>
+<td><code>~/.config/studyctl/sessions.db</code></td>
+<td>Study sessions, card reviews, progress tracking, teach-back scores, knowledge bridges, concepts</td>
+</tr>
+<tr>
+<td><code>config.yaml</code></td>
+<td><code>~/.config/studyctl/config.yaml</code></td>
+<td>Topics, Obsidian paths, notebook IDs, medication timing, knowledge domains</td>
+</tr>
+<tr>
+<td><code>state.json</code></td>
+<td><code>~/.local/share/studyctl/state.json</code></td>
+<td>Sync state (per-file hashes, last sync timestamps)</td>
+</tr>
+<tr>
+<td>Session dirs</td>
+<td><code>~/.config/studyctl/sessions/</code></td>
+<td>Per-session <code>.claude/</code> conversation history</td>
+</tr>
+<tr>
+<td>IPC files</td>
+<td><code>~/.config/studyctl/session-*.{json,md}</code></td>
+<td>Live session state (transient, cleared on end)</td>
+</tr>
+<tr>
+<td>Artefacts</td>
+<td>Alongside source PDFs</td>
+<td>Downloaded NotebookLM audio/video/quiz/flashcard files</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="end-to-end-workflow-example">End-to-End Workflow Example<a class="headerlink" href="#end-to-end-workflow-example" title="Permanent link">&para;</a></h2>
+<p>Here's a complete workflow from course materials to mastery:</p>
+<div class="highlight"><pre><span></span><code>1. PREPARE MATERIALS
+   ─────────────────
+   Take notes in Obsidian → studyctl content from-obsidian ./notes/
+   OR: Have a PDF textbook → studyctl content process textbook.pdf
+
+   Result: chapters uploaded to NotebookLM, artefacts generated
+
+2. REVIEW ARTEFACTS
+   ─────────────────
+   Listen to NotebookLM audio overviews (podcast-style)
+   Download quiz + flashcard JSON to review directory
+
+3. STUDY WITH AI MENTOR
+   ─────────────────────
+   studyctl study &quot;Python Decorators&quot; --energy 7
+
+   → tmux opens with Claude as Socratic mentor
+   → Sidebar shows timer, activity, counters
+   → Agent asks questions, tracks wins/struggles
+   → Park tangential topics for later
+   → Quit Claude when done (auto-cleanup)
+
+4. REVIEW FLASHCARDS
+   ──────────────────
+   studyctl web → open localhost:8567
+
+   → SM-2 surfaces due cards
+   → Review on phone/tablet (PWA)
+   → Track accuracy over time
+
+5. TRACK PROGRESS
+   ───────────────
+   studyctl streaks        → study consistency
+   studyctl wins           → mastered concepts
+   studyctl struggles      → recurring trouble spots
+   studyctl resume         → last session context
+
+6. SYNC ACROSS MACHINES
+   ─────────────────────
+   session-sync push mac-mini   → push session history
+   session-sync pull laptop     → pull on another machine
+
+7. RESUME NEXT DAY
+   ────────────────
+   studyctl study --resume
+
+   → Claude picks up conversation: &quot;Last time we covered...&quot;
+</code></pre></div>
+<hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Required</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python 3.12+</td>
+<td>Yes</td>
+<td><code>mise install python</code> or system package</td>
+</tr>
+<tr>
+<td>tmux 3.1+</td>
+<td>For <code>studyctl study</code></td>
+<td><code>brew install tmux</code> / <code>apt install tmux</code></td>
+</tr>
+<tr>
+<td>Claude Code</td>
+<td>For AI study sessions</td>
+<td><code>npm install -g @anthropic-ai/claude-code</code></td>
+</tr>
+<tr>
+<td>pandoc</td>
+<td>For markdown to PDF</td>
+<td><code>brew install pandoc</code></td>
+</tr>
+<tr>
+<td>typst</td>
+<td>For PDF rendering</td>
+<td><code>brew install typst</code></td>
+</tr>
+<tr>
+<td>PyMuPDF</td>
+<td>For PDF splitting</td>
+<td><code>pip install 'studyctl[content]'</code></td>
+</tr>
+<tr>
+<td>notebooklm-py</td>
+<td>For NotebookLM API</td>
+<td><code>pip install 'studyctl[notebooklm]'</code></td>
+</tr>
+<tr>
+<td>Textual</td>
+<td>For TUI sidebar</td>
+<td><code>pip install 'studyctl[tui]'</code></td>
+</tr>
+<tr>
+<td>FastAPI + uvicorn</td>
+<td>For web UI</td>
+<td><code>pip install 'studyctl[web]'</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install everything</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[all]&#39;</span>
+
+<span class="c1"># Or just what you need</span>
+pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="w">                    </span><span class="c1"># CLI + review only</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[tui,web]&#39;</span><span class="w">        </span><span class="c1"># + sidebar + web dashboard</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[content]&#39;</span><span class="w">        </span><span class="c1"># + PDF pipeline</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
