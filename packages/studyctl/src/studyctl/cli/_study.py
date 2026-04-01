@@ -228,6 +228,17 @@ def _handle_start(
 
     session_dir.mkdir(parents=True, exist_ok=True)
 
+    # Write a CLAUDE.md so Claude knows this is a study session directory
+    # and doesn't waste time exploring for project context.
+    claude_md = session_dir / "CLAUDE.md"
+    if not claude_md.exists():
+        claude_md.write_text(
+            f"# Study Session: {topic}\n\n"
+            "This is a studyctl study session directory. "
+            "Do not search for code or project files here.\n\n"
+            "Use `studyctl topic` to log topics and `studyctl park` to park questions.\n"
+        )
+
     # Clean up stale tmux session with same name
     if session_exists(session_name):
         kill_session(session_name)
