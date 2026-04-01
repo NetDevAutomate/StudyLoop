@@ -418,10 +418,9 @@ class SidebarApp(App[None]):
     def action_end_session(self) -> None:
         """End the entire study session (agent + sidebar + tmux).
 
-        Sends C-c to the agent pane, which causes Claude to exit.
-        The wrapper command around Claude then runs _cleanup_session()
-        automatically — so we don't compete with it. The sidebar just
-        exits and the wrapper handles everything.
+        Sends /exit to Claude Code (C-c only cancels the current request,
+        doesn't exit). The wrapper command around Claude then runs
+        _cleanup_session() automatically. The sidebar just exits.
         """
         import contextlib
 
@@ -433,7 +432,11 @@ class SidebarApp(App[None]):
 
         if main_pane:
             with contextlib.suppress(Exception):
+                # C-c first to cancel any running request
                 _tmux("send-keys", "-t", main_pane, "C-c")
+                time_mod.sleep(1)
+                # /exit to actually quit Claude Code
+                _tmux("send-keys", "-t", main_pane, "/exit", "Enter")
 
         # Exit the sidebar — the agent wrapper handles cleanup
         self.exit()

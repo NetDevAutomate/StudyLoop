@@ -67,8 +67,11 @@ def _session_exists(name: str) -> bool:
 def mock_agent_script(tmp_path):
     """Create a mock agent script that simulates Claude's behaviour."""
     script = tmp_path / "mock-agent.sh"
+    # Use the full uv run path so studyctl is found regardless of PATH
+    project_dir = Path(__file__).parent.parent.parent.parent
+    studyctl_cmd = f"uv run --project {project_dir} studyctl"
     script.write_text(
-        textwrap.dedent("""\
+        textwrap.dedent(f"""\
         #!/bin/bash
         # Mock agent: logs topics, then waits for C-c
         echo "Mock agent started"
@@ -76,11 +79,11 @@ def mock_agent_script(tmp_path):
 
         # Simulate agent logging topics after a brief delay
         sleep 2
-        studyctl topic "Closures" --status learning --note "exploring basics"
+        {studyctl_cmd} topic "Closures" --status learning --note "exploring basics"
         sleep 1
-        studyctl topic "First-class functions" --status win --note "understood"
+        {studyctl_cmd} topic "First-class functions" --status win --note "understood"
         sleep 1
-        studyctl park "How do generators relate to closures?"
+        {studyctl_cmd} park "How do generators relate to closures?"
 
         echo "Mock agent ready — waiting for exit signal"
         # Wait indefinitely (C-c or kill will terminate)
