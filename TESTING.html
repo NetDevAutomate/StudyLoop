@@ -1,0 +1,1381 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/TESTING.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Testing Guide - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#testing-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Testing Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#running-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invocation-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invocation Paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#useful-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Useful Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-no-conftestpy-in-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why No conftest.py in studyctl
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fixture-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixture Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fixture Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-session-tools-use-conftest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent-session-tools: Use conftest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#studyctl-use-_helperspy-or-inline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyctl: Use _helpers.py or Inline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mock-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mock Conventions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mock Conventions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#monkeypatch-for-attributes-and-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        monkeypatch — for attributes and environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unittestmockpatch-for-callables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unittest.mock.patch — for callables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-which" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to use which
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-markers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Markers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Markers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pytestmarkintegration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        @pytest.mark.integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pytestimportorskip-for-optional-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pytest.importorskip — for optional dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Test
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding a New Test">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-studyctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For studyctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-agent-session-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For agent-session-tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-todos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known TODOs
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="testing-guide">Testing Guide<a class="headerlink" href="#testing-guide" title="Permanent link">&para;</a></h1>
+<p>How to run, write, and maintain tests in the socratic-study-mentor workspace.</p>
+<h2 id="running-tests">Running Tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h2>
+<p>The workspace has two packages with independent test suites:</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Tests</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>studyctl</td>
+<td>293</td>
+<td><code>packages/studyctl/tests/</code></td>
+</tr>
+<tr>
+<td>agent-session-tools</td>
+<td>357</td>
+<td><code>packages/agent-session-tools/tests/</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<p>Before running tests, install all workspace packages:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--all-packages
+</code></pre></div>
+<p>Plain <code>uv sync</code> only installs root deps — you will get <code>ModuleNotFoundError</code> on <code>click</code>, <code>typer</code>, etc. if you skip this.</p>
+<h3 id="invocation-paths">Invocation Paths<a class="headerlink" href="#invocation-paths" title="Permanent link">&para;</a></h3>
+<p><strong>From workspace root (recommended):</strong></p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w">                          </span><span class="c1"># both packages, 650 tests</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>packages/studyctl/tests/<span class="w"> </span><span class="c1"># studyctl only</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>packages/agent-session-tools/tests/<span class="w">  </span><span class="c1"># agent-session-tools only</span>
+</code></pre></div>
+<p>The root <code>pyproject.toml</code> sets <code>--import-mode=importlib</code> which is <strong>load-bearing</strong> — it prevents namespace conflicts between the two packages. Do not remove or override this.</p>
+<p><strong>From inside a package directory:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>packages/studyctl
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w">                          </span><span class="c1"># uses studyctl&#39;s own pyproject.toml config</span>
+</code></pre></div>
+<p>Note: when running from a member directory, the root config's <code>--import-mode=importlib</code> is NOT applied (the member's own <code>addopts</code> take precedence). This is fine for focused development but the workspace root is the authoritative invocation path.</p>
+<h3 id="useful-options">Useful Options<a class="headerlink" href="#useful-options" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-x<span class="w">                       </span><span class="c1"># stop on first failure</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-k<span class="w"> </span><span class="s2">&quot;test_review&quot;</span><span class="w">         </span><span class="c1"># run tests matching a pattern</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not integration&quot;</span><span class="w">     </span><span class="c1"># skip integration tests</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--tb<span class="o">=</span>long<span class="w">                </span><span class="c1"># verbose tracebacks</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-v<span class="w">                       </span><span class="c1"># show individual test names</span>
+</code></pre></div>
+<h2 id="why-no-conftestpy-in-studyctl">Why No conftest.py in studyctl<a class="headerlink" href="#why-no-conftestpy-in-studyctl" title="Permanent link">&para;</a></h2>
+<p>This is the single most important architectural constraint in the test suite.</p>
+<p><strong>The problem:</strong> When pytest collects both packages from the workspace root, it loads conftest files from both <code>packages/agent-session-tools/tests/conftest.py</code> and (if it existed) <code>packages/studyctl/tests/conftest.py</code>. These conftest files register as pytest plugins via pluggy. With <code>--import-mode=importlib</code>, the two conftest modules would occupy the same plugin namespace, causing a registration conflict.</p>
+<p><strong>The solution:</strong> agent-session-tools has a conftest (it was here first and holds shared fixtures like <code>temp_db</code>, <code>migrated_db</code>, <code>populated_db</code>). studyctl does NOT have a conftest. All studyctl fixtures are either:</p>
+<ol>
+<li><strong>Inlined</strong> in each test file (the current pattern for most tests)</li>
+<li><strong>Imported from <code>_helpers.py</code></strong> — a plain Python module with factory functions (not pytest fixtures)</li>
+</ol>
+<p><strong>Never create <code>packages/studyctl/tests/conftest.py</code>.</strong> If you need shared utilities for studyctl tests, add them to <code>packages/studyctl/tests/_helpers.py</code>.</p>
+<h2 id="fixture-patterns">Fixture Patterns<a class="headerlink" href="#fixture-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="agent-session-tools-use-conftest">agent-session-tools: Use conftest<a class="headerlink" href="#agent-session-tools-use-conftest" title="Permanent link">&para;</a></h3>
+<p>Shared fixtures live in <code>packages/agent-session-tools/tests/conftest.py</code>:</p>
+<ul>
+<li><code>temp_db</code> — temporary SQLite DB with base schema, yields <code>(conn, db_path)</code></li>
+<li><code>migrated_db</code> — same as <code>temp_db</code> but with all migrations applied</li>
+<li><code>populated_db</code> — <code>migrated_db</code> with a sample session and message inserted</li>
+<li><code>temp_config_dir</code> — temporary config directory structure</li>
+<li><code>sample_session_data</code> — dict with canonical session fields</li>
+<li><code>sample_message_data</code> — dict with canonical message fields</li>
+</ul>
+<p>Use these directly in your test function signatures:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_export_creates_session</span><span class="p">(</span><span class="n">migrated_db</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+    <span class="n">conn</span><span class="p">,</span> <span class="n">db_path</span> <span class="o">=</span> <span class="n">migrated_db</span>
+    <span class="c1"># conn has all migrations applied, ready for exporter testing</span>
+</code></pre></div>
+<h3 id="studyctl-use-_helperspy-or-inline">studyctl: Use _helpers.py or Inline<a class="headerlink" href="#studyctl-use-_helperspy-or-inline" title="Permanent link">&para;</a></h3>
+<p>Import factory functions from <code>_helpers.py</code> and wrap them in <code>@pytest.fixture</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_review_db</span><span class="p">,</span> <span class="n">make_isolated_config</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">review_db</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">make_review_db</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">isolated_config</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">monkeypatch</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">make_isolated_config</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">monkeypatch</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_something</span><span class="p">(</span><span class="n">review_db</span><span class="p">):</span>
+    <span class="c1"># review_db is a Path to a temp SQLite file with review tables</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p><strong>Available helpers:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Returns</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>make_review_db(tmp_path)</code></td>
+<td><code>Path</code></td>
+<td>Creates a temp SQLite DB with review schema (WAL mode)</td>
+</tr>
+<tr>
+<td><code>make_isolated_config(tmp_path, monkeypatch)</code></td>
+<td><code>Path</code></td>
+<td>Redirects <code>CONFIG_DIR</code> and <code>_CONFIG_PATH</code> to temp dir</td>
+</tr>
+</tbody>
+</table>
+<p>For simple, one-off fixtures, just inline them in the test file. Only use <code>_helpers.py</code> when the pattern recurs across multiple files.</p>
+<h2 id="mock-conventions">Mock Conventions<a class="headerlink" href="#mock-conventions" title="Permanent link">&para;</a></h2>
+<p>Two tools, each for a specific purpose:</p>
+<h3 id="monkeypatch-for-attributes-and-environment"><code>monkeypatch</code> — for attributes and environment<a class="headerlink" href="#monkeypatch-for-attributes-and-environment" title="Permanent link">&para;</a></h3>
+<p>Use <code>monkeypatch.setattr</code> to replace module-level constants and object attributes. Use <code>monkeypatch.setenv</code> for environment variables. These auto-revert when the test ends.</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_custom_config_dir</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+    <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setattr</span><span class="p">(</span><span class="s2">&quot;studyctl.settings.CONFIG_DIR&quot;</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">)</span>
+    <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setenv</span><span class="p">(</span><span class="s2">&quot;STUDYCTL_CONFIG&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;config.yaml&quot;</span><span class="p">))</span>
+    <span class="c1"># settings module now reads from tmp_path</span>
+</code></pre></div>
+<h3 id="unittestmockpatch-for-callables"><code>unittest.mock.patch</code> — for callables<a class="headerlink" href="#unittestmockpatch-for-callables" title="Permanent link">&para;</a></h3>
+<p>Use <code>patch</code> when you need to replace a function AND verify it was called. The <code>MagicMock</code>/<code>AsyncMock</code> objects provide <code>.assert_called_once_with()</code>, <code>.call_args</code>, etc.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_pypi_check_offline</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;studyctl.doctor.updates._fetch_pypi_version&quot;</span><span class="p">,</span> <span class="n">return_value</span><span class="o">=</span><span class="s2">&quot;2.1.0&quot;</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">check_update_available</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;pass&quot;</span>
+</code></pre></div>
+<p>For async code, use <code>AsyncMock</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncMock</span><span class="p">,</span> <span class="n">patch</span>
+
+<span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;studyctl.content.notebooklm_client.asyncio.sleep&quot;</span><span class="p">,</span> <span class="n">new_callable</span><span class="o">=</span><span class="n">AsyncMock</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_rate_limit</span><span class="p">(</span><span class="n">mock_sleep</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">generate_with_rate_limit</span><span class="p">()</span>
+    <span class="n">mock_sleep</span><span class="o">.</span><span class="n">assert_called</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="when-to-use-which">When to use which<a class="headerlink" href="#when-to-use-which" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Replace a module constant (<code>CONFIG_DIR</code>, <code>DEFAULT_DB</code>)</td>
+<td><code>monkeypatch.setattr</code></td>
+</tr>
+<tr>
+<td>Set/override an env var</td>
+<td><code>monkeypatch.setenv</code></td>
+</tr>
+<tr>
+<td>Replace a function to control its return value</td>
+<td><code>patch</code> (context manager)</td>
+</tr>
+<tr>
+<td>Replace a function AND verify call arguments</td>
+<td><code>patch</code> (decorator or context manager)</td>
+</tr>
+<tr>
+<td>Replace an async function</td>
+<td><code>patch</code> with <code>new_callable=AsyncMock</code></td>
+</tr>
+<tr>
+<td>Replace <code>shutil.which</code> for tool detection</td>
+<td><code>patch</code></td>
+</tr>
+<tr>
+<td>Replace <code>subprocess.run</code> for command isolation</td>
+<td><code>patch</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-markers">Test Markers<a class="headerlink" href="#test-markers" title="Permanent link">&para;</a></h2>
+<h3 id="pytestmarkintegration"><code>@pytest.mark.integration</code><a class="headerlink" href="#pytestmarkintegration" title="Permanent link">&para;</a></h3>
+<p>For tests that require external infrastructure (tmux, network, real databases). These are excluded from fast local runs:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="n">pytestmark</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">integration</span>  <span class="c1"># marks entire module</span>
+
+<span class="c1"># Or per-test:</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">integration</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_tmux_session_lifecycle</span><span class="p">():</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p>Run integration tests explicitly:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>integration<span class="w">           </span><span class="c1"># only integration tests</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not integration&quot;</span><span class="w">     </span><span class="c1"># skip integration tests</span>
+</code></pre></div>
+<h3 id="pytestimportorskip-for-optional-dependencies"><code>pytest.importorskip</code> — for optional dependencies<a class="headerlink" href="#pytestimportorskip-for-optional-dependencies" title="Permanent link">&para;</a></h3>
+<p>Tests that require optional packages use <code>importorskip</code> at module level. The test file is collected normally but all tests in it are <strong>skipped</strong> at runtime if the dependency is missing:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># At the top of the file, before any other imports from the optional package:</span>
+<span class="n">pytest</span><span class="o">.</span><span class="n">importorskip</span><span class="p">(</span><span class="s2">&quot;pymupdf&quot;</span><span class="p">)</span>
+<span class="n">pytest</span><span class="o">.</span><span class="n">importorskip</span><span class="p">(</span><span class="s2">&quot;fastapi&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Currently skipped groups: <code>pymupdf</code> (content splitter), <code>notebooklm</code> (notebooklm client), <code>fastapi</code> (web app/artefacts), <code>mcp</code> (MCP tools).</p>
+<h2 id="adding-a-new-test">Adding a New Test<a class="headerlink" href="#adding-a-new-test" title="Permanent link">&para;</a></h2>
+<h3 id="for-studyctl">For studyctl<a class="headerlink" href="#for-studyctl" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create <code>packages/studyctl/tests/test_&lt;module&gt;.py</code></li>
+<li>Import helpers if needed: <code>from _helpers import make_review_db</code></li>
+<li>Define fixtures inline or wrap helpers in <code>@pytest.fixture</code></li>
+<li>If testing optional-dep code, add <code>pytest.importorskip("package")</code> at module level</li>
+<li>Do NOT create a conftest.py</li>
+</ol>
+<h3 id="for-agent-session-tools">For agent-session-tools<a class="headerlink" href="#for-agent-session-tools" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create <code>packages/agent-session-tools/tests/test_&lt;module&gt;.py</code></li>
+<li>Use conftest fixtures (<code>temp_db</code>, <code>migrated_db</code>, etc.) directly in test signatures</li>
+<li>For exporter tests, use <code>migrated_db</code> — it has all migrations applied</li>
+<li>Add new shared fixtures to conftest.py if they'll be used by 3+ test files</li>
+</ol>
+<h3 id="naming">Naming<a class="headerlink" href="#naming" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Test files: <code>test_&lt;module_name&gt;.py</code></li>
+<li>Test classes: <code>Test&lt;Feature&gt;</code> (optional — flat functions are fine)</li>
+<li>Test functions: <code>test_&lt;behaviour_under_test&gt;</code></li>
+<li>Fixtures: descriptive nouns (<code>review_db</code>, <code>isolated_config</code>, <code>projects_dir</code>)</li>
+</ul>
+<h2 id="known-todos">Known TODOs<a class="headerlink" href="#known-todos" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Coverage configuration</strong> — <code>pytest-cov</code> is in dev deps but studyctl has no <code>[tool.coverage.run]</code> config. Agent-session-tools does.</li>
+<li><strong><code>addopts</code> split</strong> — running from workspace root uses <code>--import-mode=importlib</code> only. Running from a member directory uses that member's <code>addopts</code>. The root path is authoritative.</li>
+<li><strong>Worktree tests</strong> — 8 test files in <code>.claude/worktrees/feat+live-session-dashboard/</code> need merging (blocked on 5 source modules landing in main first).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
