@@ -210,7 +210,7 @@ Diagnostic engine, self-update mechanism, and AI-guided setup for non-technical 
 - [x] **Agent manifest** — `agents/manifest.json` tracks SHA-256 hashes of all agent definitions. `scripts/update-agent-manifest.py` regenerates.
 - [x] **Documentation** — README, CLI reference, setup guide, agent-install all updated for non-technical users.
 
-## v2.2 — Live Session Dashboard (in progress)
+## v2.2 — Live Session Dashboard
 
 Live study session with real-time dashboard, parking lot, and timer.
 
@@ -219,24 +219,49 @@ Live study session with real-time dashboard, parking lot, and timer.
 - [x] **Phase 2 — Web Dashboard**: SSE-powered live dashboard (`/session`), HTMX + Alpine.js, energy-adaptive timer, activity feed with visual language, session summary, artefact viewer, 14 tests
 - [x] **Bugs fixed**: Parking deduplication (migration v15 + `INSERT OR IGNORE`), IPC file permissions (0700/0600), CORS wildcard removed, SSE mtime optimization, timer pause/reset controls, auto-migrate parked_topics
 - [x] **Phase 1 — Unified Session**: `studyctl study` single command, tmux session runtime (`tmux.py`), agent launcher (`agent_launcher.py`, Claude-only), Textual sidebar (`tui/sidebar.py`), `--resume`/`--end`/`--web`, agent personas (`study.md`, `co-study.md`), persistent session directories with conversation history resume (`claude -r`), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.
-- [ ] **Phase 2 — Polish**: Energy streaks, break suggestions, parked topic warmup, vendored HTMX/Alpine.js
-- [ ] **Phase 3 — Devices**: ttyd via nginx proxy, pyrage + Keychain password, web terminal embed, LAN access
+
+### v2.2.1 — CI Fixes, Test Harness & Session Bug Fixes (2026-04-02)
+
+- [x] **CI fixes**: ruff formatting, integration test markers (`@pytest.mark.integration`), exclude tmux tests from CI
+- [x] **Copilot review**: 7 comments resolved (migrations v15, session state cleanup, IPC chmod, INSERT OR IGNORE dedup, accessibility, notification prompt, SW cache)
+- [x] **Session bugs**: Q quit kills all `study-*` sessions (stale first, current last), `detach-on-destroy on` returns user to shell, resume zombie detection via `pgrep`, agent binary absolute path resolution
+- [x] **3-layer test harness**: Textual Pilot (5 tests), tmux Lifecycle (15 tests), pexpect UAT (6 tests) — 747 tests total
+- [x] **Docs**: setup-guide (tmux prereq + resurrect note), session-protocol (tmux environment section), solution doc
 
 ## Next
 
+### v2.2 — Polish (Phase 2)
+
+- [ ] `studyctl clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs
+- [ ] tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore
+- [ ] Vendor HTMX + Alpine.js into `web/static/` (remove CDN, enable offline PWA)
+- [ ] Parked topic warmup at session start (surface unresolved topics from previous sessions)
+- [ ] Break suggestions at timer threshold crossings (from `break-science.md`)
+- [ ] Energy streaks — correlate energy levels with session outcomes in `studyctl streaks`
+
 ### Phase 6: CI/CD Pipeline
 
-Nightly drift detection, pre-release gate, and Docker image pipeline. Spec at `docs/ci-cd-pipeline.md`.
+Nightly drift detection, pre-release gate. Spec at `docs/ci-cd-pipeline.md`.
 
 - [ ] Nightly: fresh install on Ubuntu + macOS, `studyctl doctor --json` as gate
-- [ ] Pre-release: upgrade path N-1 -> N, triggered on release tags
-- [ ] Docker: `studyctl-web` image with server-side TTS, health check via doctor
+- [ ] Pre-release: upgrade path N-1 → N, triggered on release tags
+- [ ] Docker: `studyctl-web` image with health check via doctor
 - [ ] `compatibility.json` for pre-flight version checks
 
-### Phase 7: Docker Web + Server-Side TTS
+### Phase 3: Devices (ttyd + LAN)
 
-- [ ] Docker image running `studyctl web` with kokoro-onnx TTS
-- [ ] FastAPI audio endpoint for browser playback
+- [ ] ttyd via nginx/Caddy proxy (Unix socket, htpasswd auth)
+- [ ] pyrage + macOS Keychain for password management
+- [ ] Web terminal embed (iframe with LAN IP, `frame-ancestors` CSP)
+- [ ] `studyctl study --lan` flag
+- [ ] LAN password auth
+
+### Multi-Agent Support
+
+- [ ] Gemini CLI launch command + persona integration
+- [ ] Kiro CLI launch command + persona integration
+- [ ] OpenCode launch command + persona integration
+- [ ] Agent auto-detection priority order (configurable)
 
 ### Phase 3: MCP Agent Integration
 
