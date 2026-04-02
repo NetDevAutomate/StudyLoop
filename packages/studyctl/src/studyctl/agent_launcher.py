@@ -130,6 +130,14 @@ def get_launch_command(
     """
     info = AGENT_REGISTRY[agent]
     template = info["resume"] if resume and "resume" in info else info["launch"]
+
+    # Resolve the agent binary to an absolute path. tmux panes run
+    # non-interactive shells which don't source .zshrc, so ~/.local/bin
+    # (where claude lives) may not be in PATH.
+    binary = shutil.which(info["binary"])
+    if binary:
+        template = template.replace(info["binary"], binary, 1)
+
     return template.format(persona_file=persona_file)
 
 

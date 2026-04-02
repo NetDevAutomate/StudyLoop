@@ -25,11 +25,12 @@ from pathlib import Path
 
 import pytest
 
-# Skip entire module if tmux is not installed
-pytestmark = pytest.mark.skipif(
-    not shutil.which("tmux"),
-    reason="tmux not installed",
-)
+# Skip entire module if tmux is not installed, and mark as integration
+# so CI can exclude with -m "not integration" (headless runners time out).
+pytestmark = [
+    pytest.mark.skipif(not shutil.which("tmux"), reason="tmux not installed"),
+    pytest.mark.integration,
+]
 
 # Paths
 CONFIG_DIR = Path.home() / ".config" / "studyctl"

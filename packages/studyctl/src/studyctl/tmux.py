@@ -202,9 +202,64 @@ def display_popup(
     _tmux(*args, check=True)
 
 
+def pane_has_child_process(pane_id: str) -> bool:
+    """Check if the pane's process has child processes (agent is running).
+
+    tmux wraps commands in a shell, so ``pane_current_command`` always
+    reports the wrapper shell (``zsh``/``bash``). Instead, check if the
+    pane's PID has children — if it does, the agent is still running.
+    """
+    result = _tmux("display-message", "-t", pane_id, "-p", "#{pane_pid}")
+    if result.returncode != 0:
+        return False
+    pane_pid = result.stdout.strip()
+    if not pane_pid:
+        return False
+    # Check for child processes of the pane's shell
+    check = subprocess.run(
+        ["pgrep", "-P", pane_pid],
+        capture_output=True,
+        text=True,
+    )
+    return check.returncode == 0
+
+
 def kill_session(name: str) -> None:
-    """Kill a tmux session by name. No-op if it doesn't exist."""
+    """Kill a tmux session by name. Waits until the session is gone."""
+    import time
+
     _tmux("kill-session", "-t", name)
+    # tmux kill is async — wait for it to take effect
+    for _ in range(10):
+        if not session_exists(name):
+            return
+        time.sleep(0.1)
+    # Last resort: try again
+    _tmux("kill-session", "-t", name)
+    time.sleep(0.2)
+
+
+def kill_all_study_sessions(current_session: str | None = None) -> None:
+    """Kill all tmux sessions with 'study-' prefix.
+
+    Ensures no stale sessions accumulate. Called during cleanup
+    so non-technical users aren't stranded in tmux.
+
+    Kills the current session LAST — if we're running inside it,
+    killing it first would SIGHUP us before we can clean up the rest.
+    """
+    result = _tmux("list-sessions", "-F", "#{session_name}")
+    if result.returncode != 0:
+        return
+    sessions = [n for n in result.stdout.strip().splitlines() if n.startswith("study-")]
+
+    # Kill other sessions first, current session last
+    others = [n for n in sessions if n != current_session]
+    for name in others:
+        _tmux("kill-session", "-t", name)
+    # Now kill the one we're in (if any) — this SIGHUP's us
+    if current_session and current_session in sessions:
+        _tmux("kill-session", "-t", current_session)
 
 
 def switch_client(name: str) -> None:

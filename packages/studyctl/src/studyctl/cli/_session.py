@@ -58,9 +58,11 @@ def session_start(topic: str, energy: int) -> None:
         }
     )
 
-    # Create empty IPC files for the dashboard (0600 permissions)
-    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-    PARKING_FILE.touch(mode=0o600, exist_ok=True)
+    # Create empty IPC files for the dashboard (0600 permissions).
+    # Explicit chmod ensures perms are tightened even if files pre-exist.
+    for ipc_file in (TOPICS_FILE, PARKING_FILE):
+        ipc_file.touch(exist_ok=True)
+        ipc_file.chmod(0o600)
 
     console.print(f"[bold green]Session started:[/bold green] {topic} (energy: {energy}/10)")
     console.print(f"  Session ID: [dim]{study_id}[/dim]")
@@ -134,9 +136,9 @@ def session_end(notes: str) -> None:
         "Avoid your phone for 10-15 min \u2014 your brain will replay this at 20x speed.[/dim]"
     )
 
-    # Clean up IPC files (keep state file briefly for dashboard summary view)
-    # State file will be cleared on next session start
-    clear_session_files()
+    # Clean up IPC files but keep state file for dashboard summary view.
+    # State file will be cleared on next session start.
+    clear_session_files(keep_state=True)
 
 
 @session_group.command("status")

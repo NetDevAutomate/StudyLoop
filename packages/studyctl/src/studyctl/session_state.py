@@ -138,9 +138,15 @@ def append_parking(question: str) -> None:
         f.write(f"- {question}\n")
 
 
-def clear_session_files() -> None:
-    """Remove IPC files at session end."""
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
+def clear_session_files(*, keep_state: bool = False) -> None:
+    """Remove IPC files at session end.
+
+    Args:
+        keep_state: If True, preserve STATE_FILE so the dashboard can
+                    render a summary view before the next session starts.
+    """
+    targets = (TOPICS_FILE, PARKING_FILE) if keep_state else (STATE_FILE, TOPICS_FILE, PARKING_FILE)
+    for f in targets:
         if f.exists():
             f.unlink()
 

@@ -19,9 +19,12 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 
 - **Python 3.12+** (both studyctl and agent-session-tools require 3.12+)
 - **[uv](https://docs.astral.sh/uv/)** — Python package manager
+- **tmux 3.1+** — required for `studyctl study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
 - **Obsidian** — for study notes (any vault structure works)
 - **Optional**: `notebooklm-py` for Google NotebookLM sync
 - **Optional**: `sentence-transformers` for semantic search
+
+> **tmux plugin note**: If you use `tmux-resurrect` or `tmux-continuum`, these plugins may interfere with studyctl's session management. studyctl sets `detach-on-destroy on` and `remain-on-exit off` on its sessions to ensure clean exits.
 
 ## Installation
 
