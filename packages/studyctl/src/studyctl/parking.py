@@ -47,7 +47,11 @@ def park_topic(
     session_id: str | None = None,
     created_by: str = "agent",
 ) -> int | None:
-    """Park a tangential topic for later. Returns the new row ID or None on failure."""
+    """Park a tangential topic for later. Returns the row ID or None on failure.
+
+    If the topic already exists for this session (INSERT OR IGNORE), the
+    existing row's ID is returned instead of 0.
+    """
     try:
         conn = _connect()
         try:
@@ -58,7 +62,15 @@ def park_topic(
                 (study_session_id, session_id, topic_tag, question, context, created_by),
             )
             conn.commit()
-            return cursor.lastrowid
+            if cursor.rowcount > 0:
+                return cursor.lastrowid
+            # Insert was ignored (duplicate) — fetch existing row ID
+            row = conn.execute(
+                """SELECT id FROM parked_topics
+                   WHERE study_session_id IS ? AND question = ?""",
+                (study_session_id, question),
+            ).fetchone()
+            return row["id"] if row else None
         finally:
             conn.close()
     except Exception:

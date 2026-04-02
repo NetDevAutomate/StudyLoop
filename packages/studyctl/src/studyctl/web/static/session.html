@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1a1b26">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -224,11 +224,9 @@
     };
   }
 
-  /* Request notification permission for break reminders */
-  if ('Notification' in window && Notification.permission === 'default') {
-    /* Defer to avoid blocking — only ask on first session page visit */
-    setTimeout(() => Notification.requestPermission(), 3000);
-  }
+  /* Notification permission is requested on user gesture only.
+     The timer-btn clicks in the Alpine component can call
+     Notification.requestPermission() when the user interacts. */
   </script>
 </body>
 </html>

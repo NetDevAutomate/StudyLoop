@@ -135,8 +135,6 @@ class TestStruggles:
         assert "No recurring struggle topics" in result.output
 
 
-
-
 # ---------------------------------------------------------------------------
 # config init (interactive wizard)
 # ---------------------------------------------------------------------------
@@ -275,5 +273,3 @@ class TestHelp:
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
         assert "AuDHD study pipeline" in result.output
-
-

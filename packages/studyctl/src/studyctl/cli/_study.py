@@ -302,6 +302,17 @@ def _handle_start(
     current_path = os.environ.get("PATH", "")
     set_environment(session_name, "PATH", f"{session_dir}:{current_path}")
 
+    # Ensure panes are destroyed when their commands exit. Without this,
+    # user/plugin tmux configs may keep dead panes alive (remain-on-exit on),
+    # preventing the session from auto-destroying after Q.
+    from studyctl.tmux import set_option
+
+    set_option(session_name, "remain-on-exit", "off")
+    # When the session is destroyed, detach the client (return to original
+    # shell) rather than switching to another tmux session. Critical for
+    # non-technical users who don't want to be stranded in tmux.
+    set_option(session_name, "detach-on-destroy", "on")
+
     # Load user's studyctl tmux overlay if they've explicitly created one.
     # We do NOT auto-load a bundled config — it would clobber the user's
     # theme (catppuccin, dracula, etc.), prefix, and keybindings.
@@ -365,29 +376,45 @@ def _handle_resume(ctx: click.Context) -> None:
        with ``-r`` flag to resume the AI conversation from history
     """
     from studyctl.session_state import read_session_state
-    from studyctl.tmux import attach, is_in_tmux, session_exists
+    from studyctl.tmux import (
+        attach,
+        is_in_tmux,
+        kill_session,
+        pane_has_child_process,
+        session_exists,
+    )
 
     state = read_session_state()
     session_name = state.get("tmux_session")
     session_dir = state.get("session_dir")
+    main_pane = state.get("tmux_main_pane")
 
     if not session_name:
         console.print("[yellow]No active session to resume.[/yellow]")
         ctx.exit(1)
         return
 
-    # Scenario 1: tmux session is still alive — just reconnect
+    # Scenario 1: tmux session is still alive AND agent is running — reconnect
     if session_exists(session_name):
-        topic = state.get("topic", "unknown")
-        console.print(f"[green]Resuming:[/green] {topic}")
+        # Check if the agent is actually running (not just a dead shell).
+        # tmux wraps commands in a shell, so we check for child processes.
+        agent_alive = pane_has_child_process(main_pane) if main_pane else False
 
-        if is_in_tmux():
-            from studyctl.tmux import switch_client
+        if agent_alive:
+            topic = state.get("topic", "unknown")
+            console.print(f"[green]Resuming:[/green] {topic}")
 
-            switch_client(session_name)
-        else:
-            attach(session_name)
-        return
+            if is_in_tmux():
+                from studyctl.tmux import switch_client
+
+                switch_client(session_name)
+            else:
+                attach(session_name)
+            return
+
+        # tmux session is zombie (agent exited) — kill it and rebuild
+        console.print("[dim]Cleaning up stale tmux session...[/dim]")
+        kill_session(session_name)
 
     # Scenario 2: tmux session dead but session dir preserved
     # Rebuild the tmux session with -r to resume the AI conversation
@@ -439,11 +466,9 @@ def _handle_end(_ctx: click.Context) -> None:
         read_session_state,
         write_session_state,
     )
-    from studyctl.tmux import is_in_tmux, kill_session, session_exists, switch_client
 
     state = read_session_state()
     study_id = state.get("study_session_id")
-    session_name = state.get("tmux_session")
     persona_file = state.get("persona_file")
 
     if not study_id:
@@ -480,15 +505,13 @@ def _handle_end(_ctx: click.Context) -> None:
 
     console.print(f"[bold]Session ended:[/bold] {topic}")
 
-    # Switch back to previous tmux session before killing
-    if is_in_tmux() and session_name:
-        with contextlib.suppress(Exception):
-            switch_client(":{previous}")
+    # Kill all study tmux sessions (current + any stale ones).
+    # No switch_client — we want the tmux client to exit, returning
+    # the user to their original shell.
+    from studyctl.tmux import kill_all_study_sessions
 
-    # Kill tmux session
-    if session_name and session_exists(session_name):
-        kill_session(session_name)
-        console.print(f"  tmux session '{session_name}' closed.")
+    kill_all_study_sessions()
+    console.print("  tmux session closed.")
 
     # Clear transient IPC files but KEEP session-state.json (with mode=ended).
     # The state file is needed by --resume to find the session directory
@@ -568,7 +591,6 @@ def _cleanup_session() -> None:
         read_session_state,
         write_session_state,
     )
-    from studyctl.tmux import kill_session, session_exists, switch_client
 
     state = read_session_state()
     study_id = state.get("study_session_id")
@@ -602,14 +624,14 @@ def _cleanup_session() -> None:
     with contextlib.suppress(OSError):
         oneline.unlink()
 
-    # Switch tmux client back to the previous session before killing
+    # Fire-and-forget: kill ALL study tmux sessions. We're running INSIDE
+    # the session (agent wrapper pane), so tmux will SIGHUP us. Don't use
+    # kill_session() (retry loop) — we won't survive to verify.
+    # Killing all study-* sessions ensures no stale sessions accumulate.
     with contextlib.suppress(Exception):
-        switch_client(":{previous}")
+        from studyctl.tmux import kill_all_study_sessions
 
-    # Kill the study tmux session
-    if session_name and session_exists(session_name):
-        with contextlib.suppress(Exception):
-            kill_session(session_name)
+        kill_all_study_sessions(current_session=session_name)
 
     # Clear transient IPC files but KEEP session-state.json (mode=ended).
     # Needed by --resume to find the session directory.

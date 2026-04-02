@@ -418,9 +418,12 @@ class SidebarApp(App[None]):
     def action_end_session(self) -> None:
         """End the entire study session (agent + sidebar + tmux).
 
-        Sends /exit to Claude Code (C-c only cancels the current request,
-        doesn't exit). The wrapper command around Claude then runs
-        _cleanup_session() automatically. The sidebar just exits.
+        Sends /exit to Claude Code, runs DB cleanup, then fires a raw
+        tmux kill-session. We DON'T use the retry-loop kill_session()
+        because we're running inside the session being killed — tmux
+        sends SIGHUP which terminates us mid-verification.
+
+        Strategy: fire the kill and accept that we'll die from SIGHUP.
         """
         import contextlib
 
@@ -429,16 +432,31 @@ class SidebarApp(App[None]):
 
         state = read_session_state()
         main_pane = state.get("tmux_main_pane")
+        session_name = state.get("tmux_session")
 
+        # Try graceful agent exit (best effort)
         if main_pane:
             with contextlib.suppress(Exception):
-                # C-c first to cancel any running request
                 _tmux("send-keys", "-t", main_pane, "C-c")
-                time_mod.sleep(1)
-                # /exit to actually quit Claude Code
+                time_mod.sleep(0.5)
                 _tmux("send-keys", "-t", main_pane, "/exit", "Enter")
+                time_mod.sleep(1)
 
-        # Exit the sidebar — the agent wrapper handles cleanup
+        # Run DB cleanup (state=ended, end study session, clean IPC files).
+        # Idempotent — safe even if the agent wrapper's cleanup also fires.
+        with contextlib.suppress(Exception):
+            from studyctl.cli._study import _cleanup_session
+
+            _cleanup_session()
+
+        # Fire-and-forget: kill ALL study tmux sessions. This ensures no
+        # stale sessions remain and the user returns to their original shell
+        # (not stranded in tmux). Kills us too via SIGHUP — that's fine.
+        from studyctl.tmux import kill_all_study_sessions
+
+        kill_all_study_sessions(current_session=session_name)
+
+        # If we somehow survive (e.g., no sessions found), exit cleanly.
         self.exit()
 
 

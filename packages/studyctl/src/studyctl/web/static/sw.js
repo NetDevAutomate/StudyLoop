@@ -1,5 +1,5 @@
-const CACHE = "studyctl-v2";
-const ASSETS = ["/", "/style.css", "/app.js", "/manifest.json", "/session.html"];
+const CACHE = "studyctl-v3";
+const ASSETS = ["/", "/style.css", "/app.js", "/manifest.json", "/session", "/session.html"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));

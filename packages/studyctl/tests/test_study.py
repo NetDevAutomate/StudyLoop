@@ -174,12 +174,17 @@ class TestStudyResume:
             assert "no longer exists" in result.output
 
     def test_resume_reconnects(self, runner):
-        state = {"tmux_session": "study-test-abc12345", "topic": "Test Topic"}
+        state = {
+            "tmux_session": "study-test-abc12345",
+            "tmux_main_pane": "%0",
+            "topic": "Test Topic",
+        }
         with (
             patch("studyctl.session_state.read_session_state", return_value=state),
             patch("studyctl.tmux.subprocess.run") as tmux_run,
         ):
-            tmux_run.return_value = MagicMock(returncode=0)  # session exists
+            # session_exists returns 0 (exists); pgrep returns 0 (has children)
+            tmux_run.return_value = MagicMock(returncode=0, stdout="47593\n")
             with patch.dict("os.environ", {"TMUX": "/tmp/tmux"}):
                 result = runner.invoke(study, ["--resume"])
                 assert "Resuming" in result.output

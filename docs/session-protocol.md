@@ -5,6 +5,16 @@ Every study session — across all agents and platforms — follows this protoco
 !!! tip "This is the shared protocol"
     All agents (Kiro, Claude Code, Gemini, OpenCode) use the same session flow. The source of truth lives in `agents/shared/session-protocol.md`.
 
+## tmux Session Environment
+
+Sessions run inside a tmux split-pane layout created by `studyctl study`:
+
+- **Left pane**: AI agent (Claude Code or other) running the session protocol
+- **Right pane**: Textual sidebar showing timer, activity feed, and counters
+- **Key bindings**: `p` pause/resume timer, `r` reset timer, `Q` end session
+- **`Q` quit**: Ends the DB session, kills all `study-*` tmux sessions, returns to the original shell
+- **`--resume`**: Detects live or zombie sessions and reconnects or rebuilds
+
 ---
 
 ## 1. Session Arrival (2 min) — Transition Support
