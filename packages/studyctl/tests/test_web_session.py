@@ -29,11 +29,11 @@ class TestSessionPage:
 
     def test_session_page_loads_htmx(self, client: TestClient) -> None:
         resp = client.get("/session")
-        assert "htmx.org" in resp.text
+        assert "/vendor/js/htmx-2.0.4.min.js" in resp.text
 
     def test_session_page_loads_alpine(self, client: TestClient) -> None:
         resp = client.get("/session")
-        assert "alpinejs" in resp.text
+        assert "/vendor/js/alpine-3.14.8.min.js" in resp.text
 
 
 class TestSessionStateAPI:
