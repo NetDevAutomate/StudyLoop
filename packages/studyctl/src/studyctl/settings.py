@@ -199,60 +199,21 @@ class Topic:
 
 
 def get_topics() -> list[Topic]:
-    """Load topics from settings, falling back to defaults (without notebook IDs)."""
+    """Load topics from settings. Returns empty list if none configured.
+
+    Topics are defined in ~/.config/studyctl/config.yaml under the 'topics'
+    key. Run 'studyctl config init' for interactive setup.
+    """
     settings = load_settings()
-    if settings.topics:
-        return [
-            Topic(
-                name=t.slug,
-                display_name=t.name,
-                notebook_id=t.notebook_id or None,
-                obsidian_paths=[t.obsidian_path],
-                tags=t.tags,
-            )
-            for t in settings.topics
-        ]
-
-    # Compute paths from settings for defaults
-    obsidian_base = settings.obsidian_base
-    obsidian_courses = obsidian_base / "Personal" / "2-Areas" / "Study" / "Courses"
-    obsidian_mentoring = obsidian_base / "Personal" / "2-Areas" / "Study" / "Mentoring"
-
     return [
         Topic(
-            name="python",
-            display_name="Python Study",
-            notebook_id=None,
-            obsidian_paths=[obsidian_courses / "ArjanCodes", obsidian_mentoring / "Python"],
-            tags=["python", "patterns", "oop", "architecture"],
-        ),
-        Topic(
-            name="sql",
-            display_name="SQL & Database Design",
-            notebook_id=None,
-            obsidian_paths=[obsidian_courses / "DataCamp", obsidian_mentoring / "Databases"],
-            tags=["sql", "postgresql", "athena", "redshift", "database"],
-        ),
-        Topic(
-            name="data-engineering",
-            display_name="Data Engineering",
-            notebook_id=None,
-            obsidian_paths=[
-                obsidian_courses / "ZTM" / "transcripts" / "data-engineering-bootcamp",
-                obsidian_mentoring / "Data-Engineering",
-            ],
-            tags=["etl", "spark", "glue", "airflow", "dbt", "pipeline", "lakehouse"],
-        ),
-        Topic(
-            name="aws-analytics",
-            display_name="AWS Analytics Services",
-            notebook_id=None,
-            obsidian_paths=[
-                obsidian_courses / "ZTM" / "Ai-Engineering-Aws-Sagemaker",
-                obsidian_mentoring / "AWS",
-            ],
-            tags=["athena", "redshift", "glue", "sagemaker", "lake-formation", "emr"],
-        ),
+            name=t.slug,
+            display_name=t.name,
+            notebook_id=t.notebook_id or None,
+            obsidian_paths=[t.obsidian_path],
+            tags=t.tags,
+        )
+        for t in settings.topics
     ]
 
 

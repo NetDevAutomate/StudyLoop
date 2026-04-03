@@ -794,6 +794,22 @@ def start_study_session(
         conn.close()
 
 
+def get_session_notes(study_id: str) -> str | None:
+    """Fetch the notes from a study session. Returns None if not found."""
+    if not study_id:
+        return None
+    conn = _connect()
+    if not conn:
+        return None
+    try:
+        row = conn.execute("SELECT notes FROM study_sessions WHERE id = ?", (study_id,)).fetchone()
+        return row["notes"] if row and row["notes"] else None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
 def end_study_session(study_id: str, notes: str | None = None) -> bool:
     """End a tracked study session, recording duration."""
     conn = _connect()
