@@ -406,10 +406,11 @@ Total:                                   896
 - [x] `--end` UAT test from outside (kill + cleanup verified)
 
 ### Architecture Debt (from 2026-04-03 review)
-- [ ] Unify config systems (YAML + JSON → single YAML)
-- [ ] Nightly CI job for UAT tests (macOS runner with tmux)
-- [ ] Split `query_sessions.py` monolith (CLI/formatters/resolver)
-- [ ] Fix VSCode circular import
+- [x] Unify config systems — already unified on YAML; removed dead JSON fallback from config_loader.py
+- [x] Split `query_sessions.py` monolith → `query_logic.py` (717 lines) + CLI (505 lines)
+- [x] Fix CI test failures — `test_cli_session.py` missing `_find_db` patch for headless environments
+- [ ] Nightly CI job for UAT tests (macOS runner with tmux) — deferred to Phase 6
+- [ ] Fix VSCode circular import — deferred, low priority (no active VSCode users)
 
 ### Future Phases
 - Phase 6: CI/CD improvements (includes architecture debt above)
