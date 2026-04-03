@@ -394,6 +394,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tmux-resurrect-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tmux-resurrect Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1417,6 +1434,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tmux-resurrect-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tmux-resurrect Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1946,6 +1980,7 @@
 <h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#tmux-resurrect-compatibility">tmux-resurrect Compatibility</a></li>
 <li><a href="#installation">Installation</a></li>
 <li><a href="#configuration">Configuration</a></li>
 <li><a href="#obsidian-vault-setup">Obsidian Vault Setup</a></li>
@@ -1966,8 +2001,30 @@
 <li><strong>Optional</strong>: <code>sentence-transformers</code> for semantic search</li>
 </ul>
 <blockquote>
-<p><strong>tmux plugin note</strong>: If you use <code>tmux-resurrect</code> or <code>tmux-continuum</code>, these plugins may interfere with studyctl's session management. studyctl sets <code>detach-on-destroy on</code> and <code>remain-on-exit off</code> on its sessions to ensure clean exits.</p>
+<p><strong>tmux-resurrect / tmux-continuum users</strong>: studyctl automatically cleans up
+zombie sessions on startup, so resurrect-restored sessions are handled
+gracefully. For the best experience, add the restore hook below to prevent
+resurrect from saving study sessions at all. See
+<a href="#tmux-resurrect-compatibility">tmux-resurrect compatibility</a> for details.</p>
 </blockquote>
+<h3 id="tmux-resurrect-compatibility">tmux-resurrect Compatibility<a class="headerlink" href="#tmux-resurrect-compatibility" title="Permanent link">&para;</a></h3>
+<p>studyctl creates temporary <code>study-*</code> tmux sessions that should not persist
+across tmux restarts. If you use <strong>tmux-resurrect</strong> or <strong>tmux-continuum</strong>,
+these plugins may save and restore killed study sessions as zombies.</p>
+<p><strong>Automatic handling (no action required):</strong> <code>studyctl study</code> automatically
+detects and kills zombie sessions before starting a new session. This works
+out of the box — no configuration needed.</p>
+<p><strong>Recommended: add a restore hook</strong> to prevent resurrect from restoring
+study sessions at all. Add this to your <code>~/.tmux.conf</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Kill any restored study-* sessions immediately after resurrect restore.</span>
+<span class="c1"># studyctl sessions are temporary and should not survive tmux restarts.</span>
+<span class="nb">set</span><span class="w"> </span>-g<span class="w"> </span>@resurrect-restore-hook<span class="w"> </span><span class="s1">&#39;for s in $(tmux list-sessions -F &quot;#{session_name}&quot; 2&gt;/dev/null | grep &quot;^study-&quot;); do tmux kill-session -t &quot;$s&quot; 2&gt;/dev/null; done&#39;</span>
+</code></pre></div>
+<p>After adding, reload your tmux config:</p>
+<div class="highlight"><pre><span></span><code>tmux<span class="w"> </span>source-file<span class="w"> </span>~/.tmux.conf
+</code></pre></div>
+<p>Run <code>studyctl doctor</code> to verify the configuration — it checks for
+tmux-resurrect and warns if the restore hook is not detected.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <h3 id="automatic-recommended">Automatic (recommended)<a class="headerlink" href="#automatic-recommended" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
