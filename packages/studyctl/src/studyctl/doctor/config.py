@@ -1,8 +1,9 @@
-"""Config health checks: Obsidian vault, review directories, pandoc."""
+"""Config health checks: Obsidian vault, review directories, pandoc, tmux-resurrect."""
 
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 
 from studyctl.doctor.models import CheckResult
@@ -118,6 +119,83 @@ def check_pandoc() -> list[CheckResult]:
             "info",
             "pandoc not installed (needed for content pipeline)",
             "brew install pandoc",
+            False,
+        )
+    ]
+
+
+def check_tmux_resurrect() -> list[CheckResult]:
+    """Check tmux-resurrect compatibility with studyctl sessions.
+
+    Detects whether tmux-resurrect is installed and if so, whether the
+    user has configured a restore hook to exclude study-* sessions.
+    """
+    # Check if tmux is available at all
+    if not shutil.which("tmux"):
+        return []  # No tmux, no resurrect concern
+
+    # Detect tmux-resurrect by checking for its plugin directory
+    resurrect_paths = [
+        Path.home() / ".tmux" / "plugins" / "tmux-resurrect",
+        Path.home() / ".config" / "tmux" / "plugins" / "tmux-resurrect",
+    ]
+    # Also check if resurrect is loaded via tmux show-options
+    resurrect_detected = any(p.is_dir() for p in resurrect_paths)
+
+    if not resurrect_detected:
+        # Check tmux options for resurrect (tpm may install elsewhere)
+        result = subprocess.run(
+            ["tmux", "show-options", "-g"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and "resurrect" in result.stdout:
+            resurrect_detected = True
+
+    if not resurrect_detected:
+        return [
+            CheckResult(
+                "config",
+                "tmux_resurrect",
+                "pass",
+                "tmux-resurrect not detected",
+                "",
+                False,
+            )
+        ]
+
+    # Resurrect is installed — check for restore hook in tmux config
+    tmux_conf_paths = [
+        Path.home() / ".tmux.conf",
+        Path.home() / ".config" / "tmux" / "tmux.conf",
+    ]
+    hook_found = False
+    for conf in tmux_conf_paths:
+        if conf.exists():
+            content = conf.read_text()
+            if "resurrect-restore-hook" in content and "study-" in content:
+                hook_found = True
+                break
+
+    if hook_found:
+        return [
+            CheckResult(
+                "config",
+                "tmux_resurrect",
+                "pass",
+                "tmux-resurrect restore hook configured",
+                "",
+                False,
+            )
+        ]
+
+    return [
+        CheckResult(
+            "config",
+            "tmux_resurrect",
+            "warn",
+            "tmux-resurrect detected but no restore hook for study-* sessions",
+            "See: studyctl docs setup-guide.md#tmux-resurrect-compatibility",
             False,
         )
     ]
