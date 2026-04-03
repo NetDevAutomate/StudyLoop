@@ -406,9 +406,14 @@ test_clean.py — Direct function calls, zero mocks
 ```
 
 See:
-- `packages/studyctl/src/studyctl/cli/_clean_logic.py` — the functional core
+- `packages/studyctl/src/studyctl/logic/clean_logic.py` — the functional core
 - `packages/studyctl/src/studyctl/cli/_clean.py` — the imperative shell
 - `packages/studyctl/tests/test_clean.py` — the mock-free tests
+
+All FCIS cores live in `studyctl/logic/` (not `cli/`). Other examples:
+- `logic/backlog_logic.py` — scoring, formatting, auto-persist (22 tests)
+- `logic/break_logic.py` — energy-adaptive break thresholds (23 tests)
+- `logic/streaks_logic.py` — energy trend and duration analysis (12 tests)
 
 ## Further Reading
 
