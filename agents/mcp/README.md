@@ -119,6 +119,42 @@ npm install -g @anthropic/mcp-google-calendar
 
 Requires a Google Cloud project with Calendar API enabled. See [setup guide](https://github.com/galacoder/mcp-google-calendar#setup).
 
+## studyctl-mcp (Session DB Tools)
+
+The `studyctl-mcp` server exposes 10 MCP tools for courses, backlog, and progress tracking. It's registered as a Python entry point and runs via stdio.
+
+**Start manually (for testing):**
+```bash
+uv run --project packages/studyctl studyctl-mcp
+```
+
+**Agent config** — already included in `agents/claude/mcp.json`. For other agents, add:
+```json
+{
+  "mcpServers": {
+    "studyctl-mcp": {
+      "command": "uv",
+      "args": ["run", "--project", "/path/to/packages/studyctl", "studyctl-mcp"]
+    }
+  }
+}
+```
+
+**Tools:**
+
+| Tool | Description |
+|------|-------------|
+| `list_courses` | List courses with card counts and review stats |
+| `get_study_context` | Current study state — due cards, weak areas |
+| `get_chapter_text` | Extract text from chapter PDFs |
+| `generate_flashcards` | Save agent-generated flashcards |
+| `generate_quiz` | Save agent-generated quiz questions |
+| `record_study_progress` | Record a card review result |
+| `get_study_backlog` | List pending backlog topics |
+| `get_topic_suggestions` | Ranked topic suggestions (algorithmic scoring) |
+| `get_study_history` | Search past sessions for a topic |
+| `record_topic_progress` | Update priority or resolve a backlog topic |
+
 ## Suggested Study Workflow
 
 ```

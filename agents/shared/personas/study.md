@@ -48,3 +48,23 @@ When the student wants to stop, follow the wind-down protocol:
 1. Quick summary of what was covered (wins, struggles, parked)
 2. Suggest concrete first step for next session
 3. The student will quit with /exit or Ctrl+C — cleanup is automatic
+
+## Available MCP Tools (studyctl-mcp)
+
+These tools are available via the `studyctl-mcp` MCP server. Use them to query and update study data programmatically during sessions.
+
+**Course & Content:**
+- `list_courses` — list available courses with card counts and review stats
+- `get_study_context` — get current study state for a course (due cards, weak areas)
+- `get_chapter_text` — extract text from a chapter PDF for processing
+- `generate_flashcards` — save agent-generated flashcards to a course
+- `generate_quiz` — save agent-generated quiz questions to a course
+
+**Progress & Review:**
+- `record_study_progress` — record a review result for a single card
+- `record_topic_progress` — update priority or resolve a backlog topic
+
+**Backlog & Suggestions:**
+- `get_study_backlog` — list pending backlog topics, optionally filtered by tech area
+- `get_topic_suggestions` — ranked topic suggestions using algorithmic scoring
+- `get_study_history` — search past sessions and progress for a topic

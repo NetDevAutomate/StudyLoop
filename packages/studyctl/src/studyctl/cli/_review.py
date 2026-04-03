@@ -222,6 +222,50 @@ def streaks() -> None:
             "\n  [dim]No session today or yesterday. Start one to keep your streak going![/dim]"
         )
 
+    # Energy analysis (from study_sessions table)
+    from studyctl.history import get_energy_session_data
+    from studyctl.logic.streaks_logic import SessionSummary, analyze_energy_streaks
+
+    raw = get_energy_session_data(days=30)
+    if raw:
+        summaries = [
+            SessionSummary(
+                energy_level=r["energy_level"],
+                duration_minutes=r["duration_minutes"],
+                days_ago=r["days_ago"],
+            )
+            for r in raw
+        ]
+        report = analyze_energy_streaks(summaries)
+
+        console.print("\n[bold]Energy Patterns (30 days)[/bold]\n")
+
+        # Distribution
+        for level in ("high", "medium", "low"):
+            count = report.distribution.get(level, 0)
+            if count:
+                bar = "\u2588" * count
+                console.print(f"  {level:>6}: {bar} ({count})")
+
+        # Trend
+        trend_icons = {
+            "improving": "[green]\u2191 Improving[/green]",
+            "declining": "[red]\u2193 Declining[/red]",
+            "stable": "[dim]\u2192 Stable[/dim]",
+        }
+        console.print(f"\n  Trend: {trend_icons.get(report.trend, report.trend)}")
+
+        # Duration correlation
+        if report.avg_duration_by_energy:
+            parts = [
+                f"{level}: {mins:.0f}min"
+                for level, mins in sorted(report.avg_duration_by_energy.items())
+            ]
+            console.print(f"  Avg duration: {' | '.join(parts)}")
+
+        if report.correlation_note:
+            console.print(f"\n  [dim italic]{report.correlation_note}[/]")
+
 
 # --- Knowledge bridges ---
 
