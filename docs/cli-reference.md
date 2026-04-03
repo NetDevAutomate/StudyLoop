@@ -45,6 +45,11 @@ studyctl doctor                          # Full health check
 studyctl update                          # Check for available updates
 studyctl upgrade                         # Apply all available updates
 
+# Backup & restore
+studyctl backup [--tag NAME]             # Snapshot DB + config to backups/
+studyctl restore                         # List available backups
+studyctl restore BACKUP --confirm        # Restore from backup (safety backup first)
+
 # Web
 studyctl web [--port PORT] [--host HOST] # Launch study web app (PWA)
 ```

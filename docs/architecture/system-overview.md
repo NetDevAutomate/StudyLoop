@@ -38,7 +38,7 @@ package "Logic Layer (logic/)" {
 
 package "Data Layer" {
     [parking.py] as Parking
-    [history.py] as History
+    [history/ (9 modules)] as History
     [session_state.py] as State
     [review_db.py] as ReviewDB
 }
