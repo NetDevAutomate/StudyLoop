@@ -53,7 +53,7 @@ def session_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     # so we must patch _find_db directly to return the test DB path.
     monkeypatch.setattr("studyctl.settings.get_db_path", lambda: db_path)
     monkeypatch.setattr("studyctl.parking.get_db_path", lambda: db_path)
-    monkeypatch.setattr("studyctl.history._find_db", lambda: db_path)
+    monkeypatch.setattr("studyctl.history._connection._find_db", lambda: db_path)
 
     # Patch session state paths to use temp dir
     session_dir = tmp_path / "session"

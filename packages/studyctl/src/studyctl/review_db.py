@@ -104,9 +104,9 @@ def record_card_review(
         else:
             ease, interval = DEFAULT_EASE, 1
 
-        # SM-2 simplified update
+        # SM-2 simplified update (interval capped at 365 days)
         if correct:
-            interval = max(1, int(interval * ease))
+            interval = min(max(1, int(interval * ease)), 365)
             ease = min(ease + 0.1, 3.0)
         else:
             interval = 1

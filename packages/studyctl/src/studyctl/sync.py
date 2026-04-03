@@ -6,10 +6,14 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .pdf import md_to_pdf
-from .settings import MIN_FILE_SIZE, SKIP_FILENAMES, SKIP_PATTERNS, SYNCABLE_EXTENSIONS, Topic
+from .settings import MIN_FILE_SIZE, SKIP_FILENAMES, SKIP_PATTERNS, SYNCABLE_EXTENSIONS
 from .state import SyncState, file_hash
+
+if TYPE_CHECKING:
+    from .topics import Topic
 
 
 def _should_skip(path: Path) -> bool:

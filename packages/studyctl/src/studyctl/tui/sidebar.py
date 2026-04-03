@@ -520,7 +520,7 @@ class SidebarApp(App[None]):
         # Run DB cleanup (state=ended, end study session, clean IPC files).
         # Idempotent — safe even if the agent wrapper's cleanup also fires.
         with contextlib.suppress(Exception):
-            from studyctl.cli._study import _cleanup_session
+            from studyctl.session.cleanup import cleanup_on_exit as _cleanup_session
 
             _cleanup_session()
 

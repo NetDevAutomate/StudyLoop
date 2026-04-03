@@ -129,7 +129,7 @@ class TestSidebarKeyBindings:
 
         with (
             patch("studyctl.tmux._tmux", side_effect=_tmux_side_effect) as mock_tmux,
-            patch("studyctl.cli._study._cleanup_session"),
+            patch("studyctl.session.cleanup.cleanup_on_exit"),
         ):
             async with SidebarApp().run_test(size=(40, 20)) as pilot:
                 await pilot.press("Q")
@@ -166,7 +166,7 @@ class TestSidebarKeyBindings:
         with patch("studyctl.tmux._tmux") as mock_tmux:
             mock_tmux.return_value = MagicMock(returncode=0)
 
-            with patch("studyctl.cli._study._cleanup_session"):
+            with patch("studyctl.session.cleanup.cleanup_on_exit"):
                 async with SidebarApp().run_test(size=(40, 20)) as pilot:
                     await pilot.press("Q")
                     await pilot.pause()

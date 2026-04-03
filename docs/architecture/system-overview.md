@@ -1,6 +1,6 @@
 # System Architecture — Socratic Study Mentor
 
-*Source of truth for the overall system architecture. Updated 2026-04-03.*
+*Source of truth for the overall system architecture. Updated 2026-04-03 (post-refactor).*
 
 ## 1. High-Level Architecture
 
@@ -116,7 +116,7 @@ package "socratic-study-mentor (monorepo)" {
     package "packages/studyctl" {
         package "cli/" {
             [__init__.py\nLazyGroup registry]
-            [_study.py — session orchestrator]
+            [_study.py — thin dispatcher]
             [_topics.py — backlog CRUD]
             [_clean.py — cleanup shell]
             [_review.py — streaks, progress]
@@ -129,9 +129,24 @@ package "socratic-study-mentor (monorepo)" {
             [break_logic.py]
             [streaks_logic.py]
         }
+        package "session/" {
+            [orchestrator.py — tmux env]
+            [resume.py — reattach/rebuild]
+            [cleanup.py — end + IPC clear]
+        }
+        package "history/ (Data Access)" {
+            [sessions.py — CRUD + summary]
+            [progress.py — tracking + SR]
+            [search.py — FTS5 + struggles]
+            [teachback.py — 5-dim scoring]
+            [bridges.py — knowledge links]
+            [concepts.py — seed + list]
+            [streaks.py — study streaks]
+            [medication.py — med windows]
+        }
         package "Data" {
             [parking.py]
-            [history.py]
+            [topics.py — Topic + get_topics]
             [session_state.py]
             [tmux.py]
         }
@@ -378,11 +393,11 @@ end note
 ## 7. Test Pyramid
 
 ```
-CI-safe tests (no tmux, no network):     826
+CI-safe tests (no tmux, no network):     834
 Integration tests (real DB):              13
-UAT tests (needs tmux):                   57
+UAT tests (needs tmux):                   51
 ─────────────────────────────────────────────
-Total:                                   896
+Total:                                   898
 ```
 
 ## 8. Current Status & Roadmap
@@ -409,6 +424,10 @@ Total:                                   896
 - [x] Unify config systems — already unified on YAML; removed dead JSON fallback from config_loader.py
 - [x] Split `query_sessions.py` monolith → `query_logic.py` (717 lines) + CLI (505 lines)
 - [x] Fix CI test failures — `test_cli_session.py` missing `_find_db` patch for headless environments
+- [x] Split `history.py` god module (1029 lines) → `history/` package (9 focused modules)
+- [x] Extract orchestration from `_study.py` (799 lines) → `session/` package + thin CLI (435 lines)
+- [x] Split `settings.py` dual purpose → `settings.py` (config) + `topics.py` (topic definitions)
+- [x] Fix SM-2 interval overflow in `review_db.py` (capped at 365 days)
 - [ ] Nightly CI job for UAT tests (macOS runner with tmux) — deferred to Phase 6
 - [ ] Fix VSCode circular import — deferred, low priority (no active VSCode users)
 
