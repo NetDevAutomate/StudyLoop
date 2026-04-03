@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
-from studyctl.review_db import get_course_stats, get_due_cards, get_wrong_hashes
 from studyctl.review_loader import (
     discover_directories,
     find_content_dirs,
     load_flashcards,
     load_quizzes,
 )
+from studyctl.services.review import get_due, get_stats, get_wrong
 
 router = APIRouter()
 
@@ -28,8 +28,8 @@ def list_courses(request: Request) -> list[dict]:
         fc_dir, quiz_dir = find_content_dirs(path)
         fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
         quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
-        due = len(get_due_cards(name))
-        stats = get_course_stats(name)
+        due = len(get_due(name))
+        stats = get_stats(name)
         result.append(
             {
                 "name": name,
@@ -67,13 +67,13 @@ def list_sources(request: Request, course: str, mode: str = "flashcards") -> lis
 @router.get("/stats/{course}")
 def course_stats(course: str) -> dict:
     """Get review statistics for a course."""
-    return get_course_stats(course)
+    return get_stats(course)
 
 
 @router.get("/due/{course}")
 def due_cards(course: str) -> list[dict]:
     """Get cards due for review."""
-    cards = get_due_cards(course)
+    cards = get_due(course)
     return [
         {
             "card_hash": c.card_hash,
@@ -88,4 +88,4 @@ def due_cards(course: str) -> list[dict]:
 @router.get("/wrong/{course}")
 def wrong_cards(course: str) -> list[str]:
     """Get card hashes answered incorrectly in the most recent session."""
-    return list(get_wrong_hashes(course))
+    return list(get_wrong(course))

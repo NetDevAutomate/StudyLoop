@@ -99,7 +99,7 @@ def _auto_clean_zombies() -> None:
     import contextlib
     import shutil
 
-    from studyctl.cli._clean_logic import DirInfo, plan_clean
+    from studyctl.clean_logic import DirInfo, plan_clean
     from studyctl.session_state import SESSION_DIR, STATE_FILE, read_session_state
     from studyctl.tmux import (
         is_tmux_server_running,
