@@ -39,7 +39,9 @@ def session_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             status TEXT NOT NULL DEFAULT 'pending',
             scheduled_for TEXT, resolved_at TEXT,
             parked_at TEXT NOT NULL DEFAULT (datetime('now')),
-            created_by TEXT DEFAULT 'agent'
+            created_by TEXT DEFAULT 'agent',
+            source TEXT NOT NULL DEFAULT 'parked',
+            tech_area TEXT
         )
     """)
     conn.commit()
