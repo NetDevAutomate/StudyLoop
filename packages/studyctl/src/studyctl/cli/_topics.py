@@ -39,8 +39,8 @@ def topics_list(tech: str | None, source: str | None, show_all: bool) -> None:
     """
     from rich.table import Table
 
-    from studyctl.backlog_logic import BacklogItem, format_backlog_list
     from studyctl.cli._shared import console
+    from studyctl.logic.backlog_logic import BacklogItem, format_backlog_list
     from studyctl.parking import get_parked_topics
 
     # GATHER
@@ -160,8 +160,8 @@ def topics_suggest(limit: int, topic: str | None) -> None:
     """
     from rich.table import Table
 
-    from studyctl.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
     from studyctl.cli._shared import console
+    from studyctl.logic.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
     from studyctl.parking import get_parked_topics, get_topic_frequencies
 
     # GATHER

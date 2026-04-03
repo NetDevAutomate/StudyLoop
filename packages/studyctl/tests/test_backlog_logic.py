@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from studyctl.backlog_logic import (
+from studyctl.logic.backlog_logic import (
     BacklogItem,
     ScoringInput,
     build_backlog_summary,

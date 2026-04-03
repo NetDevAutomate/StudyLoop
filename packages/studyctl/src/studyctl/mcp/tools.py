@@ -277,7 +277,7 @@ def register_tools(mcp: FastMCP) -> None:
             limit: Maximum suggestions to return.
             current_topic: Current study topic for relevance boosting.
         """
-        from studyctl.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
+        from studyctl.logic.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
         from studyctl.parking import get_parked_topics, get_topic_frequencies
 
         raw = get_parked_topics(status="pending")

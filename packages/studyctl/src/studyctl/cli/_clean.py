@@ -15,7 +15,7 @@ import click
 if TYPE_CHECKING:
     from rich.console import Console
 
-    from studyctl.clean_logic import CleanResult
+    from studyctl.logic.clean_logic import CleanResult
 
 
 @click.command()
@@ -35,8 +35,8 @@ def clean(dry_run: bool) -> None:
     import fcntl
     import shutil
 
-    from studyctl.clean_logic import CleanResult, DirInfo, plan_clean
     from studyctl.cli._shared import console
+    from studyctl.logic.clean_logic import CleanResult, DirInfo, plan_clean
     from studyctl.session_state import SESSION_DIR, STATE_FILE, read_session_state
     from studyctl.tmux import (
         LOCK_FILE,

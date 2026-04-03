@@ -99,7 +99,7 @@ def _auto_clean_zombies() -> None:
     import contextlib
     import shutil
 
-    from studyctl.clean_logic import DirInfo, plan_clean
+    from studyctl.logic.clean_logic import DirInfo, plan_clean
     from studyctl.session_state import SESSION_DIR, STATE_FILE, read_session_state
     from studyctl.tmux import (
         is_tmux_server_running,
@@ -163,7 +163,7 @@ def _build_backlog_notes(topic: str) -> str | None:
     import contextlib
 
     with contextlib.suppress(Exception):
-        from studyctl.backlog_logic import BacklogItem, build_backlog_summary
+        from studyctl.logic.backlog_logic import BacklogItem, build_backlog_summary
         from studyctl.parking import get_parked_topics
 
         raw = get_parked_topics(status="pending")
@@ -198,7 +198,7 @@ def _auto_persist_struggled(
     import contextlib
 
     with contextlib.suppress(Exception):
-        from studyctl.backlog_logic import plan_auto_persist
+        from studyctl.logic.backlog_logic import plan_auto_persist
         from studyctl.parking import get_parked_topics, park_topic
 
         # Gather existing questions for this session to deduplicate

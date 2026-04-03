@@ -18,25 +18,80 @@ logger = logging.getLogger(__name__)
 def _connect() -> sqlite3.Connection:
     """Get a connection to the session DB with WAL mode and busy timeout.
 
-    Ensures the parked_topics table exists by running agent-session-tools
-    migrations on first connect.
+    Ensures the parked_topics table exists via a two-tier strategy:
+    1. Try the migration system (the "proper" path)
+    2. If that fails (version/schema drift), create the table directly
+
+    The fallback handles a real-world failure mode: PRAGMA user_version
+    can advance past the actual schema state if a migration partially
+    succeeds. When that happens, the migration system skips the CREATE
+    TABLE (thinks it already ran) and later migrations fail because the
+    table doesn't exist. The direct CREATE is self-healing for this case.
     """
     conn = sqlite3.connect(str(get_db_path()))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
 
-    # Ensure parked_topics table exists (migration v14)
+    # Ensure parked_topics table exists
     try:
         conn.execute("SELECT 1 FROM parked_topics LIMIT 0")
     except sqlite3.OperationalError:
+        # Table missing — try migrations first (proper path)
         try:
             from agent_session_tools.migrations import migrate
 
             migrate(conn)
         except Exception:
-            logger.warning("Could not run migrations — parked_topics table may be missing")
+            pass
+
+        # If migrations didn't fix it, create directly (self-healing path)
+        try:
+            conn.execute("SELECT 1 FROM parked_topics LIMIT 0")
+        except sqlite3.OperationalError:
+            logger.info("Creating parked_topics table directly (migration drift recovery)")
+            _create_parked_topics_table(conn)
+
     return conn
+
+
+def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
+    """Create parked_topics with the full current schema.
+
+    This is a last-resort fallback when the migration system can't
+    self-heal. The schema matches the cumulative result of v14-v17:
+    - v14: base table
+    - v15: unique index (session_id, question)
+    - v16: source, tech_area columns; index updated to include source
+    - v17: priority column
+
+    Uses IF NOT EXISTS / IF NOT EXISTS throughout so it's safe to call
+    repeatedly — idempotency means no harm if the table already exists.
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS parked_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            study_session_id TEXT REFERENCES study_sessions(id) ON DELETE SET NULL,
+            session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+            topic_tag TEXT,
+            question TEXT NOT NULL,
+            context TEXT,
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
+            scheduled_for TEXT,
+            resolved_at TEXT,
+            parked_at TEXT NOT NULL DEFAULT (datetime('now')),
+            created_by TEXT DEFAULT 'agent',
+            source TEXT NOT NULL DEFAULT 'parked',
+            tech_area TEXT,
+            priority INTEGER
+        )
+    """)
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_session_question
+        ON parked_topics (study_session_id, question, source)
+    """)
+    conn.commit()
 
 
 def park_topic(
