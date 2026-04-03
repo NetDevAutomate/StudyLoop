@@ -1,0 +1,51 @@
+name: Nightly Install Check
+
+on:
+  schedule:
+    - cron: "30 3 * * *"  # 03:30 UTC daily (30 min after UAT)
+  workflow_dispatch: {}
+
+jobs:
+  fresh-install:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install from source
+        run: uv sync --all-packages --extra dev --extra test
+
+      - name: Run studyctl doctor
+        run: |
+          output=$(uv run studyctl doctor --json)
+          echo "$output" | python3 -c "
+          import json, sys
+          checks = json.load(sys.stdin)
+          failed = [c for c in checks if c['status'] == 'fail']
+          warned = [c for c in checks if c['status'] == 'warn']
+          passed = [c for c in checks if c['status'] == 'pass']
+          skipped = [c for c in checks if c['status'] == 'skip']
+          print(f'Doctor: {len(passed)} passed, {len(warned)} warned, {len(skipped)} skipped, {len(failed)} failed')
+          for f in failed:
+              print(f'  FAIL: {f[\"category\"]}/{f[\"name\"]} — {f[\"message\"]}')
+          # Fail CI on core/database/config failures; warnings are acceptable
+          # (e.g. missing optional tmux, agents, or voice deps on CI)
+          core_fails = [f for f in failed if f['category'] in ('core', 'database', 'config')]
+          if core_fails:
+              print(f'::error::{len(core_fails)} core check(s) failed')
+              sys.exit(1)
+          "
+
+      - name: Verify CLI entry point
+        run: uv run studyctl --version
+
+      - name: Verify agent-session-tools entry point
+        run: uv run session-export --help

@@ -429,6 +429,9 @@ Total:                                   898
 - [x] Split `settings.py` dual purpose → `settings.py` (config) + `topics.py` (topic definitions)
 - [x] Fix SM-2 interval overflow in `review_db.py` (capped at 365 days)
 - [x] Nightly CI job for UAT tests (macOS runner with tmux) — `nightly-uat.yml`
+- [x] Nightly fresh install check (Ubuntu + macOS matrix) — `nightly-install.yml`
+- [x] Pre-release upgrade path gate (N-1 → N) — `pre-release.yml`
+- [x] `studyctl backup` / `studyctl restore` — timestamped snapshots with safety backup
 - [ ] Fix VSCode circular import — deferred, low priority (no active VSCode users)
 
 ### Future Phases
