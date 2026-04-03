@@ -96,6 +96,7 @@ class TestSidebarRendering:
         )
 
         async with SidebarApp().run_test(size=(40, 20)) as pilot:
+            await pilot.pause()  # let mount + compose complete
             status = pilot.app.query_one("#status")
             assert "pause" in str(status.render()).lower() or "p:" in str(status.render())
 
