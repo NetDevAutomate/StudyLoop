@@ -92,6 +92,229 @@ class TestResumeViaTerminal:
         assert terminal.session_exists(), "Resumed session should exist"
 
 
+class TestNestedTmux:
+    """Task 5: Verify studyctl study works when called from inside tmux.
+
+    When TMUX env var is set, studyctl should use switch_client instead
+    of attach, and Q-quit should return the client to the host session.
+
+    Key: a pexpect client must be attached to the host session so that
+    switch_client has a tmux client to switch. Without an attached client,
+    switch_client fails silently.
+    """
+
+    def _start_nested_study(self, tmp_path, host_name="host-workspace"):
+        """Helper: create host session, attach client, run study inside it.
+
+        Returns (pexpect_child, session_name, sidebar_pane).
+        """
+        import json
+        import time
+
+        import pexpect
+
+        # Create host tmux session
+        subprocess.run(
+            ["tmux", "new-session", "-d", "-s", host_name],
+            capture_output=True,
+        )
+
+        # Attach a real tmux client (pexpect) — required for switch_client
+        child = pexpect.spawn(
+            f"tmux attach-session -t {host_name}",
+            timeout=20,
+            encoding="utf-8",
+        )
+        time.sleep(1)  # let shell prompt render
+
+        # Send the study command inside the attached session
+        agent_script = long_running_agent(tmp_path)
+        study_cmd = (
+            f"STUDYCTL_TEST_AGENT_CMD='{agent_script}' "
+            f"{sys.executable} -m studyctl.cli study 'Nested Test' "
+            f"--energy 5 --agent claude"
+        )
+        child.sendline(study_cmd)
+
+        # Wait for study session to appear in state file
+        state_file = Path.home() / ".config" / "studyctl" / "session-state.json"
+        deadline = time.monotonic() + 20
+        session_name = None
+        sidebar_pane = None
+        while time.monotonic() < deadline:
+            if state_file.exists():
+                try:
+                    state = json.loads(state_file.read_text())
+                    if state.get("tmux_session"):
+                        session_name = state["tmux_session"]
+                        sidebar_pane = state.get("tmux_sidebar_pane")
+                        break
+                except (json.JSONDecodeError, OSError):
+                    pass
+            time.sleep(0.5)
+
+        return child, session_name, sidebar_pane
+
+    def test_nested_study_creates_session(self, terminal, tmp_path):
+        """From inside a host tmux session, studyctl study creates a study
+        session via switch_client."""
+        child = None
+        try:
+            child, session_name, _sidebar = self._start_nested_study(tmp_path)
+
+            assert session_name, "Study session should have been created from nested tmux"
+
+            # Verify the study tmux session exists
+            result = subprocess.run(
+                ["tmux", "has-session", "-t", session_name],
+                capture_output=True,
+            )
+            assert result.returncode == 0, "Study tmux session should exist"
+
+            terminal._session_name = session_name
+        finally:
+            if child and child.isalive():
+                child.close(force=True)
+            subprocess.run(
+                ["tmux", "kill-session", "-t", "host-workspace"],
+                capture_output=True,
+            )
+
+    def test_nested_q_returns_to_host(self, terminal, tmp_path):
+        """Q-quit from a nested study session should return the client
+        to the host session, not exit tmux entirely."""
+        import time
+
+        child = None
+        try:
+            child, session_name, sidebar_pane = self._start_nested_study(tmp_path)
+            assert session_name, "Study session should exist"
+            assert sidebar_pane, "Sidebar pane should exist"
+            terminal._session_name = session_name
+
+            # Send Q to the sidebar pane
+            time.sleep(2)  # let sidebar render
+            subprocess.run(
+                ["tmux", "send-keys", "-t", sidebar_pane, "Q"],
+                capture_output=True,
+            )
+
+            # Wait for study session to die
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                result = subprocess.run(
+                    ["tmux", "has-session", "-t", session_name],
+                    capture_output=True,
+                )
+                if result.returncode != 0:
+                    break
+                time.sleep(0.5)
+
+            # Study session should be gone
+            result = subprocess.run(
+                ["tmux", "has-session", "-t", session_name],
+                capture_output=True,
+            )
+            assert result.returncode != 0, "Study session should be killed after Q"
+
+            # Host session should still be alive — client returned to it
+            result = subprocess.run(
+                ["tmux", "has-session", "-t", "host-workspace"],
+                capture_output=True,
+            )
+            assert result.returncode == 0, (
+                "Host session should survive Q — user returns to their workspace"
+            )
+
+        finally:
+            if child and child.isalive():
+                child.close(force=True)
+            subprocess.run(
+                ["tmux", "kill-session", "-t", "host-workspace"],
+                capture_output=True,
+            )
+
+
+class TestEndFromOutside:
+    """Task 6: Verify studyctl study --end works from a separate terminal.
+
+    Simulates a user running --end from a different terminal window
+    to stop a running study session.
+    """
+
+    def test_end_kills_tmux_session(self, terminal, tmp_path):
+        """studyctl study --end from outside should kill the tmux session."""
+        agent_cmd = long_running_agent(tmp_path)
+        terminal.spawn_study("End From Outside", energy=5, agent_cmd=agent_cmd)
+        assert terminal.session_exists(), "Session should exist before --end"
+
+        # Run --end from a separate process (simulates different terminal)
+        subprocess.run(
+            [sys.executable, "-m", "studyctl.cli", "study", "--end"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+        import time
+
+        # Give tmux a moment to die
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if not terminal.session_exists():
+                break
+            time.sleep(0.5)
+
+        assert not terminal.session_exists(), "tmux session should be killed by --end"
+
+    def test_end_sets_mode_ended(self, terminal, tmp_path):
+        """After --end, state file should show mode=ended."""
+        import json
+
+        agent_cmd = long_running_agent(tmp_path)
+        terminal.spawn_study("End State Test", energy=5, agent_cmd=agent_cmd)
+
+        subprocess.run(
+            [sys.executable, "-m", "studyctl.cli", "study", "--end"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+        import time
+
+        time.sleep(2)  # let cleanup complete
+
+        state_file = Path.home() / ".config" / "studyctl" / "session-state.json"
+        if state_file.exists():
+            state = json.loads(state_file.read_text())
+            assert state.get("mode") == "ended", f"Expected mode='ended', got {state.get('mode')!r}"
+
+    def test_end_cleans_ipc_files(self, terminal, tmp_path):
+        """After --end, IPC topic and parking files should be cleaned up."""
+        agent_cmd = long_running_agent(tmp_path)
+        terminal.spawn_study("End Cleanup Test", energy=5, agent_cmd=agent_cmd)
+
+        subprocess.run(
+            [sys.executable, "-m", "studyctl.cli", "study", "--end"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+        import time
+
+        time.sleep(2)
+
+        config_dir = Path.home() / ".config" / "studyctl"
+        topics_file = config_dir / "session-topics.md"
+        parking_file = config_dir / "session-parking.md"
+
+        # Topics and parking files should be gone (state may remain with mode=ended)
+        assert not topics_file.exists(), "session-topics.md should be cleaned up"
+        assert not parking_file.exists(), "session-parking.md should be cleaned up"
+
+
 class TestCleanTmuxExit:
     """UAT: Q must leave zero tmux residue for non-technical users."""
 
