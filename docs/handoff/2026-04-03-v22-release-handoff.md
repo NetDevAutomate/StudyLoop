@@ -126,7 +126,7 @@ studyctl/
 | Split `settings.py` dual purpose | **Done** | `settings.py` (config) + `topics.py` (topic definitions) |
 | Fix SM-2 interval overflow | **Done** | Capped interval at 365 days in `review_db.py` |
 | Wire `cli/_review.py` through `services/review.py` | **Skipped** | Wrong abstraction — different domains (topic SR vs SM-2 flashcards) |
-| Nightly CI for UAT tests | Deferred | GitHub Actions macOS runner with tmux |
+| Nightly CI for UAT tests | **Done** | `nightly-uat.yml` — macOS runner, tmux, 03:00 UTC daily |
 
 ## Test Strategy for Refactors
 

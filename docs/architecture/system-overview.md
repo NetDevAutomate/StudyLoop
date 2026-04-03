@@ -428,7 +428,7 @@ Total:                                   898
 - [x] Extract orchestration from `_study.py` (799 lines) → `session/` package + thin CLI (435 lines)
 - [x] Split `settings.py` dual purpose → `settings.py` (config) + `topics.py` (topic definitions)
 - [x] Fix SM-2 interval overflow in `review_db.py` (capped at 365 days)
-- [ ] Nightly CI job for UAT tests (macOS runner with tmux) — deferred to Phase 6
+- [x] Nightly CI job for UAT tests (macOS runner with tmux) — `nightly-uat.yml`
 - [ ] Fix VSCode circular import — deferred, low priority (no active VSCode users)
 
 ### Future Phases
