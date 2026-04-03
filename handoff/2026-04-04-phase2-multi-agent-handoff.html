@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/architecture/system-overview.html">
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/handoff/2026-04-04-phase2-multi-agent-handoff.html">
       
       
       
@@ -23,7 +23,7 @@
     
     
       
-        <title>System Architecture — Socratic Study Mentor - Socratic Study Mentor</title>
+        <title>Phase 2 Complete — Multi-Agent Support (Gemini, Kiro, OpenCode) - Socratic Study Mentor</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#system-architecture-socratic-study-mentor" class="md-skip">
+        <a href="#session-handoff-2026-04-04" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              System Architecture — Socratic Study Mentor
+              Phase 2 Complete — Multi-Agent Support (Gemini, Kiro, OpenCode)
             
           </span>
         </div>
@@ -820,99 +820,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-high-level-architecture" class="md-nav__link">
+  <a href="#what-was-done" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. High-Level Architecture
+        What Was Done
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-package-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Package Structure
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-session-db-schema-v17" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Session-DB Schema (v17)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-data-flow-study-session-lifecycle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Data Flow — Study Session Lifecycle
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-mcp-tools-10-total" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. MCP Tools (10 total)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-fcis-pattern-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. FCIS Pattern Usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-test-pyramid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Test Pyramid
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-current-status-roadmap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Current Status &amp; Roadmap
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. Current Status &amp; Roadmap">
+    <nav class="md-nav" aria-label="What Was Done">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#completed-v22-partial" class="md-nav__link">
+  <a href="#phase-2-multi-agent-support-complete" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Completed (v2.2 partial)
+        Phase 2: Multi-Agent Support (complete)
       
     </span>
   </a>
@@ -920,10 +843,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#completed-v22-polish-2026-04-03" class="md-nav__link">
+  <a href="#architecture-after-this-session" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Completed (v2.2 polish — 2026-04-03)
+        Architecture After This Session
       
     </span>
   </a>
@@ -931,10 +854,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#architecture-debt-from-2026-04-03-review" class="md-nav__link">
+  <a href="#per-agent-mechanisms-verified" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Architecture Debt (from 2026-04-03 review)
+        Per-Agent Mechanisms (Verified)
       
     </span>
   </a>
@@ -942,10 +865,93 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#future-phases" class="md-nav__link">
+  <a href="#key-design-decisions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Future Phases
+        Key Design Decisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Suite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#files-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-not-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's NOT Done
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known Issues
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-phase-phase-3-devices-ttyd-lan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Phase: Phase 3 — Devices (ttyd + LAN)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Next Phase: Phase 3 — Devices (ttyd + LAN)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#suggested-starting-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suggested Starting Point
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#also-consider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Also Consider
       
     </span>
   </a>
@@ -974,457 +980,174 @@
 
 
 
-<h1 id="system-architecture-socratic-study-mentor">System Architecture — Socratic Study Mentor<a class="headerlink" href="#system-architecture-socratic-study-mentor" title="Permanent link">&para;</a></h1>
-<p><em>Source of truth for the overall system architecture. Updated 2026-04-03 (post-refactor).</em></p>
-<h2 id="1-high-level-architecture">1. High-Level Architecture<a class="headerlink" href="#1-high-level-architecture" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml system-overview
-skinparam componentStyle rectangle
-skinparam backgroundColor #FEFEFE
-
-actor &quot;User&quot; as User
-actor &quot;AI Agent\n(Claude)&quot; as Agent
-
-cloud &quot;GitHub&quot; as GH
-
-package &quot;CLI (studyctl)&quot; {
-    [study] as Study
-    [backlog] as Backlog
-    [clean] as Clean
-    [review / streaks] as Review
-    [doctor / upgrade] as Doctor
-    [sync / content] as Sync
-    [web] as Web
-}
-
-package &quot;MCP Server (studyctl-mcp)&quot; {
-    [Course Tools\n(6 existing)] as MCPCourse
-    [Session-DB Tools\n(4 new)] as MCPSession
-}
-
-package &quot;Logic Layer (logic/)&quot; {
-    [backlog_logic.py] as BL
-    [clean_logic.py] as CL
-    [break_logic.py] as BRK
-    [streaks_logic.py] as SL
-}
-
-package &quot;Data Layer&quot; {
-    [parking.py] as Parking
-    [history/ (9 modules)] as History
-    [session_state.py] as State
-    [review_db.py] as ReviewDB
-}
-
-package &quot;TUI&quot; {
-    [Textual Sidebar] as Sidebar
-}
-
-package &quot;Web Dashboard&quot; {
-    [FastAPI + HTMX] as WebApp
-    [Vendored Assets\n(HTMX, Alpine, fonts)] as Vendor
-}
-
-database &quot;sessions.db\n(SQLite WAL, v17)&quot; as DB
-database &quot;review.db\n(SM-2 spaced rep)&quot; as RDB
-
-folder &quot;IPC Files\n(~/.config/studyctl/)&quot; as IPC {
-    file &quot;session-state.json&quot;
-    file &quot;session-topics.md&quot;
-    file &quot;session-parking.md&quot;
-}
-
-folder &quot;tmux Session&quot; as Tmux {
-    [Agent Pane] as AP
-    [Sidebar Pane] as SP
-}
-
-User --&gt; Study
-User --&gt; Backlog
-User --&gt; Clean
-User --&gt; Review
-User --&gt; Web
-
-Agent --&gt; MCPCourse : tool_call
-Agent --&gt; MCPSession : tool_call
-Agent --&gt; AP : runs in
-
-Study --&gt; Tmux : creates
-Study --&gt; BL : backlog injection
-Study --&gt; CL : auto-clean zombies
-Study --&gt; State : IPC write
-Study --&gt; History : session CRUD
-
-Backlog --&gt; BL : format, score
-Backlog --&gt; Parking : CRUD
-Clean --&gt; CL : plan + execute
-
-MCPSession --&gt; BL : scoring
-MCPSession --&gt; Parking : queries
-MCPSession --&gt; History : queries
-
-Sidebar --&gt; State : polls IPC
-WebApp --&gt; State : polls IPC
-WebApp --&gt; Vendor : serves
-
-Parking --&gt; DB
-History --&gt; DB
-ReviewDB --&gt; RDB
-State --&gt; IPC
-
-GH --&gt; Doctor : CI checks
-
-@enduml
-</code></pre></div>
-<h2 id="2-package-structure">2. Package Structure<a class="headerlink" href="#2-package-structure" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml package-structure
-skinparam backgroundColor #FEFEFE
-skinparam packageStyle rectangle
-
-package &quot;socratic-study-mentor (monorepo)&quot; {
-
-    package &quot;packages/studyctl&quot; {
-        package &quot;cli/&quot; {
-            [__init__.py\nLazyGroup registry]
-            [_study.py — thin dispatcher]
-            [_topics.py — backlog CRUD]
-            [_clean.py — cleanup shell]
-            [_review.py — streaks, progress]
-            [_session.py — park, topic]
-            [_doctor.py — health checks]
-        }
-        package &quot;logic/ (FCIS Cores)&quot; {
-            [backlog_logic.py]
-            [clean_logic.py]
-            [break_logic.py]
-            [streaks_logic.py]
-        }
-        package &quot;session/&quot; {
-            [orchestrator.py — tmux env]
-            [resume.py — reattach/rebuild]
-            [cleanup.py — end + IPC clear]
-        }
-        package &quot;history/ (Data Access)&quot; {
-            [sessions.py — CRUD + summary]
-            [progress.py — tracking + SR]
-            [search.py — FTS5 + struggles]
-            [teachback.py — 5-dim scoring]
-            [bridges.py — knowledge links]
-            [concepts.py — seed + list]
-            [streaks.py — study streaks]
-            [medication.py — med windows]
-        }
-        package &quot;Data&quot; {
-            [parking.py]
-            [topics.py — Topic + get_topics]
-            [session_state.py]
-            [tmux.py]
-        }
-        package &quot;mcp/&quot; {
-            [server.py — FastMCP]
-            [tools.py — 10 tools]
-        }
-        package &quot;tui/&quot; {
-            [sidebar.py — Textual app]
-        }
-        package &quot;web/&quot; {
-            [app.py — FastAPI]
-            [static/ — HTML, CSS, JS]
-            [static/vendor/ — vendored deps]
-        }
-        package &quot;doctor/&quot; {
-            [core.py, config.py, database.py]
-            [agents.py, deps.py, updates.py]
-        }
-    }
-
-    package &quot;packages/agent-session-tools&quot; {
-        [migrations.py — v0-v17]
-        [export_sessions.py]
-        [schema.sql — base tables]
-    }
-
-    package &quot;agents/&quot; {
-        [shared/personas/ — study.md, co-study.md]
-        [shared/break-science.md]
-        [claude/mcp.json]
-        [mcp/README.md]
-    }
-
-    package &quot;docs/&quot; {
-        [architecture/ — PlantUML diagrams]
-        [brainstorms/ — design decisions]
-        [mentoring/ — FCIS, patterns]
-        [handoff/ — session continuity]
-        [setup-guide.md]
-        [roadmap.md]
-    }
-}
-
-@enduml
-</code></pre></div>
-<h2 id="3-session-db-schema-v17">3. Session-DB Schema (v17)<a class="headerlink" href="#3-session-db-schema-v17" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml session-db-schema
-skinparam backgroundColor #FEFEFE
-
-entity &quot;sessions&quot; as S {
-    * id TEXT PK
-    --
-    source TEXT
-    session_type TEXT
-    project_path TEXT
-    content_hash TEXT
-    created_at TEXT
-}
-
-entity &quot;messages&quot; as M {
-    * id TEXT PK
-    --
-    session_id FK
-    role TEXT
-    content TEXT
-    model TEXT
-    timestamp TEXT
-    seq INTEGER
-}
-
-entity &quot;study_sessions&quot; as SS {
-    * id TEXT PK
-    --
-    session_id FK
-    topic TEXT
-    energy_level TEXT
-    started_at TEXT
-    ended_at TEXT
-    duration_minutes INT
-    notes TEXT
-}
-
-entity &quot;study_progress&quot; as SP {
-    * id TEXT PK (uuid5)
-    --
-    topic TEXT
-    concept TEXT
-    confidence TEXT
-    last_teachback_score INT
-    session_count INT
-}
-
-entity &quot;teach_back_scores&quot; as TBS {
-    * id INT PK
-    --
-    concept TEXT
-    topic TEXT
-    session_id FK
-    score_accuracy INT (1-4)
-    total_score INT
-}
-
-entity &quot;parked_topics&quot; as PT {
-    * id INT PK
-    --
-    study_session_id FK (nullable)
-    question TEXT
-    topic_tag TEXT
-    status TEXT
-    source TEXT (v16)
-    tech_area TEXT (v16)
-    priority INT (v17)
-    parked_at TEXT
-}
-
-entity &quot;concepts&quot; as C {
-    * id TEXT PK
-    --
-    name TEXT
-    domain TEXT
-    definition TEXT
-}
-
-entity &quot;knowledge_bridges&quot; as KB {
-    * id INT PK
-    --
-    source_concept TEXT
-    target_concept TEXT
-    quality TEXT
-    times_used INT
-}
-
-S ||--o{ M : session_id
-S ||--o| SS : session_id
-SS ||--o{ PT : study_session_id
-M }|--|| &quot;messages_fts&quot; : FTS5
-C ||--o{ KB : concepts
-
-@enduml
-</code></pre></div>
-<h2 id="4-data-flow-study-session-lifecycle">4. Data Flow — Study Session Lifecycle<a class="headerlink" href="#4-data-flow-study-session-lifecycle" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml session-lifecycle
-skinparam backgroundColor #FEFEFE
-
-|studyctl study|
-start
-:_auto_clean_zombies();
-note right: FCIS plan_clean()\nKills resurrect zombies
-
-:_build_backlog_notes(topic);
-note right: Inject pending backlog\ninto agent persona
-
-:start_study_session(topic, energy);
-note right: INSERT study_sessions
-
-:Create tmux session\n(agent pane + sidebar pane);
-
-|Agent (during session)|
-fork
-    :Park topic → park_topic(source=&#39;parked&#39;);
-fork again
-    :Log struggle → append_topic(status=&#39;struggling&#39;);
-fork again
-    :Record progress → record_progress();
-fork again
-    :MCP: get_topic_suggestions();
-fork again
-    :MCP: record_topic_progress(priority=5);
-end fork
-
-|studyctl study --end|
-:parse_topics_file();
-:_auto_persist_struggled();
-note right: FCIS plan_auto_persist()\nPersist struggled → parked_topics
-
-:end_study_session(notes);
-note right: UPDATE study_sessions
-
-:kill_all_study_sessions();
-:Clear IPC files;
-stop
-
-@enduml
-</code></pre></div>
-<h2 id="5-mcp-tools-10-total">5. MCP Tools (10 total)<a class="headerlink" href="#5-mcp-tools-10-total" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml mcp-tools-overview
-skinparam backgroundColor #FEFEFE
-
-package &quot;studyctl-mcp server (FastMCP, stdio)&quot; {
-    package &quot;Course Tools (Phase 0)&quot; {
-        [list_courses]
-        [get_study_context]
-        [record_study_progress]
-        [generate_flashcards]
-        [generate_quiz]
-        [get_chapter_text]
-    }
-
-    package &quot;Session-DB Tools (Phase 2)&quot; #LightGreen {
-        [get_study_backlog]
-        [get_topic_suggestions]
-        [get_study_history]
-        [record_topic_progress]
-    }
-}
-
-note bottom of [get_topic_suggestions]
-    Algorithmic scoring:
-    60% importance + 40% frequency
-    Uses backlog_logic.score_backlog_items()
-end note
-
-note bottom of [record_topic_progress]
-    Agent sets priority (1-5)
-    on backlog items.
-    5 = foundational
-    1 = niche
-end note
-
-@enduml
-</code></pre></div>
-<h2 id="6-fcis-pattern-usage">6. FCIS Pattern Usage<a class="headerlink" href="#6-fcis-pattern-usage" title="Permanent link">&para;</a></h2>
+<h1 id="session-handoff-2026-04-04">Session Handoff — 2026-04-04<a class="headerlink" href="#session-handoff-2026-04-04" title="Permanent link">&para;</a></h1>
+<h2 id="what-was-done">What Was Done<a class="headerlink" href="#what-was-done" title="Permanent link">&para;</a></h2>
+<h3 id="phase-2-multi-agent-support-complete">Phase 2: Multi-Agent Support (complete)<a class="headerlink" href="#phase-2-multi-agent-support-complete" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Module</th>
-<th>Functional Core</th>
-<th>Imperative Shell</th>
-<th>Tests</th>
+<th>Commit</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Clean</td>
-<td><code>logic/clean_logic.py</code> → <code>plan_clean()</code></td>
-<td><code>cli/_clean.py</code></td>
-<td><code>test_clean.py</code> (17, zero mocks)</td>
+<td><code>55a2ae2</code></td>
+<td>feat: Phase 2 multi-agent support — wire Gemini, Kiro, OpenCode adapters</td>
 </tr>
 <tr>
-<td>Backlog</td>
-<td><code>logic/backlog_logic.py</code> → <code>format_backlog_list()</code>, <code>score_backlog_items()</code>, <code>plan_auto_persist()</code>, <code>build_backlog_summary()</code></td>
-<td><code>cli/_topics.py</code>, <code>cli/_study.py</code></td>
-<td><code>test_backlog_logic.py</code> (22, zero mocks)</td>
-</tr>
-<tr>
-<td>Break</td>
-<td><code>logic/break_logic.py</code> → <code>check_break_needed()</code>, energy-adaptive thresholds</td>
-<td><code>tui/sidebar.py</code> (BreakBanner widget)</td>
-<td><code>test_break_logic.py</code> (23, zero mocks)</td>
-</tr>
-<tr>
-<td>Streaks</td>
-<td><code>logic/streaks_logic.py</code> → <code>analyze_energy_streaks()</code>, trend detection, duration correlation</td>
-<td><code>cli/_review.py</code></td>
-<td><code>test_streaks_logic.py</code> (12, zero mocks)</td>
+<td>(pending)</td>
+<td>fix: doctor Kiro binary name + agent smoke tests</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Note</strong>: All FCIS cores live in <code>studyctl/logic/</code> subpackage with an empty <code>__init__.py</code> (explicit imports, no re-exports). This was created per the 2026-04-03 architecture review recommendation.</p>
-<h2 id="7-test-pyramid">7. Test Pyramid<a class="headerlink" href="#7-test-pyramid" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>CI-safe tests (no tmux, no network):     834
-Integration tests (real DB):              13
-UAT tests (needs tmux):                   51
-─────────────────────────────────────────────
-Total:                                   898
+<h3 id="architecture-after-this-session">Architecture After This Session<a class="headerlink" href="#architecture-after-this-session" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>agent_launcher.py (single file, ~460 lines)
+├── AgentAdapter          frozen dataclass with setup/launch/teardown/mcp callables
+├── _claude_setup()       temp .md file + --append-system-prompt-file flag
+├── _gemini_setup()       GEMINI.md in session cwd (auto-loaded) + .gemini/settings.json
+├── _kiro_setup()         atomic JSON update at ~/.kiro/agents/ + backup + teardown
+├── _opencode_setup()     .opencode/agents/*.md with YAML frontmatter + opencode.json
+├── AGENTS registry       dict[str, AgentAdapter] — 4 agents, insertion order = priority
+├── detect_agents()       configurable priority (config.yaml + STUDYCTL_AGENT env var)
+├── build_canonical_persona()  agent-agnostic persona builder
+└── backward-compat wrappers   build_persona_file(), get_launch_command()
 </code></pre></div>
-<h2 id="8-current-status-roadmap">8. Current Status &amp; Roadmap<a class="headerlink" href="#8-current-status-roadmap" title="Permanent link">&para;</a></h2>
-<h3 id="completed-v22-partial">Completed (v2.2 partial)<a class="headerlink" href="#completed-v22-partial" title="Permanent link">&para;</a></h3>
+<h3 id="per-agent-mechanisms-verified">Per-Agent Mechanisms (Verified)<a class="headerlink" href="#per-agent-mechanisms-verified" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Binary</th>
+<th>Persona</th>
+<th>Resume</th>
+<th>MCP Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude</td>
+<td><code>claude</code></td>
+<td><code>--append-system-prompt-file {temp}</code></td>
+<td><code>claude -r</code></td>
+<td><code>mcp.json</code> in session dir</td>
+</tr>
+<tr>
+<td>Gemini</td>
+<td><code>gemini</code></td>
+<td><code>GEMINI.md</code> in cwd</td>
+<td><code>gemini -r</code></td>
+<td><code>.gemini/settings.json</code></td>
+</tr>
+<tr>
+<td>Kiro</td>
+<td><code>kiro-cli</code></td>
+<td>JSON at <code>~/.kiro/agents/</code> with <code>file://</code> prompt</td>
+<td><code>kiro-cli chat --resume</code></td>
+<td><code>mcpServers</code> in agent JSON</td>
+</tr>
+<tr>
+<td>OpenCode</td>
+<td><code>opencode</code></td>
+<td><code>.opencode/agents/study-mentor.md</code> + YAML frontmatter</td>
+<td><code>opencode -c</code></td>
+<td><code>opencode.json</code> (array cmd, <code>enabled</code>, <code>environment</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Frozen dataclass with callables</strong> (not Protocol) — 3 reviewers recommended this for 4 static adapters in a single file</li>
+<li><strong>No package split</strong> — <code>agent_launcher.py</code> stays as one file (~460 lines)</li>
+<li><strong>Kiro atomic write</strong> — backup existing JSON, write to temp, <code>os.replace()</code>, teardown restores backup</li>
+<li><strong>OpenCode MCP schema differs</strong> — <code>command</code> is array, <code>enabled</code> not <code>disabled</code>, <code>environment</code> not <code>env</code></li>
+<li><strong>Config is YAML</strong> — <code>AgentsConfig</code> dataclass with <code>priority: list[str]</code>, env var override via <code>STUDYCTL_AGENT</code></li>
+</ol>
+<h3 id="test-suite">Test Suite<a class="headerlink" href="#test-suite" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>532+ tests collected (CI-safe, excluding tmux integration)
+  45 agent launcher unit tests (from 10)
+  11 doctor agent tests (from 7)
+   8 multi-agent integration tests (new, in test_study_integration.py)
+   0 failures
+</code></pre></div>
+<h3 id="files-changed">Files Changed<a class="headerlink" href="#files-changed" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent_launcher.py</code></td>
+<td>Replaced dict registry with AgentAdapter dataclass + 4 adapters</td>
+</tr>
+<tr>
+<td><code>cli/_study.py</code></td>
+<td>Dynamic --agent choices, adapter callables, teardown wiring</td>
+</tr>
+<tr>
+<td><code>settings.py</code></td>
+<td>AgentsConfig dataclass, agents: YAML key, default config template</td>
+</tr>
+<tr>
+<td><code>session/cleanup.py</code></td>
+<td>Adapter teardown in session end path</td>
+</tr>
+<tr>
+<td><code>doctor/agents.py</code></td>
+<td>Fixed kiro → kiro-cli, added smoke test checks, registered in doctor</td>
+</tr>
+<tr>
+<td><code>cli/_doctor.py</code></td>
+<td>Registered check_agent_smoke_tests</td>
+</tr>
+<tr>
+<td><code>test_agent_launcher.py</code></td>
+<td>45 tests: registry, detection, adapters, env var, canonical persona</td>
+</tr>
+<tr>
+<td><code>test_doctor_agents.py</code></td>
+<td>11 tests: kiro-cli binary, smoke test success/failure/timeout</td>
+</tr>
+<tr>
+<td><code>test_study_integration.py</code></td>
+<td>8 tests: multi-agent session launch with artifact verification</td>
+</tr>
+</tbody>
+</table>
+<h2 id="whats-not-done">What's NOT Done<a class="headerlink" href="#whats-not-done" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[x] <code>studyctl clean</code> command (FCIS)</li>
-<li>[x] tmux-resurrect compatibility (auto-clean + doctor + docs)</li>
-<li>[x] Study Backlog Phase 1 (CRUD, auto-persist, agent injection)</li>
-<li>[x] Study Backlog Phase 2 (scoring, MCP tools, integration tests)</li>
-<li>[x] Vendor HTMX + Alpine.js + OpenDyslexic (offline PWA)</li>
-<li>[x] Schema v17 (source, tech_area, priority columns)</li>
+<li><strong>Git push not done</strong> — 2 commits on <code>feat/multi-agent</code> branch, not pushed</li>
+<li><strong>Plan docs not committed</strong> — <code>docs/plans/2026-04-03-feat-multi-agent-support-plan.md</code> is untracked</li>
+<li><strong>Agent-native MCP tools</strong> — <code>list_available_agents()</code>, <code>set_agent_preference()</code>, <code>run_doctor_checks()</code> via MCP. Roadmap item.</li>
+<li><strong>Agent switching mid-session</strong> — Switch agents within an active tmux session. Roadmap item.</li>
+<li><strong>Per-agent persona tuning</strong> — Gemini/Kiro may respond differently to certain prompt structures</li>
 </ul>
-<h3 id="completed-v22-polish-2026-04-03">Completed (v2.2 polish — 2026-04-03)<a class="headerlink" href="#completed-v22-polish-2026-04-03" title="Permanent link">&para;</a></h3>
+<h2 id="known-issues">Known Issues<a class="headerlink" href="#known-issues" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Kiro global state</strong> — <code>_kiro_setup()</code> writes to <code>~/.kiro/agents/study-mentor.json</code> (global side effect). Mitigated with atomic write + backup + teardown, but a crash mid-session could leave modified config. The <code>STUDYCTL_KIRO_AGENTS_DIR</code> env var redirects this for testing.</li>
+<li><strong>OpenCode least tested</strong> — Adapter is implemented from research + <code>--help</code> output. Needs validation with a real OpenCode binary when installed.</li>
+<li><strong>Gemini MCP path</strong> — Uses absolute <code>_REPO_ROOT</code> path for the studyctl-mcp server. Works for dev installs but may need adjustment for pip installs.</li>
+</ol>
+<h2 id="next-phase-phase-3-devices-ttyd-lan">Next Phase: Phase 3 — Devices (ttyd + LAN)<a class="headerlink" href="#next-phase-phase-3-devices-ttyd-lan" title="Permanent link">&para;</a></h2>
+<p>From the roadmap:
+- ttyd via nginx/Caddy proxy
+- <code>studyctl study --lan</code> flag
+- Docker <code>studyctl-web</code> image (deferred from Phase 6)</p>
+<h3 id="suggested-starting-point">Suggested Starting Point<a class="headerlink" href="#suggested-starting-point" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Read this handoff document</li>
+<li>Push <code>feat/multi-agent</code> to remote: bundle+scp to user@192.168.1.22</li>
+<li>Merge to main or keep as feature branch</li>
+<li>Start Phase 3 brainstorm with <code>/workflows:brainstorm</code></li>
+</ol>
+<h3 id="also-consider">Also Consider<a class="headerlink" href="#also-consider" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[x] <strong>Structural cleanup</strong>: <code>logic/</code> subpackage for FCIS cores, service layer fully wired</li>
-<li>[x] <strong>Self-healing DB</strong>: <code>parking.py:_connect()</code> two-tier fallback for schema drift</li>
-<li>[x] Break suggestions at timer thresholds (BreakBanner widget + IPC)</li>
-<li>[x] Energy streaks correlation (trend detection, duration analysis)</li>
-<li>[x] Register MCP tools in agent persona (10 tools documented)</li>
-<li>[x] Vendor Google Fonts Inter (zero CDN dependencies, offline PWA)</li>
-<li>[x] Nested tmux UAT test (switch_client path verified)</li>
-<li>[x] <code>--end</code> UAT test from outside (kill + cleanup verified)</li>
-</ul>
-<h3 id="architecture-debt-from-2026-04-03-review">Architecture Debt (from 2026-04-03 review)<a class="headerlink" href="#architecture-debt-from-2026-04-03-review" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[x] Unify config systems — already unified on YAML; removed dead JSON fallback from config_loader.py</li>
-<li>[x] Split <code>query_sessions.py</code> monolith → <code>query_logic.py</code> (717 lines) + CLI (505 lines)</li>
-<li>[x] Fix CI test failures — <code>test_cli_session.py</code> missing <code>_find_db</code> patch for headless environments</li>
-<li>[x] Split <code>history.py</code> god module (1029 lines) → <code>history/</code> package (9 focused modules)</li>
-<li>[x] Extract orchestration from <code>_study.py</code> (799 lines) → <code>session/</code> package + thin CLI (435 lines)</li>
-<li>[x] Split <code>settings.py</code> dual purpose → <code>settings.py</code> (config) + <code>topics.py</code> (topic definitions)</li>
-<li>[x] Fix SM-2 interval overflow in <code>review_db.py</code> (capped at 365 days)</li>
-<li>[x] Nightly CI job for UAT tests (macOS runner with tmux) — <code>nightly-uat.yml</code></li>
-<li>[x] Nightly fresh install check (Ubuntu + macOS matrix) — <code>nightly-install.yml</code></li>
-<li>[x] Pre-release upgrade path gate (N-1 → N) — <code>pre-release.yml</code></li>
-<li>[x] <code>studyctl backup</code> / <code>studyctl restore</code> — timestamped snapshots with safety backup</li>
-<li>[ ] Fix VSCode circular import — deferred, low priority (no active VSCode users)</li>
-</ul>
-<h3 id="future-phases">Future Phases<a class="headerlink" href="#future-phases" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Phase 6: CI/CD improvements (includes architecture debt above)</li>
-<li>Phase 3: Devices (ttyd + LAN)</li>
-<li>Multi-Agent Support</li>
-<li>Full MCP Agent Integration</li>
+<li>Merge <code>feat/multi-agent</code> → <code>main</code> and tag v2.3.0</li>
+<li>Run integration tests (<code>test_study_integration.py</code>) with real tmux to validate multi-agent sessions end-to-end</li>
+<li>Install Gemini CLI or OpenCode to validate adapters against real binaries</li>
 </ul>
 
 
@@ -1432,6 +1155,9 @@ Total:                                   898
 
 
 
+
+  
+  
 
 
 

@@ -1130,6 +1130,11 @@ studyctl<span class="w"> </span>doctor<span class="w">                          
 studyctl<span class="w"> </span>update<span class="w">                          </span><span class="c1"># Check for available updates</span>
 studyctl<span class="w"> </span>upgrade<span class="w">                         </span><span class="c1"># Apply all available updates</span>
 
+<span class="c1"># Backup &amp; restore</span>
+studyctl<span class="w"> </span>backup<span class="w"> </span><span class="o">[</span>--tag<span class="w"> </span>NAME<span class="o">]</span><span class="w">             </span><span class="c1"># Snapshot DB + config to backups/</span>
+studyctl<span class="w"> </span>restore<span class="w">                         </span><span class="c1"># List available backups</span>
+studyctl<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--confirm<span class="w">        </span><span class="c1"># Restore from backup (safety backup first)</span>
+
 <span class="c1"># Web</span>
 studyctl<span class="w"> </span>web<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--host<span class="w"> </span>HOST<span class="o">]</span><span class="w"> </span><span class="c1"># Launch study web app (PWA)</span>
 </code></pre></div>

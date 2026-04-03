@@ -1147,7 +1147,7 @@
   <a href="#v22-polish-phase-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v2.2 — Polish (Phase 2)
+        v2.2 — Polish (Phase 2) ✅
       
     </span>
   </a>
@@ -1158,7 +1158,7 @@
   <a href="#phase-6-cicd-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 6: CI/CD Pipeline
+        Phase 6: CI/CD Pipeline ✅
       
     </span>
   </a>
@@ -1602,7 +1602,7 @@
   <a href="#v22-polish-phase-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v2.2 — Polish (Phase 2)
+        v2.2 — Polish (Phase 2) ✅
       
     </span>
   </a>
@@ -1613,7 +1613,7 @@
   <a href="#phase-6-cicd-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 6: CI/CD Pipeline
+        Phase 6: CI/CD Pipeline ✅
       
     </span>
   </a>
@@ -1787,7 +1787,7 @@
 <li>[x] CI Python version matrix (3.12, 3.13)</li>
 <li>[x] GitHub Pages deployment workflow</li>
 <li>[x] CHANGELOG.md and release automation (git-cliff + release.yml)</li>
-<li>[ ] <code>query_sessions.py</code> refactor — split into CLI, formatters, resolver modules</li>
+<li>[x] <code>query_sessions.py</code> refactor — split into <code>query_logic.py</code> (717 lines) + CLI (505 lines)</li>
 </ul>
 <h2 id="v13-audhd-intelligence-from-review">v1.3 — AuDHD Intelligence (from review)<a class="headerlink" href="#v13-audhd-intelligence-from-review" title="Permanent link">&para;</a></h2>
 <p>Features identified through comprehensive code review:</p>
@@ -1894,22 +1894,30 @@
 <li>[x] <strong>Docs</strong>: setup-guide (tmux prereq + resurrect note), session-protocol (tmux environment section), solution doc</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<h3 id="v22-polish-phase-2">v2.2 — Polish (Phase 2)<a class="headerlink" href="#v22-polish-phase-2" title="Permanent link">&para;</a></h3>
+<h3 id="v22-polish-phase-2">v2.2 — Polish (Phase 2) ✅<a class="headerlink" href="#v22-polish-phase-2" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <code>studyctl clean</code> — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs</li>
-<li>[ ] tmux-resurrect compatibility — exclude <code>study-*</code> sessions from resurrect save/restore</li>
-<li>[ ] Vendor HTMX + Alpine.js into <code>web/static/</code> (remove CDN, enable offline PWA)</li>
-<li>[ ] Parked topic warmup at session start (surface unresolved topics from previous sessions)</li>
-<li>[ ] Break suggestions at timer threshold crossings (from <code>break-science.md</code>)</li>
-<li>[ ] Energy streaks — correlate energy levels with session outcomes in <code>studyctl streaks</code></li>
+<li>[x] <code>studyctl clean</code> — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs</li>
+<li>[x] tmux-resurrect compatibility — exclude <code>study-*</code> sessions from resurrect save/restore</li>
+<li>[x] Vendor HTMX + Alpine.js + OpenDyslexic + Inter into <code>web/static/</code> (zero CDN, fully offline PWA)</li>
+<li>[x] Parked topic warmup at session start (surface unresolved topics from previous sessions)</li>
+<li>[x] Break suggestions at timer threshold crossings (FCIS <code>logic/break_logic.py</code>, sidebar BreakBanner)</li>
+<li>[x] Energy streaks — distribution, trend detection, duration correlation in <code>studyctl streaks</code></li>
+<li>[x] Register all 10 MCP tools in agent persona and <code>agents/claude/mcp.json</code></li>
+<li>[x] <code>logic/</code> subpackage for FCIS cores (clean, backlog, break, streaks)</li>
+<li>[x] Self-healing <code>_connect()</code> for parking table schema drift</li>
+<li>[x] Nested tmux UAT + <code>--end</code> from outside UAT (5 new tests)</li>
+<li>[x] <strong>896 tests passing, 0 failures</strong></li>
 </ul>
-<h3 id="phase-6-cicd-pipeline">Phase 6: CI/CD Pipeline<a class="headerlink" href="#phase-6-cicd-pipeline" title="Permanent link">&para;</a></h3>
-<p>Nightly drift detection, pre-release gate. Spec at <code>docs/ci-cd-pipeline.md</code>.</p>
+<h3 id="phase-6-cicd-pipeline">Phase 6: CI/CD Pipeline ✅<a class="headerlink" href="#phase-6-cicd-pipeline" title="Permanent link">&para;</a></h3>
+<p>Nightly drift detection, pre-release gate, backup/restore.</p>
 <ul>
-<li>[ ] Nightly: fresh install on Ubuntu + macOS, <code>studyctl doctor --json</code> as gate</li>
-<li>[ ] Pre-release: upgrade path N-1 → N, triggered on release tags</li>
-<li>[ ] Docker: <code>studyctl-web</code> image with health check via doctor</li>
-<li>[ ] <code>compatibility.json</code> for pre-flight version checks</li>
+<li>[x] Nightly: fresh install on Ubuntu + macOS, <code>studyctl doctor --json</code> as gate (<code>nightly-install.yml</code>)</li>
+<li>[x] Nightly: UAT tmux integration tests on macOS (<code>nightly-uat.yml</code>)</li>
+<li>[x] Pre-release: upgrade path N-1 → N, triggered on release tags (<code>pre-release.yml</code>)</li>
+<li>[x] <code>studyctl backup</code> / <code>studyctl restore</code> — timestamped snapshots with safety backup</li>
+<li>[x] Orphaned process cleanup in test harness (<code>conftest.py</code> session-scoped fixture)</li>
+<li>[ ] Docker: <code>studyctl-web</code> image with health check via doctor — deferred to Phase 3</li>
+<li>[ ] <code>compatibility.json</code> for pre-flight version checks — deferred (doctor already covers this)</li>
 </ul>
 <h3 id="phase-3-devices-ttyd-lan">Phase 3: Devices (ttyd + LAN)<a class="headerlink" href="#phase-3-devices-ttyd-lan" title="Permanent link">&para;</a></h3>
 <ul>
