@@ -52,6 +52,89 @@ class PersistAction:
     source: str = "struggled"
 
 
+@dataclass
+class ScoringInput:
+    """Pre-gathered data for a single backlog item."""
+
+    item: BacklogItem
+    frequency: int  # count of times this topic appears in parked_topics
+    priority: int | None  # agent-assessed importance (1-5), None = unassessed
+
+
+@dataclass
+class TopicSuggestion:
+    """A scored and ranked topic suggestion."""
+
+    item: BacklogItem
+    score: float  # 0.0 - 1.0, higher = study this next
+    frequency: int
+    priority: int  # effective priority (default 3 if unassessed)
+    reasoning: str  # human-readable explanation
+
+
+# Scoring weights: importance matters more than frequency
+_FREQUENCY_WEIGHT = 0.4
+_IMPORTANCE_WEIGHT = 0.6
+_DEFAULT_PRIORITY = 3
+
+
+def score_backlog_items(inputs: list[ScoringInput]) -> list[TopicSuggestion]:
+    """Score and rank backlog items by frequency + agent-assessed importance.
+
+    Pure logic — no I/O. Takes pre-gathered scoring inputs, returns
+    sorted suggestions (highest score first).
+
+    Score formula:
+        effective_priority = priority or 3
+        score = 0.4 * normalized_frequency + 0.6 * normalized_priority
+    """
+    if not inputs:
+        return []
+
+    max_frequency = max(inp.frequency for inp in inputs)
+    if max_frequency == 0:
+        max_frequency = 1  # avoid division by zero
+
+    suggestions: list[TopicSuggestion] = []
+    for inp in inputs:
+        effective_priority = inp.priority if inp.priority is not None else _DEFAULT_PRIORITY
+        norm_freq = inp.frequency / max_frequency
+        norm_priority = effective_priority / 5.0
+
+        score = (_FREQUENCY_WEIGHT * norm_freq) + (_IMPORTANCE_WEIGHT * norm_priority)
+
+        # Build reasoning
+        parts: list[str] = []
+        if effective_priority >= 4:
+            parts.append(f"high importance ({effective_priority}/5)")
+        elif effective_priority <= 2:
+            parts.append(f"low importance ({effective_priority}/5)")
+        else:
+            parts.append(f"moderate importance ({effective_priority}/5)")
+
+        if inp.frequency >= 3:
+            parts.append(f"frequently appears ({inp.frequency}x)")
+        elif inp.frequency == 1:
+            parts.append("appeared once")
+        else:
+            parts.append(f"appeared {inp.frequency}x")
+
+        reasoning = ", ".join(parts)
+
+        suggestions.append(
+            TopicSuggestion(
+                item=inp.item,
+                score=round(score, 3),
+                frequency=inp.frequency,
+                priority=effective_priority,
+                reasoning=reasoning,
+            )
+        )
+
+    suggestions.sort(key=lambda s: s.score, reverse=True)
+    return suggestions
+
+
 def format_backlog_list(
     items: list[BacklogItem],
     *,

@@ -232,3 +232,176 @@ def register_tools(mcp: FastMCP) -> None:
 
         title = pdf_path.stem.replace("_", " ").replace("-", " ").title()
         return {"title": title, "text": text}
+
+    # ── Study Backlog / Session-DB Tools ─────────────────────────
+
+    @mcp.tool()
+    def get_study_backlog(
+        tech_area: str | None = None,
+        source: str | None = None,
+        status: str = "pending",
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """Get study backlog items with optional filters.
+
+        Returns pending topics from the study backlog, optionally filtered
+        by technology area, source (parked/struggled/manual), or status.
+
+        Args:
+            tech_area: Filter by technology (e.g. "Python", "SQL").
+            source: Filter by origin ("parked", "struggled", "manual").
+            status: Filter by status (default "pending").
+            limit: Maximum items to return.
+        """
+        from studyctl.parking import get_parked_topics
+
+        items = get_parked_topics(
+            status=status,
+            source=source,
+            tech_area=tech_area,
+        )[:limit]
+        return {
+            "items": items,
+            "total": len(items),
+            "filters": {"tech_area": tech_area, "source": source, "status": status},
+        }
+
+    @mcp.tool()
+    def get_topic_suggestions(
+        limit: int = 10,
+        current_topic: str | None = None,
+    ) -> dict[str, Any]:
+        """Get AI-ranked topic suggestions based on importance and frequency.
+
+        Ranks pending backlog topics using algorithmic scoring:
+        60% agent-assessed importance + 40% frequency of appearance.
+        Use this to help the student decide what to study next.
+
+        Args:
+            limit: Maximum suggestions to return.
+            current_topic: Current study topic for relevance boosting.
+        """
+        from studyctl.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
+        from studyctl.parking import get_parked_topics, get_topic_frequencies
+
+        raw = get_parked_topics(status="pending")
+        if not raw:
+            return {"suggestions": [], "total": 0}
+
+        frequencies = get_topic_frequencies(status="pending")
+        inputs = [
+            ScoringInput(
+                item=BacklogItem(
+                    id=t["id"],
+                    question=t["question"],
+                    topic_tag=t.get("topic_tag"),
+                    tech_area=t.get("tech_area"),
+                    source=t.get("source", "parked"),
+                    context=t.get("context"),
+                    parked_at=t["parked_at"],
+                    session_topic=None,
+                ),
+                frequency=frequencies.get(t["question"], 1),
+                priority=t.get("priority"),
+            )
+            for t in raw
+        ]
+
+        suggestions = score_backlog_items(inputs)[:limit]
+        return {
+            "suggestions": [
+                {
+                    "rank": i + 1,
+                    "topic": s.item.question,
+                    "tech_area": s.item.tech_area,
+                    "score": s.score,
+                    "priority": s.priority,
+                    "frequency": s.frequency,
+                    "reasoning": s.reasoning,
+                    "id": s.item.id,
+                }
+                for i, s in enumerate(suggestions)
+            ],
+            "total": len(suggestions),
+        }
+
+    @mcp.tool()
+    def get_study_history(
+        topic: str,
+        days: int = 30,
+    ) -> dict[str, Any]:
+        """Get study history for a topic: sessions, progress, and scores.
+
+        Queries study_sessions, study_progress, and teach_back_scores
+        to give a comprehensive view of the student's learning journey
+        on a specific topic.
+
+        Args:
+            topic: Topic name to search for.
+            days: Number of days to look back (default 30).
+        """
+        from studyctl.history import (
+            get_study_session_stats,
+            get_wins,
+            last_studied,
+            struggle_topics,
+        )
+
+        # Session stats — filter for matching topic
+        all_stats = get_study_session_stats(days=days)
+        topic_stats = [s for s in all_stats if topic.lower() in s.get("topic", "").lower()]
+
+        # Last studied date
+        last = last_studied([topic.lower()])
+
+        # Struggles
+        struggles = struggle_topics(days=days)
+        topic_struggles = [s for s in struggles if topic.lower() in s.get("topic", "").lower()]
+
+        # Wins (confident/mastered concepts)
+        wins = get_wins(days=days)
+        topic_wins = [w for w in wins if topic.lower() in w.get("topic", "").lower()]
+
+        return {
+            "topic": topic,
+            "days": days,
+            "session_stats": topic_stats,
+            "last_studied": last,
+            "struggles": topic_struggles,
+            "wins": topic_wins,
+        }
+
+    @mcp.tool()
+    def record_topic_progress(
+        topic_id: int,
+        priority: int | None = None,
+        confidence: str | None = None,
+    ) -> dict[str, Any]:
+        """Update a backlog topic's priority or record progress.
+
+        Use this to set agent-assessed importance (1-5) on backlog items,
+        where 5 = foundational/critical and 1 = niche/optional.
+
+        Can also update the topic's status to 'resolved' by setting
+        confidence to 'resolved'.
+
+        Args:
+            topic_id: The backlog item ID (from get_study_backlog).
+            priority: Importance score (1-5). 5 = foundational.
+            confidence: Set to "resolved" to mark as done.
+        """
+        from studyctl.parking import resolve_parked_topic, update_topic_priority
+
+        results: dict[str, Any] = {"topic_id": topic_id}
+
+        if priority is not None:
+            if not 1 <= priority <= 5:
+                raise ToolError("priority must be between 1 and 5")
+            success = update_topic_priority(topic_id, priority)
+            results["priority_updated"] = success
+
+        if confidence == "resolved":
+            success = resolve_parked_topic(topic_id)
+            results["resolved"] = success
+
+        return results
