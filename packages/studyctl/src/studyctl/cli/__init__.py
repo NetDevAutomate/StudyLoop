@@ -52,6 +52,9 @@ from studyctl.cli._lazy import LazyGroup
         # _upgrade.py — update check + upgrade apply
         "update": "studyctl.cli._upgrade:update",
         "upgrade": "studyctl.cli._upgrade:upgrade",
+        # _backup.py — backup and restore user data
+        "backup": "studyctl.cli._backup:backup",
+        "restore": "studyctl.cli._backup:restore",
     },
 )
 @click.version_option()
