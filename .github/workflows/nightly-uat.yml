@@ -1,0 +1,41 @@
+name: Nightly UAT (tmux integration)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"  # 03:00 UTC daily
+  workflow_dispatch: {}   # manual trigger
+
+jobs:
+  uat:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install tmux
+        run: brew install tmux
+
+      - name: Install dependencies
+        run: uv sync --all-packages --extra dev --extra test --extra tui
+
+      - name: Verify tmux
+        run: tmux -V
+
+      - name: Run integration tests
+        run: uv run pytest -m integration --tb=short -v
+
+      - name: Run UAT terminal tests
+        if: always()
+        run: uv run pytest packages/studyctl/tests/test_uat_terminal.py --tb=short -v
+
+      - name: Run study lifecycle tests
+        if: always()
+        run: uv run pytest packages/studyctl/tests/test_study_lifecycle.py --tb=short -v
+
+      - name: Run sidebar pilot tests
+        if: always()
+        run: uv run pytest packages/studyctl/tests/test_sidebar_pilot.py --tb=short -v
