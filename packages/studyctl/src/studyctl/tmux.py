@@ -224,19 +224,78 @@ def pane_has_child_process(pane_id: str) -> bool:
     return check.returncode == 0
 
 
-def kill_session(name: str) -> None:
-    """Kill a tmux session by name. Waits until the session is gone."""
+def kill_session(name: str) -> bool:
+    """Kill a tmux session by name. Returns True if confirmed dead.
+
+    tmux kills are async — retries up to 10 times before a final attempt.
+    Returns False if the session could not be confirmed dead.
+    """
     import time
 
     _tmux("kill-session", "-t", name)
     # tmux kill is async — wait for it to take effect
     for _ in range(10):
         if not session_exists(name):
-            return
+            return True
         time.sleep(0.1)
     # Last resort: try again
     _tmux("kill-session", "-t", name)
     time.sleep(0.2)
+    return not session_exists(name)
+
+
+def is_tmux_server_running() -> bool:
+    """Check if a tmux server is accessible.
+
+    Distinguishes 'no server running' (tmux not started) from
+    'server running but no sessions' — both return non-zero from
+    ``list-sessions``, but only the former has 'no server' in stderr.
+    """
+    result = _tmux("list-sessions")
+    return not (result.returncode != 0 and "no server" in result.stderr)
+
+
+def list_study_sessions() -> list[str]:
+    """Return names of all tmux sessions with the ``study-`` prefix."""
+    result = _tmux("list-sessions", "-F", "#{session_name}")
+    if result.returncode != 0:
+        return []
+    return [n for n in result.stdout.strip().splitlines() if n.startswith("study-")]
+
+
+def is_zombie_session(session_name: str, min_age_seconds: float = 60.0) -> bool:
+    """Check if a study session is a zombie (no child process and old enough).
+
+    Returns True only if:
+    - The session's pane has no child processes (agent exited), AND
+    - The session is older than ``min_age_seconds`` (avoids false positives
+      on tmux-resurrect restored sessions or sessions still starting up).
+
+    Returns False (conservative) if anything can't be determined.
+    """
+    import time
+
+    # Get the first pane of the session
+    result = _tmux("list-panes", "-t", session_name, "-F", "#{pane_id}")
+    if result.returncode != 0:
+        return False
+    pane_id = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+    if not pane_id:
+        return False
+
+    # Check for child processes
+    if pane_has_child_process(pane_id):
+        return False
+
+    # Check session age — skip young sessions
+    result = _tmux("display-message", "-t", session_name, "-p", "#{session_created}")
+    if result.returncode != 0:
+        return False  # can't determine — be conservative
+    try:
+        created = int(result.stdout.strip())
+        return (time.time() - created) > min_age_seconds
+    except ValueError:
+        return False
 
 
 def kill_all_study_sessions(current_session: str | None = None) -> None:

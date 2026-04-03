@@ -156,10 +156,19 @@ class TestSessionManagement:
     def test_kill_session(self, mock_subprocess):
         from studyctl.tmux import kill_session
 
-        kill_session("test-session")
+        # Default mock returns rc=0, so session_exists returns True (session
+        # still alive after kill). kill_session retries then returns False.
+        # Override to simulate session gone after first kill:
+        mock_subprocess.side_effect = [
+            MagicMock(returncode=0, stdout="", stderr=""),  # kill-session
+            MagicMock(returncode=1, stdout="", stderr=""),  # has-session (gone)
+        ]
 
-        call_args = mock_subprocess.call_args[0][0]
-        assert call_args == ["tmux", "kill-session", "-t", "test-session"]
+        result = kill_session("test-session")
+
+        first_call = mock_subprocess.call_args_list[0][0][0]
+        assert first_call == ["tmux", "kill-session", "-t", "test-session"]
+        assert result is True
 
     def test_get_tmux_version(self, mock_subprocess):
         from studyctl.tmux import get_tmux_version
