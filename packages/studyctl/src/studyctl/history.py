@@ -849,6 +849,36 @@ def get_study_session_stats(days: int = 30) -> list[dict]:
         conn.close()
 
 
+def get_energy_session_data(days: int = 30) -> list[dict]:
+    """Get per-session energy and duration data for streak analysis.
+
+    Returns a list of dicts with energy_level, duration_minutes, and
+    days_ago — the shape expected by streaks_logic.SessionSummary.
+    """
+    conn = _connect()
+    if not conn:
+        return []
+    try:
+        rows = conn.execute(
+            """
+            SELECT energy_level,
+                   duration_minutes,
+                   CAST(julianday('now') - julianday(started_at) AS INTEGER) as days_ago
+            FROM study_sessions
+            WHERE started_at > datetime('now', ?)
+              AND duration_minutes IS NOT NULL
+              AND energy_level IS NOT NULL
+            ORDER BY started_at ASC
+            """,
+            (f"-{days} days",),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
+    finally:
+        conn.close()
+
+
 def migrate_bridges_to_graph() -> int:
     """One-time migration of knowledge_bridges → concept graph.
 

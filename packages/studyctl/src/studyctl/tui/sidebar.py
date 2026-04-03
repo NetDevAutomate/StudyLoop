@@ -18,6 +18,10 @@ from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.widgets import Static
 
+# Break logic — imported from FCIS core (single source of truth)
+from studyctl.logic.break_logic import THRESHOLDS as _BREAK_THRESHOLDS
+from studyctl.logic.break_logic import BreakSuggestion, check_break_needed
+from studyctl.logic.break_logic import energy_band as _energy_band
 from studyctl.session_state import (
     PARKING_FILE,
     SESSION_DIR,
@@ -31,14 +35,6 @@ from studyctl.session_state import (
     write_session_state,
 )
 
-# Energy-adaptive break thresholds (from break-science.md)
-# Maps energy band → (micro_break_mins, short_break_mins, long_break_mins)
-BREAK_THRESHOLDS: dict[str, tuple[int, int, int]] = {
-    "high": (25, 50, 90),
-    "medium": (20, 40, 75),
-    "low": (15, 30, 60),
-}
-
 # Status shapes matching session-protocol.md visual language
 STATUS_SHAPES: dict[str, tuple[str, str]] = {
     "win": ("\u2713", "green"),
@@ -47,15 +43,6 @@ STATUS_SHAPES: dict[str, tuple[str, str]] = {
     "struggling": ("\u25b2", "yellow"),
     "parked": ("\u25cb", "dim"),
 }
-
-
-def _energy_band(energy: int) -> str:
-    """Map 1-10 energy to band name."""
-    if energy <= 3:
-        return "low"
-    if energy <= 6:
-        return "medium"
-    return "high"
 
 
 def _compute_elapsed(state: dict) -> int:
@@ -99,12 +86,12 @@ def _timer_phase(elapsed_secs: int, energy: int) -> str:
     Returns 'green', 'amber', or 'red'.
     """
     band = _energy_band(energy)
-    thresholds = BREAK_THRESHOLDS[band]
+    thresholds = _BREAK_THRESHOLDS[band]
     elapsed_mins = elapsed_secs / 60
 
-    if elapsed_mins < thresholds[0]:  # micro-break
+    if elapsed_mins < thresholds.micro:
         return "green"
-    if elapsed_mins < thresholds[1]:  # short break
+    if elapsed_mins < thresholds.short:
         return "amber"
     return "red"
 
@@ -252,6 +239,46 @@ class CounterBar(Static):
         self.update(f"[green]\u2713 {wins}[/]  [dim]\u25cb {parked}[/]  [yellow]\u25b2 {review}[/]")
 
 
+class BreakBanner(Static):
+    """Break suggestion banner — shows/hides based on FCIS check_break_needed()."""
+
+    DEFAULT_CSS = """
+    BreakBanner {
+        height: auto;
+        max-height: 3;
+        content-align: center middle;
+        display: none;
+    }
+    BreakBanner.visible {
+        display: block;
+    }
+    BreakBanner.micro {
+        background: $warning-darken-2;
+        color: $text;
+    }
+    BreakBanner.short {
+        background: $warning;
+        color: $text;
+    }
+    BreakBanner.long {
+        background: $error;
+        color: $text;
+        text-style: bold;
+    }
+    """
+
+    def show_break(self, break_type: str, message: str) -> None:
+        """Show the break banner with the given type and message."""
+        self.remove_class("micro", "short", "long")
+        self.add_class("visible", break_type)
+        self.update(message)
+
+    def hide_break(self) -> None:
+        """Hide the break banner."""
+        self.remove_class("visible", "micro", "short", "long")
+        self.update("")
+
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
@@ -292,6 +319,7 @@ class SidebarApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield TimerWidget(id="timer")
+        yield BreakBanner(id="break_banner")
         yield ActivityFeed(id="activity")
         yield CounterBar(id="counters")
         yield Static("[dim]p:pause  r:reset  Q:end session[/]", id="status")
@@ -322,6 +350,29 @@ class SidebarApp(App[None]):
 
             self.call_from_thread(self._update_timer, elapsed, energy, paused, timer_mode)
 
+            # Check if a break is needed (FCIS — pure function call)
+            if not paused:
+                elapsed_mins = elapsed // 60
+                last_break_at = state.get("last_break_at_min")
+                breaks_taken = state.get("breaks_taken", 0)
+                suggestion = check_break_needed(
+                    elapsed_minutes=elapsed_mins,
+                    energy=energy,
+                    last_break_at=last_break_at,
+                    breaks_taken=breaks_taken,
+                )
+                self.call_from_thread(self._update_break_banner, suggestion)
+                # Write break state to IPC for web dashboard
+                if suggestion:
+                    write_session_state(
+                        {
+                            "break_suggestion": suggestion.break_type,
+                            "break_message": suggestion.message,
+                        }
+                    )
+            else:
+                self.call_from_thread(self._update_break_banner, None)
+
             # Only update feed/counters when files change
             if mtimes != last_mtimes:
                 self.call_from_thread(self._update_feed, topics, parking)
@@ -342,6 +393,13 @@ class SidebarApp(App[None]):
         timer.energy = energy
         timer.paused = paused
         timer.timer_mode = timer_mode
+
+    def _update_break_banner(self, suggestion: BreakSuggestion | None) -> None:
+        banner = self.query_one("#break_banner", BreakBanner)
+        if suggestion is not None:
+            banner.show_break(suggestion.break_type, suggestion.message)
+        else:
+            banner.hide_break()
 
     def _update_feed(
         self,
@@ -390,7 +448,11 @@ class SidebarApp(App[None]):
     # ------------------------------------------------------------------
 
     def action_toggle_pause(self) -> None:
-        """Toggle timer pause/resume by writing to the state file."""
+        """Toggle timer pause/resume by writing to the state file.
+
+        Resuming from pause counts as "break taken" — resets the break
+        clock so check_break_needed() won't re-suggest immediately.
+        """
         state = read_session_state()
         if state.get("paused_at"):
             # Resume: add paused duration to total, clear paused_at
@@ -400,7 +462,20 @@ class SidebarApp(App[None]):
             now = datetime.now(UTC)
             pause_duration = (now - paused_at).total_seconds()
             total = state.get("total_paused_seconds", 0) + int(pause_duration)
-            write_session_state({"paused_at": None, "total_paused_seconds": total})
+            # Record break taken: elapsed minutes at resume time
+            elapsed = _compute_elapsed(state)
+            elapsed_min = elapsed // 60
+            breaks = state.get("breaks_taken", 0) + 1
+            write_session_state(
+                {
+                    "paused_at": None,
+                    "total_paused_seconds": total,
+                    "last_break_at_min": elapsed_min,
+                    "breaks_taken": breaks,
+                    "break_suggestion": None,
+                    "break_message": None,
+                }
+            )
         else:
             # Pause: record the pause timestamp
             write_session_state({"paused_at": datetime.now(UTC).isoformat()})
