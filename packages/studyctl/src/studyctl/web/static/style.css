@@ -1,5 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic@5/400.css");
+@import url("/vendor/css/opendyslexic-400.css");
 
 :root {
   --bg: #1a1b26;
