@@ -43,6 +43,8 @@ from studyctl.cli._lazy import LazyGroup
         # _study.py — unified study session (tmux + agent + sidebar)
         "study": "studyctl.cli._study:study",
         "sidebar": "studyctl.cli._study:sidebar_cmd",
+        # _clean.py — cleanup orphaned session artifacts
+        "clean": "studyctl.cli._clean:clean",
         # _doctor.py — diagnostic health checks
         "doctor": "studyctl.cli._doctor:doctor",
         # _upgrade.py — update check + upgrade apply
