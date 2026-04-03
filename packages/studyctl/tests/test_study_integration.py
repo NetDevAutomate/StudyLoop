@@ -136,7 +136,7 @@ def _cleanup_all():
     # Remove test session directories
     if SESSIONS_DIR.exists():
         for d in SESSIONS_DIR.iterdir():
-            if d.is_dir() and "integration-test" in d.name:
+            if d.is_dir() and ("integration-test" in d.name or d.name.startswith("study-")):
                 shutil.rmtree(d, ignore_errors=True)
 
 
@@ -814,3 +814,158 @@ class TestExperienceVerification:
         has_time = bool(re.search(r"\d+:\d{2}", content))
         has_elapsed = "elapsed" in content.lower() or "timer" in content.lower()
         assert has_time or has_elapsed, f"Sidebar should show elapsed time but got:\n{content}"
+
+
+# ---------------------------------------------------------------------------
+# Test: Multi-Agent Session Launch
+#
+# Each agent adapter produces different artifacts in the session directory.
+# These tests verify that --agent {name} runs the correct adapter setup,
+# the mock agent functions in tmux, and cleanup works for all agents.
+# ---------------------------------------------------------------------------
+
+
+class TestMultiAgentSessionLaunch:
+    """Verify each agent adapter creates correct artifacts during session start."""
+
+    def _start_with_agent(
+        self,
+        tmp_path: Path,
+        agent_name: str,
+        extra_env: dict | None = None,
+    ) -> dict:
+        """Start a session with a specific --agent and return session info."""
+        script = _make_mock_agent(tmp_path, name=f"mock-{agent_name}.sh")
+        env = {"STUDYCTL_TEST_AGENT_CMD": f"bash {script} {{persona_file}}"}
+        if extra_env:
+            env.update(extra_env)
+
+        args = ["study", "Integration Test", "--energy", "5", "--agent", agent_name]
+        _studyctl(*args, env_overrides=env)
+
+        _wait_for(STATE_FILE.exists, desc="session-state.json created")
+        state = _read_state()
+        session_name = state.get("tmux_session", "")
+        _wait_for(lambda: _session_exists(session_name), desc=f"tmux session {session_name}")
+
+        return {
+            "session_name": session_name,
+            "state": state,
+            "session_dir": state.get("session_dir"),
+        }
+
+    def test_gemini_session_creates_gemini_md(self, tmp_path):
+        """Gemini adapter writes GEMINI.md to the session directory."""
+        info = self._start_with_agent(tmp_path, "gemini")
+        session_dir = Path(info["session_dir"])
+
+        gemini_md = session_dir / "GEMINI.md"
+        assert gemini_md.exists(), "Gemini adapter should write GEMINI.md"
+        content = gemini_md.read_text()
+        assert "Integration Test" in content
+        assert "5/10" in content
+
+        assert info["state"]["agent"] == "gemini"
+
+    def test_gemini_session_creates_mcp_settings(self, tmp_path):
+        """Gemini adapter writes .gemini/settings.json with MCP config."""
+        info = self._start_with_agent(tmp_path, "gemini")
+        session_dir = Path(info["session_dir"])
+
+        settings = session_dir / ".gemini" / "settings.json"
+        assert settings.exists(), "Gemini adapter should write .gemini/settings.json"
+        data = json.loads(settings.read_text())
+        assert "studyctl-mcp" in data["mcpServers"]
+
+    def test_kiro_session_writes_agent_json(self, tmp_path):
+        """Kiro adapter writes study-mentor.json to the Kiro agents directory."""
+        # Redirect Kiro agents dir to temp to avoid polluting real config
+        fake_kiro = tmp_path / "kiro-agents"
+        fake_kiro.mkdir()
+
+        info = self._start_with_agent(
+            tmp_path,
+            "kiro",
+            extra_env={"STUDYCTL_KIRO_AGENTS_DIR": str(fake_kiro)},
+        )
+
+        agent_json = fake_kiro / "study-mentor.json"
+        assert agent_json.exists(), "Kiro adapter should write study-mentor.json"
+        data = json.loads(agent_json.read_text())
+        assert data["name"] == "study-mentor"
+        assert data["prompt"].startswith("file://")
+
+        assert info["state"]["agent"] == "kiro"
+
+    def test_kiro_teardown_restores_backup(self, tmp_path):
+        """Kiro teardown restores the backed-up agent JSON on session end."""
+        fake_kiro = tmp_path / "kiro-agents"
+        fake_kiro.mkdir()
+        # Pre-existing config that should be restored
+        original = fake_kiro / "study-mentor.json"
+        original.write_text('{"name": "study-mentor", "prompt": "original"}')
+
+        script = _make_fast_agent(tmp_path)
+        env = {
+            "STUDYCTL_TEST_AGENT_CMD": f"bash {script} {{persona_file}}",
+            "STUDYCTL_KIRO_AGENTS_DIR": str(fake_kiro),
+        }
+        _studyctl("study", "Kiro Teardown Test", "--agent", "kiro", env_overrides=env)
+
+        # Wait for the fast agent to finish and cleanup to run
+        _wait_for(
+            lambda: STATE_FILE.exists() and _read_state().get("mode") == "ended",
+            timeout=20,
+            desc="session ended (cleanup_on_exit ran)",
+        )
+
+        restored = json.loads(original.read_text())
+        assert restored["prompt"] == "original", "Kiro teardown should restore backup"
+
+    def test_opencode_session_creates_persona_with_frontmatter(self, tmp_path):
+        """OpenCode adapter writes .opencode/agents/study-mentor.md."""
+        info = self._start_with_agent(tmp_path, "opencode")
+        session_dir = Path(info["session_dir"])
+
+        persona = session_dir / ".opencode" / "agents" / "study-mentor.md"
+        assert persona.exists(), "OpenCode adapter should write study-mentor.md"
+        content = persona.read_text()
+        assert content.startswith("---\n"), "Should have YAML frontmatter"
+        assert "mode: primary" in content
+        assert "Integration Test" in content
+
+        assert info["state"]["agent"] == "opencode"
+
+    def test_opencode_session_creates_mcp_config(self, tmp_path):
+        """OpenCode adapter writes opencode.json with correct MCP schema."""
+        info = self._start_with_agent(tmp_path, "opencode")
+        session_dir = Path(info["session_dir"])
+
+        config = session_dir / ".opencode" / "opencode.json"
+        assert config.exists(), "OpenCode adapter should write opencode.json"
+        data = json.loads(config.read_text())
+        mcp = data["mcp"]["studyctl-mcp"]
+        assert isinstance(mcp["command"], list), "OpenCode command must be array"
+        assert mcp["enabled"] is True
+        assert mcp["type"] == "local"
+
+    def test_all_agents_support_topic_logging(self, tmp_path):
+        """All agents can log topics via the studyctl wrapper in the session dir."""
+        for agent_name in ("claude", "gemini", "opencode"):
+            _cleanup_all()
+            extra_env = {}
+            if agent_name == "kiro":
+                fake_kiro = tmp_path / f"kiro-{agent_name}"
+                fake_kiro.mkdir(exist_ok=True)
+                extra_env["STUDYCTL_KIRO_AGENTS_DIR"] = str(fake_kiro)
+
+            self._start_with_agent(tmp_path, agent_name, extra_env=extra_env)
+
+            _wait_for(
+                lambda: TOPICS_FILE.exists() and "Closures" in TOPICS_FILE.read_text(),
+                desc=f"topic logged via {agent_name} agent",
+            )
+            assert "status:learning" in TOPICS_FILE.read_text()
+
+            # Clean up for next iteration
+            _cleanup_all()

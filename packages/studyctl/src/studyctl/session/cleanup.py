@@ -87,6 +87,18 @@ def end_session_common(
     with contextlib.suppress(Exception):
         write_session_state({"mode": "ended"})
 
+    # Run agent-specific teardown (e.g. Kiro restores backed-up JSON)
+    with contextlib.suppress(Exception):
+        from studyctl.agent_launcher import AGENTS
+
+        adapter = AGENTS.get(state.get("agent", ""))
+        if adapter and adapter.teardown:
+            session_dir_path = state.get("session_dir")
+            if session_dir_path:
+                from pathlib import Path
+
+                adapter.teardown(Path(session_dir_path))
+
     # Clean up temp files
     if persona_file:
         with contextlib.suppress(OSError):
