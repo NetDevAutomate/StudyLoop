@@ -115,7 +115,7 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - [x] CI Python version matrix (3.12, 3.13)
 - [x] GitHub Pages deployment workflow
 - [x] CHANGELOG.md and release automation (git-cliff + release.yml)
-- [ ] `query_sessions.py` refactor — split into CLI, formatters, resolver modules
+- [x] `query_sessions.py` refactor — split into `query_logic.py` (717 lines) + CLI (505 lines)
 
 ## v1.3 — AuDHD Intelligence (from review)
 

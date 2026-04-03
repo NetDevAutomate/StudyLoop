@@ -400,8 +400,8 @@ test_clean.py — 12 tests, each with 4-6 patch() context managers
 
 **After** (FCIS):
 ```
-_clean_logic.py — Pure core: plan_clean() returns CleanResult
-_clean.py — Thin shell: gather → decide → execute → present
+logic/clean_logic.py — Pure core: plan_clean() returns CleanResult
+cli/_clean.py — Thin shell: gather → decide → execute → present
 test_clean.py — Direct function calls, zero mocks
 ```
 
