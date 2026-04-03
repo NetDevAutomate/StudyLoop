@@ -14,7 +14,7 @@ from studyctl.doctor.models import VALID_CATEGORIES, CheckResult
 def _get_registry():
     """Build and return a fully-loaded CheckerRegistry."""
     from studyctl.doctor import CheckerRegistry
-    from studyctl.doctor.agents import check_agent_definitions
+    from studyctl.doctor.agents import check_agent_definitions, check_agent_smoke_tests
     from studyctl.doctor.config import (
         check_obsidian_vault,
         check_pandoc,
@@ -45,6 +45,7 @@ def _get_registry():
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
     registry.register("agents")(check_agent_definitions)
+    registry.register("agents")(check_agent_smoke_tests)
     registry.register("updates")(check_pypi_versions)
     return registry
 

@@ -1,10 +1,16 @@
-"""Agent definition health checks — detect AI tools, verify definitions current."""
+"""Agent definition health checks — detect AI tools, verify definitions current.
+
+Checks:
+  1. Which AI coding tools are installed (binary detection + smoke test)
+  2. Whether agent definitions are installed and up-to-date (hash vs manifest)
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import shutil
+import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -15,10 +21,12 @@ MANIFEST_URL = "https://raw.githubusercontent.com/NetDevAutomate/socratic-study-
 
 TOOL_AGENTS: dict[str, tuple[str, str]] = {
     "claude": ("claude", "~/.claude/commands/socratic-mentor.md"),
-    "kiro": ("kiro", "~/.kiro/agents/study-mentor/agent.yml"),
+    "kiro": ("kiro-cli", "~/.kiro/agents/study-mentor.json"),
     "gemini": ("gemini", "~/.gemini/agents/study-mentor.md"),
     "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
 }
+
+_SMOKE_TIMEOUT = 5  # seconds
 
 
 def _detect_ai_tools() -> list[str]:
@@ -28,6 +36,30 @@ def _detect_ai_tools() -> list[str]:
 def _get_agent_install_path(tool: str) -> Path:
     _, path_template = TOOL_AGENTS[tool]
     return Path(path_template).expanduser()
+
+
+def _smoke_test(binary: str) -> tuple[bool, str]:
+    """Run ``binary --version`` and return (ok, version_or_error).
+
+    Catches missing binaries, permission errors, and timeouts.
+    """
+    try:
+        result = subprocess.run(
+            [binary, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=_SMOKE_TIMEOUT,
+        )
+        if result.returncode == 0:
+            version = result.stdout.strip().splitlines()[0] if result.stdout.strip() else "ok"
+            return True, version
+        return False, f"exit code {result.returncode}"
+    except FileNotFoundError:
+        return False, "binary not found"
+    except subprocess.TimeoutExpired:
+        return False, f"timed out after {_SMOKE_TIMEOUT}s"
+    except Exception as exc:
+        return False, str(exc)
 
 
 def _fetch_manifest() -> dict | None:
@@ -43,7 +75,44 @@ def _hash_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
+def check_agent_smoke_tests() -> list[CheckResult]:
+    """Run smoke tests on all detected AI tools."""
+    tools = _detect_ai_tools()
+    if not tools:
+        return []
+
+    results: list[CheckResult] = []
+    for tool in tools:
+        binary, _ = TOOL_AGENTS[tool]
+        binary_path = shutil.which(binary) or binary
+        ok, detail = _smoke_test(binary_path)
+        if ok:
+            results.append(
+                CheckResult(
+                    "agents",
+                    f"smoke_{tool}",
+                    "pass",
+                    f"{tool} responds ({detail})",
+                    "",
+                    False,
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "agents",
+                    f"smoke_{tool}",
+                    "warn",
+                    f"{tool} installed but smoke test failed: {detail}",
+                    f"Check {binary} installation",
+                    False,
+                )
+            )
+    return results
+
+
 def check_agent_definitions() -> list[CheckResult]:
+    """Check that agent definitions are installed and match the manifest."""
     tools = _detect_ai_tools()
     if not tools:
         return [
@@ -52,7 +121,7 @@ def check_agent_definitions() -> list[CheckResult]:
                 "no_ai_tools",
                 "info",
                 "No AI coding tools detected",
-                "Install Claude Code, Kiro, Gemini CLI, or OpenCode",
+                "Install Claude Code, Kiro CLI, Gemini CLI, or OpenCode",
                 False,
             )
         ]
