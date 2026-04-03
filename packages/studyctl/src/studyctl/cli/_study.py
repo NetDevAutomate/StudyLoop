@@ -14,12 +14,19 @@ import click
 from studyctl.cli._shared import console
 
 
+def _agent_names() -> list[str]:
+    """Registered agent names for CLI --agent choices."""
+    from studyctl.agent_launcher import AGENTS
+
+    return list(AGENTS.keys())
+
+
 @click.command()
 @click.argument("topic", required=False)
 @click.option(
     "--agent",
     "-a",
-    type=click.Choice(["claude"]),
+    type=click.Choice(sorted(_agent_names())),
     help="AI agent to launch (auto-detects if omitted).",
 )
 @click.option(
@@ -247,7 +254,11 @@ def _handle_start(
     """Start a new study session with tmux environment."""
     from pathlib import Path
 
-    from studyctl.agent_launcher import build_persona_file, detect_agents, get_launch_command
+    from studyctl.agent_launcher import (
+        AGENTS,
+        build_canonical_persona,
+        detect_agents,
+    )
     from studyctl.history import start_study_session
     from studyctl.session.orchestrator import (
         attach_if_needed,
@@ -284,7 +295,8 @@ def _handle_start(
         if not available:
             console.print(
                 "[red]No AI agent found.[/red]\n"
-                "  Install Claude Code: [bold]npm install -g @anthropic-ai/claude-code[/bold]"
+                "  Install one of: Claude Code, Gemini CLI, Kiro CLI, or OpenCode\n"
+                "  e.g. [bold]npm install -g @anthropic-ai/claude-code[/bold]"
             )
             ctx.exit(1)
             return
@@ -360,7 +372,10 @@ def _handle_start(
     if backlog_notes:
         previous_notes = f"{previous_notes}\n\n{backlog_notes}" if previous_notes else backlog_notes
 
-    persona_file = build_persona_file(mode, topic, energy, previous_notes=previous_notes)
+    # Build persona via adapter pattern
+    adapter = AGENTS[agent]
+    canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
+    persona_file = adapter.setup(canonical, session_dir)
 
     # Allow integration tests to inject a mock agent command
     import os
@@ -369,7 +384,7 @@ def _handle_start(
     if test_agent_cmd:
         agent_cmd = test_agent_cmd.format(persona_file=persona_file)
     else:
-        agent_cmd = get_launch_command(agent, persona_file, resume=is_resuming)
+        agent_cmd = adapter.launch_cmd(persona_file, is_resuming)
 
     wrapped_cmd = build_wrapped_agent_cmd(session_dir, agent_cmd)
 

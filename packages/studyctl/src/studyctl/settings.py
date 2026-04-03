@@ -96,6 +96,13 @@ class ContentConfig:
 
 
 @dataclass
+class AgentsConfig:
+    """Configuration for AI agent detection and priority."""
+
+    priority: list[str] = field(default_factory=lambda: ["claude", "kiro", "gemini", "opencode"])
+
+
+@dataclass
 class Settings:
     """Application settings loaded from config file."""
 
@@ -110,6 +117,7 @@ class Settings:
     knowledge_domains: KnowledgeDomainsConfig = field(default_factory=KnowledgeDomainsConfig)
     notebooklm: NotebookLMConfig = field(default_factory=NotebookLMConfig)
     content: ContentConfig = field(default_factory=ContentConfig)
+    agents: AgentsConfig = field(default_factory=AgentsConfig)
 
 
 def load_settings() -> Settings:
@@ -166,6 +174,13 @@ def load_settings() -> Settings:
     if nlm:
         settings.notebooklm = NotebookLMConfig(
             enabled=bool(nlm.get("enabled", False)),
+        )
+
+    # Agents configuration
+    ag = raw.get("agents", {})
+    if ag:
+        settings.agents = AgentsConfig(
+            priority=ag.get("priority", ["claude", "kiro", "gemini", "opencode"]),
         )
 
     # Content pipeline configuration
@@ -256,6 +271,13 @@ topics:
     slug: aws-analytics
     obsidian_path: 2-Areas/Study/AWS-Analytics
     tags: [aws, analytics, redshift, athena]
+
+# AI agent configuration
+# Priority order for auto-detection (first installed agent wins)
+# Override per-session with: studyctl study "topic" --agent gemini
+# Override via env var: STUDYCTL_AGENT=gemini
+# agents:
+#   priority: [claude, kiro, gemini, opencode]
 
 # Medication timing (optional — for ADHD stimulant medication awareness)
 # Uncomment to enable medication-aware session recommendations
