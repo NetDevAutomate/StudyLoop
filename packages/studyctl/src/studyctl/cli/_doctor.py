@@ -15,7 +15,12 @@ def _get_registry():
     """Build and return a fully-loaded CheckerRegistry."""
     from studyctl.doctor import CheckerRegistry
     from studyctl.doctor.agents import check_agent_definitions
-    from studyctl.doctor.config import check_obsidian_vault, check_pandoc, check_review_directories
+    from studyctl.doctor.config import (
+        check_obsidian_vault,
+        check_pandoc,
+        check_review_directories,
+        check_tmux_resurrect,
+    )
     from studyctl.doctor.core import (
         check_agent_session_tools,
         check_config_file,
@@ -36,7 +41,7 @@ def _get_registry():
         registry.register("core")(fn)
     for fn in [check_review_db, check_sessions_db]:
         registry.register("database")(fn)
-    for fn in [check_obsidian_vault, check_review_directories, check_pandoc]:
+    for fn in [check_obsidian_vault, check_review_directories, check_pandoc, check_tmux_resurrect]:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
     registry.register("agents")(check_agent_definitions)
