@@ -29,11 +29,11 @@ package "MCP Server (studyctl-mcp)" {
     [Session-DB Tools\n(4 new)] as MCPSession
 }
 
-package "Logic Layer (FCIS Cores)" {
+package "Logic Layer (logic/)" {
     [backlog_logic.py] as BL
-    [_clean_logic.py] as CL
-    [break_logic.py] as BRK <<planned>>
-    [streaks_logic.py] as SL <<planned>>
+    [clean_logic.py] as CL
+    [break_logic.py] as BRK
+    [streaks_logic.py] as SL
 }
 
 package "Data Layer" {
@@ -123,9 +123,11 @@ package "socratic-study-mentor (monorepo)" {
             [_session.py — park, topic]
             [_doctor.py — health checks]
         }
-        package "FCIS Cores" {
+        package "logic/ (FCIS Cores)" {
             [backlog_logic.py]
-            [_clean_logic.py]
+            [clean_logic.py]
+            [break_logic.py]
+            [streaks_logic.py]
         }
         package "Data" {
             [parking.py]
@@ -366,21 +368,21 @@ end note
 
 | Module | Functional Core | Imperative Shell | Tests |
 |--------|----------------|-----------------|-------|
-| Clean | `clean_logic.py` → `plan_clean()` | `cli/_clean.py` | `test_clean.py` (17, zero mocks) |
-| Backlog | `backlog_logic.py` → `format_backlog_list()`, `score_backlog_items()`, `plan_auto_persist()`, `build_backlog_summary()` | `cli/_topics.py`, `cli/_study.py` | `test_backlog_logic.py` (22, zero mocks) |
-| Break *(planned)* | `break_logic.py` → `check_break_needed()` | `tui/sidebar.py` | `test_break_logic.py` |
-| Streaks *(planned)* | `streaks_logic.py` → `analyze_energy_streaks()` | `cli/_review.py` | `test_streaks_logic.py` |
+| Clean | `logic/clean_logic.py` → `plan_clean()` | `cli/_clean.py` | `test_clean.py` (17, zero mocks) |
+| Backlog | `logic/backlog_logic.py` → `format_backlog_list()`, `score_backlog_items()`, `plan_auto_persist()`, `build_backlog_summary()` | `cli/_topics.py`, `cli/_study.py` | `test_backlog_logic.py` (22, zero mocks) |
+| Break | `logic/break_logic.py` → `check_break_needed()`, energy-adaptive thresholds | `tui/sidebar.py` (BreakBanner widget) | `test_break_logic.py` (23, zero mocks) |
+| Streaks | `logic/streaks_logic.py` → `analyze_energy_streaks()`, trend detection, duration correlation | `cli/_review.py` | `test_streaks_logic.py` (12, zero mocks) |
 
-**Note**: All FCIS cores live at `studyctl/` package level (not inside `cli/`). This was corrected per the 2026-04-03 architecture review recommendation.
+**Note**: All FCIS cores live in `studyctl/logic/` subpackage with an empty `__init__.py` (explicit imports, no re-exports). This was created per the 2026-04-03 architecture review recommendation.
 
 ## 7. Test Pyramid
 
 ```
-CI-safe tests (no tmux, no network):     786
+CI-safe tests (no tmux, no network):     826
 Integration tests (real DB):              13
-UAT tests (needs tmux):                    6 (existing) + 3 (planned)
+UAT tests (needs tmux):                   57
 ─────────────────────────────────────────────
-Total:                                   799+
+Total:                                   896
 ```
 
 ## 8. Current Status & Roadmap
@@ -393,14 +395,15 @@ Total:                                   799+
 - [x] Vendor HTMX + Alpine.js + OpenDyslexic (offline PWA)
 - [x] Schema v17 (source, tech_area, priority columns)
 
-### Remaining (v2.2 polish)
-- [ ] **Structural cleanup** (from architecture review): move `_clean_logic.py` to package level, wire service layer
-- [ ] Break suggestions at timer thresholds
-- [ ] Energy streaks correlation
-- [ ] Register MCP tools in agent persona
-- [ ] Vendor Google Fonts (Inter)
-- [ ] Nested tmux UAT test (needs tmux)
-- [ ] `--end` UAT test from outside (needs tmux)
+### Completed (v2.2 polish — 2026-04-03)
+- [x] **Structural cleanup**: `logic/` subpackage for FCIS cores, service layer fully wired
+- [x] **Self-healing DB**: `parking.py:_connect()` two-tier fallback for schema drift
+- [x] Break suggestions at timer thresholds (BreakBanner widget + IPC)
+- [x] Energy streaks correlation (trend detection, duration analysis)
+- [x] Register MCP tools in agent persona (10 tools documented)
+- [x] Vendor Google Fonts Inter (zero CDN dependencies, offline PWA)
+- [x] Nested tmux UAT test (switch_client path verified)
+- [x] `--end` UAT test from outside (kill + cleanup verified)
 
 ### Architecture Debt (from 2026-04-03 review)
 - [ ] Unify config systems (YAML + JSON → single YAML)

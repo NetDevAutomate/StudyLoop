@@ -56,9 +56,25 @@
 | Solution doc (`docs/solutions/tmux-session-management-and-ci-issues.md`) | Done |
 | **747 tests pass, all pre-commit hooks pass** | |
 
+### v2.2.2 — Architecture Polish & v2.2 Completion (2026-04-03)
+
+| Item | Status |
+|------|--------|
+| `logic/` subpackage for FCIS cores (clean, backlog, break, streaks) | Done |
+| Self-healing `_connect()` — fix parking table schema drift bug | Done |
+| Break suggestions — FCIS core + sidebar BreakBanner + IPC | Done |
+| Energy streaks — distribution, trend, duration correlation | Done |
+| MCP tool registration in agent persona + mcp.json | Done |
+| Vendor Inter font (zero CDN dependencies, fully offline PWA) | Done |
+| Nested tmux UAT test (switch_client path) | Done |
+| `--end` from outside UAT test (kill + cleanup) | Done |
+| DRY refactor — sidebar imports thresholds from break_logic.py | Done |
+| Documentation updates — roadmap, system-overview, TESTING, FCIS guide | Done |
+| **896 tests pass, all pre-commit hooks pass** | |
+
 ## Next
 
-> **Release strategy**: Complete v2.2 Polish + Multi-Agent + Study Backlog, then release as v2.2.0 to GitHub/PyPI/Brew. CI/CD and Devices/LAN come as v2.3/v2.4.
+> **Release strategy**: v2.2 is feature-complete. Tag release when ready. CI/CD and Devices/LAN come as v2.3/v2.4.
 
 > **Testing mandate**: Every phase MUST include modular tests at all 3 layers:
 > - **Unit** (CI-safe) — mocked dependencies, fast, deterministic
@@ -67,50 +83,38 @@
 >
 > The test harness (`tests/harness/`) is designed to be extended per phase. Add new harness modules (e.g., `harness/web.py`, `harness/topics.py`) alongside feature code. Tests are not an afterthought — they are the definition of done.
 
-### Phase: Session Robustness (~1 session)
+### Phase: Session Robustness ✅
 
-| Task | Complexity | Est. Time |
-|------|-----------|-----------|
-| `studyctl clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs | Low | 1-2 hrs |
-| tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore | Medium | 2-3 hrs |
-| Nested tmux UAT test — test `studyctl study` from inside existing tmux (`switch_client` path) | Medium | 2-3 hrs |
-| `studyctl study --end` UAT test — verify CLI end kills sessions from outside tmux | Low | 1 hr |
-| Push to origin + verify CI green | Low | 30 min |
+| Task | Status |
+|------|--------|
+| `studyctl clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs | Done |
+| tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore | Done |
+| Nested tmux UAT test (`switch_client` path verified) | Done |
+| `studyctl study --end` UAT test (kill + cleanup from outside) | Done |
 
-### Phase: Study Backlog — Topic Management (~2-3 sessions)
+### Phase: Study Backlog — Topic Management ✅
 
-Persistent cross-session study backlog. Users can see what's outstanding, add topics, and the agent prioritizes based on the bigger learning picture. All data in session-db for cross-machine sync.
+| Task | Status |
+|------|--------|
+| `studyctl topics list/add/resolve` — backlog CRUD | Done |
+| Session-db migrations v14-v17 (parked_topics + source + tech_area + priority) | Done |
+| Auto-populate from parked/struggled topics at session end | Done |
+| Agent surfaces backlog at session start | Done |
+| AI prioritization scoring (`logic/backlog_logic.py`) | Done |
+| `studyctl topics suggest` — algorithmic ranking | Done |
+| 4 new MCP tools (backlog, suggestions, history, progress) | Done |
 
-**Phase 1 — CRUD + CLI (~1-2 sessions, Medium)**
+### Phase: v2.2 Polish ✅
 
-| Task | Complexity | Est. Time |
-|------|-----------|-----------|
-| `studyctl topics list` — show outstanding items (parked, struggled, unresolved) across all sessions | Medium | 2-3 hrs |
-| `studyctl topics add "topic" --tech "Python" --note "..."` — manually add topics to the backlog | Low | 1-2 hrs |
-| `studyctl topics resolve <id>` — mark a topic as covered/resolved | Low | 1 hr |
-| Session-db migration — `study_backlog` table (topic, tech_area, source, priority, status, session refs) | Medium | 1-2 hrs |
-| Auto-populate from parked topics + struggled topics at session end | Medium | 2-3 hrs |
-| Agent surfaces backlog at session start ("you have 3 outstanding Python topics") | Low | 1-2 hrs |
-| Tests: unit + integration + UAT for topic CRUD and session-start surfacing | Medium | 2-3 hrs |
-
-**Phase 2 — AI Prioritization (~1 session, Medium)**
-
-| Task | Complexity | Est. Time |
-|------|-----------|-----------|
-| Agent-driven technology categorization (emerges from topic content, not hardcoded taxonomy) | Medium | 2-3 hrs |
-| Priority scoring based on session-db history (frequency, recency, dependency on other concepts) | Medium | 2-3 hrs |
-| `studyctl topics suggest` — AI-ranked "what to study next" based on backlog + progress | Medium | 2-3 hrs |
-| Tests: priority scoring unit tests, suggest command integration test | Medium | 2 hrs |
-
-### Phase: v2.2 Polish (~1-2 sessions)
-
-| Task | Complexity | Est. Time |
-|------|-----------|-----------|
-| Vendor HTMX + Alpine.js into `web/static/` (remove CDN, enable offline PWA) | Low | 1-2 hrs |
-| Parked topic warmup at session start (surface unresolved topics) | Low | 1-2 hrs |
-| Break suggestions at timer threshold crossings (from `break-science.md`) | Medium | 2-3 hrs |
-| Energy streaks — correlate energy levels with session outcomes in `studyctl streaks` | Medium | 2-3 hrs |
-| Tests: web dashboard harness (`harness/web.py`), break suggestion unit tests | Medium | 2-3 hrs |
+| Task | Status |
+|------|--------|
+| Vendor all web assets (HTMX, Alpine.js, OpenDyslexic, Inter) — zero CDN, offline PWA | Done |
+| Break suggestions at timer thresholds (`logic/break_logic.py` + sidebar BreakBanner) | Done |
+| Energy streaks — distribution, trend, duration correlation in `studyctl streaks` | Done |
+| Register all 10 MCP tools in agent persona + `mcp.json` | Done |
+| `logic/` subpackage for FCIS cores | Done |
+| Self-healing `_connect()` for schema drift | Done |
+| **896 tests passing, 0 failures** | |
 
 ### Phase: Multi-Agent Support (~1 session)
 
@@ -179,6 +183,7 @@ Persistent cross-session study backlog. Users can see what's outstanding, add to
 |------|----------|
 | System Overview | `docs/system-overview.md` |
 | Session Architecture Plan | `docs/plans/2026-03-29-feat-unified-session-architecture-plan.md` |
+| FCIS Logic Cores | `packages/studyctl/src/studyctl/logic/` |
 | CLI Package | `packages/studyctl/src/studyctl/cli/` |
 | Study Orchestrator | `packages/studyctl/src/studyctl/cli/_study.py` |
 | tmux Wrapper | `packages/studyctl/src/studyctl/tmux.py` |

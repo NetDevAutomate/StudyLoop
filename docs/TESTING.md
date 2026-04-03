@@ -8,7 +8,7 @@ The workspace has two packages with independent test suites:
 
 | Package | Tests | Path |
 |---------|-------|------|
-| studyctl | 293 | `packages/studyctl/tests/` |
+| studyctl | 539 | `packages/studyctl/tests/` |
 | agent-session-tools | 357 | `packages/agent-session-tools/tests/` |
 
 ### Prerequisites

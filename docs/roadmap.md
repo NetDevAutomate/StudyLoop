@@ -230,14 +230,19 @@ Live study session with real-time dashboard, parking lot, and timer.
 
 ## Next
 
-### v2.2 — Polish (Phase 2)
+### v2.2 — Polish (Phase 2) ✅
 
-- [ ] `studyctl clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs
-- [ ] tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore
-- [ ] Vendor HTMX + Alpine.js into `web/static/` (remove CDN, enable offline PWA)
-- [ ] Parked topic warmup at session start (surface unresolved topics from previous sessions)
-- [ ] Break suggestions at timer threshold crossings (from `break-science.md`)
-- [ ] Energy streaks — correlate energy levels with session outcomes in `studyctl streaks`
+- [x] `studyctl clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs
+- [x] tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore
+- [x] Vendor HTMX + Alpine.js + OpenDyslexic + Inter into `web/static/` (zero CDN, fully offline PWA)
+- [x] Parked topic warmup at session start (surface unresolved topics from previous sessions)
+- [x] Break suggestions at timer threshold crossings (FCIS `logic/break_logic.py`, sidebar BreakBanner)
+- [x] Energy streaks — distribution, trend detection, duration correlation in `studyctl streaks`
+- [x] Register all 10 MCP tools in agent persona and `agents/claude/mcp.json`
+- [x] `logic/` subpackage for FCIS cores (clean, backlog, break, streaks)
+- [x] Self-healing `_connect()` for parking table schema drift
+- [x] Nested tmux UAT + `--end` from outside UAT (5 new tests)
+- [x] **896 tests passing, 0 failures**
 
 ### Phase 6: CI/CD Pipeline
 
