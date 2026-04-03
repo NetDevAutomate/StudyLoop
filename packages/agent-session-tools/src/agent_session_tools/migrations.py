@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 15
+CURRENT_VERSION = 16
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -583,6 +583,34 @@ def migrate_v15(conn: sqlite3.Connection) -> None:
     conn.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_session_question
         ON parked_topics (study_session_id, question)
+    """)
+
+
+@migration(16, "Add source and tech_area columns to parked_topics for study backlog")
+def migrate_v16(conn: sqlite3.Connection) -> None:
+    """Extend parked_topics for study backlog: distinguish parked/struggled/manual
+    entries and allow technology area categorization.
+
+    - source: where the entry came from (parked, struggled, manual)
+    - tech_area: technology category (Python, SQL, etc.)
+    - Updated unique index to allow same question from different sources
+    - FKs are already nullable (ON DELETE SET NULL) from v14
+    """
+    conn.execute("""
+        ALTER TABLE parked_topics
+        ADD COLUMN source TEXT NOT NULL DEFAULT 'parked'
+        CHECK(source IN ('parked', 'struggled', 'manual'))
+    """)
+    conn.execute("""
+        ALTER TABLE parked_topics
+        ADD COLUMN tech_area TEXT
+    """)
+    # Rebuild unique index to include source — allows same question
+    # from different sources (e.g. parked during session, then manually added)
+    conn.execute("DROP INDEX IF EXISTS uix_parked_topics_session_question")
+    conn.execute("""
+        CREATE UNIQUE INDEX uix_parked_topics_session_question
+        ON parked_topics (study_session_id, question, source)
     """)
 
 

@@ -40,7 +40,7 @@ def parking_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             updated_at TEXT
         )
     """)
-    # Create the parked_topics table (migration v14)
+    # Create the parked_topics table (migration v14 + v15 index + v16 columns)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS parked_topics (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,8 +54,15 @@ def parking_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             scheduled_for TEXT,
             resolved_at TEXT,
             parked_at TEXT NOT NULL DEFAULT (datetime('now')),
-            created_by TEXT DEFAULT 'agent'
+            created_by TEXT DEFAULT 'agent',
+            source TEXT NOT NULL DEFAULT 'parked'
+                CHECK(source IN ('parked', 'struggled', 'manual')),
+            tech_area TEXT
         )
+    """)
+    conn.execute("""
+        CREATE UNIQUE INDEX uix_parked_topics_session_question
+        ON parked_topics (study_session_id, question, source)
     """)
     conn.commit()
     conn.close()

@@ -46,20 +46,36 @@ def park_topic(
     study_session_id: str | None = None,
     session_id: str | None = None,
     created_by: str = "agent",
+    source: str = "parked",
+    tech_area: str | None = None,
 ) -> int | None:
     """Park a tangential topic for later. Returns the row ID or None on failure.
 
-    If the topic already exists for this session (INSERT OR IGNORE), the
-    existing row's ID is returned instead of 0.
+    If the topic already exists for this session+source (INSERT OR IGNORE),
+    the existing row's ID is returned instead of 0.
+
+    Args:
+        source: Origin of the entry — 'parked', 'struggled', or 'manual'.
+        tech_area: Technology category (e.g. 'Python', 'SQL').
     """
     try:
         conn = _connect()
         try:
             cursor = conn.execute(
                 """INSERT OR IGNORE INTO parked_topics
-                   (study_session_id, session_id, topic_tag, question, context, created_by)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (study_session_id, session_id, topic_tag, question, context, created_by),
+                   (study_session_id, session_id, topic_tag, question,
+                    context, created_by, source, tech_area)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    study_session_id,
+                    session_id,
+                    topic_tag,
+                    question,
+                    context,
+                    created_by,
+                    source,
+                    tech_area,
+                ),
             )
             conn.commit()
             if cursor.rowcount > 0:
@@ -67,8 +83,8 @@ def park_topic(
             # Insert was ignored (duplicate) — fetch existing row ID
             row = conn.execute(
                 """SELECT id FROM parked_topics
-                   WHERE study_session_id IS ? AND question = ?""",
-                (study_session_id, question),
+                   WHERE study_session_id IS ? AND question = ? AND source = ?""",
+                (study_session_id, question, source),
             ).fetchone()
             return row["id"] if row else None
         finally:
@@ -81,24 +97,36 @@ def park_topic(
 def get_parked_topics(
     study_session_id: str | None = None,
     status: str = "pending",
+    source: str | None = None,
+    tech_area: str | None = None,
 ) -> list[dict]:
-    """Get parked topics, optionally filtered by study session and/or status."""
+    """Get parked topics with optional filters.
+
+    Args:
+        study_session_id: Filter by specific study session.
+        status: Filter by status (default 'pending').
+        source: Filter by source ('parked', 'struggled', 'manual').
+        tech_area: Filter by technology area.
+    """
     conn = _connect()
     try:
+        clauses = ["status = ?"]
+        params: list[str] = [status]
         if study_session_id:
-            rows = conn.execute(
-                """SELECT * FROM parked_topics
-                   WHERE study_session_id = ? AND status = ?
-                   ORDER BY parked_at""",
-                (study_session_id, status),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """SELECT * FROM parked_topics
-                   WHERE status = ?
-                   ORDER BY parked_at DESC""",
-                (status,),
-            ).fetchall()
+            clauses.append("study_session_id = ?")
+            params.append(study_session_id)
+        if source:
+            clauses.append("source = ?")
+            params.append(source)
+        if tech_area:
+            clauses.append("tech_area = ?")
+            params.append(tech_area)
+        where = " AND ".join(clauses)
+        order = "parked_at" if study_session_id else "parked_at DESC"
+        rows = conn.execute(
+            f"SELECT * FROM parked_topics WHERE {where} ORDER BY {order}",
+            params,
+        ).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
