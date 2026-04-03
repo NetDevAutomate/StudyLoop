@@ -121,6 +121,10 @@
          <lastmod>2026-04-03</lastmod>
     </url>
     <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-04-03-multi-agent-support-brainstorm.html</loc>
+         <lastmod>2026-04-03</lastmod>
+    </url>
+    <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-04-03-study-backlog-phase1-brainstorm.html</loc>
          <lastmod>2026-04-03</lastmod>
     </url>
@@ -141,7 +145,19 @@
          <lastmod>2026-04-03</lastmod>
     </url>
     <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/handoff/2026-04-03-phase6-complete-handoff.html</loc>
+         <lastmod>2026-04-03</lastmod>
+    </url>
+    <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/handoff/2026-04-03-session-handoff.html</loc>
+         <lastmod>2026-04-03</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/handoff/2026-04-03-v22-release-handoff.html</loc>
+         <lastmod>2026-04-03</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/handoff/2026-04-04-phase2-multi-agent-handoff.html</loc>
          <lastmod>2026-04-03</lastmod>
     </url>
     <url>
@@ -249,6 +265,14 @@
          <lastmod>2026-04-03</lastmod>
     </url>
     <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-04-03-architecture-review.html</loc>
+         <lastmod>2026-04-03</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/reviews/2026-04-03-comprehensive-code-review.html</loc>
+         <lastmod>2026-04-03</lastmod>
+    </url>
+    <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/2026-03-13-marathon-session-learnings.html</loc>
          <lastmod>2026-04-03</lastmod>
     </url>
@@ -258,6 +282,10 @@
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/architecture-decisions/parallel-research-catches-pre-implementation-assumptions.html</loc>
+         <lastmod>2026-04-03</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/database-issues/sqlite-schema-drift-self-healing.html</loc>
          <lastmod>2026-04-03</lastmod>
     </url>
     <url>

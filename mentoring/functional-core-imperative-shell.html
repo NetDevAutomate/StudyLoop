@@ -1435,14 +1435,18 @@
 test_clean.py — 12 tests, each with 4-6 patch() context managers
 </code></pre></div></p>
 <p><strong>After</strong> (FCIS):
-<div class="highlight"><pre><span></span><code>_clean_logic.py — Pure core: plan_clean() returns CleanResult
-_clean.py — Thin shell: gather → decide → execute → present
+<div class="highlight"><pre><span></span><code>logic/clean_logic.py — Pure core: plan_clean() returns CleanResult
+cli/_clean.py — Thin shell: gather → decide → execute → present
 test_clean.py — Direct function calls, zero mocks
 </code></pre></div></p>
 <p>See:
-- <code>packages/studyctl/src/studyctl/cli/_clean_logic.py</code> — the functional core
+- <code>packages/studyctl/src/studyctl/logic/clean_logic.py</code> — the functional core
 - <code>packages/studyctl/src/studyctl/cli/_clean.py</code> — the imperative shell
 - <code>packages/studyctl/tests/test_clean.py</code> — the mock-free tests</p>
+<p>All FCIS cores live in <code>studyctl/logic/</code> (not <code>cli/</code>). Other examples:
+- <code>logic/backlog_logic.py</code> — scoring, formatting, auto-persist (22 tests)
+- <code>logic/break_logic.py</code> — energy-adaptive break thresholds (23 tests)
+- <code>logic/streaks_logic.py</code> — energy trend and duration analysis (12 tests)</p>
 <h2 id="further-reading">Further Reading<a class="headerlink" href="#further-reading" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Gary Bernhardt — "Boundaries"</strong> (2012 talk) — The original articulation of this pattern. Search "Gary Bernhardt Boundaries" for the conference talk.</li>

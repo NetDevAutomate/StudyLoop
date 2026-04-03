@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/architecture/system-overview.html">
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/handoff/2026-04-03-v22-release-handoff.html">
       
       
       
@@ -23,7 +23,7 @@
     
     
       
-        <title>System Architecture — Socratic Study Mentor - Socratic Study Mentor</title>
+        <title>v2.2 Release Handoff — Remaining Refactors - Socratic Study Mentor</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#system-architecture-socratic-study-mentor" class="md-skip">
+        <a href="#v22-release-handoff" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              System Architecture — Socratic Study Mentor
+              v2.2 Release Handoff — Remaining Refactors
             
           </span>
         </div>
@@ -820,10 +820,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-high-level-architecture" class="md-nav__link">
+  <a href="#whats-done-this-session" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. High-Level Architecture
+        What's Done (This Session)
       
     </span>
   </a>
@@ -831,88 +831,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-package-structure" class="md-nav__link">
+  <a href="#completed-p0-refactors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Package Structure
+        ✅ Completed: P0 Refactors
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-session-db-schema-v17" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Session-DB Schema (v17)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-data-flow-study-session-lifecycle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Data Flow — Study Session Lifecycle
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-mcp-tools-10-total" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. MCP Tools (10 total)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-fcis-pattern-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. FCIS Pattern Usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-test-pyramid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Test Pyramid
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-current-status-roadmap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Current Status &amp; Roadmap
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. Current Status &amp; Roadmap">
+    <nav class="md-nav" aria-label="✅ Completed: P0 Refactors">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#completed-v22-partial" class="md-nav__link">
+  <a href="#refactor-1-split-historypy-god-module-1029-lines-9-modules-done" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Completed (v2.2 partial)
+        Refactor 1: Split history.py God Module (1029 lines → 9 modules) — DONE
       
     </span>
   </a>
@@ -920,10 +854,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#completed-v22-polish-2026-04-03" class="md-nav__link">
+  <a href="#refactor-2-extract-orchestration-from-_studypy-799-435-lines-done" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Completed (v2.2 polish — 2026-04-03)
+        Refactor 2: Extract Orchestration from _study.py (799 → 435 lines) — DONE
       
     </span>
   </a>
@@ -931,21 +865,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#architecture-debt-from-2026-04-03-review" class="md-nav__link">
+  <a href="#also-completed-p1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Architecture Debt (from 2026-04-03 review)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#future-phases" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Future Phases
+        Also Completed (P1)
       
     </span>
   </a>
@@ -954,6 +877,39 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-strategy-for-refactors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Strategy for Refactors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-after-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture After Completion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-start-next-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Start Next Session
+      
+    </span>
+  </a>
   
 </li>
       
@@ -974,464 +930,302 @@
 
 
 
-<h1 id="system-architecture-socratic-study-mentor">System Architecture — Socratic Study Mentor<a class="headerlink" href="#system-architecture-socratic-study-mentor" title="Permanent link">&para;</a></h1>
-<p><em>Source of truth for the overall system architecture. Updated 2026-04-03 (post-refactor).</em></p>
-<h2 id="1-high-level-architecture">1. High-Level Architecture<a class="headerlink" href="#1-high-level-architecture" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml system-overview
-skinparam componentStyle rectangle
-skinparam backgroundColor #FEFEFE
-
-actor &quot;User&quot; as User
-actor &quot;AI Agent\n(Claude)&quot; as Agent
-
-cloud &quot;GitHub&quot; as GH
-
-package &quot;CLI (studyctl)&quot; {
-    [study] as Study
-    [backlog] as Backlog
-    [clean] as Clean
-    [review / streaks] as Review
-    [doctor / upgrade] as Doctor
-    [sync / content] as Sync
-    [web] as Web
-}
-
-package &quot;MCP Server (studyctl-mcp)&quot; {
-    [Course Tools\n(6 existing)] as MCPCourse
-    [Session-DB Tools\n(4 new)] as MCPSession
-}
-
-package &quot;Logic Layer (logic/)&quot; {
-    [backlog_logic.py] as BL
-    [clean_logic.py] as CL
-    [break_logic.py] as BRK
-    [streaks_logic.py] as SL
-}
-
-package &quot;Data Layer&quot; {
-    [parking.py] as Parking
-    [history/ (9 modules)] as History
-    [session_state.py] as State
-    [review_db.py] as ReviewDB
-}
-
-package &quot;TUI&quot; {
-    [Textual Sidebar] as Sidebar
-}
-
-package &quot;Web Dashboard&quot; {
-    [FastAPI + HTMX] as WebApp
-    [Vendored Assets\n(HTMX, Alpine, fonts)] as Vendor
-}
-
-database &quot;sessions.db\n(SQLite WAL, v17)&quot; as DB
-database &quot;review.db\n(SM-2 spaced rep)&quot; as RDB
-
-folder &quot;IPC Files\n(~/.config/studyctl/)&quot; as IPC {
-    file &quot;session-state.json&quot;
-    file &quot;session-topics.md&quot;
-    file &quot;session-parking.md&quot;
-}
-
-folder &quot;tmux Session&quot; as Tmux {
-    [Agent Pane] as AP
-    [Sidebar Pane] as SP
-}
-
-User --&gt; Study
-User --&gt; Backlog
-User --&gt; Clean
-User --&gt; Review
-User --&gt; Web
-
-Agent --&gt; MCPCourse : tool_call
-Agent --&gt; MCPSession : tool_call
-Agent --&gt; AP : runs in
-
-Study --&gt; Tmux : creates
-Study --&gt; BL : backlog injection
-Study --&gt; CL : auto-clean zombies
-Study --&gt; State : IPC write
-Study --&gt; History : session CRUD
-
-Backlog --&gt; BL : format, score
-Backlog --&gt; Parking : CRUD
-Clean --&gt; CL : plan + execute
-
-MCPSession --&gt; BL : scoring
-MCPSession --&gt; Parking : queries
-MCPSession --&gt; History : queries
-
-Sidebar --&gt; State : polls IPC
-WebApp --&gt; State : polls IPC
-WebApp --&gt; Vendor : serves
-
-Parking --&gt; DB
-History --&gt; DB
-ReviewDB --&gt; RDB
-State --&gt; IPC
-
-GH --&gt; Doctor : CI checks
-
-@enduml
-</code></pre></div>
-<h2 id="2-package-structure">2. Package Structure<a class="headerlink" href="#2-package-structure" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml package-structure
-skinparam backgroundColor #FEFEFE
-skinparam packageStyle rectangle
-
-package &quot;socratic-study-mentor (monorepo)&quot; {
-
-    package &quot;packages/studyctl&quot; {
-        package &quot;cli/&quot; {
-            [__init__.py\nLazyGroup registry]
-            [_study.py — thin dispatcher]
-            [_topics.py — backlog CRUD]
-            [_clean.py — cleanup shell]
-            [_review.py — streaks, progress]
-            [_session.py — park, topic]
-            [_doctor.py — health checks]
-        }
-        package &quot;logic/ (FCIS Cores)&quot; {
-            [backlog_logic.py]
-            [clean_logic.py]
-            [break_logic.py]
-            [streaks_logic.py]
-        }
-        package &quot;session/&quot; {
-            [orchestrator.py — tmux env]
-            [resume.py — reattach/rebuild]
-            [cleanup.py — end + IPC clear]
-        }
-        package &quot;history/ (Data Access)&quot; {
-            [sessions.py — CRUD + summary]
-            [progress.py — tracking + SR]
-            [search.py — FTS5 + struggles]
-            [teachback.py — 5-dim scoring]
-            [bridges.py — knowledge links]
-            [concepts.py — seed + list]
-            [streaks.py — study streaks]
-            [medication.py — med windows]
-        }
-        package &quot;Data&quot; {
-            [parking.py]
-            [topics.py — Topic + get_topics]
-            [session_state.py]
-            [tmux.py]
-        }
-        package &quot;mcp/&quot; {
-            [server.py — FastMCP]
-            [tools.py — 10 tools]
-        }
-        package &quot;tui/&quot; {
-            [sidebar.py — Textual app]
-        }
-        package &quot;web/&quot; {
-            [app.py — FastAPI]
-            [static/ — HTML, CSS, JS]
-            [static/vendor/ — vendored deps]
-        }
-        package &quot;doctor/&quot; {
-            [core.py, config.py, database.py]
-            [agents.py, deps.py, updates.py]
-        }
-    }
-
-    package &quot;packages/agent-session-tools&quot; {
-        [migrations.py — v0-v17]
-        [export_sessions.py]
-        [schema.sql — base tables]
-    }
-
-    package &quot;agents/&quot; {
-        [shared/personas/ — study.md, co-study.md]
-        [shared/break-science.md]
-        [claude/mcp.json]
-        [mcp/README.md]
-    }
-
-    package &quot;docs/&quot; {
-        [architecture/ — PlantUML diagrams]
-        [brainstorms/ — design decisions]
-        [mentoring/ — FCIS, patterns]
-        [handoff/ — session continuity]
-        [setup-guide.md]
-        [roadmap.md]
-    }
-}
-
-@enduml
-</code></pre></div>
-<h2 id="3-session-db-schema-v17">3. Session-DB Schema (v17)<a class="headerlink" href="#3-session-db-schema-v17" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml session-db-schema
-skinparam backgroundColor #FEFEFE
-
-entity &quot;sessions&quot; as S {
-    * id TEXT PK
-    --
-    source TEXT
-    session_type TEXT
-    project_path TEXT
-    content_hash TEXT
-    created_at TEXT
-}
-
-entity &quot;messages&quot; as M {
-    * id TEXT PK
-    --
-    session_id FK
-    role TEXT
-    content TEXT
-    model TEXT
-    timestamp TEXT
-    seq INTEGER
-}
-
-entity &quot;study_sessions&quot; as SS {
-    * id TEXT PK
-    --
-    session_id FK
-    topic TEXT
-    energy_level TEXT
-    started_at TEXT
-    ended_at TEXT
-    duration_minutes INT
-    notes TEXT
-}
-
-entity &quot;study_progress&quot; as SP {
-    * id TEXT PK (uuid5)
-    --
-    topic TEXT
-    concept TEXT
-    confidence TEXT
-    last_teachback_score INT
-    session_count INT
-}
-
-entity &quot;teach_back_scores&quot; as TBS {
-    * id INT PK
-    --
-    concept TEXT
-    topic TEXT
-    session_id FK
-    score_accuracy INT (1-4)
-    total_score INT
-}
-
-entity &quot;parked_topics&quot; as PT {
-    * id INT PK
-    --
-    study_session_id FK (nullable)
-    question TEXT
-    topic_tag TEXT
-    status TEXT
-    source TEXT (v16)
-    tech_area TEXT (v16)
-    priority INT (v17)
-    parked_at TEXT
-}
-
-entity &quot;concepts&quot; as C {
-    * id TEXT PK
-    --
-    name TEXT
-    domain TEXT
-    definition TEXT
-}
-
-entity &quot;knowledge_bridges&quot; as KB {
-    * id INT PK
-    --
-    source_concept TEXT
-    target_concept TEXT
-    quality TEXT
-    times_used INT
-}
-
-S ||--o{ M : session_id
-S ||--o| SS : session_id
-SS ||--o{ PT : study_session_id
-M }|--|| &quot;messages_fts&quot; : FTS5
-C ||--o{ KB : concepts
-
-@enduml
-</code></pre></div>
-<h2 id="4-data-flow-study-session-lifecycle">4. Data Flow — Study Session Lifecycle<a class="headerlink" href="#4-data-flow-study-session-lifecycle" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml session-lifecycle
-skinparam backgroundColor #FEFEFE
-
-|studyctl study|
-start
-:_auto_clean_zombies();
-note right: FCIS plan_clean()\nKills resurrect zombies
-
-:_build_backlog_notes(topic);
-note right: Inject pending backlog\ninto agent persona
-
-:start_study_session(topic, energy);
-note right: INSERT study_sessions
-
-:Create tmux session\n(agent pane + sidebar pane);
-
-|Agent (during session)|
-fork
-    :Park topic → park_topic(source=&#39;parked&#39;);
-fork again
-    :Log struggle → append_topic(status=&#39;struggling&#39;);
-fork again
-    :Record progress → record_progress();
-fork again
-    :MCP: get_topic_suggestions();
-fork again
-    :MCP: record_topic_progress(priority=5);
-end fork
-
-|studyctl study --end|
-:parse_topics_file();
-:_auto_persist_struggled();
-note right: FCIS plan_auto_persist()\nPersist struggled → parked_topics
-
-:end_study_session(notes);
-note right: UPDATE study_sessions
-
-:kill_all_study_sessions();
-:Clear IPC files;
-stop
-
-@enduml
-</code></pre></div>
-<h2 id="5-mcp-tools-10-total">5. MCP Tools (10 total)<a class="headerlink" href="#5-mcp-tools-10-total" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml mcp-tools-overview
-skinparam backgroundColor #FEFEFE
-
-package &quot;studyctl-mcp server (FastMCP, stdio)&quot; {
-    package &quot;Course Tools (Phase 0)&quot; {
-        [list_courses]
-        [get_study_context]
-        [record_study_progress]
-        [generate_flashcards]
-        [generate_quiz]
-        [get_chapter_text]
-    }
-
-    package &quot;Session-DB Tools (Phase 2)&quot; #LightGreen {
-        [get_study_backlog]
-        [get_topic_suggestions]
-        [get_study_history]
-        [record_topic_progress]
-    }
-}
-
-note bottom of [get_topic_suggestions]
-    Algorithmic scoring:
-    60% importance + 40% frequency
-    Uses backlog_logic.score_backlog_items()
-end note
-
-note bottom of [record_topic_progress]
-    Agent sets priority (1-5)
-    on backlog items.
-    5 = foundational
-    1 = niche
-end note
-
-@enduml
-</code></pre></div>
-<h2 id="6-fcis-pattern-usage">6. FCIS Pattern Usage<a class="headerlink" href="#6-fcis-pattern-usage" title="Permanent link">&para;</a></h2>
+<h1 id="v22-release-handoff">v2.2 Release Handoff<a class="headerlink" href="#v22-release-handoff" title="Permanent link">&para;</a></h1>
+<p>~~Two structural refactors remain before tagging v2.2.0.~~ <strong>All P0 refactors complete (2026-04-03).</strong> All 6 v2.2 features, all debt items, CI fix, documentation current, 898 tests (834 CI-safe passing).</p>
+<h2 id="whats-done-this-session">What's Done (This Session)<a class="headerlink" href="#whats-done-this-session" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Module</th>
-<th>Functional Core</th>
-<th>Imperative Shell</th>
-<th>Tests</th>
+<th>Commit</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Clean</td>
-<td><code>logic/clean_logic.py</code> → <code>plan_clean()</code></td>
-<td><code>cli/_clean.py</code></td>
-<td><code>test_clean.py</code> (17, zero mocks)</td>
+<td><code>e28e316</code></td>
+<td><code>logic/</code> subpackage + parking schema drift fix</td>
 </tr>
 <tr>
-<td>Backlog</td>
-<td><code>logic/backlog_logic.py</code> → <code>format_backlog_list()</code>, <code>score_backlog_items()</code>, <code>plan_auto_persist()</code>, <code>build_backlog_summary()</code></td>
-<td><code>cli/_topics.py</code>, <code>cli/_study.py</code></td>
-<td><code>test_backlog_logic.py</code> (22, zero mocks)</td>
+<td><code>92c25b8</code></td>
+<td>Phase A: break suggestions, energy streaks, MCP reg, vendor Inter</td>
 </tr>
 <tr>
-<td>Break</td>
-<td><code>logic/break_logic.py</code> → <code>check_break_needed()</code>, energy-adaptive thresholds</td>
-<td><code>tui/sidebar.py</code> (BreakBanner widget)</td>
-<td><code>test_break_logic.py</code> (23, zero mocks)</td>
+<td><code>827dd03</code></td>
+<td>Phase B: nested tmux UAT, --end from outside UAT</td>
 </tr>
 <tr>
-<td>Streaks</td>
-<td><code>logic/streaks_logic.py</code> → <code>analyze_energy_streaks()</code>, trend detection, duration correlation</td>
-<td><code>cli/_review.py</code></td>
-<td><code>test_streaks_logic.py</code> (12, zero mocks)</td>
+<td><code>40fe146</code></td>
+<td>Docs: architecture, roadmap, test counts</td>
+</tr>
+<tr>
+<td><code>57b8c49</code></td>
+<td>Config cleanup, query_sessions split, CI fix</td>
+</tr>
+<tr>
+<td><code>ffbe649</code></td>
+<td>Docs: fix stale references</td>
+</tr>
+<tr>
+<td><code>37c36f1</code></td>
+<td>3 quick fixes: raw SQL, DRY cleanup, hardcoded paths</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Note</strong>: All FCIS cores live in <code>studyctl/logic/</code> subpackage with an empty <code>__init__.py</code> (explicit imports, no re-exports). This was created per the 2026-04-03 architecture review recommendation.</p>
-<h2 id="7-test-pyramid">7. Test Pyramid<a class="headerlink" href="#7-test-pyramid" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>CI-safe tests (no tmux, no network):     834
-Integration tests (real DB):              13
-UAT tests (needs tmux):                   51
-─────────────────────────────────────────────
-Total:                                   898
+<p><strong>Test suite: 896 passing, 0 failures.</strong></p>
+<h2 id="completed-p0-refactors">✅ Completed: P0 Refactors<a class="headerlink" href="#completed-p0-refactors" title="Permanent link">&para;</a></h2>
+<h3 id="refactor-1-split-historypy-god-module-1029-lines-9-modules-done">Refactor 1: Split <code>history.py</code> God Module (1029 lines → 9 modules) — DONE<a class="headerlink" href="#refactor-1-split-historypy-god-module-1029-lines-9-modules-done" title="Permanent link">&para;</a></h3>
+<p><strong>Why</strong>: 21 functions mixing 7 domain concerns. Hardest file to navigate in the codebase.</p>
+<p><strong>Target structure</strong>:</p>
+<div class="highlight"><pre><span></span><code>studyctl/history/
+├── __init__.py          # re-export all public functions (backwards compat)
+├── _connection.py       # _find_db(), _connect() — shared by all modules
+├── sessions.py          # start_study_session, end_study_session, get_study_session_stats, get_session_notes, get_energy_session_data
+├── progress.py          # record_progress, get_wins, spaced_repetition_due
+├── search.py            # topic_frequency, struggle_topics, get_last_session_summary
+├── teachback.py         # record_teachback, get_teachback_history
+├── bridges.py           # record_bridge, get_bridges, update_bridge_usage, migrate_bridges_to_graph
+├── concepts.py          # seed_concepts_from_config, list_concepts
+├── streaks.py           # get_study_streaks
+└── medication.py        # check_medication_window
 </code></pre></div>
-<h2 id="8-current-status-roadmap">8. Current Status &amp; Roadmap<a class="headerlink" href="#8-current-status-roadmap" title="Permanent link">&para;</a></h2>
-<h3 id="completed-v22-partial">Completed (v2.2 partial)<a class="headerlink" href="#completed-v22-partial" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[x] <code>studyctl clean</code> command (FCIS)</li>
-<li>[x] tmux-resurrect compatibility (auto-clean + doctor + docs)</li>
-<li>[x] Study Backlog Phase 1 (CRUD, auto-persist, agent injection)</li>
-<li>[x] Study Backlog Phase 2 (scoring, MCP tools, integration tests)</li>
-<li>[x] Vendor HTMX + Alpine.js + OpenDyslexic (offline PWA)</li>
-<li>[x] Schema v17 (source, tech_area, priority columns)</li>
-</ul>
-<h3 id="completed-v22-polish-2026-04-03">Completed (v2.2 polish — 2026-04-03)<a class="headerlink" href="#completed-v22-polish-2026-04-03" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[x] <strong>Structural cleanup</strong>: <code>logic/</code> subpackage for FCIS cores, service layer fully wired</li>
-<li>[x] <strong>Self-healing DB</strong>: <code>parking.py:_connect()</code> two-tier fallback for schema drift</li>
-<li>[x] Break suggestions at timer thresholds (BreakBanner widget + IPC)</li>
-<li>[x] Energy streaks correlation (trend detection, duration analysis)</li>
-<li>[x] Register MCP tools in agent persona (10 tools documented)</li>
-<li>[x] Vendor Google Fonts Inter (zero CDN dependencies, offline PWA)</li>
-<li>[x] Nested tmux UAT test (switch_client path verified)</li>
-<li>[x] <code>--end</code> UAT test from outside (kill + cleanup verified)</li>
-</ul>
-<h3 id="architecture-debt-from-2026-04-03-review">Architecture Debt (from 2026-04-03 review)<a class="headerlink" href="#architecture-debt-from-2026-04-03-review" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[x] Unify config systems — already unified on YAML; removed dead JSON fallback from config_loader.py</li>
-<li>[x] Split <code>query_sessions.py</code> monolith → <code>query_logic.py</code> (717 lines) + CLI (505 lines)</li>
-<li>[x] Fix CI test failures — <code>test_cli_session.py</code> missing <code>_find_db</code> patch for headless environments</li>
-<li>[x] Split <code>history.py</code> god module (1029 lines) → <code>history/</code> package (9 focused modules)</li>
-<li>[x] Extract orchestration from <code>_study.py</code> (799 lines) → <code>session/</code> package + thin CLI (435 lines)</li>
-<li>[x] Split <code>settings.py</code> dual purpose → <code>settings.py</code> (config) + <code>topics.py</code> (topic definitions)</li>
-<li>[x] Fix SM-2 interval overflow in <code>review_db.py</code> (capped at 365 days)</li>
-<li>[x] Nightly CI job for UAT tests (macOS runner with tmux) — <code>nightly-uat.yml</code></li>
-<li>[x] Nightly fresh install check (Ubuntu + macOS matrix) — <code>nightly-install.yml</code></li>
-<li>[x] Pre-release upgrade path gate (N-1 → N) — <code>pre-release.yml</code></li>
-<li>[x] <code>studyctl backup</code> / <code>studyctl restore</code> — timestamped snapshots with safety backup</li>
-<li>[ ] Fix VSCode circular import — deferred, low priority (no active VSCode users)</li>
-</ul>
-<h3 id="future-phases">Future Phases<a class="headerlink" href="#future-phases" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Phase 6: CI/CD improvements (includes architecture debt above)</li>
-<li>Phase 3: Devices (ttyd + LAN)</li>
-<li>Multi-Agent Support</li>
-<li>Full MCP Agent Integration</li>
-</ul>
+<p><strong>Consumer map</strong> (files that import from <code>history.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Consumer</th>
+<th>Functions Used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cli/_study.py</code></td>
+<td><code>start_study_session</code>, <code>end_study_session</code>, <code>get_session_notes</code></td>
+</tr>
+<tr>
+<td><code>cli/_review.py</code></td>
+<td><code>get_study_streaks</code>, <code>get_energy_session_data</code>, <code>get_wins</code>, <code>spaced_repetition_due</code>, <code>record_progress</code>, <code>get_bridges</code>, <code>record_bridge</code>, <code>get_teachback_history</code>, <code>record_teachback</code></td>
+</tr>
+<tr>
+<td><code>cli/_session.py</code></td>
+<td><code>start_study_session</code></td>
+</tr>
+<tr>
+<td><code>cli/_topics.py</code></td>
+<td>(none — uses parking.py)</td>
+</tr>
+<tr>
+<td><code>cli/_config.py</code></td>
+<td><code>seed_concepts_from_config</code></td>
+</tr>
+<tr>
+<td><code>web/routes/history.py</code></td>
+<td><code>get_last_session_summary</code>, <code>topic_frequency</code></td>
+</tr>
+<tr>
+<td><code>web/routes/session.py</code></td>
+<td>(uses session_state, not history)</td>
+</tr>
+<tr>
+<td><code>mcp/tools.py</code></td>
+<td><code>topic_frequency</code>, <code>get_last_session_summary</code></td>
+</tr>
+<tr>
+<td><code>services/review.py</code></td>
+<td><code>spaced_repetition_due</code>, <code>record_progress</code></td>
+</tr>
+<tr>
+<td><code>doctor/database.py</code></td>
+<td><code>_find_db</code> (indirect — uses settings)</td>
+</tr>
+<tr>
+<td><code>tests/test_history.py</code></td>
+<td>All functions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Strategy</strong>:
+1. Create <code>history/</code> package with <code>__init__.py</code> that re-exports all public functions
+2. Move functions into focused modules
+3. All consumers keep importing <code>from studyctl.history import X</code> — the <code>__init__.py</code> handles routing
+4. Zero blast radius for consumers (re-exports maintain API)
+5. Run full test suite after each module extraction</p>
+<p><strong>Key risk</strong>: The <code>__init__.py</code> re-export approach means consumers don't need to change imports. This is the RIGHT time for re-exports (unlike the <code>logic/</code> package where we used explicit paths) because <code>history</code> is an internal API with 10+ consumers — changing all imports would be high-risk busywork.</p>
+<p><strong>Estimated effort</strong>: 3-4 hours.</p>
+<h3 id="refactor-2-extract-orchestration-from-_studypy-799-435-lines-done">Refactor 2: Extract Orchestration from <code>_study.py</code> (799 → 435 lines) — DONE<a class="headerlink" href="#refactor-2-extract-orchestration-from-_studypy-799-435-lines-done" title="Permanent link">&para;</a></h3>
+<p><strong>Why</strong>: <code>_handle_start()</code> is ~270 lines. The file mixes CLI dispatch with tmux setup, agent launching, and session management.</p>
+<p><strong>Target structure</strong>:</p>
+<div class="highlight"><pre><span></span><code>studyctl/
+├── cli/_study.py          # ~200 lines — thin CLI: study(), _handle_start(), _handle_resume(), _handle_end()
+├── session/
+│   ├── __init__.py
+│   ├── orchestrator.py    # create_study_session() — tmux + agent + sidebar + web
+│   ├── resume.py          # check_resumable(), rebuild_session()
+│   └── cleanup.py         # _end_session_common() (already extracted this session)
+</code></pre></div>
+<p><strong>What moves out of <code>_study.py</code></strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Current Function</th>
+<th>Lines</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_handle_start()</code> lines 350-515 (tmux setup)</td>
+<td>~165</td>
+<td><code>session/orchestrator.py</code></td>
+</tr>
+<tr>
+<td><code>_handle_start()</code> lines 420-475 (agent + sidebar)</td>
+<td>~55</td>
+<td><code>session/orchestrator.py</code></td>
+</tr>
+<tr>
+<td><code>_handle_resume()</code> lines 520-607</td>
+<td>~87</td>
+<td><code>session/resume.py</code></td>
+</tr>
+<tr>
+<td><code>_end_session_common()</code></td>
+<td>~45</td>
+<td><code>session/cleanup.py</code> (already extracted)</td>
+</tr>
+<tr>
+<td><code>_auto_clean_zombies()</code></td>
+<td>~30</td>
+<td>stays in <code>_study.py</code> (thin, calls FCIS)</td>
+</tr>
+<tr>
+<td><code>_build_backlog_notes()</code></td>
+<td>~25</td>
+<td>stays in <code>_study.py</code> (thin, calls FCIS)</td>
+</tr>
+<tr>
+<td><code>_auto_persist_struggled()</code></td>
+<td>~20</td>
+<td>stays in <code>_study.py</code> (thin, calls FCIS)</td>
+</tr>
+<tr>
+<td><code>_start_web_background()</code></td>
+<td>~20</td>
+<td><code>session/orchestrator.py</code></td>
+</tr>
+<tr>
+<td><code>sidebar_cmd()</code></td>
+<td>~15</td>
+<td>stays in <code>_study.py</code> (Textual entry point)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Consumer map</strong> (files that import from <code>_study.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Consumer</th>
+<th>What it uses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cli/__init__.py</code></td>
+<td><code>study</code> (Click command) — no change</td>
+</tr>
+<tr>
+<td><code>tui/sidebar.py</code></td>
+<td>(doesn't import _study.py)</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><code>test_study.py</code> — mocks <code>_handle_start</code>, <code>_handle_resume</code>, <code>_handle_end</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Strategy</strong>:
+1. Create <code>session/</code> package
+2. Move <code>_end_session_common()</code> to <code>session/cleanup.py</code> (already extracted)
+3. Extract <code>create_study_session()</code> from <code>_handle_start()</code> into <code>session/orchestrator.py</code>
+4. Extract resume logic into <code>session/resume.py</code>
+5. <code>_study.py</code> becomes a thin dispatcher: parse CLI args → call orchestrator/resume/cleanup</p>
+<p><strong>Key risk</strong>: The tmux setup code has subtle ordering requirements (session creation → pane split → agent launch → sidebar launch → switch/attach). The orchestrator must preserve this exact sequence.</p>
+<p><strong>Estimated effort</strong>: 3-4 hours.</p>
+<h3 id="also-completed-p1">Also Completed (P1)<a class="headerlink" href="#also-completed-p1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Split <code>settings.py</code> dual purpose</td>
+<td><strong>Done</strong></td>
+<td><code>settings.py</code> (config) + <code>topics.py</code> (topic definitions)</td>
+</tr>
+<tr>
+<td>Fix SM-2 interval overflow</td>
+<td><strong>Done</strong></td>
+<td>Capped interval at 365 days in <code>review_db.py</code></td>
+</tr>
+<tr>
+<td>Wire <code>cli/_review.py</code> through <code>services/review.py</code></td>
+<td><strong>Skipped</strong></td>
+<td>Wrong abstraction — different domains (topic SR vs SM-2 flashcards)</td>
+</tr>
+<tr>
+<td>Nightly CI for UAT tests</td>
+<td><strong>Done</strong></td>
+<td><code>nightly-uat.yml</code> — macOS runner, tmux, 03:00 UTC daily</td>
+</tr>
+</tbody>
+</table>
+<h2 id="test-strategy-for-refactors">Test Strategy for Refactors<a class="headerlink" href="#test-strategy-for-refactors" title="Permanent link">&para;</a></h2>
+<p>Both refactors are <strong>pure moves</strong> — no behavior changes. The test strategy is:</p>
+<ol>
+<li><strong>Before</strong>: run full suite, record baseline (896 pass)</li>
+<li><strong>During</strong>: run affected test files after each module extraction</li>
+<li><strong>After</strong>: run full suite, confirm identical pass count</li>
+<li><strong>Ruff + pyright</strong>: must pass on every new/modified file</li>
+</ol>
+<h2 id="architecture-after-completion">Architecture After Completion<a class="headerlink" href="#architecture-after-completion" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>studyctl/
+├── logic/                  # FCIS cores (clean, backlog, break, streaks)
+├── history/                # Data access (sessions, progress, teachback, bridges, etc.)
+├── session/                # Session orchestration (create, resume, cleanup)
+├── services/               # Service layer (review, content)
+├── cli/                    # Thin CLI handlers (Click commands)
+├── tui/                    # Textual sidebar + break banner
+├── web/                    # FastAPI + HTMX (fully offline PWA)
+├── mcp/                    # 10 MCP tools
+├── doctor/                 # Health checks (19 checks, 7 categories)
+├── content/                # Content pipeline (splitter, notebooklm, syllabus)
+├── parking.py              # Parked topics CRUD
+├── session_state.py        # IPC file protocol
+├── tmux.py                 # tmux session management
+├── review_db.py            # SM-2 spaced repetition
+└── settings.py             # Config loading (topics removed to config.yaml)
+</code></pre></div>
+<h2 id="how-to-start-next-session">How to Start Next Session<a class="headerlink" href="#how-to-start-next-session" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Read this handoff document</li>
+<li>Start with Refactor 1 (<code>history.py</code> split) — it's lower risk (re-exports maintain API)</li>
+<li>Then Refactor 2 (<code>_study.py</code> extraction) — higher risk, needs careful ordering</li>
+<li>Wire <code>cli/_review.py</code> through service layer</li>
+<li>Run full test suite</li>
+<li>Tag v2.2.0</li>
+</ol>
 
 
 
 
 
 
+
+  
+  
 
 
 

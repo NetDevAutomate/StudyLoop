@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/architecture/system-overview.html">
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/brainstorms/2026-04-03-multi-agent-support-brainstorm.html">
       
       
       
@@ -23,7 +23,7 @@
     
     
       
-        <title>System Architecture — Socratic Study Mentor - Socratic Study Mentor</title>
+        <title>Phase 2: Multi-Agent Support — Brainstorm - Socratic Study Mentor</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#system-architecture-socratic-study-mentor" class="md-skip">
+        <a href="#phase-2-multi-agent-support-brainstorm" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              System Architecture — Socratic Study Mentor
+              Phase 2: Multi-Agent Support — Brainstorm
             
           </span>
         </div>
@@ -820,132 +820,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-high-level-architecture" class="md-nav__link">
+  <a href="#what-were-building" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. High-Level Architecture
+        What We're Building
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-package-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Package Structure
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-session-db-schema-v17" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Session-DB Schema (v17)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-data-flow-study-session-lifecycle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Data Flow — Study Session Lifecycle
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-mcp-tools-10-total" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. MCP Tools (10 total)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-fcis-pattern-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. FCIS Pattern Usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-test-pyramid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Test Pyramid
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-current-status-roadmap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Current Status &amp; Roadmap
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. Current Status &amp; Roadmap">
+    <nav class="md-nav" aria-label="What We&#39;re Building">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#completed-v22-partial" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Completed (v2.2 partial)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#completed-v22-polish-2026-04-03" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Completed (v2.2 polish — 2026-04-03)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#architecture-debt-from-2026-04-03-review" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture Debt (from 2026-04-03 review)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#future-phases" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Future Phases
+        Scope
       
     </span>
   </a>
@@ -954,6 +844,133 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Approach
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why This Approach">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#architecture-shared-persona-agent-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture: Shared Persona + Agent Adapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-command-execution-wrapper-script-already-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Command Execution: Wrapper Script (Already Built)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-registry-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Registry Design
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter Interface
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-wiring-per-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Wiring Per Agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#doctor-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doctor Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roadmap-items-not-phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap Items (Not Phase 2)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Step
+      
+    </span>
+  </a>
   
 </li>
       
@@ -974,458 +991,235 @@
 
 
 
-<h1 id="system-architecture-socratic-study-mentor">System Architecture — Socratic Study Mentor<a class="headerlink" href="#system-architecture-socratic-study-mentor" title="Permanent link">&para;</a></h1>
-<p><em>Source of truth for the overall system architecture. Updated 2026-04-03 (post-refactor).</em></p>
-<h2 id="1-high-level-architecture">1. High-Level Architecture<a class="headerlink" href="#1-high-level-architecture" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml system-overview
-skinparam componentStyle rectangle
-skinparam backgroundColor #FEFEFE
-
-actor &quot;User&quot; as User
-actor &quot;AI Agent\n(Claude)&quot; as Agent
-
-cloud &quot;GitHub&quot; as GH
-
-package &quot;CLI (studyctl)&quot; {
-    [study] as Study
-    [backlog] as Backlog
-    [clean] as Clean
-    [review / streaks] as Review
-    [doctor / upgrade] as Doctor
-    [sync / content] as Sync
-    [web] as Web
-}
-
-package &quot;MCP Server (studyctl-mcp)&quot; {
-    [Course Tools\n(6 existing)] as MCPCourse
-    [Session-DB Tools\n(4 new)] as MCPSession
-}
-
-package &quot;Logic Layer (logic/)&quot; {
-    [backlog_logic.py] as BL
-    [clean_logic.py] as CL
-    [break_logic.py] as BRK
-    [streaks_logic.py] as SL
-}
-
-package &quot;Data Layer&quot; {
-    [parking.py] as Parking
-    [history/ (9 modules)] as History
-    [session_state.py] as State
-    [review_db.py] as ReviewDB
-}
-
-package &quot;TUI&quot; {
-    [Textual Sidebar] as Sidebar
-}
-
-package &quot;Web Dashboard&quot; {
-    [FastAPI + HTMX] as WebApp
-    [Vendored Assets\n(HTMX, Alpine, fonts)] as Vendor
-}
-
-database &quot;sessions.db\n(SQLite WAL, v17)&quot; as DB
-database &quot;review.db\n(SM-2 spaced rep)&quot; as RDB
-
-folder &quot;IPC Files\n(~/.config/studyctl/)&quot; as IPC {
-    file &quot;session-state.json&quot;
-    file &quot;session-topics.md&quot;
-    file &quot;session-parking.md&quot;
-}
-
-folder &quot;tmux Session&quot; as Tmux {
-    [Agent Pane] as AP
-    [Sidebar Pane] as SP
-}
-
-User --&gt; Study
-User --&gt; Backlog
-User --&gt; Clean
-User --&gt; Review
-User --&gt; Web
-
-Agent --&gt; MCPCourse : tool_call
-Agent --&gt; MCPSession : tool_call
-Agent --&gt; AP : runs in
-
-Study --&gt; Tmux : creates
-Study --&gt; BL : backlog injection
-Study --&gt; CL : auto-clean zombies
-Study --&gt; State : IPC write
-Study --&gt; History : session CRUD
-
-Backlog --&gt; BL : format, score
-Backlog --&gt; Parking : CRUD
-Clean --&gt; CL : plan + execute
-
-MCPSession --&gt; BL : scoring
-MCPSession --&gt; Parking : queries
-MCPSession --&gt; History : queries
-
-Sidebar --&gt; State : polls IPC
-WebApp --&gt; State : polls IPC
-WebApp --&gt; Vendor : serves
-
-Parking --&gt; DB
-History --&gt; DB
-ReviewDB --&gt; RDB
-State --&gt; IPC
-
-GH --&gt; Doctor : CI checks
-
-@enduml
+<h1 id="phase-2-multi-agent-support-brainstorm">Phase 2: Multi-Agent Support — Brainstorm<a class="headerlink" href="#phase-2-multi-agent-support-brainstorm" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-04-03
+<strong>Status:</strong> Agreed
+<strong>Phase:</strong> 2 (Multi-Agent)
+<strong>Roadmap item:</strong> Phase 3 deferred — agent switching mid-session</p>
+<hr />
+<h2 id="what-were-building">What We're Building<a class="headerlink" href="#what-were-building" title="Permanent link">&para;</a></h2>
+<p>Wire Gemini CLI, Kiro CLI, and OpenCode as first-class study session agents alongside Claude. Any installed agent can drive a <code>studyctl study</code> session with the same Socratic mentor experience — same persona, same MCP tools, same sidebar, same progress tracking.</p>
+<h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>In scope:</strong> Launch all 4 agents with persona + MCP tools, configurable auto-detection priority, doctor validation, mock + integration test harness</li>
+<li><strong>Out of scope:</strong> Agent switching mid-session (roadmap item), ttyd/LAN support (Phase 3)</li>
+</ul>
+<hr />
+<h2 id="why-this-approach">Why This Approach<a class="headerlink" href="#why-this-approach" title="Permanent link">&para;</a></h2>
+<h3 id="architecture-shared-persona-agent-adapter">Architecture: Shared Persona + Agent Adapter<a class="headerlink" href="#architecture-shared-persona-agent-adapter" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>build_canonical_persona(mode, topic, energy, backlog)
+        │
+        ▼
+  ┌─────────────┐
+  │  Canonical   │  ← Markdown content: session context + shared persona
+  │  Content     │     (topic, energy, backlog, Socratic engine, CLI commands)
+  └──────┬──────┘
+         │
+    ┌────┴────┬──────────┬──────────┐
+    ▼         ▼          ▼          ▼
+ Claude    Gemini      Kiro     OpenCode
+ Adapter   Adapter    Adapter   Adapter
+    │         │          │          │
+    ▼         ▼          ▼          ▼
+ --append-  --system-  agent.yml  --system-
+ system-    instruction  JSON     prompt
+ prompt-    flag        format    flag
+ file
 </code></pre></div>
-<h2 id="2-package-structure">2. Package Structure<a class="headerlink" href="#2-package-structure" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml package-structure
-skinparam backgroundColor #FEFEFE
-skinparam packageStyle rectangle
-
-package &quot;socratic-study-mentor (monorepo)&quot; {
-
-    package &quot;packages/studyctl&quot; {
-        package &quot;cli/&quot; {
-            [__init__.py\nLazyGroup registry]
-            [_study.py — thin dispatcher]
-            [_topics.py — backlog CRUD]
-            [_clean.py — cleanup shell]
-            [_review.py — streaks, progress]
-            [_session.py — park, topic]
-            [_doctor.py — health checks]
-        }
-        package &quot;logic/ (FCIS Cores)&quot; {
-            [backlog_logic.py]
-            [clean_logic.py]
-            [break_logic.py]
-            [streaks_logic.py]
-        }
-        package &quot;session/&quot; {
-            [orchestrator.py — tmux env]
-            [resume.py — reattach/rebuild]
-            [cleanup.py — end + IPC clear]
-        }
-        package &quot;history/ (Data Access)&quot; {
-            [sessions.py — CRUD + summary]
-            [progress.py — tracking + SR]
-            [search.py — FTS5 + struggles]
-            [teachback.py — 5-dim scoring]
-            [bridges.py — knowledge links]
-            [concepts.py — seed + list]
-            [streaks.py — study streaks]
-            [medication.py — med windows]
-        }
-        package &quot;Data&quot; {
-            [parking.py]
-            [topics.py — Topic + get_topics]
-            [session_state.py]
-            [tmux.py]
-        }
-        package &quot;mcp/&quot; {
-            [server.py — FastMCP]
-            [tools.py — 10 tools]
-        }
-        package &quot;tui/&quot; {
-            [sidebar.py — Textual app]
-        }
-        package &quot;web/&quot; {
-            [app.py — FastAPI]
-            [static/ — HTML, CSS, JS]
-            [static/vendor/ — vendored deps]
-        }
-        package &quot;doctor/&quot; {
-            [core.py, config.py, database.py]
-            [agents.py, deps.py, updates.py]
-        }
-    }
-
-    package &quot;packages/agent-session-tools&quot; {
-        [migrations.py — v0-v17]
-        [export_sessions.py]
-        [schema.sql — base tables]
-    }
-
-    package &quot;agents/&quot; {
-        [shared/personas/ — study.md, co-study.md]
-        [shared/break-science.md]
-        [claude/mcp.json]
-        [mcp/README.md]
-    }
-
-    package &quot;docs/&quot; {
-        [architecture/ — PlantUML diagrams]
-        [brainstorms/ — design decisions]
-        [mentoring/ — FCIS, patterns]
-        [handoff/ — session continuity]
-        [setup-guide.md]
-        [roadmap.md]
-    }
-}
-
-@enduml
-</code></pre></div>
-<h2 id="3-session-db-schema-v17">3. Session-DB Schema (v17)<a class="headerlink" href="#3-session-db-schema-v17" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml session-db-schema
-skinparam backgroundColor #FEFEFE
-
-entity &quot;sessions&quot; as S {
-    * id TEXT PK
-    --
-    source TEXT
-    session_type TEXT
-    project_path TEXT
-    content_hash TEXT
-    created_at TEXT
-}
-
-entity &quot;messages&quot; as M {
-    * id TEXT PK
-    --
-    session_id FK
-    role TEXT
-    content TEXT
-    model TEXT
-    timestamp TEXT
-    seq INTEGER
-}
-
-entity &quot;study_sessions&quot; as SS {
-    * id TEXT PK
-    --
-    session_id FK
-    topic TEXT
-    energy_level TEXT
-    started_at TEXT
-    ended_at TEXT
-    duration_minutes INT
-    notes TEXT
-}
-
-entity &quot;study_progress&quot; as SP {
-    * id TEXT PK (uuid5)
-    --
-    topic TEXT
-    concept TEXT
-    confidence TEXT
-    last_teachback_score INT
-    session_count INT
-}
-
-entity &quot;teach_back_scores&quot; as TBS {
-    * id INT PK
-    --
-    concept TEXT
-    topic TEXT
-    session_id FK
-    score_accuracy INT (1-4)
-    total_score INT
-}
-
-entity &quot;parked_topics&quot; as PT {
-    * id INT PK
-    --
-    study_session_id FK (nullable)
-    question TEXT
-    topic_tag TEXT
-    status TEXT
-    source TEXT (v16)
-    tech_area TEXT (v16)
-    priority INT (v17)
-    parked_at TEXT
-}
-
-entity &quot;concepts&quot; as C {
-    * id TEXT PK
-    --
-    name TEXT
-    domain TEXT
-    definition TEXT
-}
-
-entity &quot;knowledge_bridges&quot; as KB {
-    * id INT PK
-    --
-    source_concept TEXT
-    target_concept TEXT
-    quality TEXT
-    times_used INT
-}
-
-S ||--o{ M : session_id
-S ||--o| SS : session_id
-SS ||--o{ PT : study_session_id
-M }|--|| &quot;messages_fts&quot; : FTS5
-C ||--o{ KB : concepts
-
-@enduml
-</code></pre></div>
-<h2 id="4-data-flow-study-session-lifecycle">4. Data Flow — Study Session Lifecycle<a class="headerlink" href="#4-data-flow-study-session-lifecycle" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml session-lifecycle
-skinparam backgroundColor #FEFEFE
-
-|studyctl study|
-start
-:_auto_clean_zombies();
-note right: FCIS plan_clean()\nKills resurrect zombies
-
-:_build_backlog_notes(topic);
-note right: Inject pending backlog\ninto agent persona
-
-:start_study_session(topic, energy);
-note right: INSERT study_sessions
-
-:Create tmux session\n(agent pane + sidebar pane);
-
-|Agent (during session)|
-fork
-    :Park topic → park_topic(source=&#39;parked&#39;);
-fork again
-    :Log struggle → append_topic(status=&#39;struggling&#39;);
-fork again
-    :Record progress → record_progress();
-fork again
-    :MCP: get_topic_suggestions();
-fork again
-    :MCP: record_topic_progress(priority=5);
-end fork
-
-|studyctl study --end|
-:parse_topics_file();
-:_auto_persist_struggled();
-note right: FCIS plan_auto_persist()\nPersist struggled → parked_topics
-
-:end_study_session(notes);
-note right: UPDATE study_sessions
-
-:kill_all_study_sessions();
-:Clear IPC files;
-stop
-
-@enduml
-</code></pre></div>
-<h2 id="5-mcp-tools-10-total">5. MCP Tools (10 total)<a class="headerlink" href="#5-mcp-tools-10-total" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>@startuml mcp-tools-overview
-skinparam backgroundColor #FEFEFE
-
-package &quot;studyctl-mcp server (FastMCP, stdio)&quot; {
-    package &quot;Course Tools (Phase 0)&quot; {
-        [list_courses]
-        [get_study_context]
-        [record_study_progress]
-        [generate_flashcards]
-        [generate_quiz]
-        [get_chapter_text]
-    }
-
-    package &quot;Session-DB Tools (Phase 2)&quot; #LightGreen {
-        [get_study_backlog]
-        [get_topic_suggestions]
-        [get_study_history]
-        [record_topic_progress]
-    }
-}
-
-note bottom of [get_topic_suggestions]
-    Algorithmic scoring:
-    60% importance + 40% frequency
-    Uses backlog_logic.score_backlog_items()
-end note
-
-note bottom of [record_topic_progress]
-    Agent sets priority (1-5)
-    on backlog items.
-    5 = foundational
-    1 = niche
-end note
-
-@enduml
-</code></pre></div>
-<h2 id="6-fcis-pattern-usage">6. FCIS Pattern Usage<a class="headerlink" href="#6-fcis-pattern-usage" title="Permanent link">&para;</a></h2>
+<p><strong>Why adapter pattern over universal temp file:</strong>
+- Each agent has different persona injection mechanisms (CLI flags, JSON config, YAML)
+- Slash commands (/) vs @commands differ — Claude uses <code>/</code> commands and runs bash directly; Kiro uses <code>@execute_bash</code>
+- MCP server config is bundled differently (Kiro in agent JSON, Claude in separate mcp.json, etc.)
+- Canonical content stays DRY; adapters handle serialization + agent-specific quirks</p>
+<h3 id="cli-command-execution-wrapper-script-already-built">CLI Command Execution: Wrapper Script (Already Built)<a class="headerlink" href="#cli-command-execution-wrapper-script-already-built" title="Permanent link">&para;</a></h3>
+<p><code>setup_session_dir()</code> already creates a <code>studyctl</code> wrapper in the session directory with the correct Python/venv. <code>create_tmux_environment()</code> already sets PATH via <code>set_environment()</code>. No new work needed for command execution — just verify each agent's tmux pane inherits PATH correctly.</p>
+<hr />
+<h2 id="key-decisions">Key Decisions<a class="headerlink" href="#key-decisions" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Module</th>
-<th>Functional Core</th>
-<th>Imperative Shell</th>
-<th>Tests</th>
+<th>#</th>
+<th>Decision</th>
+<th>Choice</th>
+<th>Rationale</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Clean</td>
-<td><code>logic/clean_logic.py</code> → <code>plan_clean()</code></td>
-<td><code>cli/_clean.py</code></td>
-<td><code>test_clean.py</code> (17, zero mocks)</td>
+<td>1</td>
+<td>Persona injection</td>
+<td>Shared content + per-agent adapter</td>
+<td>DRY canonical content, agent-specific serialization handles format differences</td>
 </tr>
 <tr>
-<td>Backlog</td>
-<td><code>logic/backlog_logic.py</code> → <code>format_backlog_list()</code>, <code>score_backlog_items()</code>, <code>plan_auto_persist()</code>, <code>build_backlog_summary()</code></td>
-<td><code>cli/_topics.py</code>, <code>cli/_study.py</code></td>
-<td><code>test_backlog_logic.py</code> (22, zero mocks)</td>
+<td>2</td>
+<td>Agent preference config</td>
+<td><code>~/.config/studyctl/config.toml</code></td>
+<td>Persists across sessions, fits existing settings pattern, <code>studyctl config set agent_priority claude,gemini</code></td>
 </tr>
 <tr>
-<td>Break</td>
-<td><code>logic/break_logic.py</code> → <code>check_break_needed()</code>, energy-adaptive thresholds</td>
-<td><code>tui/sidebar.py</code> (BreakBanner widget)</td>
-<td><code>test_break_logic.py</code> (23, zero mocks)</td>
+<td>3</td>
+<td>Agent verification</td>
+<td>Binary exists + smoke test</td>
+<td><code>shutil.which()</code> + quick command (e.g., <code>--help</code>) to catch broken installs</td>
 </tr>
 <tr>
-<td>Streaks</td>
-<td><code>logic/streaks_logic.py</code> → <code>analyze_energy_streaks()</code>, trend detection, duration correlation</td>
-<td><code>cli/_review.py</code></td>
-<td><code>test_streaks_logic.py</code> (12, zero mocks)</td>
+<td>4</td>
+<td>MCP wiring</td>
+<td>Full — all agents get studyctl-mcp</td>
+<td>Goal is identical study experience regardless of agent</td>
+</tr>
+<tr>
+<td>5</td>
+<td>CLI command syntax</td>
+<td>Wrapper script approach</td>
+<td>Already built in <code>setup_session_dir()</code>. Universal <code>studyctl topic ...</code> commands, no per-agent rewriting</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Testing strategy</td>
+<td>Mock unit tests + skip-if-missing integration harness</td>
+<td>Mock-based for CI, real-binary integration tests that skip gracefully when agent not installed</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Done criteria</td>
+<td>All 4 launch + MCP + doctor validates</td>
+<td><code>studyctl study "topic" --agent {claude\|gemini\|kiro\|opencode}</code> all work, auto-detection, doctor checks</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Note</strong>: All FCIS cores live in <code>studyctl/logic/</code> subpackage with an empty <code>__init__.py</code> (explicit imports, no re-exports). This was created per the 2026-04-03 architecture review recommendation.</p>
-<h2 id="7-test-pyramid">7. Test Pyramid<a class="headerlink" href="#7-test-pyramid" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>CI-safe tests (no tmux, no network):     834
-Integration tests (real DB):              13
-UAT tests (needs tmux):                   51
-─────────────────────────────────────────────
-Total:                                   898
+<hr />
+<h2 id="agent-registry-design">Agent Registry Design<a class="headerlink" href="#agent-registry-design" title="Permanent link">&para;</a></h2>
+<p>Each agent needs these fields in <code>AGENT_REGISTRY</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">AGENT_REGISTRY</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;claude&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;binary&quot;</span><span class="p">:</span> <span class="s2">&quot;claude&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;check&quot;</span><span class="p">:</span> <span class="s2">&quot;claude --version&quot;</span><span class="p">,</span>          <span class="c1"># smoke test command</span>
+        <span class="s2">&quot;launch&quot;</span><span class="p">:</span> <span class="s2">&quot;claude --append-system-prompt-file </span><span class="si">{persona_file}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;resume&quot;</span><span class="p">:</span> <span class="s2">&quot;claude -r --append-system-prompt-file </span><span class="si">{persona_file}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;adapter&quot;</span><span class="p">:</span> <span class="s2">&quot;claude&quot;</span><span class="p">,</span>                   <span class="c1"># which adapter to use</span>
+        <span class="s2">&quot;mcp_config&quot;</span><span class="p">:</span> <span class="s2">&quot;agents/claude/mcp.json&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;gemini&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;binary&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;check&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini --version&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;launch&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini --system-instruction </span><span class="si">{persona_file}</span><span class="s2">&quot;</span><span class="p">,</span>  <span class="c1"># TBC</span>
+        <span class="s2">&quot;resume&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini --system-instruction </span><span class="si">{persona_file}</span><span class="s2">&quot;</span><span class="p">,</span>  <span class="c1"># TBC</span>
+        <span class="s2">&quot;adapter&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;mcp_config&quot;</span><span class="p">:</span> <span class="s2">&quot;agents/gemini/mcp.json&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;kiro&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;binary&quot;</span><span class="p">:</span> <span class="s2">&quot;kiro&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;check&quot;</span><span class="p">:</span> <span class="s2">&quot;kiro --version&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;launch&quot;</span><span class="p">:</span> <span class="s2">&quot;kiro chat --agent study-mentor&quot;</span><span class="p">,</span>  <span class="c1"># TBC — Kiro loads agents natively</span>
+        <span class="s2">&quot;resume&quot;</span><span class="p">:</span> <span class="s2">&quot;kiro chat --resume --agent study-mentor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;adapter&quot;</span><span class="p">:</span> <span class="s2">&quot;kiro&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;mcp_config&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># bundled in agent JSON</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;opencode&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;binary&quot;</span><span class="p">:</span> <span class="s2">&quot;opencode&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;check&quot;</span><span class="p">:</span> <span class="s2">&quot;opencode --version&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;launch&quot;</span><span class="p">:</span> <span class="s2">&quot;opencode --system-prompt </span><span class="si">{persona_file}</span><span class="s2">&quot;</span><span class="p">,</span>  <span class="c1"># TBC</span>
+        <span class="s2">&quot;resume&quot;</span><span class="p">:</span> <span class="s2">&quot;opencode --system-prompt </span><span class="si">{persona_file}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;adapter&quot;</span><span class="p">:</span> <span class="s2">&quot;opencode&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;mcp_config&quot;</span><span class="p">:</span> <span class="s2">&quot;agents/opencode/mcp.json&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
 </code></pre></div>
-<h2 id="8-current-status-roadmap">8. Current Status &amp; Roadmap<a class="headerlink" href="#8-current-status-roadmap" title="Permanent link">&para;</a></h2>
-<h3 id="completed-v22-partial">Completed (v2.2 partial)<a class="headerlink" href="#completed-v22-partial" title="Permanent link">&para;</a></h3>
+<p><strong>TBC items:</strong> Exact CLI flags for Gemini, Kiro, and OpenCode need verification against current binary versions. The adapter pattern means we can adjust these without changing core logic.</p>
+<hr />
+<h2 id="adapter-interface">Adapter Interface<a class="headerlink" href="#adapter-interface" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AgentAdapter</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transform canonical persona content for a specific agent.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_persona_file</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">canonical_content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">energy</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write agent-specific persona file, return path.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_mcp_config</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">session_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write/symlink MCP config for this agent. Return path or None.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_launch_command</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">persona_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">resume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the shell command to launch this agent.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">smoke_test</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quick check that the binary actually works.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</code></pre></div>
+<hr />
+<h2 id="mcp-wiring-per-agent">MCP Wiring Per Agent<a class="headerlink" href="#mcp-wiring-per-agent" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>MCP Mechanism</th>
+<th>What we need to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude</td>
+<td><code>mcp.json</code> in project dir or <code>~/.claude/</code></td>
+<td>Already works. Symlink/copy <code>agents/claude/mcp.json</code> to session dir</td>
+</tr>
+<tr>
+<td>Gemini</td>
+<td><code>mcp.json</code> or GEMINI.md config</td>
+<td>Write MCP server config in Gemini's expected format</td>
+</tr>
+<tr>
+<td>Kiro</td>
+<td><code>mcpServers</code> in agent JSON definition</td>
+<td>Already defined in <code>agents/kiro/study-mentor.json</code>. Ensure agent def is installed</td>
+</tr>
+<tr>
+<td>OpenCode</td>
+<td><code>mcp.json</code> or <code>opencode.json</code> config</td>
+<td>Write MCP config in OpenCode's expected format</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="doctor-integration">Doctor Integration<a class="headerlink" href="#doctor-integration" title="Permanent link">&para;</a></h2>
+<p>Extend <code>doctor/agents.py</code> to:
+1. Detect all 4 binaries (already does this)
+2. Run smoke test per detected agent (new)
+3. Verify agent definition installed + current (already does hash check)
+4. Verify MCP config present for each detected agent (new)</p>
+<hr />
+<h2 id="open-questions">Open Questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Exact CLI flags</strong> — Need to verify Gemini CLI, Kiro, and OpenCode current flags for system prompt injection. These tools evolve fast. Plan: check <code>--help</code> output when each binary is available.</li>
+<li><strong>Kiro native agent loading</strong> — Kiro loads agents from <code>~/.kiro/agents/</code>. The persona file approach may need to work differently: install the agent definition with session context baked in, rather than passing a CLI flag.</li>
+<li><strong>Gemini MCP support</strong> — Is Gemini CLI's MCP server support mature enough for studyctl-mcp? Need to verify.</li>
+<li><strong>Config file format</strong> — Is <code>config.toml</code> the right format, or should we use the existing settings pattern? Need to check what <code>settings.py</code> currently uses.</li>
+</ol>
+<hr />
+<h2 id="roadmap-items-not-phase-2">Roadmap Items (Not Phase 2)<a class="headerlink" href="#roadmap-items-not-phase-2" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[x] <code>studyctl clean</code> command (FCIS)</li>
-<li>[x] tmux-resurrect compatibility (auto-clean + doctor + docs)</li>
-<li>[x] Study Backlog Phase 1 (CRUD, auto-persist, agent injection)</li>
-<li>[x] Study Backlog Phase 2 (scoring, MCP tools, integration tests)</li>
-<li>[x] Vendor HTMX + Alpine.js + OpenDyslexic (offline PWA)</li>
-<li>[x] Schema v17 (source, tech_area, priority columns)</li>
+<li><strong>Agent switching mid-session</strong> — Switch from Claude to Gemini within an active tmux session. Requires saving/loading conversation context. Very cool, deferred.</li>
+<li><strong>Agent-specific persona tuning</strong> — Per-agent prompt tweaks beyond what the adapter handles (e.g., Gemini responds differently to certain prompt structures).</li>
 </ul>
-<h3 id="completed-v22-polish-2026-04-03">Completed (v2.2 polish — 2026-04-03)<a class="headerlink" href="#completed-v22-polish-2026-04-03" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[x] <strong>Structural cleanup</strong>: <code>logic/</code> subpackage for FCIS cores, service layer fully wired</li>
-<li>[x] <strong>Self-healing DB</strong>: <code>parking.py:_connect()</code> two-tier fallback for schema drift</li>
-<li>[x] Break suggestions at timer thresholds (BreakBanner widget + IPC)</li>
-<li>[x] Energy streaks correlation (trend detection, duration analysis)</li>
-<li>[x] Register MCP tools in agent persona (10 tools documented)</li>
-<li>[x] Vendor Google Fonts Inter (zero CDN dependencies, offline PWA)</li>
-<li>[x] Nested tmux UAT test (switch_client path verified)</li>
-<li>[x] <code>--end</code> UAT test from outside (kill + cleanup verified)</li>
-</ul>
-<h3 id="architecture-debt-from-2026-04-03-review">Architecture Debt (from 2026-04-03 review)<a class="headerlink" href="#architecture-debt-from-2026-04-03-review" title="Permanent link">&para;</a></h3>
-<ul>
-<li>[x] Unify config systems — already unified on YAML; removed dead JSON fallback from config_loader.py</li>
-<li>[x] Split <code>query_sessions.py</code> monolith → <code>query_logic.py</code> (717 lines) + CLI (505 lines)</li>
-<li>[x] Fix CI test failures — <code>test_cli_session.py</code> missing <code>_find_db</code> patch for headless environments</li>
-<li>[x] Split <code>history.py</code> god module (1029 lines) → <code>history/</code> package (9 focused modules)</li>
-<li>[x] Extract orchestration from <code>_study.py</code> (799 lines) → <code>session/</code> package + thin CLI (435 lines)</li>
-<li>[x] Split <code>settings.py</code> dual purpose → <code>settings.py</code> (config) + <code>topics.py</code> (topic definitions)</li>
-<li>[x] Fix SM-2 interval overflow in <code>review_db.py</code> (capped at 365 days)</li>
-<li>[x] Nightly CI job for UAT tests (macOS runner with tmux) — <code>nightly-uat.yml</code></li>
-<li>[x] Nightly fresh install check (Ubuntu + macOS matrix) — <code>nightly-install.yml</code></li>
-<li>[x] Pre-release upgrade path gate (N-1 → N) — <code>pre-release.yml</code></li>
-<li>[x] <code>studyctl backup</code> / <code>studyctl restore</code> — timestamped snapshots with safety backup</li>
-<li>[ ] Fix VSCode circular import — deferred, low priority (no active VSCode users)</li>
-</ul>
-<h3 id="future-phases">Future Phases<a class="headerlink" href="#future-phases" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Phase 6: CI/CD improvements (includes architecture debt above)</li>
-<li>Phase 3: Devices (ttyd + LAN)</li>
-<li>Multi-Agent Support</li>
-<li>Full MCP Agent Integration</li>
-</ul>
+<hr />
+<h2 id="next-step">Next Step<a class="headerlink" href="#next-step" title="Permanent link">&para;</a></h2>
+<p>Run <code>/workflows:plan</code> to create the implementation plan.</p>
 
 
 
