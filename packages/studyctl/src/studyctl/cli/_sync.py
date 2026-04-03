@@ -7,9 +7,9 @@ from rich.table import Table
 
 from studyctl.cli._shared import console, get_topic
 from studyctl.maintenance import dedup_notebook, find_duplicates
-from studyctl.settings import get_topics
 from studyctl.state import SyncState
 from studyctl.sync import find_changed_sources, find_sources, generate_audio, sync_topic
+from studyctl.topics import get_topics
 
 
 @click.command()

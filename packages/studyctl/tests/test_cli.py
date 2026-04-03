@@ -33,9 +33,9 @@ def runner() -> CliRunner:
 @pytest.fixture(autouse=True)
 def _no_db(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure no real database is ever touched during CLI tests."""
-    import studyctl.history as hist
+    import studyctl.history._connection as _conn
 
-    monkeypatch.setattr(hist, "_find_db", lambda: None)
+    monkeypatch.setattr(_conn, "_find_db", lambda: None)
 
 
 # ---------------------------------------------------------------------------

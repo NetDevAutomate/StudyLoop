@@ -7,7 +7,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from studyctl.settings import Topic, get_topics
+from studyctl.topics import Topic, get_topics
 
 console = Console()
 

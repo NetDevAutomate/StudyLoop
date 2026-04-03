@@ -44,8 +44,9 @@ class TestRecordProgressCaseNormalisation:
             return conn
 
         import studyctl.history as hist
+        import studyctl.history._connection as _conn
 
-        monkeypatch.setattr(hist, "_connect", mock_connect)
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
 
         hist.record_progress("Python", "Decorators", "learning")
         hist.record_progress("python", "decorators", "confident")
@@ -67,8 +68,9 @@ class TestRecordProgressCaseNormalisation:
             return conn
 
         import studyctl.history as hist
+        import studyctl.history._connection as _conn
 
-        monkeypatch.setattr(hist, "_connect", mock_connect)
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
 
         hist.record_progress("Python ", " Decorators", "learning")
         hist.record_progress("python", "decorators", "confident")
@@ -94,10 +96,10 @@ class TestGetStudyTerms:
             FakeTopic(name="Flink", tags=["streaming", "realtime"]),
         ]
 
-        import studyctl.history as hist
+        import studyctl.history.search as search_mod
 
         monkeypatch.setattr(
-            hist,
+            search_mod,
             "_get_study_terms",
             lambda: sorted(
                 {t.name.lower() for t in fake_topics}
@@ -105,32 +107,32 @@ class TestGetStudyTerms:
             ),
         )
 
-        terms = hist._get_study_terms()
+        terms = search_mod._get_study_terms()
         assert "kafka" in terms
         assert "streaming" in terms
         assert "flink" in terms
         assert "realtime" in terms
 
     def test_returns_fallback_when_no_config(self, monkeypatch):
-        import studyctl.history as hist
+        import studyctl.history.search as search_mod
 
         # Test fallback by making get_topics return falsy
-        monkeypatch.setattr("studyctl.settings.get_topics", lambda: None)
-        terms = hist._get_study_terms()
+        monkeypatch.setattr("studyctl.topics.get_topics", lambda: None)
+        terms = search_mod._get_study_terms()
         # When get_topics returns falsy, should fall back to defaults
         assert "spark" in terms
         assert "python" in terms
 
     def test_fallback_on_import_error(self, monkeypatch):
-        import studyctl.history as hist
-        import studyctl.settings
+        import studyctl.history.search as search_mod
+        import studyctl.topics
 
         monkeypatch.setattr(
-            studyctl.settings,
+            studyctl.topics,
             "get_topics",
             lambda: (_ for _ in ()).throw(RuntimeError("boom")),
         )
-        terms = hist._get_study_terms()
+        terms = search_mod._get_study_terms()
         assert "spark" in terms  # fallback list
 
 
@@ -152,11 +154,11 @@ class TestNoModuleLevelLoadSettings:
         class FakeSettings:
             session_db: object = field(default_factory=lambda: db_path)
 
-        import studyctl.history as hist
+        import studyctl.history._connection as _conn
 
-        monkeypatch.setattr(hist, "load_settings", lambda: FakeSettings())
+        monkeypatch.setattr(_conn, "load_settings", lambda: FakeSettings())
 
-        result = hist._find_db()
+        result = _conn._find_db()
         assert result == db_path
 
 
@@ -182,15 +184,15 @@ def _make_migrated_db(tmp_path):
 
 
 def _mock_connect_for(db_path, monkeypatch):
-    """Patch history._connect to use a specific DB path."""
-    import studyctl.history as hist
+    """Patch history._connection._connect to use a specific DB path."""
+    import studyctl.history._connection as _conn
 
     def mock_connect():
         conn = sqlite3.connect(db_path, timeout=5)
         conn.row_factory = sqlite3.Row
         return conn
 
-    monkeypatch.setattr(hist, "_connect", mock_connect)
+    monkeypatch.setattr(_conn, "_connect", mock_connect)
 
 
 class TestMigrateBridgesToGraph:
@@ -355,7 +357,7 @@ class TestSeedConceptsFromConfig:
 
         import studyctl.history as hist
 
-        monkeypatch.setattr("studyctl.settings.get_topics", lambda: fake_topics)
+        monkeypatch.setattr("studyctl.topics.get_topics", lambda: fake_topics)
 
         count = hist.seed_concepts_from_config()
         assert count == 4
@@ -380,7 +382,7 @@ class TestSeedConceptsFromConfig:
             tags: list[str] = field(default_factory=list)
 
         monkeypatch.setattr(
-            "studyctl.settings.get_topics",
+            "studyctl.topics.get_topics",
             lambda: [FakeTopic(name="python", tags=["decorators"])],
         )
 
@@ -397,7 +399,7 @@ class TestSeedConceptsFromConfig:
         db_path = _make_migrated_db(tmp_path)
         _mock_connect_for(db_path, monkeypatch)
 
-        monkeypatch.setattr("studyctl.settings.get_topics", lambda: [])
+        monkeypatch.setattr("studyctl.topics.get_topics", lambda: [])
 
         import studyctl.history as hist
 
@@ -418,7 +420,7 @@ class TestSeedConceptsFromConfig:
             tags: list[str] = field(default_factory=list)
 
         monkeypatch.setattr(
-            "studyctl.settings.get_topics",
+            "studyctl.topics.get_topics",
             lambda: [FakeTopic(name="python", tags=["decorators"])],
         )
         hist.seed_concepts_from_config()
@@ -538,6 +540,7 @@ class TestListConcepts:
     def test_returns_no_db(self, monkeypatch):
         """Returns empty list when no DB connection available."""
         import studyctl.history as hist
+        import studyctl.history._connection as _conn
 
-        monkeypatch.setattr(hist, "_connect", lambda: None)
+        monkeypatch.setattr(_conn, "_connect", lambda: None)
         assert hist.list_concepts() == []

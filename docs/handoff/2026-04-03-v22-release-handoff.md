@@ -5,7 +5,7 @@ date: 2026-04-03
 
 # v2.2 Release Handoff
 
-Two structural refactors remain before tagging v2.2.0. Everything else is complete: all 6 v2.2 features, all debt items, CI fix, documentation current, 896 tests passing.
+~~Two structural refactors remain before tagging v2.2.0.~~ **All P0 refactors complete (2026-04-03).** All 6 v2.2 features, all debt items, CI fix, documentation current, 898 tests (834 CI-safe passing).
 
 ## What's Done (This Session)
 
@@ -21,9 +21,9 @@ Two structural refactors remain before tagging v2.2.0. Everything else is comple
 
 **Test suite: 896 passing, 0 failures.**
 
-## Remaining: Two P0 Refactors
+## ✅ Completed: P0 Refactors
 
-### Refactor 1: Split `history.py` God Module (1012 lines → ~8 modules)
+### Refactor 1: Split `history.py` God Module (1029 lines → 9 modules) — DONE
 
 **Why**: 21 functions mixing 7 domain concerns. Hardest file to navigate in the codebase.
 
@@ -70,7 +70,7 @@ studyctl/history/
 
 **Estimated effort**: 3-4 hours.
 
-### Refactor 2: Extract Orchestration from `_study.py` (839 lines)
+### Refactor 2: Extract Orchestration from `_study.py` (799 → 435 lines) — DONE
 
 **Why**: `_handle_start()` is ~270 lines. The file mixes CLI dispatch with tmux setup, agent launching, and session management.
 
@@ -119,12 +119,14 @@ studyctl/
 
 **Estimated effort**: 3-4 hours.
 
-### Also Remaining (P1)
+### Also Completed (P1)
 
-| Task | Effort | Notes |
+| Task | Status | Notes |
 |------|--------|-------|
-| Wire `cli/_review.py` through `services/review.py` | 1-2 hrs | Route review/card access through service layer |
-| Nightly CI for UAT tests | 0.5 day | GitHub Actions macOS runner with tmux |
+| Split `settings.py` dual purpose | **Done** | `settings.py` (config) + `topics.py` (topic definitions) |
+| Fix SM-2 interval overflow | **Done** | Capped interval at 365 days in `review_db.py` |
+| Wire `cli/_review.py` through `services/review.py` | **Skipped** | Wrong abstraction — different domains (topic SR vs SM-2 flashcards) |
+| Nightly CI for UAT tests | Deferred | GitHub Actions macOS runner with tmux |
 
 ## Test Strategy for Refactors
 
