@@ -1,0 +1,1791 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/architecture/study-backlog-phase1.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Study Backlog Phase 1 — Software Architecture - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#study-backlog-phase-1-software-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Study Backlog Phase 1 — Software Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. System Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Data Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Data Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-current-schema-v15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Current Schema (v15)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-migration-v16-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Migration v16 Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-command-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Command Flows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Command Flows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-studyctl-topics-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 studyctl topics list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-studyctl-topics-add" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 studyctl topics add
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-studyctl-topics-resolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 studyctl topics resolve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-auto-persist-struggled-topics-session-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Auto-persist Struggled Topics (Session End)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-agent-backlog-surfacing-session-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Agent Backlog Surfacing (Session Start)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-module-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Module Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fcis-architecture-backlog_logicpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. FCIS Architecture — backlog_logic.py
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. FCIS Architecture — backlog_logic.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-data-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Data Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-test-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Test Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Test Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-test-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Test Cases
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-file-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. File Inventory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Implementation Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="study-backlog-phase-1-software-architecture">Study Backlog Phase 1 — Software Architecture<a class="headerlink" href="#study-backlog-phase-1-software-architecture" title="Permanent link">&para;</a></h1>
+<p><em>Source of truth for implementation and test design.</em></p>
+<h2 id="1-system-overview">1. System Overview<a class="headerlink" href="#1-system-overview" title="Permanent link">&para;</a></h2>
+<p>The Study Backlog is a <strong>query layer</strong> over the existing <code>parked_topics</code> table — no new tables. It surfaces pending topics across sessions via CLI commands, auto-persists struggled topics at session end, and injects backlog context into the agent at session start.</p>
+<div class="highlight"><pre><span></span><code>@startuml component-overview
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
+
+package &quot;CLI Layer (Imperative Shell)&quot; {
+    [studyctl topics list] as TopicsList
+    [studyctl topics add] as TopicsAdd
+    [studyctl topics resolve] as TopicsResolve
+    [studyctl study] as StudyCmd
+}
+
+package &quot;Logic Layer (Functional Core)&quot; {
+    [backlog_logic.py] as BacklogLogic
+    note right of BacklogLogic
+        Pure functions:
+        - format_backlog_list()
+        - build_backlog_summary()
+        - plan_auto_persist()
+    end note
+}
+
+package &quot;Data Layer (Existing)&quot; {
+    [parking.py] as Parking
+    [session_state.py] as SessionState
+    [agent_launcher.py] as AgentLauncher
+    database sessions.db {
+        [parked_topics] as PT
+    }
+}
+
+TopicsList --&gt; BacklogLogic : query results
+TopicsAdd --&gt; Parking : park_topic()
+TopicsResolve --&gt; Parking : resolve_parked_topic()
+StudyCmd --&gt; BacklogLogic : build_backlog_summary()
+StudyCmd --&gt; AgentLauncher : inject into persona
+
+BacklogLogic ..&gt; Parking : reads via get_parked_topics()
+StudyCmd --&gt; Parking : auto-persist struggled
+
+Parking --&gt; PT : SQL
+SessionState --&gt; [session-topics.md] : IPC file
+
+@enduml
+</code></pre></div>
+<h2 id="2-data-model">2. Data Model<a class="headerlink" href="#2-data-model" title="Permanent link">&para;</a></h2>
+<h3 id="21-current-schema-v15">2.1 Current Schema (v15)<a class="headerlink" href="#21-current-schema-v15" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>@startuml er-current
+skinparam backgroundColor #FEFEFE
+
+entity &quot;parked_topics&quot; as pt {
+    * id : INTEGER &lt;&lt;PK, AUTOINCREMENT&gt;&gt;
+    --
+    study_session_id : TEXT &lt;&lt;FK → study_sessions.id&gt;&gt;
+    session_id : TEXT &lt;&lt;FK → sessions.id&gt;&gt;
+    topic_tag : TEXT
+    * question : TEXT
+    context : TEXT
+    * status : TEXT {pending|scheduled|resolved|dismissed}
+    scheduled_for : TEXT
+    resolved_at : TEXT
+    * parked_at : TEXT (datetime)
+    created_by : TEXT (default &#39;agent&#39;)
+}
+
+entity &quot;study_sessions&quot; as ss {
+    * id : TEXT &lt;&lt;PK&gt;&gt;
+    --
+    topic : TEXT
+    energy_level : INTEGER
+    started_at : TEXT
+    ended_at : TEXT
+    duration_minutes : INTEGER
+    notes : TEXT
+}
+
+pt }o--|| ss : study_session_id
+
+note bottom of pt
+    Unique index:
+    uix_parked_topics_session_question
+    ON (study_session_id, question)
+end note
+
+@enduml
+</code></pre></div>
+<h3 id="22-migration-v16-changes">2.2 Migration v16 Changes<a class="headerlink" href="#22-migration-v16-changes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>@startuml er-v16-changes
+skinparam backgroundColor #FEFEFE
+
+entity &quot;parked_topics (v16)&quot; as pt {
+    * id : INTEGER &lt;&lt;PK, AUTOINCREMENT&gt;&gt;
+    --
+    study_session_id : TEXT &lt;&lt;FK, NULLABLE&gt;&gt;
+    session_id : TEXT &lt;&lt;FK, NULLABLE&gt;&gt;
+    topic_tag : TEXT
+    * question : TEXT
+    context : TEXT
+    * status : TEXT {pending|scheduled|resolved|dismissed}
+    scheduled_for : TEXT
+    resolved_at : TEXT
+    * parked_at : TEXT (datetime)
+    created_by : TEXT (default &#39;agent&#39;)
+    **source : TEXT {parked|struggled|manual}** &lt;&lt;NEW, default &#39;parked&#39;&gt;&gt;
+    **tech_area : TEXT** &lt;&lt;NEW, nullable&gt;&gt;
+}
+
+note right of pt
+    v16 migration:
+    1. ADD source TEXT DEFAULT &#39;parked&#39;
+       CHECK(source IN (&#39;parked&#39;,&#39;struggled&#39;,&#39;manual&#39;))
+    2. ADD tech_area TEXT
+    3. FKs already nullable (SET NULL on delete)
+    4. Update unique index to include source
+end note
+
+@enduml
+</code></pre></div>
+<p><strong>Migration v16 SQL:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Add source column to distinguish parked/struggled/manual entries</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">parked_topics</span>
+<span class="w">    </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="k">source</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;parked&#39;</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="k">source</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;parked&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;struggled&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;manual&#39;</span><span class="p">));</span>
+
+<span class="c1">-- Add tech_area for technology categorization</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">parked_topics</span>
+<span class="w">    </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">tech_area</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">;</span>
+
+<span class="c1">-- Update unique index to allow same question from different sources</span>
+<span class="k">DROP</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">uix_parked_topics_session_question</span><span class="p">;</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">uix_parked_topics_session_question</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">parked_topics</span><span class="w"> </span><span class="p">(</span><span class="n">study_session_id</span><span class="p">,</span><span class="w"> </span><span class="n">question</span><span class="p">,</span><span class="w"> </span><span class="k">source</span><span class="p">);</span>
+</code></pre></div>
+<h2 id="3-command-flows">3. Command Flows<a class="headerlink" href="#3-command-flows" title="Permanent link">&para;</a></h2>
+<h3 id="31-studyctl-topics-list">3.1 <code>studyctl topics list</code><a class="headerlink" href="#31-studyctl-topics-list" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>@startuml seq-topics-list
+skinparam backgroundColor #FEFEFE
+actor User
+participant &quot;CLI Shell\n_topics.py&quot; as CLI
+participant &quot;Functional Core\nbacklog_logic.py&quot; as Logic
+participant &quot;parking.py&quot; as Parking
+database &quot;sessions.db&quot; as DB
+
+User -&gt; CLI : studyctl topics list [--tech python] [--status pending]
+activate CLI
+
+CLI -&gt; Parking : get_parked_topics(status=&quot;pending&quot;)
+activate Parking
+Parking -&gt; DB : SELECT * FROM parked_topics\nWHERE status = &#39;pending&#39;\nORDER BY parked_at DESC
+DB --&gt; Parking : rows
+Parking --&gt; CLI : list[dict]
+deactivate Parking
+
+CLI -&gt; Logic : format_backlog_list(items, filters)
+activate Logic
+Logic --&gt; CLI : FormattedBacklog(items, counts, grouped_by_tech)
+deactivate Logic
+
+CLI -&gt; User : Rich table output
+deactivate CLI
+
+@enduml
+</code></pre></div>
+<h3 id="32-studyctl-topics-add">3.2 <code>studyctl topics add</code><a class="headerlink" href="#32-studyctl-topics-add" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>@startuml seq-topics-add
+skinparam backgroundColor #FEFEFE
+actor User
+participant &quot;CLI Shell\n_topics.py&quot; as CLI
+participant &quot;parking.py&quot; as Parking
+database &quot;sessions.db&quot; as DB
+
+User -&gt; CLI : studyctl topics add &quot;Decorators&quot; --tech Python --note &quot;Need deeper dive&quot;
+activate CLI
+
+CLI -&gt; Parking : park_topic(\n  question=&quot;Decorators&quot;,\n  topic_tag=&quot;Python&quot;,\n  context=&quot;Need deeper dive&quot;,\n  study_session_id=None,\n  created_by=&quot;cli&quot;\n)
+activate Parking
+note right: source=&#39;manual&#39; added\nby new parameter
+Parking -&gt; DB : INSERT INTO parked_topics\n(question, topic_tag, context,\nsource, tech_area, created_by)\nVALUES (...)
+DB --&gt; Parking : id
+Parking --&gt; CLI : id
+deactivate Parking
+
+CLI -&gt; User : &quot;Added topic #42: Decorators [Python]&quot;
+deactivate CLI
+
+@enduml
+</code></pre></div>
+<h3 id="33-studyctl-topics-resolve">3.3 <code>studyctl topics resolve</code><a class="headerlink" href="#33-studyctl-topics-resolve" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>@startuml seq-topics-resolve
+skinparam backgroundColor #FEFEFE
+actor User
+participant &quot;CLI Shell\n_topics.py&quot; as CLI
+participant &quot;parking.py&quot; as Parking
+database &quot;sessions.db&quot; as DB
+
+User -&gt; CLI : studyctl topics resolve 42
+activate CLI
+
+CLI -&gt; Parking : resolve_parked_topic(42)
+activate Parking
+Parking -&gt; DB : UPDATE parked_topics\nSET status=&#39;resolved&#39;,\nresolved_at=datetime(&#39;now&#39;)\nWHERE id=42 AND status=&#39;pending&#39;
+DB --&gt; Parking : rowcount
+Parking --&gt; CLI : bool (success)
+deactivate Parking
+
+alt success
+    CLI -&gt; User : &quot;Resolved topic #42: Decorators&quot;
+else not found or already resolved
+    CLI -&gt; User : &quot;Topic #42 not found or already resolved&quot;
+end
+
+deactivate CLI
+
+@enduml
+</code></pre></div>
+<h3 id="34-auto-persist-struggled-topics-session-end">3.4 Auto-persist Struggled Topics (Session End)<a class="headerlink" href="#34-auto-persist-struggled-topics-session-end" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>@startuml seq-auto-persist
+skinparam backgroundColor #FEFEFE
+participant &quot;CLI Shell\n_study.py&quot; as Study
+participant &quot;Functional Core\nbacklog_logic.py&quot; as Logic
+participant &quot;session_state.py&quot; as State
+participant &quot;parking.py&quot; as Parking
+database &quot;sessions.db&quot; as DB
+
+Study -&gt; State : parse_topics_file()
+activate State
+State --&gt; Study : list[TopicEntry]
+deactivate State
+
+Study -&gt; Logic : plan_auto_persist(topic_entries)
+activate Logic
+note right of Logic
+    Pure logic:
+    Filter for status=&#39;struggling&#39;
+    Deduplicate against existing parked
+    Return list of PersistAction
+end note
+Logic --&gt; Study : list[PersistAction]
+deactivate Logic
+
+loop for each PersistAction
+    Study -&gt; Parking : park_topic(\n  question=entry.topic,\n  topic_tag=entry.topic,\n  context=entry.note,\n  study_session_id=session_id,\n  source=&#39;struggled&#39;\n)
+    activate Parking
+    Parking -&gt; DB : INSERT OR IGNORE INTO parked_topics
+    Parking --&gt; Study : id | None
+    deactivate Parking
+end
+
+@enduml
+</code></pre></div>
+<h3 id="35-agent-backlog-surfacing-session-start">3.5 Agent Backlog Surfacing (Session Start)<a class="headerlink" href="#35-agent-backlog-surfacing-session-start" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>@startuml seq-agent-surfacing
+skinparam backgroundColor #FEFEFE
+participant &quot;CLI Shell\n_study.py&quot; as Study
+participant &quot;Functional Core\nbacklog_logic.py&quot; as Logic
+participant &quot;parking.py&quot; as Parking
+participant &quot;agent_launcher.py&quot; as Agent
+database &quot;sessions.db&quot; as DB
+
+Study -&gt; Parking : get_parked_topics(status=&quot;pending&quot;)
+activate Parking
+Parking -&gt; DB : SELECT * FROM parked_topics\nWHERE status=&#39;pending&#39;
+DB --&gt; Parking : rows
+Parking --&gt; Study : list[dict]
+deactivate Parking
+
+Study -&gt; Logic : build_backlog_summary(pending_topics, current_topic)
+activate Logic
+note right of Logic
+    Pure function:
+    - Filter by relevance to current topic
+    - Format as markdown snippet
+    - &quot;You have 3 outstanding topics:
+       - Decorators [Python]
+       - Window Functions [SQL]&quot;
+    Returns: str | None
+end note
+Logic --&gt; Study : summary_text or None
+deactivate Logic
+
+Study -&gt; Agent : build_persona_file(\n  ...,\n  previous_notes=summary_text\n)
+activate Agent
+note right: Injected into the\n&quot;Resuming Previous Session&quot;\nsection of the persona file
+Agent --&gt; Study : persona_path
+deactivate Agent
+
+@enduml
+</code></pre></div>
+<h2 id="4-module-structure">4. Module Structure<a class="headerlink" href="#4-module-structure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>@startuml package-structure
+skinparam backgroundColor #FEFEFE
+skinparam packageStyle rectangle
+
+package &quot;studyctl/cli/&quot; {
+    [_topics.py] as Topics &lt;&lt;NEW&gt;&gt;
+    note bottom of Topics
+        Click group: topics
+        Commands: list, add, resolve
+        Imperative shell only
+    end note
+
+    [__init__.py] as Init
+    note bottom of Init
+        Register: &quot;topics&quot;
+        → studyctl.cli._topics:topics_group
+    end note
+}
+
+package &quot;studyctl/cli/&quot; {
+    [_study.py] as Study &lt;&lt;MODIFIED&gt;&gt;
+    note bottom of Study
+        _handle_start: inject backlog
+        _handle_end: auto-persist
+    end note
+}
+
+package &quot;studyctl/&quot; {
+    [backlog_logic.py] as BL &lt;&lt;NEW&gt;&gt;
+    note bottom of BL
+        FCIS Functional Core:
+        - format_backlog_list()
+        - build_backlog_summary()
+        - plan_auto_persist()
+        Pure functions, no I/O
+    end note
+}
+
+package &quot;studyctl/&quot; {
+    [parking.py] as Parking &lt;&lt;MODIFIED&gt;&gt;
+    note bottom of Parking
+        park_topic(): add source param
+        get_parked_topics(): add source filter
+    end note
+}
+
+package &quot;agent-session-tools/&quot; {
+    [migrations.py] as Mig &lt;&lt;MODIFIED&gt;&gt;
+    note bottom of Mig
+        v16: ADD source, tech_area
+        to parked_topics
+    end note
+}
+
+Topics --&gt; BL : format/filter
+Study --&gt; BL : summary/persist plan
+Topics --&gt; Parking : CRUD
+Study --&gt; Parking : auto-persist + query
+Parking --&gt; Mig : schema
+
+@enduml
+</code></pre></div>
+<h2 id="5-fcis-architecture-backlog_logicpy">5. FCIS Architecture — <code>backlog_logic.py</code><a class="headerlink" href="#5-fcis-architecture-backlog_logicpy" title="Permanent link">&para;</a></h2>
+<p>Following the Functional Core, Imperative Shell pattern established in <code>_clean_logic.py</code>:</p>
+<div class="highlight"><pre><span></span><code>@startuml fcis-backlog
+skinparam backgroundColor #FEFEFE
+
+rectangle &quot;Functional Core\nbacklog_logic.py&quot; as Core #90EE90 {
+    (format_backlog_list) as FBL
+    (build_backlog_summary) as BBS
+    (plan_auto_persist) as PAP
+}
+
+rectangle &quot;Imperative Shell&quot; as Shell #FFB347 {
+    rectangle &quot;CLI Commands\n_topics.py&quot; as TopicsCLI {
+        (topics list) as TL
+        (topics add) as TA
+        (topics resolve) as TR
+    }
+    rectangle &quot;Study Command\n_study.py&quot; as StudyCLI {
+        (_handle_start) as HS
+        (_handle_end) as HE
+    }
+}
+
+rectangle &quot;I/O Boundary&quot; as IO #FFB6C1 {
+    (parking.py) as P
+    (session_state.py) as SS
+    (agent_launcher.py) as AL
+    database &quot;sessions.db&quot; as DB
+}
+
+TL --&gt; FBL : plain data in
+HS --&gt; BBS : plain data in
+HE --&gt; PAP : plain data in
+
+FBL --&gt; TL : FormattedBacklog out
+BBS --&gt; HS : summary string out
+PAP --&gt; HE : PersistAction list out
+
+TL --&gt; P : gather
+HS --&gt; P : gather
+HE --&gt; SS : gather (parse topics)
+HE --&gt; P : execute (persist)
+HS --&gt; AL : execute (inject)
+P --&gt; DB
+
+note bottom of Core
+    Zero imports from parking, session_state, or DB.
+    Takes data in, returns data out.
+    Testable with plain asserts, no mocks.
+end note
+
+@enduml
+</code></pre></div>
+<h3 id="core-data-types">Core Data Types<a class="headerlink" href="#core-data-types" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BacklogItem</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single backlog entry — pre-fetched from DB.&quot;&quot;&quot;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">question</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">topic_tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">tech_area</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>          <span class="c1"># parked | struggled | manual</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">parked_at</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">session_topic</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># from study_sessions.topic via join</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FormattedBacklog</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of format_backlog_list() — ready for display.&quot;&quot;&quot;</span>
+    <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BacklogItem</span><span class="p">]</span>
+    <span class="n">total</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">by_tech</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">BacklogItem</span><span class="p">]]</span>  <span class="c1"># grouped by tech_area</span>
+    <span class="n">by_source</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>              <span class="c1"># count per source</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PersistAction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A struggled topic to persist to parked_topics.&quot;&quot;&quot;</span>
+    <span class="n">question</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">topic_tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">study_session_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;struggled&#39;</span>
+</code></pre></div>
+<h3 id="core-functions">Core Functions<a class="headerlink" href="#core-functions" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">format_backlog_list</span><span class="p">(</span>
+    <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BacklogItem</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">tech_filter</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">source_filter</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FormattedBacklog</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filter and group backlog items for display. Pure logic.&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_backlog_summary</span><span class="p">(</span>
+    <span class="n">pending_items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BacklogItem</span><span class="p">],</span>
+    <span class="n">current_topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build markdown snippet for agent persona injection.</span>
+
+<span class="sd">    Returns None if no pending items. Prioritises items</span>
+<span class="sd">    matching current_topic&#39;s tech area.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plan_auto_persist</span><span class="p">(</span>
+    <span class="n">topic_entries</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TopicEntry</span><span class="p">],</span>
+    <span class="n">existing_questions</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">study_session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">PersistAction</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decide which struggled topics to persist.</span>
+
+<span class="sd">    Filters for status=&#39;struggling&#39;, deduplicates against</span>
+<span class="sd">    existing_questions (already in parked_topics for this session).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div>
+<h2 id="6-test-architecture">6. Test Architecture<a class="headerlink" href="#6-test-architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>@startuml test-architecture
+skinparam backgroundColor #FEFEFE
+
+package &quot;Unit Tests (no mocks, no DB)&quot; as Unit {
+    [test_backlog_logic.py] as TBL
+    note bottom of TBL
+        Tests format_backlog_list()
+        Tests build_backlog_summary()
+        Tests plan_auto_persist()
+        ---
+        Pattern: call function with
+        plain data, assert on result
+        No mocks, no patches
+    end note
+}
+
+package &quot;CLI Tests (CliRunner + DB mocks)&quot; as CLI {
+    [test_topics_cli.py] as TTC
+    note bottom of TTC
+        Tests topics list/add/resolve
+        commands via Click CliRunner
+        ---
+        Pattern: patch parking.py
+        functions, verify CLI output
+        and exit codes
+    end note
+}
+
+package &quot;Integration Tests (real DB)&quot; as Integration {
+    [test_backlog_integration.py] as TBI
+    note bottom of TBI
+        Tests migration v16
+        Tests park_topic with source param
+        Tests auto-persist end-to-end
+        ---
+        Pattern: tmp_path SQLite DB,
+        real SQL, verify data integrity
+        @pytest.mark.integration
+    end note
+}
+
+TBL -[hidden]-&gt; TTC
+TTC -[hidden]-&gt; TBI
+
+note &quot;Test Pyramid:\n~15 unit (fast, no I/O)\n~8 CLI (CliRunner)\n~5 integration (real DB)&quot; as N
+
+@enduml
+</code></pre></div>
+<h3 id="test-matrix">Test Matrix<a class="headerlink" href="#test-matrix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Test File</th>
+<th>Layer</th>
+<th>What It Tests</th>
+<th>Mocks?</th>
+<th>DB?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_backlog_logic.py</code></td>
+<td>Unit</td>
+<td><code>format_backlog_list()</code>, <code>build_backlog_summary()</code>, <code>plan_auto_persist()</code></td>
+<td>None</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>test_topics_cli.py</code></td>
+<td>CLI</td>
+<td><code>topics list</code>, <code>topics add</code>, <code>topics resolve</code> commands</td>
+<td>parking.py functions</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>test_backlog_integration.py</code></td>
+<td>Integration</td>
+<td>Migration v16, park_topic with source, auto-persist flow</td>
+<td>None</td>
+<td>Yes (tmp)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-test-cases">Key Test Cases<a class="headerlink" href="#key-test-cases" title="Permanent link">&para;</a></h3>
+<p><strong>Unit (backlog_logic.py):</strong>
+- Empty backlog → <code>FormattedBacklog</code> with zero items
+- Filter by tech_area → only matching items
+- Filter by source → only matching items
+- Group by tech → correct bucketing
+- <code>build_backlog_summary</code> with no items → None
+- <code>build_backlog_summary</code> prioritises current topic's tech
+- <code>plan_auto_persist</code> filters only struggling status
+- <code>plan_auto_persist</code> deduplicates against existing
+- <code>plan_auto_persist</code> with no struggled → empty list</p>
+<p><strong>CLI (topics commands):</strong>
+- <code>topics list</code> with no items → "No pending topics"
+- <code>topics list</code> with items → table output
+- <code>topics list --tech Python</code> → filtered output
+- <code>topics add</code> → success message with ID
+- <code>topics resolve 42</code> → success message
+- <code>topics resolve 999</code> → "not found" error</p>
+<p><strong>Integration (real DB):</strong>
+- Migration v16 runs cleanly on v15 schema
+- <code>park_topic(source='manual')</code> with NULL session refs
+- <code>park_topic(source='struggled')</code> with session ref
+- <code>get_parked_topics()</code> returns source and tech_area
+- Unique index allows same question from different sources
+- Auto-persist end-to-end: parse topics → plan → persist → query</p>
+<h2 id="7-file-inventory">7. File Inventory<a class="headerlink" href="#7-file-inventory" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Action</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent-session-tools/.../migrations.py</code></td>
+<td>Modify</td>
+<td>Add migration v16 (source, tech_area columns)</td>
+</tr>
+<tr>
+<td><code>studyctl/backlog_logic.py</code></td>
+<td><strong>Create</strong></td>
+<td>FCIS functional core — pure logic</td>
+</tr>
+<tr>
+<td><code>studyctl/parking.py</code></td>
+<td>Modify</td>
+<td>Add <code>source</code> param to <code>park_topic()</code>, <code>tech_area</code> param</td>
+</tr>
+<tr>
+<td><code>studyctl/cli/_topics.py</code></td>
+<td><strong>Create</strong></td>
+<td>Click group with list/add/resolve commands</td>
+</tr>
+<tr>
+<td><code>studyctl/cli/__init__.py</code></td>
+<td>Modify</td>
+<td>Register <code>topics</code> lazy command</td>
+</tr>
+<tr>
+<td><code>studyctl/cli/_study.py</code></td>
+<td>Modify</td>
+<td>Inject backlog in <code>_handle_start</code>, auto-persist in <code>_handle_end</code></td>
+</tr>
+<tr>
+<td><code>tests/test_backlog_logic.py</code></td>
+<td><strong>Create</strong></td>
+<td>Unit tests for pure logic</td>
+</tr>
+<tr>
+<td><code>tests/test_topics_cli.py</code></td>
+<td><strong>Create</strong></td>
+<td>CLI tests for topics commands</td>
+</tr>
+<tr>
+<td><code>tests/test_backlog_integration.py</code></td>
+<td><strong>Create</strong></td>
+<td>Integration tests (marked, not CI)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="8-implementation-order">8. Implementation Order<a class="headerlink" href="#8-implementation-order" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>@startuml implementation-order
+skinparam backgroundColor #FEFEFE
+
+|Phase|
+:1. Migration v16;
+note right: Foundation — schema must exist first
+:2. parking.py updates;
+note right: Add source + tech_area params
+:3. backlog_logic.py + tests;
+note right: FCIS core, TDD — tests first
+:4. _topics.py CLI + tests;
+note right: CLI shell, test with CliRunner
+:5. _study.py: auto-persist at end;
+note right: Persist struggled topics
+:6. _study.py: backlog surfacing at start;
+note right: Inject into agent persona
+:7. Integration tests;
+note right: End-to-end with real DB
+:8. Full test suite + lint;
+
+@enduml
+</code></pre></div>
+<p>Each phase is independently committable.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
