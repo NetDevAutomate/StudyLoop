@@ -15,6 +15,7 @@ Run with:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
@@ -102,8 +103,27 @@ def _read_state() -> dict:
     return {}
 
 
+def _kill_orphaned_processes():
+    """Kill orphaned sidebar and mock-agent processes from failed tests."""
+    import signal
+
+    for pattern in ("studyctl.tui.sidebar", "mock-agent"):
+        try:
+            result = subprocess.run(
+                ["pgrep", "-f", pattern],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            for pid_str in result.stdout.strip().splitlines():
+                with contextlib.suppress(OSError):
+                    os.kill(int(pid_str), signal.SIGTERM)
+        except Exception:
+            pass
+
+
 def _cleanup_all():
-    """Remove all IPC files, kill study tmux sessions, remove test session dirs."""
+    """Remove all IPC files, kill study tmux sessions, kill orphans, remove test dirs."""
     for f in [STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE]:
         f.unlink(missing_ok=True)
     result = _tmux("list-sessions", "-F", "#{session_name}")
@@ -111,6 +131,8 @@ def _cleanup_all():
         for name in result.stdout.strip().splitlines():
             if name.startswith("study-"):
                 _tmux("kill-session", "-t", name)
+    # Kill orphaned child processes that escaped the tmux session tree
+    _kill_orphaned_processes()
     # Remove test session directories
     if SESSIONS_DIR.exists():
         for d in SESSIONS_DIR.iterdir():
