@@ -366,10 +366,12 @@ end note
 
 | Module | Functional Core | Imperative Shell | Tests |
 |--------|----------------|-----------------|-------|
-| Clean | `_clean_logic.py` → `plan_clean()` | `_clean.py` | `test_clean.py` (17, zero mocks) |
-| Backlog | `backlog_logic.py` → `format_backlog_list()`, `score_backlog_items()`, `plan_auto_persist()`, `build_backlog_summary()` | `_topics.py`, `_study.py` | `test_backlog_logic.py` (22, zero mocks) |
+| Clean | `clean_logic.py` → `plan_clean()` | `cli/_clean.py` | `test_clean.py` (17, zero mocks) |
+| Backlog | `backlog_logic.py` → `format_backlog_list()`, `score_backlog_items()`, `plan_auto_persist()`, `build_backlog_summary()` | `cli/_topics.py`, `cli/_study.py` | `test_backlog_logic.py` (22, zero mocks) |
 | Break *(planned)* | `break_logic.py` → `check_break_needed()` | `tui/sidebar.py` | `test_break_logic.py` |
-| Streaks *(planned)* | `streaks_logic.py` → `analyze_energy_streaks()` | `_review.py` | `test_streaks_logic.py` |
+| Streaks *(planned)* | `streaks_logic.py` → `analyze_energy_streaks()` | `cli/_review.py` | `test_streaks_logic.py` |
+
+**Note**: All FCIS cores live at `studyctl/` package level (not inside `cli/`). This was corrected per the 2026-04-03 architecture review recommendation.
 
 ## 7. Test Pyramid
 
@@ -392,6 +394,7 @@ Total:                                   799+
 - [x] Schema v17 (source, tech_area, priority columns)
 
 ### Remaining (v2.2 polish)
+- [ ] **Structural cleanup** (from architecture review): move `_clean_logic.py` to package level, wire service layer
 - [ ] Break suggestions at timer thresholds
 - [ ] Energy streaks correlation
 - [ ] Register MCP tools in agent persona
@@ -399,8 +402,14 @@ Total:                                   799+
 - [ ] Nested tmux UAT test (needs tmux)
 - [ ] `--end` UAT test from outside (needs tmux)
 
+### Architecture Debt (from 2026-04-03 review)
+- [ ] Unify config systems (YAML + JSON → single YAML)
+- [ ] Nightly CI job for UAT tests (macOS runner with tmux)
+- [ ] Split `query_sessions.py` monolith (CLI/formatters/resolver)
+- [ ] Fix VSCode circular import
+
 ### Future Phases
-- Phase 6: CI/CD improvements
+- Phase 6: CI/CD improvements (includes architecture debt above)
 - Phase 3: Devices (ttyd + LAN)
 - Multi-Agent Support
 - Full MCP Agent Integration

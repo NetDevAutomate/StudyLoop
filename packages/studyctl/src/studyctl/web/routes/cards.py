@@ -5,13 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from studyctl.review_db import record_card_review
-from studyctl.review_loader import (
-    discover_directories,
-    find_content_dirs,
-    load_flashcards,
-    load_quizzes,
-)
+from studyctl.review_loader import discover_directories
+from studyctl.services.review import get_cards, record_review
 
 router = APIRouter()
 
@@ -27,7 +22,7 @@ class ReviewRequest(BaseModel):
 
 
 @router.get("/cards/{course}")
-def get_cards(request: Request, course: str, mode: str = "flashcards") -> list[dict]:
+def get_course_cards(request: Request, course: str, mode: str = "flashcards") -> list[dict]:
     """Load flashcards or quiz questions for a course."""
     courses = discover_directories(request.app.state.study_dirs)
     match = next(((n, p) for n, p in courses if n == course), None)
@@ -35,10 +30,9 @@ def get_cards(request: Request, course: str, mode: str = "flashcards") -> list[d
         raise HTTPException(status_code=404, detail=f"Course '{course}' not found")
 
     _, path = match
-    fc_dir, quiz_dir = find_content_dirs(path)
+    flashcards, quizzes = get_cards(course, path)
 
-    if mode == "flashcards" and fc_dir:
-        cards = load_flashcards(fc_dir)
+    if mode == "flashcards" and flashcards:
         return [
             {
                 "type": "flashcard",
@@ -47,10 +41,9 @@ def get_cards(request: Request, course: str, mode: str = "flashcards") -> list[d
                 "hash": c.card_hash,
                 "source": c.source,
             }
-            for c in cards
+            for c in flashcards
         ]
-    if mode == "quiz" and quiz_dir:
-        questions = load_quizzes(quiz_dir)
+    if mode == "quiz" and quizzes:
         return [
             {
                 "type": "quiz",
@@ -67,7 +60,7 @@ def get_cards(request: Request, course: str, mode: str = "flashcards") -> list[d
                 "hash": q.card_hash,
                 "source": q.source,
             }
-            for q in questions
+            for q in quizzes
         ]
 
     raise HTTPException(status_code=404, detail=f"No {mode} content for {course}")
@@ -76,7 +69,7 @@ def get_cards(request: Request, course: str, mode: str = "flashcards") -> list[d
 @router.post("/review")
 def post_review(body: ReviewRequest) -> dict:
     """Record a single card review result."""
-    record_card_review(
+    record_review(
         course=body.course,
         card_type=body.card_type,
         card_hash=body.card_hash,
