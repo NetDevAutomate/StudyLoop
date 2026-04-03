@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from studyctl.clean_logic import CleanResult, DirInfo, plan_clean
+from studyctl.logic.clean_logic import CleanResult, DirInfo, plan_clean
 
 # Inline fixtures only (no conftest.py — pluggy conflict)
 

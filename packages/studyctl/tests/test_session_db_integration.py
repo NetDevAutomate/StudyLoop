@@ -152,7 +152,7 @@ class TestParkingIntegration:
 class TestScoringPipeline:
     def test_end_to_end_scoring(self, session_db: Path):
         """Park topics → gather frequencies → score → verify ranking."""
-        from studyctl.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
+        from studyctl.logic.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
         from studyctl.parking import (
             get_parked_topics,
             get_topic_frequencies,
@@ -267,7 +267,7 @@ class TestStudySessionLifecycle:
 
     def test_auto_persist_struggled_flow(self, session_db: Path):
         """Simulate session end: struggled topics → plan → persist."""
-        from studyctl.backlog_logic import plan_auto_persist
+        from studyctl.logic.backlog_logic import plan_auto_persist
         from studyctl.parking import get_parked_topics, park_topic
         from studyctl.session_state import TopicEntry
 
