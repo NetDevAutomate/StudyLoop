@@ -45,6 +45,8 @@ from studyctl.cli._lazy import LazyGroup
         "sidebar": "studyctl.cli._study:sidebar_cmd",
         # _clean.py — cleanup orphaned session artifacts
         "clean": "studyctl.cli._clean:clean",
+        # _topics.py — study backlog management
+        "backlog": "studyctl.cli._topics:topics_group",
         # _doctor.py — diagnostic health checks
         "doctor": "studyctl.cli._doctor:doctor",
         # _upgrade.py — update check + upgrade apply

@@ -154,6 +154,80 @@ def _auto_clean_zombies() -> None:
             )
 
 
+def _build_backlog_notes(topic: str) -> str | None:
+    """Gather pending backlog items and build a summary for the agent persona.
+
+    Returns None if no pending items. Uses FCIS pattern — gather data
+    from parking.py, delegate formatting to backlog_logic.
+    """
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        from studyctl.backlog_logic import BacklogItem, build_backlog_summary
+        from studyctl.parking import get_parked_topics
+
+        raw = get_parked_topics(status="pending")
+        if not raw:
+            return None
+        items = [
+            BacklogItem(
+                id=t["id"],
+                question=t["question"],
+                topic_tag=t.get("topic_tag"),
+                tech_area=t.get("tech_area"),
+                source=t.get("source", "parked"),
+                context=t.get("context"),
+                parked_at=t["parked_at"],
+                session_topic=None,
+            )
+            for t in raw
+        ]
+        return build_backlog_summary(items, topic)
+    return None
+
+
+def _auto_persist_struggled(
+    study_session_id: str,
+    topic_entries: list,
+) -> None:
+    """Persist struggled topics from session-topics.md to the backlog.
+
+    Uses FCIS pattern — plan_auto_persist decides what to persist,
+    then we execute by calling park_topic for each action.
+    """
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        from studyctl.backlog_logic import plan_auto_persist
+        from studyctl.parking import get_parked_topics, park_topic
+
+        # Gather existing questions for this session to deduplicate
+        existing = get_parked_topics(study_session_id=study_session_id)
+        existing_questions = {t["question"] for t in existing}
+
+        # Decide
+        actions = plan_auto_persist(topic_entries, existing_questions, study_session_id)
+
+        # Execute
+        persisted = 0
+        for action in actions:
+            result = park_topic(
+                question=action.question,
+                topic_tag=action.topic_tag,
+                context=action.context,
+                study_session_id=action.study_session_id,
+                source=action.source,
+            )
+            if result:
+                persisted += 1
+
+        if persisted:
+            console.print(
+                f"[dim]Saved {persisted} struggled "
+                f"topic{'s' if persisted != 1 else ''} to backlog[/dim]"
+            )
+
+
 def _handle_start(
     ctx: click.Context,
     topic: str,
@@ -322,6 +396,11 @@ def _handle_start(
     # Clean up stale tmux session with same name
     if session_exists(session_name):
         kill_session(session_name)
+
+    # Inject backlog context into agent persona
+    backlog_notes = _build_backlog_notes(topic)
+    if backlog_notes:
+        previous_notes = f"{previous_notes}\n\n{backlog_notes}" if previous_notes else backlog_notes
 
     # Build commands before creating panes
     persona_file = build_persona_file(mode, topic, energy, previous_notes=previous_notes)
@@ -549,7 +628,11 @@ def _handle_end(_ctx: click.Context) -> None:
     # Capture session context before ending
     from studyctl.session_state import parse_parking_file, parse_topics_file
 
-    notes = _build_session_notes(parse_topics_file(), parse_parking_file())
+    topic_entries = parse_topics_file()
+    notes = _build_session_notes(topic_entries, parse_parking_file())
+
+    # Auto-persist struggled topics to backlog
+    _auto_persist_struggled(study_id, topic_entries)
 
     # End the DB session with captured notes
     end_study_session(study_id, notes=notes)
