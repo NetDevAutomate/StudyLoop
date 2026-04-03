@@ -372,10 +372,12 @@ def _handle_start(
     if backlog_notes:
         previous_notes = f"{previous_notes}\n\n{backlog_notes}" if previous_notes else backlog_notes
 
-    # Build persona via adapter pattern
+    # Build persona + MCP config via adapter pattern
     adapter = AGENTS[agent]
     canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
     persona_file = adapter.setup(canonical, session_dir)
+    if adapter.mcp_setup:
+        adapter.mcp_setup(session_dir)
 
     # Allow integration tests to inject a mock agent command
     import os
