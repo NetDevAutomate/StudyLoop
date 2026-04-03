@@ -322,7 +322,7 @@ The agents support multiple session types (deep study, light review, body doubli
 
 ### Tune spaced repetition intervals
 
-The 1/3/7/14/30 day schedule is a starting point. If you find concepts fading faster, tighten the early intervals. The schedule is defined in `packages/studyctl/src/studyctl/history.py`.
+The 1/3/7/14/30 day schedule is a starting point. If you find concepts fading faster, tighten the early intervals. The schedule is defined in `packages/studyctl/src/studyctl/history/progress.py`.
 
 ### Add study topics
 

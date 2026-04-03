@@ -244,14 +244,17 @@ Live study session with real-time dashboard, parking lot, and timer.
 - [x] Nested tmux UAT + `--end` from outside UAT (5 new tests)
 - [x] **896 tests passing, 0 failures**
 
-### Phase 6: CI/CD Pipeline
+### Phase 6: CI/CD Pipeline ✅
 
-Nightly drift detection, pre-release gate. Spec at `docs/ci-cd-pipeline.md`.
+Nightly drift detection, pre-release gate, backup/restore.
 
-- [ ] Nightly: fresh install on Ubuntu + macOS, `studyctl doctor --json` as gate
-- [ ] Pre-release: upgrade path N-1 → N, triggered on release tags
-- [ ] Docker: `studyctl-web` image with health check via doctor
-- [ ] `compatibility.json` for pre-flight version checks
+- [x] Nightly: fresh install on Ubuntu + macOS, `studyctl doctor --json` as gate (`nightly-install.yml`)
+- [x] Nightly: UAT tmux integration tests on macOS (`nightly-uat.yml`)
+- [x] Pre-release: upgrade path N-1 → N, triggered on release tags (`pre-release.yml`)
+- [x] `studyctl backup` / `studyctl restore` — timestamped snapshots with safety backup
+- [x] Orphaned process cleanup in test harness (`conftest.py` session-scoped fixture)
+- [ ] Docker: `studyctl-web` image with health check via doctor — deferred to Phase 3
+- [ ] `compatibility.json` for pre-flight version checks — deferred (doctor already covers this)
 
 ### Phase 3: Devices (ttyd + LAN)
 

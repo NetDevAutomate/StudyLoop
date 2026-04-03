@@ -104,12 +104,25 @@ socratic-study-mentor/
 │   │   │   ├── services/           # Framework-agnostic service layer
 │   │   │   │   ├── review.py       # Review operations (cards, stats, SM-2)
 │   │   │   │   └── content.py      # Content service wrappers
-│   │   │   ├── settings.py         # All configuration, topics, path resolution
+│   │   │   ├── settings.py         # Configuration and path resolution
+│   │   │   ├── topics.py           # Topic definitions (Topic, get_topics)
 │   │   │   ├── review_db.py        # SQLite SM-2 spaced repetition (WAL mode)
 │   │   │   ├── review_loader.py    # Flashcard/quiz JSON loader + validation
 │   │   │   ├── sync.py             # NotebookLM sync
 │   │   │   ├── state.py            # Sync state tracking
-│   │   │   ├── history.py          # Session history queries
+│   │   │   ├── history/            # Session history (9 focused modules)
+│   │   │   │   ├── sessions.py     # Session CRUD + summary
+│   │   │   │   ├── progress.py     # Progress tracking + spaced repetition
+│   │   │   │   ├── search.py       # FTS5 topic frequency + struggles
+│   │   │   │   ├── teachback.py    # 5-dimension teach-back scoring
+│   │   │   │   ├── bridges.py      # Knowledge bridge CRUD + migration
+│   │   │   │   ├── concepts.py     # Concept seeding + listing
+│   │   │   │   ├── streaks.py      # Study streak calculation
+│   │   │   │   └── medication.py   # Medication window checking
+│   │   │   ├── session/            # Session orchestration
+│   │   │   │   ├── orchestrator.py # tmux env creation + pane layout
+│   │   │   │   ├── resume.py       # Reattach/rebuild sessions
+│   │   │   │   └── cleanup.py      # End session + IPC cleanup
 │   │   │   ├── scheduler.py        # launchd/cron jobs
 │   │   │   ├── shared.py           # Cross-machine sync
 │   │   │   ├── maintenance.py      # Notebook deduplication
@@ -226,7 +239,7 @@ topics:
 
 The `tags` list is used by `studyctl struggles` and `studyctl review` to match session content to topics.
 
-If you want to add default topics that ship with the project, edit `packages/studyctl/src/studyctl/settings.py` and add to the fallback list in `get_topics()`.
+If you want to add default topics that ship with the project, edit `packages/studyctl/src/studyctl/topics.py` and update the `get_topics()` function.
 
 ## How to Modify Agent Behaviour
 
