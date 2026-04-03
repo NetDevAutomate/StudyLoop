@@ -10,11 +10,11 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
-  <!-- HTMX + SSE extension -->
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
-  <!-- Alpine.js -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <!-- HTMX + SSE extension (vendored for offline PWA) -->
+  <script src="/vendor/js/htmx-2.0.4.min.js"></script>
+  <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
+  <!-- Alpine.js (vendored for offline PWA) -->
+  <script defer src="/vendor/js/alpine-3.14.8.min.js"></script>
 </head>
 <body>
   <header>
