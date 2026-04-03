@@ -1,9 +1,13 @@
 """Clean logic — pure functional core, no I/O.
 
 Decides what to clean based on pre-gathered data.
-The imperative shell (_clean.py) handles all side effects.
+The imperative shell (cli/_clean.py) handles all side effects.
 
 See docs/mentoring/functional-core-imperative-shell.md for the pattern.
+
+Note: This module lives at package level (studyctl/clean_logic.py), not
+inside cli/, because FCIS cores should not be coupled to a specific
+presentation layer. See docs/reviews/2026-04-03-architecture-review.md.
 """
 
 from __future__ import annotations

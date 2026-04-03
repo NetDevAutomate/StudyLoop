@@ -129,7 +129,7 @@ class TestCardsAPI:
         assert resp.status_code == 404
 
     def test_post_review(self, client: TestClient, tmp_path: Path) -> None:
-        with patch("studyctl.web.routes.cards.record_card_review"):
+        with patch("studyctl.services.review.record_review"):
             resp = client.post(
                 "/api/review",
                 json={

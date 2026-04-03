@@ -14,17 +14,13 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as param type
 from mcp.server.fastmcp.exceptions import ToolError
 
-from studyctl.review_db import (
-    get_course_stats,
-    get_due_cards,
-    record_card_review,
-)
 from studyctl.review_loader import (
     discover_directories,
     find_content_dirs,
     load_flashcards,
     load_quizzes,
 )
+from studyctl.services.review import get_due, get_stats, record_review
 from studyctl.settings import load_settings
 
 logger = logging.getLogger(__name__)
@@ -54,7 +50,7 @@ def register_tools(mcp: FastMCP) -> None:
             fc_dir, quiz_dir = find_content_dirs(path)
             fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
             quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
-            due = len(get_due_cards(name))
+            due = len(get_due(name))
             result.append(
                 {
                     "name": name,
@@ -74,8 +70,8 @@ def register_tools(mcp: FastMCP) -> None:
         Args:
             course: Course name (as returned by list_courses).
         """
-        stats = get_course_stats(course)
-        due = get_due_cards(course)
+        stats = get_stats(course)
+        due = get_due(course)
         return {
             "due_cards": len(due),
             "total_reviews": stats.get("total_reviews", 0),
@@ -93,7 +89,7 @@ def register_tools(mcp: FastMCP) -> None:
             card_hash: The card's hash identifier.
             correct: Whether the student answered correctly.
         """
-        record_card_review(
+        record_review(
             course=course,
             card_type="flashcard",
             card_hash=card_hash,
