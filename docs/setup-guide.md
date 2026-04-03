@@ -5,6 +5,7 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+  - [tmux-resurrect Compatibility](#tmux-resurrect-compatibility)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Obsidian Vault Setup](#obsidian-vault-setup)
@@ -24,7 +25,39 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 - **Optional**: `notebooklm-py` for Google NotebookLM sync
 - **Optional**: `sentence-transformers` for semantic search
 
-> **tmux plugin note**: If you use `tmux-resurrect` or `tmux-continuum`, these plugins may interfere with studyctl's session management. studyctl sets `detach-on-destroy on` and `remain-on-exit off` on its sessions to ensure clean exits.
+> **tmux-resurrect / tmux-continuum users**: studyctl automatically cleans up
+> zombie sessions on startup, so resurrect-restored sessions are handled
+> gracefully. For the best experience, add the restore hook below to prevent
+> resurrect from saving study sessions at all. See
+> [tmux-resurrect compatibility](#tmux-resurrect-compatibility) for details.
+
+### tmux-resurrect Compatibility
+
+studyctl creates temporary `study-*` tmux sessions that should not persist
+across tmux restarts. If you use **tmux-resurrect** or **tmux-continuum**,
+these plugins may save and restore killed study sessions as zombies.
+
+**Automatic handling (no action required):** `studyctl study` automatically
+detects and kills zombie sessions before starting a new session. This works
+out of the box — no configuration needed.
+
+**Recommended: add a restore hook** to prevent resurrect from restoring
+study sessions at all. Add this to your `~/.tmux.conf`:
+
+```bash
+# Kill any restored study-* sessions immediately after resurrect restore.
+# studyctl sessions are temporary and should not survive tmux restarts.
+set -g @resurrect-restore-hook 'for s in $(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^study-"); do tmux kill-session -t "$s" 2>/dev/null; done'
+```
+
+After adding, reload your tmux config:
+
+```bash
+tmux source-file ~/.tmux.conf
+```
+
+Run `studyctl doctor` to verify the configuration — it checks for
+tmux-resurrect and warns if the restore hook is not detected.
 
 ## Installation
 
