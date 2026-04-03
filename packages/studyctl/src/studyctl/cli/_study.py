@@ -607,90 +607,101 @@ def _handle_resume(ctx: click.Context) -> None:
     ctx.exit(1)
 
 
-def _handle_end(_ctx: click.Context) -> None:
-    """End the current study session cleanly."""
+def _end_session_common(
+    state: dict,
+    *,
+    auto_persist: bool = True,
+) -> str | None:
+    """Shared session-ending logic used by both _handle_end and _cleanup_session.
+
+    Captures session notes, ends the DB record, cleans up temp files, kills
+    tmux sessions, and clears IPC files. Returns the topic name or None.
+
+    The caller controls user-facing output and error handling — this function
+    only does the work.
+    """
+    import contextlib
+    import os
+
     from studyctl.history import end_study_session
     from studyctl.session_state import (
-        read_session_state,
+        PARKING_FILE,
+        SESSION_DIR,
+        TOPICS_FILE,
+        parse_parking_file,
+        parse_topics_file,
         write_session_state,
     )
+    from studyctl.tmux import kill_all_study_sessions
 
-    state = read_session_state()
     study_id = state.get("study_session_id")
+    session_name = state.get("tmux_session")
     persona_file = state.get("persona_file")
-
-    if not study_id:
-        console.print("[yellow]No active session found.[/yellow]")
-        return
-
     topic = state.get("topic", "unknown")
 
-    # Capture session context before ending
-    from studyctl.session_state import parse_parking_file, parse_topics_file
+    if not study_id:
+        return None
 
+    # Capture session context as notes
     topic_entries = parse_topics_file()
     notes = _build_session_notes(topic_entries, parse_parking_file())
 
     # Auto-persist struggled topics to backlog
-    _auto_persist_struggled(study_id, topic_entries)
+    if auto_persist:
+        with contextlib.suppress(Exception):
+            _auto_persist_struggled(study_id, topic_entries)
 
     # End the DB session with captured notes
-    end_study_session(study_id, notes=notes)
+    with contextlib.suppress(Exception):
+        end_study_session(study_id, notes=notes)
 
     # Signal dashboard summary view
-    write_session_state({"mode": "ended"})
+    with contextlib.suppress(Exception):
+        write_session_state({"mode": "ended"})
 
-    # Clean up persona file
-    import contextlib
-    import os
-
+    # Clean up temp files
     if persona_file:
         with contextlib.suppress(OSError):
             os.unlink(persona_file)
-
-    # Clean up oneline file
-    from studyctl.session_state import SESSION_DIR
-
     oneline = SESSION_DIR / "session-oneline.txt"
     with contextlib.suppress(OSError):
         oneline.unlink()
 
-    console.print(f"[bold]Session ended:[/bold] {topic}")
+    # Kill all study tmux sessions
+    with contextlib.suppress(Exception):
+        kill_all_study_sessions(current_session=session_name)
 
-    # Kill all study tmux sessions (current + any stale ones).
-    # No switch_client — we want the tmux client to exit, returning
-    # the user to their original shell.
-    from studyctl.tmux import kill_all_study_sessions
-
-    kill_all_study_sessions()
-    console.print("  tmux session closed.")
-
-    # Clear transient IPC files but KEEP session-state.json (with mode=ended).
-    # The state file is needed by --resume to find the session directory
-    # and metadata. It's cleared when a new session starts.
-    from studyctl.session_state import PARKING_FILE, TOPICS_FILE
-
+    # Clear transient IPC files but KEEP session-state.json (mode=ended)
     for f in [TOPICS_FILE, PARKING_FILE, oneline]:
         with contextlib.suppress(OSError):
             f.unlink()
+
+    return topic
+
+
+def _handle_end(_ctx: click.Context) -> None:
+    """End the current study session cleanly (user-facing)."""
+    from studyctl.session_state import read_session_state
+
+    state = read_session_state()
+
+    if not state.get("study_session_id"):
+        console.print("[yellow]No active session found.[/yellow]")
+        return
+
+    topic = _end_session_common(state)
+    if topic:
+        console.print(f"[bold]Session ended:[/bold] {topic}")
+        console.print("  tmux session closed.")
 
 
 def _get_previous_session_notes(study_id: str | None) -> str | None:
     """Fetch the notes from a previous study session in the DB."""
     if not study_id:
         return None
-    try:
-        import sqlite3
+    from studyctl.history import get_session_notes
 
-        from studyctl.settings import get_db_path
-
-        conn = sqlite3.connect(str(get_db_path()))
-        conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT notes FROM study_sessions WHERE id = ?", (study_id,)).fetchone()
-        conn.close()
-        return row["notes"] if row and row["notes"] else None
-    except Exception:
-        return None
+    return get_session_notes(study_id)
 
 
 def _build_session_notes(
@@ -727,69 +738,17 @@ def _cleanup_session() -> None:
     """Auto-cleanup when the agent process exits.
 
     Called by the wrapper shell command in the main tmux pane. This runs
-    inside the tmux session, so it can switch the client back before
-    killing the session.
+    inside the tmux session, so tmux will SIGHUP us when sessions are
+    killed — all operations are wrapped in contextlib.suppress via
+    _end_session_common().
     """
     import contextlib
-    import os
 
-    from studyctl.history import end_study_session
-    from studyctl.session_state import (
-        PARKING_FILE,
-        SESSION_DIR,
-        TOPICS_FILE,
-        parse_parking_file,
-        parse_topics_file,
-        read_session_state,
-        write_session_state,
-    )
+    from studyctl.session_state import read_session_state
 
-    state = read_session_state()
-    study_id = state.get("study_session_id")
-    session_name = state.get("tmux_session")
-    persona_file = state.get("persona_file")
-
-    if not study_id:
-        return
-
-    # Capture session context as notes before ending.
-    # This is what --resume uses to give the agent context about
-    # where the conversation left off.
-    notes = _build_session_notes(
-        parse_topics_file(),
-        parse_parking_file(),
-    )
-
-    # End the DB session with captured notes
     with contextlib.suppress(Exception):
-        end_study_session(study_id, notes=notes)
-
-    # Signal dashboard summary view
-    with contextlib.suppress(Exception):
-        write_session_state({"mode": "ended"})
-
-    # Clean up temp files
-    if persona_file:
-        with contextlib.suppress(OSError):
-            os.unlink(persona_file)
-    oneline = SESSION_DIR / "session-oneline.txt"
-    with contextlib.suppress(OSError):
-        oneline.unlink()
-
-    # Fire-and-forget: kill ALL study tmux sessions. We're running INSIDE
-    # the session (agent wrapper pane), so tmux will SIGHUP us. Don't use
-    # kill_session() (retry loop) — we won't survive to verify.
-    # Killing all study-* sessions ensures no stale sessions accumulate.
-    with contextlib.suppress(Exception):
-        from studyctl.tmux import kill_all_study_sessions
-
-        kill_all_study_sessions(current_session=session_name)
-
-    # Clear transient IPC files but KEEP session-state.json (mode=ended).
-    # Needed by --resume to find the session directory.
-    for f in [TOPICS_FILE, PARKING_FILE, oneline]:
-        with contextlib.suppress(OSError):
-            f.unlink()
+        state = read_session_state()
+        _end_session_common(state)
 
 
 def _start_web_background(_session_name: str) -> None:
