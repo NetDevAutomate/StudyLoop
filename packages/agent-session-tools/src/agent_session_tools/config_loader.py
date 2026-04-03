@@ -1,11 +1,15 @@
 """Centralized configuration loader for agent-session-tools.
 
-Loads configuration from ~/.config/studyctl/config.yaml and .env
-Provides backwards compatibility with local config.json
+Loads configuration from ~/.config/studyctl/config.yaml and .env.
+
+Note: Both studyctl and agent-session-tools read the SAME config.yaml file.
+Each package reads only the sections it needs — studyctl reads topics/content/
+knowledge_domains; this package reads database/sync/semantic_search. This is
+intentional: the packages are independently publishable, so they must not
+import each other's config loaders.
 """
 
 import copy
-import json
 import os
 from pathlib import Path
 from typing import Any
@@ -17,7 +21,6 @@ from dotenv import load_dotenv
 CONFIG_DIR = Path.home() / ".config" / "studyctl"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 ENV_FILE = CONFIG_DIR / ".env"
-LOCAL_CONFIG = Path(__file__).parent / "config.json"
 
 # Fallback defaults
 DEFAULT_CONFIG = {
@@ -150,16 +153,6 @@ def load_config() -> dict[str, Any]:
                     _deep_merge(config, yaml_config)
         except Exception as e:
             print(f"Warning: Failed to load {config_file}: {e}")
-
-    # Backwards compatibility: try local config.json
-    elif LOCAL_CONFIG.exists():
-        try:
-            with open(LOCAL_CONFIG) as f:
-                json_config = json.load(f)
-                if "thresholds" in json_config:
-                    config["thresholds"].update(json_config["thresholds"])
-        except Exception as e:
-            print(f"Warning: Failed to load {LOCAL_CONFIG}: {e}")
 
     # Override with environment variables
     if v := os.getenv("DATABASE_PATH"):
