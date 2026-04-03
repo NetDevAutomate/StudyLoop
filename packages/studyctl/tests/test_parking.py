@@ -57,7 +57,8 @@ def parking_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             created_by TEXT DEFAULT 'agent',
             source TEXT NOT NULL DEFAULT 'parked'
                 CHECK(source IN ('parked', 'struggled', 'manual')),
-            tech_area TEXT
+            tech_area TEXT,
+            priority INTEGER
         )
     """)
     conn.execute("""

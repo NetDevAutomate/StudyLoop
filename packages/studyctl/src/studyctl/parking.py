@@ -204,3 +204,35 @@ def dismiss_parked_topic(parked_id: int) -> bool:
         return cursor.rowcount > 0
     finally:
         conn.close()
+
+
+def get_topic_frequencies(status: str = "pending") -> dict[str, int]:
+    """Count how many times each question appears in parked_topics.
+
+    Returns a dict mapping question text to its frequency count.
+    """
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            """SELECT question, COUNT(*) as freq
+               FROM parked_topics WHERE status = ?
+               GROUP BY question ORDER BY freq DESC""",
+            (status,),
+        ).fetchall()
+        return {row["question"]: row["freq"] for row in rows}
+    finally:
+        conn.close()
+
+
+def update_topic_priority(parked_id: int, priority: int) -> bool:
+    """Set the agent-assessed importance (1-5) on a backlog item."""
+    conn = _connect()
+    try:
+        cursor = conn.execute(
+            "UPDATE parked_topics SET priority = ? WHERE id = ?",
+            (priority, parked_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()

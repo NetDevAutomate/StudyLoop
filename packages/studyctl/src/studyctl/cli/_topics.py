@@ -141,6 +141,84 @@ def topics_resolve(topic_id: int) -> None:
         console.print(f"[yellow]Topic #{topic_id} not found or already resolved.[/yellow]")
 
 
+@topics_group.command("suggest")
+@click.option("--limit", "-l", default=10, show_default=True, help="Max suggestions to show.")
+@click.option("--topic", "-t", default=None, help="Current study topic for relevance sorting.")
+def topics_suggest(limit: int, topic: str | None) -> None:
+    """Suggest what to study next, ranked by importance and frequency.
+
+    Uses algorithmic scoring: agent-assessed importance (60%) combined
+    with how frequently a topic has been parked/struggled (40%).
+
+    Examples:
+
+        studyctl backlog suggest
+
+        studyctl backlog suggest --limit 5
+
+        studyctl backlog suggest --topic "Python Patterns"
+    """
+    from rich.table import Table
+
+    from studyctl.backlog_logic import BacklogItem, ScoringInput, score_backlog_items
+    from studyctl.cli._shared import console
+    from studyctl.parking import get_parked_topics, get_topic_frequencies
+
+    # GATHER
+    raw_topics = get_parked_topics(status="pending")
+    if not raw_topics:
+        console.print("[dim]No pending topics to suggest.[/dim]")
+        return
+
+    frequencies = get_topic_frequencies(status="pending")
+
+    scoring_inputs = [
+        ScoringInput(
+            item=BacklogItem(
+                id=t["id"],
+                question=t["question"],
+                topic_tag=t.get("topic_tag"),
+                tech_area=t.get("tech_area"),
+                source=t.get("source", "parked"),
+                context=t.get("context"),
+                parked_at=t["parked_at"],
+                session_topic=None,
+            ),
+            frequency=frequencies.get(t["question"], 1),
+            priority=t.get("priority"),
+        )
+        for t in raw_topics
+    ]
+
+    # DECIDE
+    suggestions = score_backlog_items(scoring_inputs)[:limit]
+
+    # PRESENT
+    table = Table(title=f"Study Suggestions — Top {len(suggestions)}")
+    table.add_column("#", justify="right", style="dim", width=3)
+    table.add_column("Topic", style="cyan")
+    table.add_column("Tech", style="green")
+    table.add_column("Score", justify="right", style="bold yellow")
+    table.add_column("Why", style="dim")
+
+    for rank, s in enumerate(suggestions, 1):
+        tech_col = s.item.tech_area or ""
+        score_col = f"{s.score:.2f}"
+        table.add_row(str(rank), s.item.question, tech_col, score_col, s.reasoning)
+
+    console.print(table)
+
+    if topic:
+        # Highlight items relevant to the current topic
+        relevant = [
+            s for s in suggestions if s.item.tech_area and s.item.tech_area.lower() in topic.lower()
+        ]
+        if relevant:
+            console.print(
+                f"\n[dim]{len(relevant)} of these relate to your current topic ({topic})[/dim]"
+            )
+
+
 def _relative_time(iso_datetime: str) -> str:
     """Convert ISO datetime string to a relative time like '2d', '5h'."""
     from datetime import UTC, datetime

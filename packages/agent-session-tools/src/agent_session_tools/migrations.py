@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 16
+CURRENT_VERSION = 17
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -611,6 +611,21 @@ def migrate_v16(conn: sqlite3.Connection) -> None:
     conn.execute("""
         CREATE UNIQUE INDEX uix_parked_topics_session_question
         ON parked_topics (study_session_id, question, source)
+    """)
+
+
+@migration(17, "Add priority column to parked_topics for agent-assessed importance")
+def migrate_v17(conn: sqlite3.Connection) -> None:
+    """Add agent-assessed importance score to backlog items.
+
+    Priority is set by the AI agent during study sessions to indicate
+    how foundational a topic is in the learning path:
+    - NULL = not yet assessed (defaults to 3 in scoring)
+    - 1 = low importance (niche/optional)
+    - 5 = critical/foundational (e.g. OOP basics, closures)
+    """
+    conn.execute("""
+        ALTER TABLE parked_topics ADD COLUMN priority INTEGER
     """)
 
 

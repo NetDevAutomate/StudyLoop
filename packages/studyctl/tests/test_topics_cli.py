@@ -131,3 +131,85 @@ class TestTopicsResolve:
 
         assert result.exit_code == 0
         assert "not found" in result.output.lower() or "already" in result.output.lower()
+
+
+class TestTopicsSuggest:
+    def test_empty_backlog(self):
+        from studyctl.cli._topics import topics_group
+
+        with patch("studyctl.parking.get_parked_topics", return_value=[]):
+            result = _runner().invoke(topics_group, ["suggest"])
+
+        assert result.exit_code == 0
+        assert "no pending" in result.output.lower()
+
+    def test_shows_ranked_suggestions(self):
+        from studyctl.cli._topics import topics_group
+
+        mock_data = [
+            {
+                "id": 1,
+                "question": "OOP fundamentals",
+                "topic_tag": "Python",
+                "tech_area": "Python",
+                "source": "struggled",
+                "context": None,
+                "parked_at": "2026-04-01 10:00:00",
+                "priority": 5,
+            },
+            {
+                "id": 2,
+                "question": "Niche syntax",
+                "topic_tag": "Python",
+                "tech_area": "Python",
+                "source": "parked",
+                "context": None,
+                "parked_at": "2026-04-02 14:00:00",
+                "priority": 1,
+            },
+        ]
+
+        with (
+            patch("studyctl.parking.get_parked_topics", return_value=mock_data),
+            patch(
+                "studyctl.parking.get_topic_frequencies",
+                return_value={"OOP fundamentals": 3, "Niche syntax": 1},
+            ),
+        ):
+            result = _runner().invoke(topics_group, ["suggest"])
+
+        assert result.exit_code == 0
+        assert "OOP fundamentals" in result.output
+        # High-priority item should appear first (rank 1)
+        oop_pos = result.output.index("OOP fundamentals")
+        niche_pos = result.output.index("Niche syntax")
+        assert oop_pos < niche_pos
+
+    def test_respects_limit(self):
+        from studyctl.cli._topics import topics_group
+
+        mock_data = [
+            {
+                "id": i,
+                "question": f"Topic {i}",
+                "topic_tag": None,
+                "tech_area": None,
+                "source": "parked",
+                "context": None,
+                "parked_at": "2026-04-01 10:00:00",
+                "priority": None,
+            }
+            for i in range(10)
+        ]
+
+        with (
+            patch("studyctl.parking.get_parked_topics", return_value=mock_data),
+            patch(
+                "studyctl.parking.get_topic_frequencies",
+                return_value={f"Topic {i}": 1 for i in range(10)},
+            ),
+        ):
+            result = _runner().invoke(topics_group, ["suggest", "--limit", "3"])
+
+        assert result.exit_code == 0
+        assert "Top 3" in result.output
