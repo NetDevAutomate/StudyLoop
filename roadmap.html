@@ -1104,13 +1104,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v22-live-session-dashboard-in-progress" class="md-nav__link">
+  <a href="#v22-live-session-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v2.2 — Live Session Dashboard (in progress)
+        v2.2 — Live Session Dashboard
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="v2.2 — Live Session Dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v221-ci-fixes-test-harness-session-bug-fixes-2026-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.2.1 — CI Fixes, Test Harness &amp; Session Bug Fixes (2026-04-02)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1127,6 +1144,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#v22-polish-phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.2 — Polish (Phase 2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#phase-6-cicd-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1138,10 +1166,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-7-docker-web-server-side-tts" class="md-nav__link">
+  <a href="#phase-3-devices-ttyd-lan" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 7: Docker Web + Server-Side TTS
+        Phase 3: Devices (ttyd + LAN)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-agent-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Agent Support
       
     </span>
   </a>
@@ -1520,13 +1559,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v22-live-session-dashboard-in-progress" class="md-nav__link">
+  <a href="#v22-live-session-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v2.2 — Live Session Dashboard (in progress)
+        v2.2 — Live Session Dashboard
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="v2.2 — Live Session Dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v221-ci-fixes-test-harness-session-bug-fixes-2026-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.2.1 — CI Fixes, Test Harness &amp; Session Bug Fixes (2026-04-02)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1543,6 +1599,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#v22-polish-phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.2 — Polish (Phase 2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#phase-6-cicd-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1554,10 +1621,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-7-docker-web-server-side-tts" class="md-nav__link">
+  <a href="#phase-3-devices-ttyd-lan" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 7: Docker Web + Server-Side TTS
+        Phase 3: Devices (ttyd + LAN)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-agent-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Agent Support
       
     </span>
   </a>
@@ -1798,7 +1876,7 @@
 <li>[x] <strong>Agent manifest</strong> — <code>agents/manifest.json</code> tracks SHA-256 hashes of all agent definitions. <code>scripts/update-agent-manifest.py</code> regenerates.</li>
 <li>[x] <strong>Documentation</strong> — README, CLI reference, setup guide, agent-install all updated for non-technical users.</li>
 </ul>
-<h2 id="v22-live-session-dashboard-in-progress">v2.2 — Live Session Dashboard (in progress)<a class="headerlink" href="#v22-live-session-dashboard-in-progress" title="Permanent link">&para;</a></h2>
+<h2 id="v22-live-session-dashboard">v2.2 — Live Session Dashboard<a class="headerlink" href="#v22-live-session-dashboard" title="Permanent link">&para;</a></h2>
 <p>Live study session with real-time dashboard, parking lot, and timer.</p>
 <ul>
 <li>[x] <strong>Phase 1 — Foundation</strong>: Session CLI (<code>session start/end/status</code>, <code>park</code>), file-IPC protocol (<code>session-state.json</code>, <code>session-topics.md</code>, <code>session-parking.md</code>), parking lot persistence (migration v14), auto-migration on connect</li>
@@ -1806,22 +1884,47 @@
 <li>[x] <strong>Phase 2 — Web Dashboard</strong>: SSE-powered live dashboard (<code>/session</code>), HTMX + Alpine.js, energy-adaptive timer, activity feed with visual language, session summary, artefact viewer, 14 tests</li>
 <li>[x] <strong>Bugs fixed</strong>: Parking deduplication (migration v15 + <code>INSERT OR IGNORE</code>), IPC file permissions (0700/0600), CORS wildcard removed, SSE mtime optimization, timer pause/reset controls, auto-migrate parked_topics</li>
 <li>[x] <strong>Phase 1 — Unified Session</strong>: <code>studyctl study</code> single command, tmux session runtime (<code>tmux.py</code>), agent launcher (<code>agent_launcher.py</code>, Claude-only), Textual sidebar (<code>tui/sidebar.py</code>), <code>--resume</code>/<code>--end</code>/<code>--web</code>, agent personas (<code>study.md</code>, <code>co-study.md</code>), persistent session directories with conversation history resume (<code>claude -r</code>), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.</li>
-<li>[ ] <strong>Phase 2 — Polish</strong>: Energy streaks, break suggestions, parked topic warmup, vendored HTMX/Alpine.js</li>
-<li>[ ] <strong>Phase 3 — Devices</strong>: ttyd via nginx proxy, pyrage + Keychain password, web terminal embed, LAN access</li>
+</ul>
+<h3 id="v221-ci-fixes-test-harness-session-bug-fixes-2026-04-02">v2.2.1 — CI Fixes, Test Harness &amp; Session Bug Fixes (2026-04-02)<a class="headerlink" href="#v221-ci-fixes-test-harness-session-bug-fixes-2026-04-02" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <strong>CI fixes</strong>: ruff formatting, integration test markers (<code>@pytest.mark.integration</code>), exclude tmux tests from CI</li>
+<li>[x] <strong>Copilot review</strong>: 7 comments resolved (migrations v15, session state cleanup, IPC chmod, INSERT OR IGNORE dedup, accessibility, notification prompt, SW cache)</li>
+<li>[x] <strong>Session bugs</strong>: Q quit kills all <code>study-*</code> sessions (stale first, current last), <code>detach-on-destroy on</code> returns user to shell, resume zombie detection via <code>pgrep</code>, agent binary absolute path resolution</li>
+<li>[x] <strong>3-layer test harness</strong>: Textual Pilot (5 tests), tmux Lifecycle (15 tests), pexpect UAT (6 tests) — 747 tests total</li>
+<li>[x] <strong>Docs</strong>: setup-guide (tmux prereq + resurrect note), session-protocol (tmux environment section), solution doc</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
+<h3 id="v22-polish-phase-2">v2.2 — Polish (Phase 2)<a class="headerlink" href="#v22-polish-phase-2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] <code>studyctl clean</code> — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs</li>
+<li>[ ] tmux-resurrect compatibility — exclude <code>study-*</code> sessions from resurrect save/restore</li>
+<li>[ ] Vendor HTMX + Alpine.js into <code>web/static/</code> (remove CDN, enable offline PWA)</li>
+<li>[ ] Parked topic warmup at session start (surface unresolved topics from previous sessions)</li>
+<li>[ ] Break suggestions at timer threshold crossings (from <code>break-science.md</code>)</li>
+<li>[ ] Energy streaks — correlate energy levels with session outcomes in <code>studyctl streaks</code></li>
+</ul>
 <h3 id="phase-6-cicd-pipeline">Phase 6: CI/CD Pipeline<a class="headerlink" href="#phase-6-cicd-pipeline" title="Permanent link">&para;</a></h3>
-<p>Nightly drift detection, pre-release gate, and Docker image pipeline. Spec at <code>docs/ci-cd-pipeline.md</code>.</p>
+<p>Nightly drift detection, pre-release gate. Spec at <code>docs/ci-cd-pipeline.md</code>.</p>
 <ul>
 <li>[ ] Nightly: fresh install on Ubuntu + macOS, <code>studyctl doctor --json</code> as gate</li>
-<li>[ ] Pre-release: upgrade path N-1 -&gt; N, triggered on release tags</li>
-<li>[ ] Docker: <code>studyctl-web</code> image with server-side TTS, health check via doctor</li>
+<li>[ ] Pre-release: upgrade path N-1 → N, triggered on release tags</li>
+<li>[ ] Docker: <code>studyctl-web</code> image with health check via doctor</li>
 <li>[ ] <code>compatibility.json</code> for pre-flight version checks</li>
 </ul>
-<h3 id="phase-7-docker-web-server-side-tts">Phase 7: Docker Web + Server-Side TTS<a class="headerlink" href="#phase-7-docker-web-server-side-tts" title="Permanent link">&para;</a></h3>
+<h3 id="phase-3-devices-ttyd-lan">Phase 3: Devices (ttyd + LAN)<a class="headerlink" href="#phase-3-devices-ttyd-lan" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Docker image running <code>studyctl web</code> with kokoro-onnx TTS</li>
-<li>[ ] FastAPI audio endpoint for browser playback</li>
+<li>[ ] ttyd via nginx/Caddy proxy (Unix socket, htpasswd auth)</li>
+<li>[ ] pyrage + macOS Keychain for password management</li>
+<li>[ ] Web terminal embed (iframe with LAN IP, <code>frame-ancestors</code> CSP)</li>
+<li>[ ] <code>studyctl study --lan</code> flag</li>
+<li>[ ] LAN password auth</li>
+</ul>
+<h3 id="multi-agent-support">Multi-Agent Support<a class="headerlink" href="#multi-agent-support" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Gemini CLI launch command + persona integration</li>
+<li>[ ] Kiro CLI launch command + persona integration</li>
+<li>[ ] OpenCode launch command + persona integration</li>
+<li>[ ] Agent auto-detection priority order (configurable)</li>
 </ul>
 <h3 id="phase-3-mcp-agent-integration">Phase 3: MCP Agent Integration<a class="headerlink" href="#phase-3-mcp-agent-integration" title="Permanent link">&para;</a></h3>
 <ul>

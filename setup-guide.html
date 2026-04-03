@@ -1960,10 +1960,14 @@
 <ul>
 <li><strong>Python 3.12+</strong> (both studyctl and agent-session-tools require 3.12+)</li>
 <li><strong><a href="https://docs.astral.sh/uv/">uv</a></strong> — Python package manager</li>
+<li><strong>tmux 3.1+</strong> — required for <code>studyctl study</code> split-pane sessions (<code>brew install tmux</code> on macOS, <code>apt install tmux</code> on Linux)</li>
 <li><strong>Obsidian</strong> — for study notes (any vault structure works)</li>
 <li><strong>Optional</strong>: <code>notebooklm-py</code> for Google NotebookLM sync</li>
 <li><strong>Optional</strong>: <code>sentence-transformers</code> for semantic search</li>
 </ul>
+<blockquote>
+<p><strong>tmux plugin note</strong>: If you use <code>tmux-resurrect</code> or <code>tmux-continuum</code>, these plugins may interfere with studyctl's session management. studyctl sets <code>detach-on-destroy on</code> and <code>remain-on-exit off</code> on its sessions to ensure clean exits.</p>
+</blockquote>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <h3 id="automatic-recommended">Automatic (recommended)<a class="headerlink" href="#automatic-recommended" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/Socratic-Study-Mentor.git

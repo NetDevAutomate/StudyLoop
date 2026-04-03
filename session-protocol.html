@@ -520,6 +520,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#tmux-session-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tmux Session Environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-session-arrival-2-min-transition-support" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1065,6 +1076,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#tmux-session-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tmux Session Environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-session-arrival-2-min-transition-support" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1281,6 +1303,15 @@
 <p class="admonition-title">This is the shared protocol</p>
 <p>All agents (Kiro, Claude Code, Gemini, OpenCode) use the same session flow. The source of truth lives in <code>agents/shared/session-protocol.md</code>.</p>
 </div>
+<h2 id="tmux-session-environment">tmux Session Environment<a class="headerlink" href="#tmux-session-environment" title="Permanent link">&para;</a></h2>
+<p>Sessions run inside a tmux split-pane layout created by <code>studyctl study</code>:</p>
+<ul>
+<li><strong>Left pane</strong>: AI agent (Claude Code or other) running the session protocol</li>
+<li><strong>Right pane</strong>: Textual sidebar showing timer, activity feed, and counters</li>
+<li><strong>Key bindings</strong>: <code>p</code> pause/resume timer, <code>r</code> reset timer, <code>Q</code> end session</li>
+<li><strong><code>Q</code> quit</strong>: Ends the DB session, kills all <code>study-*</code> tmux sessions, returns to the original shell</li>
+<li><strong><code>--resume</code></strong>: Detects live or zombie sessions and reconnects or rebuilds</li>
+</ul>
 <hr />
 <h2 id="1-session-arrival-2-min-transition-support">1. Session Arrival (2 min) — Transition Support<a class="headerlink" href="#1-session-arrival-2-min-transition-support" title="Permanent link">&para;</a></h2>
 <p>Before any tools run. The goal is to reduce <strong>attention residue</strong> from whatever you were doing before.</p>
