@@ -931,6 +931,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#architecture-debt-from-2026-04-03-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Debt (from 2026-04-03 review)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#future-phases" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1323,14 +1334,14 @@ end note
 <tbody>
 <tr>
 <td>Clean</td>
-<td><code>_clean_logic.py</code> → <code>plan_clean()</code></td>
-<td><code>_clean.py</code></td>
+<td><code>clean_logic.py</code> → <code>plan_clean()</code></td>
+<td><code>cli/_clean.py</code></td>
 <td><code>test_clean.py</code> (17, zero mocks)</td>
 </tr>
 <tr>
 <td>Backlog</td>
 <td><code>backlog_logic.py</code> → <code>format_backlog_list()</code>, <code>score_backlog_items()</code>, <code>plan_auto_persist()</code>, <code>build_backlog_summary()</code></td>
-<td><code>_topics.py</code>, <code>_study.py</code></td>
+<td><code>cli/_topics.py</code>, <code>cli/_study.py</code></td>
 <td><code>test_backlog_logic.py</code> (22, zero mocks)</td>
 </tr>
 <tr>
@@ -1342,11 +1353,12 @@ end note
 <tr>
 <td>Streaks <em>(planned)</em></td>
 <td><code>streaks_logic.py</code> → <code>analyze_energy_streaks()</code></td>
-<td><code>_review.py</code></td>
+<td><code>cli/_review.py</code></td>
 <td><code>test_streaks_logic.py</code></td>
 </tr>
 </tbody>
 </table>
+<p><strong>Note</strong>: All FCIS cores live at <code>studyctl/</code> package level (not inside <code>cli/</code>). This was corrected per the 2026-04-03 architecture review recommendation.</p>
 <h2 id="7-test-pyramid">7. Test Pyramid<a class="headerlink" href="#7-test-pyramid" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>CI-safe tests (no tmux, no network):     786
 Integration tests (real DB):              13
@@ -1366,6 +1378,7 @@ Total:                                   799+
 </ul>
 <h3 id="remaining-v22-polish">Remaining (v2.2 polish)<a class="headerlink" href="#remaining-v22-polish" title="Permanent link">&para;</a></h3>
 <ul>
+<li>[ ] <strong>Structural cleanup</strong> (from architecture review): move <code>_clean_logic.py</code> to package level, wire service layer</li>
 <li>[ ] Break suggestions at timer thresholds</li>
 <li>[ ] Energy streaks correlation</li>
 <li>[ ] Register MCP tools in agent persona</li>
@@ -1373,9 +1386,16 @@ Total:                                   799+
 <li>[ ] Nested tmux UAT test (needs tmux)</li>
 <li>[ ] <code>--end</code> UAT test from outside (needs tmux)</li>
 </ul>
+<h3 id="architecture-debt-from-2026-04-03-review">Architecture Debt (from 2026-04-03 review)<a class="headerlink" href="#architecture-debt-from-2026-04-03-review" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Unify config systems (YAML + JSON → single YAML)</li>
+<li>[ ] Nightly CI job for UAT tests (macOS runner with tmux)</li>
+<li>[ ] Split <code>query_sessions.py</code> monolith (CLI/formatters/resolver)</li>
+<li>[ ] Fix VSCode circular import</li>
+</ul>
 <h3 id="future-phases">Future Phases<a class="headerlink" href="#future-phases" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Phase 6: CI/CD improvements</li>
+<li>Phase 6: CI/CD improvements (includes architecture debt above)</li>
 <li>Phase 3: Devices (ttyd + LAN)</li>
 <li>Multi-Agent Support</li>
 <li>Full MCP Agent Integration</li>
