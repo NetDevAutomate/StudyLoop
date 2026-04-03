@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from agent_session_tools.query_sessions import estimate_tokens
+from agent_session_tools.query_logic import estimate_tokens
 from agent_session_tools.query_utils import (
     build_date_filter,
     check_thresholds,
