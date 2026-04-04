@@ -476,6 +476,7 @@ site/
 *.db-journal
 
 # Agent-generated docs (kept locally, not published)
+docs/local_repo_docs/
 docs/analysis/
 docs/architecture/
 docs/brainstorms/
@@ -488,7 +489,6 @@ docs/solutions/
 docs/specs/
 docs/brainstorm-*.md
 docs/plan-*.md
-docs/system-overview.md
 docs/TESTING.md
 docs/ci-cd-pipeline.md
 
