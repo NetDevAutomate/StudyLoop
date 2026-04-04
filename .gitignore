@@ -475,22 +475,8 @@ site/
 *.db-shm
 *.db-journal
 
-# Agent-generated docs (kept locally, not published)
-docs/local_repo_docs/
-docs/analysis/
-docs/architecture/
-docs/brainstorms/
-docs/handoff/
-docs/mentoring/
-docs/plans/
-docs/research/
-docs/reviews/
-docs/solutions/
-docs/specs/
-docs/brainstorm-*.md
-docs/plan-*.md
-docs/TESTING.md
-docs/ci-cd-pipeline.md
+# Internal docs (kept locally, not published)
+docs/internal/
 
 # Agent workflow artefacts
 code-review-plan-items.md
