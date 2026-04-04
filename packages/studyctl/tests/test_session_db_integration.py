@@ -1,6 +1,6 @@
 """Integration tests for session-db — full pipeline with real SQLite DB.
 
-Tests migration v17, parking with source/priority, scoring pipeline,
+Tests migrations, parking with source/priority, scoring pipeline,
 and study session lifecycle for all session types.
 
 Marked @pytest.mark.integration — excluded from CI (needs full DB).
@@ -56,7 +56,7 @@ def _query(db_path: Path, sql: str, params: tuple = ()) -> list[dict]:
 
 
 @pytest.mark.integration
-class TestMigrationV17:
+class TestMigrations:
     def test_migration_creates_priority_column(self, session_db: Path):
         """v17 adds priority INTEGER column to parked_topics."""
         cols = _query(session_db, "PRAGMA table_info(parked_topics)")
@@ -65,11 +65,13 @@ class TestMigrationV17:
         assert "source" in col_names  # v16
         assert "tech_area" in col_names  # v16
 
-    def test_schema_version_is_17(self, session_db: Path):
+    def test_schema_version_is_current(self, session_db: Path):
+        from agent_session_tools.migrations import CURRENT_VERSION
+
         conn = sqlite3.connect(str(session_db))
         version = conn.execute("PRAGMA user_version").fetchone()[0]
         conn.close()
-        assert version == 17
+        assert version == CURRENT_VERSION
 
 
 # ─── Parking with Source/Priority Tests ─────────────────────────
