@@ -1030,6 +1030,12 @@ main:has(.split-container) .session-dashboard {
   display: flex;
   gap: 0.3rem;
 }
+.terminal-iframe.iframe-hidden {
+  height: 0 !important;
+  flex: 0 !important;
+  overflow: hidden;
+  border: none;
+}
 .terminal-iframe {
   width: 100%;
   flex: 1;

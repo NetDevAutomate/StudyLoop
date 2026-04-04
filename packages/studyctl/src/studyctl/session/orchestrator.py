@@ -344,9 +344,9 @@ def start_ttyd_background(session_name: str, *, lan: bool = False) -> None:
         "-p",
         str(port),
         "tmux",
-        "attach",
+        "new-session",
         "-t",
-        session_name,
+        session_name,  # grouped session: shares windows, independent sizing
     ]
 
     try:
