@@ -884,6 +884,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="4. Session Intelligence — Cross-Session Learning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#session-db-mcp-mcp-server-for-session-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        session-db-mcp — MCP Server for Session Access
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1238,6 +1255,137 @@ session-query<span class="w"> </span>context<span class="w"> </span>SESSION_ID<s
 session-query<span class="w"> </span><span class="k">continue</span><span class="w"> </span>SESSION_ID<span class="w">       </span><span class="c1"># Resume context</span>
 session-sync<span class="w"> </span>push<span class="w"> </span>mac-mini<span class="w">              </span><span class="c1"># Push to remote</span>
 session-sync<span class="w"> </span>pull<span class="w"> </span>mac-mini<span class="w">              </span><span class="c1"># Pull from remote</span>
+</code></pre></div></p>
+<h4 id="session-db-mcp-mcp-server-for-session-access">session-db-mcp — MCP Server for Session Access<a class="headerlink" href="#session-db-mcp-mcp-server-for-session-access" title="Permanent link">&para;</a></h4>
+<p>A standalone MCP server exposing the session database to any MCP-compatible AI tool via stdio transport. Installed as part of <code>agent-session-tools</code>.</p>
+<pre class="mermaid"><code>graph TB
+    subgraph "AI Coding Tools"
+        CC["Claude Code"]
+        KC["Kiro CLI"]
+        GC["Gemini CLI"]
+        OC["OpenCode / Aider"]
+    end
+
+    subgraph "session-db-mcp&lt;br/&gt;(FastMCP, stdio)"
+        S1["session_search&lt;br/&gt;&lt;i&gt;FTS5 keyword search&lt;/i&gt;"]
+        S2["session_list&lt;br/&gt;&lt;i&gt;Chronological browse&lt;/i&gt;"]
+        S3["session_show&lt;br/&gt;&lt;i&gt;Full session content&lt;/i&gt;"]
+        S4["session_context&lt;br/&gt;&lt;i&gt;Token-efficient excerpts&lt;/i&gt;"]
+        S5["session_stats&lt;br/&gt;&lt;i&gt;DB statistics&lt;/i&gt;"]
+        S6["session_clean&lt;br/&gt;&lt;i&gt;Secret scrubbing&lt;/i&gt;"]
+        S7["session_hotspots&lt;br/&gt;&lt;i&gt;File access frequency&lt;/i&gt;"]
+    end
+
+    subgraph "Data Layer"
+        DB[(sessions.db&lt;br/&gt;SQLite WAL v19)]
+        FTS["messages_fts&lt;br/&gt;(FTS5 porter)"]
+        FR["file_references"]
+        SL["scrub_log"]
+    end
+
+    CC --&gt;|"MCP stdio"| S1
+    KC --&gt;|"MCP stdio"| S1
+    GC --&gt;|"MCP stdio"| S1
+    OC --&gt;|"MCP stdio"| S1
+
+    S1 --&gt; FTS
+    S2 --&gt; DB
+    S3 --&gt; DB
+    S4 --&gt; DB
+    S5 --&gt; DB
+    S6 --&gt; SL
+    S7 --&gt; FR</code></pre>
+<p><strong>Tool reference:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>session_search</code></td>
+<td>read-only</td>
+<td>FTS5 keyword search with porter stemming. Supports AND/OR/NOT. Filter by <code>source</code>, <code>project</code></td>
+</tr>
+<tr>
+<td><code>session_list</code></td>
+<td>read-only</td>
+<td>List sessions chronologically with pagination. Filter by <code>source</code>, <code>project</code></td>
+</tr>
+<tr>
+<td><code>session_show</code></td>
+<td>read-only</td>
+<td>Full session with all messages. Supports partial ID prefix matching</td>
+</tr>
+<tr>
+<td><code>session_context</code></td>
+<td>read-only</td>
+<td>Token-efficient excerpts: <code>compressed</code> (~35%), <code>summary</code> (~20%), <code>context_only</code> (~25%), <code>markdown</code>, <code>xml</code>. Respects <code>max_tokens</code> budget</td>
+</tr>
+<tr>
+<td><code>session_stats</code></td>
+<td>read-only</td>
+<td>Total sessions/messages, sources breakdown, date range, storage size</td>
+</tr>
+<tr>
+<td><code>session_clean</code></td>
+<td>destructive</td>
+<td>Scrub secrets (API keys, tokens, credentials) with format-preserving placeholders. <code>dry_run=True</code> default; audit trail in <code>scrub_log</code></td>
+</tr>
+<tr>
+<td><code>session_hotspots</code></td>
+<td>read-only</td>
+<td>Most-discussed files ranked by reference count. Filter by <code>project</code>, <code>days</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Architecture:</strong></p>
+<pre class="mermaid"><code>graph LR
+    subgraph "mcp_server.py"
+        MCP["FastMCP server"]
+        T["7 tool functions"]
+    end
+
+    subgraph "Core Modules&lt;br/&gt;(one-way imports)"
+        QU["query_utils.py"]
+        QL["query_logic.py"]
+        FM["formatters.py"]
+        SC["scrubber.py"]
+        FH["file_hotspots.py"]
+        CL["config_loader.py"]
+    end
+
+    MCP --&gt; T
+    T --&gt; QU
+    T --&gt; QL
+    T --&gt; FM
+    T --&gt; SC
+    T --&gt; FH
+    T --&gt; CL</code></pre>
+<p><strong>Registration:</strong>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;session-db&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;session-db-mcp&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p><strong>Usage examples:</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># Search past work</span>
+<span class="n">session_search</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;JWT middleware&quot;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">&quot;claude_code&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># Token-efficient context for reuse</span>
+<span class="n">session_context</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="s2">&quot;sess-auth&quot;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;compressed&quot;</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+
+<span class="c1"># Most-discussed files this week</span>
+<span class="n">session_hotspots</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c1"># Audit secrets before sharing</span>
+<span class="n">session_clean</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="s2">&quot;sess-abc123&quot;</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div></p>
 <hr />
 <h3 id="5-agent-protocol-how-ai-mentors-behave">5. Agent Protocol — How AI Mentors Behave<a class="headerlink" href="#5-agent-protocol-how-ai-mentors-behave" title="Permanent link">&para;</a></h3>
