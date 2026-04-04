@@ -10,7 +10,7 @@
 #   2. Add GitHub as trusted publisher:
 #      - Owner: NetDevAutomate
 #      - Repository: socratic-study-mentor
-#      - Workflow: release.yml
+#      - Workflow: publish.yml
 #      - Environment: pypi
 
 name: Release

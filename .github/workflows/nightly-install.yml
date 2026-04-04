@@ -25,7 +25,7 @@ jobs:
 
       - name: Run studyctl doctor
         run: |
-          output=$(uv run studyctl doctor --json)
+          output=$(uv run studyctl doctor --json) || true
           echo "$output" | python3 -c "
           import json, sys
           checks = json.load(sys.stdin)
