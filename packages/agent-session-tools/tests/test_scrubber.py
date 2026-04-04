@@ -40,9 +40,8 @@ CONNECTION_STRING = (
 )
 GCP_API_KEY = "AIza" + "E" * 35  # pragma: allowlist secret
 STRIPE_TEST_KEY = "sk_test_" + "F" * 24  # pragma: allowlist secret
-SLACK_BOT_TOKEN = (
-    "xoxb-12345678901-12345678901-ABCDEFGHIJKLMNOP"  # pragma: allowlist secret
-)
+_SLACK_SUFFIX = "-12345678901-12345678901-ABCDEFGHIJKLMNOP"  # pragma: allowlist secret
+SLACK_BOT_TOKEN = "xoxb" + _SLACK_SUFFIX  # pragma: allowlist secret
 GENERIC_SECRET = "password = 'supersecret123'"  # pragma: allowlist secret
 
 
