@@ -254,14 +254,15 @@ def _get_web_port() -> int:
 
 
 def _open_browser(url: str) -> None:
-    """Open URL in the configured browser after a brief delay for server startup.
+    """Open URL in the configured browser after polling for server readiness.
+
+    Uses a detached subprocess (not a thread) because attach_if_needed()
+    calls os.execvp() which replaces the process and kills daemon threads.
+    A subprocess survives the exec (reparented to PID 1).
 
     Reads ``browser`` from config. Empty string = system default.
     Supported values: "chrome", "safari", "firefox", "brave", or empty.
     """
-    import threading
-    import webbrowser
-
     browser_name = ""
     try:
         from studyctl.settings import load_settings
@@ -270,39 +271,35 @@ def _open_browser(url: str) -> None:
     except Exception:
         pass
 
-    # Map friendly names to webbrowser module names
+    # Map friendly names to macOS `open -a` app names
     browser_map = {
         "chrome": "Google Chrome",
-        "safari": "safari",
-        "firefox": "firefox",
+        "safari": "Safari",
+        "firefox": "Firefox",
         "brave": "Brave Browser",
     }
 
-    def _open() -> None:
-        import time
-        import urllib.request
+    # Build the open command
+    if browser_name and browser_name.lower() in browser_map:
+        app = browser_map[browser_name.lower()]
+        open_cmd = f"open -a '{app}' '{url}'"
+    else:
+        open_cmd = f"open '{url}'"
 
-        # Poll until the web server is ready (up to 10 seconds)
-        for _ in range(20):
-            try:
-                urllib.request.urlopen(url, timeout=1)
-                break
-            except Exception:
-                time.sleep(0.5)
-        else:
-            return  # Server never started — skip browser open
+    # Shell script: poll until server responds, then open browser.
+    # Runs as a detached subprocess that survives os.execvp().
+    poll_script = (
+        f"for i in $(seq 1 20); do "
+        f"  curl -sf -o /dev/null '{url}' && {open_cmd} && exit 0; "
+        f"  sleep 0.5; "
+        f"done"
+    )
 
-        try:
-            if browser_name and browser_name.lower() in browser_map:
-                controller = webbrowser.get(f"open -a '{browser_map[browser_name.lower()]}' %s")
-                controller.open(url)
-            else:
-                webbrowser.open(url)
-        except Exception:
-            pass  # Non-fatal — user can open manually
-
-    # Run in a thread so we don't block session startup
-    threading.Thread(target=_open, daemon=True).start()
+    subprocess.Popen(
+        ["sh", "-c", poll_script],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def _get_ttyd_port() -> int:
