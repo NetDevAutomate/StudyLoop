@@ -256,22 +256,49 @@ Nightly drift detection, pre-release gate, backup/restore.
 - [ ] Docker: `studyctl-web` image with health check via doctor — deferred to Phase 3
 - [ ] `compatibility.json` for pre-flight version checks — deferred (doctor already covers this)
 
-### Phase 3: Devices (ttyd + LAN)
+### Multi-Agent Support ✅
 
-- [ ] ttyd via nginx/Caddy proxy (Unix socket, htpasswd auth)
-- [ ] pyrage + macOS Keychain for password management
-- [ ] Web terminal embed (iframe with LAN IP, `frame-ancestors` CSP)
-- [ ] `studyctl study --lan` flag
-- [ ] LAN password auth
+- [x] Gemini CLI launch command + persona integration (GEMINI.md auto-loaded)
+- [x] Kiro CLI launch command + persona integration (atomic JSON + backup + teardown)
+- [x] OpenCode launch command + persona integration (YAML frontmatter persona)
+- [x] Agent auto-detection priority order (configurable via `config.yaml` + `STUDYCTL_AGENT` env var)
+- [x] Frozen `AgentAdapter` dataclass with per-agent setup/launch/teardown/mcp callables
+- [x] Doctor agent smoke tests (binary detection + version check)
 
-### Multi-Agent Support
+### CI/CD Fixes (2026-04-04) ✅
 
-- [ ] Gemini CLI launch command + persona integration
-- [ ] Kiro CLI launch command + persona integration
-- [ ] OpenCode launch command + persona integration
-- [ ] Agent auto-detection priority order (configurable)
+- [x] Doctor exit code `|| true` in nightly-install + pre-release workflows
+- [x] Atomic state file writes (threading.Lock + temp file + os.replace)
+- [x] Auto-create sessions DB on first connect (run migrations on fresh machine)
+- [x] Internal docs consolidation (66 → 18 files)
 
-### Phase 3: MCP Agent Integration
+## Next: v2.2.0 — Remote Study + Local LLMs
 
-- [ ] FastMCP v1 server with stdio transport
-- [ ] Flashcard/quiz generation tools, study context, onboarding agent
+Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optional local LLMs.
+
+### ttyd Integration + Embedded Web Pane
+
+- [ ] `studyctl study --lan` starts ttyd alongside tmux session (port 7681)
+- [ ] Embed ttyd as iframe in existing web dashboard
+- [ ] "Open Study Agent Session" button — iframe split (default) + pop-out new window
+- [ ] Doctor check for ttyd binary
+- [ ] Config support for ttyd port
+
+### Local LLMs via Ollama / LM Studio
+
+- [ ] `studyctl study Python --agent ollama` — new AgentAdapter entries
+- [ ] Run through Claude Code with `ANTHROPIC_BASE_URL` pointed at local model
+- [ ] Doctor checks: binary detection, model availability, context window minimum
+- [ ] Config support in `config.yaml` agents section
+
+### Multi-Agent Cleanup
+
+- [ ] Kiro crash recovery (check + restore on session start)
+- [ ] Gemini MCP pip-install path fix
+- [ ] OpenCode real-binary validation
+
+### Deferred
+
+- Docker web + server-side TTS — parked
+- Full TUI session view — cut (web + ttyd covers this)
+- Obsidian session export — future release
