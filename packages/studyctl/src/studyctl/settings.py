@@ -118,6 +118,10 @@ class Settings:
     notebooklm: NotebookLMConfig = field(default_factory=NotebookLMConfig)
     content: ContentConfig = field(default_factory=ContentConfig)
     agents: AgentsConfig = field(default_factory=AgentsConfig)
+    ttyd_port: int = 7681
+    web_port: int = 8567
+    browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
+    skip_permissions: bool = False  # pass --dangerously-skip-permissions to Claude Code
 
 
 def load_settings() -> Settings:

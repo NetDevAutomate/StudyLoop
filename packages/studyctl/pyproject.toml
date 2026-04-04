@@ -52,9 +52,15 @@ testpaths = ["tests"]
 addopts = "--tb=short"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
+    "e2e: end-to-end browser tests requiring Playwright + web server",
 ]
 
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/cli/_web.py", "src/studyctl/web", "src/studyctl/mcp"]  # optional deps not in CI
+
+[dependency-groups]
+dev = [
+    "pytest-playwright>=0.7.2",
+]

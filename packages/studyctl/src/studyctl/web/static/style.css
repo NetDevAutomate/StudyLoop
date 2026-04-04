@@ -939,3 +939,39 @@ body.dyslexic .card-content {
   .activity-feed { padding: 12px 16px; }
   .counter-bar { gap: 12px; padding: 10px 16px; font-size: 0.8rem; }
 }
+
+/* Terminal panel */
+.terminal-panel {
+  margin-top: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.8rem;
+  background: var(--bg-secondary, var(--bg-card));
+  border-bottom: 1px solid var(--border);
+}
+.terminal-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.terminal-controls {
+  display: flex;
+  gap: 0.3rem;
+}
+.terminal-iframe {
+  width: 100%;
+  height: 50vh;
+  border: none;
+  background: #1a1b26;
+}
+.terminal-placeholder {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}

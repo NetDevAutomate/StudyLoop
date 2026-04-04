@@ -107,6 +107,13 @@ def end_session_common(
     with contextlib.suppress(OSError):
         oneline.unlink()
 
+    # Kill background processes (web dashboard, ttyd)
+    for pid_key in ("web_pid", "ttyd_pid"):
+        pid = state.get(pid_key)
+        if pid:
+            with contextlib.suppress(OSError):
+                os.kill(pid, 15)  # SIGTERM
+
     # Kill all study tmux sessions
     with contextlib.suppress(Exception):
         kill_all_study_sessions(current_session=session_name)

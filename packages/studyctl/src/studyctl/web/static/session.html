@@ -77,6 +77,28 @@
         <span id="counter-parked" class="counter counter-parked">&#9675; PARKED: 0</span>
         <span id="counter-review" class="counter counter-review">&#9650; REVIEW: 0</span>
       </div>
+
+      <!-- Terminal panel (ttyd iframe or pop-out) -->
+      <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
+        <div class="terminal-header">
+          <span class="terminal-title">Agent Terminal</span>
+          <div class="terminal-controls">
+            <button class="timer-btn" @click="toggleEmbed()"
+                    :title="embedded ? 'Hide terminal' : 'Show terminal'"
+                    x-text="embedded ? '\u2796' : '\u2795'"></button>
+            <button class="timer-btn" @click="popOut()" title="Open in new window">
+              &#x29c9;
+            </button>
+          </div>
+        </div>
+        <iframe x-show="embedded" :src="ttydUrl"
+                class="terminal-iframe"
+                allow="clipboard-read; clipboard-write">
+        </iframe>
+        <div x-show="!embedded && poppedOut" class="terminal-placeholder">
+          Terminal opened in separate window
+        </div>
+      </div>
     </div>
   </main>
 
@@ -227,6 +249,42 @@
   /* Notification permission is requested on user gesture only.
      The timer-btn clicks in the Alpine component can call
      Notification.requestPermission() when the user interacts. */
+
+  function terminalPanel() {
+    return {
+      available: false,
+      embedded: true,
+      poppedOut: false,
+      ttydPort: 7681,
+
+      get ttydUrl() {
+        return `http://${window.location.hostname}:${this.ttydPort}`;
+      },
+
+      async init() {
+        try {
+          const res = await fetch('/api/session/state');
+          const state = await res.json();
+          if (state.ttyd_port) {
+            this.ttydPort = state.ttyd_port;
+            this.available = true;
+          }
+        } catch { /* ttyd not available */ }
+      },
+
+      toggleEmbed() {
+        this.embedded = !this.embedded;
+        this.poppedOut = false;
+      },
+
+      popOut() {
+        window.open(this.ttydUrl, 'studyctl-terminal',
+          'width=900,height=600,menubar=no,toolbar=no');
+        this.embedded = false;
+        this.poppedOut = true;
+      }
+    };
+  }
   </script>
 </body>
 </html>
