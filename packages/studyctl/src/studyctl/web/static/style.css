@@ -1062,8 +1062,8 @@ main:has(.split-container) .session-dashboard {
   justify-content: center;
   gap: 1rem;
 }
-.placeholder-btn {
+.placeholder-hint {
+  font-size: 0.85rem;
   font-style: normal;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
+  color: var(--text-muted);
 }
