@@ -1043,6 +1043,13 @@ main:has(.split-container) .session-dashboard {
   font-style: italic;
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
+}
+.placeholder-btn {
+  font-style: normal;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
 }
