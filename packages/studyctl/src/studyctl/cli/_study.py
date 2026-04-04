@@ -51,6 +51,7 @@ def _agent_names() -> list[str]:
     help="Energy level (1-10).",
 )
 @click.option("--web", is_flag=True, help="Also start the web dashboard.")
+@click.option("--lan", is_flag=True, help="Expose web dashboard + terminal to LAN (implies --web).")
 @click.option("--resume", is_flag=True, help="Resume an existing session.")
 @click.option("--end", "end_session", is_flag=True, help="End the current session.")
 @click.pass_context
@@ -62,6 +63,7 @@ def study(
     timer: str | None,
     energy: int,
     web: bool,
+    lan: bool,
     resume: bool,
     end_session: bool,
 ) -> None:
@@ -96,7 +98,10 @@ def study(
     if timer is None:
         timer = "pomodoro" if mode == "co-study" else "elapsed"
 
-    _handle_start(ctx, topic, agent, mode, timer, energy, web)
+    if lan:
+        web = True
+
+    _handle_start(ctx, topic, agent, mode, timer, energy, web, lan=lan)
 
 
 def _auto_clean_zombies() -> None:
@@ -247,6 +252,7 @@ def _handle_start(
     energy: int,
     web: bool,
     *,
+    lan: bool = False,
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
     previous_notes: str | None = None,
@@ -265,6 +271,7 @@ def _handle_start(
         build_wrapped_agent_cmd,
         create_tmux_environment,
         setup_session_dir,
+        start_ttyd_background,
         start_web_background,
     )
     from studyctl.session_state import (
@@ -410,7 +417,10 @@ def _handle_start(
     )
 
     if web:
-        start_web_background(session_name)
+        start_web_background(session_name, lan=lan)
+
+    # Start ttyd if installed (allows iPad/LAN terminal access)
+    start_ttyd_background(session_name, lan=lan)
 
     attach_if_needed(session_name, result["already_in_tmux"])
 

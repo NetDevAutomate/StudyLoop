@@ -11,7 +11,9 @@ Ordering is critical:
 from __future__ import annotations
 
 import os
+import shutil
 import stat
+import subprocess
 import sys
 from typing import TYPE_CHECKING
 
@@ -39,6 +41,16 @@ def setup_session_dir(
             "Do not search for code or project files here.\n\n"
             "Use `studyctl topic` to log topics and `studyctl park` to park questions.\n"
         )
+
+    # Pre-trust the session directory for Claude Code so the workspace
+    # trust prompt doesn't block automated/ttyd sessions.
+    claude_dir = session_dir / ".claude"
+    claude_dir.mkdir(exist_ok=True)
+    settings_local = claude_dir / "settings.local.json"
+    if not settings_local.exists():
+        import json
+
+        settings_local.write_text(json.dumps({"permissions": {"allow": ["*"]}}, indent=2))
 
     # Create a studyctl wrapper in the session directory that uses the
     # correct Python (the one running this process). Without this, the
@@ -168,19 +180,20 @@ def attach_if_needed(session_name: str, already_in_tmux: bool) -> None:
         attach(session_name)
 
 
-def start_web_background(session_name: str) -> None:
-    """Start the web dashboard as a background process."""
-    import shutil
-    import subprocess
-
+def start_web_background(session_name: str, *, lan: bool = False) -> None:
+    """Start the web dashboard as a background process and open browser."""
     from studyctl.cli._shared import console
+
+    port = _get_web_port()
 
     studyctl_bin = shutil.which("studyctl")
     cmd = (
-        [studyctl_bin, "web", "--port", "8567"]
+        [studyctl_bin, "web", "--port", str(port)]
         if studyctl_bin
-        else [sys.executable, "-m", "studyctl.cli", "web", "--port", "8567"]
+        else [sys.executable, "-m", "studyctl.cli", "web", "--port", str(port)]
     )
+    if lan:
+        cmd.append("--lan")
     try:
         proc = subprocess.Popen(
             cmd,
@@ -190,5 +203,107 @@ def start_web_background(session_name: str) -> None:
         from studyctl.session_state import write_session_state
 
         write_session_state({"web_pid": proc.pid})
+        _open_browser(f"http://127.0.0.1:{port}/session")
     except Exception:
         console.print("[yellow]Could not start web dashboard.[/yellow]")
+
+
+def _get_web_port() -> int:
+    """Read web port from config, default 8567."""
+    try:
+        from studyctl.settings import load_settings
+
+        return getattr(load_settings(), "web_port", 8567)
+    except Exception:
+        return 8567
+
+
+def _open_browser(url: str) -> None:
+    """Open URL in the configured browser after a brief delay for server startup.
+
+    Reads ``browser`` from config. Empty string = system default.
+    Supported values: "chrome", "safari", "firefox", "brave", or empty.
+    """
+    import threading
+    import webbrowser
+
+    browser_name = ""
+    try:
+        from studyctl.settings import load_settings
+
+        browser_name = getattr(load_settings(), "browser", "")
+    except Exception:
+        pass
+
+    # Map friendly names to webbrowser module names
+    browser_map = {
+        "chrome": "Google Chrome",
+        "safari": "safari",
+        "firefox": "firefox",
+        "brave": "Brave Browser",
+    }
+
+    def _open() -> None:
+        import time
+
+        time.sleep(2)  # Give the server time to bind
+        try:
+            if browser_name and browser_name.lower() in browser_map:
+                controller = webbrowser.get(f"open -a '{browser_map[browser_name.lower()]}' %s")
+                controller.open(url)
+            else:
+                webbrowser.open(url)
+        except Exception:
+            pass  # Non-fatal — user can open manually
+
+    # Run in a thread so we don't block session startup
+    threading.Thread(target=_open, daemon=True).start()
+
+
+def _get_ttyd_port() -> int:
+    """Read ttyd port from config, default 7681."""
+    try:
+        from studyctl.settings import load_settings
+
+        return getattr(load_settings(), "ttyd_port", 7681)
+    except Exception:
+        return 7681
+
+
+def start_ttyd_background(session_name: str, *, lan: bool = False) -> None:
+    """Start ttyd to expose the tmux session over HTTP.
+
+    Attaches a writable ttyd client to the study tmux session.
+    Skips silently if ttyd is not installed.
+    """
+    from studyctl.session_state import write_session_state
+
+    ttyd_bin = shutil.which("ttyd")
+    if not ttyd_bin:
+        return
+
+    host = "0.0.0.0" if lan else "127.0.0.1"
+    port = _get_ttyd_port()
+
+    cmd = [
+        ttyd_bin,
+        "-W",  # writable (user interacts with the agent)
+        "-i",
+        host,
+        "-p",
+        str(port),
+        "tmux",
+        "attach",
+        "-t",
+        session_name,
+    ]
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        write_session_state({"ttyd_pid": proc.pid, "ttyd_port": port})
+    except Exception:
+        pass  # ttyd failed to start — non-fatal
