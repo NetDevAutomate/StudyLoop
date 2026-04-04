@@ -56,7 +56,7 @@ class TestGetStudyContext:
     def test_returns_context(self) -> None:
         with (
             patch(
-                "studyctl.mcp.tools.get_course_stats",
+                "studyctl.mcp.tools.get_stats",
                 return_value={
                     "total_reviews": 50,
                     "unique_cards": 20,
@@ -64,7 +64,7 @@ class TestGetStudyContext:
                     "due_today": 3,
                 },
             ),
-            patch("studyctl.mcp.tools.get_due_cards", return_value=[1, 2, 3]),
+            patch("studyctl.mcp.tools.get_due", return_value=[1, 2, 3]),
         ):
             tool = _get_tool("get_study_context")
             result = tool("test-course")
@@ -76,7 +76,7 @@ class TestGetStudyContext:
 
 class TestRecordStudyProgress:
     def test_records_review(self) -> None:
-        with patch("studyctl.mcp.tools.record_card_review") as mock_record:
+        with patch("studyctl.mcp.tools.record_review") as mock_record:
             tool = _get_tool("record_study_progress")
             result = tool("test-course", "abc123", True)
 
