@@ -297,6 +297,115 @@ session-sync push mac-mini              # Push to remote
 session-sync pull mac-mini              # Pull from remote
 ```
 
+#### session-db-mcp — MCP Server for Session Access
+
+A standalone MCP server exposing the session database to any MCP-compatible AI tool via stdio transport. Installed as part of `agent-session-tools`.
+
+```mermaid
+graph TB
+    subgraph "AI Coding Tools"
+        CC["Claude Code"]
+        KC["Kiro CLI"]
+        GC["Gemini CLI"]
+        OC["OpenCode / Aider"]
+    end
+
+    subgraph "session-db-mcp<br/>(FastMCP, stdio)"
+        S1["session_search<br/><i>FTS5 keyword search</i>"]
+        S2["session_list<br/><i>Chronological browse</i>"]
+        S3["session_show<br/><i>Full session content</i>"]
+        S4["session_context<br/><i>Token-efficient excerpts</i>"]
+        S5["session_stats<br/><i>DB statistics</i>"]
+        S6["session_clean<br/><i>Secret scrubbing</i>"]
+        S7["session_hotspots<br/><i>File access frequency</i>"]
+    end
+
+    subgraph "Data Layer"
+        DB[(sessions.db<br/>SQLite WAL v19)]
+        FTS["messages_fts<br/>(FTS5 porter)"]
+        FR["file_references"]
+        SL["scrub_log"]
+    end
+
+    CC -->|"MCP stdio"| S1
+    KC -->|"MCP stdio"| S1
+    GC -->|"MCP stdio"| S1
+    OC -->|"MCP stdio"| S1
+
+    S1 --> FTS
+    S2 --> DB
+    S3 --> DB
+    S4 --> DB
+    S5 --> DB
+    S6 --> SL
+    S7 --> FR
+```
+
+**Tool reference:**
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `session_search` | read-only | FTS5 keyword search with porter stemming. Supports AND/OR/NOT. Filter by `source`, `project` |
+| `session_list` | read-only | List sessions chronologically with pagination. Filter by `source`, `project` |
+| `session_show` | read-only | Full session with all messages. Supports partial ID prefix matching |
+| `session_context` | read-only | Token-efficient excerpts: `compressed` (~35%), `summary` (~20%), `context_only` (~25%), `markdown`, `xml`. Respects `max_tokens` budget |
+| `session_stats` | read-only | Total sessions/messages, sources breakdown, date range, storage size |
+| `session_clean` | destructive | Scrub secrets (API keys, tokens, credentials) with format-preserving placeholders. `dry_run=True` default; audit trail in `scrub_log` |
+| `session_hotspots` | read-only | Most-discussed files ranked by reference count. Filter by `project`, `days` |
+
+**Architecture:**
+
+```mermaid
+graph LR
+    subgraph "mcp_server.py"
+        MCP["FastMCP server"]
+        T["7 tool functions"]
+    end
+
+    subgraph "Core Modules<br/>(one-way imports)"
+        QU["query_utils.py"]
+        QL["query_logic.py"]
+        FM["formatters.py"]
+        SC["scrubber.py"]
+        FH["file_hotspots.py"]
+        CL["config_loader.py"]
+    end
+
+    MCP --> T
+    T --> QU
+    T --> QL
+    T --> FM
+    T --> SC
+    T --> FH
+    T --> CL
+```
+
+**Registration:**
+```json
+{
+  "mcpServers": {
+    "session-db": {
+      "command": "session-db-mcp"
+    }
+  }
+}
+```
+
+**Usage examples:**
+```python
+# Search past work
+session_search(query="JWT middleware", source="claude_code", limit=5)
+
+# Token-efficient context for reuse
+session_context(session_id="sess-auth", format="compressed", max_tokens=2000)
+
+# Most-discussed files this week
+session_hotspots(days=7, limit=10)
+
+# Audit secrets before sharing
+session_clean(session_id="sess-abc123", dry_run=True)
+```
+
 ---
 
 ### 5. Agent Protocol — How AI Mentors Behave
