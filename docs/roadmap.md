@@ -278,11 +278,15 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 
 ### ttyd Integration + Embedded Web Pane
 
-- [ ] `studyctl study --lan` starts ttyd alongside tmux session (port 7681)
-- [ ] Embed ttyd as iframe in existing web dashboard
-- [ ] "Open Study Agent Session" button — iframe split (default) + pop-out new window
-- [ ] Doctor check for ttyd binary
-- [ ] Config support for ttyd port
+- [x] `studyctl study --lan` starts ttyd alongside tmux session (port 7681)
+- [x] Embed ttyd as iframe in existing web dashboard
+- [x] "Open Study Agent Session" button — iframe split (default) + pop-out new window
+- [x] Doctor check for ttyd binary
+- [x] Config support for ttyd port
+- [x] Draggable split-pane layout (stacked/side-by-side)
+- [x] Browser auto-open with configurable browser
+- [x] Claude Code trust bypass (`hasTrustDialogAccepted`)
+- [x] `window-size largest` tmux option for multi-client compatibility
 
 ### Local LLMs via Ollama / LM Studio
 
@@ -293,9 +297,9 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 
 ### Multi-Agent Cleanup
 
-- [ ] Kiro crash recovery (check + restore on session start)
-- [ ] Gemini MCP pip-install path fix
-- [ ] OpenCode real-binary validation
+- [x] Kiro crash recovery (check + restore on session start)
+- [x] Gemini MCP pip-install path fix
+- [x] OpenCode real-binary validation
 
 ### Deferred
 
