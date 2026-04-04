@@ -1,9 +1,9 @@
 """Tests for studyctl CLI commands using Click's CliRunner.
 
 Strategy: Most commands depend on history functions that need a live sessions.db.
-We monkeypatch `studyctl.history._find_db` to return None, which makes `_connect()`
-return None, and each history function returns its empty/default sentinel.
-Commands are designed to handle this gracefully with user-friendly messages.
+We monkeypatch `_connect` to return None, and each history function returns its
+empty/default sentinel.  Commands are designed to handle this gracefully with
+user-friendly messages.
 
 Note on `review`: With no DB, `spaced_repetition_due` still returns entries for
 configured topics (marked "New topic") because `last_studied()` returns None when
@@ -35,7 +35,7 @@ def _no_db(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure no real database is ever touched during CLI tests."""
     import studyctl.history._connection as _conn
 
-    monkeypatch.setattr(_conn, "_find_db", lambda: None)
+    monkeypatch.setattr(_conn, "_connect", lambda: None)
 
 
 # ---------------------------------------------------------------------------

@@ -49,11 +49,9 @@ def session_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     conn.close()
 
     # Patch DB path for history, parking, and settings modules.
-    # history.py uses _find_db() → load_settings().session_db → checks .exists()
-    # so we must patch _find_db directly to return the test DB path.
     monkeypatch.setattr("studyctl.settings.get_db_path", lambda: db_path)
     monkeypatch.setattr("studyctl.parking.get_db_path", lambda: db_path)
-    monkeypatch.setattr("studyctl.history._connection._find_db", lambda: db_path)
+    monkeypatch.setattr("studyctl.history._connection._get_db_path", lambda: db_path)
 
     # Patch session state paths to use temp dir
     session_dir = tmp_path / "session"
