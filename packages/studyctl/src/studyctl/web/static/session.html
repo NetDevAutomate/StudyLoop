@@ -109,8 +109,9 @@
               </button>
             </div>
           </div>
-          <iframe x-show="embedded" :src="ttydUrl"
+          <iframe :src="ttydUrl"
                   class="terminal-iframe"
+                  :class="{ 'iframe-hidden': !embedded }"
                   allow="clipboard-read; clipboard-write">
           </iframe>
           <div x-show="!embedded && poppedOut" class="terminal-placeholder">
