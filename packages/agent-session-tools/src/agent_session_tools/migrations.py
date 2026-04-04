@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 17
+CURRENT_VERSION = 19
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -627,6 +627,55 @@ def migrate_v17(conn: sqlite3.Connection) -> None:
     conn.execute("""
         ALTER TABLE parked_topics ADD COLUMN priority INTEGER
     """)
+
+
+@migration(18, "Add scrub_log table for PII redaction audit trail")
+def migrate_v18(conn: sqlite3.Connection) -> None:
+    """Create scrub_log table to record what was scrubbed (never stores original values)."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS scrub_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT,
+            message_id TEXT,
+            entity_type TEXT NOT NULL,
+            placeholder TEXT NOT NULL,
+            scrubbed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES sessions(id),
+            FOREIGN KEY (message_id) REFERENCES messages(id)
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_scrub_log_session
+        ON scrub_log(session_id)
+    """)
+
+
+@migration(19, "Add file_references table for file hotspot tracking")
+def migrate_v19(conn: sqlite3.Connection) -> None:
+    """Track file paths referenced in tool calls for hotspot analysis."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS file_references (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            message_id TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            tool_name TEXT NOT NULL,
+            timestamp TEXT,
+            UNIQUE(message_id, file_path, tool_name),
+            FOREIGN KEY (session_id) REFERENCES sessions(id),
+            FOREIGN KEY (message_id) REFERENCES messages(id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_file_refs_path ON file_references(file_path)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_file_refs_session "
+        "ON file_references(session_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_file_refs_tool ON file_references(tool_name)"
+    )
 
 
 def check_migration_status(db_path: Path) -> dict:
