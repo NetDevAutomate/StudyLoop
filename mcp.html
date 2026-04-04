@@ -835,6 +835,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#session-database-session-db-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Database (session-db-mcp)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#apple-calendar-reminders-macos" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -930,6 +941,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#session-database-session-db-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Database (session-db-mcp)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#apple-calendar-reminders-macos" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1008,7 +1030,62 @@
 
 
 <h1 id="mcp-integrations">MCP Integrations<a class="headerlink" href="#mcp-integrations" title="Permanent link">&para;</a></h1>
-<p>Optional MCP (Model Context Protocol) servers that enhance the study mentor experience with calendar time-blocking and reminders.</p>
+<p>MCP (Model Context Protocol) servers that power the study mentor. The session-db server is core infrastructure; calendar integrations are optional.</p>
+<hr />
+<h2 id="session-database-session-db-mcp">Session Database (session-db-mcp)<a class="headerlink" href="#session-database-session-db-mcp" title="Permanent link">&para;</a></h2>
+<p>The primary MCP server for cross-agent session memory. Any MCP-compatible AI tool can search, browse, and retrieve context from past coding sessions.</p>
+<p><strong>Install:</strong></p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>./packages/agent-session-tools
+</code></pre></div>
+<p><strong>Register:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;session-db&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;session-db-mcp&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>7 tools available:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>session_search</code></td>
+<td>FTS5 keyword search with porter stemming (AND/OR/NOT)</td>
+</tr>
+<tr>
+<td><code>session_list</code></td>
+<td>Chronological session listing with pagination</td>
+</tr>
+<tr>
+<td><code>session_show</code></td>
+<td>Full session content with all messages</td>
+</tr>
+<tr>
+<td><code>session_context</code></td>
+<td>Token-efficient excerpts (5 formats, token budget)</td>
+</tr>
+<tr>
+<td><code>session_stats</code></td>
+<td>Database statistics and storage info</td>
+</tr>
+<tr>
+<td><code>session_clean</code></td>
+<td>Secret scrubbing with dry-run and audit trail</td>
+</tr>
+<tr>
+<td><code>session_hotspots</code></td>
+<td>Most-discussed files ranked by frequency</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="system-overview.html#session-db-mcp--mcp-server-for-session-access">System Overview: session-db-mcp</a> for architecture diagrams, design decisions, and usage examples.</p>
 <hr />
 <h2 id="apple-calendar-reminders-macos">Apple Calendar &amp; Reminders (macOS)<a class="headerlink" href="#apple-calendar-reminders-macos" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>npx<span class="w"> </span>-y<span class="w"> </span>@nicepkg/gkd@latest<span class="w"> </span>install<span class="w"> </span>FradSer/mcp-server-apple-reminders
