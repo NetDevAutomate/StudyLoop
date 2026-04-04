@@ -197,6 +197,14 @@ def load_settings() -> Settings:
             pandoc_path=ct.get("pandoc_path", "pandoc"),
         )
 
+    # Web/ttyd configuration
+    if "ttyd_port" in raw:
+        settings.ttyd_port = int(raw["ttyd_port"])
+    if "web_port" in raw:
+        settings.web_port = int(raw["web_port"])
+    if "browser" in raw:
+        settings.browser = str(raw["browser"])
+
     return settings
 
 

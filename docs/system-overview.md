@@ -63,6 +63,8 @@ graph TB
     TMUX --> AGENT
     TMUX --> SIDEBAR
     STUDY -.->|"--web"| DASH
+    STUDY -.->|"--lan"| TTYD["ttyd<br/>(HTTP port 7681)"]
+    TTYD -.->|"attaches to"| TMUX
     AGENT -->|writes| IPC
     SIDEBAR -->|polls| IPC
     DASH -->|polls SSE| IPC
@@ -151,10 +153,15 @@ sequenceDiagram
     U->>CLI: studyctl study "Decorators" --energy 7
     CLI->>DB: start_study_session()
     CLI->>IPC: Write session-state.json + empty topics/parking
-    CLI->>TMUX: Create session (cwd=sessions/study-decorators-xxx/)
+    CLI->>TMUX: Create session (cwd=sessions/study-decorators-xxx/, window-size largest)
     CLI->>TMUX: Split pane 75/25
     TMUX->>AGENT: Main pane: claude --append-system-prompt-file persona.md
     TMUX->>TUI: Sidebar pane: python -m studyctl.tui.sidebar
+
+    opt --lan flag
+        CLI->>WEB: Start ttyd (attaches to tmux session, HTTP port 7681)
+        Note over WEB: ttyd exposes full terminal over HTTP<br/>Accessible from iPad, phone, or remote browser
+    end
 
     loop Every 2 seconds
         TUI->>IPC: stat() mtime check
@@ -527,6 +534,7 @@ Here's a complete workflow from course materials to mastery:
 |-----------|----------|---------|
 | Python 3.12+ | Yes | `mise install python` or system package |
 | tmux 3.1+ | For `studyctl study` | `brew install tmux` / `apt install tmux` |
+| ttyd | Optional — remote terminal (`--lan`) | `brew install ttyd` / `apt install ttyd` |
 | Claude Code | For AI study sessions | `npm install -g @anthropic-ai/claude-code` |
 | pandoc | For markdown to PDF | `brew install pandoc` |
 | typst | For PDF rendering | `brew install typst` |
