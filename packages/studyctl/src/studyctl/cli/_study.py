@@ -422,6 +422,23 @@ def _handle_start(
     # Start ttyd if installed (allows iPad/LAN terminal access)
     start_ttyd_background(session_name, lan=lan)
 
+    # Show LAN access URL if --lan was used
+    if lan:
+        import socket
+
+        try:
+            hostname = socket.gethostname()
+            lan_ip = socket.gethostbyname(hostname)
+        except Exception:
+            lan_ip = "<your-ip>"
+        from studyctl.session.orchestrator import _get_ttyd_port, _get_web_port
+
+        web_port = _get_web_port()
+        ttyd_port = _get_ttyd_port()
+        console.print("\n[bold]LAN access:[/bold]")
+        console.print(f"  Dashboard: http://{lan_ip}:{web_port}/session")
+        console.print(f"  Terminal:  http://{lan_ip}:{ttyd_port}")
+
     attach_if_needed(session_name, result["already_in_tmux"])
 
 

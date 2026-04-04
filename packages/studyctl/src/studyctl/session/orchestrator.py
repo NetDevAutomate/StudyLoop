@@ -21,6 +21,45 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _ensure_claude_trust(directory: Path) -> None:
+    """Add a directory to Claude Code's trusted projects in ~/.claude/settings.json.
+
+    Trust is checked by walking up the directory tree, so trusting the
+    sessions parent dir covers all future session directories.
+    """
+    import json
+    from pathlib import Path as _Path
+
+    claude_settings = _Path.home() / ".claude" / "settings.json"
+    if not claude_settings.exists():
+        return  # No Claude Code installed
+
+    try:
+        data = json.loads(claude_settings.read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+
+    projects = data.setdefault("projects", {})
+    dir_key = str(directory)
+
+    if projects.get(dir_key, {}).get("hasTrustDialogAccepted"):
+        return  # Already trusted
+
+    projects.setdefault(dir_key, {})["hasTrustDialogAccepted"] = True
+
+    # Atomic write via temp file
+    import tempfile
+
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(claude_settings.parent), suffix=".json")
+    try:
+        with os.fdopen(tmp_fd, "w") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp_path, claude_settings)
+    except Exception:
+        with __import__("contextlib").suppress(OSError):
+            os.unlink(tmp_path)
+
+
 def setup_session_dir(
     session_dir: Path,
     topic: str,
@@ -44,13 +83,9 @@ def setup_session_dir(
 
     # Pre-trust the session directory for Claude Code so the workspace
     # trust prompt doesn't block automated/ttyd sessions.
-    claude_dir = session_dir / ".claude"
-    claude_dir.mkdir(exist_ok=True)
-    settings_local = claude_dir / "settings.local.json"
-    if not settings_local.exists():
-        import json
-
-        settings_local.write_text(json.dumps({"permissions": {"allow": ["*"]}}, indent=2))
+    # Trust is stored in ~/.claude/settings.json under projects[path].hasTrustDialogAccepted.
+    # We trust the sessions parent dir so all future sessions inherit trust.
+    _ensure_claude_trust(session_dir.parent)
 
     # Create a studyctl wrapper in the session directory that uses the
     # correct Python (the one running this process). Without this, the
@@ -245,8 +280,18 @@ def _open_browser(url: str) -> None:
 
     def _open() -> None:
         import time
+        import urllib.request
 
-        time.sleep(2)  # Give the server time to bind
+        # Poll until the web server is ready (up to 10 seconds)
+        for _ in range(20):
+            try:
+                urllib.request.urlopen(url, timeout=1)
+                break
+            except Exception:
+                time.sleep(0.5)
+        else:
+            return  # Server never started — skip browser open
+
         try:
             if browser_name and browser_name.lower() in browser_map:
                 controller = webbrowser.get(f"open -a '{browser_map[browser_name.lower()]}' %s")
