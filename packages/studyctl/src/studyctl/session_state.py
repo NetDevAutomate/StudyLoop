@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,18 +52,33 @@ def _ensure_session_dir() -> None:
 
 
 def _write_file_secure(path: Path, content: str) -> None:
-    """Write content to a file with 0600 permissions (owner-only read/write)."""
-    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    """Write content atomically with 0600 permissions.
+
+    Writes to a temp file then replaces the target, preventing partial
+    reads and the truncation race where two concurrent O_TRUNC opens
+    leave trailing bytes from the longer write.
+    """
+    tmp = str(path) + ".tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write(content)
+    os.replace(tmp, str(path))
+
+
+_state_lock = threading.Lock()
 
 
 def write_session_state(updates: dict) -> None:
-    """Atomic read-merge-write of session state. Creates file if missing."""
+    """Atomic read-merge-write of session state. Creates file if missing.
+
+    Thread-safe: a lock serialises concurrent updates from the poll
+    thread and action handlers to prevent read-merge-write clobbering.
+    """
     _ensure_session_dir()
-    current = read_session_state()
-    current.update(updates)
-    _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
+    with _state_lock:
+        current = read_session_state()
+        current.update(updates)
+        _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
 
 
 def parse_topics_file() -> list[TopicEntry]:

@@ -146,7 +146,7 @@ class TestNoModuleLevelLoadSettings:
             "_DB_CANDIDATES should not exist — load_settings() must not be called at import time"
         )
 
-    def test_find_db_uses_settings(self, tmp_path, monkeypatch):
+    def test_get_db_path_uses_settings(self, tmp_path, monkeypatch):
         db_path = tmp_path / "sessions.db"
         db_path.touch()
 
@@ -158,7 +158,7 @@ class TestNoModuleLevelLoadSettings:
 
         monkeypatch.setattr(_conn, "load_settings", lambda: FakeSettings())
 
-        result = _conn._find_db()
+        result = _conn._get_db_path()
         assert result == db_path
 
 
