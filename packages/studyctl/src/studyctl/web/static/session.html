@@ -93,8 +93,7 @@
 
       <!-- Terminal panel -->
       <div class="split-panel split-terminal" x-show="terminalAvailable" :style="terminalStyle">
-        <div class="terminal-panel" x-data="terminalPanel()" x-show="available"
-             x-init="$nextTick(() => { $dispatch('terminal-ready', { available }) })">
+        <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
           <div class="terminal-header">
             <span class="terminal-title">Agent Terminal</span>
             <div class="terminal-controls">
@@ -289,6 +288,8 @@
           if (state.ttyd_port) {
             this.ttydPort = state.ttyd_port;
             this.available = true;
+            /* Notify splitLayout that the terminal is available */
+            this.$dispatch('terminal-ready', { available: true });
           }
         } catch { /* ttyd not available */ }
       },

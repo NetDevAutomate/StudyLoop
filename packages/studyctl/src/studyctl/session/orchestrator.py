@@ -256,50 +256,59 @@ def _get_web_port() -> int:
 def _open_browser(url: str) -> None:
     """Open URL in the configured browser after polling for server readiness.
 
-    Uses a detached subprocess (not a thread) because attach_if_needed()
-    calls os.execvp() which replaces the process and kills daemon threads.
-    A subprocess survives the exec (reparented to PID 1).
-
-    Reads ``browser`` from config. Empty string = system default.
-    Supported values: "chrome", "safari", "firefox", "brave", or empty.
+    Uses os.fork() to create a child process that survives the parent's
+    os.execvp(tmux attach). Daemon threads don't survive exec, but forked
+    children do (reparented to PID 1).
     """
-    browser_name = ""
-    try:
-        from studyctl.settings import load_settings
+    pid = os.fork()
+    if pid != 0:
+        return  # Parent continues with session startup
 
-        browser_name = getattr(load_settings(), "browser", "")
+    # Child process — poll then open browser
+    try:
+        import time
+        import urllib.request
+        import webbrowser
+
+        # Poll until server is ready (up to 10 seconds)
+        for _ in range(20):
+            try:
+                urllib.request.urlopen(url, timeout=1)
+                break
+            except Exception:
+                time.sleep(0.5)
+        else:
+            os._exit(0)  # Server never started
+
+        browser_name = ""
+        try:
+            from studyctl.settings import load_settings
+
+            browser_name = getattr(load_settings(), "browser", "")
+        except Exception:
+            pass
+
+        browser_map = {
+            "chrome": "Google Chrome",
+            "safari": "Safari",
+            "firefox": "Firefox",
+            "brave": "Brave Browser",
+        }
+
+        if browser_name and browser_name.lower() in browser_map:
+            app = browser_map[browser_name.lower()]
+            # macOS: use open -a for specific browser
+            subprocess.Popen(
+                ["open", "-a", app, url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            webbrowser.open(url)
     except Exception:
         pass
-
-    # Map friendly names to macOS `open -a` app names
-    browser_map = {
-        "chrome": "Google Chrome",
-        "safari": "Safari",
-        "firefox": "Firefox",
-        "brave": "Brave Browser",
-    }
-
-    # Build the open command
-    if browser_name and browser_name.lower() in browser_map:
-        app = browser_map[browser_name.lower()]
-        open_cmd = f"open -a '{app}' '{url}'"
-    else:
-        open_cmd = f"open '{url}'"
-
-    # Shell script: poll until server responds, then open browser.
-    # Runs as a detached subprocess that survives os.execvp().
-    poll_script = (
-        f"for i in $(seq 1 20); do "
-        f"  curl -sf -o /dev/null '{url}' && {open_cmd} && exit 0; "
-        f"  sleep 0.5; "
-        f"done"
-    )
-
-    subprocess.Popen(
-        ["sh", "-c", poll_script],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    finally:
+        os._exit(0)  # Child must exit, never return to caller
 
 
 def _get_ttyd_port() -> int:
