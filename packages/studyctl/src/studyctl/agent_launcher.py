@@ -85,17 +85,9 @@ def _claude_launch(persona_path: Path, resume: bool) -> str:
     shells which don't source .zshrc (~/.local/bin not in PATH).
     """
     binary = shutil.which("claude") or "claude"
-    skip = ""
-    try:
-        from studyctl.settings import load_settings
-
-        if load_settings().skip_permissions:
-            skip = " --dangerously-skip-permissions"
-    except Exception:
-        pass
     if resume:
-        return f"{binary} -r{skip} --append-system-prompt-file {persona_path}"
-    return f"{binary}{skip} --append-system-prompt-file {persona_path}"
+        return f"{binary} -r --append-system-prompt-file {persona_path}"
+    return f"{binary} --append-system-prompt-file {persona_path}"
 
 
 # ---------------------------------------------------------------------------
