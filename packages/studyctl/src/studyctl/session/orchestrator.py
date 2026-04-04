@@ -169,6 +169,9 @@ def create_tmux_environment(
     # shell) rather than switching to another tmux session. Critical for
     # non-technical users who don't want to be stranded in tmux.
     set_option(session_name, "detach-on-destroy", "on")
+    # Use the largest client's size for the window. Without this, ttyd's
+    # smaller viewport constrains the native terminal, causing dotted fill.
+    set_option(session_name, "window-size", "largest")
 
     # Load user's studyctl tmux overlay if they've explicitly created one.
     user_conf = session_state_dir / "tmux-studyctl.conf"
@@ -344,9 +347,9 @@ def start_ttyd_background(session_name: str, *, lan: bool = False) -> None:
         "-p",
         str(port),
         "tmux",
-        "new-session",
+        "attach",
         "-t",
-        session_name,  # grouped session: shares windows, independent sizing
+        session_name,
     ]
 
     try:
