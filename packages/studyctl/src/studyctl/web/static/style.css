@@ -940,10 +940,21 @@ body.dyslexic .card-content {
   .counter-bar { gap: 12px; padding: 10px 16px; font-size: 0.8rem; }
 }
 
+/* When split-container is present, override main's centering */
+main:has(.split-container) {
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+}
+main:has(.split-container) .session-dashboard {
+  max-width: none;
+}
+
 /* Split-pane layout */
 .split-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: calc(100vh - 60px);  /* full height minus header */
   overflow: hidden;
 }
