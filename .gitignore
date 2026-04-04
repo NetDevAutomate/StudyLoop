@@ -475,8 +475,27 @@ site/
 *.db-shm
 *.db-journal
 
-# Personal work-in-progress plans
+# Agent-generated docs (kept locally, not published)
+docs/analysis/
+docs/architecture/
+docs/brainstorms/
+docs/handoff/
+docs/mentoring/
 docs/plans/
+docs/research/
+docs/reviews/
+docs/solutions/
+docs/specs/
+docs/brainstorm-*.md
+docs/plan-*.md
+docs/system-overview.md
+docs/TESTING.md
+docs/ci-cd-pipeline.md
+
+# Agent workflow artefacts
+code-review-plan-items.md
+TODO.md
+CHANGELOG.md
 
 # Artefacts (served from artefact-store, not committed to source repo)
 docs/artefacts/
