@@ -109,15 +109,16 @@
               </button>
             </div>
           </div>
-          <iframe :src="ttydUrl"
-                  class="terminal-iframe"
-                  :class="{ 'iframe-hidden': !embedded }"
-                  allow="clipboard-read; clipboard-write">
-          </iframe>
-          <div x-show="!embedded && poppedOut" class="terminal-placeholder">
-            <div>Terminal opened in separate window</div>
-            <button class="timer-btn placeholder-btn" @click="toggleEmbed()"
-                    title="Show terminal inline again">&#x2B73; Return to inline</button>
+          <div class="terminal-content">
+            <iframe :src="ttydUrl"
+                    class="terminal-iframe"
+                    allow="clipboard-read; clipboard-write">
+            </iframe>
+            <div x-show="!embedded && poppedOut" class="terminal-placeholder">
+              <div>Terminal opened in separate window</div>
+              <button class="timer-btn placeholder-btn" @click="toggleEmbed()"
+                      title="Show terminal inline again">&#x2B73; Return to inline</button>
+            </div>
           </div>
         </div>
       </div>
