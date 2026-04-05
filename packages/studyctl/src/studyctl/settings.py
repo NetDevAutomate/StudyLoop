@@ -143,7 +143,8 @@ class Settings:
     ttyd_port: int = 7681
     web_port: int = 8567
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
-    lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = no auth)
+    lan_username: str = "study"  # username for HTTP Basic Auth when using --lan
+    lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = auto-generate)
 
 
 def load_settings() -> Settings:
@@ -239,6 +240,8 @@ def load_settings() -> Settings:
         settings.web_port = int(raw["web_port"])
     if "browser" in raw:
         settings.browser = str(raw["browser"])
+    if "lan_username" in raw:
+        settings.lan_username = str(raw["lan_username"])
     if "lan_password" in raw:
         settings.lan_password = str(raw["lan_password"])
 
@@ -358,6 +361,12 @@ topics:
 #   secondary:
 #     - domain: cooking
 #       anchors: ["mise en place", "flavour balancing"]
+
+# LAN access credentials (for --lan mode)
+# Set these to avoid auto-generated passwords each session.
+# If lan_password is empty and --lan is used, a random password is generated.
+# lan_username: study
+# lan_password: your-password-here
 
 # Content pipeline (studyctl content commands)
 # content:

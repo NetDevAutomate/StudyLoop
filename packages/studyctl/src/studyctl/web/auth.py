@@ -1,7 +1,7 @@
 """HTTP Basic Auth middleware for LAN-exposed web server.
 
-When a password is configured, all requests require HTTP Basic Auth.
-The username field is ignored — only the password is checked.
+When credentials are configured, all requests require HTTP Basic Auth.
+Both username and password are checked (timing-safe comparison).
 This protects the study dashboard and terminal from unauthorised LAN access.
 """
 
@@ -19,17 +19,22 @@ if TYPE_CHECKING:
 
 
 class BasicAuthMiddleware(BaseHTTPMiddleware):
-    """Enforce HTTP Basic Auth on all routes when a password is configured.
+    """Enforce HTTP Basic Auth on all routes when credentials are configured.
 
     Usage::
 
-        app.add_middleware(BasicAuthMiddleware, password="secret")  # pragma: allowlist secret
+        app.add_middleware(
+            BasicAuthMiddleware,
+            username="study",
+            password="secret",  # pragma: allowlist secret
+        )
 
     If password is empty, the middleware is a no-op (pass-through).
     """
 
-    def __init__(self, app, *, password: str) -> None:
+    def __init__(self, app, *, username: str = "study", password: str) -> None:
         super().__init__(app)
+        self._username = username
         self._password = password
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
@@ -48,10 +53,9 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         )
 
     def _check_auth(self, authorization: str) -> bool:
-        """Check that the Authorization header contains the correct password.
+        """Check that the Authorization header contains valid credentials.
 
-        Uses hmac.compare_digest to prevent timing attacks.
-        The username is ignored — only the password matters.
+        Uses hmac.compare_digest to prevent timing attacks on both fields.
         """
         if not authorization.startswith("Basic "):
             return False
@@ -61,11 +65,11 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         except Exception:
             return False
 
-        # decoded is "username:password" — split only on first colon
         parts = decoded.split(":", 1)
         if len(parts) != 2:
             return False
 
-        _, password = parts
-        # Constant-time comparison to prevent timing attacks
-        return hmac.compare_digest(password, self._password)
+        username, password = parts
+        user_ok = hmac.compare_digest(username, self._username)
+        pass_ok = hmac.compare_digest(password, self._password)
+        return user_ok and pass_ok

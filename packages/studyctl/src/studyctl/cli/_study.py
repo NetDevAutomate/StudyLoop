@@ -474,7 +474,9 @@ def _handle_start(
 
     energy_label = energy_to_label(energy)
 
-    study_id = start_study_session(topic, energy_label)
+    study_id = start_study_session(
+        topic, energy_label, topic_slug=topic_config.slug if topic_config else None
+    )
     if not study_id:
         console.print("[red]Failed to start session. Run 'studyctl doctor'.[/red]")
         ctx.exit(1)
@@ -582,21 +584,33 @@ def _handle_start(
         state_update["topic_config_name"] = topic_config.name
     write_session_state(state_update)
 
-    # Resolve LAN password: CLI flag > config > auto-generate
+    # Resolve LAN credentials: CLI flag > config > auto-generate
+    lan_username = "study"
     lan_password = password
-    if lan and not lan_password:
+    if lan:
         try:
             from studyctl.settings import load_settings as _ls_inner
 
-            lan_password = _ls_inner().lan_password
+            _settings = _ls_inner()
+            lan_username = _settings.lan_username or "study"
+            if not lan_password:
+                lan_password = _settings.lan_password
         except Exception:
             pass
     if lan and not lan_password:
         import secrets
 
         lan_password = secrets.token_urlsafe(16)
-        console.print(f"\n[bold yellow]LAN password:[/bold yellow] [green]{lan_password}[/green]")
-        console.print("[dim]Share this with devices connecting from the network.[/dim]")
+
+    if lan and lan_password:
+        console.print(
+            f"\n[bold yellow]LAN credentials:[/bold yellow] "
+            f"[green]{lan_username}[/green] / [green]{lan_password}[/green]"
+        )
+        console.print(
+            "[dim]Set lan_username and lan_password in config.yaml to avoid "
+            "auto-generated passwords.[/dim]"
+        )
 
     if web:
         start_web_background(session_name, lan=lan, password=lan_password)

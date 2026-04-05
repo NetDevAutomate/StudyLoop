@@ -28,7 +28,9 @@ def session_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         CREATE TABLE IF NOT EXISTS study_sessions (
             id TEXT PRIMARY KEY, session_id TEXT, topic TEXT,
             energy_level TEXT, started_at TEXT, ended_at TEXT,
-            duration_minutes INTEGER, pomodoro_cycles INTEGER DEFAULT 0, notes TEXT
+            duration_minutes INTEGER, pomodoro_cycles INTEGER DEFAULT 0, notes TEXT,
+            persona_hash TEXT, win_count INTEGER, struggle_count INTEGER,
+            topic_slug TEXT
         )
     """)
     conn.execute("""

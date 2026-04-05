@@ -118,11 +118,11 @@ class TestWrongPassword:
         return TestClient(app, raise_server_exceptions=False)
 
     def test_wrong_password_returns_401(self, protected_client: TestClient) -> None:
-        resp = protected_client.get("/", headers=_basic_auth_header("user", "wrong-password"))
+        resp = protected_client.get("/", headers=_basic_auth_header("study", "wrong-password"))
         assert resp.status_code == 401
 
     def test_empty_password_returns_401(self, protected_client: TestClient) -> None:
-        resp = protected_client.get("/", headers=_basic_auth_header("user", ""))
+        resp = protected_client.get("/", headers=_basic_auth_header("study", ""))
         assert resp.status_code == 401
 
 
@@ -140,29 +140,29 @@ class TestCorrectPassword:
         return TestClient(app, raise_server_exceptions=False)
 
     def test_root_accessible_with_correct_password(self, protected_client: TestClient) -> None:
-        resp = protected_client.get("/", headers=_basic_auth_header("user", "mypassword"))
+        resp = protected_client.get("/", headers=_basic_auth_header("study", "mypassword"))
         assert resp.status_code == 200
 
     def test_session_accessible_with_correct_password(self, protected_client: TestClient) -> None:
-        resp = protected_client.get("/session", headers=_basic_auth_header("user", "mypassword"))
+        resp = protected_client.get("/session", headers=_basic_auth_header("study", "mypassword"))
         assert resp.status_code == 200
 
     def test_api_accessible_with_correct_password(self, protected_client: TestClient) -> None:
         resp = protected_client.get(
-            "/api/session/state", headers=_basic_auth_header("user", "mypassword")
+            "/api/session/state", headers=_basic_auth_header("study", "mypassword")
         )
         assert resp.status_code == 200
 
     def test_static_css_accessible_with_correct_password(
         self, protected_client: TestClient
     ) -> None:
-        resp = protected_client.get("/style.css", headers=_basic_auth_header("user", "mypassword"))
+        resp = protected_client.get("/style.css", headers=_basic_auth_header("study", "mypassword"))
         assert resp.status_code == 200
 
-    def test_username_does_not_matter(self, protected_client: TestClient) -> None:
-        """The username field is ignored — only the password matters."""
-        resp = protected_client.get("/", headers=_basic_auth_header("anything", "mypassword"))
-        assert resp.status_code == 200
+    def test_wrong_username_returns_401(self, protected_client: TestClient) -> None:
+        """Wrong username is rejected even with correct password."""
+        resp = protected_client.get("/", headers=_basic_auth_header("wrong-user", "mypassword"))
+        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
