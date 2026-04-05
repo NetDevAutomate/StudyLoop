@@ -489,11 +489,8 @@ class TestExportContext:
         # Message with code block should be kept
         assert "print('hi')" in out
 
-    def test_last_n_raises_due_to_known_bug(self, db):
-        """The last_n subquery exposes a pre-existing bug: the inner SELECT omits
-        `seq` from its projection, but the outer ORDER BY references it.  This
-        documents the regression so it is not silently overlooked.
-        """
+    def test_last_n_returns_most_recent_messages(self, db, capsys):
+        """last_n selects the N most recent messages, ordered chronologically."""
         _insert_session(db)
         for i in range(6):
             _insert_message(
@@ -503,10 +500,12 @@ class TestExportContext:
                 content=f"message number {i}",
                 timestamp=f"2024-03-01T09:0{i}:00",
             )
-        with pytest.raises(Exception):
-            export_context(
-                db, "session-aabbccdd11223344", format_type="markdown", last_n=2
-            )
+        export_context(db, "session-aabbccdd11223344", format_type="markdown", last_n=2)
+        out = capsys.readouterr().out
+        # Should contain the last 2 messages (4 and 5), not earlier ones
+        assert "message number 5" in out
+        assert "message number 4" in out
+        assert "message number 0" not in out
 
     def test_max_tokens_triggers_truncation(self, populated_db, capsys):
         # A very small token limit forces truncation of any real content
@@ -592,19 +591,15 @@ class TestContinueSession:
         out = capsys.readouterr().out
         assert "# Branch Session:" in out
 
-    def test_summarize_type_raises_due_to_known_bug(self, populated_db):
-        """continue_session with summarize hits a pre-existing bug:
-        _generate_summary_context calls session.get() on a sqlite3.Row, which
-        has no .get() method.  Documents this so it is not silently ignored.
-        """
+    def test_summarize_type_produces_output(self, populated_db, capsys):
+        """continue_session with summarize generates a summary context."""
         from agent_session_tools.query_logic import continue_session
 
-        with pytest.raises(
-            AttributeError, match="'sqlite3.Row' object has no attribute 'get'"
-        ):
-            continue_session(
-                populated_db, "session-aabbccdd11223344", continuation_type="summarize"
-            )
+        continue_session(
+            populated_db, "session-aabbccdd11223344", continuation_type="summarize"
+        )
+        out = capsys.readouterr().out
+        assert "# Session Summary:" in out
 
     def test_unknown_type_defaults_to_resume(self, populated_db, capsys):
         from agent_session_tools.query_logic import continue_session

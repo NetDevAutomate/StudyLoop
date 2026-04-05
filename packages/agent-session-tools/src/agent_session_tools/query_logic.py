@@ -438,7 +438,7 @@ def export_context(
         # Use subquery to get last N messages, then re-order chronologically
         query = """
             SELECT role, content, model, timestamp, metadata FROM (
-                SELECT role, content, model, timestamp, metadata FROM messages
+                SELECT role, content, model, timestamp, metadata, seq FROM messages
                 WHERE session_id = ?
                 ORDER BY timestamp DESC, seq DESC
                 LIMIT ?
@@ -707,8 +707,10 @@ def _generate_summary_context(session: dict, messages: list, max_tokens: int) ->
     lines.append(
         f"- {len([m for m in messages if '```' in (m['content'] or '')])} code blocks"
     )
+    # sqlite3.Row doesn't have .get() — use dict() conversion for safe access
+    session_dict = dict(session) if not isinstance(session, dict) else session
     lines.append(
-        f"- Session duration: {session.get('created_at', '')} to {session.get('updated_at', '')}"
+        f"- Session duration: {session_dict.get('created_at', '')} to {session_dict.get('updated_at', '')}"
     )
 
     content = "\n".join(lines)
