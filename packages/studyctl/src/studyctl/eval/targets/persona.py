@@ -171,6 +171,19 @@ class PersonaTarget:
                 break
             time.sleep(1)
 
+        # Accept Claude Code's trust dialog if present — send Enter to select
+        # "Yes, I trust this folder" (option 1, already highlighted).
+        # This is needed because Claude Code may not respect hasTrustDialogAccepted
+        # in settings.json for dynamically-created session directories.
+        from studyctl.eval.capture import capture_pane_plain, send_keys
+
+        time.sleep(3)  # Give Claude time to render the trust prompt
+        pane_content = capture_pane_plain(self._tmux_main_pane)
+        if "trust" in pane_content.lower() and "Yes, I trust" in pane_content:
+            logger.info("Trust dialog detected — accepting automatically")
+            send_keys(self._tmux_main_pane, "")  # Enter accepts default option 1
+            time.sleep(5)  # Wait for Claude to initialize after trust acceptance
+
         # Inject elapsed time for the scenario
         fake_start = datetime.now(UTC) - timedelta(minutes=scenario.elapsed_minutes)
         write_session_state(
