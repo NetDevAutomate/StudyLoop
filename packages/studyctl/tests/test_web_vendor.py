@@ -39,8 +39,8 @@ class TestVendorFilesExist:
 
 
 class TestNoCdnReferences:
-    def test_session_html_no_external_scripts(self):
-        content = (STATIC_DIR / "session.html").read_text()
+    def test_index_html_no_external_scripts(self):
+        content = (STATIC_DIR / "index.html").read_text()
         assert "unpkg.com" not in content
         assert "cdn.jsdelivr.net" not in content
         # Verify local paths are used
