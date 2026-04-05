@@ -41,6 +41,7 @@ class JudgeResult:
     dimensions: dict[str, int]  # dimension → score 1-4
     weights: dict[str, float]
     raw_response: str = ""
+    feedback: list[str] = field(default_factory=list)
 
     @property
     def weighted_score(self) -> float:

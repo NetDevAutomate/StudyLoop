@@ -92,6 +92,16 @@ class TSVReporter:
             f"- **All passed:** {all_passed_str}",
         ]
 
+        # Actionable feedback from the judge
+        feedback_results = [r for r in summary.results if r.feedback]
+        if feedback_results:
+            lines += ["", "## Judge Feedback", ""]
+            for r in feedback_results:
+                lines.append(f"### {r.scenario_id} ({r.weighted_score:.1f}%)")
+                for suggestion in r.feedback:
+                    lines.append(f"- {suggestion}")
+                lines.append("")
+
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
