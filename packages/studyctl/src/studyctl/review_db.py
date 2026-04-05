@@ -254,15 +254,21 @@ def get_course_stats(course: str, db_path: Path | None = None) -> dict:
             (course, today),
         ).fetchone()[0]
 
-        # Mastered = interval > 30 days
+        # Mastered = interval > 30 days on most recent review per card.
+        # CTE + window function avoids the N+1 correlated subquery that
+        # degrades O(cards^2) as review history grows.
         mastered = conn.execute(
             """
-            SELECT COUNT(DISTINCT card_hash) FROM card_reviews cr1
-            WHERE course = ? AND interval_days > 30
-            AND reviewed_at = (
-                SELECT MAX(reviewed_at) FROM card_reviews cr2
-                WHERE cr2.card_hash = cr1.card_hash
+            WITH latest AS (
+                SELECT card_hash, interval_days,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY card_hash ORDER BY reviewed_at DESC
+                       ) AS rn
+                FROM card_reviews
+                WHERE course = ?
             )
+            SELECT COUNT(DISTINCT card_hash) FROM latest
+            WHERE rn = 1 AND interval_days > 30
             """,
             (course,),
         ).fetchone()[0]
