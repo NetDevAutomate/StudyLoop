@@ -319,7 +319,7 @@ class TestE2ESessionDemo:
     def test_01_dashboard_loads_with_session_metadata(self, demo_session, page):
         """Dashboard shows topic, energy, and timer."""
         page.set_extra_http_headers({"Authorization": _auth_header()})
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(2000)
 
@@ -342,7 +342,7 @@ class TestE2ESessionDemo:
     def test_02_activity_feed_shows_agent_topics(self, demo_session, page):
         """SSE activity feed populates with topics logged by the mock agent."""
         page.set_extra_http_headers({"Authorization": _auth_header()})
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
 
         # Wait for SSE to push activity items (poll every 2s)
@@ -359,7 +359,7 @@ class TestE2ESessionDemo:
     def test_03_counter_bar_tracks_wins_and_parked(self, demo_session, page):
         """Counter bar shows wins and parked topic counts."""
         page.set_extra_http_headers({"Authorization": _auth_header()})
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(5000)
 
@@ -376,19 +376,21 @@ class TestE2ESessionDemo:
     def test_04_terminal_iframe_loads_xterm(self, demo_session, page):
         """Terminal panel shows an embedded ttyd xterm via the same-origin proxy."""
         page.set_extra_http_headers({"Authorization": _auth_header()})
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(3000)
 
         # Iframe should be visible with /terminal/ src
-        iframe = page.locator(".terminal-iframe")
+        iframe = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-iframe"
+        )
         assert iframe.is_visible(), "Terminal iframe should be visible"
 
         src = iframe.get_attribute("src")
         assert "/terminal/" in src, f"Iframe src should use proxy path, got: {src}"
 
         # xterm should render inside the iframe
-        frame = page.frame_locator(".terminal-iframe")
+        frame = page.frame_locator(".terminal-iframe").first
         xterm = frame.locator(".xterm")
         xterm.wait_for(timeout=15000)
         assert xterm.is_visible(), "xterm should be visible inside the proxied iframe"
@@ -396,7 +398,7 @@ class TestE2ESessionDemo:
     def test_05_popout_and_return(self, demo_session, page, context):
         """Pop-out opens terminal in new window; return closes it and re-embeds."""
         page.set_extra_http_headers({"Authorization": _auth_header()})
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(3000)
 
@@ -412,7 +414,9 @@ class TestE2ESessionDemo:
         new_page.wait_for_timeout(2000)
 
         # Placeholder should show in main page
-        placeholder = page.locator(".terminal-placeholder")
+        placeholder = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-placeholder"
+        )
         assert placeholder.is_visible(), "Placeholder should show when terminal is popped out"
 
         # Click "+" to return to inline — should close the pop-out
@@ -421,7 +425,9 @@ class TestE2ESessionDemo:
         page.wait_for_timeout(1000)
 
         # Iframe should be visible again
-        iframe = page.locator(".terminal-iframe")
+        iframe = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-iframe"
+        )
         # CSS visibility check — element is in DOM but may have visibility:hidden
         assert iframe.is_visible(), "Iframe should be visible after returning from pop-out"
 

@@ -139,17 +139,17 @@ class TestTerminalPaths:
         assert "http://${window.location.hostname}" not in html
 
     def test_ttyd_url_uses_terminal_path(self) -> None:
-        """ttydUrl in components.js should return /terminal/."""
-        js = (STATIC_DIR / "components.js").read_text()
-        assert "/terminal/" in js
+        """ttydUrl in the inline script should return /terminal/."""
+        html = (STATIC_DIR / "index.html").read_text()
+        assert "/terminal/" in html
 
     def test_popout_uses_terminal_path(self) -> None:
         """popOut() must open /terminal/ (same-origin) not a cross-origin URL."""
-        js = (STATIC_DIR / "components.js").read_text()
-        assert "popOut" in js
+        html = (STATIC_DIR / "index.html").read_text()
+        assert "popOut" in html
         import re
 
-        popout_match = re.search(r"popOut\(\).*?\}", js, re.DOTALL)
+        popout_match = re.search(r"popOut\(\).*?\}", html, re.DOTALL)
         assert popout_match, "popOut() function not found"
         popout_body = popout_match.group(0)
         assert "http://" not in popout_body
