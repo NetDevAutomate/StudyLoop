@@ -643,8 +643,8 @@ def _handle_start(
         # and `studyctl study --resume` output).
         console.print("\n[bold]LAN access:[/bold]")
         console.print(f"  Dashboard: http://{lan_ip}:{web_port}/session")
+        console.print(f"  Username:  {lan_username}")
         console.print(f"  Password:  {lan_password}")
-        console.print("  Username:  (any value works)")
 
     attach_if_needed(session_name, result["already_in_tmux"])
 

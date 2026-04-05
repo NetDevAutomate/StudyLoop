@@ -33,9 +33,37 @@ STATUS_SHAPES: dict[str, tuple[str, str]] = {
 }
 
 
+def _is_tmux_session_alive(session_name: str) -> bool:
+    """Check if a tmux session exists. Returns False if tmux isn't running."""
+    import subprocess
+
+    if not session_name:
+        return False
+    result = subprocess.run(
+        ["tmux", "has-session", "-t", session_name],
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
 def _get_full_state() -> dict:
-    """Read all IPC files into a single state dict."""
+    """Read all IPC files into a single state dict.
+
+    If the state file claims a session is active but the tmux session
+    is gone (zombie), clears the stale state and returns empty.
+    """
     state = read_session_state()
+
+    # Zombie detection: state says active but tmux session is dead
+    tmux_session = state.get("tmux_session")
+    if tmux_session and state.get("mode") != "ended" and not _is_tmux_session_alive(tmux_session):
+        # Clear stale IPC files
+        for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
+            if f.exists():
+                f.unlink(missing_ok=True)
+        return {"topics": [], "parking": []}
+
     topics = parse_topics_file()
     parking = parse_parking_file()
     return {
