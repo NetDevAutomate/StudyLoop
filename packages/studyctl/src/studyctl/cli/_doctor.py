@@ -32,7 +32,7 @@ def _get_registry():
         check_studyctl_installed,
     )
     from studyctl.doctor.database import check_review_db, check_sessions_db
-    from studyctl.doctor.deps import check_optional_deps
+    from studyctl.doctor.deps import check_optional_deps, check_system_binaries
     from studyctl.doctor.updates import check_pypi_versions
 
     registry = CheckerRegistry()
@@ -48,6 +48,7 @@ def _get_registry():
     for fn in [check_obsidian_vault, check_review_directories, check_pandoc, check_tmux_resurrect]:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
+    registry.register("deps")(check_system_binaries)
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
     registry.register("agents")(check_local_llm_servers)

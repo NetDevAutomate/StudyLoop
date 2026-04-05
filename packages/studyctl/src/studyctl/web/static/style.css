@@ -939,3 +939,131 @@ body.dyslexic .card-content {
   .activity-feed { padding: 12px 16px; }
   .counter-bar { gap: 12px; padding: 10px 16px; font-size: 0.8rem; }
 }
+
+/* When split-container is present, override main's centering */
+main:has(.split-container) {
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+}
+main:has(.split-container) .session-dashboard {
+  max-width: none;
+}
+
+/* Split-pane layout */
+.split-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100vh - 60px);  /* full height minus header */
+  overflow: hidden;
+}
+.split-container.split-horizontal {
+  flex-direction: row;
+}
+.split-panel {
+  overflow: auto;
+  min-height: 0;
+  min-width: 0;
+}
+.split-dashboard {
+  flex: 1;
+}
+.split-terminal {
+  flex: 1;
+}
+
+/* Draggable divider */
+.split-divider {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  cursor: row-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 2px 0;
+}
+.split-container.split-horizontal .split-divider {
+  cursor: col-resize;
+  padding: 0 2px;
+}
+.divider-handle {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.split-container.split-horizontal .divider-handle {
+  width: 4px;
+  height: 32px;
+}
+.split-divider:hover .divider-handle,
+.split-divider:active .divider-handle {
+  background: var(--accent);
+}
+
+/* Terminal panel */
+.terminal-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.8rem;
+  background: var(--bg-secondary, var(--bg-card));
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.terminal-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.terminal-controls {
+  display: flex;
+  gap: 0.3rem;
+}
+.terminal-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.terminal-iframe {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: none;
+  background: #1a1b26;
+}
+.terminal-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+.placeholder-hint {
+  font-size: 0.85rem;
+  font-style: normal;
+  color: var(--text-muted);
+}

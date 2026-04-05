@@ -400,6 +400,84 @@ class TestKiroAdapter:
         assert "--resume" in cmd
         assert "study-mentor" in cmd
 
+    def test_setup_recovers_stale_backup(self, tmp_path, monkeypatch):
+        """Stale backup from a crash is restored before new setup proceeds."""
+        import json
+
+        from studyctl.agent_launcher import KIRO_AGENT_NAME, _kiro_setup
+
+        fake_kiro = tmp_path / ".kiro" / "agents"
+        fake_kiro.mkdir(parents=True)
+        monkeypatch.setattr("studyctl.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
+
+        # Simulate crash: backup exists but target was overwritten by studyctl
+        target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
+        target.write_text('{"prompt": "studyctl-modified"}')
+        backup = target.with_suffix(target.suffix + ".studyctl-backup")
+        backup.write_text('{"prompt": "user-original"}')
+
+        # Run setup — should recover the backup first, then proceed normally
+        persona_path = _kiro_setup("# New Session", tmp_path)
+        try:
+            # The new agent JSON should have the new session's persona
+            data = json.loads(target.read_text())
+            assert "file://" in data["prompt"]
+
+            # A NEW backup should exist — of the RESTORED original, not the stale studyctl one
+            assert backup.exists()
+            restored = json.loads(backup.read_text())
+            assert restored["prompt"] == "user-original"
+        finally:
+            persona_path.unlink(missing_ok=True)
+
+    def test_setup_no_stale_backup_proceeds_normally(self, tmp_path, monkeypatch):
+        """Normal setup works when no stale backup exists."""
+        import json
+
+        from studyctl.agent_launcher import KIRO_AGENT_NAME, _kiro_setup
+
+        fake_kiro = tmp_path / ".kiro" / "agents"
+        fake_kiro.mkdir(parents=True)
+        monkeypatch.setattr("studyctl.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
+
+        persona_path = _kiro_setup("# Fresh Session", tmp_path)
+        try:
+            target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
+            assert target.exists()
+            data = json.loads(target.read_text())
+            assert "file://" in data["prompt"]
+            # No backup should exist (no pre-existing file to back up)
+            backup = target.with_suffix(target.suffix + ".studyctl-backup")
+            assert not backup.exists()
+        finally:
+            persona_path.unlink(missing_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# _mcp_command() helper
+# ---------------------------------------------------------------------------
+
+
+class TestMcpCommand:
+    """Tests for the shared _mcp_command() helper."""
+
+    def test_uses_installed_binary_when_available(self):
+        from studyctl.agent_launcher import _mcp_command
+
+        fake = "/usr/local/bin/studyctl-mcp"
+        with patch("studyctl.agent_launcher.shutil.which", return_value=fake):
+            cmd = _mcp_command()
+            assert cmd == [fake]
+
+    def test_falls_back_to_uv_run_in_dev(self):
+        from studyctl.agent_launcher import _mcp_command
+
+        with patch("studyctl.agent_launcher.shutil.which", return_value=None):
+            cmd = _mcp_command()
+            assert cmd[0] == "uv"
+            assert "run" in cmd
+            assert "studyctl-mcp" in cmd
+
 
 # ---------------------------------------------------------------------------
 # Gemini adapter
@@ -420,12 +498,15 @@ class TestGeminiAdapter:
 
         from studyctl.agent_launcher import _gemini_mcp
 
-        _gemini_mcp(tmp_path)
+        fake = "/usr/local/bin/studyctl-mcp"
+        with patch("studyctl.agent_launcher.shutil.which", return_value=fake):
+            _gemini_mcp(tmp_path)
         settings_path = tmp_path / ".gemini" / "settings.json"
         assert settings_path.exists()
         data = json.loads(settings_path.read_text())
-        assert "studyctl-mcp" in data["mcpServers"]
-        assert data["mcpServers"]["studyctl-mcp"]["command"] == "uv"
+        server = data["mcpServers"]["studyctl-mcp"]
+        assert server["command"] == "/usr/local/bin/studyctl-mcp"
+        assert server["args"] == []
 
     def test_launch_new_session(self):
         from studyctl.agent_launcher import _gemini_launch
@@ -457,6 +538,9 @@ class TestOpenCodeAdapter:
         assert content.startswith("---\n")
         assert "mode: primary" in content
         assert "temperature: 0.3" in content
+        # New permission format (not deprecated tools:)
+        assert "permission:" in content
+        assert "tools:" not in content
         # Canonical content after frontmatter
         assert "# OpenCode Persona" in content
 
@@ -471,18 +555,20 @@ class TestOpenCodeAdapter:
 
         from studyctl.agent_launcher import _opencode_mcp
 
-        _opencode_mcp(tmp_path)
+        fake = "/usr/local/bin/studyctl-mcp"
+        with patch("studyctl.agent_launcher.shutil.which", return_value=fake):
+            _opencode_mcp(tmp_path)
         config_path = tmp_path / ".opencode" / "opencode.json"
         assert config_path.exists()
         data = json.loads(config_path.read_text())
 
-        # OpenCode schema: command is array, enabled (not disabled), environment (not env)
         mcp = data["mcp"]["studyctl-mcp"]
         assert isinstance(mcp["command"], list), "OpenCode command must be array"
+        assert mcp["command"] == ["/usr/local/bin/studyctl-mcp"]
         assert mcp["enabled"] is True
         assert mcp["type"] == "local"
-        assert "environment" in mcp
-        assert "env" not in mcp  # NOT "env"
+        assert "environment" not in mcp  # removed unnecessary key
+        assert "env" not in mcp
 
     def test_launch_new_session(self):
         from studyctl.agent_launcher import _opencode_launch

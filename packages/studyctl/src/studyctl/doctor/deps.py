@@ -16,6 +16,39 @@ OPTIONAL_DEPS: dict[str, tuple[str, str]] = {
 }
 
 
+def check_system_binaries() -> list[CheckResult]:
+    """Check for optional system binaries (not Python packages)."""
+    import shutil
+
+    results: list[CheckResult] = []
+
+    ttyd_path = shutil.which("ttyd")
+    if ttyd_path:
+        results.append(
+            CheckResult(
+                "deps",
+                "bin_ttyd",
+                "pass",
+                f"ttyd installed ({ttyd_path})",
+                "",
+                False,
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "deps",
+                "bin_ttyd",
+                "info",
+                "ttyd not installed (optional — enables web terminal)",
+                "brew install ttyd",
+                False,
+            )
+        )
+
+    return results
+
+
 def check_optional_deps() -> list[CheckResult]:
     results: list[CheckResult] = []
     for import_name, (display_name, install_cmd) in OPTIONAL_DEPS.items():

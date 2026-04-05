@@ -63,6 +63,8 @@ studyctl study "Python Decorators" --energy 7          # Socratic mentor session
 studyctl study "Spark Internals" --mode co-study       # User-driven co-study
 studyctl study "topic" --timer pomodoro                # Override default timer
 studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
+studyctl study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
+studyctl study "topic" --lan --password SECRET         # Explicit password for LAN auth
 studyctl study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
 studyctl study "topic" --agent lmstudio                # Local LLM via LM Studio
 studyctl study --resume                                # Resume conversation (-r)
@@ -77,6 +79,9 @@ studyctl park "How does asyncio compare?"              # Park mid-session
 - Sidebar shows timer, activity feed, counters (keyboard: `p` pause, `r` reset, `Q` end session)
 - IPC files for dashboard viewports
 - Optional web dashboard at `/session` via `--web`
+- `--web` auto-opens a browser to the dashboard on startup
+- `--lan` binds the web server and ttyd to `0.0.0.0` with HTTP Basic Auth, prints dashboard URL and password (implies `--web`). Password is auto-generated if not set via `--password` or `lan_password` in config
+- `--password SECRET` sets the LAN authentication password (used with `--lan`)
 
 **Session lifecycle:**
 - **Start:** `studyctl study "topic"` — creates tmux session, agent, sidebar
@@ -153,9 +158,20 @@ studyctl web --host localhost   # Local only
 
 **Features:** Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, 90-day study heatmap, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.
 
+**Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** — an embedded ttyd iframe showing the tmux session live via same-origin proxy (`/terminal/`). The panel is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). ttyd is optional (`brew install ttyd`) but required for the terminal panel.
+
 **Voice:** Uses Web Speech API (browser built-in). Two modes:
 - **Read once** — speaker icon on card or `T` key
 - **Auto-voice** — header toggle or `V` key (reads everything automatically)
+
+**Web + terminal config** (`~/.config/studyctl/config.yaml`):
+
+```yaml
+web_port: 8567       # web dashboard port (default 8567)
+ttyd_port: 7681      # ttyd web terminal port (default 7681)
+browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
+lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
+```
 
 ---
 

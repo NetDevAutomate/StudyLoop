@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 def _connect() -> sqlite3.Connection:
     """Get a connection to the session DB with WAL mode and busy timeout.
 
-    Ensures the parked_topics table exists via a two-tier strategy:
-    1. Try the migration system (the "proper" path)
+    Ensures the parked_topics table is present and up to date:
+    1. Always run migrations (idempotent — skips already-applied versions)
     2. If that fails (version/schema drift), create the table directly
 
     The fallback handles a real-world failure mode: PRAGMA user_version
@@ -31,24 +31,21 @@ def _connect() -> sqlite3.Connection:
     """
     conn = connect_db(get_db_path(), row_factory=True)
 
-    # Ensure parked_topics table exists
+    # Always run migrations — they're idempotent (check user_version)
+    # and handle both missing tables AND missing columns from newer versions.
+    try:
+        from agent_session_tools.migrations import migrate
+
+        migrate(conn)
+    except Exception:
+        pass
+
+    # If migrations didn't create the table, create it directly (self-healing)
     try:
         conn.execute("SELECT 1 FROM parked_topics LIMIT 0")
     except sqlite3.OperationalError:
-        # Table missing — try migrations first (proper path)
-        try:
-            from agent_session_tools.migrations import migrate
-
-            migrate(conn)
-        except Exception:
-            pass
-
-        # If migrations didn't fix it, create directly (self-healing path)
-        try:
-            conn.execute("SELECT 1 FROM parked_topics LIMIT 0")
-        except sqlite3.OperationalError:
-            logger.info("Creating parked_topics table directly (migration drift recovery)")
-            _create_parked_topics_table(conn)
+        logger.info("Creating parked_topics table directly (migration drift recovery)")
+        _create_parked_topics_table(conn)
 
     return conn
 

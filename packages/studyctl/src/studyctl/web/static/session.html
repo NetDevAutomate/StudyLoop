@@ -29,54 +29,103 @@
   </header>
 
   <main id="app">
-    <!-- Session dashboard — Alpine.js timer + HTMX SSE feed -->
-    <div class="session-dashboard"
-         x-data="sessionTimer()"
-         x-init="init()">
+    <!-- Split-pane layout: dashboard + terminal with draggable divider -->
+    <div class="split-container" x-data="splitLayout()" :class="{ 'split-horizontal': layout === 'side' }">
 
-      <!-- Timer bar -->
-      <div class="session-timer" :class="timerPhase">
-        <div class="timer-display">
-          <span class="timer-icon" x-text="timerIcon"></span>
-          <span class="timer-time" x-text="display"></span>
-          <div class="timer-bar-track">
-            <div class="timer-bar-fill" :class="timerPhase"
-                 :style="`width: ${progress}%`"></div>
+      <!-- Dashboard panel -->
+      <div class="split-panel split-dashboard" :style="dashboardStyle">
+        <div class="session-dashboard"
+             x-data="sessionTimer()"
+             x-init="init()">
+
+          <!-- Timer bar -->
+          <div class="session-timer" :class="timerPhase">
+            <div class="timer-display">
+              <span class="timer-icon" x-text="timerIcon"></span>
+              <span class="timer-time" x-text="display"></span>
+              <div class="timer-bar-track">
+                <div class="timer-bar-fill" :class="timerPhase"
+                     :style="`width: ${progress}%`"></div>
+              </div>
+              <div class="timer-controls">
+                <button class="timer-btn" @click="togglePause()"
+                        :title="paused ? 'Resume' : 'Pause'"
+                        x-text="paused ? '\u25b6' : '\u23f8'"></button>
+                <button class="timer-btn" @click="resetTimer()" title="Reset">
+                  &#8634;
+                </button>
+              </div>
+            </div>
+            <div class="timer-message" x-show="message || paused" x-transition.opacity>
+              <span x-show="paused" class="timer-paused-label">Paused</span>
+              <span x-show="message && !paused" x-text="message"></span>
+            </div>
           </div>
-          <div class="timer-controls">
-            <button class="timer-btn" @click="togglePause()"
-                    :title="paused ? 'Resume' : 'Pause'"
-                    x-text="paused ? '\u25b6' : '\u23f8'"></button>
-            <button class="timer-btn" @click="resetTimer()" title="Reset">
-              &#8634;
-            </button>
+
+          <!-- Session metadata (OOB swap target) -->
+          <div id="session-meta" class="session-meta">
+            <span class="meta-topic" x-text="topic">Loading...</span>
+            <span class="meta-energy">&#9889; Energy: <span x-text="energy + '/10'"></span></span>
+          </div>
+
+          <!-- Activity feed (SSE swap target) -->
+          <div hx-ext="sse" sse-connect="/api/session/stream" sse-close="close">
+            <div id="activity-feed" class="activity-feed" sse-swap="session-update">
+              <p class="activity-empty">Connecting to session...</p>
+            </div>
+          </div>
+
+          <!-- Counter bar (OOB swap targets) -->
+          <div class="counter-bar">
+            <span id="counter-wins" class="counter counter-wins">&#10003; WINS: 0</span>
+            <span id="counter-parked" class="counter counter-parked">&#9675; PARKED: 0</span>
+            <span id="counter-review" class="counter counter-review">&#9650; REVIEW: 0</span>
           </div>
         </div>
-        <div class="timer-message" x-show="message || paused" x-transition.opacity>
-          <span x-show="paused" class="timer-paused-label">Paused</span>
-          <span x-show="message && !paused" x-text="message"></span>
+      </div>
+
+      <!-- Draggable divider -->
+      <div class="split-divider" x-show="terminalAvailable"
+           @mousedown="startDrag($event)"
+           @touchstart.prevent="startDrag($event)">
+        <div class="divider-handle"></div>
+      </div>
+
+      <!-- Terminal panel -->
+      <div class="split-panel split-terminal" x-show="terminalAvailable" :style="terminalStyle">
+        <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
+          <div class="terminal-header">
+            <span class="terminal-title">Agent Terminal</span>
+            <div class="terminal-controls">
+              <button class="timer-btn" @click="$dispatch('toggle-layout')"
+                      title="Toggle stacked/side-by-side">&#x21c4;</button>
+              <button class="timer-btn" @click="$dispatch('swap-panels')"
+                      title="Swap panel order">&#x21c5;</button>
+              <button class="timer-btn" @click="toggleEmbed()"
+                      :title="embedded ? 'Hide terminal' : 'Show terminal'"
+                      x-text="embedded ? '\u2796' : '\u2795'"></button>
+              <button class="timer-btn" @click="popOut()" title="Open in new window">
+                &#x29c9;
+              </button>
+            </div>
+          </div>
+          <div class="terminal-content">
+            <!-- Iframe is ALWAYS in DOM to preserve the WebSocket connection.
+                 CSS visibility hides it without triggering unload/reload.
+                 The same-origin proxy means the WS survives pop-out round-trips. -->
+            <iframe :src="ttydUrl"
+                    class="terminal-iframe"
+                    :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
+                    allow="clipboard-read; clipboard-write">
+            </iframe>
+            <div x-show="!embedded && poppedOut" class="terminal-placeholder">
+              <div>Terminal opened in separate window</div>
+              <div class="placeholder-hint">Click <strong>+</strong> to close the pop-out and return terminal here</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Session metadata (OOB swap target) -->
-      <div id="session-meta" class="session-meta">
-        <span class="meta-topic" x-text="topic">Loading...</span>
-        <span class="meta-energy">&#9889; Energy: <span x-text="energy + '/10'"></span></span>
-      </div>
-
-      <!-- Activity feed (SSE swap target) -->
-      <div hx-ext="sse" sse-connect="/api/session/stream" sse-close="close">
-        <div id="activity-feed" class="activity-feed" sse-swap="session-update">
-          <p class="activity-empty">Connecting to session...</p>
-        </div>
-      </div>
-
-      <!-- Counter bar (OOB swap targets) -->
-      <div class="counter-bar">
-        <span id="counter-wins" class="counter counter-wins">&#10003; WINS: 0</span>
-        <span id="counter-parked" class="counter counter-parked">&#9675; PARKED: 0</span>
-        <span id="counter-review" class="counter counter-review">&#9650; REVIEW: 0</span>
-      </div>
     </div>
   </main>
 
@@ -227,6 +276,118 @@
   /* Notification permission is requested on user gesture only.
      The timer-btn clicks in the Alpine component can call
      Notification.requestPermission() when the user interacts. */
+
+  function terminalPanel() {
+    return {
+      available: false,
+      embedded: true,
+      poppedOut: false,
+      _popoutWindow: null,
+
+      /* Same-origin proxy path — avoids cross-origin iframe WebSocket drops */
+      get ttydUrl() {
+        return '/terminal/';
+      },
+
+      async init() {
+        try {
+          const res = await fetch('/api/session/state');
+          const state = await res.json();
+          if (state.ttyd_port) {
+            this.available = true;
+            this.$dispatch('terminal-ready', { available: true });
+          }
+        } catch { /* ttyd not available */ }
+      },
+
+      toggleEmbed() {
+        if (!this.embedded && this._popoutWindow) {
+          /* Returning from pop-out: close the external window */
+          try { this._popoutWindow.close(); } catch {}
+          this._popoutWindow = null;
+        }
+        this.embedded = !this.embedded;
+        this.poppedOut = false;
+      },
+
+      popOut() {
+        /* Open same-origin /terminal/ in a named window.
+           Using a named window means clicking pop-out again focuses
+           the existing window rather than opening a second one. */
+        this._popoutWindow = window.open('/terminal/', 'studyctl-terminal',
+          'width=900,height=600,menubar=no,toolbar=no');
+        this.embedded = false;
+        this.poppedOut = true;
+      }
+    };
+  }
+
+  function splitLayout() {
+    return {
+      layout: 'stack',       /* 'stack' (vertical) or 'side' (horizontal) */
+      splitPercent: 40,      /* dashboard gets this %, terminal gets the rest */
+      swapped: false,
+      dragging: false,
+      terminalAvailable: false,
+
+      init() {
+        /* Listen for terminal availability */
+        this.$el.addEventListener('terminal-ready', (e) => {
+          this.terminalAvailable = e.detail.available;
+        });
+        this.$el.addEventListener('toggle-layout', () => {
+          this.layout = this.layout === 'stack' ? 'side' : 'stack';
+          this.splitPercent = this.layout === 'side' ? 50 : 40;
+        });
+        this.$el.addEventListener('swap-panels', () => {
+          this.swapped = !this.swapped;
+          this.$el.style.flexDirection = this.swapped
+            ? (this.layout === 'side' ? 'row-reverse' : 'column-reverse')
+            : '';
+        });
+        /* Track mouse/touch during drag */
+        const onMove = (e) => { if (this.dragging) this._onDrag(e); };
+        const onUp = () => { this.dragging = false; document.body.style.cursor = ''; };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove);
+        document.addEventListener('touchend', onUp);
+      },
+
+      startDrag(e) {
+        this.dragging = true;
+        document.body.style.cursor = this.layout === 'side' ? 'col-resize' : 'row-resize';
+        e.preventDefault();
+      },
+
+      _onDrag(e) {
+        const rect = this.$el.getBoundingClientRect();
+        const clientPos = e.touches ? e.touches[0] : e;
+        let pct;
+        if (this.layout === 'side') {
+          pct = ((clientPos.clientX - rect.left) / rect.width) * 100;
+        } else {
+          pct = ((clientPos.clientY - rect.top) / rect.height) * 100;
+        }
+        /* Clamp between 20% and 80% */
+        this.splitPercent = Math.max(20, Math.min(80, this.swapped ? 100 - pct : pct));
+      },
+
+      get dashboardStyle() {
+        if (!this.terminalAvailable) return '';
+        return this.layout === 'side'
+          ? `width: ${this.splitPercent}%`
+          : `height: ${this.splitPercent}%`;
+      },
+
+      get terminalStyle() {
+        if (!this.terminalAvailable) return '';
+        return this.layout === 'side'
+          ? `width: ${100 - this.splitPercent}%`
+          : `height: ${100 - this.splitPercent}%`;
+      }
+    };
+  }
   </script>
 </body>
 </html>

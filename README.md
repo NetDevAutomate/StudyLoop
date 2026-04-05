@@ -81,6 +81,9 @@ graph LR
 ```bash
 # Study sessions (tmux + AI agent + sidebar)
 studyctl study "topic" --energy 7      # Full tmux environment in one command
+studyctl study "topic" --web           # Also start web dashboard + auto-open browser
+studyctl study "topic" --lan           # LAN access with password auth (implies --web)
+studyctl study "topic" --lan --password SECRET  # Explicit LAN password
 studyctl study --resume                # Resume conversation from history
 studyctl study --end                   # End session (quit Claude also works)
 studyctl park "question"               # Park tangential topic
@@ -140,6 +143,7 @@ Launch with `studyctl web`. Accessible from any device on the network.
 - Timer with energy-adaptive colour phases (green/amber/red)
 - Topic counters (wins, parked, review)
 - Session summary on completion
+- **Terminal panel** — embedded ttyd iframe proxied same-origin at `/terminal/` with draggable split-pane (stacked or side-by-side). Pop-out to new window and seamless return. HTTP Basic Auth when using `--lan`. Requires ttyd (optional but recommended).
 - HTMX + Alpine.js — no build step
 
 ## Optional Extras
@@ -149,6 +153,10 @@ pip install 'studyctl[all]'          # Everything
 pip install 'studyctl[web]'          # FastAPI web UI
 pip install 'studyctl[content]'      # PDF splitting + NotebookLM
 pip install 'studyctl[notebooklm]'   # NotebookLM API client
+
+# ttyd — web terminal (enables the terminal panel in the live dashboard)
+brew install ttyd            # macOS
+sudo apt install ttyd        # Linux (or build from source)
 ```
 
 ## Documentation
