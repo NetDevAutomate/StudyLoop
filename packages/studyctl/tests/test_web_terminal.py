@@ -1,4 +1,4 @@
-"""Playwright E2E tests for the terminal panel in session.html.
+"""Playwright E2E tests for the terminal panel in the Study Session sidebar view.
 
 Phase 1: Web UI tests with mocked session state (no real ttyd).
 Phase 2: Real ttyd integration — write to the terminal frame.
@@ -120,13 +120,13 @@ class TestTerminalPanelUI:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
 
         # Give Alpine.js time to init
         page.wait_for_timeout(1000)
 
-        panel = page.locator(".terminal-panel")
+        panel = page.locator(".terminal-panel", has_text="Agent Terminal")
         assert not panel.is_visible()
 
     def test_panel_visible_when_ttyd_port_present(self, web_server, page):
@@ -141,11 +141,11 @@ class TestTerminalPanelUI:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(1000)
 
-        panel = page.locator(".terminal-panel")
+        panel = page.locator(".terminal-panel", has_text="Agent Terminal")
         assert panel.is_visible()
 
         # Header shows "Agent Terminal"
@@ -163,19 +163,20 @@ class TestTerminalPanelUI:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(1000)
 
-        iframe = page.locator(".terminal-iframe")
+        iframe = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-iframe"
+        )
         assert iframe.is_visible()
 
-        # Click the embed-toggle button — find it by its dynamic title attribute
-        embed_sel = (
-            ".terminal-controls .timer-btn[title='Hide terminal'],"
-            " .terminal-controls .timer-btn[title='Show terminal']"
-        )
-        collapse_btn = page.locator(embed_sel).first
+        # Click the embed-toggle button — scoped to Study Session terminal
+        panel = page.locator(".terminal-panel", has_text="Agent Terminal")
+        collapse_btn = panel.locator(".terminal-controls .timer-btn").nth(
+            2
+        )  # 3rd btn = toggle embed
         collapse_btn.click()
         page.wait_for_timeout(300)
 
@@ -198,12 +199,14 @@ class TestTerminalPanelUI:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(1000)
 
         # Pop-out button — find it by its stable title attribute
-        popout_btn = page.locator(".terminal-controls .timer-btn[title='Open in new window']")
+        popout_btn = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-controls .timer-btn[title='Open in new window']"
+        )
 
         # Listen for new page (popup)
         with context.expect_page() as new_page_info:
@@ -217,10 +220,14 @@ class TestTerminalPanelUI:
         page.wait_for_timeout(500)
 
         # After pop-out, iframe should be hidden, placeholder visible
-        iframe = page.locator(".terminal-iframe")
+        iframe = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-iframe"
+        )
         assert not iframe.is_visible()
 
-        placeholder = page.locator(".terminal-placeholder")
+        placeholder = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-placeholder"
+        )
         assert placeholder.is_visible()
         assert "separate window" in placeholder.text_content().lower()
 
@@ -235,11 +242,13 @@ class TestTerminalPanelUI:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(1000)
 
-        iframe = page.locator(".terminal-iframe")
+        iframe = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-iframe"
+        )
         src = iframe.get_attribute("src")
         # iframe now uses the same-origin proxy path, not a port-specific URL
         assert "/terminal/" in src
@@ -357,12 +366,14 @@ class TestRealTtyd:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(2000)
 
         # Verify the iframe is visible
-        iframe_locator = page.locator(".terminal-iframe")
+        iframe_locator = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-iframe"
+        )
         assert iframe_locator.is_visible()
 
         # Access the iframe's content via frame_locator — now proxied via /terminal/
@@ -389,7 +400,7 @@ class TestRealTtyd:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(3000)
 
@@ -436,12 +447,14 @@ class TestRealTtyd:
             }
         )
 
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         page.wait_for_load_state("load")
         page.wait_for_timeout(2000)
 
         # Click pop-out button — find by stable title attribute
-        popout_btn = page.locator(".terminal-controls .timer-btn[title='Open in new window']")
+        popout_btn = page.locator(".terminal-panel", has_text="Agent Terminal").locator(
+            ".terminal-controls .timer-btn[title='Open in new window']"
+        )
         with context.expect_page() as new_page_info:
             popout_btn.click()
 
