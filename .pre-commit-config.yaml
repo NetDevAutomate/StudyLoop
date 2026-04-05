@@ -49,9 +49,9 @@ repos:
     pass_filenames: false
     files: ^packages/studyctl/.*\.py$
   - id: pytest
-    name: pytest
+    name: pytest (unit + pilot, no playwright)
     language: system
-    entry: uv run pytest --tb=short -m "not integration and not e2e"
+    entry: uv run pytest --tb=short -m "not integration and not e2e" -p no:playwright
     pass_filenames: false
     files: ^packages/.*\.py$
     stages: [pre-push]
