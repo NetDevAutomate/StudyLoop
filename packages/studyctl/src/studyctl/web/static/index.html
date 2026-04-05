@@ -10,8 +10,14 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+  <style>[x-cloak] { display: none !important; }</style>
+  <!-- HTMX + SSE extension (vendored for offline PWA) -->
+  <script src="/vendor/js/htmx-2.0.4.min.js"></script>
+  <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
+  <!-- Alpine.js (vendored for offline PWA) -->
+  <script defer src="/vendor/js/alpine-3.14.8.min.js"></script>
 </head>
-<body>
+<body x-data x-init="$store.nav.init()">
   <header>
     <h1>Socratic Study Mentor</h1>
     <div class="header-controls">
@@ -28,6 +34,8 @@
       <button class="toggle-btn" id="dyslexic-toggle" title="Toggle OpenDyslexic font">Aa</button>
     </div>
   </header>
+
+  <!-- Pomodoro overlay (shared, always in DOM) -->
   <div class="pomodoro hidden" id="pomodoro">
     <div class="pomo-ring">
       <svg width="44" height="44" viewBox="0 0 44 44">
@@ -43,8 +51,490 @@
     <button class="pomo-btn" id="pomo-pause" title="Pause/Resume">&#10074;&#10074;</button>
     <button class="pomo-btn" id="pomo-stop" title="Stop">&times;</button>
   </div>
-  <main id="app"></main>
-  <div class="shortcuts" id="shortcuts"></div>
+
+  <!-- App layout: sidebar + content -->
+  <div class="app-layout">
+
+    <!-- Sidebar navigation -->
+    <nav class="sidebar">
+      <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('flashcards') }"
+              @click="$store.nav.go('flashcards')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
+        <span>Flashcards</span>
+      </button>
+      <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('quizzes') }"
+              @click="$store.nav.go('quizzes')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Quizzes</span>
+      </button>
+      <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('body-double') }"
+              @click="$store.nav.go('body-double')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Body Double</span>
+      </button>
+      <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('study-session') }"
+              @click="$store.nav.go('study-session')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        <span>Study Session</span>
+      </button>
+    </nav>
+
+    <!-- Content area -->
+    <div class="content-area">
+
+      <!-- ============================================================ -->
+      <!-- FLASHCARDS VIEW — app.js drives this panel via #app          -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('flashcards')" x-cloak>
+        <main id="app"></main>
+        <div class="shortcuts" id="shortcuts"></div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- QUIZZES VIEW — same app.js, different default mode           -->
+      <!-- (Phase 2 will separate these; for now, both show courseGrid) -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('quizzes')" x-cloak>
+        <div class="quiz-placeholder">
+          <h2>Quizzes</h2>
+          <p>Select a course from the Flashcards tab — click the <strong>Quiz</strong> button on any course card.</p>
+          <p class="text-muted">Phase 2 will add a dedicated quiz view here.</p>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- BODY DOUBLE VIEW — timer + terminal                          -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('body-double')" x-cloak>
+        <div class="split-container" x-data="splitLayout()" :class="{ 'split-horizontal': layout === 'side' }">
+
+          <!-- Timer panel -->
+          <div class="split-panel split-dashboard" :style="dashboardStyle">
+            <div class="session-dashboard body-double-dashboard">
+              <div class="body-double-header">
+                <h2>Body Double</h2>
+                <p class="text-muted">A focused workspace with timer and terminal. Just be here.</p>
+              </div>
+              <div class="body-double-timer">
+                <div class="timer-display large-timer">
+                  <span class="timer-time" id="bd-timer-display">00:00</span>
+                </div>
+                <div class="body-double-controls">
+                  <button class="toggle-btn" onclick="pomoStart()" title="Start Pomodoro">Start Pomodoro</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Draggable divider -->
+          <div class="split-divider" x-show="terminalAvailable"
+               @mousedown="startDrag($event)"
+               @touchstart.prevent="startDrag($event)">
+            <div class="divider-handle"></div>
+          </div>
+
+          <!-- Terminal panel -->
+          <div class="split-panel split-terminal" x-show="terminalAvailable" :style="terminalStyle">
+            <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
+              <div class="terminal-header">
+                <span class="terminal-title">Terminal</span>
+                <div class="terminal-controls">
+                  <button class="timer-btn" @click="$dispatch('toggle-layout')" title="Toggle stacked/side-by-side">&#x21c4;</button>
+                  <button class="timer-btn" @click="$dispatch('swap-panels')" title="Swap panel order">&#x21c5;</button>
+                  <button class="timer-btn" @click="toggleEmbed()"
+                          :title="embedded ? 'Hide terminal' : 'Show terminal'"
+                          x-text="embedded ? '\u2796' : '\u2795'"></button>
+                  <button class="timer-btn" @click="popOut()" title="Open in new window">&#x29c9;</button>
+                </div>
+              </div>
+              <div class="terminal-content">
+                <iframe :src="ttydUrl" class="terminal-iframe"
+                        :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
+                        allow="clipboard-read; clipboard-write"></iframe>
+                <div x-show="!embedded && poppedOut" class="terminal-placeholder">
+                  <div>Terminal opened in separate window</div>
+                  <div class="placeholder-hint">Click <strong>+</strong> to return terminal here</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- STUDY SESSION VIEW — full session dashboard                  -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('study-session')" x-cloak>
+        <div class="split-container" x-data="splitLayout()" :class="{ 'split-horizontal': layout === 'side' }">
+
+          <!-- Dashboard panel -->
+          <div class="split-panel split-dashboard" :style="dashboardStyle">
+            <div class="session-dashboard" x-data="sessionTimer()" x-init="init()">
+
+              <!-- Timer bar -->
+              <div class="session-timer" :class="timerPhase">
+                <div class="timer-display">
+                  <span class="timer-icon" x-text="timerIcon"></span>
+                  <span class="timer-time" x-text="display"></span>
+                  <div class="timer-bar-track">
+                    <div class="timer-bar-fill" :class="timerPhase"
+                         :style="`width: ${progress}%`"></div>
+                  </div>
+                  <div class="timer-controls">
+                    <button class="timer-btn" @click="togglePause()"
+                            :title="paused ? 'Resume' : 'Pause'"
+                            x-text="paused ? '\u25b6' : '\u23f8'"></button>
+                    <button class="timer-btn" @click="resetTimer()" title="Reset">&#8634;</button>
+                  </div>
+                </div>
+                <div class="timer-message" x-show="message || paused" x-transition.opacity>
+                  <span x-show="paused" class="timer-paused-label">Paused</span>
+                  <span x-show="message && !paused" x-text="message"></span>
+                </div>
+              </div>
+
+              <!-- Session metadata -->
+              <div id="session-meta" class="session-meta">
+                <span class="meta-topic" x-text="topic">Loading...</span>
+                <span class="meta-energy">&#9889; Energy: <span x-text="energy + '/10'"></span></span>
+              </div>
+
+              <!-- Activity feed (SSE) -->
+              <div hx-ext="sse" sse-connect="/api/session/stream" sse-close="close">
+                <div id="activity-feed" class="activity-feed" sse-swap="session-update">
+                  <p class="activity-empty">Connecting to session...</p>
+                </div>
+              </div>
+
+              <!-- Counter bar -->
+              <div class="counter-bar">
+                <span id="counter-wins" class="counter counter-wins">&#10003; WINS: 0</span>
+                <span id="counter-parked" class="counter counter-parked">&#9675; PARKED: 0</span>
+                <span id="counter-review" class="counter counter-review">&#9650; REVIEW: 0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Draggable divider -->
+          <div class="split-divider" x-show="terminalAvailable"
+               @mousedown="startDrag($event)"
+               @touchstart.prevent="startDrag($event)">
+            <div class="divider-handle"></div>
+          </div>
+
+          <!-- Terminal panel -->
+          <div class="split-panel split-terminal" x-show="terminalAvailable" :style="terminalStyle">
+            <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
+              <div class="terminal-header">
+                <span class="terminal-title">Agent Terminal</span>
+                <div class="terminal-controls">
+                  <button class="timer-btn" @click="$dispatch('toggle-layout')" title="Toggle stacked/side-by-side">&#x21c4;</button>
+                  <button class="timer-btn" @click="$dispatch('swap-panels')" title="Swap panel order">&#x21c5;</button>
+                  <button class="timer-btn" @click="toggleEmbed()"
+                          :title="embedded ? 'Hide terminal' : 'Show terminal'"
+                          x-text="embedded ? '\u2796' : '\u2795'"></button>
+                  <button class="timer-btn" @click="popOut()" title="Open in new window">&#x29c9;</button>
+                </div>
+              </div>
+              <div class="terminal-content">
+                <iframe :src="ttydUrl" class="terminal-iframe"
+                        :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
+                        allow="clipboard-read; clipboard-write"></iframe>
+                <div x-show="!embedded && poppedOut" class="terminal-placeholder">
+                  <div>Terminal opened in separate window</div>
+                  <div class="placeholder-hint">Click <strong>+</strong> to return terminal here</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- .content-area -->
+  </div><!-- .app-layout -->
+
+  <!-- Alpine stores and component factories -->
+  <script>
+  document.addEventListener('alpine:init', () => {
+    /* ----------------------------------------------------------------
+     * Navigation store — drives sidebar + view switching
+     * ---------------------------------------------------------------- */
+    Alpine.store('nav', {
+      current: 'flashcards',
+
+      init() {
+        const hash = window.location.hash.slice(1);
+        const valid = ['flashcards', 'quizzes', 'body-double', 'study-session'];
+        if (hash && valid.includes(hash)) this.current = hash;
+      },
+
+      go(view) {
+        this.current = view;
+        window.location.hash = view;
+      },
+
+      is(view) {
+        return this.current === view;
+      }
+    });
+  });
+
+  /* ------------------------------------------------------------------
+   * Energy-adaptive timer thresholds (from break-science.md)
+   * ------------------------------------------------------------------ */
+  const THRESHOLDS = {
+    high:   { green: 25, amber: 50 },
+    medium: { green: 20, amber: 40 },
+    low:    { green: 15, amber: 30 },
+  };
+
+  function energyBand(energy) {
+    if (energy >= 7) return 'high';
+    if (energy >= 4) return 'medium';
+    return 'low';
+  }
+
+  /* ------------------------------------------------------------------
+   * Session timer component (from session.html)
+   * ------------------------------------------------------------------ */
+  function sessionTimer() {
+    return {
+      startTime: null,
+      energy: 5,
+      topic: 'Loading...',
+      elapsed: 0,
+      interval: null,
+      message: '',
+      messageTimeout: null,
+      sessionActive: false,
+      paused: false,
+      pausedAt: 0,
+
+      async init() {
+        try {
+          const res = await fetch('/api/session/state');
+          const state = await res.json();
+          if (state.study_session_id) {
+            this.energy = state.energy || 5;
+            this.topic = state.topic || 'Study Session';
+            this.startTime = state.start_time ? new Date(state.start_time) : new Date();
+            this.sessionActive = true;
+            this.tick();
+            this.interval = setInterval(() => this.tick(), 1000);
+          } else {
+            this.topic = 'No active session';
+          }
+        } catch {
+          this.topic = 'Could not load session';
+        }
+      },
+
+      togglePause() {
+        if (!this.sessionActive) return;
+        if (this.paused) {
+          const pauseDuration = Date.now() - this.pausedAt;
+          this.startTime = new Date(this.startTime.getTime() + pauseDuration);
+          this.paused = false;
+          this.interval = setInterval(() => this.tick(), 1000);
+        } else {
+          this.paused = true;
+          this.pausedAt = Date.now();
+          clearInterval(this.interval);
+        }
+      },
+
+      resetTimer() {
+        if (!this.sessionActive) return;
+        this.startTime = new Date();
+        this.elapsed = 0;
+        this.paused = false;
+        this._shownAmber = false;
+        this._shownRed = false;
+        this.message = '';
+        clearInterval(this.interval);
+        this.interval = setInterval(() => this.tick(), 1000);
+      },
+
+      tick() {
+        if (!this.startTime || this.paused) return;
+        this.elapsed = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
+        this.checkThresholds();
+      },
+
+      checkThresholds() {
+        const mins = this.elapsed / 60;
+        const band = energyBand(this.energy);
+        const th = THRESHOLDS[band];
+        if (mins >= th.amber && !this._shownRed) {
+          this._shownRed = true;
+          this.showMessage("Your brain's been at this for a while. Just flagging it.");
+        } else if (mins >= th.green && !this._shownAmber) {
+          this._shownAmber = true;
+          if (this.energy < 7) {
+            this.showMessage("Good stretch of focus. A micro-break soon?");
+          }
+        }
+      },
+
+      showMessage(msg) {
+        this.message = msg;
+        clearTimeout(this.messageTimeout);
+        this.messageTimeout = setTimeout(() => { this.message = ''; }, 15000);
+      },
+
+      get display() {
+        const m = Math.floor(this.elapsed / 60);
+        const s = this.elapsed % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      },
+
+      get progress() {
+        if (!this.sessionActive) return 0;
+        const mins = this.elapsed / 60;
+        const band = energyBand(this.energy);
+        const th = THRESHOLDS[band];
+        return Math.min(100, (mins / th.amber) * 100);
+      },
+
+      get timerPhase() {
+        if (!this.sessionActive) return 'phase-idle';
+        const mins = this.elapsed / 60;
+        const band = energyBand(this.energy);
+        const th = THRESHOLDS[band];
+        if (mins >= th.amber) return 'phase-red';
+        if (mins >= th.green) return 'phase-amber';
+        return 'phase-green';
+      },
+
+      get timerIcon() {
+        if (!this.sessionActive) return '\u23f1';
+        const phase = this.timerPhase;
+        if (phase === 'phase-red') return '\ud83d\udfe5';
+        if (phase === 'phase-amber') return '\ud83d\udfe7';
+        return '\ud83d\udfe9';
+      },
+
+      destroy() {
+        clearInterval(this.interval);
+        clearTimeout(this.messageTimeout);
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------------
+   * Terminal panel component (from session.html)
+   * ------------------------------------------------------------------ */
+  function terminalPanel() {
+    return {
+      available: false,
+      embedded: true,
+      poppedOut: false,
+      _popoutWindow: null,
+
+      get ttydUrl() { return '/terminal/'; },
+
+      async init() {
+        try {
+          const res = await fetch('/api/session/state');
+          const state = await res.json();
+          if (state.ttyd_port) {
+            this.available = true;
+            this.$dispatch('terminal-ready', { available: true });
+          }
+        } catch { /* ttyd not available */ }
+      },
+
+      toggleEmbed() {
+        if (!this.embedded && this._popoutWindow) {
+          try { this._popoutWindow.close(); } catch {}
+          this._popoutWindow = null;
+        }
+        this.embedded = !this.embedded;
+        this.poppedOut = false;
+      },
+
+      popOut() {
+        this._popoutWindow = window.open('/terminal/', 'studyctl-terminal',
+          'width=900,height=600,menubar=no,toolbar=no');
+        this.embedded = false;
+        this.poppedOut = true;
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------------
+   * Split layout component (from session.html)
+   * ------------------------------------------------------------------ */
+  function splitLayout() {
+    return {
+      layout: 'stack',
+      splitPercent: 40,
+      swapped: false,
+      dragging: false,
+      terminalAvailable: false,
+
+      init() {
+        this.$el.addEventListener('terminal-ready', (e) => {
+          this.terminalAvailable = e.detail.available;
+        });
+        this.$el.addEventListener('toggle-layout', () => {
+          this.layout = this.layout === 'stack' ? 'side' : 'stack';
+          this.splitPercent = this.layout === 'side' ? 50 : 40;
+        });
+        this.$el.addEventListener('swap-panels', () => {
+          this.swapped = !this.swapped;
+          this.$el.style.flexDirection = this.swapped
+            ? (this.layout === 'side' ? 'row-reverse' : 'column-reverse')
+            : '';
+        });
+        const onMove = (e) => { if (this.dragging) this._onDrag(e); };
+        const onUp = () => { this.dragging = false; document.body.style.cursor = ''; };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove);
+        document.addEventListener('touchend', onUp);
+      },
+
+      startDrag(e) {
+        this.dragging = true;
+        document.body.style.cursor = this.layout === 'side' ? 'col-resize' : 'row-resize';
+        e.preventDefault();
+      },
+
+      _onDrag(e) {
+        const rect = this.$el.getBoundingClientRect();
+        const clientPos = e.touches ? e.touches[0] : e;
+        let pct;
+        if (this.layout === 'side') {
+          pct = ((clientPos.clientX - rect.left) / rect.width) * 100;
+        } else {
+          pct = ((clientPos.clientY - rect.top) / rect.height) * 100;
+        }
+        this.splitPercent = Math.max(20, Math.min(80, this.swapped ? 100 - pct : pct));
+      },
+
+      get dashboardStyle() {
+        if (!this.terminalAvailable) return '';
+        return this.layout === 'side'
+          ? `width: ${this.splitPercent}%`
+          : `height: ${this.splitPercent}%`;
+      },
+
+      get terminalStyle() {
+        if (!this.terminalAvailable) return '';
+        return this.layout === 'side'
+          ? `width: ${100 - this.splitPercent}%`
+          : `height: ${100 - this.splitPercent}%`;
+      }
+    };
+  }
+  </script>
+
+  <!-- app.js — vanilla flashcard/quiz engine (Phase 2 replaces with Alpine) -->
   <script src="/app.js"></script>
 </body>
 </html>

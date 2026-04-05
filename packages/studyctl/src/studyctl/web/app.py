@@ -86,10 +86,10 @@ def create_app(
     async def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
-    # Serve session dashboard
+    # Serve session dashboard (unified page with hash routing)
     @app.get("/session")
     async def session_page() -> FileResponse:
-        return FileResponse(STATIC_DIR / "session.html")
+        return FileResponse(STATIC_DIR / "index.html")
 
     # Mount static files LAST (catch-all)
     app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
