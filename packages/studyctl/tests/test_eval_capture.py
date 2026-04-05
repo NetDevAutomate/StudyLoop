@@ -75,6 +75,7 @@ def test_send_keys_calls_tmux() -> None:
         mock_run.assert_called_once_with(
             ["tmux", "send-keys", "-t", "my-session", "What is recursion?", "Enter"],
             capture_output=True,
+            text=True,
             check=False,
         )
 

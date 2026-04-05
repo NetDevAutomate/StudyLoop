@@ -41,6 +41,7 @@ class PersonaTarget:
     def __init__(self, agent: str = "claude") -> None:
         self.agent = agent
         self._session_name: str = ""
+        self._tmux_main_pane: str = ""
         self.persona_hash: str = ""
 
     def setup(self, scenario: Scenario) -> None:
@@ -162,6 +163,7 @@ class PersonaTarget:
         )
 
         self._session_name = session_name
+        self._tmux_main_pane = result["tmux_main_pane"]
 
         # Wait for agent to be ready (poll for child process in tmux pane)
         for _ in range(30):
@@ -181,19 +183,24 @@ class PersonaTarget:
         logger.info("Session %s started for scenario %s", session_name, scenario.id)
 
     def run(self, scenario: Scenario) -> str:
-        """Send setup prompts + test prompt, capture response."""
-        if not self._session_name:
-            logger.warning("No session — returning empty response")
+        """Send setup prompts + test prompt, capture response.
+
+        Uses the explicit tmux pane ID (``%N``) rather than the session name
+        to ensure we capture the agent pane, not the sidebar.
+        """
+        if not self._tmux_main_pane:
+            logger.warning("No main pane ID — returning empty response")
             return ""
+
+        target = self._tmux_main_pane
+        logger.info("Capturing from pane %s (session %s)", target, self._session_name)
 
         # Send setup prompts with stable-wait between each
         for prompt in scenario.setup_prompts:
-            capture_response(self._session_name, prompt, timeout=60, stable_seconds=3)
+            capture_response(target, prompt, timeout=60, stable_seconds=3)
 
         # Send test prompt and capture
-        response = capture_response(
-            self._session_name, scenario.prompt, timeout=90, stable_seconds=5
-        )
+        response = capture_response(target, scenario.prompt, timeout=90, stable_seconds=5)
         logger.info("Captured %d chars for %s", len(response), scenario.id)
         return response
 
