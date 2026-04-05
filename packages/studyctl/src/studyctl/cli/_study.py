@@ -9,12 +9,58 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import click
 
 from studyctl.cli._shared import console
 
+if TYPE_CHECKING:
+    from studyctl.logic.briefing_logic import ContentContext, ReviewContext
+    from studyctl.settings import TopicConfig
+
 logger = logging.getLogger(__name__)
+
+
+def _resolve_topic_config(topic: str) -> TopicConfig | None:
+    """Resolve free-text topic to a TopicConfig. Returns None on no match."""
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        from studyctl.logic.topic_resolver import resolve_topic
+        from studyctl.settings import load_settings
+
+        settings = load_settings()
+        if not settings.topics:
+            return None
+
+        result = resolve_topic(topic, settings.topics)
+
+        if result.resolved:
+            return result.resolved
+
+        if result.matches:
+            return _interactive_pick(result.matches, topic)
+
+    return None
+
+
+def _interactive_pick(candidates: list[TopicConfig], query: str) -> TopicConfig | None:
+    """Show a numbered list picker for ambiguous topic matches."""
+
+    console.print(f"\n[yellow]'{query}' matches multiple topics:[/yellow]")
+    for i, t in enumerate(candidates, 1):
+        tags = f" ({', '.join(t.tags)})" if t.tags else ""
+        console.print(f"  [bold]{i}[/bold]. {t.name}{tags}")
+    console.print("  [bold]0[/bold]. Skip (no briefing)")
+
+    try:
+        choice = click.prompt("Select", type=int, default=0)
+        if 1 <= choice <= len(candidates):
+            return candidates[choice - 1]
+    except (click.Abort, EOFError):
+        pass
+    return None
 
 
 def _agent_names() -> list[str]:
@@ -110,7 +156,21 @@ def study(
     if lan:
         web = True
 
-    _handle_start(ctx, topic, agent, mode, timer, energy, web, lan=lan, password=password)
+    # Resolve free-text topic to a TopicConfig (for briefing, content, review)
+    topic_config = _resolve_topic_config(topic)
+
+    _handle_start(
+        ctx,
+        topic,
+        agent,
+        mode,
+        timer,
+        energy,
+        web,
+        lan=lan,
+        password=password,
+        topic_config=topic_config,
+    )
 
 
 def _auto_clean_zombies() -> None:
@@ -210,6 +270,105 @@ def _build_backlog_notes(topic: str) -> str | None:
     return None
 
 
+def _gather_review_context(course_name: str) -> ReviewContext | None:
+    """Gather review stats for a course. Returns None on any failure."""
+    try:
+        from studyctl.logic.briefing_logic import ReviewContext
+        from studyctl.services.review import get_due, get_stats
+
+        stats = get_stats(course_name)
+        due_cards = get_due(course_name)
+        struggling = sum(1 for c in due_cards if not c.last_correct)
+        return ReviewContext(
+            due_count=len(due_cards),
+            struggling_count=struggling,
+            mastered_count=stats.get("mastered", 0),
+            total_reviews=stats.get("total_reviews", 0),
+            flashcard_count=stats.get("flashcard_count", 0),
+            quiz_count=stats.get("quiz_count", 0),
+        )
+    except Exception:
+        logger.warning("review context unavailable for %s", course_name)
+        return None
+
+
+def _gather_content_context(content_base, slug: str, obsidian_path) -> ContentContext | None:
+    """Gather content inventory for a topic slug. Returns None on any failure."""
+    try:
+        from pathlib import Path
+
+        from studyctl.logic.briefing_logic import ContentContext
+
+        base = Path(content_base) / slug
+        if not base.exists():
+            return ContentContext(
+                chapter_count=0,
+                obsidian_path=str(obsidian_path) if obsidian_path else "",
+                content_base=str(content_base),
+            )
+
+        chapters_dir = base / "chapters"
+        chapter_count = sum(1 for _ in chapters_dir.glob("*.md")) if chapters_dir.exists() else 0
+
+        return ContentContext(
+            chapter_count=chapter_count,
+            obsidian_path=str(obsidian_path) if obsidian_path else "",
+            content_base=str(content_base),
+        )
+    except Exception:
+        logger.warning("content context unavailable for %s", slug)
+        return None
+
+
+def _build_study_briefing(topic_config: TopicConfig | None) -> str | None:
+    """Gather review stats + content inventory, format as briefing markdown.
+
+    Returns None if no topic_config (graceful degradation — identical to
+    today's behaviour when no TopicConfig is resolved).
+    """
+    if not topic_config:
+        return None
+
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        from studyctl.logic.briefing_logic import BriefingData, format_study_briefing
+        from studyctl.settings import load_settings
+
+        settings = load_settings()
+        warnings: list[str] = []
+
+        review = _gather_review_context(topic_config.slug)
+        if review is None:
+            warnings.append("Review stats unavailable")
+
+        content = _gather_content_context(
+            settings.content.base_path,
+            topic_config.slug,
+            topic_config.obsidian_path,
+        )
+        if content is None:
+            warnings.append("Content inventory unavailable")
+
+        data = BriefingData(
+            topic_name=topic_config.name,
+            review=review,
+            content=content,
+            assembly_warnings=warnings,
+        )
+        result = format_study_briefing(data)
+        return result if result else None
+
+    return None
+
+
+def _brief_summary(topic_config: TopicConfig | None) -> str:
+    """One-line terminal summary for user orientation."""
+    if not topic_config:
+        return ""
+    return f"Topic resolved: {topic_config.name} ({topic_config.slug})"
+
+
 def _auto_persist_struggled(
     study_session_id: str,
     topic_entries: list,
@@ -243,6 +402,7 @@ def _handle_start(
     *,
     lan: bool = False,
     password: str = "",
+    topic_config: TopicConfig | None = None,
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
     previous_notes: str | None = None,
@@ -366,6 +526,13 @@ def _handle_start(
     if backlog_notes:
         previous_notes = f"{previous_notes}\n\n{backlog_notes}" if previous_notes else backlog_notes
 
+    # Build study briefing from topic resolution (review stats, content inventory)
+    briefing = _build_study_briefing(topic_config)
+    if briefing:
+        previous_notes = f"{previous_notes}\n\n{briefing}" if previous_notes else briefing
+        # Echo brief summary to terminal for user orientation
+        console.print(f"\n[dim]{_brief_summary(topic_config)}[/dim]")
+
     # Build persona + MCP config via adapter pattern
     adapter = AGENTS[agent]
     canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
@@ -391,17 +558,19 @@ def _handle_start(
         session_state_dir=SESSION_DIR,
     )
 
-    # Store tmux metadata in session state for resume/end
-    write_session_state(
-        {
-            "tmux_session": session_name,
-            "tmux_main_pane": result["tmux_main_pane"],
-            "tmux_sidebar_pane": result["tmux_sidebar_pane"],
-            "persona_file": str(persona_file),
-            "session_dir": str(session_dir),
-            "agent": agent,
-        }
-    )
+    # Store tmux metadata + topic resolution in session state for resume/end
+    state_update = {
+        "tmux_session": session_name,
+        "tmux_main_pane": result["tmux_main_pane"],
+        "tmux_sidebar_pane": result["tmux_sidebar_pane"],
+        "persona_file": str(persona_file),
+        "session_dir": str(session_dir),
+        "agent": agent,
+    }
+    if topic_config:
+        state_update["topic_slug"] = topic_config.slug
+        state_update["topic_config_name"] = topic_config.name
+    write_session_state(state_update)
 
     # Resolve LAN password: CLI flag > config > auto-generate
     lan_password = password
