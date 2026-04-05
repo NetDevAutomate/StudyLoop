@@ -35,6 +35,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 def create_app(
     study_dirs: list[str] | None = None,
     ttyd_port: int = 7681,
+    username: str = "study",
     password: str = "",
 ) -> FastAPI:
     """Create and configure the FastAPI application.
@@ -42,6 +43,7 @@ def create_app(
     Args:
         study_dirs: List of directory paths containing flashcard/quiz content.
         ttyd_port: Port where the local ttyd process is listening.
+        username: Username for HTTP Basic Auth (LAN protection). Default: "study".
         password: Optional password for HTTP Basic Auth (LAN protection).
                   If empty, no authentication is applied.
     """
@@ -59,7 +61,7 @@ def create_app(
     if password:
         from studyctl.web.auth import BasicAuthMiddleware
 
-        app.add_middleware(BasicAuthMiddleware, password=password)
+        app.add_middleware(BasicAuthMiddleware, username=username, password=password)
 
     # Security headers
     app.add_middleware(SecurityHeadersMiddleware)

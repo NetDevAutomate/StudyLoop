@@ -44,19 +44,28 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
         except Exception:
             pass
 
-    # Resolve password: CLI flag > config file > auto-generate when --lan
+    # Resolve credentials: CLI flag > config file > auto-generate when --lan
+    username = "study"
     if not password:
         try:
             from studyctl.settings import load_settings
 
-            password = load_settings().lan_password
+            _settings = load_settings()
+            username = _settings.lan_username or "study"
+            password = _settings.lan_password
         except Exception:
             pass
 
     if lan and not password:
         password = secrets.token_urlsafe(16)
-        console.print(f"[bold yellow]LAN password:[/bold yellow] [green]{password}[/green]")
-        console.print("[dim]Share this password with devices connecting from the LAN.[/dim]")
+        console.print(
+            f"[bold yellow]LAN credentials:[/bold yellow] "
+            f"[green]{username}[/green] / [green]{password}[/green]"
+        )
+        console.print(
+            "[dim]Set lan_username and lan_password in config.yaml "
+            "to avoid auto-generated passwords.[/dim]"
+        )
 
     if not ttyd_port:
         from studyctl.settings import load_settings as _ls
@@ -69,7 +78,9 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
     from studyctl.web.app import create_app
 
     host = "0.0.0.0" if lan else "127.0.0.1"
-    app = create_app(study_dirs=study_dirs, ttyd_port=ttyd_port, password=password)
+    app = create_app(
+        study_dirs=study_dirs, ttyd_port=ttyd_port, username=username, password=password
+    )
     console.print(f"[bold]Study PWA at http://{host}:{port}[/bold]")
     if not lan:
         console.print("[dim]Use --lan to expose to network[/dim]")

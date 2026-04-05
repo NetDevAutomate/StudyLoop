@@ -13,6 +13,8 @@ def start_study_session(
     topic: str,
     energy_level: str,
     session_id: str | None = None,
+    *,
+    topic_slug: str | None = None,
 ) -> str | None:
     """Start a tracked study session. Returns the study session ID."""
     conn = _connection._connect()
@@ -23,10 +25,11 @@ def start_study_session(
         now = datetime.now(UTC).isoformat()
         conn.execute(
             """
-            INSERT INTO study_sessions (id, session_id, topic, energy_level, started_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO study_sessions
+                (id, session_id, topic, energy_level, started_at, topic_slug)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (study_id, session_id, topic.lower().strip(), energy_level, now),
+            (study_id, session_id, topic.lower().strip(), energy_level, now, topic_slug),
         )
         conn.commit()
         return study_id
@@ -106,22 +109,24 @@ def end_study_session(
 
 
 def get_study_session_stats(days: int = 30) -> list[dict]:
-    """Get study session stats grouped by topic for the given period."""
+    """Get study session stats grouped by course slug (or raw topic) for the given period."""
     conn = _connection._connect()
     if not conn:
         return []
     try:
         rows = conn.execute(
             """
-            SELECT topic,
+            SELECT COALESCE(topic_slug, topic) AS course,
                    COUNT(*) as sessions,
                    SUM(duration_minutes) as total_minutes,
                    AVG(duration_minutes) as avg_minutes,
+                   SUM(win_count) as total_wins,
+                   SUM(struggle_count) as total_struggles,
                    energy_level as most_common_energy
             FROM study_sessions
             WHERE started_at > datetime('now', ?)
               AND duration_minutes IS NOT NULL
-            GROUP BY topic
+            GROUP BY course
             ORDER BY total_minutes DESC
             """,
             (f"-{days} days",),

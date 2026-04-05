@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 20
+CURRENT_VERSION = 21
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -699,6 +699,24 @@ def migrate_v20(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_study_sessions_persona "
         "ON study_sessions(persona_hash)"
+    )
+
+
+@migration(21, "Add topic_slug to study_sessions for course-level aggregation")
+def migrate_v21(conn: sqlite3.Connection) -> None:
+    """Store the resolved topic slug alongside the raw topic string.
+
+    Enables grouping sessions by course (slug) rather than raw free-text topic.
+    Example: "Python Decorators", "Python OOP", "python" all map to slug "python".
+    """
+    try:
+        conn.execute("ALTER TABLE study_sessions ADD COLUMN topic_slug TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists (idempotent)
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_study_sessions_slug "
+        "ON study_sessions(topic_slug)"
     )
 
 

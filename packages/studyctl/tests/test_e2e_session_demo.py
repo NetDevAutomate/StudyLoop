@@ -254,7 +254,7 @@ def demo_session(tmp_path):
             # Auth required for LAN mode
             import base64
 
-            creds = base64.b64encode(f"test:{LAN_PASSWORD}".encode()).decode()
+            creds = base64.b64encode(f"study:{LAN_PASSWORD}".encode()).decode()
             req.add_header("Authorization", f"Basic {creds}")
             urllib.request.urlopen(req, timeout=2)
             return True
@@ -304,7 +304,7 @@ def _auth_header():
     """Build HTTP Basic Auth header for test requests."""
     import base64
 
-    creds = base64.b64encode(f"test:{LAN_PASSWORD}".encode()).decode()
+    creds = base64.b64encode(f"study:{LAN_PASSWORD}".encode()).decode()
     return f"Basic {creds}"
 
 
