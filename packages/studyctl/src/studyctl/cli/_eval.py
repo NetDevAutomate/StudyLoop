@@ -192,7 +192,11 @@ def run(ctx: click.Context, scenarios_arg: str, agent: str | None, no_git_check:
     # 8. Create TSVReporter
     reporter = TSVReporter(_eval_results_path())
 
-    # 9. Run evaluation
+    # 9. Run evaluation with progress
+    import logging
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    console.print(f"\nRunning {len(scenarios)} scenarios against [bold]{agent}[/bold]...\n")
     summary = run_evaluation(target, judge, scenarios, reporter, agent)
 
     # 10. Print summary table
