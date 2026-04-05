@@ -498,6 +498,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#remote-study-ipad-on-the-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote Study (iPad on the Bus)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -552,6 +563,17 @@
     <span class="md-ellipsis">
       
         Database &amp; Search Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-terminal-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Terminal Settings
       
     </span>
   </a>
@@ -1538,6 +1560,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#remote-study-ipad-on-the-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote Study (iPad on the Bus)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#hosts-cross-machine-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1592,6 +1625,17 @@
     <span class="md-ellipsis">
       
         Database &amp; Search Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-terminal-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Terminal Settings
       
     </span>
   </a>
@@ -1999,6 +2043,7 @@
 <li><strong>Obsidian</strong> — for study notes (any vault structure works)</li>
 <li><strong>Optional</strong>: <code>notebooklm-py</code> for Google NotebookLM sync</li>
 <li><strong>Optional</strong>: <code>sentence-transformers</code> for semantic search</li>
+<li><strong>Optional</strong>: <code>ttyd</code> — enables web terminal access from browser or iPad (<code>brew install ttyd</code> on macOS, <code>apt install ttyd</code> on Linux)</li>
 </ul>
 <blockquote>
 <p><strong>tmux-resurrect / tmux-continuum users</strong>: studyctl automatically cleans up
@@ -2109,6 +2154,21 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 - <strong>Read once</strong> — tap the speaker icon on a card, or press <code>T</code>. Reads the current content once.
 - <strong>Auto-voice</strong> — toggle the header speaker icon, or press <code>V</code>. Reads everything automatically as you navigate.</p>
 <p><strong>Accessibility:</strong> The <code>Aa</code> button toggles <a href="https://opendyslexic.org">OpenDyslexic</a> font. The sun icon toggles light/dark theme. Both are persisted across sessions.</p>
+<h3 id="remote-study-ipad-on-the-bus">Remote Study (iPad on the Bus)<a class="headerlink" href="#remote-study-ipad-on-the-bus" title="Permanent link">&para;</a></h3>
+<p>Use <code>--lan</code> to make the web dashboard and terminal accessible from any device on your network — phone, iPad, second laptop:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w"> </span>--lan
+<span class="c1"># Auto-generates password and saves LAN info to session state:</span>
+<span class="c1">#   Dashboard: http://192.168.1.42:8567/session</span>
+<span class="c1">#   Password:  &lt;auto-generated&gt;</span>
+
+<span class="c1"># Or set a known password:</span>
+studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w"> </span>--lan<span class="w"> </span>--password<span class="w"> </span>mysecret
+</code></pre></div>
+<p>Access the live dashboard and embedded terminal from your iPad at <code>http://&lt;mac-ip&gt;:8567/session</code>. Enter any username and the displayed password when prompted. The terminal panel (ttyd iframe) is proxied through the web server on the same origin, so pop-out/return works seamlessly. ttyd must be installed for the terminal panel to work (<code>brew install ttyd</code>).</p>
+<p><strong>Password sources</strong> (checked in order):
+1. <code>--password</code> CLI flag
+2. <code>lan_password</code> in <code>~/.config/studyctl/config.yaml</code>
+3. Auto-generated (displayed in terminal output, saved to session state)</p>
 <h3 id="hosts-cross-machine-sync">Hosts — Cross-Machine Sync<a class="headerlink" href="#hosts-cross-machine-sync" title="Permanent link">&para;</a></h3>
 <h4 id="prerequisites-passwordless-ssh">Prerequisites: Passwordless SSH<a class="headerlink" href="#prerequisites-passwordless-ssh" title="Permanent link">&para;</a></h4>
 <p>Cross-machine sync uses SSH and rsync under the hood. <strong>Passwordless SSH must be configured</strong> between all machines before sync will work. If you're prompted for a password, sync will hang or fail.</p>
@@ -2272,6 +2332,13 @@ session-sync<span class="w"> </span>endpoints<span class="w">            </span>
 - <code>DATABASE_PATH</code> — override database location
 - <code>LOG_LEVEL</code> — set logging level (DEBUG, INFO, WARNING, ERROR)
 - <code>EMBEDDING_MODEL</code> — override embedding model</p>
+<h3 id="web-terminal-settings">Web Terminal Settings<a class="headerlink" href="#web-terminal-settings" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Web terminal (optional — requires ttyd installed)</span>
+<span class="nt">ttyd_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7681</span><span class="w">      </span><span class="c1"># ttyd listens on this port (default 7681)</span>
+<span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8567</span><span class="w">       </span><span class="c1"># web dashboard port (default 8567)</span>
+<span class="nt">browser</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">          </span><span class="c1"># auto-open browser: chrome, safari, firefox, brave, or empty for system default</span>
+<span class="nt">lan_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">     </span><span class="c1"># persistent LAN password (auto-generated per session if empty)</span>
+</code></pre></div>
 <h3 id="tts-voice-settings">TTS Voice Settings<a class="headerlink" href="#tts-voice-settings" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">tts</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">am_michael</span><span class="w">      </span><span class="c1"># kokoro voice (am_michael, af_heart, bf_emma, etc.)</span>

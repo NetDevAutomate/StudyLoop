@@ -1031,6 +1031,9 @@
     TMUX --&gt; AGENT
     TMUX --&gt; SIDEBAR
     STUDY -.-&gt;|"--web"| DASH
+    STUDY -.-&gt;|"--lan"| TTYD["ttyd&lt;br/&gt;(port 7681)"]
+    TTYD -.-&gt;|"attaches to"| TMUX
+    DASH -.-&gt;|"/terminal/ proxy"| TTYD
     AGENT --&gt;|writes| IPC
     SIDEBAR --&gt;|polls| IPC
     DASH --&gt;|polls SSE| IPC
@@ -1129,10 +1132,16 @@
     U-&gt;&gt;CLI: studyctl study "Decorators" --energy 7
     CLI-&gt;&gt;DB: start_study_session()
     CLI-&gt;&gt;IPC: Write session-state.json + empty topics/parking
-    CLI-&gt;&gt;TMUX: Create session (cwd=sessions/study-decorators-xxx/)
+    CLI-&gt;&gt;TMUX: Create session (cwd=sessions/study-decorators-xxx/, window-size largest)
     CLI-&gt;&gt;TMUX: Split pane 75/25
     TMUX-&gt;&gt;AGENT: Main pane: claude --append-system-prompt-file persona.md
     TMUX-&gt;&gt;TUI: Sidebar pane: python -m studyctl.tui.sidebar
+
+    opt --lan flag
+        CLI-&gt;&gt;WEB: Start ttyd (attaches to tmux session, port 7681)
+        CLI-&gt;&gt;WEB: Start web with Basic Auth + ttyd proxy
+        Note over WEB: Web dashboard proxies ttyd at /terminal/&lt;br/&gt;(same-origin — pop-out/return preserves WS)&lt;br/&gt;HTTP Basic Auth protects all routes on LAN
+    end
 
     loop Every 2 seconds
         TUI-&gt;&gt;IPC: stat() mtime check
@@ -1540,6 +1549,11 @@ session-sync<span class="w"> </span>pull<span class="w"> </span>mac-mini<span cl
 <td>tmux 3.1+</td>
 <td>For <code>studyctl study</code></td>
 <td><code>brew install tmux</code> / <code>apt install tmux</code></td>
+</tr>
+<tr>
+<td>ttyd</td>
+<td>Optional — remote terminal (<code>--lan</code>)</td>
+<td><code>brew install ttyd</code> / <code>apt install ttyd</code></td>
 </tr>
 <tr>
 <td>Claude Code</td>
