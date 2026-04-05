@@ -84,8 +84,10 @@ def setup_session_dir(
     # Pre-trust the session directory for Claude Code so the workspace
     # trust prompt doesn't block automated/ttyd sessions.
     # Trust is stored in ~/.claude/settings.json under projects[path].hasTrustDialogAccepted.
-    # We trust the sessions parent dir so all future sessions inherit trust.
+    # Trust both the parent (for future sessions) AND the specific session dir
+    # (Claude Code may not walk up the tree for all trust checks).
     _ensure_claude_trust(session_dir.parent)
+    _ensure_claude_trust(session_dir)
 
     # Create a studyctl wrapper in the session directory that uses the
     # correct Python (the one running this process). Without this, the

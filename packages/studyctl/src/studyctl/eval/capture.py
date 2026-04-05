@@ -76,17 +76,11 @@ def capture_response(
 ) -> str:
     """Send a prompt and capture the agent's response.
 
-    Args:
-        target: A tmux target — pane ID (e.g. ``%0``) preferred over session name.
-        prompt_text: The text to send to the agent.
-        timeout: Maximum seconds to wait for a response.
-        stable_seconds: How many consecutive unchanged polls count as "stable".
+    Two-phase capture:
+      Phase 1 — Wait for content to grow past baseline (agent is processing).
+      Phase 2 — Wait for content to stabilise (agent finished responding).
 
-    1. Record pane content before sending (baseline)
-    2. Send prompt via send-keys
-    3. Poll pane until output stabilises (stable_seconds of no change)
-    4. Extract new content (diff from baseline)
-    5. Strip ANSI codes
+    This prevents false-stable returns when the agent is still initializing.
 
     Returns the new content added after the prompt was sent.
     Returns empty string on timeout or if no new content appears.
@@ -99,37 +93,66 @@ def capture_response(
     )
 
     baseline = capture_pane_plain(target)
-    logger.debug("baseline: %d chars", len(baseline))
+    baseline_len = len(baseline)
+    logger.debug("baseline: %d chars", baseline_len)
 
     send_keys(target, prompt_text)
 
-    prev = baseline
-    stable_count = 0
     content = baseline
+    elapsed = 0
 
+    # Phase 1: wait for ANY new content (agent may be initializing)
     for tick in range(timeout):
         time.sleep(1)
+        elapsed = tick + 1
+        content = capture_pane_plain(target)
+        if len(content) > baseline_len:
+            logger.debug(
+                "phase 1: new content after %ds (+%d chars)",
+                elapsed,
+                len(content) - baseline_len,
+            )
+            break
+    else:
+        logger.warning(
+            "capture_response: no new content for target=%r after %ds (baseline=%d, final=%d)",
+            target,
+            timeout,
+            baseline_len,
+            len(content),
+        )
+        return ""
+
+    # Phase 2: wait for stability (content stops changing)
+    prev = content
+    stable_count = 0
+    remaining = timeout - elapsed
+
+    for _tick in range(remaining):
+        time.sleep(1)
+        elapsed += 1
         content = capture_pane_plain(target)
         if content == prev:
             stable_count += 1
             if stable_count >= stable_seconds:
-                new_chars = len(content) - len(baseline)
-                logger.debug("stable after %d ticks (%d chars new)", tick + 1, new_chars)
+                logger.debug(
+                    "phase 2: stable after %ds total (%d chars new)",
+                    elapsed,
+                    len(content) - baseline_len,
+                )
                 break
         else:
             stable_count = 0
             prev = content
 
-    new_content = content[len(baseline) :] if len(content) > len(baseline) else ""
+    new_content = content[baseline_len:] if len(content) > baseline_len else ""
     result = strip_ansi(new_content).strip()
 
     if not result:
         logger.warning(
-            "capture_response: empty result for target=%r after %ds (baseline=%d, final=%d)",
+            "capture_response: empty after strip for target=%r (raw new=%d chars, stripped to 0)",
             target,
-            timeout,
-            len(baseline),
-            len(content),
+            len(new_content),
         )
     else:
         logger.debug("capture_response: got %d chars of new content", len(result))
