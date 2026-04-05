@@ -21,17 +21,21 @@
   <header>
     <h1>Socratic Study Mentor</h1>
     <div class="header-controls">
-      <button class="toggle-btn" id="pomo-toggle" title="Pomodoro timer (25min study / 5min break)">
+      <button class="toggle-btn" id="pomo-toggle" @click="pomoStart()" title="Pomodoro timer (25min study / 5min break)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       </button>
-      <button class="toggle-btn" id="voice-toggle" title="Toggle voice (reads questions aloud)">
+      <button class="toggle-btn" :class="{ active: $store.settings.voiceOn }"
+              @click="$store.settings.toggleVoice()" title="Toggle voice (reads questions aloud)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
       </button>
-      <select id="voice-select" class="voice-select hidden" title="Choose voice"></select>
-      <button class="toggle-btn" id="theme-toggle" title="Toggle light/dark theme">
+      <select id="voice-select" class="voice-select" :class="{ hidden: !$store.settings.voiceOn }"
+              @change="$store.settings.onVoiceChange($event.target.value)" title="Choose voice"></select>
+      <button class="toggle-btn" :class="{ active: $store.settings.light }"
+              @click="$store.settings.toggleTheme()" title="Toggle light/dark theme">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       </button>
-      <button class="toggle-btn" id="dyslexic-toggle" title="Toggle OpenDyslexic font">Aa</button>
+      <button class="toggle-btn" :class="{ active: $store.settings.dyslexic }"
+              @click="$store.settings.toggleDyslexic()" title="Toggle OpenDyslexic font">Aa</button>
     </div>
   </header>
 
@@ -48,8 +52,8 @@
       <div class="pomo-time" id="pomo-time">25:00</div>
       <div class="pomo-label" id="pomo-label">Study</div>
     </div>
-    <button class="pomo-btn" id="pomo-pause" title="Pause/Resume">&#10074;&#10074;</button>
-    <button class="pomo-btn" id="pomo-stop" title="Stop">&times;</button>
+    <button class="pomo-btn" id="pomo-pause" @click="pomoPauseToggle()" title="Pause/Resume">&#10074;&#10074;</button>
+    <button class="pomo-btn" id="pomo-stop" @click="pomoStop()" title="Stop">&times;</button>
   </div>
 
   <!-- App layout: sidebar + content -->
@@ -87,23 +91,429 @@
     <div class="content-area">
 
       <!-- ============================================================ -->
-      <!-- FLASHCARDS VIEW — app.js drives this panel via #app          -->
+      <!-- FLASHCARDS VIEW                                              -->
       <!-- ============================================================ -->
-      <div x-show="$store.nav.is('flashcards')" x-cloak>
-        <main id="app"></main>
-        <div class="shortcuts" id="shortcuts"></div>
+      <div x-show="$store.nav.is('flashcards')" x-cloak
+           x-data="reviewApp('flashcards')" x-init="init()"
+           @keydown.window="if ($store.nav.is('flashcards')) handleKey($event)">
+        <template x-if="true" x-ref="flashcards-view">
+          <div>
+            <!-- Include shared review templates -->
+            <div x-html="''" x-ref="fc-anchor"></div>
+
+            <!-- COURSES VIEW -->
+            <div x-show="view === 'courses'" class="review-content">
+              <div style="width:100%;max-width:800px;margin:0 auto;padding:24px">
+                <!-- Live session banner -->
+                <a x-show="liveSession" href="#study-session" @click.prevent="$store.nav.go('study-session')"
+                   class="session-indicator">
+                  <span class="session-pulse"></span>
+                  Live session: <span x-text="liveSession?.topic || 'Study'"></span>
+                </a>
+                <!-- Course cards -->
+                <div x-show="courses.length === 0" style="text-align:center;color:var(--text-muted)">
+                  <h2 style="margin-bottom:12px">No courses found</h2>
+                  <p>Add flashcard/quiz JSON files to your review directories.</p>
+                </div>
+                <div class="courses">
+                  <template x-for="c in courses" :key="c.name">
+                    <div class="course-card">
+                      <h2>
+                        <span x-text="c.name"></span>
+                        <span x-show="c.due_count > 0" class="due-badge" x-text="c.due_count + ' due'"></span>
+                      </h2>
+                      <div class="counts">
+                        <span x-text="c.flashcard_count + ' flashcards'"></span>
+                        <span x-text="c.quiz_count + ' quiz questions'"></span>
+                      </div>
+                      <div class="stats-row">
+                        <span x-text="c.total_reviews + ' reviews'"></span>
+                        <span x-text="c.mastered + ' mastered'"></span>
+                      </div>
+                      <div class="mode-buttons">
+                        <button x-show="c.flashcard_count" class="mode-btn flashcard"
+                                @click="openConfig(c.name, 'flashcards')">Flashcards</button>
+                        <button x-show="c.quiz_count" class="mode-btn quiz"
+                                @click="openConfig(c.name, 'quiz')">Quiz</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                <!-- Heatmap -->
+                <div x-show="heatmapDays.length" class="heatmap-section">
+                  <h3 style="font-size:1rem;color:var(--text-muted);margin-bottom:8px">Study Activity</h3>
+                  <div class="heatmap">
+                    <template x-for="day in heatmapDays" :key="day.date">
+                      <div class="heatmap-day" :class="day.level"
+                           :title="day.date + ': ' + day.count + ' session' + (day.count !== 1 ? 's' : '')"></div>
+                    </template>
+                  </div>
+                </div>
+                <!-- Recent history -->
+                <div x-show="history.length" class="history-section">
+                  <h3>Recent Sessions</h3>
+                  <div class="history-list">
+                    <template x-for="h in history.slice(0, 8)" :key="h.date + h.course + h.mode">
+                      <div class="history-item">
+                        <span class="hi-course" x-text="h.course"></span>
+                        <span x-text="h.mode"></span>
+                        <span class="hi-score" x-text="(h.total > 0 ? Math.round(h.correct / h.total * 100) : 0) + '% (' + h.correct + '/' + h.total + ')'"></span>
+                        <span class="hi-date" x-text="h.date || ''"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CONFIG VIEW -->
+            <div x-show="view === 'config'" class="review-content">
+              <div class="study-view" style="max-width:600px;margin:0 auto;padding:24px">
+                <div class="nav-bar">
+                  <button class="nav-btn" @click="goHome()" title="Back">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  </button>
+                  <span class="nav-course" x-text="course + ' \u2014 ' + mode"></span>
+                  <span></span>
+                </div>
+                <div class="card" style="cursor:default">
+                  <div class="card-label">Session Setup</div>
+                  <div class="config-bar">
+                    <label>Chapter:
+                      <select x-model="selectedSource">
+                        <option value="all" x-text="'All chapters (' + sources.length + ')'"></option>
+                        <template x-for="s in sources" :key="s">
+                          <option :value="s" x-text="s"></option>
+                        </template>
+                      </select>
+                    </label>
+                    <label>Cards:
+                      <select x-model.number="cardLimit">
+                        <option value="0">All</option>
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div style="margin-top:16px">
+                    <button class="action-btn btn-flip" style="width:100%"
+                            @click="startSession(selectedSource, cardLimit)">Start Session</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- STUDY VIEW — card player -->
+            <div x-show="view === 'study' && currentCard" class="review-content">
+              <div class="study-view" style="max-width:600px;margin:0 auto;padding:24px">
+                <div class="nav-bar">
+                  <button class="nav-btn" @click="goHome()" title="Home">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  </button>
+                  <span class="nav-course" x-text="course + ' \u2014 ' + mode + retryTag"></span>
+                  <button class="nav-btn" @click="restartSession()" title="Restart">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-12.36L1 10"/></svg>
+                  </button>
+                </div>
+                <div class="progress-bar">
+                  <span x-text="(index + 1) + '/' + cards.length"></span>
+                  <div class="progress-track"><div class="progress-fill" :style="'width:' + progressPct + '%'"></div></div>
+                  <span x-text="scoreText"></span>
+                </div>
+
+                <!-- FLASHCARD -->
+                <template x-if="currentCard.type === 'flashcard'">
+                  <div>
+                    <div class="card" :class="{ revealed }" @click="flipCard()">
+                      <div class="card-header">
+                        <div class="card-label" x-text="revealed ? 'Answer' : 'Question'"></div>
+                        <button class="speak-btn" @click.stop="speakCurrentCard()" title="Read aloud (T)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+                        </button>
+                      </div>
+                      <div class="card-content" x-text="revealed ? currentCard.back : currentCard.front"></div>
+                      <div class="card-hint" x-show="!revealed">Tap or press Space to reveal</div>
+                    </div>
+                    <div class="actions" x-show="revealed" x-transition>
+                      <button class="action-btn btn-correct" @click="answerFlashcard(true)">I knew it</button>
+                      <button class="action-btn btn-incorrect" @click="answerFlashcard(false)">Didn't know</button>
+                      <button class="action-btn btn-skip" @click="skipCard()">Skip</button>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- QUIZ -->
+                <template x-if="currentCard.type === 'quiz'">
+                  <div>
+                    <div class="card">
+                      <div class="card-header">
+                        <div class="card-label">Question</div>
+                        <button class="speak-btn" @click.stop="speakCurrentCard()" title="Read aloud (T)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+                        </button>
+                      </div>
+                      <div class="card-content" x-text="currentCard.question"></div>
+                      <div x-show="currentCard.hint" class="card-hint" x-text="'Hint: ' + (currentCard.hint || '')"></div>
+                      <div class="quiz-options">
+                        <template x-for="(opt, idx) in currentCard.options" :key="idx">
+                          <button class="quiz-option" :class="quizOptionClass(idx)"
+                                  :disabled="quizAnswered"
+                                  @click="answerQuiz(idx)">
+                            <span class="option-letter" x-text="'ABCD'[idx]"></span>
+                            <span x-text="opt.text"></span>
+                          </button>
+                        </template>
+                      </div>
+                      <div x-show="quizAnswered && currentCard.options[correctQuizIdx]?.rationale"
+                           class="rationale" x-text="currentCard.options[correctQuizIdx]?.rationale || ''"></div>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Keyboard hints -->
+                <div class="shortcuts">
+                  <template x-if="currentCard?.type === 'flashcard'">
+                    <div>
+                      <span><kbd>Space</kbd> Flip</span>
+                      <span><kbd>Y</kbd> Correct</span>
+                      <span><kbd>N</kbd> Incorrect</span>
+                      <span><kbd>S</kbd> Skip</span>
+                      <span><kbd>T</kbd> Read</span>
+                      <span><kbd>Esc</kbd> Home</span>
+                    </div>
+                  </template>
+                  <template x-if="currentCard?.type === 'quiz'">
+                    <div>
+                      <span><kbd>1-4</kbd> Answer</span>
+                      <span><kbd>T</kbd> Read</span>
+                      <span><kbd>Esc</kbd> Home</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUMMARY VIEW -->
+            <div x-show="view === 'summary'" class="review-content">
+              <div class="summary" style="padding:24px">
+                <div class="score-ring">
+                  <svg width="140" height="140" viewBox="0 0 140 140">
+                    <circle class="track" cx="70" cy="70" r="58"/>
+                    <circle class="fill" :class="summaryGrade.cls" cx="70" cy="70" r="58"
+                      :stroke-dasharray="summaryCircumference"
+                      :stroke-dashoffset="summaryRingOffset"/>
+                  </svg>
+                  <div class="score-text" x-text="summaryPct + '%'"></div>
+                </div>
+                <h2>Session Complete</h2>
+                <div class="grade" :class="summaryGrade.cls" x-text="summaryGrade.text"></div>
+                <div class="summary-stats">
+                  <span x-text="correct + ' correct'"></span>
+                  <span x-text="incorrect + ' wrong'"></span>
+                  <span x-text="skipped + ' skipped'"></span>
+                  <span x-text="summaryDuration"></span>
+                </div>
+                <div class="summary-actions">
+                  <button x-show="wrongCount && !isRetry" class="summary-btn btn-retry"
+                          @click="retryWrong()" x-text="'Retry ' + wrongCount + ' wrong'"></button>
+                  <button class="summary-btn btn-restart" @click="restartSession()">Restart</button>
+                  <button class="summary-btn btn-back" @click="goHome()">Home</button>
+                </div>
+                <div class="shortcuts">
+                  <span><kbd>R</kbd> Retry</span>
+                  <span><kbd>Esc</kbd> Home</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </template>
       </div>
 
       <!-- ============================================================ -->
-      <!-- QUIZZES VIEW — same app.js, different default mode           -->
-      <!-- (Phase 2 will separate these; for now, both show courseGrid) -->
+      <!-- QUIZZES VIEW — same component, quiz default mode             -->
       <!-- ============================================================ -->
-      <div x-show="$store.nav.is('quizzes')" x-cloak>
-        <div class="quiz-placeholder">
-          <h2>Quizzes</h2>
-          <p>Select a course from the Flashcards tab — click the <strong>Quiz</strong> button on any course card.</p>
-          <p class="text-muted">Phase 2 will add a dedicated quiz view here.</p>
-        </div>
+      <div x-show="$store.nav.is('quizzes')" x-cloak
+           x-data="reviewApp('quiz')" x-init="init()"
+           @keydown.window="if ($store.nav.is('quizzes')) handleKey($event)">
+        <template x-if="true" x-ref="quizzes-view">
+          <div>
+
+            <!-- COURSES VIEW -->
+            <div x-show="view === 'courses'" class="review-content">
+              <div style="width:100%;max-width:800px;margin:0 auto;padding:24px">
+                <div x-show="courses.length === 0" style="text-align:center;color:var(--text-muted)">
+                  <h2 style="margin-bottom:12px">No courses found</h2>
+                  <p>Add flashcard/quiz JSON files to your review directories.</p>
+                </div>
+                <div class="courses">
+                  <template x-for="c in courses" :key="c.name">
+                    <div class="course-card">
+                      <h2>
+                        <span x-text="c.name"></span>
+                        <span x-show="c.due_count > 0" class="due-badge" x-text="c.due_count + ' due'"></span>
+                      </h2>
+                      <div class="counts">
+                        <span x-text="c.flashcard_count + ' flashcards'"></span>
+                        <span x-text="c.quiz_count + ' quiz questions'"></span>
+                      </div>
+                      <div class="stats-row">
+                        <span x-text="c.total_reviews + ' reviews'"></span>
+                        <span x-text="c.mastered + ' mastered'"></span>
+                      </div>
+                      <div class="mode-buttons">
+                        <button x-show="c.quiz_count" class="mode-btn quiz"
+                                @click="openConfig(c.name, 'quiz')">Quiz</button>
+                        <button x-show="c.flashcard_count" class="mode-btn flashcard"
+                                @click="openConfig(c.name, 'flashcards')">Flashcards</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- CONFIG VIEW -->
+            <div x-show="view === 'config'" class="review-content">
+              <div class="study-view" style="max-width:600px;margin:0 auto;padding:24px">
+                <div class="nav-bar">
+                  <button class="nav-btn" @click="goHome()" title="Back">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  </button>
+                  <span class="nav-course" x-text="course + ' \u2014 ' + mode"></span>
+                  <span></span>
+                </div>
+                <div class="card" style="cursor:default">
+                  <div class="card-label">Session Setup</div>
+                  <div class="config-bar">
+                    <label>Chapter:
+                      <select x-model="selectedSource">
+                        <option value="all" x-text="'All chapters (' + sources.length + ')'"></option>
+                        <template x-for="s in sources" :key="s">
+                          <option :value="s" x-text="s"></option>
+                        </template>
+                      </select>
+                    </label>
+                    <label>Cards:
+                      <select x-model.number="cardLimit">
+                        <option value="0">All</option>
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div style="margin-top:16px">
+                    <button class="action-btn btn-flip" style="width:100%"
+                            @click="startSession(selectedSource, cardLimit)">Start Session</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- STUDY VIEW — card player (identical template) -->
+            <div x-show="view === 'study' && currentCard" class="review-content">
+              <div class="study-view" style="max-width:600px;margin:0 auto;padding:24px">
+                <div class="nav-bar">
+                  <button class="nav-btn" @click="goHome()" title="Home">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  </button>
+                  <span class="nav-course" x-text="course + ' \u2014 ' + mode + retryTag"></span>
+                  <button class="nav-btn" @click="restartSession()" title="Restart">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-12.36L1 10"/></svg>
+                  </button>
+                </div>
+                <div class="progress-bar">
+                  <span x-text="(index + 1) + '/' + cards.length"></span>
+                  <div class="progress-track"><div class="progress-fill" :style="'width:' + progressPct + '%'"></div></div>
+                  <span x-text="scoreText"></span>
+                </div>
+                <template x-if="currentCard.type === 'flashcard'">
+                  <div>
+                    <div class="card" :class="{ revealed }" @click="flipCard()">
+                      <div class="card-header">
+                        <div class="card-label" x-text="revealed ? 'Answer' : 'Question'"></div>
+                        <button class="speak-btn" @click.stop="speakCurrentCard()" title="Read aloud (T)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+                        </button>
+                      </div>
+                      <div class="card-content" x-text="revealed ? currentCard.back : currentCard.front"></div>
+                      <div class="card-hint" x-show="!revealed">Tap or press Space to reveal</div>
+                    </div>
+                    <div class="actions" x-show="revealed" x-transition>
+                      <button class="action-btn btn-correct" @click="answerFlashcard(true)">I knew it</button>
+                      <button class="action-btn btn-incorrect" @click="answerFlashcard(false)">Didn't know</button>
+                      <button class="action-btn btn-skip" @click="skipCard()">Skip</button>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="currentCard.type === 'quiz'">
+                  <div>
+                    <div class="card">
+                      <div class="card-header">
+                        <div class="card-label">Question</div>
+                        <button class="speak-btn" @click.stop="speakCurrentCard()" title="Read aloud (T)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+                        </button>
+                      </div>
+                      <div class="card-content" x-text="currentCard.question"></div>
+                      <div x-show="currentCard.hint" class="card-hint" x-text="'Hint: ' + (currentCard.hint || '')"></div>
+                      <div class="quiz-options">
+                        <template x-for="(opt, idx) in currentCard.options" :key="idx">
+                          <button class="quiz-option" :class="quizOptionClass(idx)"
+                                  :disabled="quizAnswered"
+                                  @click="answerQuiz(idx)">
+                            <span class="option-letter" x-text="'ABCD'[idx]"></span>
+                            <span x-text="opt.text"></span>
+                          </button>
+                        </template>
+                      </div>
+                      <div x-show="quizAnswered && currentCard.options[correctQuizIdx]?.rationale"
+                           class="rationale" x-text="currentCard.options[correctQuizIdx]?.rationale || ''"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- SUMMARY VIEW -->
+            <div x-show="view === 'summary'" class="review-content">
+              <div class="summary" style="padding:24px">
+                <div class="score-ring">
+                  <svg width="140" height="140" viewBox="0 0 140 140">
+                    <circle class="track" cx="70" cy="70" r="58"/>
+                    <circle class="fill" :class="summaryGrade.cls" cx="70" cy="70" r="58"
+                      :stroke-dasharray="summaryCircumference"
+                      :stroke-dashoffset="summaryRingOffset"/>
+                  </svg>
+                  <div class="score-text" x-text="summaryPct + '%'"></div>
+                </div>
+                <h2>Session Complete</h2>
+                <div class="grade" :class="summaryGrade.cls" x-text="summaryGrade.text"></div>
+                <div class="summary-stats">
+                  <span x-text="correct + ' correct'"></span>
+                  <span x-text="incorrect + ' wrong'"></span>
+                  <span x-text="skipped + ' skipped'"></span>
+                  <span x-text="summaryDuration"></span>
+                </div>
+                <div class="summary-actions">
+                  <button x-show="wrongCount && !isRetry" class="summary-btn btn-retry"
+                          @click="retryWrong()" x-text="'Retry ' + wrongCount + ' wrong'"></button>
+                  <button class="summary-btn btn-restart" @click="restartSession()">Restart</button>
+                  <button class="summary-btn btn-back" @click="goHome()">Home</button>
+                </div>
+                <div class="shortcuts">
+                  <span><kbd>R</kbd> Retry</span>
+                  <span><kbd>Esc</kbd> Home</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </template>
       </div>
 
       <!-- ============================================================ -->
@@ -534,7 +944,7 @@
   }
   </script>
 
-  <!-- app.js — vanilla flashcard/quiz engine (Phase 2 replaces with Alpine) -->
-  <script src="/app.js"></script>
+  <!-- Alpine review engine + settings store + Pomodoro (replaces app.js) -->
+  <script src="/components.js"></script>
 </body>
 </html>
