@@ -46,7 +46,7 @@ class TestListCourses:
         assert "courses" in result
         assert len(result["courses"]) == 1
         assert result["courses"][0]["name"] == "test-course"
-        assert result["courses"][0]["card_count"] == 1
+        assert result["courses"][0]["flashcard_count"] == 1
 
 
 class TestGetStudyContext:

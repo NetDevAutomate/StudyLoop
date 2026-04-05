@@ -46,7 +46,7 @@ def list_course_summaries(study_dirs: list[str]) -> list[dict]:
         result.append(
             {
                 "name": name,
-                "card_count": fc_count,
+                "flashcard_count": fc_count,
                 "quiz_count": quiz_count,
                 "due_count": due,
                 "total_reviews": stats.get("total_reviews", 0),
