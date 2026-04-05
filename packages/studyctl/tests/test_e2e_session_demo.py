@@ -117,7 +117,7 @@ def _cleanup_all():
     result = _tmux("list-sessions", "-F", "#{session_name}")
     if result.returncode == 0:
         for name in result.stdout.strip().splitlines():
-            if name.startswith("study-") or name.startswith("e2e-"):
+            if name.startswith(("study-", "e2e-", "studyctl-test", "playwright-")):
                 _tmux("kill-session", "-t", name)
     # Kill orphaned processes
     for pattern in (
