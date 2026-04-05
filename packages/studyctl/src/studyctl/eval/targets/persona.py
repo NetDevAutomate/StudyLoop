@@ -177,12 +177,12 @@ class PersonaTarget:
         # in settings.json for dynamically-created session directories.
         from studyctl.eval.capture import capture_pane_plain, send_keys
 
-        time.sleep(3)  # Give Claude time to render the trust prompt
+        time.sleep(5)  # Give Claude time to render the trust prompt
         pane_content = capture_pane_plain(self._tmux_main_pane)
         if "trust" in pane_content.lower() and "Yes, I trust" in pane_content:
             logger.info("Trust dialog detected — accepting automatically")
             send_keys(self._tmux_main_pane, "")  # Enter accepts default option 1
-            time.sleep(5)  # Wait for Claude to initialize after trust acceptance
+            time.sleep(15)  # Wait for Claude to fully initialize after trust
 
         # Inject elapsed time for the scenario
         fake_start = datetime.now(UTC) - timedelta(minutes=scenario.elapsed_minutes)
@@ -208,12 +208,13 @@ class PersonaTarget:
         target = self._tmux_main_pane
         logger.info("Capturing from pane %s (session %s)", target, self._session_name)
 
-        # Send setup prompts with stable-wait between each
+        # Send setup prompts — Claude Code (especially Opus) can take 30-60s
+        # to think + respond. Use generous timeouts.
         for prompt in scenario.setup_prompts:
-            capture_response(target, prompt, timeout=60, stable_seconds=3)
+            capture_response(target, prompt, timeout=120, stable_seconds=5)
 
-        # Send test prompt and capture
-        response = capture_response(target, scenario.prompt, timeout=90, stable_seconds=5)
+        # Send test prompt and capture — main response may take even longer
+        response = capture_response(target, scenario.prompt, timeout=180, stable_seconds=8)
         logger.info("Captured %d chars for %s", len(response), scenario.id)
         return response
 
