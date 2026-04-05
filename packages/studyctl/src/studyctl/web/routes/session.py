@@ -48,16 +48,18 @@ def _get_full_state() -> dict:
 
 
 def _render_activity_feed(state: dict) -> str:
-    """Render the activity feed HTML fragment."""
+    """Render the activity feed HTML fragment (inner content only).
+
+    The SSE swap target already has id="activity-feed", so this returns
+    only the *content* to be placed inside that element — not a wrapper div.
+    Including a wrapper with the same id would create a duplicate ID when
+    HTMX replaces innerHTML of the target.
+    """
     topics = state.get("topics", [])
     parking = state.get("parking", [])
 
     if not topics and not parking:
-        return (
-            '<div id="activity-feed" class="activity-feed">'
-            '<p class="activity-empty">Waiting for session activity...</p>'
-            "</div>"
-        )
+        return '<p class="activity-empty">Waiting for session activity...</p>'
 
     items: list[str] = []
     for t in topics:
@@ -85,8 +87,7 @@ def _render_activity_feed(state: dict) -> str:
             f"</div>"
         )
 
-    feed_html = "\n".join(items)
-    return f'<div id="activity-feed" class="activity-feed">{feed_html}</div>'
+    return "\n".join(items)
 
 
 def _render_counters(state: dict) -> str:
@@ -165,7 +166,7 @@ def _render_summary(state: dict) -> str:
         parked_html = f"<h3>\u25cb Parked Topics</h3><ul>{parked_items}</ul>"
 
     return (
-        f'<div id="activity-feed" class="activity-feed session-summary">'
+        f'<div class="session-summary">'
         f'<div class="summary-header">'
         f"<h2>Session Complete: {topic}</h2>"
         f"</div>"
