@@ -86,6 +86,25 @@ def end_session_common(
         except Exception:
             logger.exception("Failed to auto-persist struggled topics")
 
+    # Generate flashcards from session wins/insights
+    try:
+        topic_slug = state.get("topic_slug")
+        if topic_slug and topic_entries:
+            from studyctl.services.flashcard_writer import write_session_flashcards
+            from studyctl.settings import load_settings
+
+            settings = load_settings()
+            count = write_session_flashcards(
+                settings.content.base_path,
+                topic_slug,
+                study_id,
+                topic_entries,
+            )
+            if count:
+                logger.info("Generated %d flashcards from session wins", count)
+    except Exception:
+        logger.warning("Failed to generate session flashcards", exc_info=True)
+
     # End the DB session with captured notes
     try:
         end_study_session(study_id, notes=notes)
