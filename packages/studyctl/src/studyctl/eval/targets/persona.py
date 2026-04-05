@@ -239,3 +239,4 @@ class PersonaTarget:
             if session_exists(self._session_name):
                 kill_session(self._session_name)
             self._session_name = ""
+            self._tmux_main_pane = ""
