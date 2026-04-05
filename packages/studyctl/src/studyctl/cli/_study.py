@@ -52,6 +52,11 @@ def _agent_names() -> list[str]:
 )
 @click.option("--web", is_flag=True, help="Also start the web dashboard.")
 @click.option("--lan", is_flag=True, help="Expose web dashboard + terminal to LAN (implies --web).")
+@click.option(
+    "--password",
+    default="",
+    help="Password for HTTP Basic Auth when using --lan (auto-generated if not set).",
+)
 @click.option("--resume", is_flag=True, help="Resume an existing session.")
 @click.option("--end", "end_session", is_flag=True, help="End the current session.")
 @click.pass_context
@@ -64,6 +69,7 @@ def study(
     energy: int,
     web: bool,
     lan: bool,
+    password: str,
     resume: bool,
     end_session: bool,
 ) -> None:
@@ -101,7 +107,7 @@ def study(
     if lan:
         web = True
 
-    _handle_start(ctx, topic, agent, mode, timer, energy, web, lan=lan)
+    _handle_start(ctx, topic, agent, mode, timer, energy, web, lan=lan, password=password)
 
 
 def _auto_clean_zombies() -> None:
@@ -253,6 +259,7 @@ def _handle_start(
     web: bool,
     *,
     lan: bool = False,
+    password: str = "",
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
     previous_notes: str | None = None,
@@ -416,13 +423,29 @@ def _handle_start(
         }
     )
 
+    # Resolve LAN password: CLI flag > config > auto-generate
+    lan_password = password
+    if lan and not lan_password:
+        try:
+            from studyctl.settings import load_settings as _ls_inner
+
+            lan_password = _ls_inner().lan_password
+        except Exception:
+            pass
+    if lan and not lan_password:
+        import secrets
+
+        lan_password = secrets.token_urlsafe(16)
+        console.print(f"\n[bold yellow]LAN password:[/bold yellow] [green]{lan_password}[/green]")
+        console.print("[dim]Share this with devices connecting from the network.[/dim]")
+
     if web:
-        start_web_background(session_name, lan=lan)
+        start_web_background(session_name, lan=lan, password=lan_password)
 
     # Start ttyd if installed (allows iPad/LAN terminal access)
     start_ttyd_background(session_name, lan=lan)
 
-    # Show LAN access URL if --lan was used
+    # Persist LAN info to session state so it's visible after os.execvp
     if lan:
         import socket
 
@@ -431,13 +454,24 @@ def _handle_start(
             lan_ip = socket.gethostbyname(hostname)
         except Exception:
             lan_ip = "<your-ip>"
-        from studyctl.session.orchestrator import _get_ttyd_port, _get_web_port
+        from studyctl.session.orchestrator import _get_web_port
 
         web_port = _get_web_port()
-        ttyd_port = _get_ttyd_port()
+        write_session_state(
+            {
+                "lan_ip": lan_ip,
+                "lan_password": lan_password,
+                "lan_url": f"http://{lan_ip}:{web_port}/session",
+            }
+        )
+
+        # Print LAN info — this shows briefly before tmux takes over,
+        # but is also saved in session state (visible via web dashboard
+        # and `studyctl study --resume` output).
         console.print("\n[bold]LAN access:[/bold]")
         console.print(f"  Dashboard: http://{lan_ip}:{web_port}/session")
-        console.print(f"  Terminal:  http://{lan_ip}:{ttyd_port}")
+        console.print(f"  Password:  {lan_password}")
+        console.print("  Username:  (any value works)")
 
     attach_if_needed(session_name, result["already_in_tmux"])
 

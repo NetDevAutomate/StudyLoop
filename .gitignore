@@ -475,8 +475,12 @@ site/
 *.db-shm
 *.db-journal
 
-# Internal docs (kept locally, not published)
+# Internal/planning docs (kept locally, not published)
 docs/internal/
+docs/plans/
+docs/local_repo_docs/
+docs/architecture/
+demos/
 
 # Agent workflow artefacts
 code-review-plan-items.md
