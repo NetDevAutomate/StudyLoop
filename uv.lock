@@ -2736,6 +2736,7 @@ docs = [
 [package.dev-dependencies]
 dev = [
     { name = "httpx" },
+    { name = "mcp", extra = ["cli"] },
     { name = "pexpect" },
     { name = "pre-commit" },
     { name = "pyright" },
@@ -2756,6 +2757,7 @@ provides-extras = ["docs"]
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.0.0" },
     { name = "pexpect", specifier = ">=4.9.0" },
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "pyright", specifier = ">=1.1" },

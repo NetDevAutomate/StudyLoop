@@ -6,11 +6,12 @@ Uses a simplified SM-2 algorithm for scheduling next reviews.
 
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # noqa: TC003 — used at runtime for exception handling
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from .db import connect_db
 from .settings import get_db_path
 
 # SM-2 simplified intervals: correct → double interval, wrong → reset to 1
@@ -28,10 +29,7 @@ def _get_db() -> Path:
 
 def _connect(db_path: Path) -> sqlite3.Connection:
     """Open a SQLite connection with WAL mode and busy timeout."""
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
-    return conn
+    return connect_db(db_path)
 
 
 def ensure_tables(db_path: Path | None = None) -> None:

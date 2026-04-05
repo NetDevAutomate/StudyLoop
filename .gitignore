@@ -477,9 +477,11 @@ site/
 
 # Internal/planning docs (kept locally, not published)
 docs/internal/
-docs/plans/
 docs/local_repo_docs/
+docs/plans/
 docs/architecture/
+
+# Demo recordings (large, local-only)
 demos/
 
 # Agent workflow artefacts

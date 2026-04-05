@@ -10,6 +10,7 @@ import logging
 import sqlite3
 from datetime import datetime
 
+from studyctl.db import connect_db
 from studyctl.settings import get_db_path
 
 logger = logging.getLogger(__name__)
@@ -28,10 +29,7 @@ def _connect() -> sqlite3.Connection:
     TABLE (thinks it already ran) and later migrations fail because the
     table doesn't exist. The direct CREATE is self-healing for this case.
     """
-    conn = sqlite3.connect(str(get_db_path()))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn = connect_db(get_db_path(), row_factory=True)
 
     # Always run migrations — they're idempotent (check user_version)
     # and handle both missing tables AND missing columns from newer versions.

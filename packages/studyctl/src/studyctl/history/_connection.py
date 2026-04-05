@@ -8,8 +8,8 @@ or any other bootstrap step.
 from __future__ import annotations
 
 import logging
-import sqlite3
 
+from ..db import connect_db
 from ..settings import load_settings
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ def _get_db_path():
     return load_settings().session_db
 
 
-def _connect() -> sqlite3.Connection | None:
+def _connect():
     """Open a connection to sessions.db, creating it if necessary.
 
     On first use the file and all tables are created via the
@@ -32,10 +32,7 @@ def _connect() -> sqlite3.Connection | None:
     db.parent.mkdir(parents=True, exist_ok=True)
 
     is_new = not db.exists()
-    conn = sqlite3.connect(db, timeout=5)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn = connect_db(db, row_factory=True)
 
     if is_new:
         try:

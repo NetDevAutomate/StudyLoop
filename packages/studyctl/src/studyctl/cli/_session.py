@@ -34,13 +34,9 @@ def session_start(topic: str, energy: int) -> None:
 
     _ensure_session_dir()
 
-    # Map integer energy to label for history.py
-    if energy <= 3:
-        energy_label = "low"
-    elif energy <= 7:
-        energy_label = "medium"
-    else:
-        energy_label = "high"
+    from studyctl.output import energy_to_label
+
+    energy_label = energy_to_label(energy)
 
     study_id = start_study_session(topic, energy_label)
     if not study_id:

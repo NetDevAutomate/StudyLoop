@@ -38,7 +38,7 @@ Run `studyctl config show` to see your configured notebook IDs.
 ## Session Types
 
 **Study session:** arrival → state check → system check → topic → Socratic session → record
-**Spaced review:** arrival → state check → `studyctl review` → quiz overdue topics (interleave if 2+ due) → record
+**Spaced review:** arrival → state check → `studyctl review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record
 **Body doubling (active):** agree goal + time → start/mid/end check-ins
 **Body doubling (async):** "I'm working, not studying. Check in on me." → periodic low-demand check-ins
 **Ad-hoc question:** identify topic → query NotebookLM → respond Socratically

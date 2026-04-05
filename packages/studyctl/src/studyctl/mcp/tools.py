@@ -26,6 +26,18 @@ from studyctl.settings import load_settings
 logger = logging.getLogger(__name__)
 
 
+def _safe_course_dir(base: Path, course: str, subdir: str) -> Path:
+    """Resolve a course subdirectory, preventing path traversal.
+
+    The ``course`` parameter comes from LLM tool calls and could contain
+    ``../../`` sequences. This validates the resolved path stays within base.
+    """
+    resolved = (base / course / subdir).resolve()
+    if not resolved.is_relative_to(base.resolve()):
+        raise ToolError(f"Invalid course path: {course!r}")
+    return resolved
+
+
 def register_tools(mcp: FastMCP) -> None:
     """Register all studyctl MCP tools on the server."""
 
@@ -129,7 +141,7 @@ def register_tools(mcp: FastMCP) -> None:
 
         settings = load_settings()
         base = settings.content.base_path
-        course_dir = base / course / "flashcards"
+        course_dir = _safe_course_dir(base, course, "flashcards")
         course_dir.mkdir(parents=True, exist_ok=True)
 
         filename = f"ch{chapter:02d}-flashcards.json"
@@ -172,7 +184,7 @@ def register_tools(mcp: FastMCP) -> None:
 
         settings = load_settings()
         base = settings.content.base_path
-        course_dir = base / course / "quizzes"
+        course_dir = _safe_course_dir(base, course, "quizzes")
         course_dir.mkdir(parents=True, exist_ok=True)
 
         filename = f"ch{chapter:02d}-quiz.json"
@@ -199,7 +211,7 @@ def register_tools(mcp: FastMCP) -> None:
             ) from None
 
         settings = load_settings()
-        chapters_dir = settings.content.base_path / course / "chapters"
+        chapters_dir = _safe_course_dir(settings.content.base_path, course, "chapters")
         if not chapters_dir.is_dir():
             raise ToolError(
                 f"No chapters directory for course '{course}'. Run 'studyctl content split' first."

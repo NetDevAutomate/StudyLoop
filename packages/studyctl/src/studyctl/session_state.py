@@ -6,6 +6,7 @@ Viewports (TUI, Web PWA) poll them for live updates.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import threading
@@ -16,6 +17,7 @@ SESSION_DIR = Path.home() / ".config" / "studyctl"
 STATE_FILE = SESSION_DIR / "session-state.json"
 TOPICS_FILE = SESSION_DIR / "session-topics.md"
 PARKING_FILE = SESSION_DIR / "session-parking.md"
+_LOCK_FILE = SESSION_DIR / ".session-state.lock"
 
 
 @dataclass
@@ -71,14 +73,22 @@ _state_lock = threading.Lock()
 def write_session_state(updates: dict) -> None:
     """Atomic read-merge-write of session state. Creates file if missing.
 
-    Thread-safe: a lock serialises concurrent updates from the poll
-    thread and action handlers to prevent read-merge-write clobbering.
+    Thread-safe via threading.Lock (within process) AND cross-process-safe
+    via fcntl.flock on a dedicated lock file. Without the file lock, the
+    agent, sidebar TUI, and web server can race on read-merge-write and
+    the last writer silently clobbers other updates.
     """
     _ensure_session_dir()
     with _state_lock:
-        current = read_session_state()
-        current.update(updates)
-        _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
+        lock_fd = os.open(str(_LOCK_FILE), os.O_WRONLY | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            current = read_session_state()
+            current.update(updates)
+            _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
 
 
 def parse_topics_file() -> list[TopicEntry]:
