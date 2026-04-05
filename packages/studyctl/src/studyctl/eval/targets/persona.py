@@ -1,73 +1,52 @@
-"""Persona evaluation target — runs scenarios against a live study session."""
+"""Persona evaluation target — runs scenarios via Claude Code print mode.
+
+Uses ``claude -p`` (headless print mode) instead of tmux sessions.
+This avoids all TUI complexity: no pane capture, no trust dialogs,
+no timing issues. The persona is loaded via --append-system-prompt-file
+and the response comes back as structured JSON on stdout.
+"""
 
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
-import os
 import shutil
-import time
-from datetime import UTC, datetime, timedelta
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from studyctl.eval.capture import capture_response
-from studyctl.session_state import (
-    PARKING_FILE,
-    SESSION_DIR,
-    TOPICS_FILE,
-    _ensure_session_dir,
-    is_session_active,
-    read_session_state,
-    write_session_state,
-)
 
 if TYPE_CHECKING:
     from studyctl.eval.models import Scenario
 
 logger = logging.getLogger(__name__)
 
+# Timeout for claude -p subprocess (seconds). Opus can take 60s+ to respond.
+CLAUDE_TIMEOUT = 120
+
 
 class PersonaTarget:
-    """Eval target that starts a headless study session per scenario.
+    """Eval target using Claude Code's print mode (``claude -p``).
 
-    Uses the same internal functions as ``POST /api/session/start`` —
-    creates the tmux session detached without trying to attach (which
-    would block when run non-interactively).
+    Each scenario is evaluated as a single-turn prompt with the full
+    persona loaded as a system prompt. Setup prompts are prepended to
+    provide conversational context.
     """
 
     name = "persona"
 
     def __init__(self, agent: str = "claude") -> None:
         self.agent = agent
-        self._session_name: str = ""
-        self._tmux_main_pane: str = ""
         self.persona_hash: str = ""
+        self._persona_file: Path | None = None
 
     def setup(self, scenario: Scenario) -> None:
-        """Start a fresh headless study session for this scenario."""
+        """Build the persona file for this scenario."""
         from studyctl.agent_launcher import (
             AGENTS,
             build_canonical_persona,
             detect_agents,
         )
-        from studyctl.history import start_study_session
-        from studyctl.history.sessions import update_persona_hash
-        from studyctl.output import energy_to_label
-        from studyctl.session.orchestrator import (
-            build_wrapped_agent_cmd,
-            create_tmux_environment,
-            setup_session_dir,
-        )
-        from studyctl.tmux import is_tmux_available, kill_session, session_exists
-
-        if not is_tmux_available():
-            logger.error("tmux not available — cannot start eval session")
-            return
-
-        if is_session_active():
-            logger.warning("Session already active — cleaning up before eval")
-            self._force_teardown()
 
         # Resolve agent
         agent_name = self.agent
@@ -83,161 +62,110 @@ class PersonaTarget:
             logger.error("Agent binary not found: %s", adapter.binary)
             return
 
-        # Create DB record
-        energy_label = energy_to_label(scenario.energy)
-        study_id = start_study_session(scenario.topic, energy_label)
-        if not study_id:
-            logger.error("Failed to create session record")
-            return
-
-        # Write session state
-        _ensure_session_dir()
-        now = datetime.now(UTC).isoformat()
-        write_session_state(
-            {
-                "study_session_id": study_id,
-                "topic": scenario.topic,
-                "energy": scenario.energy,
-                "energy_label": energy_label,
-                "mode": "focus",
-                "timer_mode": "energy",
-                "started_at": now,
-                "start_time": now,
-                "paused_at": None,
-                "total_paused_seconds": 0,
-            }
-        )
-        TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-        PARKING_FILE.touch(mode=0o600, exist_ok=True)
-
-        # Session directory + tmux
-        slug = scenario.topic.lower().replace(" ", "-")[:20]
-        short_id = study_id[:8]
-        session_name = f"study-{slug}-{short_id}"
-        session_dir = SESSION_DIR / "sessions" / session_name
-
-        if session_exists(session_name):
-            kill_session(session_name)
-
-        setup_session_dir(session_dir, scenario.topic)
-
-        # Build persona
+        # Build persona — same canonical persona used in live sessions
         canonical = build_canonical_persona("focus", scenario.topic, scenario.energy)
         self.persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
-        update_persona_hash(study_id, self.persona_hash)
 
-        persona_file = adapter.setup(canonical, session_dir)
-        if adapter.mcp_setup:
-            adapter.mcp_setup(session_dir)
+        # Write persona to a temp file for --append-system-prompt-file
+        persona_dir = Path.home() / ".config" / "studyctl" / "eval-personas"
+        persona_dir.mkdir(parents=True, exist_ok=True)
+        persona_file = persona_dir / f"eval-{scenario.id}.md"
+        persona_file.write_text(canonical)
+        self._persona_file = persona_file
 
-        # Build agent command
-        test_agent_cmd = os.environ.get("STUDYCTL_TEST_AGENT_CMD")
-        if test_agent_cmd:
-            agent_cmd = test_agent_cmd.format(persona_file=persona_file)
-        else:
-            claude_project_key = str(session_dir).replace("/", "-").lstrip("-")
-            claude_project_dir = Path.home() / ".claude" / "projects" / claude_project_key
-            is_resuming = claude_project_dir.exists()
-            agent_cmd = adapter.launch_cmd(persona_file, is_resuming)
-
-        wrapped_cmd = build_wrapped_agent_cmd(session_dir, agent_cmd)
-
-        result = create_tmux_environment(
-            session_name=session_name,
-            session_dir=session_dir,
-            wrapped_agent_cmd=wrapped_cmd,
-            session_state_dir=SESSION_DIR,
+        logger.info(
+            "Persona ready for %s (hash=%s, file=%s)",
+            scenario.id,
+            self.persona_hash,
+            persona_file,
         )
-
-        # Persist tmux metadata
-        write_session_state(
-            {
-                "tmux_session": session_name,
-                "tmux_main_pane": result["tmux_main_pane"],
-                "tmux_sidebar_pane": result["tmux_sidebar_pane"],
-                "persona_file": str(persona_file),
-                "session_dir": str(session_dir),
-                "agent": agent_name,
-                "persona_hash": self.persona_hash,
-            }
-        )
-
-        self._session_name = session_name
-        self._tmux_main_pane = result["tmux_main_pane"]
-
-        # Wait for agent to be ready (poll for child process in tmux pane)
-        for _ in range(30):
-            if is_session_active():
-                break
-            time.sleep(1)
-
-        # Accept Claude Code's trust dialog if present — send Enter to select
-        # "Yes, I trust this folder" (option 1, already highlighted).
-        # This is needed because Claude Code may not respect hasTrustDialogAccepted
-        # in settings.json for dynamically-created session directories.
-        from studyctl.eval.capture import capture_pane_plain, send_keys
-
-        time.sleep(5)  # Give Claude time to render the trust prompt
-        pane_content = capture_pane_plain(self._tmux_main_pane)
-        if "trust" in pane_content.lower() and "Yes, I trust" in pane_content:
-            logger.info("Trust dialog detected — accepting automatically")
-            send_keys(self._tmux_main_pane, "")  # Enter accepts default option 1
-            time.sleep(15)  # Wait for Claude to fully initialize after trust
-
-        # Inject elapsed time for the scenario
-        fake_start = datetime.now(UTC) - timedelta(minutes=scenario.elapsed_minutes)
-        write_session_state(
-            {
-                "started_at": fake_start.isoformat(),
-                "start_time": fake_start.isoformat(),
-            }
-        )
-
-        logger.info("Session %s started for scenario %s", session_name, scenario.id)
 
     def run(self, scenario: Scenario) -> str:
-        """Send setup prompts + test prompt, capture response.
+        """Send the scenario prompt via claude -p, return the response.
 
-        Uses the explicit tmux pane ID (``%N``) rather than the session name
-        to ensure we capture the agent pane, not the sidebar.
+        If the scenario has setup_prompts, they are prepended as
+        conversational context in a single multi-turn prompt.
         """
-        if not self._tmux_main_pane:
-            logger.warning("No main pane ID — returning empty response")
+        if not self._persona_file:
+            logger.warning("No persona file — returning empty response")
             return ""
 
-        target = self._tmux_main_pane
-        logger.info("Capturing from pane %s (session %s)", target, self._session_name)
+        # Build the full prompt with setup context
+        prompt = self._build_prompt(scenario)
 
-        # Send setup prompts — Claude Code (especially Opus) can take 30-60s
-        # to think + respond. Use generous timeouts.
-        for prompt in scenario.setup_prompts:
-            capture_response(target, prompt, timeout=120, stable_seconds=5)
+        cmd = [
+            "claude",
+            "-p",
+            prompt,
+            "--append-system-prompt-file",
+            str(self._persona_file),
+            "--output-format",
+            "json",
+        ]
 
-        # Send test prompt and capture — main response may take even longer
-        response = capture_response(target, scenario.prompt, timeout=180, stable_seconds=8)
-        logger.info("Captured %d chars for %s", len(response), scenario.id)
-        return response
+        logger.info(
+            "Running claude -p for %s (prompt=%d chars)",
+            scenario.id,
+            len(prompt),
+        )
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=CLAUDE_TIMEOUT,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning("claude -p timed out after %ds for %s", CLAUDE_TIMEOUT, scenario.id)
+            return ""
+
+        if result.returncode != 0:
+            logger.warning(
+                "claude -p failed for %s: rc=%d stderr=%s",
+                scenario.id,
+                result.returncode,
+                result.stderr[:200],
+            )
+            return ""
+
+        # Parse JSON response
+        try:
+            data = json.loads(result.stdout)
+            response = data.get("result", "")
+        except (json.JSONDecodeError, KeyError):
+            # Fall back to raw stdout if not valid JSON
+            response = result.stdout
+
+        logger.info("Got %d chars response for %s", len(response), scenario.id)
+        return response.strip()
 
     def teardown(self) -> None:
-        """End the session and clean up."""
-        self._force_teardown()
+        """Clean up persona file."""
+        if self._persona_file and self._persona_file.exists():
+            self._persona_file.unlink(missing_ok=True)
+        self._persona_file = None
 
-    def _force_teardown(self) -> None:
-        """Force-kill any active session."""
-        from studyctl.session.cleanup import end_session_common
+    def _build_prompt(self, scenario: Scenario) -> str:
+        """Build the full prompt including setup context.
 
-        state = read_session_state()
-        if state.get("study_session_id"):
-            try:
-                end_session_common(state)
-            except Exception:
-                logger.exception("end_session_common failed")
+        Setup prompts are included as conversational history so the
+        model has context (e.g. "we've been discussing decorators").
+        """
+        parts: list[str] = []
 
-        # Belt and suspenders: kill tmux session directly
-        if self._session_name:
-            from studyctl.tmux import kill_session, session_exists
+        if scenario.setup_prompts:
+            parts.append("Context from earlier in the study session:")
+            for sp in scenario.setup_prompts:
+                parts.append(f"Student: {sp}")
+            parts.append("")
+            parts.append(
+                f"The session has been running for {scenario.elapsed_minutes} minutes. "
+                f"Student energy is {scenario.energy}/10."
+            )
+            parts.append("")
+            parts.append("Now the student says:")
 
-            if session_exists(self._session_name):
-                kill_session(self._session_name)
-            self._session_name = ""
-            self._tmux_main_pane = ""
+        parts.append(scenario.prompt.strip())
+        return "\n".join(parts)
