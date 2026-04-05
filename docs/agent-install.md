@@ -11,6 +11,7 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Gemini CLI, OpenCo
 - [Gemini CLI Setup](#gemini-cli-setup)
 - [OpenCode Setup](#opencode-setup)
 - [Amp Setup](#amp-setup)
+- [Local LLMs (Ollama / LM Studio)](#local-llms-ollama--lm-studio)
 - [Agent Descriptions](#agent-descriptions)
 - [Skills Reference](#skills-reference)
 - [Uninstalling](#uninstalling)
@@ -275,6 +276,141 @@ ln -s "$(pwd)/agents/shared" ~/.agents/shared
 amp
 # AGENTS.md is loaded automatically — just start asking for a study session
 ```
+
+## Local LLMs (Ollama / LM Studio)
+
+studyctl can use local LLMs as the study mentor backend instead of cloud Claude. This uses Claude Code as the frontend but points it at a local model server via environment variables.
+
+### Honest expectations
+
+Local models are a **cost/privacy trade-off with significant capability regression**:
+
+- **Works well**: Simple tasks, single-turn questions, code explanation, light review
+- **Works poorly**: Multi-file refactors, complex agentic loops, subagent coordination, test-fix cycles
+- **Rough quality**: Best local models (Qwen3-Coder 30B, Devstral 24B) are approximately Claude Haiku 3.5 quality for agentic tasks
+
+If you need reliable multi-step study sessions, cloud Claude is substantially better. Local LLMs are best for privacy-sensitive work, offline use, or cost-free experimentation.
+
+### API compatibility
+
+Claude Code requires the **Anthropic Messages API format** (`/v1/messages`). Not all local backends support this:
+
+| Backend | Anthropic API? | Notes |
+|---------|---------------|-------|
+| **LM Studio 0.4.1+** | Native | Simplest path. Just load a model and point studyctl at it. |
+| **llama.cpp server** | Native (since Nov 2025) | Low-level, good for headless servers. |
+| **LiteLLM proxy** | Translates | Bridges Ollama's OpenAI API to Anthropic format. |
+| **Ollama (direct)** | No | Only speaks OpenAI format. Needs LiteLLM as a proxy. |
+
+### Recommended models
+
+Models ranked by suitability for studyctl's agentic, multi-turn workflow:
+
+| Model | VRAM/RAM | Context | Best for |
+|-------|----------|---------|----------|
+| **Qwen3-Coder 30B** | ~19 GB | 256K | Best open-source for coding. Explicit tool-use training. |
+| **Devstral 24B** | ~14 GB | 128K | Top SWE-bench open-source. Runs on 32 GB Mac. Apache 2.0. |
+| **DeepSeek-Coder-V2 16B** | ~9 GB | 160K | Good at the 16B weight class. |
+
+**Minimum context window**: 64K tokens. Claude Code's system prompt, CLAUDE.md, tool definitions, and file reads consume 20K-50K tokens before your conversation even starts. Models with <32K context will truncate constantly.
+
+**Not recommended**: CodeLlama (superseded), minimax m2.7 (known freeze bug), anything <10B parameters.
+
+### Option A: LM Studio (simplest)
+
+1. Install [LM Studio](https://lmstudio.ai) (0.4.1+)
+2. Download and load a model (e.g., Qwen3-Coder 30B)
+3. Start the local server (LM Studio > Developer tab > Start Server)
+4. Run studyctl:
+
+```bash
+studyctl study "Python decorators" --agent lmstudio
+```
+
+Config (`~/.config/studyctl/config.yaml`):
+```yaml
+agents:
+  priority: [lmstudio, claude]  # prefer local, fall back to cloud
+  lmstudio:
+    model: qwen3-coder           # must match what's loaded in LM Studio
+    # base_url: http://localhost:1234  # default
+```
+
+### Option B: Ollama via LiteLLM proxy
+
+Ollama doesn't speak Anthropic API natively. You need [LiteLLM](https://docs.litellm.ai/) as a translation layer.
+
+1. Install Ollama and pull a model:
+```bash
+ollama pull qwen3-coder:30b
+```
+
+2. Install and configure LiteLLM:
+```bash
+pip install litellm
+```
+
+Create `litellm-config.yaml`:
+```yaml
+model_list:
+  - model_name: qwen3-coder
+    litellm_params:
+      model: ollama_chat/qwen3-coder:30b
+      api_base: http://localhost:11434
+```
+
+3. Start LiteLLM:
+```bash
+litellm --config litellm-config.yaml --port 4000
+```
+
+4. Run studyctl:
+```bash
+studyctl study "SQL window functions" --agent ollama
+```
+
+Config:
+```yaml
+agents:
+  priority: [ollama, claude]
+  ollama:
+    model: qwen3-coder
+    # base_url: http://localhost:4000  # default (LiteLLM proxy)
+```
+
+### Option C: llama.cpp server (headless)
+
+For servers without a GUI:
+
+```bash
+llama-server -m qwen3-coder-30b.gguf --port 8080 --ctx-size 131072
+```
+
+Use the LM Studio adapter with a custom base_url:
+```yaml
+agents:
+  lmstudio:
+    model: qwen3-coder
+    base_url: http://localhost:8080
+```
+
+### Known issues
+
+- **Malformed tool calls**: Local models emit invalid tool-use JSON more often than cloud Claude. Claude Code may crash with `Cannot read properties of undefined`. Workaround: `export CLAUDE_CODE_USE_POWERSHELL_TOOL=0`
+- **No prompt caching**: Every turn processes the full context from scratch. Sessions feel slower as context grows.
+- **No extended thinking**: The effort slider and thinking modes are Claude-specific features.
+- **Background tasks use local model**: Claude Code routes statusline updates and codebase searches through the "haiku" model tier. With tier-pinning (which studyctl sets automatically), all of these hit your local GPU.
+
+### Verifying your setup
+
+```bash
+studyctl doctor
+```
+
+The doctor checks will report:
+- Whether ollama/lms binaries are installed
+- Whether the local server is responding
+- Whether Claude Code is installed (required as the frontend)
 
 ## Agent Descriptions
 

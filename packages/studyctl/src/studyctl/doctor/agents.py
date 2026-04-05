@@ -111,6 +111,115 @@ def check_agent_smoke_tests() -> list[CheckResult]:
     return results
 
 
+def check_local_llm_servers() -> list[CheckResult]:
+    """Check Ollama and LM Studio availability — binary, server, and claude dependency."""
+    results: list[CheckResult] = []
+    claude_installed = bool(shutil.which("claude"))
+
+    # Ollama
+    ollama_bin = shutil.which("ollama")
+    if ollama_bin:
+        if not claude_installed:
+            results.append(
+                CheckResult(
+                    "agents",
+                    "ollama_claude",
+                    "warn",
+                    "ollama installed but claude not found (required as frontend)",
+                    "Install Claude Code: npm i -g @anthropic-ai/claude-code",
+                    False,
+                )
+            )
+        # Check server is running by listing models
+        try:
+            result = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                timeout=_SMOKE_TIMEOUT,
+            )
+            if result.returncode == 0:
+                # Count models (skip header line)
+                lines = [line for line in result.stdout.strip().splitlines()[1:] if line.strip()]
+                n = len(lines)
+                results.append(
+                    CheckResult(
+                        "agents",
+                        "ollama_server",
+                        "pass",
+                        f"ollama running, {n} model{'s' if n != 1 else ''} available",
+                        "",
+                        False,
+                    )
+                )
+            else:
+                results.append(
+                    CheckResult(
+                        "agents",
+                        "ollama_server",
+                        "warn",
+                        "ollama installed but server not responding",
+                        "Start with: ollama serve",
+                        False,
+                    )
+                )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            results.append(
+                CheckResult(
+                    "agents",
+                    "ollama_server",
+                    "warn",
+                    "ollama installed but server not responding",
+                    "Start with: ollama serve",
+                    False,
+                )
+            )
+
+    # LM Studio
+    lms_bin = shutil.which("lms")
+    if lms_bin:
+        if not claude_installed:
+            results.append(
+                CheckResult(
+                    "agents",
+                    "lmstudio_claude",
+                    "warn",
+                    "lms installed but claude not found (required as frontend)",
+                    "Install Claude Code: npm i -g @anthropic-ai/claude-code",
+                    False,
+                )
+            )
+        # Probe the API endpoint
+        try:
+            result = subprocess.run(
+                ["lms", "status"],
+                capture_output=True,
+                text=True,
+                timeout=_SMOKE_TIMEOUT,
+            )
+            status = "pass" if result.returncode == 0 else "warn"
+            msg = (
+                "LM Studio server running"
+                if result.returncode == 0
+                else "LM Studio CLI found but server not responding"
+            )
+            hint = "" if result.returncode == 0 else "Start LM Studio and load a model"
+            results.append(CheckResult("agents", "lmstudio_server", status, msg, hint, False))
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            results.append(
+                CheckResult(
+                    "agents",
+                    "lmstudio_server",
+                    "warn",
+                    "LM Studio CLI found but server not responding",
+                    "Start LM Studio and load a model",
+                    False,
+                )
+            )
+
+    return results
+
+
 def check_agent_definitions() -> list[CheckResult]:
     """Check that agent definitions are installed and match the manifest."""
     tools = _detect_ai_tools()
