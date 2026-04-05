@@ -1,4 +1,4 @@
-"""CLI integration tests for content generate and content download commands.
+"""CLI integration tests for content commands.
 
 Tests the full chain: CLI argument parsing → async function invocation → mocked backend.
 The async functions themselves are unit-tested in test_content_notebooklm.py;
@@ -343,3 +343,147 @@ class TestFromObsidian:
         )
         assert result.exit_code != 0
         assert "Directory not found" in result.output
+
+
+# ---------------------------------------------------------------------------
+# content generate — environment variable + edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestContentGenerateEnvvar:
+    """Tests for NOTEBOOK_ID environment variable support."""
+
+    def test_notebook_id_from_envvar(self, runner, mock_generate):
+        """NOTEBOOK_ID envvar replaces -n flag."""
+        result = runner.invoke(
+            content_group,
+            ["generate", "-c", "1-3"],
+            env={"NOTEBOOK_ID": "nb-from-env"},
+        )
+        assert result.exit_code == 0
+        mock_generate.assert_called_once()
+        args = mock_generate.call_args[0]
+        assert args[0] == "nb-from-env"
+
+    def test_flag_overrides_envvar(self, runner, mock_generate):
+        """-n flag takes precedence over NOTEBOOK_ID envvar."""
+        result = runner.invoke(
+            content_group,
+            ["generate", "-n", "nb-flag", "-c", "1-3"],
+            env={"NOTEBOOK_ID": "nb-env"},
+        )
+        assert result.exit_code == 0
+        args = mock_generate.call_args[0]
+        assert args[0] == "nb-flag"
+
+    def test_single_chapter_range(self, runner, mock_generate):
+        """Single chapter range like 1-1 works."""
+        result = runner.invoke(content_group, ["generate", "-n", "nb-1", "-c", "1-1"])
+        assert result.exit_code == 0
+        args = mock_generate.call_args[0]
+        assert args[1] == (1, 1)
+
+
+# ---------------------------------------------------------------------------
+# content download — environment variable + edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestContentDownloadEnvvar:
+    """Tests for NOTEBOOK_ID envvar and edge cases on download."""
+
+    def test_notebook_id_from_envvar(self, runner, mock_download, tmp_path):
+        out = tmp_path / "out"
+        result = runner.invoke(
+            content_group,
+            ["download", "-o", str(out)],
+            env={"NOTEBOOK_ID": "nb-env-dl"},
+        )
+        assert result.exit_code == 0
+        mock_download.assert_called_once_with("nb-env-dl", out, None)
+
+
+# ---------------------------------------------------------------------------
+# content list
+# ---------------------------------------------------------------------------
+
+
+class TestContentList:
+    """CLI tests for `studyctl content list`."""
+
+    def test_list_notebooks(self, runner):
+        """List all notebooks when no -n given."""
+        mock_nb = MagicMock()
+        mock_nb.id = "nb-list-123456789"
+        mock_nb.title = "My Notebook"
+        mock_nb.sources_count = 5
+        with patch(
+            "studyctl.content.notebooklm_client.list_notebooks",
+            new_callable=AsyncMock,
+            return_value=[mock_nb],
+        ):
+            result = runner.invoke(content_group, ["list"])
+        assert result.exit_code == 0
+        assert "My Notebook" in result.output
+
+    def test_list_sources_in_notebook(self, runner):
+        """List sources when -n is given."""
+        mock_src = MagicMock()
+        mock_src.id = "src-abc123456789"
+        mock_src.title = "Chapter 1"
+        with patch(
+            "studyctl.content.notebooklm_client.list_sources",
+            new_callable=AsyncMock,
+            return_value=[mock_src],
+        ):
+            result = runner.invoke(content_group, ["list", "-n", "nb-123"])
+        assert result.exit_code == 0
+        assert "Chapter 1" in result.output
+
+    def test_list_with_envvar(self, runner):
+        """NOTEBOOK_ID envvar works for list command."""
+        mock_src = MagicMock()
+        mock_src.id = "src-env123456789"
+        mock_src.title = "Envvar Source"
+        with patch(
+            "studyctl.content.notebooklm_client.list_sources",
+            new_callable=AsyncMock,
+            return_value=[mock_src],
+        ):
+            result = runner.invoke(
+                content_group,
+                ["list"],
+                env={"NOTEBOOK_ID": "nb-env-list"},
+            )
+        assert result.exit_code == 0
+        assert "Envvar Source" in result.output
+
+
+# ---------------------------------------------------------------------------
+# content delete
+# ---------------------------------------------------------------------------
+
+
+class TestContentDelete:
+    """CLI tests for `studyctl content delete`."""
+
+    def test_delete_with_confirmation(self, runner):
+        """--yes bypasses the confirmation prompt."""
+        with patch(
+            "studyctl.content.notebooklm_client.delete_notebook",
+            new_callable=AsyncMock,
+        ) as mock_del:
+            result = runner.invoke(content_group, ["delete", "-n", "nb-del-123", "--yes"])
+        assert result.exit_code == 0
+        assert "Deleted" in result.output
+        mock_del.assert_called_once_with("nb-del-123")
+
+    def test_delete_without_confirmation_aborts(self, runner):
+        """Without --yes, the confirmation prompt aborts on 'n'."""
+        with patch(
+            "studyctl.content.notebooklm_client.delete_notebook",
+            new_callable=AsyncMock,
+        ) as mock_del:
+            result = runner.invoke(content_group, ["delete", "-n", "nb-del-123"], input="n\n")
+        assert result.exit_code != 0
+        mock_del.assert_not_called()

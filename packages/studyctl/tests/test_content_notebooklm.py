@@ -14,6 +14,8 @@ from studyctl.content.notebooklm_client import (  # noqa: E402
     generate_for_chapters,
     list_notebooks,
     list_sources,
+    poll_chunk_status,
+    start_chunk_generation,
     upload_chapters,
 )
 
@@ -310,3 +312,106 @@ class TestCreateSyllabus:
         await create_syllabus(client, "my-nb-id", "prompt")
         call_args = client.chat.ask.call_args
         assert call_args.args[0] == "my-nb-id"
+
+
+class TestStartChunkGeneration:
+    """Tests for start_chunk_generation (fire-and-forget requests)."""
+
+    @_pytest.mark.asyncio
+    async def test_starts_audio_and_video(self, mock_notebooklm_client):
+        tasks = await start_chunk_generation(
+            mock_notebooklm_client,
+            "nb-123",
+            source_ids=["src-1"],
+            episode_title="Episode 1",
+        )
+        assert "audio" in tasks
+        assert "video" in tasks
+        mock_notebooklm_client.artifacts.generate_audio.assert_called_once()
+        mock_notebooklm_client.artifacts.generate_video.assert_called_once()
+
+    @_pytest.mark.asyncio
+    async def test_skip_video(self, mock_notebooklm_client):
+        tasks = await start_chunk_generation(
+            mock_notebooklm_client,
+            "nb-123",
+            source_ids=["src-1"],
+            episode_title="Episode 1",
+            generate_video=False,
+        )
+        assert "audio" in tasks
+        assert "video" not in tasks
+        mock_notebooklm_client.artifacts.generate_video.assert_not_called()
+
+    @_pytest.mark.asyncio
+    async def test_skip_audio(self, mock_notebooklm_client):
+        tasks = await start_chunk_generation(
+            mock_notebooklm_client,
+            "nb-123",
+            source_ids=["src-1"],
+            episode_title="Episode 1",
+            generate_audio=False,
+        )
+        assert "audio" not in tasks
+        assert "video" in tasks
+        mock_notebooklm_client.artifacts.generate_audio.assert_not_called()
+
+    @_pytest.mark.asyncio
+    async def test_failed_request_returns_empty(self, mock_notebooklm_client):
+        """If generation request fails, the task is not in the result dict."""
+        mock_notebooklm_client.artifacts.generate_audio.side_effect = RuntimeError("API error")
+        mock_notebooklm_client.artifacts.generate_video.side_effect = RuntimeError("API error")
+        tasks = await start_chunk_generation(
+            mock_notebooklm_client,
+            "nb-123",
+            source_ids=["src-1"],
+            episode_title="Episode 1",
+        )
+        assert tasks == {}
+
+
+class TestPollChunkStatus:
+    """Tests for poll_chunk_status (single poll pass)."""
+
+    @_pytest.mark.asyncio
+    async def test_completed_status(self, mock_notebooklm_client):
+        """Completed task returns 'completed' status."""
+        result = await poll_chunk_status(mock_notebooklm_client, "nb-123", {"audio": "task-1"})
+        assert result["audio"] == "completed"
+
+    @_pytest.mark.asyncio
+    async def test_failed_status(self, mock_notebooklm_client):
+        status = MagicMock()
+        status.is_complete = False
+        status.is_failed = True
+        status.is_in_progress = False
+        mock_notebooklm_client.artifacts.poll_status.return_value = status
+        result = await poll_chunk_status(mock_notebooklm_client, "nb-123", {"audio": "task-1"})
+        assert result["audio"] == "failed"
+
+    @_pytest.mark.asyncio
+    async def test_in_progress_status(self, mock_notebooklm_client):
+        status = MagicMock()
+        status.is_complete = False
+        status.is_failed = False
+        status.is_in_progress = True
+        mock_notebooklm_client.artifacts.poll_status.return_value = status
+        result = await poll_chunk_status(mock_notebooklm_client, "nb-123", {"video": "task-2"})
+        assert result["video"] == "in_progress"
+
+    @_pytest.mark.asyncio
+    async def test_poll_error_returns_unknown(self, mock_notebooklm_client):
+        mock_notebooklm_client.artifacts.poll_status.side_effect = RuntimeError("timeout")
+        result = await poll_chunk_status(mock_notebooklm_client, "nb-123", {"audio": "task-1"})
+        assert result["audio"] == "unknown"
+
+    @_pytest.mark.asyncio
+    async def test_multiple_tasks_polled(self, mock_notebooklm_client):
+        result = await poll_chunk_status(
+            mock_notebooklm_client,
+            "nb-123",
+            {"audio": "task-1", "video": "task-2"},
+        )
+        assert len(result) == 2
+        assert result["audio"] == "completed"
+        assert result["video"] == "completed"
