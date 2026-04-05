@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 19
+CURRENT_VERSION = 20
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -675,6 +675,30 @@ def migrate_v19(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_file_refs_tool ON file_references(tool_name)"
+    )
+
+
+@migration(20, "Add persona effectiveness tracking to study_sessions")
+def migrate_v20(conn: sqlite3.Connection) -> None:
+    """Track persona version and structured outcome counts for effectiveness analysis.
+
+    persona_hash: SHA-256[:16] of the injected persona content at session start.
+    win_count / struggle_count: structured counts extracted from session-topics.md
+    at session end (previously only stored as unstructured text in notes).
+    """
+    for col, typedef in [
+        ("persona_hash", "TEXT"),
+        ("win_count", "INTEGER"),
+        ("struggle_count", "INTEGER"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE study_sessions ADD COLUMN {col} {typedef}")
+        except sqlite3.OperationalError:
+            pass  # Column already exists (idempotent)
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_study_sessions_persona "
+        "ON study_sessions(persona_hash)"
     )
 
 

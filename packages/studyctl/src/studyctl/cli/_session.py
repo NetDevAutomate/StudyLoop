@@ -186,6 +186,54 @@ def session_status() -> None:
     )
 
 
+@session_group.command("effectiveness")
+@click.option("--persona", "-p", default=None, help="Filter by persona hash (16-char hex).")
+def session_effectiveness(persona: str | None) -> None:
+    """Show teaching effectiveness metrics per persona version.
+
+    Tracks win rate and struggle count across sessions, grouped by the
+    persona template version (SHA-256 hash) injected at session start.
+    Requires sessions recorded after v2.3 (persona_hash column).
+
+    Examples:
+
+        studyctl session effectiveness
+
+        studyctl session effectiveness --persona 25a67207bce5145d
+    """
+    from studyctl.history.sessions import get_persona_effectiveness
+
+    results = get_persona_effectiveness(persona)
+
+    if not results:
+        console.print("[dim]No persona effectiveness data yet.[/dim]")
+        console.print("[dim]Data is collected automatically during study sessions.[/dim]")
+        return
+
+    from rich.table import Table
+
+    table = Table(title="Persona Effectiveness", show_lines=False)
+    table.add_column("Persona Hash", style="cyan", no_wrap=True)
+    table.add_column("Sessions", justify="right")
+    table.add_column("Avg Wins", justify="right", style="green")
+    table.add_column("Avg Struggles", justify="right", style="yellow")
+    table.add_column("Win Rate", justify="right", style="bold")
+    table.add_column("Avg Duration", justify="right", style="dim")
+
+    for row in results:
+        win_rate = row.get("win_rate")
+        table.add_row(
+            row.get("persona_hash", "?")[:16],
+            str(row.get("sessions", 0)),
+            f"{row.get('avg_wins', 0):.1f}",
+            f"{row.get('avg_struggles', 0):.1f}",
+            f"{win_rate:.1%}" if win_rate is not None else "--",
+            f"{row.get('avg_duration', 0):.0f}m" if row.get("avg_duration") else "--",
+        )
+
+    console.print(table)
+
+
 @click.command("topic")
 @click.argument("name")
 @click.option(

@@ -493,3 +493,9 @@ CHANGELOG.md
 docs/artefacts/
 pytest-of-*/
 uv-*.lock
+
+# Iterate runner artefacts (autoresearch pattern — kept untracked)
+results.tsv
+.pytest-junit.xml
+docs/reports/
+docs/brainstorms/

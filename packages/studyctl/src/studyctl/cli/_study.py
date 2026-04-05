@@ -536,6 +536,15 @@ def _handle_start(
     # Build persona + MCP config via adapter pattern
     adapter = AGENTS[agent]
     canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
+
+    # Track persona version for effectiveness analysis
+    import hashlib
+
+    persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    from studyctl.history.sessions import update_persona_hash
+
+    update_persona_hash(study_id, persona_hash)
+
     persona_file = adapter.setup(canonical, session_dir)
     if adapter.mcp_setup:
         adapter.mcp_setup(session_dir)
@@ -567,6 +576,7 @@ def _handle_start(
         "session_dir": str(session_dir),
         "agent": agent,
     }
+    state_update["persona_hash"] = persona_hash
     if topic_config:
         state_update["topic_slug"] = topic_config.slug
         state_update["topic_config_name"] = topic_config.name

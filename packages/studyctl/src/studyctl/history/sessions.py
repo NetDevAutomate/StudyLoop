@@ -52,8 +52,32 @@ def get_session_notes(study_id: str) -> str | None:
         conn.close()
 
 
-def end_study_session(study_id: str, notes: str | None = None) -> bool:
-    """End a tracked study session, recording duration."""
+def update_persona_hash(study_id: str, persona_hash: str) -> bool:
+    """Store the persona version hash for effectiveness tracking."""
+    conn = _connection._connect()
+    if not conn:
+        return False
+    try:
+        conn.execute(
+            "UPDATE study_sessions SET persona_hash = ? WHERE id = ?",
+            (persona_hash, study_id),
+        )
+        conn.commit()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
+
+
+def end_study_session(
+    study_id: str,
+    notes: str | None = None,
+    *,
+    win_count: int | None = None,
+    struggle_count: int | None = None,
+) -> bool:
+    """End a tracked study session, recording duration and outcome counts."""
     conn = _connection._connect()
     if not conn:
         return False
@@ -66,10 +90,12 @@ def end_study_session(study_id: str, notes: str | None = None) -> bool:
                 duration_minutes = CAST(
                     (julianday(?) - julianday(started_at)) * 1440 AS INTEGER
                 ),
-                notes = COALESCE(?, notes)
+                notes = COALESCE(?, notes),
+                win_count = ?,
+                struggle_count = ?
             WHERE id = ?
             """,
-            (now, now, notes, study_id),
+            (now, now, notes, win_count, struggle_count, study_id),
         )
         conn.commit()
         return True
@@ -213,5 +239,44 @@ def get_last_session_summary() -> dict | None:
         }
     except sqlite3.OperationalError:
         return None
+    finally:
+        conn.close()
+
+
+def get_persona_effectiveness(persona_hash: str | None = None) -> list[dict]:
+    """Get win rate and struggle count per persona version.
+
+    When *persona_hash* is None, returns stats for all tracked versions.
+    """
+    conn = _connection._connect()
+    if not conn:
+        return []
+    try:
+        sql = """
+            SELECT persona_hash,
+                   COUNT(*)                    AS sessions,
+                   AVG(win_count)              AS avg_wins,
+                   AVG(struggle_count)         AS avg_struggles,
+                   AVG(duration_minutes)       AS avg_duration,
+                   CASE WHEN SUM(win_count + struggle_count) > 0
+                        THEN ROUND(
+                            CAST(SUM(win_count) AS REAL)
+                            / SUM(win_count + struggle_count), 3)
+                        ELSE NULL
+                   END                         AS win_rate
+            FROM study_sessions
+            WHERE persona_hash IS NOT NULL
+              AND win_count IS NOT NULL
+        """
+        params: tuple = ()
+        if persona_hash:
+            sql += " AND persona_hash = ?"
+            params = (persona_hash,)
+        sql += " GROUP BY persona_hash ORDER BY sessions DESC"
+
+        rows = conn.execute(sql, params).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
     finally:
         conn.close()

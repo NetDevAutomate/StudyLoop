@@ -17,6 +17,7 @@ studyctl park QUESTION [-t TOPIC]        # Park tangential topic
 studyctl session start -t TOPIC -e 7    # Start session (DB + IPC files)
 studyctl session status                  # Timer, topics, parking lot
 studyctl session end [-n NOTES]          # End session, show summary
+studyctl session effectiveness           # Persona effectiveness metrics
 
 # Content pipeline
 studyctl content split SOURCE            # Split PDF by chapters
@@ -102,6 +103,8 @@ studyctl park "How does asyncio compare?"              # Park mid-session
 studyctl session start -t "Decorators" -e 7    # Start session record
 studyctl session status                         # Show current state
 studyctl session end -n "Got through closures"  # End with notes
+studyctl session effectiveness                  # Win rate per persona version
+studyctl session effectiveness -p abc123...     # Filter by persona hash
 ```
 
 ### Health & Updates

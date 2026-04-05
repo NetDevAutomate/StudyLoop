@@ -154,7 +154,12 @@ class TestStudyEnd:
             result = runner.invoke(study, ["--end"])
 
             assert "Session ended" in result.output
-            end.assert_called_once_with("abc123", notes="No topics recorded during session.")
+            end.assert_called_once_with(
+                "abc123",
+                notes="No topics recorded during session.",
+                win_count=0,
+                struggle_count=0,
+            )
 
 
 class TestStudyResume:
