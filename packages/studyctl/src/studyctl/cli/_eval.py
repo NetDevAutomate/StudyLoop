@@ -353,6 +353,6 @@ def setup() -> None:
         "  eval:\n"
         "    judge:\n"
         "      provider: bedrock\n"
-        "      model: us.anthropic.claude-sonnet-4-6-20250514-v1:0\n"
+        "      model: us.anthropic.claude-sonnet-4-6\n"
         "      region: us-west-2"
     )
