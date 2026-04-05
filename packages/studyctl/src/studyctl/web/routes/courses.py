@@ -10,7 +10,7 @@ from studyctl.review_loader import (
     load_flashcards,
     load_quizzes,
 )
-from studyctl.services.review import get_due, get_stats, get_wrong
+from studyctl.services.review import get_due, get_stats, get_wrong, list_course_summaries
 
 router = APIRouter()
 
@@ -22,25 +22,7 @@ def _get_dirs(request: Request) -> list[str]:
 @router.get("/courses")
 def list_courses(request: Request) -> list[dict]:
     """List all courses with card counts and review stats."""
-    courses = discover_directories(_get_dirs(request))
-    result = []
-    for name, path in courses:
-        fc_dir, quiz_dir = find_content_dirs(path)
-        fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
-        quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
-        due = len(get_due(name))
-        stats = get_stats(name)
-        result.append(
-            {
-                "name": name,
-                "flashcard_count": fc_count,
-                "quiz_count": quiz_count,
-                "due_count": due,
-                "total_reviews": stats.get("total_reviews", 0),
-                "mastered": stats.get("mastered", 0),
-            }
-        )
-    return result
+    return list_course_summaries(_get_dirs(request))
 
 
 @router.get("/sources/{course}")

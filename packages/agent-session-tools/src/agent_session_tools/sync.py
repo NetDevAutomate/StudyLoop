@@ -11,7 +11,6 @@ import logging
 import os
 import re
 import shlex
-import shutil
 import sqlite3
 import subprocess
 from datetime import datetime
@@ -349,18 +348,7 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     return True
 
 
-def create_backup(db_path: Path) -> Path:
-    """Create a timestamped backup of the database."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = get_backup_dir(config)
-    backup_dir.mkdir(parents=True, exist_ok=True)
-
-    backup_path = backup_dir / f"{db_path.stem}_backup_{timestamp}.db"
-    shutil.copy2(db_path, backup_path)
-
-    logger.info(f"Backup created: {backup_path}")
-    console.print(f"[green]✅ Backup created:[/green] {backup_path}")
-    return backup_path
+from agent_session_tools.maintenance import create_backup  # noqa: E402
 
 
 def show_db_stats(db_path: Path, label: str = "Database") -> None:
