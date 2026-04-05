@@ -76,14 +76,14 @@ def capture_response(
 ) -> str:
     """Send a prompt and capture the agent's response.
 
-    Two-phase capture:
-      Phase 1 — Wait for content to grow past baseline (agent is processing).
-      Phase 2 — Wait for content to stabilise (agent finished responding).
+    Two-phase capture designed for TUI agents (Claude Code uses Ink):
+      Phase 1 — Wait for pane content to CHANGE from baseline (by value, not length).
+                TUI agents re-render in place, so content may change without growing.
+      Phase 2 — Wait for content to stabilise (N identical polls in a row).
 
-    This prevents false-stable returns when the agent is still initializing.
-
-    Returns the new content added after the prompt was sent.
-    Returns empty string on timeout or if no new content appears.
+    Returns the full pane content (minus baseline) after stabilisation.
+    For TUI agents where scrollback doesn't grow, returns the full
+    stable pane content stripped of ANSI codes.
     """
     logger.debug(
         "capture_response: target=%r prompt=%r timeout=%d",
@@ -93,33 +93,32 @@ def capture_response(
     )
 
     baseline = capture_pane_plain(target)
-    baseline_len = len(baseline)
-    logger.debug("baseline: %d chars", baseline_len)
+    logger.debug("baseline: %d chars", len(baseline))
 
     send_keys(target, prompt_text)
 
     content = baseline
     elapsed = 0
 
-    # Phase 1: wait for ANY new content (agent may be initializing)
+    # Phase 1: wait for content to CHANGE (not just grow — TUI agents re-render)
     for tick in range(timeout):
         time.sleep(1)
         elapsed = tick + 1
         content = capture_pane_plain(target)
-        if len(content) > baseline_len:
+        if content != baseline:
             logger.debug(
-                "phase 1: new content after %ds (+%d chars)",
+                "phase 1: content changed after %ds (baseline=%d, now=%d)",
                 elapsed,
-                len(content) - baseline_len,
+                len(baseline),
+                len(content),
             )
             break
     else:
         logger.warning(
-            "capture_response: no new content for target=%r after %ds (baseline=%d, final=%d)",
+            "capture_response: no change for target=%r after %ds (baseline=%d chars)",
             target,
             timeout,
-            baseline_len,
-            len(content),
+            len(baseline),
         )
         return ""
 
@@ -135,26 +134,24 @@ def capture_response(
         if content == prev:
             stable_count += 1
             if stable_count >= stable_seconds:
-                logger.debug(
-                    "phase 2: stable after %ds total (%d chars new)",
-                    elapsed,
-                    len(content) - baseline_len,
-                )
+                logger.debug("phase 2: stable after %ds total", elapsed)
                 break
         else:
             stable_count = 0
             prev = content
 
-    new_content = content[baseline_len:] if len(content) > baseline_len else ""
+    # If scrollback grew, take the tail. If TUI re-rendered (same/shorter
+    # length), return the full content — can't diff a re-render by position.
+    new_content = content[len(baseline) :] if len(content) > len(baseline) else content
+
     result = strip_ansi(new_content).strip()
 
     if not result:
         logger.warning(
-            "capture_response: empty after strip for target=%r (raw new=%d chars, stripped to 0)",
+            "capture_response: empty after strip for target=%r",
             target,
-            len(new_content),
         )
     else:
-        logger.debug("capture_response: got %d chars of new content", len(result))
+        logger.debug("capture_response: got %d chars of response", len(result))
 
     return result
