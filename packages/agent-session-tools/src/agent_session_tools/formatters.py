@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
+from string import Template
+
 
 def render_profile(profile: dict, session: dict, messages: list) -> str:
     """Render session using profile template with placeholder substitution.
 
+    Uses string.Template ($-substitution) instead of str.format() to prevent
+    format string injection from user-controlled YAML templates. A crafted
+    template with {__class__} could access Python internals via str.format().
+
     Supported placeholders:
-    - {session_id}, {project_path}, {source}, {updated_at}
-    - {messages} - formatted message content
-    - {message_count} - number of messages
+    - $session_id, $project_path, $source, $updated_at
+    - $messages - formatted message content
+    - $message_count - number of messages
     """
-    template = profile.get("template", "")
-    if not template:
+    template_str = profile.get("template", "")
+    if not template_str:
         # Fall back to compressed markdown if no template
         return format_markdown(session, messages, compressed=True)
 
@@ -24,8 +30,9 @@ def render_profile(profile: dict, session: dict, messages: list) -> str:
         if content:
             msg_lines.append(f"**{role}**: {content}")
 
-    # Substitute placeholders
-    output = template.format(
+    # Safe substitution — ignores missing placeholders, blocks attribute access
+    tmpl = Template(template_str)
+    return tmpl.safe_substitute(
         session_id=session.get("id", ""),
         project_path=session.get("project_path", ""),
         source=session.get("source", ""),
@@ -33,7 +40,6 @@ def render_profile(profile: dict, session: dict, messages: list) -> str:
         messages="\n\n".join(msg_lines),
         message_count=len(messages),
     )
-    return output
 
 
 def format_markdown(session: dict, messages: list, compressed: bool = False) -> str:

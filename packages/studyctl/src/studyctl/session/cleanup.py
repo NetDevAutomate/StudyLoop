@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def build_session_notes(
     topics: list,
@@ -72,23 +76,28 @@ def end_session_common(
     topic_entries = parse_topics_file()
     notes = build_session_notes(topic_entries, parse_parking_file())
 
-    # Auto-persist struggled topics to backlog
+    # Auto-persist struggled topics to backlog.
+    # Log on failure — silent suppression here means struggled topics are lost.
     if auto_persist:
-        with contextlib.suppress(Exception):
-            from studyctl.cli._study import _auto_persist_struggled
+        try:
+            from studyctl.services.backlog import auto_persist_struggled
 
-            _auto_persist_struggled(study_id, topic_entries)
+            auto_persist_struggled(study_id, topic_entries)
+        except Exception:
+            logger.exception("Failed to auto-persist struggled topics")
 
     # End the DB session with captured notes
-    with contextlib.suppress(Exception):
+    try:
         end_study_session(study_id, notes=notes)
+    except Exception:
+        logger.exception("Failed to end study session in DB")
 
     # Signal dashboard summary view
     with contextlib.suppress(Exception):
         write_session_state({"mode": "ended"})
 
     # Run agent-specific teardown (e.g. Kiro restores backed-up JSON)
-    with contextlib.suppress(Exception):
+    try:
         from studyctl.agent_launcher import AGENTS
 
         adapter = AGENTS.get(state.get("agent", ""))
@@ -98,6 +107,8 @@ def end_session_common(
                 from pathlib import Path
 
                 adapter.teardown(Path(session_dir_path))
+    except Exception:
+        logger.exception("Agent teardown failed")
 
     # Clean up temp files
     if persona_file:
@@ -106,6 +117,29 @@ def end_session_common(
     oneline = SESSION_DIR / "session-oneline.txt"
     with contextlib.suppress(OSError):
         oneline.unlink()
+
+    # Kill background processes (web dashboard, ttyd when added).
+    # Verify PID identity before killing to guard against PID recycling:
+    # if the process exited and its PID was reused by an unrelated process,
+    # we'd kill the wrong thing.
+    import subprocess as _sp
+
+    pid_checks = {"web_pid": "studyctl", "ttyd_pid": "ttyd"}
+    for pid_key, expected in pid_checks.items():
+        pid = state.get(pid_key)
+        if not pid:
+            continue
+        try:
+            result = _sp.run(
+                ["ps", "-p", str(pid), "-o", "command="],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if expected in result.stdout:
+                os.kill(pid, 15)  # SIGTERM
+        except (OSError, _sp.TimeoutExpired):
+            pass
 
     # Kill all study tmux sessions
     with contextlib.suppress(Exception):

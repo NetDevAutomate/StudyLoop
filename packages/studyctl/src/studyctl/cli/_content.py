@@ -99,7 +99,7 @@ def process(source: Path, output_dir: Path, level: int, notebook_id: str | None)
         console.print(f"[green]\u2713[/green] Split into {len(chapter_paths)} chapters")
 
         nid = _get_notebook_id(notebook_id)
-        result = asyncio.run(upload_chapters(nid, chapter_paths))
+        result = asyncio.run(upload_chapters(chapter_paths, book_name, notebook_id=nid))
         console.print(
             f"[green]\u2713[/green] Uploaded {result.chapters} chapters "
             f"to notebook {result.id[:8]}..."
