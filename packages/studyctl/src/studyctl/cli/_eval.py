@@ -171,6 +171,7 @@ def run(ctx: click.Context, scenarios_arg: str, agent: str | None, no_git_check:
         model=judge_cfg.model,
         api_key=api_key,
         provider=judge_cfg.provider,
+        region=judge_cfg.region,
     )
 
     # 5. Create LLMJudge
@@ -338,11 +339,20 @@ def setup() -> None:
                 f"Download with: ollama pull {recommended}"
             )
 
-    console.print("\nAdd to your config.yaml:")
+    console.print("\n[bold]Option 1 — Local (Ollama):[/bold]")
     console.print(
         f"  eval:\n"
         f"    judge:\n"
         f"      provider: ollama\n"
         f"      base_url: http://localhost:11434\n"
         f"      model: {recommended}"
+    )
+
+    console.print("\n[bold]Option 2 — AWS Bedrock (recommended for best quality):[/bold]")
+    console.print(
+        "  eval:\n"
+        "    judge:\n"
+        "      provider: bedrock\n"
+        "      model: us.anthropic.claude-sonnet-4-6-20250514-v1:0\n"
+        "      region: us-west-2"
     )
