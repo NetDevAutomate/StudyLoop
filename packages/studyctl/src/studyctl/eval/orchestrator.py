@@ -63,6 +63,10 @@ def run_evaluation(
             "PASS" if score.passed else "FAIL",
         )
 
+        # Capture persona_hash from target if available (set during setup)
+        if not persona_hash:
+            persona_hash = getattr(target, "persona_hash", "") or ""
+
     summary = EvalSummary(
         agent=agent,
         persona_hash=persona_hash,
