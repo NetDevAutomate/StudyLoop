@@ -63,8 +63,9 @@ graph TB
     TMUX --> AGENT
     TMUX --> SIDEBAR
     STUDY -.->|"--web"| DASH
-    STUDY -.->|"--lan"| TTYD["ttyd<br/>(HTTP port 7681)"]
+    STUDY -.->|"--lan"| TTYD["ttyd<br/>(port 7681)"]
     TTYD -.->|"attaches to"| TMUX
+    DASH -.->|"/terminal/ proxy"| TTYD
     AGENT -->|writes| IPC
     SIDEBAR -->|polls| IPC
     DASH -->|polls SSE| IPC
@@ -159,8 +160,9 @@ sequenceDiagram
     TMUX->>TUI: Sidebar pane: python -m studyctl.tui.sidebar
 
     opt --lan flag
-        CLI->>WEB: Start ttyd (attaches to tmux session, HTTP port 7681)
-        Note over WEB: ttyd exposes full terminal over HTTP<br/>Accessible from iPad, phone, or remote browser
+        CLI->>WEB: Start ttyd (attaches to tmux session, port 7681)
+        CLI->>WEB: Start web with Basic Auth + ttyd proxy
+        Note over WEB: Web dashboard proxies ttyd at /terminal/<br/>(same-origin — pop-out/return preserves WS)<br/>HTTP Basic Auth protects all routes on LAN
     end
 
     loop Every 2 seconds

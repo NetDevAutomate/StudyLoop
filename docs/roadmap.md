@@ -287,6 +287,10 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 - [x] Browser auto-open with configurable browser
 - [x] Claude Code trust bypass (`hasTrustDialogAccepted`)
 - [x] `window-size largest` tmux option for multi-client compatibility
+- [x] Same-origin reverse proxy — ttyd proxied through FastAPI at `/terminal/` (HTTP + WebSocket)
+- [x] Pop-out/return persistence — iframe stays in DOM (visibility CSS), pop-out auto-closes on return
+- [x] LAN password protection — HTTP Basic Auth middleware, auto-generated or explicit `--password`
+- [x] `lan_password` config option for persistent password
 
 ### Local LLMs via Ollama / LM Studio
 

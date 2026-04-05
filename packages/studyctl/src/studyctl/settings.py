@@ -121,6 +121,7 @@ class Settings:
     ttyd_port: int = 7681
     web_port: int = 8567
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
+    lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = no auth)
 
 
 def load_settings() -> Settings:
@@ -204,6 +205,8 @@ def load_settings() -> Settings:
         settings.web_port = int(raw["web_port"])
     if "browser" in raw:
         settings.browser = str(raw["browser"])
+    if "lan_password" in raw:
+        settings.lan_password = str(raw["lan_password"])
 
     return settings
 

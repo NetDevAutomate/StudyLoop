@@ -218,7 +218,7 @@ def attach_if_needed(session_name: str, already_in_tmux: bool) -> None:
         attach(session_name)
 
 
-def start_web_background(session_name: str, *, lan: bool = False) -> None:
+def start_web_background(session_name: str, *, lan: bool = False, password: str = "") -> None:
     """Start the web dashboard as a background process and open browser."""
     from studyctl.cli._shared import console
 
@@ -232,6 +232,8 @@ def start_web_background(session_name: str, *, lan: bool = False) -> None:
     )
     if lan:
         cmd.append("--lan")
+    if password:
+        cmd.extend(["--password", password])
     try:
         proc = subprocess.Popen(
             cmd,

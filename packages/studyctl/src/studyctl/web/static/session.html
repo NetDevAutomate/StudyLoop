@@ -110,13 +110,17 @@
             </div>
           </div>
           <div class="terminal-content">
+            <!-- Iframe is ALWAYS in DOM to preserve the WebSocket connection.
+                 CSS visibility hides it without triggering unload/reload.
+                 The same-origin proxy means the WS survives pop-out round-trips. -->
             <iframe :src="ttydUrl"
                     class="terminal-iframe"
+                    :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
                     allow="clipboard-read; clipboard-write">
             </iframe>
             <div x-show="!embedded && poppedOut" class="terminal-placeholder">
               <div>Terminal opened in separate window</div>
-              <div class="placeholder-hint">Close the pop-out window, then click <strong>+</strong> to reopen the terminal here</div>
+              <div class="placeholder-hint">Click <strong>+</strong> to close the pop-out and return terminal here</div>
             </div>
           </div>
         </div>
@@ -278,10 +282,11 @@
       available: false,
       embedded: true,
       poppedOut: false,
-      ttydPort: 7681,
+      _popoutWindow: null,
 
+      /* Same-origin proxy path — avoids cross-origin iframe WebSocket drops */
       get ttydUrl() {
-        return `http://${window.location.hostname}:${this.ttydPort}`;
+        return '/terminal/';
       },
 
       async init() {
@@ -289,21 +294,27 @@
           const res = await fetch('/api/session/state');
           const state = await res.json();
           if (state.ttyd_port) {
-            this.ttydPort = state.ttyd_port;
             this.available = true;
-            /* Notify splitLayout that the terminal is available */
             this.$dispatch('terminal-ready', { available: true });
           }
         } catch { /* ttyd not available */ }
       },
 
       toggleEmbed() {
+        if (!this.embedded && this._popoutWindow) {
+          /* Returning from pop-out: close the external window */
+          try { this._popoutWindow.close(); } catch {}
+          this._popoutWindow = null;
+        }
         this.embedded = !this.embedded;
         this.poppedOut = false;
       },
 
       popOut() {
-        window.open(this.ttydUrl, 'studyctl-terminal',
+        /* Open same-origin /terminal/ in a named window.
+           Using a named window means clicking pop-out again focuses
+           the existing window rather than opening a second one. */
+        this._popoutWindow = window.open('/terminal/', 'studyctl-terminal',
           'width=900,height=600,menubar=no,toolbar=no');
         this.embedded = false;
         this.poppedOut = true;

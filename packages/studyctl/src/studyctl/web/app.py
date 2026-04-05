@@ -26,16 +26,24 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
+        # SAMEORIGIN (not DENY) so our same-origin /terminal/ iframe can embed ttyd
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         return response
 
 
-def create_app(study_dirs: list[str] | None = None) -> FastAPI:
+def create_app(
+    study_dirs: list[str] | None = None,
+    ttyd_port: int = 7681,
+    password: str = "",
+) -> FastAPI:
     """Create and configure the FastAPI application.
 
     Args:
         study_dirs: List of directory paths containing flashcard/quiz content.
+        ttyd_port: Port where the local ttyd process is listening.
+        password: Optional password for HTTP Basic Auth (LAN protection).
+                  If empty, no authentication is applied.
     """
     app = FastAPI(
         title="Socratic Study Mentor",
@@ -45,6 +53,13 @@ def create_app(study_dirs: list[str] | None = None) -> FastAPI:
 
     # Store config on app state for route access
     app.state.study_dirs = study_dirs or []
+    app.state.ttyd_port = ttyd_port
+
+    # Optional password protection (LAN mode)
+    if password:
+        from studyctl.web.auth import BasicAuthMiddleware
+
+        app.add_middleware(BasicAuthMiddleware, password=password)
 
     # Security headers
     app.add_middleware(SecurityHeadersMiddleware)
@@ -57,6 +72,14 @@ def create_app(study_dirs: list[str] | None = None) -> FastAPI:
     app.include_router(history.router, prefix="/api")
     app.include_router(session.router, prefix="/api")
     app.include_router(artefacts.router)
+
+    # Terminal proxy — MUST be registered before the static files catch-all
+    try:
+        from studyctl.web.routes import terminal_proxy
+
+        app.include_router(terminal_proxy.router)
+    except ImportError:
+        pass  # httpx/websockets not installed — proxy unavailable
 
     # Serve index.html at root
     @app.get("/")

@@ -26,7 +26,7 @@ dependencies = [
 content = ["pymupdf>=1.25", "httpx"]
 notebooklm = ["notebooklm-py>=0.3.4"]
 tui = ["textual>=0.80"]
-web = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
+web = ["fastapi>=0.115", "uvicorn[standard]>=0.34", "httpx>=0.27", "websockets>=12.0"]
 mcp = ["mcp[cli]>=1.0.0"]
 all = ["studyctl[content,web,notebooklm,tui,mcp]"]
 

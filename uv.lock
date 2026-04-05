@@ -2839,6 +2839,7 @@ all = [
     { name = "pymupdf" },
     { name = "textual" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
 ]
 content = [
     { name = "httpx" },
@@ -2855,7 +2856,9 @@ tui = [
 ]
 web = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -2868,6 +2871,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115" },
     { name = "httpx", marker = "extra == 'content'" },
+    { name = "httpx", marker = "extra == 'web'", specifier = ">=0.27" },
     { name = "mcp", extras = ["cli"], marker = "extra == 'mcp'", specifier = ">=1.0.0" },
     { name = "notebooklm-py", marker = "extra == 'notebooklm'", specifier = ">=0.3.4" },
     { name = "pymupdf", marker = "extra == 'content'", specifier = ">=1.25" },
@@ -2876,6 +2880,7 @@ requires-dist = [
     { name = "studyctl", extras = ["content", "web", "notebooklm", "tui", "mcp"], marker = "extra == 'all'" },
     { name = "textual", marker = "extra == 'tui'", specifier = ">=0.80" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'", specifier = ">=0.34" },
+    { name = "websockets", marker = "extra == 'web'", specifier = ">=12.0" },
 ]
 provides-extras = ["content", "notebooklm", "tui", "web", "mcp", "all"]
 

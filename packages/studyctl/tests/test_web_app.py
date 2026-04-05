@@ -70,7 +70,8 @@ class TestIndex:
     def test_security_headers(self, client: TestClient) -> None:
         resp = client.get("/")
         assert resp.headers["x-content-type-options"] == "nosniff"
-        assert resp.headers["x-frame-options"] == "DENY"
+        # SAMEORIGIN (not DENY) to allow same-origin iframe embedding of the ttyd proxy
+        assert resp.headers["x-frame-options"] == "SAMEORIGIN"
 
 
 class TestCoursesAPI:
