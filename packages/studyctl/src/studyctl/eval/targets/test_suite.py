@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import cached_property
 from pathlib import Path
+from typing import Literal
 
 from studyctl.eval.git_ops import short_hash
 
@@ -19,6 +22,10 @@ DEFAULT_TEST_PATH = "tests/test_harness_matrix.py"
 # Data structures
 # ---------------------------------------------------------------------------
 
+Outcome = Literal["passed", "failed", "error", "skipped"]
+
+_PARAM_RE = re.compile(r"^(.+?)\[(.+)\]$")
+
 
 @dataclass
 class TestResult:
@@ -26,7 +33,7 @@ class TestResult:
 
     name: str
     classname: str
-    outcome: str  # passed, failed, error, skipped
+    outcome: Outcome
     duration: float
     message: str = ""
     traceback: str = ""
@@ -35,6 +42,30 @@ class TestResult:
     def short_name(self) -> str:
         """Test name without the class prefix."""
         return self.name.rsplit("::", 1)[-1] if "::" in self.name else self.name
+
+    @cached_property
+    def _param_match(self) -> re.Match[str] | None:
+        return _PARAM_RE.match(self.short_name)
+
+    @cached_property
+    def base_name(self) -> str:
+        """Strip [agent] suffix: 'test_01_session_start[claude]' -> 'test_01_session_start'"""
+        m = self._param_match
+        return m.group(1) if m else self.short_name
+
+    @cached_property
+    def agent(self) -> str | None:
+        """Extract parameter: 'test_01_session_start[claude]' -> 'claude'"""
+        m = self._param_match
+        return m.group(2) if m else None
+
+
+@dataclass(frozen=True)
+class TestKey:
+    """Hashable key for set-based regression detection."""
+
+    agent: str
+    base_name: str
 
 
 @dataclass
@@ -51,7 +82,11 @@ class IterationResult:
     duration_s: float
     commit: str
     status: str  # complete, partial, crash
-    failures: list[TestResult] = field(default_factory=list)
+    all_tests: list[TestResult] = field(default_factory=list)
+
+    @property
+    def failures(self) -> list[TestResult]:
+        return [t for t in self.all_tests if t.outcome in ("failed", "error")]
 
     @property
     def all_passed(self) -> bool:
@@ -103,7 +138,12 @@ def parse_junit_xml(xml_path: Path) -> list[TestResult]:
     if not xml_path.exists():
         return []
 
-    tree = ET.parse(xml_path)
+    try:
+        tree = ET.parse(xml_path)
+    except ET.ParseError as exc:
+        print(f"WARNING: JUnit XML is malformed ({exc}), treating as crash run")
+        return []
+
     root = tree.getroot()
     results: list[TestResult] = []
 
@@ -111,7 +151,7 @@ def parse_junit_xml(xml_path: Path) -> list[TestResult]:
         for case in suite.iter("testcase"):
             name = case.get("name", "")
             classname = case.get("classname", "")
-            duration = float(case.get("time", "0"))
+            duration = float(case.get("time", "0") or "0")
 
             # Determine outcome
             failure = case.find("failure")
@@ -121,11 +161,11 @@ def parse_junit_xml(xml_path: Path) -> list[TestResult]:
             if failure is not None:
                 outcome = "failed"
                 message = failure.get("message", "")
-                tb = failure.text or ""
+                tb = (failure.text or "").strip()
             elif error is not None:
                 outcome = "error"
                 message = error.get("message", "")
-                tb = error.text or ""
+                tb = (error.text or "").strip()
             elif skipped is not None:
                 outcome = "skipped"
                 message = skipped.get("message", "")
@@ -163,8 +203,6 @@ def build_iteration_result(
     skipped = sum(1 for t in test_results if t.outcome == "skipped")
     total_duration = sum(t.duration for t in test_results)
 
-    failures = [t for t in test_results if t.outcome in ("failed", "error")]
-
     if not test_results and exit_code != 0:
         status = "crash"
     elif failed == 0 and errored == 0:
@@ -183,5 +221,5 @@ def build_iteration_result(
         duration_s=round(total_duration, 1),
         commit=short_hash(),
         status=status,
-        failures=failures,
+        all_tests=test_results,
     )

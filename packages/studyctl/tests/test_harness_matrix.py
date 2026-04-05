@@ -8,7 +8,7 @@ Run::
     uv run pytest tests/test_harness_matrix.py -v
     uv run pytest tests/test_harness_matrix.py -v -k claude      # single agent
     uv run pytest tests/test_harness_matrix.py -v -k "gemini or kiro"
-    uv run pytest tests/test_harness_matrix.py -v --video=on      # with recording
+    uv run pytest tests/test_harness_matrix.py -v -k claude      # single agent
 """
 
 from __future__ import annotations
