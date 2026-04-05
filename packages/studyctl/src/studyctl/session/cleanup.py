@@ -118,7 +118,7 @@ def end_session_common(
     with contextlib.suppress(OSError):
         oneline.unlink()
 
-    # Kill background processes (web dashboard, ttyd when added).
+    # Kill background processes (web dashboard, ttyd).
     # Verify PID identity before killing to guard against PID recycling:
     # if the process exited and its PID was reused by an unrelated process,
     # we'd kill the wrong thing.

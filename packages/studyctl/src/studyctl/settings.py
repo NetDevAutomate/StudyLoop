@@ -140,6 +140,10 @@ class Settings:
     notebooklm: NotebookLMConfig = field(default_factory=NotebookLMConfig)
     content: ContentConfig = field(default_factory=ContentConfig)
     agents: AgentsConfig = field(default_factory=AgentsConfig)
+    ttyd_port: int = 7681
+    web_port: int = 8567
+    browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
+    lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = no auth)
 
 
 def load_settings() -> Settings:
@@ -227,6 +231,16 @@ def load_settings() -> Settings:
             default_types=ct.get("default_types", ["audio"]),
             pandoc_path=ct.get("pandoc_path", "pandoc"),
         )
+
+    # Web/ttyd configuration
+    if "ttyd_port" in raw:
+        settings.ttyd_port = int(raw["ttyd_port"])
+    if "web_port" in raw:
+        settings.web_port = int(raw["web_port"])
+    if "browser" in raw:
+        settings.browser = str(raw["browser"])
+    if "lan_password" in raw:
+        settings.lan_password = str(raw["lan_password"])
 
     return settings
 

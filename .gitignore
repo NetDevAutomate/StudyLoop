@@ -475,7 +475,7 @@ site/
 *.db-shm
 *.db-journal
 
-# Internal docs (kept locally, not published)
+# Internal/planning docs (kept locally, not published)
 docs/internal/
 docs/local_repo_docs/
 docs/plans/

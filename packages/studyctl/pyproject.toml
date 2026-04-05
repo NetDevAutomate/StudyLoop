@@ -26,7 +26,7 @@ dependencies = [
 content = ["pymupdf>=1.25", "httpx"]
 notebooklm = ["notebooklm-py>=0.3.4"]
 tui = ["textual>=0.80"]
-web = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
+web = ["fastapi>=0.115", "uvicorn[standard]>=0.34", "httpx>=0.27", "websockets>=12.0"]
 mcp = ["mcp[cli]>=1.0.0"]
 all = ["studyctl[content,web,notebooklm,tui,mcp]"]
 
@@ -52,9 +52,15 @@ testpaths = ["tests"]
 addopts = "--tb=short -m 'not integration'"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
+    "e2e: end-to-end browser tests requiring Playwright + web server",
 ]
 
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/cli/_web.py", "src/studyctl/web", "src/studyctl/mcp"]  # optional deps not in CI
+
+[dependency-groups]
+dev = [
+    "pytest-playwright>=0.7.2",
+]

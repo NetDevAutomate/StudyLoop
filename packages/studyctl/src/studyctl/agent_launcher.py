@@ -4,11 +4,12 @@ Adapters handle the per-agent differences in persona injection, MCP config,
 and launch commands. The canonical persona content is shared; each adapter's
 setup() callable transforms it for that agent's specific mechanism.
 
-Agent mechanisms (verified 2026-04-03):
+Agent mechanisms (verified 2026-04-04):
   Claude:   --append-system-prompt-file {temp_file}
   Gemini:   GEMINI.md written to session cwd (auto-loaded)
   Kiro:     ~/.kiro/agents/study-mentor.json updated with file:// prompt ref
-  OpenCode: ~/.config/opencode/agents/study-mentor.md with YAML frontmatter
+              Crash recovery: stale backups restored on next setup
+  OpenCode: .opencode/agents/study-mentor.md with YAML frontmatter (permission: format)
 """
 
 from __future__ import annotations
@@ -131,10 +132,19 @@ def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:
     # 4. Ensure target directory exists
     KIRO_AGENTS_DIR.mkdir(parents=True, exist_ok=True)
     target = KIRO_AGENTS_DIR / f"{KIRO_AGENT_NAME}.json"
+    backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
+
+    # 4a. Recover from crash: if a backup exists, the previous session's
+    # teardown never ran. Restore the user's original config first.
+    if backup.exists():
+        logger.warning(
+            "Stale Kiro backup detected (previous session crashed?) — restoring %s",
+            backup,
+        )
+        os.replace(backup, target)
 
     # 5. Backup existing agent JSON if present
     if target.exists():
-        backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
         shutil.copy2(target, backup)
 
     # 6. Atomic write: temp file in same dir → os.replace()
@@ -176,6 +186,20 @@ def _kiro_teardown(_session_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _mcp_command() -> list[str]:
+    """Build the studyctl-mcp server command.
+
+    Prefers the installed console script (pip/uv tool install).
+    Falls back to uv run --project for development.
+    """
+    binary = shutil.which("studyctl-mcp")
+    if binary:
+        return [binary]
+    # Dev fallback: run from the repo workspace
+    project_path = str(_REPO_ROOT / "packages" / "studyctl")
+    return ["uv", "run", "--project", project_path, "studyctl-mcp"]
+
+
 def _gemini_setup(canonical_content: str, session_dir: Path) -> Path:
     """Write GEMINI.md to session dir (auto-loaded by Gemini CLI from cwd)."""
     persona_path = session_dir / "GEMINI.md"
@@ -196,13 +220,12 @@ def _gemini_mcp(session_dir: Path) -> None:
     gemini_dir = session_dir / ".gemini"
     gemini_dir.mkdir(parents=True, exist_ok=True)
 
-    # Build MCP server command using the project path
-    project_path = str(_REPO_ROOT / "packages" / "studyctl")
+    cmd = _mcp_command()
     settings = {
         "mcpServers": {
             "studyctl-mcp": {
-                "command": "uv",
-                "args": ["run", "--project", project_path, "studyctl-mcp"],
+                "command": cmd[0],
+                "args": cmd[1:],
             },
         },
     }
@@ -217,8 +240,8 @@ def _gemini_mcp(session_dir: Path) -> None:
 # ~/.config/opencode/agents/ or project-local agents/.  The setup
 # function writes the persona as a markdown file with YAML frontmatter
 # in the session directory.  MCP uses a different schema from others:
-# "command" is a flat array, "enabled" (not "disabled"), "environment"
-# (not "env").
+# "command" is a flat array, "enabled" (not "disabled"),
+# "type": "local" required.
 # ---------------------------------------------------------------------------
 
 _OPENCODE_AGENTS_DIR_NAME = ".opencode"
@@ -235,10 +258,12 @@ def _opencode_setup(canonical_content: str, session_dir: Path) -> Path:
         'description: "AuDHD-aware Socratic study mentor"\n'
         "mode: primary\n"
         "temperature: 0.3\n"
-        "tools:\n"
-        "  write: true\n"
-        "  edit: true\n"
-        "  bash: true\n"
+        "permission:\n"
+        "  edit: allow\n"
+        "  bash:\n"
+        '    "studyctl *": allow\n'
+        '    "session-* *": allow\n'
+        '    "*": ask\n'
         "---\n\n"
     )
     persona_path.write_text(frontmatter + canonical_content)
@@ -259,20 +284,17 @@ def _opencode_mcp(session_dir: Path) -> None:
     OpenCode's schema differs from others:
     - ``command`` is a flat array (binary + args merged)
     - ``enabled`` instead of ``disabled``
-    - ``environment`` instead of ``env``
     - ``type: "local"`` required
     """
     oc_dir = session_dir / _OPENCODE_AGENTS_DIR_NAME
     oc_dir.mkdir(parents=True, exist_ok=True)
 
-    project_path = str(_REPO_ROOT / "packages" / "studyctl")
     config = {
         "mcp": {
             "studyctl-mcp": {
-                "command": ["uv", "run", "--project", project_path, "studyctl-mcp"],
+                "command": _mcp_command(),
                 "enabled": True,
                 "type": "local",
-                "environment": {},
             },
         },
     }
