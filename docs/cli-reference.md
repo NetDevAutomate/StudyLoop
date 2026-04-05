@@ -63,6 +63,8 @@ studyctl study "Python Decorators" --energy 7          # Socratic mentor session
 studyctl study "Spark Internals" --mode co-study       # User-driven co-study
 studyctl study "topic" --timer pomodoro                # Override default timer
 studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
+studyctl study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
+studyctl study "topic" --agent lmstudio                # Local LLM via LM Studio
 studyctl study --resume                                # Resume conversation (-r)
 studyctl study --end                                   # End session cleanly
 studyctl park "How does asyncio compare?"              # Park mid-session

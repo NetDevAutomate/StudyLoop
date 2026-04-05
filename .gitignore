@@ -477,6 +477,12 @@ site/
 
 # Internal docs (kept locally, not published)
 docs/internal/
+docs/local_repo_docs/
+docs/plans/
+docs/architecture/
+
+# Demo recordings (large, local-only)
+demos/
 
 # Agent workflow artefacts
 code-review-plan-items.md
