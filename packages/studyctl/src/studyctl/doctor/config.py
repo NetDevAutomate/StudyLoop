@@ -199,3 +199,65 @@ def check_tmux_resurrect() -> list[CheckResult]:
             False,
         )
     ]
+
+
+def check_eval_provider() -> list[CheckResult]:
+    """Check if the eval judge LLM provider is reachable."""
+    try:
+        from studyctl.settings import load_settings
+
+        settings = load_settings()
+        eval_config = settings.eval
+    except Exception:
+        return [
+            CheckResult(
+                "eval",
+                "eval-provider",
+                "info",
+                "No eval configuration found (optional)",
+                "",
+                False,
+            )
+        ]
+
+    judge = eval_config.judge
+    if judge.provider == "ollama":
+        try:
+            import urllib.request
+
+            req = urllib.request.Request(f"{judge.base_url}/api/tags", method="GET")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    return [
+                        CheckResult(
+                            "eval",
+                            "eval-provider",
+                            "pass",
+                            f"Ollama reachable at {judge.base_url}, model: {judge.model}",
+                            "",
+                            False,
+                        )
+                    ]
+        except Exception:
+            return [
+                CheckResult(
+                    "eval",
+                    "eval-provider",
+                    "warn",
+                    f"Ollama not reachable at {judge.base_url}",
+                    "Start Ollama: ollama serve",
+                    False,
+                )
+            ]
+
+    # openai-compat — just check config exists
+    return [
+        CheckResult(
+            "eval",
+            "eval-provider",
+            "info",
+            f"OpenAI-compat provider configured: {judge.base_url}",
+            "",
+            False,
+        )
+    ]
