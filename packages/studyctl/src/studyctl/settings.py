@@ -128,10 +128,11 @@ class AgentsConfig:
 class EvalJudgeConfig:
     """Configuration for the evaluation judge LLM."""
 
-    provider: str = "ollama"  # "ollama" or "openai-compat"
+    provider: str = "ollama"  # "ollama" | "openai-compat" | "bedrock"
     base_url: str = "http://localhost:11434"
     model: str = "gemma4:26b"
     api_key_env: str = ""  # env var name containing the API key
+    region: str = "us-west-2"  # AWS region for bedrock provider
 
 
 @dataclass
