@@ -183,3 +183,46 @@ class TestSessionManagement:
         mock_subprocess.return_value = MagicMock(returncode=1, stdout="")
 
         assert get_tmux_version() is None
+
+
+class TestAttachSafetyGuard:
+    """Verify attach() falls back to switch_client when already inside tmux."""
+
+    def test_attach_uses_execvp_outside_tmux(self):
+        from studyctl.tmux import attach
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("studyctl.tmux.os.execvp") as mock_exec,
+        ):
+            attach("study-python-abc123")
+
+        mock_exec.assert_called_once_with(
+            "tmux", ["tmux", "attach-session", "-t", "study-python-abc123"]
+        )
+
+    def test_attach_falls_back_to_switch_client_inside_tmux(self, mock_subprocess):
+        from studyctl.tmux import attach
+
+        with patch.dict("os.environ", {"TMUX": "/tmp/tmux-501/default,1234,0"}):
+            attach("study-python-abc123")
+
+        # Should have called switch-client, NOT os.execvp
+        mock_subprocess.assert_called_once_with(
+            ["tmux", "switch-client", "-t", "study-python-abc123"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    def test_attach_logs_warning_inside_tmux(self, mock_subprocess):
+        from studyctl.tmux import attach
+
+        with (
+            patch.dict("os.environ", {"TMUX": "/tmp/tmux-501/default,1234,0"}),
+            patch("studyctl.tmux.logger") as mock_logger,
+        ):
+            attach("study-test")
+
+        mock_logger.warning.assert_called_once()
+        assert "nested" in mock_logger.warning.call_args[0][0].lower()

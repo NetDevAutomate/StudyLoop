@@ -334,5 +334,16 @@ def attach(name: str) -> None:
 
     Uses ``os.execvp`` so the Python process is replaced — no dangling
     parent process left behind.
+
+    Safety guard: if already inside tmux (e.g. tmux-resurrect restored
+    a session and the TMUX env var is set), falls back to switch_client
+    to avoid creating a nested tmux-inside-tmux.
     """
+    if is_in_tmux():
+        logger.warning(
+            "attach() called from inside tmux — falling back to switch_client "
+            "to prevent nested session"
+        )
+        switch_client(name)
+        return
     os.execvp("tmux", ["tmux", "attach-session", "-t", name])

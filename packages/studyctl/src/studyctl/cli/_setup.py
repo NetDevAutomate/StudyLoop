@@ -139,6 +139,12 @@ def setup() -> None:
     console.print(f"\n[bold green]Configuration saved to {config_path}[/bold green]")
 
     # ------------------------------------------------------------------
+    # LAN access tip
+    # ------------------------------------------------------------------
+    console.print("\n[dim]Tip: To access the web dashboard from other devices on your LAN,[/dim]")
+    console.print(f"[dim]set lan_username and lan_password in {config_path}[/dim]")
+
+    # ------------------------------------------------------------------
     # Offer to launch web UI
     # ------------------------------------------------------------------
     console.print()

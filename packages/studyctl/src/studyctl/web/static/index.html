@@ -579,87 +579,143 @@
       </div>
 
       <!-- ============================================================ -->
-      <!-- STUDY SESSION VIEW — full session dashboard                  -->
+      <!-- STUDY SESSION VIEW — start picker or live dashboard          -->
       <!-- ============================================================ -->
-      <div x-show="$store.nav.is('study-session')" x-cloak>
-        <div class="split-container" x-data="splitLayout()" :class="{ 'split-horizontal': layout === 'side' }">
+      <div x-show="$store.nav.is('study-session')" x-cloak
+           x-data="sessionTimer()" x-init="init()">
 
-          <!-- Dashboard panel -->
-          <div class="split-panel split-dashboard" :style="dashboardStyle">
-            <div class="session-dashboard" x-data="sessionTimer()" x-init="init()">
+        <!-- ── Start Session Picker (no active session) ── -->
+        <div x-show="!sessionActive && !starting" class="session-start-picker" x-transition>
+          <h2>Start a Study Session</h2>
 
-              <!-- Timer bar -->
-              <div class="session-timer" :class="timerPhase">
-                <div class="timer-display">
-                  <span class="timer-icon" x-text="timerIcon"></span>
-                  <span class="timer-time" x-text="display"></span>
-                  <div class="timer-bar-track">
-                    <div class="timer-bar-fill" :class="timerPhase"
-                         :style="`width: ${progress}%`"></div>
-                  </div>
-                  <div class="timer-controls">
-                    <button class="timer-btn" @click="togglePause()"
-                            :title="paused ? 'Resume' : 'Pause'"
-                            x-text="paused ? '\u25b6' : '\u23f8'"></button>
-                    <button class="timer-btn" @click="resetTimer()" title="Reset">&#8634;</button>
-                  </div>
-                </div>
-                <div class="timer-message" x-show="message || paused" x-transition.opacity>
-                  <span x-show="paused" class="timer-paused-label">Paused</span>
-                  <span x-show="message && !paused" x-text="message"></span>
-                </div>
-              </div>
-
-              <!-- Session metadata -->
-              <div id="session-meta" class="session-meta">
-                <span class="meta-topic" x-text="topic">Loading...</span>
-                <span class="meta-energy">&#9889; Energy: <span x-text="energy + '/10'"></span></span>
-              </div>
-
-              <!-- Activity feed (SSE) -->
-              <div hx-ext="sse" sse-connect="/api/session/stream" sse-close="close">
-                <div id="activity-feed" class="activity-feed" sse-swap="session-update">
-                  <p class="activity-empty">Connecting to session...</p>
-                </div>
-              </div>
-
-              <!-- Counter bar -->
-              <div class="counter-bar">
-                <span id="counter-wins" class="counter counter-wins">&#10003; WINS: 0</span>
-                <span id="counter-parked" class="counter counter-parked">&#9675; PARKED: 0</span>
-                <span id="counter-review" class="counter counter-review">&#9650; REVIEW: 0</span>
-              </div>
+          <!-- Topic selector -->
+          <div class="picker-field">
+            <label for="topic-input">Topic</label>
+            <div class="topic-select-row">
+              <select x-show="topics.length > 0" x-model="selectedTopic"
+                      @change="if (selectedTopic) topicInput = selectedTopic"
+                      class="picker-select">
+                <option value="">Choose a topic...</option>
+                <template x-for="t in topics" :key="t.slug">
+                  <option :value="t.name" x-text="t.name"></option>
+                </template>
+              </select>
+              <input id="topic-input" type="text" x-model="topicInput"
+                     placeholder="Or type a topic..."
+                     class="picker-input"
+                     @input="selectedTopic = ''">
             </div>
           </div>
 
-          <!-- Draggable divider -->
-          <div class="split-divider" x-show="terminalAvailable"
-               @mousedown="startDrag($event)"
-               @touchstart.prevent="startDrag($event)">
-            <div class="divider-handle"></div>
+          <!-- Energy selector -->
+          <div class="picker-field">
+            <label>Energy Level: <span x-text="energy + '/10'" class="energy-value"></span></label>
+            <input type="range" min="1" max="10" x-model.number="energy" class="energy-slider">
+            <div class="energy-labels">
+              <span>Low</span>
+              <span x-text="energyBandLabel()"></span>
+              <span>High</span>
+            </div>
           </div>
 
-          <!-- Terminal panel -->
-          <div class="split-panel split-terminal" x-show="terminalAvailable" :style="terminalStyle">
-            <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
-              <div class="terminal-header">
-                <span class="terminal-title">Agent Terminal</span>
-                <div class="terminal-controls">
-                  <button class="timer-btn" @click="$dispatch('toggle-layout')" title="Toggle stacked/side-by-side">&#x21c4;</button>
-                  <button class="timer-btn" @click="$dispatch('swap-panels')" title="Swap panel order">&#x21c5;</button>
-                  <button class="timer-btn" @click="toggleEmbed()"
-                          :title="embedded ? 'Hide terminal' : 'Show terminal'"
-                          x-text="embedded ? '\u2796' : '\u2795'"></button>
-                  <button class="timer-btn" @click="popOut()" title="Open in new window">&#x29c9;</button>
+          <!-- Start button -->
+          <button class="start-session-btn" @click="startSession()"
+                  :disabled="!topicInput.trim()"
+                  :class="{ disabled: !topicInput.trim() }">
+            Start Session
+          </button>
+
+          <p x-show="startError" class="picker-error" x-text="startError"></p>
+        </div>
+
+        <!-- ── Starting spinner ── -->
+        <div x-show="starting" class="session-starting" x-transition>
+          <div class="spinner"></div>
+          <p>Starting session...</p>
+        </div>
+
+        <!-- ── Active Session Dashboard ── -->
+        <div x-show="sessionActive" x-transition>
+          <div class="split-container" x-data="splitLayout()" :class="{ 'split-horizontal': layout === 'side' }">
+
+            <!-- Dashboard panel -->
+            <div class="split-panel split-dashboard" :style="dashboardStyle">
+              <div class="session-dashboard">
+
+                <!-- Timer bar -->
+                <div class="session-timer" :class="timerPhase">
+                  <div class="timer-display">
+                    <span class="timer-icon" x-text="timerIcon"></span>
+                    <span class="timer-time" x-text="display"></span>
+                    <div class="timer-bar-track">
+                      <div class="timer-bar-fill" :class="timerPhase"
+                           :style="`width: ${progress}%`"></div>
+                    </div>
+                    <div class="timer-controls">
+                      <button class="timer-btn" @click="togglePause()"
+                              :title="paused ? 'Resume' : 'Pause'"
+                              x-text="paused ? '\u25b6' : '\u23f8'"></button>
+                      <button class="timer-btn" @click="resetTimer()" title="Reset">&#8634;</button>
+                      <button class="timer-btn end-btn" @click="endSession()" title="End session">&#9632;</button>
+                    </div>
+                  </div>
+                  <div class="timer-message" x-show="message || paused" x-transition.opacity>
+                    <span x-show="paused" class="timer-paused-label">Paused</span>
+                    <span x-show="message && !paused" x-text="message"></span>
+                  </div>
+                </div>
+
+                <!-- Session metadata -->
+                <div id="session-meta" class="session-meta">
+                  <span class="meta-topic" x-text="topic">Loading...</span>
+                  <span class="meta-energy">&#9889; Energy: <span x-text="energy + '/10'"></span></span>
+                </div>
+
+                <!-- Activity feed (SSE) -->
+                <div hx-ext="sse" sse-connect="/api/session/stream" sse-close="close">
+                  <div id="activity-feed" class="activity-feed" sse-swap="session-update">
+                    <p class="activity-empty">Connecting to session...</p>
+                  </div>
+                </div>
+
+                <!-- Counter bar -->
+                <div class="counter-bar">
+                  <span id="counter-wins" class="counter counter-wins">&#10003; WINS: 0</span>
+                  <span id="counter-parked" class="counter counter-parked">&#9675; PARKED: 0</span>
+                  <span id="counter-review" class="counter counter-review">&#9650; REVIEW: 0</span>
                 </div>
               </div>
-              <div class="terminal-content">
-                <iframe :src="ttydUrl" class="terminal-iframe"
-                        :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
-                        allow="clipboard-read; clipboard-write"></iframe>
-                <div x-show="!embedded && poppedOut" class="terminal-placeholder">
-                  <div>Terminal opened in separate window</div>
-                  <div class="placeholder-hint">Click <strong>+</strong> to return terminal here</div>
+            </div>
+
+            <!-- Draggable divider -->
+            <div class="split-divider" x-show="terminalAvailable"
+                 @mousedown="startDrag($event)"
+                 @touchstart.prevent="startDrag($event)">
+              <div class="divider-handle"></div>
+            </div>
+
+            <!-- Terminal panel -->
+            <div class="split-panel split-terminal" x-show="terminalAvailable" :style="terminalStyle">
+              <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
+                <div class="terminal-header">
+                  <span class="terminal-title">Agent Terminal</span>
+                  <div class="terminal-controls">
+                    <button class="timer-btn" @click="$dispatch('toggle-layout')" title="Toggle stacked/side-by-side">&#x21c4;</button>
+                    <button class="timer-btn" @click="$dispatch('swap-panels')" title="Swap panel order">&#x21c5;</button>
+                    <button class="timer-btn" @click="toggleEmbed()"
+                            :title="embedded ? 'Hide terminal' : 'Show terminal'"
+                            x-text="embedded ? '\u2796' : '\u2795'"></button>
+                    <button class="timer-btn" @click="popOut()" title="Open in new window">&#x29c9;</button>
+                  </div>
+                </div>
+                <div class="terminal-content">
+                  <iframe :src="ttydUrl" class="terminal-iframe"
+                          :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
+                          allow="clipboard-read; clipboard-write"></iframe>
+                  <div x-show="!embedded && poppedOut" class="terminal-placeholder">
+                    <div>Terminal opened in separate window</div>
+                    <div class="placeholder-hint">Click <strong>+</strong> to return terminal here</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -716,6 +772,7 @@
    * ------------------------------------------------------------------ */
   function sessionTimer() {
     return {
+      // Timer state
       startTime: null,
       energy: 5,
       topic: 'Loading...',
@@ -727,14 +784,35 @@
       paused: false,
       pausedAt: 0,
 
+      // Start-picker state
+      topics: [],
+      selectedTopic: '',
+      topicInput: '',
+      starting: false,
+      startError: '',
+
+      energyBandLabel() {
+        if (this.energy >= 7) return 'High energy';
+        if (this.energy >= 4) return 'Medium energy';
+        return 'Low energy';
+      },
+
       async init() {
+        try {
+          // Load topics list for picker
+          const topicsRes = await fetch('/api/session/topics');
+          if (topicsRes.ok) this.topics = await topicsRes.json();
+        } catch { /* topics list unavailable — free-text still works */ }
+
         try {
           const res = await fetch('/api/session/state');
           const state = await res.json();
-          if (state.study_session_id) {
+          if (state.study_session_id && state.mode !== 'ended') {
             this.energy = state.energy || 5;
             this.topic = state.topic || 'Study Session';
-            this.startTime = state.start_time ? new Date(state.start_time) : new Date();
+            this.startTime = state.start_time
+              ? new Date(state.start_time)
+              : (state.started_at ? new Date(state.started_at) : new Date());
             this.sessionActive = true;
             this.tick();
             this.interval = setInterval(() => this.tick(), 1000);
@@ -744,6 +822,50 @@
         } catch {
           this.topic = 'Could not load session';
         }
+      },
+
+      async startSession() {
+        const topic = this.topicInput.trim();
+        if (!topic) return;
+        this.starting = true;
+        this.startError = '';
+        try {
+          const res = await fetch('/api/session/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic, energy: this.energy }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            this.startError = data.error || 'Failed to start session';
+            this.starting = false;
+            return;
+          }
+          // Session started — switch to dashboard view
+          this.topic = data.topic;
+          this.startTime = new Date();
+          this.sessionActive = true;
+          this.starting = false;
+          this.elapsed = 0;
+          this.tick();
+          this.interval = setInterval(() => this.tick(), 1000);
+        } catch (e) {
+          this.startError = 'Network error — could not reach server';
+          this.starting = false;
+        }
+      },
+
+      async endSession() {
+        if (!this.sessionActive) return;
+        if (!confirm('End the current study session?')) return;
+        try {
+          await fetch('/api/session/end', { method: 'POST' });
+        } catch { /* best effort */ }
+        this.sessionActive = false;
+        clearInterval(this.interval);
+        this.topic = 'Session ended';
+        this.topicInput = '';
+        this.selectedTopic = '';
       },
 
       togglePause() {
