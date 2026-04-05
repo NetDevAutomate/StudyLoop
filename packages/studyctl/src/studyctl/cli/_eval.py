@@ -219,6 +219,15 @@ def run(ctx: click.Context, scenarios_arg: str, agent: str | None, no_git_check:
         f"Passed: [bold]{passed_count}/{total_count}[/bold]"
     )
 
+    # Print judge feedback for failed scenarios
+    has_feedback = [r for r in summary.results if r.feedback and not r.passed]
+    if has_feedback:
+        console.print("\n[bold]Judge Feedback (failed scenarios):[/bold]")
+        for result in has_feedback:
+            console.print(f"\n  [cyan]{result.scenario_id}[/cyan]:")
+            for suggestion in result.feedback:
+                console.print(f"    - {suggestion}")
+
     # 11. Write markdown report
     reports_dir = _REPO_ROOT / "docs" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)

@@ -66,8 +66,8 @@ class LLMJudge:
                 raw_response="LLM_ERROR",
             )
 
-        # 4. Parse JSON scores, clamp to 1-4
-        dimensions = self._parse_scores(raw)
+        # 4. Parse JSON scores + feedback, clamp scores to 1-4
+        dimensions, feedback = self._parse_scores(raw)
 
         return JudgeResult(
             scenario_id=scenario.id,
@@ -75,6 +75,7 @@ class LLMJudge:
             dimensions=dimensions,
             weights=scenario.rubric_weights,
             raw_response=raw,
+            feedback=feedback,
         )
 
     def _build_prompt(self, scenario: Scenario, response: str) -> str:
@@ -87,15 +88,15 @@ class LLMJudge:
             .replace("{{response}}", response)
         )
 
-    def _parse_scores(self, raw: str) -> dict[str, int]:
-        """Extract and clamp dimension scores from LLM JSON response."""
+    def _parse_scores(self, raw: str) -> tuple[dict[str, int], list[str]]:
+        """Extract and clamp dimension scores + feedback from LLM JSON response."""
         try:
             start = raw.index("{")
             end = raw.rindex("}") + 1
             data = json.loads(raw[start:end])
         except (ValueError, json.JSONDecodeError):
             logger.warning("Could not parse LLM response as JSON: %r", raw[:200])
-            return dict.fromkeys(self.DIMENSIONS, 1)
+            return dict.fromkeys(self.DIMENSIONS, 1), []
 
         result: dict[str, int] = {}
         for dim in self.DIMENSIONS:
@@ -104,4 +105,11 @@ class LLMJudge:
                 result[dim] = max(1, min(4, int(val)))
             else:
                 result[dim] = 1
-        return result
+
+        feedback = data.get("feedback", [])
+        if isinstance(feedback, list):
+            feedback = [str(f) for f in feedback]
+        else:
+            feedback = [str(feedback)] if feedback else []
+
+        return result, feedback
