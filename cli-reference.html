@@ -1102,6 +1102,7 @@ studyctl<span class="w"> </span>park<span class="w"> </span>QUESTION<span class=
 studyctl<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session (DB + IPC files)</span>
 studyctl<span class="w"> </span>session<span class="w"> </span>status<span class="w">                  </span><span class="c1"># Timer, topics, parking lot</span>
 studyctl<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span><span class="o">[</span>-n<span class="w"> </span>NOTES<span class="o">]</span><span class="w">          </span><span class="c1"># End session, show summary</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w">           </span><span class="c1"># Persona effectiveness metrics</span>
 
 <span class="c1"># Content pipeline</span>
 studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span>SOURCE<span class="w">            </span><span class="c1"># Split PDF by chapters</span>
@@ -1196,6 +1197,8 @@ studyctl<span class="w"> </span>park<span class="w"> </span><span class="s2">&qu
 <div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;Decorators&quot;</span><span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session record</span>
 studyctl<span class="w"> </span>session<span class="w"> </span>status<span class="w">                         </span><span class="c1"># Show current state</span>
 studyctl<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;Got through closures&quot;</span><span class="w">  </span><span class="c1"># End with notes</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w">                  </span><span class="c1"># Win rate per persona version</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w"> </span>-p<span class="w"> </span>abc123...<span class="w">     </span><span class="c1"># Filter by persona hash</span>
 </code></pre></div>
 <h3 id="health-updates">Health &amp; Updates<a class="headerlink" href="#health-updates" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check (Rich table)</span>
