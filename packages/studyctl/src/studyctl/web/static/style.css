@@ -238,6 +238,14 @@ main {
 
 .text-muted { color: var(--text-muted); }
 
+/* Review content within sidebar layout */
+.review-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 120px);
+}
+
 /* --- Mobile: sidebar → bottom tabs --- */
 @media (max-width: 600px) {
   .app-layout {

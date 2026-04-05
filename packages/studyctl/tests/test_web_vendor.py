@@ -72,4 +72,4 @@ class TestServiceWorkerCache:
 
     def test_sw_cache_version_bumped(self):
         content = (STATIC_DIR / "sw.js").read_text()
-        assert "studyctl-v5" in content
+        assert "studyctl-v6" in content

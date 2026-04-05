@@ -1,6 +1,6 @@
-const CACHE = "studyctl-v5";
+const CACHE = "studyctl-v6";
 const ASSETS = [
-  "/", "/style.css", "/app.js", "/manifest.json", "/session", "/session.html",
+  "/", "/style.css", "/components.js", "/manifest.json", "/session",
   "/vendor/js/htmx-2.0.4.min.js", "/vendor/js/htmx-ext-sse-2.2.2.js",
   "/vendor/js/alpine-3.14.8.min.js", "/vendor/css/opendyslexic-400.css",
   "/vendor/css/inter.css", "/vendor/css/files/inter-latin.woff2",
