@@ -17,10 +17,17 @@ import pytest
 
 
 class TestAgentRegistry:
-    def test_four_agents_registered(self):
+    def test_six_agents_registered(self):
         from studyctl.agent_launcher import AGENTS
 
-        assert set(AGENTS.keys()) == {"claude", "gemini", "kiro", "opencode"}
+        assert set(AGENTS.keys()) == {
+            "claude",
+            "gemini",
+            "kiro",
+            "opencode",
+            "ollama",
+            "lmstudio",
+        }
 
     def test_adapters_have_required_fields(self):
         from studyctl.agent_launcher import AGENTS
@@ -491,3 +498,163 @@ class TestOpenCodeAdapter:
         cmd = _opencode_launch(Path("/tmp/persona.md"), resume=True)
         assert "-c" in cmd
         assert "--agent study-mentor" in cmd
+
+
+# ---------------------------------------------------------------------------
+# Ollama adapter (local LLM via Claude frontend)
+# ---------------------------------------------------------------------------
+
+
+class TestOllamaAdapter:
+    def test_uses_claude_setup(self):
+        from studyctl.agent_launcher import AGENTS, _claude_setup
+
+        assert AGENTS["ollama"].setup is _claude_setup
+
+    def test_binary_is_ollama(self):
+        from studyctl.agent_launcher import AGENTS
+
+        assert AGENTS["ollama"].binary == "ollama"
+
+    def test_launch_sets_env_vars(self):
+        from studyctl.agent_launcher import _ollama_launch
+
+        cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
+        assert "ANTHROPIC_BASE_URL=" in cmd
+        assert "ANTHROPIC_AUTH_TOKEN=ollama" in cmd
+        assert "ANTHROPIC_MODEL=" in cmd
+        assert "ANTHROPIC_SMALL_FAST_MODEL=" in cmd
+        assert "ANTHROPIC_DEFAULT_HAIKU_MODEL=" in cmd
+        assert "--append-system-prompt-file" in cmd
+
+    def test_launch_uses_claude_binary(self):
+        from studyctl.agent_launcher import _ollama_launch
+
+        with patch("studyctl.agent_launcher.shutil.which", return_value="/usr/local/bin/claude"):
+            cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
+        assert "/usr/local/bin/claude" in cmd
+
+    def test_launch_resume(self):
+        from studyctl.agent_launcher import _ollama_launch
+
+        cmd = _ollama_launch(Path("/tmp/persona.md"), resume=True)
+        assert " -r " in cmd
+
+    def test_tier_pinning_all_same_model(self):
+        """All model tier env vars must point to the same model."""
+        from studyctl.agent_launcher import _ollama_launch
+
+        cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
+        # Extract the model from ANTHROPIC_MODEL=<model>
+        for part in cmd.split():
+            if part.startswith("ANTHROPIC_MODEL="):
+                model = part.split("=", 1)[1]
+                break
+        else:
+            pytest.fail("ANTHROPIC_MODEL not found in command")
+        # All tier vars should use the same model
+        assert f"ANTHROPIC_SMALL_FAST_MODEL={model}" in cmd
+        assert f"ANTHROPIC_DEFAULT_HAIKU_MODEL={model}" in cmd
+        assert f"ANTHROPIC_DEFAULT_SONNET_MODEL={model}" in cmd
+        assert f"ANTHROPIC_DEFAULT_OPUS_MODEL={model}" in cmd
+
+    def test_respects_config_model(self):
+        from studyctl.agent_launcher import _ollama_launch
+        from studyctl.settings import AgentsConfig, LocalLLMConfig, Settings
+
+        fake = Settings(
+            agents=AgentsConfig(
+                ollama=LocalLLMConfig(model="llama3.2", base_url="http://localhost:11434"),
+            )
+        )
+        with patch("studyctl.settings.load_settings", return_value=fake):
+            cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
+        assert "ANTHROPIC_MODEL=llama3.2" in cmd
+
+    def test_no_teardown_or_mcp(self):
+        from studyctl.agent_launcher import AGENTS
+
+        assert AGENTS["ollama"].teardown is None
+        assert AGENTS["ollama"].mcp_setup is None
+
+
+# ---------------------------------------------------------------------------
+# LM Studio adapter (local LLM via Claude frontend)
+# ---------------------------------------------------------------------------
+
+
+class TestLmStudioAdapter:
+    def test_uses_claude_setup(self):
+        from studyctl.agent_launcher import AGENTS, _claude_setup
+
+        assert AGENTS["lmstudio"].setup is _claude_setup
+
+    def test_binary_is_lms(self):
+        from studyctl.agent_launcher import AGENTS
+
+        assert AGENTS["lmstudio"].binary == "lms"
+
+    def test_launch_sets_env_vars(self):
+        from studyctl.agent_launcher import _lmstudio_launch
+
+        cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=False)
+        assert "ANTHROPIC_BASE_URL=" in cmd
+        assert "ANTHROPIC_AUTH_TOKEN=lm-studio" in cmd
+        assert "ANTHROPIC_MODEL=" in cmd
+        assert "--append-system-prompt-file" in cmd
+
+    def test_launch_resume(self):
+        from studyctl.agent_launcher import _lmstudio_launch
+
+        cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=True)
+        assert " -r " in cmd
+
+    def test_default_base_url(self):
+        from studyctl.agent_launcher import _lmstudio_launch
+
+        cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=False)
+        assert "localhost:1234" in cmd
+
+    def test_respects_config_model(self):
+        from studyctl.agent_launcher import _lmstudio_launch
+        from studyctl.settings import AgentsConfig, LocalLLMConfig, Settings
+
+        fake = Settings(
+            agents=AgentsConfig(
+                lmstudio=LocalLLMConfig(
+                    model="deepseek/deepseek-coder-v2",
+                    base_url="http://localhost:1234",
+                ),
+            )
+        )
+        with patch("studyctl.settings.load_settings", return_value=fake):
+            cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=False)
+        assert "ANTHROPIC_MODEL=deepseek/deepseek-coder-v2" in cmd
+
+
+# ---------------------------------------------------------------------------
+# Local LLM shared helpers
+# ---------------------------------------------------------------------------
+
+
+class TestLocalLLMHelpers:
+    def test_env_prefix_format(self):
+        from studyctl.agent_launcher import _local_llm_env_prefix
+
+        env = _local_llm_env_prefix("http://localhost:11434", "ollama", "qwen3-coder")
+        assert env.startswith("export ")
+        assert env.endswith("; ")
+        assert "ANTHROPIC_BASE_URL=http://localhost:11434" in env
+        assert "ANTHROPIC_AUTH_TOKEN=ollama" in env
+        assert "ANTHROPIC_MODEL=qwen3-coder" in env  # pragma: allowlist secret
+
+    def test_get_local_llm_config_defaults(self):
+        from studyctl.agent_launcher import _get_local_llm_config
+
+        base_url, model = _get_local_llm_config("ollama")
+        assert "4000" in base_url  # LiteLLM proxy port
+        assert model  # Non-empty
+
+        base_url, model = _get_local_llm_config("lmstudio")
+        assert "1234" in base_url
+        assert model

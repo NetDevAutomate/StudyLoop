@@ -281,6 +281,73 @@ def _opencode_mcp(session_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Local LLM adapters (Ollama, LM Studio)
+#
+# These use Claude Code as the frontend but point it at a local LLM backend
+# via env vars. Tier-pinning sets all Claude model tiers to the same model
+# since local LLMs only serve one model at a time.
+# ---------------------------------------------------------------------------
+
+
+def _get_local_llm_config(provider: str) -> tuple[str, str]:
+    """Return (base_url, model) for a local LLM provider from config.
+
+    Falls back to sensible defaults if config isn't available.
+    """
+    defaults = {
+        "ollama": ("http://localhost:4000", "qwen3-coder"),  # LiteLLM proxy
+        "lmstudio": ("http://localhost:1234", "qwen3-coder"),
+    }
+    try:
+        from studyctl.settings import load_settings
+
+        cfg = getattr(load_settings().agents, provider, None)
+        if cfg and cfg.model:
+            return cfg.base_url or defaults[provider][0], cfg.model
+    except Exception:
+        pass
+    return defaults[provider]
+
+
+def _local_llm_env_prefix(base_url: str, auth_token: str, model: str) -> str:
+    """Build shell env var exports for a local LLM provider.
+
+    Tier-pins all Claude Code model tiers to the same model, since
+    local LLMs only serve one model at a time. Without this, Claude
+    tries to use different models for sub-agents and fast tasks.
+    """
+    return (
+        f"export ANTHROPIC_BASE_URL={base_url} "
+        f"ANTHROPIC_AUTH_TOKEN={auth_token} "
+        f"ANTHROPIC_MODEL={model} "
+        f"ANTHROPIC_SMALL_FAST_MODEL={model} "
+        f"ANTHROPIC_DEFAULT_HAIKU_MODEL={model} "
+        f"ANTHROPIC_DEFAULT_SONNET_MODEL={model} "
+        f"ANTHROPIC_DEFAULT_OPUS_MODEL={model}; "
+    )
+
+
+def _ollama_launch(persona_path: Path, resume: bool) -> str:
+    """Build Claude launch command with Ollama backend env vars."""
+    claude_bin = shutil.which("claude") or "claude"
+    base_url, model = _get_local_llm_config("ollama")
+    env = _local_llm_env_prefix(base_url, "ollama", model)
+    if resume:
+        return f"{env}{claude_bin} -r --append-system-prompt-file {persona_path}"
+    return f"{env}{claude_bin} --append-system-prompt-file {persona_path}"
+
+
+def _lmstudio_launch(persona_path: Path, resume: bool) -> str:
+    """Build Claude launch command with LM Studio backend env vars."""
+    claude_bin = shutil.which("claude") or "claude"
+    base_url, model = _get_local_llm_config("lmstudio")
+    env = _local_llm_env_prefix(base_url, "lm-studio", model)
+    if resume:
+        return f"{env}{claude_bin} -r --append-system-prompt-file {persona_path}"
+    return f"{env}{claude_bin} --append-system-prompt-file {persona_path}"
+
+
+# ---------------------------------------------------------------------------
 # Agent registry — insertion order is the default detection priority.
 # To customize priority, set agents.priority in config.yaml.
 # ---------------------------------------------------------------------------
@@ -312,6 +379,18 @@ AGENTS: dict[str, AgentAdapter] = {
         setup=_opencode_setup,
         launch_cmd=_opencode_launch,
         mcp_setup=_opencode_mcp,
+    ),
+    "ollama": AgentAdapter(
+        name="ollama",
+        binary="ollama",
+        setup=_claude_setup,  # Same persona mechanism as Claude
+        launch_cmd=_ollama_launch,
+    ),
+    "lmstudio": AgentAdapter(
+        name="lmstudio",
+        binary="lms",  # LM Studio CLI
+        setup=_claude_setup,
+        launch_cmd=_lmstudio_launch,
     ),
 }
 

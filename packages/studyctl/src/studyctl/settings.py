@@ -96,10 +96,32 @@ class ContentConfig:
 
 
 @dataclass
+class LocalLLMConfig:
+    """Configuration for a local LLM provider (Ollama, LM Studio)."""
+
+    model: str = ""
+    base_url: str = ""
+
+
+@dataclass
 class AgentsConfig:
     """Configuration for AI agent detection and priority."""
 
-    priority: list[str] = field(default_factory=lambda: ["claude", "kiro", "gemini", "opencode"])
+    priority: list[str] = field(
+        default_factory=lambda: ["claude", "kiro", "gemini", "opencode", "ollama", "lmstudio"]
+    )
+    ollama: LocalLLMConfig = field(
+        default_factory=lambda: LocalLLMConfig(
+            model="qwen3-coder",
+            base_url="http://localhost:4000",  # LiteLLM proxy (Ollama doesn't speak Anthropic API)
+        )
+    )
+    lmstudio: LocalLLMConfig = field(
+        default_factory=lambda: LocalLLMConfig(
+            model="qwen3-coder",
+            base_url="http://localhost:1234",
+        )
+    )
 
 
 @dataclass
@@ -179,8 +201,20 @@ def load_settings() -> Settings:
     # Agents configuration
     ag = raw.get("agents", {})
     if ag:
+        ollama_raw = ag.get("ollama", {})
+        lmstudio_raw = ag.get("lmstudio", {})
         settings.agents = AgentsConfig(
-            priority=ag.get("priority", ["claude", "kiro", "gemini", "opencode"]),
+            priority=ag.get(
+                "priority", ["claude", "kiro", "gemini", "opencode", "ollama", "lmstudio"]
+            ),
+            ollama=LocalLLMConfig(
+                model=ollama_raw.get("model", "qwen3-coder"),
+                base_url=ollama_raw.get("base_url", "http://localhost:4000"),
+            ),
+            lmstudio=LocalLLMConfig(
+                model=lmstudio_raw.get("model", "qwen3-coder"),
+                base_url=lmstudio_raw.get("base_url", "http://localhost:1234"),
+            ),
         )
 
     # Content pipeline configuration
@@ -277,7 +311,13 @@ topics:
 # Override per-session with: studyctl study "topic" --agent gemini
 # Override via env var: STUDYCTL_AGENT=gemini
 # agents:
-#   priority: [claude, kiro, gemini, opencode]
+#   priority: [claude, kiro, gemini, opencode, ollama, lmstudio]
+#   ollama:
+#     model: qwen3-coder                # Model name from 'ollama list'
+#     # base_url: http://localhost:4000   # LiteLLM proxy (Ollama needs a translation layer)
+#   lmstudio:
+#     model: qwen3-coder                # Model loaded in LM Studio
+#     # base_url: http://localhost:1234   # Default LM Studio API endpoint
 
 # Medication timing (optional — for ADHD stimulant medication awareness)
 # Uncomment to enable medication-aware session recommendations
