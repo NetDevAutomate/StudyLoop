@@ -130,34 +130,28 @@ class TestTerminalProxyHTTP:
 STATIC_DIR = Path(__file__).parent.parent / "src" / "studyctl" / "web" / "static"
 
 
-class TestSessionHtmlTerminalPaths:
-    """session.html should use same-origin /terminal/ paths."""
+class TestTerminalPaths:
+    """Terminal panel should use same-origin /terminal/ paths."""
 
     def test_iframe_src_uses_proxy_path(self) -> None:
-        """The iframe in session.html must NOT contain a hard-coded port URL."""
-        html = (STATIC_DIR / "session.html").read_text()
-        # Must NOT have the old pattern: http://${window.location.hostname}:${...}
+        """index.html must NOT contain a hard-coded port URL for ttyd."""
+        html = (STATIC_DIR / "index.html").read_text()
         assert "http://${window.location.hostname}" not in html
 
     def test_ttyd_url_uses_terminal_path(self) -> None:
-        """ttydUrl should return /terminal/ not http://hostname:port."""
-        html = (STATIC_DIR / "session.html").read_text()
-        # Must contain /terminal/ somewhere in the JS
-        assert "/terminal/" in html
+        """ttydUrl in components.js should return /terminal/."""
+        js = (STATIC_DIR / "components.js").read_text()
+        assert "/terminal/" in js
 
     def test_popout_uses_terminal_path(self) -> None:
         """popOut() must open /terminal/ (same-origin) not a cross-origin URL."""
-        html = (STATIC_DIR / "session.html").read_text()
-        # The popOut function should reference /terminal/ not a cross-origin URL
-        # Find the popOut function block
-        assert "popOut" in html
-        # The URL opened should be /terminal/ (relative), not http://...
+        js = (STATIC_DIR / "components.js").read_text()
+        assert "popOut" in js
         import re
 
-        popout_match = re.search(r"popOut\(\).*?\}", html, re.DOTALL)
+        popout_match = re.search(r"popOut\(\).*?\}", js, re.DOTALL)
         assert popout_match, "popOut() function not found"
         popout_body = popout_match.group(0)
-        # Must not open a cross-origin URL
         assert "http://" not in popout_body
 
 

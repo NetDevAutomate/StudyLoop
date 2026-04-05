@@ -157,6 +157,122 @@ document.addEventListener("alpine:init", () => {
       if (this.voiceOn) this.speakNow("Voice changed");
     },
   });
+
+  /* ----------------------------------------------------------------
+   * Pomodoro store — reactive timer state
+   * ---------------------------------------------------------------- */
+  Alpine.store("pomodoro", {
+    STUDY: 25 * 60,
+    BREAK: 5 * 60,
+    LONG_BREAK: 15 * 60,
+
+    running: false,
+    paused: false,
+    visible: false,
+    isBreak: false,
+    remaining: 25 * 60,
+    total: 25 * 60,
+    sessions: 0,
+    _interval: null,
+
+    get display() {
+      const m = Math.floor(this.remaining / 60);
+      const s = this.remaining % 60;
+      return `${m}:${s.toString().padStart(2, "0")}`;
+    },
+
+    get label() {
+      if (!this.running) return "Study";
+      if (this.isBreak) {
+        return this.sessions > 0 && this.sessions % 4 === 0 ? "Long Break" : "Break";
+      }
+      return "Study";
+    },
+
+    get arcOffset() {
+      const progress = 1 - this.remaining / this.total;
+      return POMO_CIRCUMFERENCE * (1 - progress);
+    },
+
+    get pauseIcon() {
+      return this.paused ? "\u25b6" : "\u23f8\ufe0e";
+    },
+
+    toggle() {
+      if (this.running) {
+        this.visible = !this.visible;
+      } else {
+        this.start();
+      }
+    },
+
+    start() {
+      this.isBreak = false;
+      this.remaining = this.STUDY;
+      this.total = this.STUDY;
+      this.running = true;
+      this.paused = false;
+      this.visible = true;
+      this._startInterval();
+      Alpine.store("settings").speak("Pomodoro started. 25 minutes of focused study.");
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    },
+
+    togglePause() {
+      if (this.paused) {
+        this.paused = false;
+        this._startInterval();
+      } else {
+        this.paused = true;
+        clearInterval(this._interval);
+      }
+    },
+
+    stop() {
+      this.running = false;
+      this.paused = false;
+      this.visible = false;
+      clearInterval(this._interval);
+    },
+
+    _startInterval() {
+      clearInterval(this._interval);
+      this._tick();
+      this._interval = setInterval(() => this._tick(), 1000);
+    },
+
+    _tick() {
+      if (this.paused) return;
+      this.remaining--;
+      if (this.remaining <= 0) {
+        clearInterval(this._interval);
+        if (this.isBreak) {
+          Alpine.store("settings").speak("Break over! Time to study.");
+          _pomoNotify("Break over!", "Time for another study session.");
+          this.isBreak = false;
+          this.remaining = this.STUDY;
+          this.total = this.STUDY;
+        } else {
+          this.sessions++;
+          const isLong = this.sessions % 4 === 0;
+          const breakTime = isLong ? this.LONG_BREAK : this.BREAK;
+          Alpine.store("settings").speak(
+            isLong ? "Great work! Take a 15 minute break." : "Good session! Take a 5 minute break."
+          );
+          _pomoNotify(
+            "Study session complete!",
+            isLong ? "Take a 15 minute break." : "Take a 5 minute break."
+          );
+          this.isBreak = true;
+          this.remaining = breakTime;
+          this.total = breakTime;
+        }
+        this._interval = setInterval(() => this._tick(), 1000);
+      }
+    },
+  });
 });
 
 /* ====================================================================
@@ -535,112 +651,12 @@ function reviewApp(defaultMode) {
 }
 
 /* ====================================================================
- * Pomodoro Timer (global functions — Phase 3 will Alpine-ify)
+ * Pomodoro Timer — Alpine.store('pomodoro')
  * ==================================================================== */
-
-const pomo = {
-  STUDY: 25 * 60,
-  BREAK: 5 * 60,
-  LONG_BREAK: 15 * 60,
-  running: false,
-  paused: false,
-  isBreak: false,
-  remaining: 25 * 60,
-  total: 25 * 60,
-  interval: null,
-  sessions: 0,
-};
 
 const POMO_CIRCUMFERENCE = 2 * Math.PI * 18;
 
-function pomoStart() {
-  const el = document.getElementById("pomodoro");
-  const toggle = document.getElementById("pomo-toggle");
-  if (pomo.running) {
-    el.classList.toggle("hidden");
-    return;
-  }
-  pomo.isBreak = false;
-  pomo.remaining = pomo.STUDY;
-  pomo.total = pomo.STUDY;
-  pomo.running = true;
-  pomo.paused = false;
-  el.classList.remove("hidden", "break");
-  toggle.classList.add("active");
-  document.getElementById("pomo-label").textContent = "Study";
-  document.getElementById("pomo-pause").innerHTML = "&#10074;&#10074;";
-  pomoTick();
-  pomo.interval = setInterval(pomoTick, 1000);
-  Alpine.store("settings").speak("Pomodoro started. 25 minutes of focused study.");
-}
-
-function pomoPauseToggle() {
-  if (pomo.paused) {
-    pomo.paused = false;
-    document.getElementById("pomo-pause").innerHTML = "&#10074;&#10074;";
-    pomo.interval = setInterval(pomoTick, 1000);
-  } else {
-    pomo.paused = true;
-    clearInterval(pomo.interval);
-    document.getElementById("pomo-pause").innerHTML = "&#9654;";
-  }
-}
-
-function pomoStop() {
-  pomo.running = false;
-  pomo.paused = false;
-  clearInterval(pomo.interval);
-  document.getElementById("pomodoro").classList.add("hidden");
-  document.getElementById("pomo-toggle").classList.remove("active");
-}
-
-function pomoTick() {
-  pomo.remaining--;
-  if (pomo.remaining <= 0) {
-    clearInterval(pomo.interval);
-    const label = document.getElementById("pomo-label");
-    const el = document.getElementById("pomodoro");
-    if (pomo.isBreak) {
-      Alpine.store("settings").speak("Break over! Time to study.");
-      pomoNotify("Break over!", "Time for another study session.");
-      pomo.isBreak = false;
-      pomo.remaining = pomo.STUDY;
-      pomo.total = pomo.STUDY;
-      el.classList.remove("break");
-      label.textContent = "Study";
-    } else {
-      pomo.sessions++;
-      const isLong = pomo.sessions % 4 === 0;
-      const breakTime = isLong ? pomo.LONG_BREAK : pomo.BREAK;
-      Alpine.store("settings").speak(
-        isLong ? "Great work! Take a 15 minute break." : "Good session! Take a 5 minute break."
-      );
-      pomoNotify(
-        "Study session complete!",
-        isLong ? "Take a 15 minute break." : "Take a 5 minute break."
-      );
-      pomo.isBreak = true;
-      pomo.remaining = breakTime;
-      pomo.total = breakTime;
-      el.classList.add("break");
-      label.textContent = isLong ? "Long Break" : "Break";
-    }
-    pomo.interval = setInterval(pomoTick, 1000);
-  }
-  pomoRender();
-}
-
-function pomoRender() {
-  const mins = Math.floor(pomo.remaining / 60);
-  const secs = pomo.remaining % 60;
-  document.getElementById("pomo-time").textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
-  const progress = 1 - pomo.remaining / pomo.total;
-  document
-    .getElementById("pomo-arc")
-    .setAttribute("stroke-dashoffset", (POMO_CIRCUMFERENCE * (1 - progress)).toString());
-}
-
-function pomoNotify(title, body) {
+function _pomoNotify(title, body) {
   if ("Notification" in window && Notification.permission === "granted") {
     new Notification(title, { body, icon: "/icon-192.svg" });
   }

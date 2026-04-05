@@ -170,7 +170,7 @@ class TestStaticFiles:
         assert "text/css" in resp.headers["content-type"]
 
     def test_js_served(self, client: TestClient) -> None:
-        resp = client.get("/app.js")
+        resp = client.get("/components.js")
         assert resp.status_code == 200
 
     def test_manifest_served(self, client: TestClient) -> None:

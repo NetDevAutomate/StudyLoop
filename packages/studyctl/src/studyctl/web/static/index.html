@@ -21,7 +21,8 @@
   <header>
     <h1>Socratic Study Mentor</h1>
     <div class="header-controls">
-      <button class="toggle-btn" id="pomo-toggle" @click="pomoStart()" title="Pomodoro timer (25min study / 5min break)">
+      <button class="toggle-btn" :class="{ active: $store.pomodoro.running }"
+              @click="$store.pomodoro.toggle()" title="Pomodoro timer (25min study / 5min break)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       </button>
       <button class="toggle-btn" :class="{ active: $store.settings.voiceOn }"
@@ -39,21 +40,23 @@
     </div>
   </header>
 
-  <!-- Pomodoro overlay (shared, always in DOM) -->
-  <div class="pomodoro hidden" id="pomodoro">
+  <!-- Pomodoro overlay (Alpine-reactive, always in DOM) -->
+  <div class="pomodoro" x-show="$store.pomodoro.visible" x-transition.opacity
+       :class="{ break: $store.pomodoro.isBreak }">
     <div class="pomo-ring">
       <svg width="44" height="44" viewBox="0 0 44 44">
         <circle class="track" cx="22" cy="22" r="18"/>
-        <circle class="fill" cx="22" cy="22" r="18" id="pomo-arc"
-          stroke-dasharray="113.1" stroke-dashoffset="0"/>
+        <circle class="fill" cx="22" cy="22" r="18"
+          stroke-dasharray="113.1" :stroke-dashoffset="$store.pomodoro.arcOffset"/>
       </svg>
     </div>
     <div>
-      <div class="pomo-time" id="pomo-time">25:00</div>
-      <div class="pomo-label" id="pomo-label">Study</div>
+      <div class="pomo-time" x-text="$store.pomodoro.display">25:00</div>
+      <div class="pomo-label" x-text="$store.pomodoro.label">Study</div>
     </div>
-    <button class="pomo-btn" id="pomo-pause" @click="pomoPauseToggle()" title="Pause/Resume">&#10074;&#10074;</button>
-    <button class="pomo-btn" id="pomo-stop" @click="pomoStop()" title="Stop">&times;</button>
+    <button class="pomo-btn" @click="$store.pomodoro.togglePause()" title="Pause/Resume"
+            x-text="$store.pomodoro.pauseIcon"></button>
+    <button class="pomo-btn" @click="$store.pomodoro.stop()" title="Stop">&times;</button>
   </div>
 
   <!-- App layout: sidebar + content -->
@@ -534,7 +537,7 @@
                   <span class="timer-time" id="bd-timer-display">00:00</span>
                 </div>
                 <div class="body-double-controls">
-                  <button class="toggle-btn" onclick="pomoStart()" title="Start Pomodoro">Start Pomodoro</button>
+                  <button class="toggle-btn" @click="$store.pomodoro.start()" title="Start Pomodoro">Start Pomodoro</button>
                 </div>
               </div>
             </div>
