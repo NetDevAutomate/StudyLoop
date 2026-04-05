@@ -76,6 +76,9 @@ graph LR
 
 ## Key Sections
 
+- **[Content Pipeline](content-pipeline.md)** — PDF/Obsidian to flashcards via NotebookLM (end-to-end)
+- **[TUI Sidebar Guide](tui-guide.md)** — Terminal sidebar layout, timer modes, key bindings
+- **[Web UI Guide](web-ui-guide.md)** — Flashcards, quizzes, session dashboard, ttyd terminal
 - **[Session Protocol](session-protocol.md)** — How every study session flows, from arrival to close
 - **[CLI Reference](cli-reference.md)** — Full command reference for `studyctl` and `session-query`
 - **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents

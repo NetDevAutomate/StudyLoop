@@ -168,8 +168,12 @@ sudo apt install ttyd        # Linux (or build from source)
 
 ## Documentation
 
-- [Setup Guide](docs/setup-guide.md)
-- [Agent Installation](docs/agent-install.md)
+- [Setup Guide](docs/setup-guide.md) — installation and configuration
+- [Content Pipeline](docs/content-pipeline.md) — PDF/Obsidian to flashcards via NotebookLM
+- [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
+- [Web UI Guide](docs/web-ui-guide.md) — flashcards, quizzes, session dashboard, ttyd
+- [Agent Installation](docs/agent-install.md) — per-platform agent setup
+- [System Overview](docs/system-overview.md) — architecture and data flow diagrams
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
 - [Voice Output Guide](docs/voice-output.md)
 - [Contributing](CONTRIBUTING.md)
