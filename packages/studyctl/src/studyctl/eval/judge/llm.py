@@ -56,8 +56,8 @@ class LLMJudge:
                 [{"role": "user", "content": prompt}],
                 temperature=0.1,
             )
-        except LLMClientError:
-            logger.warning("LLM call failed for scenario %s", scenario.id)
+        except LLMClientError as exc:
+            logger.warning("LLM call failed for scenario %s: %s", scenario.id, exc)
             return JudgeResult(
                 scenario_id=scenario.id,
                 heuristic_pass=True,

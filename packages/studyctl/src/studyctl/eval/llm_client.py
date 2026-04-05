@@ -32,7 +32,7 @@ class LLMClient:
     model: str
     api_key: str = ""
     provider: str = "ollama"  # "ollama" or "openai-compat"
-    timeout: int = 30
+    timeout: int = 120
 
     def chat(self, messages: list[dict], temperature: float = 0.1) -> str:
         """Send a chat completion request. Returns the assistant message content.
