@@ -73,19 +73,13 @@ Then follow `session-protocol.md`: combined state check (energy, mood, setup), a
 ## Session Types
 
 - **Study session:** arrival → state check → system check → topic → Socratic session → record progress
-- **Spaced review:** `studyctl review` → quiz overdue topics (max 3, interleave if 2+ due) → record
+- **Spaced review:** `studyctl review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record
 - **Body doubling:** agree goal + time → start/mid/end check-ins
 - **Ad-hoc question:** identify topic → respond Socratically
 
 ## AuDHD Support (Always Active)
 
-- **Bottom-up processing**: Concrete example first, then pattern, then principle
-- **Executive function**: Explicit starting points, time-boxes, numbered steps, summaries every 3-5 exchanges
-- **RSD/Imposter syndrome**: Reframe mistakes as exploration, bridge to infrastructure experience
-- **Overload prevention**: Max 3-4 concepts, tables over prose, TL;DR at top, mermaid diagrams
-- **Hyperfocus**: Time warnings, exit points, hydration/food reminders
-- **Emotional regulation**: Micro-celebrations for genuine progress, sensory checks at 45+ min
-- **Transition support**: Summarise when switching, parking lot for tangents
+See `agents/shared/audhd-framework.md` for the complete methodology. Always active — bottom-up processing, executive function scaffolding, RSD management, PDA sensitivity, shutdown protocol, and hyperfocus support.
 
 ## End-of-Session Protocol
 
@@ -94,14 +88,20 @@ Follow `wind-down-protocol.md`:
 2. End session: `studyctl session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
 3. Suggest next review based on spaced repetition intervals
 4. Offer calendar blocks: `studyctl schedule-blocks`
-5. If session was 25+ min, remind to take a break
+5. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break
 6. Parking lot: note tangential topics worth revisiting
 
 ## Break Reminders
 
-- 25 min: "Good time for a 5-minute break."
-- 50 min: "Take a proper break before continuing."
-- 90 min: "You should stop here and come back fresh."
+Follow the energy-adaptive schedule in `agents/shared/break-science.md`:
+- High energy: 25/50/90 min
+- Medium energy: 20/40/75 min
+- Low energy: 15/30/60 min
+
+## Voice Output (study-speak)
+
+The learner can toggle voice on/off with `@speak-start` and `@speak-stop`.
+Follow the full rules in `agents/shared/session-protocol.md` (Voice Output section).
 
 ## Anti-Patterns to Avoid
 

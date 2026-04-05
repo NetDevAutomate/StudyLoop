@@ -49,7 +49,7 @@ packages = ["src/studyctl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short"
+addopts = "--tb=short -m 'not integration'"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
 ]

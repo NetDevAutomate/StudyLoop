@@ -7,11 +7,14 @@ remain here as thin wrappers over logic/ modules.
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 import click
 
 from studyctl.cli._shared import console
+
+logger = logging.getLogger(__name__)
 
 
 def _agent_names() -> list[str]:
@@ -202,40 +205,20 @@ def _auto_persist_struggled(
 ) -> None:
     """Persist struggled topics from session-topics.md to the backlog.
 
-    Uses FCIS pattern -- plan_auto_persist decides what to persist,
-    then we execute by calling park_topic for each action.
+    Thin CLI wrapper over services.backlog.auto_persist_struggled —
+    adds console output.
     """
-    import contextlib
+    try:
+        from studyctl.services.backlog import auto_persist_struggled
 
-    with contextlib.suppress(Exception):
-        from studyctl.logic.backlog_logic import plan_auto_persist
-        from studyctl.parking import get_parked_topics, park_topic
-
-        # Gather existing questions for this session to deduplicate
-        existing = get_parked_topics(study_session_id=study_session_id)
-        existing_questions = {t["question"] for t in existing}
-
-        # Decide
-        actions = plan_auto_persist(topic_entries, existing_questions, study_session_id)
-
-        # Execute
-        persisted = 0
-        for action in actions:
-            result = park_topic(
-                question=action.question,
-                topic_tag=action.topic_tag,
-                context=action.context,
-                study_session_id=action.study_session_id,
-                source=action.source,
-            )
-            if result:
-                persisted += 1
-
+        persisted = auto_persist_struggled(study_session_id, topic_entries)
         if persisted:
             console.print(
                 f"[dim]Saved {persisted} struggled "
                 f"topic{'s' if persisted != 1 else ''} to backlog[/dim]"
             )
+    except Exception:
+        logger.exception("Failed to auto-persist struggled topics to backlog")
 
 
 def _handle_start(
@@ -313,12 +296,9 @@ def _handle_start(
 
     # --- Create DB session ---
 
-    if energy <= 3:
-        energy_label = "low"
-    elif energy <= 7:
-        energy_label = "medium"
-    else:
-        energy_label = "high"
+    from studyctl.output import energy_to_label
+
+    energy_label = energy_to_label(energy)
 
     study_id = start_study_session(topic, energy_label)
     if not study_id:
