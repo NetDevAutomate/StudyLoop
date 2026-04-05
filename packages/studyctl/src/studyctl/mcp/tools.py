@@ -14,12 +14,6 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as param type
 from mcp.server.fastmcp.exceptions import ToolError
 
-from studyctl.review_loader import (
-    discover_directories,
-    find_content_dirs,
-    load_flashcards,
-    load_quizzes,
-)
 from studyctl.services.review import get_due, get_stats, record_review
 from studyctl.settings import load_settings
 
@@ -48,6 +42,8 @@ def register_tools(mcp: FastMCP) -> None:
         Returns courses discovered from the review.directories config.
         Each course has: name, card_count, quiz_count, due_count.
         """
+        from studyctl.services.review import list_course_summaries
+
         raw_config = {}
         config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
         if config_path.exists():
@@ -56,22 +52,7 @@ def register_tools(mcp: FastMCP) -> None:
             raw_config = yaml.safe_load(config_path.read_text()) or {}
         study_dirs = raw_config.get("review", {}).get("directories", [])
 
-        courses = discover_directories(study_dirs)
-        result = []
-        for name, path in courses:
-            fc_dir, quiz_dir = find_content_dirs(path)
-            fc_count = len(load_flashcards(fc_dir)) if fc_dir else 0
-            quiz_count = len(load_quizzes(quiz_dir)) if quiz_dir else 0
-            due = len(get_due(name))
-            result.append(
-                {
-                    "name": name,
-                    "card_count": fc_count,
-                    "quiz_count": quiz_count,
-                    "due_count": due,
-                }
-            )
-        return {"courses": result}
+        return {"courses": list_course_summaries(study_dirs)}
 
     @mcp.tool()
     def get_study_context(course: str) -> dict[str, Any]:

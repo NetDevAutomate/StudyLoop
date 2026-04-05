@@ -158,7 +158,15 @@ def generate(
         raise click.ClickException("Nothing to generate (both audio and video disabled).")
 
     console.print(f"Generating {', '.join(types)} for chapters {start}-{end}...")
-    asyncio.run(generate_for_chapters(notebook_id, start, end, types=types, timeout=timeout))
+    asyncio.run(
+        generate_for_chapters(
+            notebook_id,
+            (start, end),
+            generate_audio="audio" in types,
+            generate_video="video" in types,
+            timeout=timeout,
+        )
+    )
     console.print("[green]\u2713[/green] Generation complete")
 
 
@@ -171,11 +179,9 @@ def download(notebook_id: str, output_dir: Path, chapters: str | None) -> None:
     from studyctl.content.notebooklm_client import download_artifacts
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    paths = asyncio.run(download_artifacts(notebook_id, output_dir, chapters))
-    for p in paths:
-        console.print(f"[green]\u2713[/green] {p.name}")
-    if not paths:
-        console.print("[dim]No artifacts to download[/dim]")
+    chapter_range = _parse_chapter_range(chapters) if chapters else None
+    asyncio.run(download_artifacts(notebook_id, output_dir, chapter_range))
+    console.print(f"[green]\u2713[/green] Artifacts saved to {output_dir}")
 
 
 @content_group.command("delete")
@@ -214,6 +220,8 @@ def syllabus(
     """Generate a podcast syllabus and save as a plan."""
     from studyctl.content.notebooklm_client import create_syllabus, list_sources
     from studyctl.content.syllabus import (
+        SyllabusChunk,
+        SyllabusState,
         build_fixed_size_chunks,
         build_prompt,
         has_non_pending_chunks,
@@ -235,24 +243,39 @@ def syllabus(
         )
         return
 
-    # Get sources and build chunks
-    sources = asyncio.run(list_sources(notebook_id))
-    source_map = map_sources_to_chapters(sources)
-    chunks = build_fixed_size_chunks(source_map, max_chapters=max_chapters)
+    # Get sources and build source map
+    raw_sources = asyncio.run(list_sources(notebook_id))
+    source_tuples = [(s.id, s.title) for s in raw_sources]
+    source_map, title_map = map_sources_to_chapters(source_tuples)
 
-    # Generate syllabus via NotebookLM chat
-    prompt = build_prompt(chunks)
-    console.print(f"Generating syllabus for {len(chunks)} episodes...")
-    response = asyncio.run(create_syllabus(notebook_id, prompt))
-    state = parse_syllabus_response(response, chunks, resolved_book_name)
+    # Try AI-generated syllabus, fall back to fixed-size chunks
+    async def _generate_syllabus() -> dict[int, SyllabusChunk]:
+        from studyctl.content.notebooklm_client import _import_notebooklm
 
-    # Configure artifact types
-    types = []
-    if not no_audio:
-        types.append("audio")
-    if not no_video:
-        types.append("video")
-    state.artifact_types = types
+        nlm = _import_notebooklm()
+        async with await nlm.NotebookLMClient.from_storage() as client:
+            prompt = build_prompt(source_tuples, max_chapters)
+            response = await create_syllabus(client, notebook_id, prompt)
+            return parse_syllabus_response(response, source_map, title_map)
+
+    console.print(f"Generating syllabus from {len(raw_sources)} sources...")
+    try:
+        chunks = asyncio.run(_generate_syllabus())
+    except Exception:
+        console.print("[yellow]AI syllabus failed, using fixed-size chunks[/yellow]")
+        chunks = build_fixed_size_chunks(source_map, max_chapters, title_map)
+
+    from datetime import UTC, datetime
+
+    state = SyllabusState(
+        notebook_id=notebook_id,
+        book_name=resolved_book_name,
+        created=datetime.now(tz=UTC).isoformat(),
+        max_chapters=max_chapters,
+        generate_audio=not no_audio,
+        generate_video=not no_video,
+        chunks=chunks,
+    )
 
     write_state(state, state_path)
 
@@ -310,12 +333,33 @@ def autopilot(output_dir: Path, book_name: str | None, timeout: int) -> None:
     chunk.status = ChunkStatus.GENERATING
     write_state(state, state_path)
 
+    async def _run_episode():
+        from studyctl.content.notebooklm_client import _import_notebooklm
+
+        nlm = _import_notebooklm()
+        async with await nlm.NotebookLMClient.from_storage() as client:
+            await start_chunk_generation(
+                client,
+                state.notebook_id,
+                source_ids=chunk.source_ids,
+                episode_title=chunk.title,
+                generate_audio=state.generate_audio,
+                generate_video=state.generate_video,
+                chapter_titles=chunk.chapter_titles or None,
+            )
+            if state.generate_audio and chunk.artifacts.get("audio"):
+                downloads_dir = output_dir / "downloads" / "audio"
+                downloads_dir.mkdir(parents=True, exist_ok=True)
+                audio_path = downloads_dir / f"{chunk.episode:02d}-{chunk.title}.mp3"
+                await download_episode_audio(
+                    client,
+                    state.notebook_id,
+                    chunk.artifacts["audio"].task_id,
+                    audio_path,
+                )
+
     try:
-        asyncio.run(start_chunk_generation(state.notebook_id, chunk, timeout=timeout))
-        # Download audio
-        downloads_dir = output_dir / "downloads" / "audio"
-        downloads_dir.mkdir(parents=True, exist_ok=True)
-        asyncio.run(download_episode_audio(state.notebook_id, chunk, downloads_dir))
+        asyncio.run(_run_episode())
         chunk.status = ChunkStatus.COMPLETED
         console.print(f"[green]\u2713[/green] Episode {chunk.episode} complete")
     except Exception as exc:
@@ -430,7 +474,7 @@ def from_obsidian(
     nid = notebook_id
     if not nid:
         console.print(f"Creating notebook: [bold]{name}[/bold]")
-    result = asyncio.run(upload_chapters(nid, pdf_files, title=name))
+    result = asyncio.run(upload_chapters(pdf_files, name, notebook_id=nid))
     nid = result.id
     console.print(
         f"[green]\u2713[/green] Uploaded {result.chapters} files to notebook {nid[:8]}..."
@@ -440,23 +484,21 @@ def from_obsidian(
         return
 
     # Step 3: Generate artifacts
-    types = []
-    if not no_audio:
-        types.append("audio")
-    if not no_quiz:
-        types.append("quiz")
-    if not no_flashcards:
-        types.append("flashcards")
-
-    if types:
-        console.print(f"Generating {', '.join(types)}...")
-        asyncio.run(generate_for_chapters(nid, 1, len(pdf_files), types=types))
+    if not no_audio or not no_quiz or not no_flashcards:
+        console.print("Generating artifacts...")
+        asyncio.run(
+            generate_for_chapters(
+                nid,
+                (1, len(pdf_files)),
+                generate_audio=not no_audio,
+                generate_video=False,
+            )
+        )
         console.print("[green]\u2713[/green] Generation complete")
 
     if not no_download:
         from studyctl.content.notebooklm_client import download_artifacts
 
         console.print("Downloading artifacts...")
-        paths = asyncio.run(download_artifacts(nid, out))
-        for p in paths:
-            console.print(f"  [green]\u2713[/green] {p.name}")
+        asyncio.run(download_artifacts(nid, out))
+        console.print(f"[green]\u2713[/green] Artifacts saved to {out}")

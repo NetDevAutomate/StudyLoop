@@ -23,6 +23,39 @@ if TYPE_CHECKING:
     from studyctl.review_loader import Flashcard, QuizQuestion
 
 
+def list_course_summaries(study_dirs: list[str]) -> list[dict]:
+    """List all courses with card counts and review stats.
+
+    Shared by the web routes and MCP tools — both need the same
+    discovery + counting logic.
+
+    Args:
+        study_dirs: List of directory paths from config review.directories.
+
+    Returns:
+        List of dicts with name, card_count, quiz_count, due_count, stats.
+    """
+    courses = review_loader.discover_directories(study_dirs)
+    result = []
+    for name, path in courses:
+        fc_dir, quiz_dir = review_loader.find_content_dirs(path)
+        fc_count = len(review_loader.load_flashcards(fc_dir)) if fc_dir else 0
+        quiz_count = len(review_loader.load_quizzes(quiz_dir)) if quiz_dir else 0
+        due = len(get_due(name))
+        stats = get_stats(name)
+        result.append(
+            {
+                "name": name,
+                "card_count": fc_count,
+                "quiz_count": quiz_count,
+                "due_count": due,
+                "total_reviews": stats.get("total_reviews", 0),
+                "mastered": stats.get("mastered", 0),
+            }
+        )
+    return result
+
+
 def get_cards(
     course: str,
     directory: Path,

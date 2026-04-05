@@ -36,12 +36,9 @@ class TestListCourses:
             json.dumps({"title": "Ch1", "cards": [{"front": "Q", "back": "A"}]})
         )
 
-        with (
-            patch("studyctl.mcp.tools.load_settings"),
-            patch(
-                "studyctl.mcp.tools.discover_directories",
-                return_value=[("test-course", tmp_path / "test-course")],
-            ),
+        with patch(
+            "studyctl.review_loader.discover_directories",
+            return_value=[("test-course", tmp_path / "test-course")],
         ):
             tool = _get_tool("list_courses")
             result = tool()
