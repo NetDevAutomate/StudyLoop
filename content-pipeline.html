@@ -1,0 +1,1328 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/content-pipeline.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Content Pipeline Guide - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#content-pipeline-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Content Pipeline Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="artefacts.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-1-pdf-textbook-to-flashcards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path 1: PDF Textbook to Flashcards
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path 1: PDF Textbook to Flashcards">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-split-the-pdf-into-chapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Split the PDF into chapters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-upload-chapters-to-notebooklm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Upload chapters to NotebookLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-generate-audio-overviews-and-artefacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Generate audio overviews and artefacts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-download-the-generated-artefacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Download the generated artefacts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-review-with-spaced-repetition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Review with spaced repetition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-2-obsidian-notes-to-flashcards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path 2: Obsidian Notes to Flashcards
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path 2: Obsidian Notes to Flashcards">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#all-in-one-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        All-in-one command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selective-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selective flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subdirectory-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subdirectory filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#notebooklm-notebook-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NotebookLM notebook ID
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#content-base-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content base path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topics-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topics mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syllabus-workflow-batch-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syllabus Workflow (Batch Generation)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="content-pipeline-guide">Content Pipeline Guide<a class="headerlink" href="#content-pipeline-guide" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>From raw materials (Obsidian notes, PDF textbooks) to study-ready flashcards and quizzes via Google NotebookLM.</p>
+</blockquote>
+<hr />
+<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<p>There are two paths into the pipeline. Both end at the same place: flashcard and quiz JSON files ready for spaced repetition review.</p>
+<pre class="mermaid"><code>graph TB
+    subgraph "Source Materials"
+        OB["Obsidian Notes&lt;br/&gt;(.md files)"]
+        PDF["PDF Textbooks"]
+    end
+
+    subgraph "Content Pipeline"
+        SPLIT["studyctl content split&lt;br/&gt;(PDF → per-chapter files)"]
+        OBS["studyctl content from-obsidian&lt;br/&gt;(markdown → PDF → upload)"]
+        PROC["studyctl content process&lt;br/&gt;(split + upload in one step)"]
+        GEN["studyctl content generate&lt;br/&gt;(trigger NotebookLM generation)"]
+        DL["studyctl content download&lt;br/&gt;(download audio/video artefacts)"]
+    end
+
+    subgraph "Google NotebookLM"
+        NB["Notebook&lt;br/&gt;(per-topic)"]
+        ART["Generated Artefacts&lt;br/&gt;(audio overviews,&lt;br/&gt;flashcards, quizzes)"]
+    end
+
+    subgraph "Review System"
+        JSON["Flashcard/Quiz JSON&lt;br/&gt;(in review directories)"]
+        WEB["studyctl web&lt;br/&gt;(PWA with SM-2)"]
+    end
+
+    PDF --&gt; SPLIT --&gt; NB
+    PDF --&gt; PROC --&gt; NB
+    OB --&gt; OBS --&gt; NB
+    NB --&gt; GEN --&gt; ART
+    ART --&gt; DL --&gt; JSON --&gt; WEB</code></pre>
+<hr />
+<h2 id="path-1-pdf-textbook-to-flashcards">Path 1: PDF Textbook to Flashcards<a class="headerlink" href="#path-1-pdf-textbook-to-flashcards" title="Permanent link">&para;</a></h2>
+<p>Use this when you have a PDF ebook or textbook and want to create study materials from it.</p>
+<h3 id="step-1-split-the-pdf-into-chapters">Step 1: Split the PDF into chapters<a class="headerlink" href="#step-1-split-the-pdf-into-chapters" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span><span class="s2">&quot;Computer-Science-APP.pdf&quot;</span><span class="w"> </span>-o<span class="w"> </span>chapters/
+</code></pre></div>
+<p>This reads the PDF's table of contents (bookmarks) and splits it into one file per chapter. Use <code>-l 2</code> to split at heading level 2 instead of the default level 1.</p>
+<p>If the PDF has no bookmarks, use <code>--ranges</code> to specify page ranges manually:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span><span class="s2">&quot;textbook.pdf&quot;</span><span class="w"> </span>--ranges<span class="w"> </span><span class="s2">&quot;1-30,31-60,61-90&quot;</span>
+</code></pre></div>
+<h3 id="step-2-upload-chapters-to-notebooklm">Step 2: Upload chapters to NotebookLM<a class="headerlink" href="#step-2-upload-chapters-to-notebooklm" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span><span class="s2">&quot;Computer-Science-APP.pdf&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>chapters/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>This combines split + upload in one command. It splits the PDF, then uploads each chapter as a source to the specified NotebookLM notebook.</p>
+<p>If you already split in step 1, you can upload manually via the NotebookLM web UI instead.</p>
+<h3 id="step-3-generate-audio-overviews-and-artefacts">Step 3: Generate audio overviews and artefacts<a class="headerlink" href="#step-3-generate-audio-overviews-and-artefacts" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>generate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-c<span class="w"> </span><span class="m">1</span>-5
+</code></pre></div>
+<p>This triggers NotebookLM to generate audio overviews for chapters 1-5. Generation takes 15+ minutes per chapter for slides/video types.</p>
+<p>Flags:
+- <code>-c / --chapters</code> — chapter range (e.g. <code>1-5</code>, <code>3</code>, <code>1-12</code>)
+- <code>--no-audio</code> — skip audio overview generation
+- <code>--no-video</code> — skip video generation
+- <code>-t / --timeout</code> — timeout in seconds (default: 900)</p>
+<h3 id="step-4-download-the-generated-artefacts">Step 4: Download the generated artefacts<a class="headerlink" href="#step-4-download-the-generated-artefacts" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>download<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>~/study-materials/csapp/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-c<span class="w"> </span><span class="m">1</span>-5
+</code></pre></div>
+<p>This downloads the generated audio, video, flashcard, and quiz files to the specified output directory. The JSON flashcard and quiz files are what the review system reads.</p>
+<h3 id="step-5-review-with-spaced-repetition">Step 5: Review with spaced repetition<a class="headerlink" href="#step-5-review-with-spaced-repetition" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>web
+</code></pre></div>
+<p>Open the PWA in your browser. Your downloaded flashcards and quizzes will appear as a course. See the <a href="web-ui-guide.html">Web UI Guide</a> for the full review walkthrough.</p>
+<hr />
+<h2 id="path-2-obsidian-notes-to-flashcards">Path 2: Obsidian Notes to Flashcards<a class="headerlink" href="#path-2-obsidian-notes-to-flashcards" title="Permanent link">&para;</a></h2>
+<p>Use this when you have Obsidian markdown notes and want to create study materials from them.</p>
+<pre class="mermaid"><code>graph LR
+    A["Obsidian .md files"] --&gt; B["studyctl content from-obsidian"]
+    B --&gt; C["pandoc converts&lt;br/&gt;to PDF"]
+    C --&gt; D["Upload to&lt;br/&gt;NotebookLM"]
+    D --&gt; E["Generate artefacts&lt;br/&gt;(built-in)"]
+    E --&gt; F["Download JSON&lt;br/&gt;(built-in)"]
+    F --&gt; G["studyctl web&lt;br/&gt;(review)"]</code></pre>
+<h3 id="all-in-one-command">All-in-one command<a class="headerlink" href="#all-in-one-command" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/Obsidian/2-Areas/Study/Python/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>~/study-materials/python/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>This does everything in one step:</p>
+<ol>
+<li>Converts each <code>.md</code> file to PDF via pandoc</li>
+<li>Uploads PDFs as sources to NotebookLM</li>
+<li>Generates audio overviews (unless <code>--no-generate</code>)</li>
+<li>Downloads artefacts (unless <code>--no-download</code>)</li>
+</ol>
+<h3 id="selective-flags">Selective flags<a class="headerlink" href="#selective-flags" title="Permanent link">&para;</a></h3>
+<p>Skip steps you don't need:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Convert and upload only (generate later)</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>--no-generate
+
+<span class="c1"># Skip quiz/flashcard generation</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>--no-quiz<span class="w"> </span>--no-flashcards
+
+<span class="c1"># Convert markdown to PDF only (no NotebookLM)</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>--skip-convert
+</code></pre></div>
+<h3 id="subdirectory-filter">Subdirectory filter<a class="headerlink" href="#subdirectory-filter" title="Permanent link">&para;</a></h3>
+<p>Process only notes from a specific subdirectory:</p>
+<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/Obsidian/Study/<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;Python/Decorators&quot;</span><span class="w"> </span>-o<span class="w"> </span>output/
+</code></pre></div>
+<hr />
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="notebooklm-notebook-id">NotebookLM notebook ID<a class="headerlink" href="#notebooklm-notebook-id" title="Permanent link">&para;</a></h3>
+<p>Set via environment variable or pass with <code>-n</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">NOTEBOOKLM_NOTEBOOK_ID</span><span class="o">=</span><span class="s2">&quot;your-notebook-id-here&quot;</span>
+</code></pre></div>
+<p>Find the ID in the NotebookLM URL: <code>https://notebooklm.google.com/notebook/NOTEBOOK_ID</code></p>
+<h3 id="content-base-path">Content base path<a class="headerlink" href="#content-base-path" title="Permanent link">&para;</a></h3>
+<p>Where flashcard/quiz JSON files are stored. Set in <code>~/.config/studyctl/config.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">content</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">base_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/study-materials</span><span class="w">    </span><span class="c1"># default</span>
+<span class="w">  </span><span class="nt">notebooklm_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">900</span><span class="w">         </span><span class="c1"># seconds per generation</span>
+<span class="w">  </span><span class="nt">inter_episode_gap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span><span class="w">           </span><span class="c1"># seconds between API calls</span>
+</code></pre></div>
+<h3 id="topics-mapping">Topics mapping<a class="headerlink" href="#topics-mapping" title="Permanent link">&para;</a></h3>
+<p>Each topic maps to an Obsidian directory and a review path:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">topics</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/Python</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">programming</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>The <code>slug</code> determines where flashcards are stored: <code>{content.base_path}/{slug}/flashcards/</code></p>
+<hr />
+<h2 id="syllabus-workflow-batch-generation">Syllabus Workflow (Batch Generation)<a class="headerlink" href="#syllabus-workflow-batch-generation" title="Permanent link">&para;</a></h2>
+<p>For large textbooks, use the syllabus workflow to generate episodes in batches:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create a generation plan</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>syllabus<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-b<span class="w"> </span><span class="s2">&quot;CS:APP&quot;</span><span class="w"> </span>-m<span class="w"> </span><span class="m">12</span>
+
+<span class="c1"># Generate the next pending episode</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>autopilot<span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-b<span class="w"> </span><span class="s2">&quot;CS:APP&quot;</span>
+
+<span class="c1"># Check progress</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>status<span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-b<span class="w"> </span><span class="s2">&quot;CS:APP&quot;</span>
+</code></pre></div>
+<p>The autopilot command generates one episode at a time, respecting rate limits. Run it repeatedly (or on a cron) to work through the full book.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>content generate</code> times out</td>
+<td>NotebookLM generation takes 15+ min</td>
+<td>Increase timeout: <code>-t 1800</code></td>
+</tr>
+<tr>
+<td>Daily quota exceeded</td>
+<td>~20-25 generations per day (Pro tier)</td>
+<td>Wait 24h UTC for reset</td>
+</tr>
+<tr>
+<td>Mermaid parse errors in <code>from-obsidian</code></td>
+<td>Special characters in diagram node labels</td>
+<td>Non-fatal; ~15 diagrams may fail. Fix labels or ignore.</td>
+</tr>
+<tr>
+<td>Double-nested output path</td>
+<td><code>from-obsidian</code> creates <code>pdfs/pdfs/</code></td>
+<td>Known issue; manually flatten or use <code>-o</code> to specify exact path</td>
+</tr>
+<tr>
+<td>PDF has no bookmarks</td>
+<td><code>content split</code> needs TOC structure</td>
+<td>Use <code>--ranges</code> for manual page ranges</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># List notebooks</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>list
+
+<span class="c1"># List sources in a notebook</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>list<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span>
+
+<span class="c1"># Split PDF by chapters</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span><span class="s2">&quot;book.pdf&quot;</span><span class="w"> </span>-o<span class="w"> </span>chapters/
+
+<span class="c1"># Upload + split in one step</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span><span class="s2">&quot;book.pdf&quot;</span><span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span>
+
+<span class="c1"># Generate audio/video</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>generate<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>-c<span class="w"> </span><span class="m">1</span>-5
+
+<span class="c1"># Download artefacts</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>download<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>-o<span class="w"> </span>~/study-materials/topic/
+
+<span class="c1"># Obsidian all-in-one</span>
+studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span>
+
+<span class="c1"># Check review due dates</span>
+studyctl<span class="w"> </span>review
+
+<span class="c1"># Launch review PWA</span>
+studyctl<span class="w"> </span>web
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

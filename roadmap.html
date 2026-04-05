@@ -1253,6 +1253,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#v23-autoresearch-harness-persona-effectiveness-2026-04-05" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-matrix-phase-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Matrix (Phase 1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iterate-runner-phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iterate Runner (Phase 2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persona-effectiveness-tracking-tier-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persona Effectiveness Tracking (Tier 1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1758,6 +1808,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#v23-autoresearch-harness-persona-effectiveness-2026-04-05" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-matrix-phase-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Matrix (Phase 1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iterate-runner-phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iterate Runner (Phase 2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persona-effectiveness-tracking-tier-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persona Effectiveness Tracking (Tier 1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2073,6 +2173,31 @@
 <ul>
 <li>Docker web + server-side TTS — parked</li>
 <li>Full TUI session view — cut (web + ttyd covers this)</li>
+</ul>
+<h2 id="v23-autoresearch-harness-persona-effectiveness-2026-04-05">v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)<a class="headerlink" href="#v23-autoresearch-harness-persona-effectiveness-2026-04-05" title="Permanent link">&para;</a></h2>
+<h3 id="test-matrix-phase-1">Test Matrix (Phase 1)<a class="headerlink" href="#test-matrix-phase-1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Parametrized E2E test matrix — 7 lifecycle tests x 6 agent adapters = 42 tests</li>
+<li>[x] <code>matrix_agent</code> mock factory in <code>tests/harness/agents.py</code></li>
+<li>[x] Topic resolution, briefing injection, flashcard generation verified per agent</li>
+<li>[x] Full matrix runs in ~25s</li>
+</ul>
+<h3 id="iterate-runner-phase-2">Iterate Runner (Phase 2)<a class="headerlink" href="#iterate-runner-phase-2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] <code>scripts/test_iterate.py</code> — autoresearch-style iterate loop</li>
+<li>[x] JUnit XML parsing, <code>results.tsv</code> tracking (autoresearch format)</li>
+<li>[x] Git clean-tree safety, structured failure reports with source context</li>
+<li>[x] <code>--progress</code> flag shows iteration history</li>
+<li>[x] <code>--agent</code>, <code>--max-iterations</code>, <code>--test-path</code>, <code>--report</code> flags</li>
+</ul>
+<h3 id="persona-effectiveness-tracking-tier-1">Persona Effectiveness Tracking (Tier 1)<a class="headerlink" href="#persona-effectiveness-tracking-tier-1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] Migration v20: <code>persona_hash</code>, <code>win_count</code>, <code>struggle_count</code> on <code>study_sessions</code></li>
+<li>[x] SHA-256[:16] persona hash computed at session start</li>
+<li>[x] Structured win/struggle counts extracted at session end</li>
+<li>[x] <code>get_persona_effectiveness()</code> query — win rate per persona version</li>
+<li>[x] <code>studyctl session effectiveness</code> CLI command (Rich table)</li>
+<li>[ ] Tier 2: Autonomous persona optimisation against simulated student evaluations</li>
 <li>Obsidian session export — future release</li>
 </ul>
 

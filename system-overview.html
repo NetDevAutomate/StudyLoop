@@ -914,6 +914,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#6-autoresearch-harness-self-improving-quality-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Autoresearch Harness — Self-Improving Quality Loop
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1435,6 +1446,90 @@ session-sync<span class="w"> </span>pull<span class="w"> </span>mac-mini<span cl
     PC --&gt; CLAUDE
     PS --&gt; GEMINI
     PS --&gt; KIRO</code></pre>
+<hr />
+<h3 id="6-autoresearch-harness-self-improving-quality-loop">6. Autoresearch Harness — Self-Improving Quality Loop<a class="headerlink" href="#6-autoresearch-harness-self-improving-quality-loop" title="Permanent link">&para;</a></h3>
+<p>Inspired by <a href="https://github.com/karpathy/autoresearch">karpathy/autoresearch</a>: define a metric, iterate autonomously, keep improvements, discard regressions. Applied to both <strong>code correctness</strong> and <strong>teaching effectiveness</strong>.</p>
+<pre class="mermaid"><code>graph TB
+    subgraph "Test Matrix (42 tests)"
+        AGENTS["6 Agent Adapters&lt;br/&gt;claude, gemini, kiro,&lt;br/&gt;opencode, ollama, lmstudio"]
+        TESTS["7 Lifecycle Checks&lt;br/&gt;start, launch, topic resolution,&lt;br/&gt;briefing, topics, end, flashcards"]
+        AGENTS --&gt; TESTS
+    end
+
+    subgraph "Iterate Runner"
+        RUN["Run pytest&lt;br/&gt;(JUnit XML)"]
+        PARSE["Parse results"]
+        TSV["Log to results.tsv"]
+        DECIDE{All pass?}
+        REPORT["Failure report&lt;br/&gt;with source context"]
+        DONE["Done"]
+
+        RUN --&gt; PARSE --&gt; TSV --&gt; DECIDE
+        DECIDE --&gt;|yes| DONE
+        DECIDE --&gt;|no| REPORT --&gt; RUN
+    end
+
+    subgraph "Persona Effectiveness"
+        HASH["SHA-256 persona hash&lt;br/&gt;stored at session start"]
+        COUNTS["win_count + struggle_count&lt;br/&gt;extracted at session end"]
+        QUERY["get_persona_effectiveness()&lt;br/&gt;win rate per persona version"]
+        CLI["studyctl session effectiveness"]
+
+        HASH --&gt; QUERY
+        COUNTS --&gt; QUERY
+        QUERY --&gt; CLI
+    end
+
+    TESTS --&gt; RUN
+    COUNTS -.-&gt;|"future: Tier 2"| RUN</code></pre>
+<p><strong>What it tracks:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Test pass/fail per agent</td>
+<td><code>results.tsv</code> (iterate runner)</td>
+<td>Code correctness over time</td>
+</tr>
+<tr>
+<td>Persona hash</td>
+<td><code>study_sessions.persona_hash</code></td>
+<td>Links persona version to outcomes</td>
+</tr>
+<tr>
+<td>Win count</td>
+<td><code>study_sessions.win_count</code></td>
+<td>Structured outcome (was text-only)</td>
+</tr>
+<tr>
+<td>Struggle count</td>
+<td><code>study_sessions.struggle_count</code></td>
+<td>Structured outcome (was text-only)</td>
+</tr>
+<tr>
+<td>Win rate</td>
+<td><code>win_count / (win_count + struggle_count)</code></td>
+<td>Teaching effectiveness per persona</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the test matrix</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/test_iterate.py<span class="w"> </span>--no-git-check
+
+<span class="c1"># View iteration history</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/test_iterate.py<span class="w"> </span>--progress
+
+<span class="c1"># View persona effectiveness</span>
+studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness
+</code></pre></div>
+<p><strong>Future (Tier 2):</strong> The iterate runner can target persona templates instead of code — run simulated study sessions against fixed scenarios, measure teaching quality, keep/discard persona changes via git. The infrastructure is ready; the evaluation harness is the next step.</p>
 <hr />
 <h2 id="data-stores">Data Stores<a class="headerlink" href="#data-stores" title="Permanent link">&para;</a></h2>
 <table>
