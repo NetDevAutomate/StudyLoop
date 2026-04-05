@@ -317,7 +317,7 @@ class TestFormatContextOnly:
 class TestRenderProfile:
     def test_template_substitution(self, session, messages):
         profile = {
-            "template": "Session: {session_id}\nPath: {project_path}\nCount: {message_count}",
+            "template": "Session: $session_id\nPath: $project_path\nCount: $message_count",
         }
         result = render_profile(profile, session, messages)
         assert f"Session: {session['id']}" in result
@@ -325,7 +325,7 @@ class TestRenderProfile:
         assert "Count: 2" in result
 
     def test_messages_placeholder(self, session, messages):
-        profile = {"template": "Messages:\n{messages}"}
+        profile = {"template": "Messages:\n$messages"}
         result = render_profile(profile, session, messages)
         assert "**USER**: How do I write tests?" in result
         assert "**ASSISTANT**: Use pytest." in result
@@ -333,8 +333,7 @@ class TestRenderProfile:
     def test_all_placeholders(self, session, messages):
         profile = {
             "template": (
-                "{session_id}|{project_path}|{source}|{updated_at}|"
-                "{message_count}|{messages}"
+                "$session_id|$project_path|$source|$updated_at|$message_count|$messages"
             ),
         }
         result = render_profile(profile, session, messages)
@@ -361,7 +360,7 @@ class TestRenderProfile:
             {"role": "assistant", "content": ""},
             {"role": "assistant", "content": "answer"},
         ]
-        profile = {"template": "{messages}"}
+        profile = {"template": "$messages"}
         result = render_profile(profile, session, msgs)
         # Empty content message should be excluded
         assert "**USER**: question" in result
@@ -370,7 +369,15 @@ class TestRenderProfile:
         assert result.count("**ASSISTANT**") == 1
 
     def test_missing_session_fields_default_to_empty(self, messages):
-        profile = {"template": ">{session_id}<>{project_path}<>{source}<>{updated_at}<"}
+        profile = {"template": ">$session_id<>$project_path<>$source<>$updated_at<"}
         empty_session: dict = {}
         result = render_profile(profile, empty_session, messages)
         assert "><>" in result  # empty values produce adjacent delimiters
+
+    def test_format_string_injection_blocked(self, session, messages):
+        """string.Template prevents {__class__} attribute access attacks."""
+        profile = {"template": "{__class__.__init__.__globals__}"}
+        result = render_profile(profile, session, messages)
+        # str.format() would expose Python internals; Template ignores it
+        assert "__globals__" in result  # literal text, not evaluated
+        assert "builtins" not in result  # no Python internals leaked

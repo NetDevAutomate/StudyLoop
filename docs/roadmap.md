@@ -294,10 +294,13 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 
 ### Local LLMs via Ollama / LM Studio
 
-- [ ] `studyctl study Python --agent ollama` — new AgentAdapter entries
-- [ ] Run through Claude Code with `ANTHROPIC_BASE_URL` pointed at local model
-- [ ] Doctor checks: binary detection, model availability, context window minimum
-- [ ] Config support in `config.yaml` agents section
+- [x] `studyctl study Python --agent ollama` / `--agent lmstudio` — AgentAdapter entries with tier-pinning
+- [x] Claude Code frontend with `ANTHROPIC_BASE_URL` pointed at local backend
+- [x] LM Studio: native Anthropic API support (simplest path)
+- [x] Ollama: via LiteLLM proxy (Ollama lacks Anthropic API)
+- [x] Doctor checks: binary detection, server reachability, claude dependency
+- [x] Config support: `agents.ollama.model`, `agents.lmstudio.model` in config.yaml
+- [x] Documentation with model recommendations and quality expectations
 
 ### Multi-Agent Cleanup
 

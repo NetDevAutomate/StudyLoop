@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from studyctl.cli._shared import console
+from studyctl.output import console
 
 if TYPE_CHECKING:
     import click

@@ -70,26 +70,7 @@ class SearchContext:
     exclude_session_ids: list[str] = field(default_factory=list)
 
 
-def escape_fts_query(query: str) -> str:
-    """Escape a query string for FTS5 MATCH.
-
-    With porter stemming enabled, we can use simpler queries that match variants.
-    For example: "create" will match "created", "creating", "creates".
-    """
-    query = query.strip().strip('"').strip("'")
-
-    # If query contains FTS operators (AND, OR, NOT), use as-is
-    if any(op in query.upper() for op in [" AND ", " OR ", " NOT "]):
-        return query
-
-    # Escape quotes
-    escaped = query.replace('"', '""')
-
-    # Multi-word queries become phrases
-    if " " in escaped:
-        return f'"{escaped}"'
-
-    return escaped
+from agent_session_tools.query_utils import escape_fts_query  # noqa: E402, F401
 
 
 def hybrid_search(

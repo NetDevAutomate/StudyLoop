@@ -65,6 +65,8 @@ studyctl study "topic" --timer pomodoro                # Override default timer
 studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
 studyctl study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
 studyctl study "topic" --lan --password SECRET         # Explicit password for LAN auth
+studyctl study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
+studyctl study "topic" --agent lmstudio                # Local LLM via LM Studio
 studyctl study --resume                                # Resume conversation (-r)
 studyctl study --end                                   # End session cleanly
 studyctl park "How does asyncio compare?"              # Park mid-session

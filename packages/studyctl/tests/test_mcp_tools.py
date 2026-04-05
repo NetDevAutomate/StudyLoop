@@ -205,3 +205,53 @@ class TestGetChapterText:
             tool = _get_tool("get_chapter_text")
             with pytest.raises(ToolError, match="No chapters directory"):
                 tool("nonexistent", 1)
+
+
+class TestPathTraversal:
+    """Verify that course parameters with directory traversal are rejected."""
+
+    @pytest.fixture()
+    def fake_settings(self, tmp_path: Path):
+        from studyctl.settings import ContentConfig, Settings
+
+        return Settings(content=ContentConfig(base_path=tmp_path))
+
+    @pytest.mark.parametrize("course", ["../../etc", "../sibling", "ok/../../escape"])
+    def test_flashcards_rejects_traversal(self, fake_settings, course: str) -> None:
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        content = json.dumps({"title": "T", "cards": [{"front": "Q", "back": "A"}]})
+        with patch("studyctl.mcp.tools.load_settings", return_value=fake_settings):
+            tool = _get_tool("generate_flashcards")
+            with pytest.raises(ToolError, match="Invalid course path"):
+                tool(course, 1, content)
+
+    @pytest.mark.parametrize("course", ["../../etc", "../sibling"])
+    def test_quiz_rejects_traversal(self, fake_settings, course: str) -> None:
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        content = json.dumps(
+            {
+                "title": "T",
+                "questions": [
+                    {
+                        "question": "Q?",
+                        "answerOptions": [{"text": "A", "isCorrect": True}],
+                    }
+                ],
+            }
+        )
+        with patch("studyctl.mcp.tools.load_settings", return_value=fake_settings):
+            tool = _get_tool("generate_quiz")
+            with pytest.raises(ToolError, match="Invalid course path"):
+                tool(course, 1, content)
+
+    @pytest.mark.parametrize("course", ["../../etc", "../sibling"])
+    def test_chapter_text_rejects_traversal(self, fake_settings, course: str) -> None:
+        __import__("pytest").importorskip("pymupdf")
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        with patch("studyctl.mcp.tools.load_settings", return_value=fake_settings):
+            tool = _get_tool("get_chapter_text")
+            with pytest.raises(ToolError, match="Invalid course path"):
+                tool(course, 1)

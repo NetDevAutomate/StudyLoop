@@ -49,15 +49,9 @@ Exceptions: explicit "just show me", 4+ rounds stuck, pure syntax lookup, boiler
 
 ## Session State Management
 
-At the start of each session, create the session state file:
-```bash
-mkdir -p ~/.config/studyctl
-cat > ~/.config/studyctl/session-state.json << 'EOF'
-{"energy": "medium", "topic": "", "pomodoro": null}
-EOF
-```
+Session state is created by `studyctl session start`. Do NOT manually create the file.
 
-When the user specifies their energy level, update the state file:
+When the user specifies their energy level mid-session, update the state file:
 ```bash
 python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyctl/session-state.json'; d=json.loads(p.read_text()); d['energy']='LEVEL'; p.write_text(json.dumps(d))"
 ```
@@ -71,8 +65,7 @@ This state is read by the Claude Code status line to show persistent session inf
 
 Follow `agents/shared/session-protocol.md`. Summary:
 
-1. Initialise the session state file (see above)
-2. Run system checks:
+1. Run system checks:
    ```bash
    studyctl resume          # Where you left off
    studyctl status          # Check sync state
@@ -89,7 +82,7 @@ Follow `agents/shared/session-protocol.md`. Summary:
 ## Session Types
 
 - **Study session:** arrival → state check → system check → topic → Socratic session → record progress
-- **Spaced review:** `studyctl review` → quiz overdue topics (interleave if 2+ due) → record scores
+- **Spaced review:** `studyctl review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record scores
 - **Body doubling (active):** agree goal + time → start/mid/end check-ins
 - **Body doubling (async):** periodic low-demand check-ins, no teaching
 - **Ad-hoc question:** identify topic → respond Socratically
@@ -167,6 +160,13 @@ pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-flashcards                  
 
 Use for: testing comprehension after note-taking, spaced review with flashcards, exam prep, batch quiz generation.
 Requires: pandoc, @mermaid-js/mermaid-cli for markdown→PDF with diagram support.
+
+---
+
+## Voice Output (study-speak)
+
+The learner can toggle voice on/off with `/speak-start` and `/speak-stop`.
+Follow the full rules in `agents/shared/session-protocol.md` (Voice Output section).
 
 ---
 
