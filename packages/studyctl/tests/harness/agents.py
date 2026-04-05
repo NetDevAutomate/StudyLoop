@@ -121,3 +121,38 @@ exit 1
 """,
     )
     return f"{script} {{persona_file}}"
+
+
+def matrix_agent(tmp_path: Path) -> str:
+    """Agent for the autoresearch test matrix.
+
+    Logs 2 topics (1 win with substantive note, 1 learning) and parks
+    a question, then stays alive until SIGTERM.  The win note is >= 15
+    chars so ``write_session_flashcards`` picks it up.
+    """
+    script = _write_script(
+        tmp_path / "mock-agent-matrix.sh",
+        """#!/usr/bin/env bash
+trap 'exit 0' TERM INT
+echo "Matrix agent started (persona: $1)"
+sleep 2  # wait for sidebar to initialise
+
+# Win topic — note must be >= 15 chars for flashcard generation
+studyctl topic "Decorator Pattern" --status win \
+    --note "Understanding how Python decorators wrap functions using closures"
+sleep 1
+
+# Learning topic
+studyctl topic "First-Class Functions" --status learning \
+    --note "exploring the concept of first-class functions"
+sleep 1
+
+# Park a question via IPC file (more reliable in tests than CLI)
+PARKING_FILE="$HOME/.config/studyctl/session-parking.md"
+echo "- How do decorators interact with class methods?" >> "$PARKING_FILE"
+
+# Stay alive until killed
+while true; do sleep 1; done
+""",
+    )
+    return f"{script} {{persona_file}}"
