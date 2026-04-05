@@ -44,17 +44,17 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
         except Exception:
             pass
 
-    # Resolve credentials: CLI flag > config file > auto-generate when --lan
+    # Resolve credentials: always read username from config; password from CLI > config > auto
     username = "study"
-    if not password:
-        try:
-            from studyctl.settings import load_settings
+    try:
+        from studyctl.settings import load_settings
 
-            _settings = load_settings()
-            username = _settings.lan_username or "study"
+        _settings = load_settings()
+        username = _settings.lan_username or "study"
+        if not password:
             password = _settings.lan_password
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     if lan and not password:
         password = secrets.token_urlsafe(16)
