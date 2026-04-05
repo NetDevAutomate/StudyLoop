@@ -115,7 +115,9 @@ class TestSessionSSE:
         escaped = html.replace("\n", "")
         sse_line = f"event: session-update\ndata: {escaped}\n\n"
         assert sse_line.count("\n\n") == 1  # Exactly one blank line delimiter
-        assert "activity-feed" in sse_line
+        # The activity feed content is the inner HTML for the SSE swap target
+        # (no wrapper div — the swap target element already has id="activity-feed")
+        assert "activity-item" in sse_line
         assert "counter-wins" in sse_line
         assert "session-meta" in sse_line
 
@@ -214,7 +216,9 @@ class TestRenderFunctions:
             "parking": [],
         }
         html = _render_update(state)
-        assert "activity-feed" in html
+        # The activity feed content is the inner HTML for the SSE swap target
+        # (no wrapper div — the swap target element already has id="activity-feed")
+        assert "activity-empty" in html
         assert "counter-wins" in html
         assert "session-meta" in html
 
