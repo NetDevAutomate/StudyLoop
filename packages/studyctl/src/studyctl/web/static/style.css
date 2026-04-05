@@ -130,13 +130,149 @@ header h1 {
 
 .nav-btn:hover { border-color: var(--accent); color: var(--text); }
 
-/* --- Main content --- */
+/* --- App layout: sidebar + content --- */
+.app-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: 0; /* allow flex children to shrink */
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.sidebar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.sidebar-btn.active {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+}
+
+.sidebar-btn svg {
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Main within content-area (for app.js compatibility) */
 main {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+}
+
+/* Body double specific */
+.body-double-dashboard {
+  padding: 2rem;
+}
+.body-double-header {
+  margin-bottom: 2rem;
+}
+.body-double-header h2 {
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+.body-double-timer {
+  text-align: center;
+}
+.large-timer .timer-time {
+  font-size: 3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.body-double-controls {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Quiz placeholder (until Phase 2) */
+.quiz-placeholder {
+  padding: 3rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.quiz-placeholder h2 {
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.text-muted { color: var(--text-muted); }
+
+/* --- Mobile: sidebar → bottom tabs --- */
+@media (max-width: 600px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+  .sidebar {
+    order: 2; /* below content */
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    padding: 4px;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .sidebar-btn {
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    font-size: 0.7rem;
+    min-width: 0;
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+  .sidebar-btn.active {
+    border-left: none;
+    border-top: 2px solid var(--accent);
+    padding-left: 8px;
+    padding-top: 4px;
+  }
+  .content-area {
+    order: 1;
+  }
 }
 
 /* --- Course picker --- */
@@ -947,6 +1083,14 @@ main:has(.split-container) {
   padding: 0;
 }
 main:has(.split-container) .session-dashboard {
+  max-width: none;
+}
+
+/* Split container inside the unified sidebar layout */
+.content-area .split-container {
+  height: calc(100vh - 60px);
+}
+.content-area .session-dashboard {
   max-width: none;
 }
 
