@@ -2039,11 +2039,19 @@
 <p>Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optional local LLMs.</p>
 <h3 id="ttyd-integration-embedded-web-pane">ttyd Integration + Embedded Web Pane<a class="headerlink" href="#ttyd-integration-embedded-web-pane" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <code>studyctl study --lan</code> starts ttyd alongside tmux session (port 7681)</li>
-<li>[ ] Embed ttyd as iframe in existing web dashboard</li>
-<li>[ ] "Open Study Agent Session" button — iframe split (default) + pop-out new window</li>
-<li>[ ] Doctor check for ttyd binary</li>
-<li>[ ] Config support for ttyd port</li>
+<li>[x] <code>studyctl study --lan</code> starts ttyd alongside tmux session (port 7681)</li>
+<li>[x] Embed ttyd as iframe in existing web dashboard</li>
+<li>[x] "Open Study Agent Session" button — iframe split (default) + pop-out new window</li>
+<li>[x] Doctor check for ttyd binary</li>
+<li>[x] Config support for ttyd port</li>
+<li>[x] Draggable split-pane layout (stacked/side-by-side)</li>
+<li>[x] Browser auto-open with configurable browser</li>
+<li>[x] Claude Code trust bypass (<code>hasTrustDialogAccepted</code>)</li>
+<li>[x] <code>window-size largest</code> tmux option for multi-client compatibility</li>
+<li>[x] Same-origin reverse proxy — ttyd proxied through FastAPI at <code>/terminal/</code> (HTTP + WebSocket)</li>
+<li>[x] Pop-out/return persistence — iframe stays in DOM (visibility CSS), pop-out auto-closes on return</li>
+<li>[x] LAN password protection — HTTP Basic Auth middleware, auto-generated or explicit <code>--password</code></li>
+<li>[x] <code>lan_password</code> config option for persistent password</li>
 </ul>
 <h3 id="local-llms-via-ollama-lm-studio">Local LLMs via Ollama / LM Studio<a class="headerlink" href="#local-llms-via-ollama-lm-studio" title="Permanent link">&para;</a></h3>
 <ul>
