@@ -176,9 +176,9 @@ def _make_migrated_db(tmp_path):
     conn.executescript(schema_path.read_text())
     conn.commit()
 
-    from agent_session_tools.migrations import migrate
+    ast_migrations = __import__("pytest").importorskip("agent_session_tools.migrations")
 
-    migrate(conn)
+    ast_migrations.migrate(conn)
     conn.close()
     return db_path
 

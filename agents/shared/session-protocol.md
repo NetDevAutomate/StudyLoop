@@ -78,7 +78,7 @@ If `studyctl streaks` shows a current streak, mention it: "Day [N] of your study
 
 Based on state check + what's due, propose a session plan:
 
-- If spaced repetition items are due → review session (interleave related topics)
+- If spaced repetition items are due → review session (max 3 topics per session, interleave related topics; if more due, prioritise longest-overdue)
 - If struggle topics detected → targeted practice with extra scaffolding
 - If nothing due + high energy → new material
 - If low energy or flat → body doubling or light review

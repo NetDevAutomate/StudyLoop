@@ -26,6 +26,7 @@ dev = [
     "pexpect>=4.9.0",
     "textual[dev]>=8.0.2",
     "pytest-asyncio>=1.3.0",
+    "mcp[cli]>=1.0.0",
 ]
 
 [build-system]
