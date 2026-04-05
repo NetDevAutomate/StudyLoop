@@ -15,7 +15,13 @@ Usage::
         study_session.assert_agent_running()
 """
 
-from .agents import fast_exit_agent, long_running_agent, parking_agent, topic_logger_agent
+from .agents import (
+    fast_exit_agent,
+    long_running_agent,
+    matrix_agent,
+    parking_agent,
+    topic_logger_agent,
+)
 from .study import StudySession
 from .tmux import TmuxHarness
 
@@ -24,6 +30,7 @@ __all__ = [
     "TmuxHarness",
     "fast_exit_agent",
     "long_running_agent",
+    "matrix_agent",
     "parking_agent",
     "topic_logger_agent",
 ]
