@@ -1034,6 +1034,145 @@ body.dyslexic .card-content {
   text-align: center;
 }
 
+/* Session start picker */
+.session-start-picker {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.session-start-picker h2 {
+  font-size: 1.4rem;
+  margin-bottom: 24px;
+  color: var(--text);
+}
+
+.picker-field {
+  margin-bottom: 20px;
+}
+
+.picker-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.topic-select-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.picker-select,
+.picker-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.picker-select:focus,
+.picker-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.energy-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  outline: none;
+  margin: 8px 0;
+}
+
+.energy-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.energy-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.energy-value {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.start-session-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.start-session-btn:hover:not(.disabled) {
+  opacity: 0.9;
+}
+
+.start-session-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.picker-error {
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(247, 118, 142, 0.1);
+  border: 1px solid var(--red);
+  border-radius: var(--radius);
+  color: var(--red);
+  font-size: 0.9rem;
+}
+
+.session-starting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 64px 24px;
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.end-btn {
+  color: var(--red) !important;
+}
+
 /* Session active indicator (for main app link) */
 .session-indicator {
   display: inline-flex;

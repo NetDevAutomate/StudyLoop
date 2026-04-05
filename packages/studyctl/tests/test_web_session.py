@@ -21,19 +21,16 @@ def client() -> TestClient:
 
 
 class TestSessionPage:
-    def test_session_page_returns_html(self, client: TestClient) -> None:
-        resp = client.get("/session")
+    def test_session_url_redirects_to_hash(self, client: TestClient) -> None:
+        resp = client.get("/session", follow_redirects=False)
+        assert resp.status_code == 307
+        assert resp.headers["location"] == "/#study-session"
+
+    def test_session_redirect_lands_on_index(self, client: TestClient) -> None:
+        resp = client.get("/session")  # follows redirect by default
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
         assert "session-dashboard" in resp.text
-
-    def test_session_page_loads_htmx(self, client: TestClient) -> None:
-        resp = client.get("/session")
-        assert "/vendor/js/htmx-2.0.4.min.js" in resp.text
-
-    def test_session_page_loads_alpine(self, client: TestClient) -> None:
-        resp = client.get("/session")
-        assert "/vendor/js/alpine-3.14.8.min.js" in resp.text
 
 
 class TestSessionStateAPI:
@@ -252,3 +249,127 @@ class TestRenderFunctions:
         html = _render_activity_feed(state)
         assert "<script>" not in html
         assert "&lt;script&gt;" in html
+
+
+class TestTopicsAPI:
+    """Tests for GET /api/session/topics."""
+
+    def test_returns_topics_from_settings(self, client: TestClient) -> None:
+        from unittest.mock import MagicMock
+
+        from studyctl.settings import TopicConfig
+
+        mock_topics = [
+            TopicConfig(name="Python", slug="python", obsidian_path="", tags=["python"]),
+            TopicConfig(name="Spark", slug="spark", obsidian_path="", tags=["data"]),
+        ]
+        settings = MagicMock()
+        settings.topics = mock_topics
+        with patch("studyctl.settings.load_settings", return_value=settings):
+            resp = client.get("/api/session/topics")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["name"] == "Python"
+        assert data[0]["slug"] == "python"
+        assert data[1]["name"] == "Spark"
+
+    def test_returns_empty_on_no_settings(self, client: TestClient) -> None:
+        with patch(
+            "studyctl.settings.load_settings",
+            side_effect=FileNotFoundError,
+        ):
+            resp = client.get("/api/session/topics")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
+class TestEndSessionAPI:
+    """Tests for POST /api/session/end."""
+
+    def test_end_returns_404_when_no_session(self, client: TestClient) -> None:
+        with patch("studyctl.web.routes.session.read_session_state", return_value={}):
+            resp = client.post("/api/session/end")
+        assert resp.status_code == 404
+        assert "No active session" in resp.json()["error"]
+
+    def test_end_calls_cleanup_and_returns_topic(self, client: TestClient) -> None:
+        mock_state = {
+            "study_session_id": "test-123",
+            "topic": "Python Decorators",
+            "tmux_session": "study-python-test",
+        }
+        with (
+            patch(
+                "studyctl.web.routes.session.read_session_state",
+                return_value=mock_state,
+            ),
+            patch(
+                "studyctl.session.cleanup.end_session_common",
+                return_value="Python Decorators",
+            ) as mock_end,
+        ):
+            resp = client.post("/api/session/end")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ended"] is True
+        assert data["topic"] == "Python Decorators"
+        mock_end.assert_called_once_with(mock_state)
+
+
+class TestStartSessionAPI:
+    """Tests for POST /api/session/start — validation and error paths.
+
+    The happy path requires tmux, an agent binary, and a database, so it
+    is tested via E2E in test_web_sidebar.py. These tests cover the guard
+    clauses and error responses.
+    """
+
+    def test_start_rejects_active_session(self, client: TestClient) -> None:
+        with (
+            patch("studyctl.tmux.is_tmux_available", return_value=True),
+            patch("studyctl.web.routes.session.is_session_active", return_value=True),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5},
+            )
+        assert resp.status_code == 409
+        assert "already active" in resp.json()["error"]
+
+    def test_start_rejects_no_tmux(self, client: TestClient) -> None:
+        with patch("studyctl.tmux.is_tmux_available", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5},
+            )
+        assert resp.status_code == 503
+        assert "tmux" in resp.json()["error"]
+
+    def test_start_rejects_unknown_agent(self, client: TestClient) -> None:
+        with (
+            patch("studyctl.tmux.is_tmux_available", return_value=True),
+            patch("studyctl.web.routes.session.is_session_active", return_value=False),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "nonexistent"},
+            )
+        assert resp.status_code == 400
+        assert "Unknown agent" in resp.json()["error"]
+
+    def test_start_validates_energy_range(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Python", "energy": 15},
+        )
+        assert resp.status_code == 422  # Pydantic validation
+
+    def test_start_requires_topic(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/session/start",
+            json={"energy": 5},
+        )
+        assert resp.status_code == 422  # Pydantic validation

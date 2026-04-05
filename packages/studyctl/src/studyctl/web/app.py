@@ -13,6 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import RedirectResponse
 
 if TYPE_CHECKING:
     from starlette.responses import Response
@@ -88,10 +89,10 @@ def create_app(
     async def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
-    # Serve session dashboard (unified page with hash routing)
+    # Redirect /session to hash-routed study-session tab
     @app.get("/session")
-    async def session_page() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+    async def session_page() -> RedirectResponse:
+        return RedirectResponse(url="/#study-session")
 
     # Mount static files LAST (catch-all)
     app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
