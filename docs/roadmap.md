@@ -312,4 +312,30 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 
 - Docker web + server-side TTS — parked
 - Full TUI session view — cut (web + ttyd covers this)
+
+## v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)
+
+### Test Matrix (Phase 1)
+
+- [x] Parametrized E2E test matrix — 7 lifecycle tests x 6 agent adapters = 42 tests
+- [x] `matrix_agent` mock factory in `tests/harness/agents.py`
+- [x] Topic resolution, briefing injection, flashcard generation verified per agent
+- [x] Full matrix runs in ~25s
+
+### Iterate Runner (Phase 2)
+
+- [x] `scripts/test_iterate.py` — autoresearch-style iterate loop
+- [x] JUnit XML parsing, `results.tsv` tracking (autoresearch format)
+- [x] Git clean-tree safety, structured failure reports with source context
+- [x] `--progress` flag shows iteration history
+- [x] `--agent`, `--max-iterations`, `--test-path`, `--report` flags
+
+### Persona Effectiveness Tracking (Tier 1)
+
+- [x] Migration v20: `persona_hash`, `win_count`, `struggle_count` on `study_sessions`
+- [x] SHA-256[:16] persona hash computed at session start
+- [x] Structured win/struggle counts extracted at session end
+- [x] `get_persona_effectiveness()` query — win rate per persona version
+- [x] `studyctl session effectiveness` CLI command (Rich table)
+- [ ] Tier 2: Autonomous persona optimisation against simulated student evaluations
 - Obsidian session export — future release

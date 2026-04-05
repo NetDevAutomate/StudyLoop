@@ -55,6 +55,8 @@ graph LR
         KA[Kiro CLI]
         GA[Gemini CLI]
         OA[OpenCode]
+        OL[Ollama]
+        LM[LM Studio]
     end
 
     subgraph "Live Session"
@@ -70,6 +72,8 @@ graph LR
     KA -->|Socratic sessions| DB
     GA -->|Socratic sessions| DB
     OA -->|Socratic sessions| DB
+    OL -->|Socratic sessions| DB
+    LM -->|Socratic sessions| DB
     CA -->|writes| IPC
     IPC -->|polls| SSE
 ```
@@ -104,9 +108,10 @@ studyctl sync [TOPIC] --all        # Sync notes to NotebookLM
 studyctl status                     # Show sync status
 studyctl topics                     # List configured topics
 
-# Health
+# Health & metrics
 studyctl doctor                     # Check installation health
 studyctl setup                      # Interactive configuration
+studyctl session effectiveness      # Persona effectiveness over time
 ```
 
 ### agent-session-tools
@@ -127,6 +132,8 @@ session-sync push/pull/sync HOST     # Cross-machine sync
 | Kiro CLI | `study-mentor` | `kiro-cli chat --agent study-mentor` |
 | Gemini CLI | `study-mentor` | `gemini` (auto-detected) |
 | OpenCode | `study-mentor` | Tab to switch agent |
+| Ollama | (local LLM) | `studyctl study "topic" --agent ollama` |
+| LM Studio | (local LLM) | `studyctl study "topic" --agent lmstudio` |
 
 ## Web PWA
 

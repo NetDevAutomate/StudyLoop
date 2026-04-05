@@ -461,6 +461,73 @@ flowchart TB
 
 ---
 
+### 6. Autoresearch Harness — Self-Improving Quality Loop
+
+Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch): define a metric, iterate autonomously, keep improvements, discard regressions. Applied to both **code correctness** and **teaching effectiveness**.
+
+```mermaid
+graph TB
+    subgraph "Test Matrix (42 tests)"
+        AGENTS["6 Agent Adapters<br/>claude, gemini, kiro,<br/>opencode, ollama, lmstudio"]
+        TESTS["7 Lifecycle Checks<br/>start, launch, topic resolution,<br/>briefing, topics, end, flashcards"]
+        AGENTS --> TESTS
+    end
+
+    subgraph "Iterate Runner"
+        RUN["Run pytest<br/>(JUnit XML)"]
+        PARSE["Parse results"]
+        TSV["Log to results.tsv"]
+        DECIDE{All pass?}
+        REPORT["Failure report<br/>with source context"]
+        DONE["Done"]
+
+        RUN --> PARSE --> TSV --> DECIDE
+        DECIDE -->|yes| DONE
+        DECIDE -->|no| REPORT --> RUN
+    end
+
+    subgraph "Persona Effectiveness"
+        HASH["SHA-256 persona hash<br/>stored at session start"]
+        COUNTS["win_count + struggle_count<br/>extracted at session end"]
+        QUERY["get_persona_effectiveness()<br/>win rate per persona version"]
+        CLI["studyctl session effectiveness"]
+
+        HASH --> QUERY
+        COUNTS --> QUERY
+        QUERY --> CLI
+    end
+
+    TESTS --> RUN
+    COUNTS -.->|"future: Tier 2"| RUN
+```
+
+**What it tracks:**
+
+| Metric | Source | Purpose |
+|--------|--------|---------|
+| Test pass/fail per agent | `results.tsv` (iterate runner) | Code correctness over time |
+| Persona hash | `study_sessions.persona_hash` | Links persona version to outcomes |
+| Win count | `study_sessions.win_count` | Structured outcome (was text-only) |
+| Struggle count | `study_sessions.struggle_count` | Structured outcome (was text-only) |
+| Win rate | `win_count / (win_count + struggle_count)` | Teaching effectiveness per persona |
+
+**Usage:**
+
+```bash
+# Run the test matrix
+uv run python scripts/test_iterate.py --no-git-check
+
+# View iteration history
+uv run python scripts/test_iterate.py --progress
+
+# View persona effectiveness
+studyctl session effectiveness
+```
+
+**Future (Tier 2):** The iterate runner can target persona templates instead of code — run simulated study sessions against fixed scenarios, measure teaching quality, keep/discard persona changes via git. The infrastructure is ready; the evaluation harness is the next step.
+
+---
+
 ## Data Stores
 
 | Store | Location | What's in it |

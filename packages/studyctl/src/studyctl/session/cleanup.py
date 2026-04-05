@@ -105,9 +105,11 @@ def end_session_common(
     except Exception:
         logger.warning("Failed to generate session flashcards", exc_info=True)
 
-    # End the DB session with captured notes
+    # End the DB session with captured notes and structured counts
+    win_count = sum(1 for t in topic_entries if t.status in ("win", "insight"))
+    struggle_count = sum(1 for t in topic_entries if t.status == "struggling")
     try:
-        end_study_session(study_id, notes=notes)
+        end_study_session(study_id, notes=notes, win_count=win_count, struggle_count=struggle_count)
     except Exception:
         logger.exception("Failed to end study session in DB")
 
