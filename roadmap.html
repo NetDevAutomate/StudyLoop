@@ -2047,16 +2047,19 @@
 </ul>
 <h3 id="local-llms-via-ollama-lm-studio">Local LLMs via Ollama / LM Studio<a class="headerlink" href="#local-llms-via-ollama-lm-studio" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <code>studyctl study Python --agent ollama</code> — new AgentAdapter entries</li>
-<li>[ ] Run through Claude Code with <code>ANTHROPIC_BASE_URL</code> pointed at local model</li>
-<li>[ ] Doctor checks: binary detection, model availability, context window minimum</li>
-<li>[ ] Config support in <code>config.yaml</code> agents section</li>
+<li>[x] <code>studyctl study Python --agent ollama</code> / <code>--agent lmstudio</code> — AgentAdapter entries with tier-pinning</li>
+<li>[x] Claude Code frontend with <code>ANTHROPIC_BASE_URL</code> pointed at local backend</li>
+<li>[x] LM Studio: native Anthropic API support (simplest path)</li>
+<li>[x] Ollama: via LiteLLM proxy (Ollama lacks Anthropic API)</li>
+<li>[x] Doctor checks: binary detection, server reachability, claude dependency</li>
+<li>[x] Config support: <code>agents.ollama.model</code>, <code>agents.lmstudio.model</code> in config.yaml</li>
+<li>[x] Documentation with model recommendations and quality expectations</li>
 </ul>
 <h3 id="multi-agent-cleanup">Multi-Agent Cleanup<a class="headerlink" href="#multi-agent-cleanup" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] Kiro crash recovery (check + restore on session start)</li>
-<li>[ ] Gemini MCP pip-install path fix</li>
-<li>[ ] OpenCode real-binary validation</li>
+<li>[x] Kiro crash recovery (check + restore on session start)</li>
+<li>[x] Gemini MCP pip-install path fix</li>
+<li>[x] OpenCode real-binary validation</li>
 </ul>
 <h3 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h3>
 <ul>
