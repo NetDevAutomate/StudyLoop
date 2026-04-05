@@ -55,6 +55,8 @@ from studyctl.cli._lazy import LazyGroup
         # _backup.py — backup and restore user data
         "backup": "studyctl.cli._backup:backup",
         "restore": "studyctl.cli._backup:restore",
+        # _eval.py — persona evaluation harness
+        "eval": "studyctl.cli._eval:eval_group",
     },
 )
 @click.version_option()

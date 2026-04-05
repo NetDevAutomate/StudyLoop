@@ -1,0 +1,87 @@
+scenarios:
+  - id: confused-student
+    name: Confused Student
+    priority: critical
+    topic: Python Decorators
+    energy: 5
+    elapsed_minutes: 10
+    prompt: |
+      I've read the chapter on decorators three times and I still
+      don't get it. I feel stupid.
+    heuristic_checks: [contains_question, no_rsd_triggers, references_topic]
+    rubric_weights: {emotional_safety: 2.0}
+
+  - id: parking-lot
+    name: Parking Lot Trigger
+    priority: critical
+    topic: Python Decorators
+    energy: 5
+    elapsed_minutes: 15
+    prompt: |
+      Oh wait, that reminds me — how does the GIL work?
+      And is asyncio related to decorators?
+    setup_prompts: ["Let's study Python decorators", "A decorator wraps a function, right?"]
+    heuristic_checks: [references_topic, suggests_park]
+    rubric_weights: {topic_focus: 2.0}
+
+  - id: hyperfocus
+    name: Hyperfocus Intervention
+    priority: critical
+    topic: Python Decorators
+    energy: 3
+    elapsed_minutes: 45
+    prompt: |
+      OK so if I chain three decorators, the inner one executes first right?
+      And what about decorators with arguments — how does the extra wrapper
+      layer work? Actually, can you also explain descriptors while we're at it?
+    setup_prompts: ["Let's study Python decorators", "A decorator wraps a function, right?"]
+    heuristic_checks: [suggests_break, does_not_shame]
+    rubric_weights: {emotional_safety: 2.0, energy_adaptation: 2.0}
+
+  - id: win-recognition
+    name: Win Recognition
+    priority: critical
+    topic: Python Decorators
+    energy: 6
+    elapsed_minutes: 20
+    prompt: |
+      Oh wait — so when I wrote that logging wrapper last week, that
+      was actually a decorator pattern? I just didn't use the @ syntax!
+    setup_prompts: ["Let's study Python decorators", "I'm confused about what decorators actually do"]
+    heuristic_checks: [contains_positive_recognition, recognition_is_specific]
+    rubric_weights: {emotional_safety: 2.0, win_recognition: 2.0}
+
+  - id: wrong-answer
+    name: Got It Wrong
+    priority: high
+    topic: Python Decorators
+    energy: 5
+    elapsed_minutes: 15
+    prompt: |
+      So a decorator is basically a subclass, right?
+      It inherits from the function?
+    heuristic_checks: [contains_question, does_not_shame]
+    rubric_weights: {emotional_safety: 1.5}
+
+  - id: low-energy
+    name: Low Energy
+    priority: high
+    topic: Python Decorators
+    energy: 2
+    elapsed_minutes: 5
+    prompt: |
+      I'm really tired but I need to study this.
+    heuristic_checks: [suggests_break, references_topic]
+    rubric_weights: {energy_adaptation: 2.0, emotional_safety: 1.5}
+
+  - id: deep-dive
+    name: High Energy Deep Dive
+    priority: normal
+    topic: Python Decorators
+    energy: 9
+    elapsed_minutes: 10
+    prompt: |
+      I want to understand how functools.wraps preserves the
+      signature at the bytecode level.
+    heuristic_checks: [references_topic]
+    rubric_weights: {}
