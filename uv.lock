@@ -2824,7 +2824,7 @@ wheels = [
 
 [[package]]
 name = "studyctl"
-version = "2.1.0"
+version = "2.2.0"
 source = { editable = "packages/studyctl" }
 dependencies = [
     { name = "click" },
