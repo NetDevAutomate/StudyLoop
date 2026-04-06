@@ -11,6 +11,7 @@ Ordering is critical:
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import stat
 import subprocess
@@ -112,8 +113,18 @@ def build_wrapped_agent_cmd(
     python = sys.executable
     path_prefix = f"export PATH={session_dir}:$PATH; "
 
+    # Propagate STUDYCTL_* env vars so cleanup_on_exit() (which runs as
+    # a fresh Python subprocess) inherits overrides like STUDYCTL_KIRO_AGENTS_DIR.
+    # These must be exported in the shell command because tmux set-environment
+    # only affects NEW panes, not the already-running shell.
+    env_exports = ""
+    for key, value in os.environ.items():
+        if key.startswith("STUDYCTL_") and key != "STUDYCTL_TEST_AGENT_CMD":
+            env_exports += f"export {key}={shlex.quote(value)}; "
+
     return (
         f"{path_prefix}"
+        f"{env_exports}"
         f"{agent_cmd}; "
         f'{python} -c "'
         f"from studyctl.session.cleanup import cleanup_on_exit; "
