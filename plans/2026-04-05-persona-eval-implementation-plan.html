@@ -1,0 +1,2018 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-04-05-persona-eval-implementation-plan.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Persona Evaluation Harness — Implementation Plan - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#persona-evaluation-harness-implementation-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Persona Evaluation Harness — Implementation Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Map
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Map">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-files-eval-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New files (eval package)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-test-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New test files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modified-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modified files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunk-1-foundation-models-scenarios-git-ops-reporter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk 1: Foundation — Models, Scenarios, Git Ops, Reporter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chunk 1: Foundation — Models, Scenarios, Git Ops, Reporter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-1-eval-models-and-scenario-loader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1: Eval models and scenario loader
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-2-git-ops-and-reporter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2: Git ops and reporter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunk-2-heuristic-judge-llm-client-llm-judge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk 2: Heuristic Judge + LLM Client + LLM Judge
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chunk 2: Heuristic Judge + LLM Client + LLM Judge">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-3-heuristic-judge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3: Heuristic judge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-4-llm-client-ollama-openai-compat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 4: LLM client (Ollama + OpenAI-compat)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-5-llm-judge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 5: LLM judge
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunk-3-persona-target-capture-orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk 3: Persona Target + Capture + Orchestrator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chunk 3: Persona Target + Capture + Orchestrator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-6-response-capture-tmux-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 6: Response capture (tmux interaction)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-7-persona-eval-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 7: Persona eval target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-8-test-suite-target-refactor-existing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 8: Test suite target (refactor existing)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-9-orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 9: Orchestrator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunk-4-cli-config-doctor-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk 4: CLI, Config, Doctor Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chunk 4: CLI, Config, Doctor Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-10-config-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 10: Config schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-11-cli-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 11: CLI commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-12-doctor-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 12: Doctor integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-13-full-integration-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 13: Full integration test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="persona-evaluation-harness-implementation-plan">Persona Evaluation Harness — Implementation Plan<a class="headerlink" href="#persona-evaluation-harness-implementation-plan" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>For agentic workers:</strong> REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
+</blockquote>
+<p><strong>Goal:</strong> Build an autonomous evaluation harness that runs fixed student scenarios against the study mentor persona, scores responses via heuristic + LLM judge, and tracks scores per persona version.</p>
+<p><strong>Architecture:</strong> Modular orchestrator (<code>eval/</code>) with pluggable targets (<code>test_suite</code> for existing pytest, <code>persona</code> for scenario evaluation) and pluggable judges (<code>heuristic</code> fast-pass, <code>llm</code> for Ollama/OpenAI-compat scoring). The existing <code>scripts/test_iterate.py</code> is refactored into library modules; the script becomes a thin CLI wrapper.</p>
+<p><strong>Tech Stack:</strong> Python 3.12+, Click CLI, Ollama/OpenAI-compat HTTP API, tmux for session interaction, PyYAML for scenario definitions, <code>urllib.request</code> for LLM HTTP calls (no new deps).</p>
+<p><strong>Spec:</strong> <code>docs/plans/2026-04-05-persona-optimisation-tier2-design.md</code></p>
+<p><strong>Test runner:</strong> <code>uv run pytest</code> from project root. All test files inline their fixtures (no conftest.py — pluggy conflict).</p>
+<hr />
+<h2 id="file-map">File Map<a class="headerlink" href="#file-map" title="Permanent link">&para;</a></h2>
+<h3 id="new-files-eval-package">New files (eval package)<a class="headerlink" href="#new-files-eval-package" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/__init__.py</code></td>
+<td>Package init</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/models.py</code></td>
+<td>Dataclasses: <code>Scenario</code>, <code>HeuristicResult</code>, <code>JudgeResult</code>, <code>EvalSummary</code></td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/scenarios.py</code></td>
+<td>Load + validate YAML scenario files</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/git_ops.py</code></td>
+<td><code>is_clean()</code>, <code>short_hash()</code>, <code>abort_if_dirty()</code></td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/reporter.py</code></td>
+<td>TSV logging (<code>eval-results.tsv</code>), markdown report generation</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/orchestrator.py</code></td>
+<td><code>run_evaluation()</code> loop: per-scenario setup → run → judge → record</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/targets/__init__.py</code></td>
+<td>Package init</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/targets/base.py</code></td>
+<td><code>EvalTarget</code> Protocol</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/targets/test_suite.py</code></td>
+<td>Existing pytest runner (extracted from <code>test_iterate.py</code>)</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/targets/persona.py</code></td>
+<td>Scenario executor: start session, send prompt, capture response</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/judge/__init__.py</code></td>
+<td>Package init</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/judge/base.py</code></td>
+<td><code>Judge</code> Protocol</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/judge/heuristic.py</code></td>
+<td>Structural checks (contains_question, no_rsd_triggers, etc.)</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/judge/llm.py</code></td>
+<td>LLM judge: build prompt, call client, parse JSON scores</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/llm_client.py</code></td>
+<td>HTTP client for Ollama + OpenAI-compat</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/capture.py</code></td>
+<td>tmux pane capture, ANSI stripping, response extraction</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/prompts/judge-rubric.md</code></td>
+<td>Versioned judge prompt template</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/eval/scenarios/study.yaml</code></td>
+<td>7 fixed student scenarios</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/cli/_eval.py</code></td>
+<td>CLI commands: <code>eval run</code>, <code>eval history</code>, <code>eval setup</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="new-test-files">New test files<a class="headerlink" href="#new-test-files" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Tests</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_models.py</code></td>
+<td>Scenario loading, weight calculation, score aggregation</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_heuristic.py</code></td>
+<td>Each heuristic check with pass/fail examples</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_llm_client.py</code></td>
+<td>Mock HTTP for Ollama + OpenAI-compat</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_llm_judge.py</code></td>
+<td>Prompt construction, JSON parsing, score clamping</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_reporter.py</code></td>
+<td>TSV format, markdown generation</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_orchestrator.py</code></td>
+<td>Loop logic with mock target + judge</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_capture.py</code></td>
+<td>ANSI stripping, baseline diff</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/tests/test_eval_cli.py</code></td>
+<td>CLI invocation via CliRunner</td>
+</tr>
+</tbody>
+</table>
+<h3 id="modified-files">Modified files<a class="headerlink" href="#modified-files" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/test_iterate.py</code></td>
+<td>Thin wrapper calling <code>eval.targets.test_suite</code> + <code>eval.reporter</code></td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/cli/__init__.py</code></td>
+<td>Register <code>eval</code> command group via LazyGroup</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/settings.py</code></td>
+<td>Add <code>EvalConfig</code> dataclass + config loading</td>
+</tr>
+<tr>
+<td><code>packages/studyctl/src/studyctl/doctor/config.py</code></td>
+<td>Add eval provider health check</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="chunk-1-foundation-models-scenarios-git-ops-reporter">Chunk 1: Foundation — Models, Scenarios, Git Ops, Reporter<a class="headerlink" href="#chunk-1-foundation-models-scenarios-git-ops-reporter" title="Permanent link">&para;</a></h2>
+<p>Extract the reusable core that both targets depend on.</p>
+<h3 id="task-1-eval-models-and-scenario-loader">Task 1: Eval models and scenario loader<a class="headerlink" href="#task-1-eval-models-and-scenario-loader" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/__init__.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/models.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/scenarios.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/scenarios/study.yaml</code>
+- Test: <code>packages/studyctl/tests/test_eval_models.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests for models and scenario loading</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># test_eval_models.py</span>
+<span class="sd">&quot;&quot;&quot;Tests for eval models and scenario loading.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TestScenarioLoading</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_load_scenarios_from_yaml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_scenarios</span>
+        <span class="n">yaml_content</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">scenarios:</span>
+<span class="s2">  - id: test-scenario</span>
+<span class="s2">    name: Test Scenario</span>
+<span class="s2">    priority: critical</span>
+<span class="s2">    topic: Python Decorators</span>
+<span class="s2">    energy: 5</span>
+<span class="s2">    elapsed_minutes: 10</span>
+<span class="s2">    prompt: &quot;What is a decorator?&quot;</span>
+<span class="s2">    heuristic_checks:</span>
+<span class="s2">      - contains_question</span>
+<span class="s2">    rubric_weights:</span>
+<span class="s2">      emotional_safety: 2.0</span>
+<span class="s2">&quot;&quot;&quot;</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;test.yaml&quot;</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">yaml_content</span><span class="p">)</span>
+        <span class="n">scenarios</span> <span class="o">=</span> <span class="n">load_scenarios</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">scenarios</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="n">scenarios</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="s2">&quot;test-scenario&quot;</span>
+        <span class="k">assert</span> <span class="n">scenarios</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">energy</span> <span class="o">==</span> <span class="mi">5</span>
+        <span class="k">assert</span> <span class="n">scenarios</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rubric_weights</span><span class="p">[</span><span class="s2">&quot;emotional_safety&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">2.0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_load_missing_file_raises</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_scenarios</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">):</span>
+            <span class="n">load_scenarios</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/nonexistent.yaml&quot;</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_scenario_missing_required_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_scenarios</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;bad.yaml&quot;</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;scenarios:</span><span class="se">\n</span><span class="s2">  - id: no-prompt</span><span class="se">\n</span><span class="s2">    name: Bad</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;prompt&quot;</span><span class="p">):</span>
+            <span class="n">load_scenarios</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TestScoreCalculation</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_weighted_score</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">JudgeResult</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">JudgeResult</span><span class="p">(</span>
+            <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span>
+            <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">dimensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;emotional_safety&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+            <span class="n">weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;emotional_safety&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="c1"># (3*1.0 + 4*2.0) / (4*1.0 + 4*2.0) * 100 = 11/12 * 100 = 91.67</span>
+        <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">weighted_score</span> <span class="o">-</span> <span class="mf">91.67</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.1</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_heuristic_fail_scores_zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">JudgeResult</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">JudgeResult</span><span class="p">(</span>
+            <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span>
+            <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">dimensions</span><span class="o">=</span><span class="p">{},</span>
+            <span class="n">weights</span><span class="o">=</span><span class="p">{},</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">weighted_score</span> <span class="o">==</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_passed_property</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">JudgeResult</span>
+        <span class="n">passing</span> <span class="o">=</span> <span class="n">JudgeResult</span><span class="p">(</span>
+            <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;t&quot;</span><span class="p">,</span> <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">dimensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span> <span class="n">weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="n">passing</span><span class="o">.</span><span class="n">passed</span>  <span class="c1"># 75% &gt;= 70%</span>
+        <span class="n">failing</span> <span class="o">=</span> <span class="n">JudgeResult</span><span class="p">(</span>
+            <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;t&quot;</span><span class="p">,</span> <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">dimensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span> <span class="n">weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">failing</span><span class="o">.</span><span class="n">passed</span>  <span class="c1"># 50% &lt; 70%</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 2: Run tests — verify they fail</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>packages/studyctl/tests/test_eval_models.py<span class="w"> </span>-x<span class="w"> </span>-v
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 3: Implement models.py</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># packages/studyctl/src/studyctl/eval/models.py</span>
+<span class="sd">&quot;&quot;&quot;Data models for the evaluation harness.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="n">PASS_THRESHOLD</span> <span class="o">=</span> <span class="mf">70.0</span>  <span class="c1"># minimum weighted score to pass</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Scenario</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">priority</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># critical, high, normal</span>
+    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">energy</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">elapsed_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">setup_prompts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">heuristic_checks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">rubric_weights</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HeuristicResult</span><span class="p">:</span>
+    <span class="n">passed</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">checks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span>  <span class="c1"># check_name → pass/fail</span>
+    <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>  <span class="c1"># failure reasons</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">JudgeResult</span><span class="p">:</span>
+    <span class="n">scenario_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">heuristic_pass</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">dimensions</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>  <span class="c1"># dimension → 1-4 score</span>
+    <span class="n">weights</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>   <span class="c1"># dimension → weight</span>
+    <span class="n">raw_response</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>      <span class="c1"># LLM judge raw output (for debugging)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">weighted_score</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">heuristic_pass</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">weighted_sum</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span>
+        <span class="p">)</span>
+        <span class="n">max_sum</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mf">4.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">weighted_sum</span> <span class="o">/</span> <span class="n">max_sum</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span> <span class="k">if</span> <span class="n">max_sum</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">passed</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">heuristic_pass</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">weighted_score</span> <span class="o">&gt;=</span> <span class="n">PASS_THRESHOLD</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">timeout</span><span class="p">(</span><span class="n">scenario_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JudgeResult</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">JudgeResult</span><span class="p">(</span>
+            <span class="n">scenario_id</span><span class="o">=</span><span class="n">scenario_id</span><span class="p">,</span>
+            <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">dimensions</span><span class="o">=</span><span class="p">{},</span>
+            <span class="n">weights</span><span class="o">=</span><span class="p">{},</span>
+            <span class="n">raw_response</span><span class="o">=</span><span class="s2">&quot;TIMEOUT&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EvalSummary</span><span class="p">:</span>
+    <span class="n">agent</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">persona_hash</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">commit</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">JudgeResult</span><span class="p">]</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">avg_score</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">weighted_score</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span> <span class="k">if</span> <span class="n">scores</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">all_passed</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">passed</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 4: Implement scenarios.py</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># packages/studyctl/src/studyctl/eval/scenarios.py</span>
+<span class="sd">&quot;&quot;&quot;Load and validate YAML scenario definitions.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scenario</span>
+
+<span class="n">REQUIRED_FIELDS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;topic&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">,</span> <span class="s2">&quot;prompt&quot;</span><span class="p">}</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_scenarios</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Scenario</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Scenario file not found: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scenarios&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="n">scenarios</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="n">REQUIRED_FIELDS</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Scenario &#39;</span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;?&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; missing fields: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Scenario</span><span class="p">(</span>
+            <span class="nb">id</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+            <span class="n">priority</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;priority&quot;</span><span class="p">,</span> <span class="s2">&quot;normal&quot;</span><span class="p">),</span>
+            <span class="n">topic</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;topic&quot;</span><span class="p">],</span>
+            <span class="n">energy</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;energy&quot;</span><span class="p">],</span>
+            <span class="n">prompt</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;prompt&quot;</span><span class="p">],</span>
+            <span class="n">elapsed_minutes</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;elapsed_minutes&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+            <span class="n">setup_prompts</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;setup_prompts&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+            <span class="n">heuristic_checks</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;heuristic_checks&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+            <span class="n">rubric_weights</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rubric_weights&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+        <span class="p">))</span>
+    <span class="k">return</span> <span class="n">scenarios</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">builtin_scenarios_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;scenarios&quot;</span> <span class="o">/</span> <span class="s2">&quot;study.yaml&quot;</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 5: Create <code>__init__.py</code> and study.yaml</strong></li>
+</ul>
+<p>Create empty <code>packages/studyctl/src/studyctl/eval/__init__.py</code>.</p>
+<p>Create <code>packages/studyctl/src/studyctl/eval/scenarios/study.yaml</code> with all 7 scenarios from the spec (confused-student, parking-lot, hyperfocus, win-recognition, wrong-answer, low-energy, deep-dive).</p>
+<ul>
+<li>[ ] <strong>Step 6: Run tests — verify they pass</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>packages/studyctl/tests/test_eval_models.py<span class="w"> </span>-x<span class="w"> </span>-v
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 7: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>packages/studyctl/src/studyctl/eval/<span class="w"> </span>packages/studyctl/tests/test_eval_models.py
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): models, scenario loader, and study.yaml scenarios&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-2-git-ops-and-reporter">Task 2: Git ops and reporter<a class="headerlink" href="#task-2-git-ops-and-reporter" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/git_ops.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/reporter.py</code>
+- Test: <code>packages/studyctl/tests/test_eval_reporter.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># test_eval_reporter.py</span>
+<span class="sd">&quot;&quot;&quot;Tests for eval reporter — TSV logging and markdown generation.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TestGitOps</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_short_hash_returns_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.git_ops</span><span class="w"> </span><span class="kn">import</span> <span class="n">short_hash</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">short_hash</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">==</span> <span class="mi">7</span> <span class="ow">or</span> <span class="n">h</span> <span class="o">==</span> <span class="s2">&quot;unknown&quot;</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TestTSVReporter</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_writes_header_on_first_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.reporter</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSVReporter</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">JudgeResult</span><span class="p">,</span> <span class="n">EvalSummary</span>
+        <span class="n">tsv</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;eval-results.tsv&quot;</span>
+        <span class="n">reporter</span> <span class="o">=</span> <span class="n">TSVReporter</span><span class="p">(</span><span class="n">tsv</span><span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">EvalSummary</span><span class="p">(</span>
+            <span class="n">agent</span><span class="o">=</span><span class="s2">&quot;claude&quot;</span><span class="p">,</span> <span class="n">persona_hash</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span> <span class="n">commit</span><span class="o">=</span><span class="s2">&quot;1234567&quot;</span><span class="p">,</span>
+            <span class="n">results</span><span class="o">=</span><span class="p">[</span>
+                <span class="n">JudgeResult</span><span class="p">(</span>
+                    <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">dimensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span> <span class="n">weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+                <span class="p">),</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">reporter</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">tsv</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="s2">&quot;scenario_id&quot;</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># header</span>
+        <span class="k">assert</span> <span class="s2">&quot;test&quot;</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>         <span class="c1"># data row</span>
+        <span class="k">assert</span> <span class="s2">&quot;claude&quot;</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_appends_without_duplicating_header</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.reporter</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSVReporter</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">JudgeResult</span><span class="p">,</span> <span class="n">EvalSummary</span>
+        <span class="n">tsv</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;eval-results.tsv&quot;</span>
+        <span class="n">reporter</span> <span class="o">=</span> <span class="n">TSVReporter</span><span class="p">(</span><span class="n">tsv</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">JudgeResult</span><span class="p">(</span>
+            <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;t&quot;</span><span class="p">,</span> <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">dimensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span> <span class="n">weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+            <span class="n">reporter</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="n">EvalSummary</span><span class="p">(</span>
+                <span class="n">agent</span><span class="o">=</span><span class="s2">&quot;claude&quot;</span><span class="p">,</span> <span class="n">persona_hash</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">commit</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">results</span><span class="o">=</span><span class="p">[</span><span class="n">result</span><span class="p">],</span>
+            <span class="p">))</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">tsv</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+        <span class="n">header_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span> <span class="k">if</span> <span class="s2">&quot;scenario_id&quot;</span> <span class="ow">in</span> <span class="n">l</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">header_count</span> <span class="o">==</span> <span class="mi">1</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TestMarkdownReport</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_report_contains_scenario_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.reporter</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSVReporter</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">JudgeResult</span><span class="p">,</span> <span class="n">EvalSummary</span>
+        <span class="n">reporter</span> <span class="o">=</span> <span class="n">TSVReporter</span><span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;r.tsv&quot;</span><span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">EvalSummary</span><span class="p">(</span>
+            <span class="n">agent</span><span class="o">=</span><span class="s2">&quot;claude&quot;</span><span class="p">,</span> <span class="n">persona_hash</span><span class="o">=</span><span class="s2">&quot;abc&quot;</span><span class="p">,</span> <span class="n">commit</span><span class="o">=</span><span class="s2">&quot;1234567&quot;</span><span class="p">,</span>
+            <span class="n">results</span><span class="o">=</span><span class="p">[</span>
+                <span class="n">JudgeResult</span><span class="p">(</span>
+                    <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;confused-student&quot;</span><span class="p">,</span> <span class="n">heuristic_pass</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">dimensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;emotional_safety&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+                    <span class="n">weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;clarity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;emotional_safety&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+                <span class="p">),</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">md</span> <span class="o">=</span> <span class="n">reporter</span><span class="o">.</span><span class="n">generate_markdown</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s2">&quot;confused-student&quot;</span> <span class="ow">in</span> <span class="n">md</span>
+        <span class="k">assert</span> <span class="s2">&quot;claude&quot;</span> <span class="ow">in</span> <span class="n">md</span>
+</code></pre></div>
+<ul>
+<li>
+<p>[ ] <strong>Step 2: Run tests — verify they fail</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 3: Implement git_ops.py</strong></p>
+</li>
+</ul>
+<p>Extract <code>git_is_clean()</code> and <code>git_short_hash()</code> from <code>scripts/test_iterate.py</code> into <code>eval/git_ops.py</code>. Same logic, just relocated. Add <code>abort_if_dirty()</code> that raises <code>click.ClickException</code>.</p>
+<ul>
+<li>[ ] <strong>Step 4: Implement reporter.py</strong></li>
+</ul>
+<p><code>TSVReporter</code> class with <code>record(summary)</code> and <code>generate_markdown(summary)</code>. TSV format matches spec: one row per scenario per run.</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 5: Run tests — verify they pass</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 6: Commit</strong></p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): git_ops and TSV/markdown reporter&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="chunk-2-heuristic-judge-llm-client-llm-judge">Chunk 2: Heuristic Judge + LLM Client + LLM Judge<a class="headerlink" href="#chunk-2-heuristic-judge-llm-client-llm-judge" title="Permanent link">&para;</a></h2>
+<h3 id="task-3-heuristic-judge">Task 3: Heuristic judge<a class="headerlink" href="#task-3-heuristic-judge" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/judge/__init__.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/judge/base.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/judge/heuristic.py</code>
+- Test: <code>packages/studyctl/tests/test_eval_heuristic.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests for each heuristic check</strong></li>
+</ul>
+<p>Test cases per check:
+- <code>contains_question</code>: "What do you think?" → pass; "Decorators wrap functions." → fail
+- <code>no_rsd_triggers</code>: "Let's break this down" → pass; "It's easy, just do X" → fail
+- <code>references_topic</code>: (topic="decorators") "The decorator pattern..." → pass; "Functions are great" → fail
+- <code>suggests_break</code>: "Maybe take a quick break?" → pass; "Let's keep going" → fail
+- <code>contains_positive_recognition</code>: "That connection you made is exactly right" → pass; "OK" → fail
+- <code>recognition_is_specific</code>: "Your logging wrapper was a decorator" → pass; "Good job!" → fail</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 2: Run tests — verify they fail</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 3: Implement heuristic.py</strong></p>
+</li>
+</ul>
+<p>Registry of check functions: <code>CHECKS: dict[str, Callable[[str, Scenario], bool]]</code>. Each check is a pure function taking <code>(response_text, scenario)</code> and returning <code>bool</code>. <code>run_heuristics(response, scenario)</code> returns <code>HeuristicResult</code>.</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 4: Implement base.py</strong> (Judge Protocol)</p>
+</li>
+<li>
+<p>[ ] <strong>Step 5: Run tests — verify they pass</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 6: Commit</strong></p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): heuristic judge with 6 structural checks&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-4-llm-client-ollama-openai-compat">Task 4: LLM client (Ollama + OpenAI-compat)<a class="headerlink" href="#task-4-llm-client-ollama-openai-compat" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/llm_client.py</code>
+- Test: <code>packages/studyctl/tests/test_eval_llm_client.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests</strong></li>
+</ul>
+<p>Test cases:
+- <code>test_ollama_chat_success</code>: mock <code>POST /api/chat</code> → returns <code>{"message": {"content": "OK"}}</code>
+- <code>test_openai_chat_success</code>: mock <code>POST /v1/chat/completions</code> → returns standard OpenAI shape
+- <code>test_ollama_connection_error</code>: mock connection refused → raises <code>LLMClientError</code>
+- <code>test_retry_on_429</code>: first call returns 429, second succeeds
+- <code>test_timeout</code>: mock slow response → raises <code>LLMClientError</code>
+- <code>test_api_key_passed_in_header</code>: verify <code>Authorization: Bearer {key}</code> for OpenAI-compat</p>
+<p>Use <code>unittest.mock.patch("urllib.request.urlopen")</code> for all HTTP mocking.</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 2: Run tests — verify they fail</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 3: Implement llm_client.py</strong></p>
+</li>
+</ul>
+<p><code>LLMClient</code> class with <code>chat(messages, temperature)</code>. Two code paths: Ollama (<code>/api/chat</code>) and OpenAI-compat (<code>/v1/chat/completions</code>). Retry once on 429/503 with 5s backoff. 30s timeout. <code>LLMClientError</code> exception class.</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 4: Run tests — verify they pass</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 5: Commit</strong></p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): LLM client for Ollama + OpenAI-compat&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-5-llm-judge">Task 5: LLM judge<a class="headerlink" href="#task-5-llm-judge" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/judge/llm.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/prompts/judge-rubric.md</code>
+- Test: <code>packages/studyctl/tests/test_eval_llm_judge.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests</strong></li>
+</ul>
+<p>Test cases:
+- <code>test_builds_prompt_with_scenario_context</code>: verify rubric template is filled with scenario fields
+- <code>test_parses_valid_json_scores</code>: mock LLM returns <code>{"clarity": 3, ...}</code> → parsed correctly
+- <code>test_clamps_out_of_range_scores</code>: <code>{"clarity": 5}</code> → clamped to 4; <code>{"clarity": 0}</code> → clamped to 1
+- <code>test_malformed_json_returns_zero_scores</code>: LLM returns garbage → <code>JudgeResult</code> with <code>heuristic_pass=True</code> but all dimensions score 1
+- <code>test_heuristic_fail_skips_llm_call</code>: if heuristic fails, LLM <code>chat()</code> is never called</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 2: Run tests — verify they fail</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 3: Create judge-rubric.md prompt template</strong></p>
+</li>
+</ul>
+<p>Copy from spec (the full template with <code>{{scenario_name}}</code>, <code>{{energy}}</code>, etc. placeholders).</p>
+<ul>
+<li>[ ] <strong>Step 4: Implement llm.py</strong></li>
+</ul>
+<p><code>LLMJudge</code> class implementing <code>Judge</code> protocol. <code>score(scenario, response)</code>:
+1. Run heuristic checks first
+2. If heuristics fail → return zero-score <code>JudgeResult</code>
+3. Build prompt from template + scenario context
+4. Call <code>llm_client.chat()</code>
+5. Parse JSON response, clamp scores to 1-4
+6. Return <code>JudgeResult</code></p>
+<ul>
+<li>
+<p>[ ] <strong>Step 5: Run tests — verify they pass</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 6: Commit</strong></p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): LLM judge with rubric prompt and JSON score parsing&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="chunk-3-persona-target-capture-orchestrator">Chunk 3: Persona Target + Capture + Orchestrator<a class="headerlink" href="#chunk-3-persona-target-capture-orchestrator" title="Permanent link">&para;</a></h2>
+<h3 id="task-6-response-capture-tmux-interaction">Task 6: Response capture (tmux interaction)<a class="headerlink" href="#task-6-response-capture-tmux-interaction" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/capture.py</code>
+- Test: <code>packages/studyctl/tests/test_eval_capture.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests</strong></li>
+</ul>
+<p>Test cases:
+- <code>test_strip_ansi_codes</code>: input with <code>\x1b[32m</code> → stripped
+- <code>test_extract_new_content</code>: baseline="Hello\n", full="Hello\nResponse\n" → "Response"
+- <code>test_empty_response_returns_empty</code>: baseline == full → ""
+- <code>test_capture_pane_plain_calls_tmux</code>: mock <code>subprocess.run</code> with <code>capture-pane</code> args</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 2: Run tests — verify they fail</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 3: Implement capture.py</strong></p>
+</li>
+</ul>
+<p><code>strip_ansi(text)</code>, <code>capture_pane_plain(session_name)</code>, <code>capture_response(session_name, prompt_text, timeout)</code> — all functions from the spec's capture strategy section.</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 4: Run tests — verify they pass</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 5: Commit</strong></p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): tmux pane capture with ANSI stripping&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-7-persona-eval-target">Task 7: Persona eval target<a class="headerlink" href="#task-7-persona-eval-target" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/targets/__init__.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/targets/base.py</code>
+- Create: <code>packages/studyctl/src/studyctl/eval/targets/persona.py</code>
+- Test: <code>packages/studyctl/tests/test_eval_persona_target.py</code> (integration, marked <code>@pytest.mark.integration</code>)</p>
+<ul>
+<li>[ ] <strong>Step 1: Implement base.py (EvalTarget Protocol)</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Protocol</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">studyctl.eval.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scenario</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">EvalTarget</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario</span><span class="p">:</span> <span class="n">Scenario</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario</span><span class="p">:</span> <span class="n">Scenario</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 2: Implement persona.py</strong></li>
+</ul>
+<p><code>PersonaTarget</code> class:
+- <code>setup(scenario)</code>: start session via subprocess (<code>studyctl study start {topic} --energy {energy} --agent {agent}</code>), poll <code>session-state.json</code>, inject <code>elapsed_minutes</code> via <code>write_session_state()</code>
+- <code>run(scenario)</code>: send <code>setup_prompts</code> via <code>tmux send-keys</code> with delays, send <code>prompt</code>, call <code>capture_response()</code>, return response text
+- <code>teardown()</code>: run <code>studyctl study --end</code>, verify session ended</p>
+<ul>
+<li>[ ] <strong>Step 3: Write integration test (mock agent)</strong></li>
+</ul>
+<p>Test with <code>STUDYCTL_TEST_AGENT_CMD</code> set to a script that echoes a fixed response when it receives input. Verify the target starts a session, sends a prompt, and captures the response.</p>
+<p>Mark as <code>@pytest.mark.integration</code> (excluded from CI fast path).</p>
+<ul>
+<li>[ ] <strong>Step 4: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): persona eval target with tmux session management&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-8-test-suite-target-refactor-existing">Task 8: Test suite target (refactor existing)<a class="headerlink" href="#task-8-test-suite-target-refactor-existing" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/targets/test_suite.py</code>
+- Modify: <code>scripts/test_iterate.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Extract test runner logic into test_suite.py</strong></li>
+</ul>
+<p>Move <code>run_tests()</code>, <code>parse_junit_xml()</code>, <code>build_iteration_result()</code> from <code>scripts/test_iterate.py</code> into <code>eval/targets/test_suite.py</code>. These become methods on a <code>TestSuiteTarget</code> class (though this target uses a different interface than <code>EvalTarget</code> — it runs pytest, not scenarios).</p>
+<ul>
+<li>[ ] <strong>Step 2: Extract reporter logic</strong></li>
+</ul>
+<p>Move <code>log_result()</code>, <code>generate_report()</code>, <code>show_progress()</code>, <code>_read_source_context()</code> into <code>eval/reporter.py</code> as a <code>TestSuiteReporter</code> class (separate from <code>TSVReporter</code> — different TSV schema).</p>
+<ul>
+<li>[ ] <strong>Step 3: Slim down test_iterate.py</strong></li>
+</ul>
+<p>Replace the monolithic script with thin wrappers calling the extracted modules. The script's CLI interface (<code>--max-iterations</code>, <code>--agent</code>, <code>--report</code>, <code>--progress</code>) remains identical.</p>
+<ul>
+<li>[ ] <strong>Step 4: Verify existing behaviour preserved</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/test_iterate.py<span class="w"> </span>--progress
+<span class="c1"># Should display existing results.tsv history unchanged</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;refactor(eval): extract test_iterate.py into eval/ modules&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-9-orchestrator">Task 9: Orchestrator<a class="headerlink" href="#task-9-orchestrator" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/eval/orchestrator.py</code>
+- Test: <code>packages/studyctl/tests/test_eval_orchestrator.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests</strong></li>
+</ul>
+<p>Test cases (all use mock target + mock judge):
+- <code>test_runs_all_scenarios_with_setup_teardown</code>: verify setup/teardown called per scenario
+- <code>test_heuristic_failure_skips_llm</code>: scenario fails heuristic → judge.score still returns result but with heuristic_pass=False
+- <code>test_timeout_recorded</code>: target.run raises EvalTimeout → recorded as timeout result
+- <code>test_summary_contains_all_results</code>: 3 scenarios → summary has 3 results
+- <code>test_reporter_called_with_summary</code>: verify reporter.record() called once</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 2: Run tests — verify they fail</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 3: Implement orchestrator.py</strong></p>
+</li>
+</ul>
+<p><code>run_evaluation(target, judge, scenarios, reporter, agent)</code> function matching the spec's orchestrator loop.</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 4: Run tests — verify they pass</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 5: Commit</strong></p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): orchestrator loop with per-scenario isolation&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="chunk-4-cli-config-doctor-integration">Chunk 4: CLI, Config, Doctor Integration<a class="headerlink" href="#chunk-4-cli-config-doctor-integration" title="Permanent link">&para;</a></h2>
+<h3 id="task-10-config-schema">Task 10: Config schema<a class="headerlink" href="#task-10-config-schema" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Modify: <code>packages/studyctl/src/studyctl/settings.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Add EvalConfig dataclass</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EvalJudgeConfig</span><span class="p">:</span>
+    <span class="n">provider</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ollama&quot;</span>
+    <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:11434&quot;</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gemma4:26b&quot;</span>
+    <span class="n">api_key_env</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EvalConfig</span><span class="p">:</span>
+    <span class="n">judge</span><span class="p">:</span> <span class="n">EvalJudgeConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">EvalJudgeConfig</span><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 2: Wire into Settings and config loading</strong></li>
+</ul>
+<p>Add <code>eval: EvalConfig</code> to <code>Settings</code> dataclass. Load from <code>config.yaml</code> <code>eval:</code> section.</p>
+<ul>
+<li>[ ] <strong>Step 3: Add to CONFIG_TEMPLATE</strong></li>
+</ul>
+<p>Add commented-out <code>eval:</code> block to the config template string.</p>
+<ul>
+<li>[ ] <strong>Step 4: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): config schema for judge provider settings&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-11-cli-commands">Task 11: CLI commands<a class="headerlink" href="#task-11-cli-commands" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Create: <code>packages/studyctl/src/studyctl/cli/_eval.py</code>
+- Modify: <code>packages/studyctl/src/studyctl/cli/__init__.py</code>
+- Test: <code>packages/studyctl/tests/test_eval_cli.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write failing tests</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># test_eval_cli.py — CliRunner tests</span>
+<span class="c1"># test_eval_setup_detects_no_ollama: mock HTTP failure → prints &quot;Ollama not running&quot;</span>
+<span class="c1"># test_eval_setup_recommends_model: mock RAM detection → prints model recommendation</span>
+<span class="c1"># test_eval_history_no_data: no TSV file → &quot;No evaluation history&quot;</span>
+<span class="c1"># test_eval_run_missing_scenarios: bad --scenarios path → error</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 2: Implement _eval.py</strong></li>
+</ul>
+<p><code>eval_group</code> Click group with three commands:
+- <code>eval setup</code> — hardware detection, Ollama check, model recommendation, config YAML output
+- <code>eval run --scenarios YAML [--agent NAME]</code> — load scenarios, create target + judge, call orchestrator
+- <code>eval history</code> — read <code>eval-results.tsv</code>, display table</p>
+<ul>
+<li>[ ] <strong>Step 3: Register in CLI LazyGroup</strong></li>
+</ul>
+<p>Add <code>"eval": "studyctl.cli._eval:eval_group"</code> to the LazyGroup in <code>cli/__init__.py</code>.</p>
+<ul>
+<li>
+<p>[ ] <strong>Step 4: Run tests — verify they pass</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 5: Commit</strong></p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): CLI commands — eval run, eval history, eval setup&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-12-doctor-integration">Task 12: Doctor integration<a class="headerlink" href="#task-12-doctor-integration" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong>
+- Modify: <code>packages/studyctl/src/studyctl/doctor/models.py</code>
+- Modify: <code>packages/studyctl/src/studyctl/doctor/config.py</code></p>
+<ul>
+<li>
+<p>[ ] <strong>Step 1: Add "eval" to VALID_CATEGORIES</strong></p>
+</li>
+<li>
+<p>[ ] <strong>Step 2: Add eval provider check</strong></p>
+</li>
+</ul>
+<p>Check if <code>eval.judge.provider == "ollama"</code> → verify Ollama is reachable. Check if configured model is available. Report as info/warn (not fail — eval is optional).</p>
+<ul>
+<li>[ ] <strong>Step 3: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(eval): doctor integration for eval provider health&quot;</span>
+</code></pre></div>
+<hr />
+<h3 id="task-13-full-integration-test">Task 13: Full integration test<a class="headerlink" href="#task-13-full-integration-test" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] <strong>Step 1: Run entire non-E2E test suite</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>packages/studyctl/tests/<span class="w"> </span>-x<span class="w"> </span>--ignore<span class="o">=</span>packages/studyctl/tests/test_web_sidebar.py<span class="w"> </span>--ignore<span class="o">=</span>packages/studyctl/tests/test_harness_matrix.py<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not integration and not e2e&quot;</span><span class="w"> </span>-q
+</code></pre></div>
+<p>Verify all tests pass including all new eval tests.</p>
+<ul>
+<li>[ ] <strong>Step 2: Run CLI smoke test</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>studyctl<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>setup
+uv<span class="w"> </span>run<span class="w"> </span>studyctl<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="nb">history</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 3: Commit all remaining changes</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;test(eval): integration verification — all tests passing&quot;</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
