@@ -49,6 +49,7 @@ ONELINE_FILE = CONFIG_DIR / "session-oneline.txt"
 
 pytestmark = [
     pytest.mark.skipif(not shutil.which("tmux"), reason="tmux not installed"),
+    pytest.mark.integration,
     pytest.mark.e2e,
 ]
 

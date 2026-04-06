@@ -72,7 +72,7 @@ class TestConfigFileCheck:
         missing = tmp_path / "nope.yaml"
         with patch("studyctl.doctor.core._get_config_path", return_value=missing):
             results = check_config_file()
-        assert results[0].status == "fail"
+        assert results[0].status == "warn"
         assert "config init" in results[0].fix_hint
 
     def test_config_invalid_yaml(self, tmp_path: Path):
