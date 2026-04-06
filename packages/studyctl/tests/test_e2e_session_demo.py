@@ -333,8 +333,9 @@ class TestE2ESessionDemo:
         assert energy_el.is_visible()
         assert "7/10" in energy_el.text_content()
 
-        # Timer is running (not idle)
-        timer_el = page.locator(".timer-time")
+        # Timer is running (not idle) — use .first because both the study-session
+        # and body-double panels have .timer-time (only one visible at a time)
+        timer_el = page.locator(".timer-time").first
         assert timer_el.is_visible()
         time_text = timer_el.text_content()
         assert ":" in time_text  # MM:SS format
@@ -402,8 +403,9 @@ class TestE2ESessionDemo:
         page.wait_for_load_state("load")
         page.wait_for_timeout(3000)
 
-        # Click pop-out
-        popout_btn = page.locator("button[title='Open in new window']")
+        # Click pop-out — use .first because the button exists in both the
+        # study-session and body-double panels (only one visible at a time)
+        popout_btn = page.locator("button[title='Open in new window']").first
         with context.expect_page() as new_page_info:
             popout_btn.click()
         new_page = new_page_info.value
