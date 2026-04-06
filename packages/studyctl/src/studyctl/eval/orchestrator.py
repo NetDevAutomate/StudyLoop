@@ -42,6 +42,8 @@ def run_evaluation(
         try:
             target.setup(scenario)
             response = target.run(scenario)
+            if response:
+                logger.info("  Agent response (%d chars): %s", len(response), response[:300])
             score = judge.score(scenario, response)
         except EvalTimeout:
             logger.warning("Scenario %s timed out", scenario.id)
@@ -62,6 +64,13 @@ def run_evaluation(
             score.weighted_score,
             "PASS" if score.passed else "FAIL",
         )
+        # Log dimensions and feedback for visibility
+        if score.dimensions:
+            dims = "  ".join(f"{k}={v}" for k, v in score.dimensions.items())
+            logger.info("  Dimensions: %s", dims)
+        if score.feedback:
+            for fb in score.feedback:
+                logger.info("  Feedback: %s", fb)
 
         # Capture persona_hash from target if available (set during setup)
         if not persona_hash:

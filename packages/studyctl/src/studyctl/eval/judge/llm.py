@@ -50,12 +50,13 @@ class LLMJudge:
         # 2. Build prompt from template
         prompt = self._build_prompt(scenario, response)
 
-        # 3. Call LLM
+        # 3. Call LLM judge
         try:
             raw = self.client.chat(
                 [{"role": "user", "content": prompt}],
                 temperature=0.1,
             )
+            logger.info("Judge raw response: %s", raw[:500])
         except LLMClientError as exc:
             logger.warning("LLM call failed for scenario %s: %s", scenario.id, exc)
             return JudgeResult(
