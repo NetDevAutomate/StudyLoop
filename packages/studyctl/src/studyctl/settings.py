@@ -125,24 +125,6 @@ class AgentsConfig:
 
 
 @dataclass
-class EvalJudgeConfig:
-    """Configuration for the evaluation judge LLM."""
-
-    provider: str = "ollama"  # "ollama" | "openai-compat" | "bedrock"
-    base_url: str = "http://localhost:11434"
-    model: str = "gemma4:26b"
-    api_key_env: str = ""  # env var name containing the API key
-    region: str = "us-west-2"  # AWS region for bedrock provider
-
-
-@dataclass
-class EvalConfig:
-    """Configuration for the persona evaluation harness."""
-
-    judge: EvalJudgeConfig = field(default_factory=EvalJudgeConfig)
-
-
-@dataclass
 class Settings:
     """Application settings loaded from config file."""
 
@@ -158,7 +140,6 @@ class Settings:
     notebooklm: NotebookLMConfig = field(default_factory=NotebookLMConfig)
     content: ContentConfig = field(default_factory=ContentConfig)
     agents: AgentsConfig = field(default_factory=AgentsConfig)
-    eval: EvalConfig = field(default_factory=EvalConfig)
     ttyd_port: int = 7681
     web_port: int = 8567
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
@@ -250,19 +231,6 @@ def load_settings() -> Settings:
             inter_episode_gap=ct.get("inter_episode_gap", 30),
             default_types=ct.get("default_types", ["audio"]),
             pandoc_path=ct.get("pandoc_path", "pandoc"),
-        )
-
-    # Eval harness configuration
-    ev = raw.get("eval", {})
-    if ev:
-        judge_raw = ev.get("judge", {})
-        settings.eval = EvalConfig(
-            judge=EvalJudgeConfig(
-                provider=judge_raw.get("provider", "ollama"),
-                base_url=judge_raw.get("base_url", "http://localhost:11434"),
-                model=judge_raw.get("model", "gemma4:26b"),
-                api_key_env=judge_raw.get("api_key_env", ""),
-            ),
         )
 
     # Web/ttyd configuration
