@@ -14,6 +14,7 @@ Run with:
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -92,6 +93,10 @@ class TestResumeViaTerminal:
         assert terminal.session_exists(), "Resumed session should exist"
 
 
+@pytest.mark.skipif(
+    os.environ.get("CI") == "true",
+    reason="Nested tmux requires a real pty (CI runners lack one)",
+)
 class TestNestedTmux:
     """Task 5: Verify studyctl study works when called from inside tmux.
 

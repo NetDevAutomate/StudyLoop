@@ -653,6 +653,8 @@ class TestErrorHandling:
         result = _studyctl(
             "study",
             "Another Topic",
+            "--agent",
+            "claude",
             env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
         )
         assert "already active" in result.stdout
