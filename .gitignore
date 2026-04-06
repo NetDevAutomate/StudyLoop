@@ -496,6 +496,10 @@ uv-*.lock
 
 # Iterate runner artefacts (autoresearch pattern — kept untracked)
 results.tsv
+eval-results.tsv
 .pytest-junit.xml
 docs/reports/
 docs/brainstorms/
+
+# Dev-only tooling (autoresearch eval harness — not shipped to users)
+dev/
