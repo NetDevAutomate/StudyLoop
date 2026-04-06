@@ -20,7 +20,6 @@ def _get_registry():
         check_local_llm_servers,
     )
     from studyctl.doctor.config import (
-        check_eval_provider,
         check_obsidian_vault,
         check_pandoc,
         check_review_directories,
@@ -54,7 +53,6 @@ def _get_registry():
     registry.register("agents")(check_agent_smoke_tests)
     registry.register("agents")(check_local_llm_servers)
     registry.register("updates")(check_pypi_versions)
-    registry.register("eval")(check_eval_provider)
     return registry
 
 

@@ -5,9 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 VALID_STATUSES = frozenset({"pass", "warn", "fail", "info"})
-VALID_CATEGORIES = frozenset(
-    {"core", "database", "config", "agents", "deps", "voice", "updates", "eval"}
-)
+VALID_CATEGORIES = frozenset({"core", "database", "config", "agents", "deps", "voice", "updates"})
 
 
 @dataclass(frozen=True, slots=True)
