@@ -377,7 +377,9 @@ class TestRealTtyd:
         assert iframe_locator.is_visible()
 
         # Access the iframe's content via frame_locator — now proxied via /terminal/
-        frame = page.frame_locator(".terminal-iframe")
+        # Use .first because the terminal iframe exists in both the study-session
+        # and body-double panels (only one is visible at a time via Alpine.js)
+        frame = page.frame_locator(".terminal-iframe").first
 
         # ttyd renders a terminal element — wait for it
         xterm = frame.locator(".xterm")
