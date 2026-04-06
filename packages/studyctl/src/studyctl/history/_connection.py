@@ -36,7 +36,12 @@ def _connect():
 
     if is_new:
         try:
+            from agent_session_tools.export_sessions import SCHEMA_FILE
             from agent_session_tools.migrations import migrate
+
+            # Apply base schema first — migrations assume tables exist
+            with open(SCHEMA_FILE) as f:
+                conn.executescript(f.read())
 
             migrate(conn)
             logger.info("Created sessions DB at %s", db)
