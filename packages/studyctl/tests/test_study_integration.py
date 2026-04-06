@@ -235,13 +235,21 @@ def _start_session(
     env_overrides = {
         "STUDYCTL_TEST_AGENT_CMD": f"bash {agent_script} {{persona_file}}",
     }
-    args = ["study", topic, "--energy", str(energy)]
+    args = ["study", topic, "--energy", str(energy), "--agent", "claude"]
     if extra_args:
         args.extend(extra_args)
 
-    _studyctl(*args, env_overrides=env_overrides)
+    result = _studyctl(*args, env_overrides=env_overrides)
 
-    _wait_for(STATE_FILE.exists, desc="session-state.json created")
+    _wait_for(
+        STATE_FILE.exists,
+        desc=(
+            f"session-state.json created"
+            f" (exit={result.returncode},"
+            f" stdout={result.stdout[-200:]!r},"
+            f" stderr={result.stderr[-200:]!r})"
+        ),
+    )
     state = _read_state()
     session_name = state.get("tmux_session", "")
     _wait_for(lambda: _session_exists(session_name), desc=f"tmux session {session_name}")

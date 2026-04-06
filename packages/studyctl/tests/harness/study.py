@@ -110,7 +110,7 @@ class StudySession:
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
 
-        subprocess.run(
+        result = subprocess.run(
             [
                 sys.executable,
                 "-m",
@@ -136,7 +136,12 @@ class StudySession:
         self.tmux.wait_for(
             lambda: self.state.get("study_session_id") is not None,
             timeout=10,
-            msg="session state file not written",
+            msg=(
+                f"session state file not written"
+                f" (exit={result.returncode},"
+                f" stdout={result.stdout[-200:]!r},"
+                f" stderr={result.stderr[-200:]!r})"
+            ),
         )
 
         state = self.state

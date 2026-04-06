@@ -75,7 +75,16 @@ class TerminalSession:
             import time
 
             time.sleep(0.5)
-        raise TimeoutError("Session state file not created after spawn")
+
+        # Capture child output for diagnostics
+        child_output = ""
+        if self._child:
+            before = self._child.before if isinstance(self._child.before, str) else ""
+            after = self._child.after if isinstance(self._child.after, str) else ""
+            child_output = before + after
+        raise TimeoutError(
+            f"Session state file not created after spawn (child output: {child_output[-300:]!r})"
+        )
 
     def attach_and_send_q(self, *, timeout: int = 15) -> bool:
         """Attach to the tmux session and send Q to the sidebar pane.

@@ -99,7 +99,7 @@ def check_config_file() -> list[CheckResult]:
             CheckResult(
                 "core",
                 "config_file",
-                "fail",
+                "warn",
                 f"Config not found: {config_path}",
                 "studyctl config init",
                 fix_auto=True,
