@@ -9,7 +9,7 @@
          <lastmod>2026-04-08</lastmod>
     </url>
     <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/architecture-c4.html</loc>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/artefacts.html</loc>
          <lastmod>2026-04-08</lastmod>
     </url>
     <url>
@@ -21,11 +21,11 @@
          <lastmod>2026-04-08</lastmod>
     </url>
     <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/autoresearch-guide.html</loc>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/cli-reference.html</loc>
          <lastmod>2026-04-08</lastmod>
     </url>
     <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/cli-reference.html</loc>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/codebase-review-2026-04-08.html</loc>
          <lastmod>2026-04-08</lastmod>
     </url>
     <url>
@@ -42,6 +42,10 @@
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/network-bridges.html</loc>
+         <lastmod>2026-04-08</lastmod>
+    </url>
+    <url>
+         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/remediation-log-2026-04-08.html</loc>
          <lastmod>2026-04-08</lastmod>
     </url>
     <url>
@@ -74,38 +78,6 @@
     </url>
     <url>
          <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/web-ui-guide.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-04-05-persona-eval-implementation-plan.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-04-05-persona-optimisation-tier2-design.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-04-06-feat-autoresearch-persona-optimizer-loop-plan.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/plans/2026-04-06-session-handoff.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/integration-issues/web-ui-four-bug-fix-pomodoro-auth-ttyd-cleanup.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/test-failures/ci-workflow-failures-schema-init-pytest-markers.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/ui-bugs/split-pane-resize-layered-css-flex-fix.html</loc>
-         <lastmod>2026-04-08</lastmod>
-    </url>
-    <url>
-         <loc>https://netdevautomate.github.io/Socratic-Study-Mentor/superpowers/specs/2026-04-07-data-driven-split-pane-tests-design.html</loc>
          <lastmod>2026-04-08</lastmod>
     </url>
 </urlset>
