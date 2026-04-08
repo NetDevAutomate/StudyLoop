@@ -132,6 +132,7 @@ class AgentsConfig:
             base_url="http://localhost:1234",
         )
     )
+    custom: dict[str, dict] = field(default_factory=dict)
 
 
 @dataclass
@@ -231,6 +232,7 @@ def load_settings() -> Settings:
                 model=lmstudio_raw.get("model", "qwen3-coder"),
                 base_url=lmstudio_raw.get("base_url", "http://localhost:1234"),
             ),
+            custom=ag.get("custom", {}),
         )
 
     # Pomodoro timer configuration
