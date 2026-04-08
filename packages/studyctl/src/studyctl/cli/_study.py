@@ -616,7 +616,7 @@ def _handle_start(
         start_web_background(session_name, lan=lan, password=lan_password)
 
     # Start ttyd if installed (allows iPad/LAN terminal access)
-    start_ttyd_background(session_name, lan=lan)
+    start_ttyd_background(session_name, lan=lan, username=lan_username, password=lan_password)
 
     # Persist LAN info to session state so it's visible after os.execvp
     if lan:

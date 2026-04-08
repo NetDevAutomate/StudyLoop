@@ -140,11 +140,12 @@ def end_session_common(
         oneline.unlink()
 
     # Kill background processes (web dashboard, ttyd).
-    # Verify PID identity before killing to guard against PID recycling:
-    # if the process exited and its PID was reused by an unrelated process,
-    # we'd kill the wrong thing.
+    # Strategy: kill by PID first (fast), then by port as fallback
+    # to catch processes started by a different code path.
     import subprocess as _sp
 
+    # PID-based kill — check command matches to guard against PID recycling.
+    # "studyctl" matches both the binary and "python -m studyctl.cli".
     pid_checks = {"web_pid": "studyctl", "ttyd_pid": "ttyd"}
     for pid_key, expected in pid_checks.items():
         pid = state.get(pid_key)
@@ -161,6 +162,16 @@ def end_session_common(
                 os.kill(pid, 15)  # SIGTERM
         except (OSError, _sp.TimeoutExpired):
             pass
+
+    # Port-based kill — fallback for orphaned processes whose PIDs we lost.
+    from studyctl.session.orchestrator import _kill_port_occupant
+
+    ttyd_port = state.get("ttyd_port")
+    if ttyd_port:
+        _kill_port_occupant(int(ttyd_port), expected_cmd="ttyd")
+    web_port = state.get("web_port")
+    if web_port:
+        _kill_port_occupant(int(web_port), expected_cmd="studyctl")
 
     # Kill all study tmux sessions
     with contextlib.suppress(Exception):

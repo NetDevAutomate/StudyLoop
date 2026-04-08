@@ -57,17 +57,40 @@ def _is_tmux_session_alive(session_name: str) -> bool:
     return result.returncode == 0
 
 
+def _kill_stale_ttyd(state: dict) -> None:
+    """Kill a stale ttyd process if the tmux session it attaches to is gone."""
+    import os
+    import subprocess as _sp
+
+    ttyd_pid = state.get("ttyd_pid")
+    if not ttyd_pid:
+        return
+    try:
+        result = _sp.run(
+            ["ps", "-p", str(ttyd_pid), "-o", "command="],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if "ttyd" in result.stdout:
+            os.kill(ttyd_pid, 15)  # SIGTERM
+    except (OSError, _sp.TimeoutExpired):
+        pass
+
+
 def _get_full_state() -> dict:
     """Read all IPC files into a single state dict.
 
     If the state file claims a session is active but the tmux session
-    is gone (zombie), clears the stale state and returns empty.
+    is gone (zombie), kills stale ttyd, clears state, and returns empty.
     """
     state = read_session_state()
 
     # Zombie detection: state says active but tmux session is dead
     tmux_session = state.get("tmux_session")
     if tmux_session and state.get("mode") != "ended" and not _is_tmux_session_alive(tmux_session):
+        # Kill orphaned ttyd before clearing state
+        _kill_stale_ttyd(state)
         # Clear stale IPC files
         for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
             if f.exists():
@@ -284,6 +307,26 @@ def get_topics() -> list[dict]:
         return []
 
 
+@router.get("/settings/pomodoro")
+def get_pomodoro_settings() -> dict:
+    """Return pomodoro timer defaults from config.
+
+    The web UI uses these as defaults, overridden by localStorage.
+    """
+    try:
+        from studyctl.settings import load_settings
+
+        pomo = load_settings().pomodoro
+        return {
+            "focus": pomo.focus,
+            "short_break": pomo.short_break,
+            "long_break": pomo.long_break,
+            "cycles": pomo.cycles,
+        }
+    except Exception:
+        return {"focus": 25, "short_break": 5, "long_break": 15, "cycles": 4}
+
+
 # ---------------------------------------------------------------------------
 # Start / End session from web UI
 # ---------------------------------------------------------------------------
@@ -480,8 +523,18 @@ def start_session(body: StartSessionRequest) -> JSONResponse:
         state_update["topic_config_name"] = topic_config.name
     write_session_state(state_update)
 
-    # Start ttyd for terminal access
-    start_ttyd_background(session_name)
+    # Start ttyd for terminal access (with auth from config if available)
+    ttyd_username = ""
+    ttyd_password = ""
+    try:
+        from studyctl.settings import load_settings as _ls_ttyd
+
+        _ttyd_settings = _ls_ttyd()
+        ttyd_username = _ttyd_settings.lan_username or ""
+        ttyd_password = _ttyd_settings.lan_password or ""
+    except Exception:
+        pass
+    start_ttyd_background(session_name, username=ttyd_username, password=ttyd_password)
 
     return JSONResponse(
         {

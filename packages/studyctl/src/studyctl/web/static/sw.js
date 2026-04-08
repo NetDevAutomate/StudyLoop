@@ -1,4 +1,18 @@
-const CACHE = "studyctl-v7";
+/* Self-destruct: unregister and clear all caches on activate.
+   This ensures browsers pick up fresh assets after code changes.
+   Re-enable caching by reverting this block and bumping CACHE version. */
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n))))
+      .then(() => self.clients.matchAll())
+      .then((clients) => clients.forEach((c) => c.navigate(c.url)))
+  );
+  self.registration.unregister();
+});
+return;
+
+const CACHE = "studyctl-v10";
 const ASSETS = [
   "/", "/style.css", "/components.js", "/manifest.json",
   "/vendor/js/htmx-2.0.4.min.js", "/vendor/js/htmx-ext-sse-2.2.2.js",
