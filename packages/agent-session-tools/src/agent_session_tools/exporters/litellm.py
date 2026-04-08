@@ -9,12 +9,15 @@ Phase 2: Full conversation capture (requires LiteLLM enhancements)
 
 import contextlib
 import json
+import logging
 import sqlite3
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from .base import ExportStats
+
+logger = logging.getLogger(__name__)
 
 
 class LitellmExporter:
@@ -53,7 +56,7 @@ class LitellmExporter:
         return self.litellm_db_path is not None and self.litellm_db_path.exists()
 
     def export_all(
-        self, conn: sqlite3.Connection, incremental: bool = True
+        self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
     ) -> ExportStats:
         """Export LiteLLM webhook metrics as sessions.
 
@@ -111,6 +114,7 @@ class LitellmExporter:
                     else:
                         stats.skipped += 1
                 except Exception:
+                    logger.warning("Failed to export session", exc_info=True)
                     stats.errors += 1
 
             conn.commit()
@@ -202,7 +206,7 @@ class LitellmExporter:
                     last_timestamp = record_time
 
             except Exception:
-                # Skip malformed records
+                logger.warning("Malformed record in session detection", exc_info=True)
                 continue
 
         # Don't forget the last session
@@ -316,7 +320,7 @@ class LitellmExporter:
             session["messages"].append(assistant_message)
 
         except Exception:
-            pass  # Skip malformed records silently
+            logger.warning("Failed to build message record", exc_info=True)
 
     def _extract_full_conversation(self, conversation_json: str) -> tuple[str, str]:
         """Extract full user prompt and assistant response from conversation JSON.

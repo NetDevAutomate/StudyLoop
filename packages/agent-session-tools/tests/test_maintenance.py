@@ -25,7 +25,7 @@ from agent_session_tools.maintenance import (
 
 
 def _make_db(tmp_path: Path) -> Path:
-    """Create a minimal sessions database and return its Path."""
+    """Create a minimal sessions database that matches the live schema (post-migrations)."""
     db_path = tmp_path / "sessions.db"
     conn = sqlite3.connect(db_path)
     conn.executescript("""
@@ -36,18 +36,23 @@ def _make_db(tmp_path: Path) -> Path:
             git_branch TEXT,
             created_at TEXT,
             updated_at TEXT,
-            metadata JSON
+            metadata JSON,
+            content_hash TEXT,
+            import_fingerprint TEXT,
+            session_type TEXT DEFAULT 'work'
         );
 
         CREATE TABLE messages (
             id TEXT PRIMARY KEY,
-            session_id TEXT NOT NULL REFERENCES sessions(id),
+            session_id TEXT NOT NULL,
             parent_id TEXT,
             role TEXT NOT NULL,
             content TEXT,
             model TEXT,
             timestamp TEXT,
             metadata JSON,
+            content_hash TEXT,
+            seq INTEGER,
             FOREIGN KEY (session_id) REFERENCES sessions(id)
         );
 
@@ -58,8 +63,9 @@ def _make_db(tmp_path: Path) -> Path:
 
         CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
             content,
-            content='messages',
-            content_rowid='rowid'
+            session_id UNINDEXED,
+            role UNINDEXED,
+            tokenize='porter unicode61'
         );
     """)
     conn.commit()
@@ -73,11 +79,27 @@ def _insert_session(
     updated_at: str,
     source: str = "claude_code",
     project_path: str = "/test/project",
+    content_hash: str | None = None,
+    import_fingerprint: str | None = None,
+    session_type: str = "work",
 ) -> None:
     conn = sqlite3.connect(db_path)
     conn.execute(
-        "INSERT INTO sessions (id, source, project_path, git_branch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (session_id, source, project_path, "main", updated_at, updated_at),
+        """INSERT INTO sessions
+           (id, source, project_path, git_branch, created_at, updated_at,
+            content_hash, import_fingerprint, session_type)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            session_id,
+            source,
+            project_path,
+            "main",
+            updated_at,
+            updated_at,
+            content_hash,
+            import_fingerprint,
+            session_type,
+        ),
     )
     conn.commit()
     conn.close()
@@ -88,11 +110,25 @@ def _insert_message(
     msg_id: str,
     session_id: str,
     content: str = "hello world",
+    content_hash: str | None = None,
+    seq: int | None = None,
 ) -> None:
     conn = sqlite3.connect(db_path)
     conn.execute(
-        "INSERT INTO messages (id, session_id, parent_id, role, content, model, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (msg_id, session_id, None, "user", content, None, "2024-01-01T10:00:00"),
+        """INSERT INTO messages
+           (id, session_id, parent_id, role, content, model, timestamp, content_hash, seq)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            msg_id,
+            session_id,
+            None,
+            "user",
+            content,
+            None,
+            "2024-01-01T10:00:00",
+            content_hash,
+            seq,
+        ),
     )
     conn.commit()
     conn.close()
@@ -368,6 +404,60 @@ class TestArchive:
         count = archive_conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
         archive_conn.close()
         assert count == 2
+
+    def test_archive_preserves_all_columns(self, tmp_path):
+        """Archive must not silently drop columns added by later migrations.
+
+        Regression test for schema drift: the archive CREATE TABLE was missing
+        content_hash, import_fingerprint, session_type (sessions) and
+        content_hash, seq (messages).
+        """
+        db_path = _make_db(tmp_path)
+
+        _insert_session(
+            db_path,
+            "old-full",
+            self._old_date(100),
+            content_hash="abc123hash",
+            import_fingerprint="fp-xyz",
+            session_type="learning",
+        )
+        _insert_message(
+            db_path,
+            "msg-full",
+            "old-full",
+            content="test message with extra columns",
+            content_hash="msghash99",
+            seq=42,
+        )
+
+        archive_path = db_path.parent / f"{db_path.stem}_archive.db"
+
+        with patch("agent_session_tools.maintenance.create_backup"):
+            result = _archive(db_path, days=30, backup=False)
+
+        assert result == 0
+        assert archive_path.exists()
+
+        archive_conn = sqlite3.connect(archive_path)
+        archive_conn.row_factory = sqlite3.Row
+
+        session = archive_conn.execute(
+            "SELECT * FROM sessions WHERE id = 'old-full'"
+        ).fetchone()
+        assert session is not None
+        assert session["content_hash"] == "abc123hash"
+        assert session["import_fingerprint"] == "fp-xyz"
+        assert session["session_type"] == "learning"
+
+        msg = archive_conn.execute(
+            "SELECT * FROM messages WHERE id = 'msg-full'"
+        ).fetchone()
+        assert msg is not None
+        assert msg["content_hash"] == "msghash99"
+        assert msg["seq"] == 42
+
+        archive_conn.close()
 
 
 # ---------------------------------------------------------------------------

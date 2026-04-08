@@ -26,6 +26,28 @@ from agent_session_tools.deduplication import (
     merge_duplicates,
 )
 
+# Module-level logger — does NOT configure the root logger (no basicConfig here).
+# Logging is set up in the app callback below, which only runs when this module
+# is used as a CLI tool.  Library callers (tests, MCP server, sync.py) are
+# unaffected.
+logger = logging.getLogger(__name__)
+
+# Lazy config / path cache — populated on first use so that importing this
+# module at the top of another file has no file-system side effects.
+_config: dict | None = None
+
+
+def _get_config() -> dict:
+    global _config
+    if _config is None:
+        _config = load_config()
+    return _config
+
+
+def _get_db_path() -> Path:
+    return get_db_path(_get_config())
+
+
 # Create Typer app with completion support
 app = typer.Typer(
     name="session-maint",
@@ -34,20 +56,19 @@ app = typer.Typer(
     rich_markup_mode="rich",
 )
 
-# Load configuration
-config = load_config()
-DB_PATH = get_db_path(config)
 
-# Setup logging
-log_path = get_log_path(config)
-log_path.parent.mkdir(parents=True, exist_ok=True)
+@app.callback()
+def _setup_logging() -> None:
+    """Configure logging when running as a CLI tool (not when imported as a library)."""
+    cfg = _get_config()
+    log_path = get_log_path(cfg)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=getattr(logging, cfg["logging"]["level"]),
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
+    )
 
-logging.basicConfig(
-    level=getattr(logging, config["logging"]["level"]),
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
-)
-logger = logging.getLogger(__name__)
 
 # Global database path option
 db_option = typer.Option("-d", "--db", help="Database path (default: from config)")
@@ -57,7 +78,7 @@ no_backup_option = typer.Option("--no-backup", help="Skip backup creation")
 def create_backup(db_path: Path) -> Path:
     """Create a timestamped backup of the database."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = get_backup_dir(config)
+    backup_dir = get_backup_dir(_get_config())
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     backup_path = backup_dir / f"{db_path.stem}_backup_{timestamp}.db"
@@ -274,7 +295,7 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
             print(f"\n📦 Creating archive database: {archive_path}")
             archive_conn = sqlite3.connect(archive_path)
 
-            # Create tables manually (proper schema)
+            # Create tables manually (proper schema — must match live schema after all migrations)
             archive_conn.execute(
                 """
                 CREATE TABLE sessions (
@@ -284,7 +305,10 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
                     git_branch TEXT,
                     created_at TEXT,
                     updated_at TEXT,
-                    metadata JSON
+                    metadata JSON,
+                    content_hash TEXT,
+                    import_fingerprint TEXT,
+                    session_type TEXT DEFAULT 'work'
                 )
             """
             )
@@ -292,13 +316,15 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
                 """
                 CREATE TABLE messages (
                     id TEXT PRIMARY KEY,
-                    session_id TEXT NOT NULL REFERENCES sessions(id),
+                    session_id TEXT NOT NULL,
                     parent_id TEXT,
                     role TEXT NOT NULL,
                     content TEXT,
                     model TEXT,
                     timestamp TEXT,
                     metadata JSON,
+                    content_hash TEXT,
+                    seq INTEGER,
                     FOREIGN KEY (session_id) REFERENCES sessions(id)
                 )
             """
@@ -315,13 +341,14 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
                 "CREATE INDEX idx_sessions_project ON sessions(project_path)"
             )
 
-            # Create FTS table
+            # FTS table — matches v5 migration schema (porter stemming, unindexed metadata)
             archive_conn.execute(
                 """
                 CREATE VIRTUAL TABLE messages_fts USING fts5(
                     content,
-                    content='messages',
-                    content_rowid='rowid'
+                    session_id UNINDEXED,
+                    role UNINDEXED,
+                    tokenize='porter unicode61'
                 )
             """
             )
@@ -337,31 +364,45 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
 
         print("\n🔧 Archiving sessions...")
         for session_id in session_ids:
-            # Copy session
+            # Copy session — explicit columns guard against positional drift
             session = source_conn.execute(
-                "SELECT * FROM sessions WHERE id = ?", (session_id,)
+                """
+                SELECT id, source, project_path, git_branch, created_at, updated_at,
+                       metadata, content_hash, import_fingerprint, session_type
+                FROM sessions WHERE id = ?
+                """,
+                (session_id,),
             ).fetchone()
 
             if session:
                 archive_conn.execute(
                     """
                     INSERT OR REPLACE INTO sessions
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (id, source, project_path, git_branch, created_at, updated_at,
+                         metadata, content_hash, import_fingerprint, session_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     tuple(session),
                 )
                 archived_count += 1
 
-            # Copy messages
+            # Copy messages — explicit columns guard against positional drift
             messages = source_conn.execute(
-                "SELECT * FROM messages WHERE session_id = ?", (session_id,)
+                """
+                SELECT id, session_id, parent_id, role, content, model,
+                       timestamp, metadata, content_hash, seq
+                FROM messages WHERE session_id = ?
+                """,
+                (session_id,),
             ).fetchall()
 
             for msg in messages:
                 archive_conn.execute(
                     """
                     INSERT OR REPLACE INTO messages
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        (id, session_id, parent_id, role, content, model,
+                         timestamp, metadata, content_hash, seq)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     tuple(msg),
                 )
@@ -373,8 +414,14 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
             )
             source_conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
 
-        # Rebuild FTS index in archive
-        archive_conn.execute("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')")
+        # Populate FTS index in archive from the messages table
+        # (no triggers in archive DB — insert directly after all messages are copied)
+        archive_conn.execute("""
+            INSERT INTO messages_fts(rowid, content, session_id, role)
+            SELECT m.rowid, m.content, m.session_id, m.role
+            FROM messages m
+            WHERE m.content IS NOT NULL
+        """)
 
         archive_conn.commit()
         source_conn.commit()
@@ -530,7 +577,7 @@ def vacuum(
     no_backup: Annotated[bool, no_backup_option] = False,
 ) -> None:
     """Optimize database and reclaim unused space."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else _get_db_path()
     exit_code = _vacuum(db_path, backup=not no_backup)
     raise typer.Exit(exit_code)
 
@@ -543,7 +590,7 @@ def schema(
     ] = False,
 ) -> None:
     """Display database schema (tables, columns, indexes)."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else _get_db_path()
     exit_code = _schema(db_path, detailed)
     raise typer.Exit(exit_code)
 
@@ -554,7 +601,7 @@ def reindex(
     no_backup: Annotated[bool, no_backup_option] = False,
 ) -> None:
     """Rebuild full-text search index."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else _get_db_path()
     exit_code = _reindex(db_path, backup=not no_backup)
     raise typer.Exit(exit_code)
 
@@ -568,7 +615,7 @@ def archive(
     no_backup: Annotated[bool, no_backup_option] = False,
 ) -> None:
     """Archive old sessions to separate database."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else _get_db_path()
     exit_code = _archive(db_path, days, backup=not no_backup)
     raise typer.Exit(exit_code)
 
@@ -585,7 +632,7 @@ def delete_cmd(
     no_backup: Annotated[bool, no_backup_option] = False,
 ) -> None:
     """Delete old sessions permanently (requires --confirm)."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else _get_db_path()
     exit_code = _delete_old(db_path, days, confirm, backup=not no_backup)
     raise typer.Exit(exit_code)
 
@@ -610,7 +657,7 @@ def find_duplicates(
     ] = None,
 ) -> None:
     """Find and manage duplicate sessions."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else _get_db_path()
     exit_code = _handle_duplicates(db_path, threshold, auto_merge, merge_ids)
     raise typer.Exit(exit_code)
 

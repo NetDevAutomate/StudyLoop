@@ -47,19 +47,25 @@ class OpenCodeExporter:
                 stats.errors += 1
                 continue
 
-            if (
-                incremental
-                and conn.execute(
-                    "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
-                ).fetchone()
-            ):
-                stats.skipped += 1
-                continue
-
-            # Parse timestamps (milliseconds)
+            # Parse timestamps (milliseconds) before the incremental check
             time_info = session_data.get("time", {})
             created_at = _ms_to_iso(time_info.get("created"))
             updated_at = _ms_to_iso(time_info.get("updated"))
+
+            # Check if already imported (updated_at comparison)
+            existing = conn.execute(
+                "SELECT updated_at FROM sessions WHERE id = ?", (session_id,)
+            ).fetchone()
+
+            if existing and incremental:
+                if existing["updated_at"] == updated_at:
+                    stats.skipped += 1
+                    continue
+                # Session was updated — delete old messages and re-import
+                conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+                status = "updated"
+            else:
+                status = "added"
 
             # Collect messages for this session
             messages = self._collect_messages(session_id)
@@ -81,7 +87,7 @@ class OpenCodeExporter:
                             "version": session_data.get("version", ""),
                         }
                     ),
-                    "status": "added",
+                    "status": status,
                 }
             )
             batch_messages.extend(messages)

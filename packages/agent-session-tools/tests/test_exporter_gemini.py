@@ -226,6 +226,91 @@ class TestExportAll:
         assert stats.skipped == 0
         assert stats.errors == 0
 
+    def test_incremental_reimports_updated_session(
+        self, migrated_db, tmp_path, monkeypatch
+    ):
+        """Updated session (newer lastUpdated) replaces old messages and counts as updated."""
+        gemini_tmp = tmp_path / "gemini_update"
+        chats = gemini_tmp / "proj" / "chats"
+        chats.mkdir(parents=True)
+        monkeypatch.setattr(gemini_mod, "GEMINI_DIR", gemini_tmp)
+
+        initial_messages = [
+            {
+                "id": "msg-a",
+                "type": "user",
+                "content": "First question",
+                "timestamp": 1717236000000,
+            }
+        ]
+        session_file = chats / "session-update-test.json"
+        session_file.write_text(
+            json.dumps(
+                {
+                    "sessionId": "update-test",
+                    "projectHash": "proj",
+                    "startTime": "2025-01-01T00:00:00",
+                    "lastUpdated": "2025-01-01T01:00:00",
+                    "messages": initial_messages,
+                }
+            )
+        )
+
+        conn, _ = migrated_db
+        exporter = GeminiCliExporter()
+
+        # First import — should be added
+        stats_first = exporter.export_all(conn, incremental=True)
+        assert stats_first.added == 1
+        assert stats_first.skipped == 0
+
+        # Second import with same lastUpdated — should be skipped
+        stats_second = exporter.export_all(conn, incremental=True)
+        assert stats_second.skipped == 1
+        assert stats_second.added == 0
+        assert stats_second.updated == 0
+
+        # Update the session file with newer lastUpdated and a new message
+        updated_messages = [
+            {
+                "id": "msg-a",
+                "type": "user",
+                "content": "First question",
+                "timestamp": 1717236000000,
+            },
+            {
+                "id": "msg-b",
+                "type": "gemini",
+                "content": "Updated answer",
+                "timestamp": 1717236060000,
+                "model": "gemini-2.5-pro",
+            },
+        ]
+        session_file.write_text(
+            json.dumps(
+                {
+                    "sessionId": "update-test",
+                    "projectHash": "proj",
+                    "startTime": "2025-01-01T00:00:00",
+                    "lastUpdated": "2025-01-01T02:00:00",  # newer
+                    "messages": updated_messages,
+                }
+            )
+        )
+
+        # Third import — should detect update and re-import
+        stats_third = exporter.export_all(conn, incremental=True)
+        assert stats_third.updated == 1
+        assert stats_third.added == 0
+        assert stats_third.skipped == 0
+
+        messages = conn.execute(
+            "SELECT * FROM messages WHERE session_id = ? ORDER BY seq",
+            ("gemini_update-test",),
+        ).fetchall()
+        assert len(messages) == 2
+        assert messages[1]["content"] == "Updated answer"
+
     def test_empty_messages_session_skipped(self, migrated_db, tmp_path, monkeypatch):
         """A session file with zero messages should be skipped, not error."""
         gemini_tmp = tmp_path / "gemini_empty_msg"

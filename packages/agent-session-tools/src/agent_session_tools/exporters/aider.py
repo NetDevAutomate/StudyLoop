@@ -37,7 +37,7 @@ class AiderExporter:
         return any(path.exists() for path in self.search_paths)
 
     def export_all(
-        self, conn: sqlite3.Connection, incremental: bool = True
+        self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
     ) -> ExportStats:
         """Export all Aider sessions with batching."""
         stats = ExportStats(added=0, updated=0, skipped=0, errors=0)
@@ -70,7 +70,7 @@ class AiderExporter:
                         else:
                             batch.append(session_data)
                             batch_messages.extend(msgs)
-                            if len(batch) >= BATCH_SIZE:
+                            if len(batch) >= batch_size:
                                 commit_batch(conn, batch, batch_messages, stats)
                                 batch = []
                                 batch_messages = []
