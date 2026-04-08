@@ -22,6 +22,7 @@ the hostname field in each host entry.
 
 from __future__ import annotations
 
+import os
 import socket
 import subprocess
 from pathlib import Path
@@ -30,7 +31,9 @@ import yaml
 
 from .settings import load_settings
 
-CONFIG_PATH = Path.home() / ".config" / "studyctl" / "config.yaml"
+CONFIG_PATH = Path(
+    os.environ.get("STUDYCTL_CONFIG", Path.home() / ".config" / "studyctl" / "config.yaml")
+)
 
 
 def _get_default_user() -> str:
