@@ -101,7 +101,6 @@ KIRO_LINKS=(
 
 CLAUDE_LINKS=(
   "agents/claude/socratic-mentor.md:${CLAUDE_HOME}/agents/socratic-mentor.md"
-  "agents/claude/mentor-reviewer.yaml:${CLAUDE_HOME}/agents/mentor-reviewer.yaml"
 )
 
 GEMINI_LINKS=(
@@ -114,7 +113,7 @@ OPENCODE_LINKS=(
 )
 
 AMP_LINKS=(
-  "agents/amp/AGENTS.md:${REPO_DIR}/AGENTS.md"
+  # agents/amp/ removed — no active Amp agent definition in this repo
 )
 
 # Shared skills (cross-tool standard — works with Gemini, OpenCode, Amp)

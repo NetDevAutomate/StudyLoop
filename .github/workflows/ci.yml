@@ -40,4 +40,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --all-packages --extra dev --extra test
-      - run: uv run pytest --tb=short -m "not integration"
+      - run: uv run pytest --tb=short -m "not integration" --cov=packages --cov-report=term-missing
