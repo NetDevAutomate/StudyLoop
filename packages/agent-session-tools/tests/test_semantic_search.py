@@ -851,7 +851,7 @@ def _make_result(
         content_preview=content_preview,
         source=source,
         timestamp=timestamp,
-        match_type=match_type,
+        match_type=match_type,  # pyright: ignore[reportArgumentType]
         combined_score=combined_score,
         fts_score=0.01,
         semantic_score=0.01,
