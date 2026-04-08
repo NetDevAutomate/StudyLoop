@@ -1,745 +1,408 @@
 /**
- * Socratic Study Mentor — Alpine.js components
+ * components.js — Alpine review engine + settings store + Pomodoro
  *
- * Replaces app.js with declarative Alpine components:
- * - reviewApp(defaultMode)  — course grid → config → card player → summary
- * - Alpine.store('settings') — voice, theme, dyslexic (shared)
- * - Pomodoro timer functions (global, called by header buttons)
- * - Keyboard shortcuts via @keydown.window on body
+ * Provides reviewApp() which drives the flashcard and quiz review UI.
+ * Used by both the Flashcards and Quizzes tabs (x-data="reviewApp('flashcards')")
+ * and (x-data="reviewApp('quiz')").
  */
 
-/* ====================================================================
- * Helpers (pure, no Alpine dependency)
- * ==================================================================== */
+/* eslint-disable no-unused-vars */
 
-function escHtml(s) {
-  const d = document.createElement("div");
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-function escAttr(s) {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-}
-
-function shuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function buildHeatmapData(history) {
-  if (!history.length) return [];
-  const counts = {};
-  history.forEach((h) => {
-    if (h.date) counts[h.date] = (counts[h.date] || 0) + 1;
-  });
-
-  const days = [];
-  const today = new Date();
-  for (let i = 89; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const n = counts[key] || 0;
-    const level = n === 0 ? "" : n === 1 ? "l1" : n <= 3 ? "l2" : n <= 5 ? "l3" : "l4";
-    days.push({ date: key, count: n, level });
-  }
-  return days;
-}
-
-/* ====================================================================
- * Alpine stores — registered in alpine:init
- * ==================================================================== */
-
-document.addEventListener("alpine:init", () => {
-  /* ----------------------------------------------------------------
-   * Settings store — voice, theme, dyslexic
-   * ---------------------------------------------------------------- */
-  Alpine.store("settings", {
-    voiceOn: localStorage.getItem("voice") === "true",
-    dyslexic: localStorage.getItem("dyslexic") === "true",
-    light: localStorage.getItem("theme") === "light",
-    _preferredVoice: null,
-    _voicesLoaded: false,
-
-    init() {
-      if (this.dyslexic) document.body.classList.add("dyslexic");
-      if (this.light) document.body.classList.add("light");
-      this.loadVoices();
-      if (window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
-      }
-    },
-
-    toggleDyslexic() {
-      this.dyslexic = !this.dyslexic;
-      document.body.classList.toggle("dyslexic", this.dyslexic);
-      localStorage.setItem("dyslexic", this.dyslexic);
-    },
-
-    toggleTheme() {
-      this.light = !this.light;
-      document.body.classList.toggle("light", this.light);
-      localStorage.setItem("theme", this.light ? "light" : "dark");
-    },
-
-    toggleVoice() {
-      this.voiceOn = !this.voiceOn;
-      localStorage.setItem("voice", this.voiceOn);
-      if (this.voiceOn) {
-        this.speak("Voice enabled");
-      } else {
-        this.stopSpeaking();
-      }
-    },
-
-    speak(text) {
-      if (!this.voiceOn || !window.speechSynthesis || !text) return;
-      this.speakNow(text);
-    },
-
-    speakNow(text) {
-      if (!window.speechSynthesis || !text) return;
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.95;
-      u.pitch = 1.0;
-      if (this._preferredVoice) u.voice = this._preferredVoice;
-      window.speechSynthesis.speak(u);
-    },
-
-    stopSpeaking() {
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-    },
-
-    loadVoices() {
-      if (!window.speechSynthesis) return;
-      const voices = window.speechSynthesis.getVoices();
-      if (!voices.length) return;
-      this._voicesLoaded = true;
-
-      const english = voices.filter((v) => v.lang.startsWith("en"));
-      const select = document.getElementById("voice-select");
-      if (select) {
-        select.innerHTML = "";
-        english.forEach((v) => {
-          const opt = document.createElement("option");
-          opt.value = v.name;
-          const label = v.name.replace(/Microsoft |Google |Apple /i, "");
-          opt.textContent = v.localService ? label : `${label} (online)`;
-          select.appendChild(opt);
-        });
-      }
-
-      const saved = localStorage.getItem("voiceName");
-      const savedVoice = saved && english.find((v) => v.name === saved);
-      if (savedVoice) {
-        this._preferredVoice = savedVoice;
-        if (select) select.value = savedVoice.name;
-      } else {
-        this._preferredVoice =
-          english.find((v) => /premium|enhanced|natural/i.test(v.name)) ||
-          english.find((v) => /samantha|daniel|karen|moira|tessa|fiona/i.test(v.name)) ||
-          english.find((v) => v.lang.startsWith("en-") && !v.name.includes("Google")) ||
-          english[0] ||
-          null;
-        if (this._preferredVoice && select) select.value = this._preferredVoice.name;
-      }
-    },
-
-    onVoiceChange(name) {
-      const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-      this._preferredVoice = voices.find((v) => v.name === name) || null;
-      localStorage.setItem("voiceName", name);
-      if (this.voiceOn) this.speakNow("Voice changed");
-    },
-  });
-
-  /* ----------------------------------------------------------------
-   * Pomodoro store — reactive timer state
-   *
-   * Durations are configurable: localStorage > /api/settings/pomodoro > defaults.
-   * Users can change durations in the settings row (visible when stopped).
-   * ---------------------------------------------------------------- */
-  Alpine.store("pomodoro", {
-    STUDY: 25 * 60,
-    BREAK: 5 * 60,
-    LONG_BREAK: 15 * 60,
-    CYCLES: 4,
-
-    /* Editable minute values (bound to settings inputs) */
-    focusMin: 25,
-    shortBreakMin: 5,
-    longBreakMin: 15,
-    cycles: 4,
-
-    running: false,
-    paused: false,
-    visible: false,
-    isBreak: false,
-    remaining: 25 * 60,
-    total: 25 * 60,
-    sessions: 0,
-    _interval: null,
-    _loaded: false,
-
-    get display() {
-      const m = Math.floor(this.remaining / 60);
-      const s = this.remaining % 60;
-      return `${m}:${s.toString().padStart(2, "0")}`;
-    },
-
-    get label() {
-      if (!this.running) return "Study";
-      if (this.isBreak) {
-        return this.sessions > 0 && this.sessions % this.CYCLES === 0 ? "Long Break" : "Break";
-      }
-      return "Study";
-    },
-
-    get arcOffset() {
-      const progress = 1 - this.remaining / this.total;
-      return POMO_CIRCUMFERENCE * (1 - progress);
-    },
-
-    get pauseIcon() {
-      return this.paused ? "\u25b6" : "\u23f8\ufe0e";
-    },
-
-    /** Load durations from localStorage, falling back to API config. */
-    async loadConfig() {
-      if (this._loaded) return;
-      this._loaded = true;
-
-      /* Defaults from API (config.yaml) */
-      let defaults = { focus: 25, short_break: 5, long_break: 15, cycles: 4 };
-      try {
-        const res = await fetch("/api/settings/pomodoro");
-        if (res.ok) defaults = await res.json();
-      } catch { /* use hardcoded defaults */ }
-
-      /* localStorage overrides */
-      const focus = parseInt(localStorage.getItem("pomoFocus")) || defaults.focus;
-      const shortBreak = parseInt(localStorage.getItem("pomoShortBreak")) || defaults.short_break;
-      const longBreak = parseInt(localStorage.getItem("pomoLongBreak")) || defaults.long_break;
-      const cycles = parseInt(localStorage.getItem("pomoCycles")) || defaults.cycles;
-
-      this.focusMin = focus;
-      this.shortBreakMin = shortBreak;
-      this.longBreakMin = longBreak;
-      this.cycles = cycles;
-      this._applyDurations();
-    },
-
-    /** Apply current minute values to the internal second constants. */
-    _applyDurations() {
-      this.STUDY = this.focusMin * 60;
-      this.BREAK = this.shortBreakMin * 60;
-      this.LONG_BREAK = this.longBreakMin * 60;
-      this.CYCLES = this.cycles;
-      if (!this.running) {
-        this.remaining = this.STUDY;
-        this.total = this.STUDY;
-      }
-    },
-
-    /** Save current values to localStorage and apply. */
-    saveDurations() {
-      localStorage.setItem("pomoFocus", this.focusMin);
-      localStorage.setItem("pomoShortBreak", this.shortBreakMin);
-      localStorage.setItem("pomoLongBreak", this.longBreakMin);
-      localStorage.setItem("pomoCycles", this.cycles);
-      this._applyDurations();
-    },
-
-    toggle() {
-      this.visible = !this.visible;
-    },
-
-    start() {
-      this._applyDurations();
-      this.isBreak = false;
-      this.remaining = this.STUDY;
-      this.total = this.STUDY;
-      this.running = true;
-      this.paused = false;
-      this.visible = true;
-      this._startInterval();
-      const mins = this.focusMin;
-      Alpine.store("settings").speak(`Pomodoro started. ${mins} minutes of focused study.`);
-      if ("Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission();
-      }
-    },
-
-    togglePause() {
-      if (this.paused) {
-        this.paused = false;
-        this._startInterval();
-      } else {
-        this.paused = true;
-        clearInterval(this._interval);
-      }
-    },
-
-    stop() {
-      this.running = false;
-      this.paused = false;
-      this.visible = false;
-      clearInterval(this._interval);
-    },
-
-    _startInterval() {
-      clearInterval(this._interval);
-      this._tick();
-      this._interval = setInterval(() => this._tick(), 1000);
-    },
-
-    _tick() {
-      if (this.paused) return;
-      this.remaining--;
-      if (this.remaining <= 0) {
-        clearInterval(this._interval);
-        if (this.isBreak) {
-          Alpine.store("settings").speak("Break over! Time to study.");
-          _pomoNotify("Break over!", "Time for another study session.");
-          this.isBreak = false;
-          this.remaining = this.STUDY;
-          this.total = this.STUDY;
-        } else {
-          this.sessions++;
-          const isLong = this.sessions % this.CYCLES === 0;
-          const breakTime = isLong ? this.LONG_BREAK : this.BREAK;
-          const breakMins = Math.round(breakTime / 60);
-          Alpine.store("settings").speak(
-            isLong ? `Great work! Take a ${breakMins} minute break.` : `Good session! Take a ${breakMins} minute break.`
-          );
-          _pomoNotify(
-            "Study session complete!",
-            isLong ? `Take a ${breakMins} minute break.` : `Take a ${breakMins} minute break.`
-          );
-          this.isBreak = true;
-          this.remaining = breakTime;
-          this.total = breakTime;
-        }
-        this._interval = setInterval(() => this._tick(), 1000);
-      }
-    },
-  });
-
-  /* Load pomodoro config (localStorage > API > defaults) */
-  Alpine.store("pomodoro").loadConfig();
-});
-
-/* ====================================================================
- * reviewApp — main flashcard/quiz review component
- * ==================================================================== */
-
+/**
+ * Review application Alpine component.
+ * @param {string} defaultMode - 'flashcards' or 'quiz'
+ */
 function reviewApp(defaultMode) {
   return {
-    /* --- View state --- */
-    view: "courses", // courses | config | study | summary
-    defaultMode: defaultMode,
+    // Navigation state
+    view: 'courses',       // 'courses' | 'config' | 'study' | 'summary'
+    mode: defaultMode,
 
-    /* --- Course data --- */
+    // Course listing
     courses: [],
-    history: [],
-    heatmapDays: [],
     liveSession: null,
+    heatmapDays: [],
+    history: [],
 
-    /* --- Session config --- */
+    // Config / session setup
+    course: '',
     sources: [],
-    selectedSource: "all",
+    selectedSource: 'all',
     cardLimit: 20,
 
-    /* --- Active session --- */
-    course: null,
-    mode: null,
+    // Study state
     cards: [],
-    allCards: [],
     index: 0,
+    revealed: false,
     correct: 0,
     incorrect: 0,
     skipped: 0,
-    wrongHashes: [],
-    revealed: false,
-    startTime: 0,
-    cardStart: 0,
+    sessionStartTime: null,
     isRetry: false,
+
+    // Quiz state
     quizAnswered: false,
     quizSelectedIdx: -1,
 
-    /* --- Computed --- */
+    // Wrong-answer tracking for retry
+    wrongHashes: [],
+
     get currentCard() {
       return this.cards[this.index] || null;
     },
-    get isDone() {
-      return this.index >= this.cards.length;
-    },
+
     get progressPct() {
       return this.cards.length ? Math.round((this.index / this.cards.length) * 100) : 0;
     },
+
     get scoreText() {
-      const attempted = this.correct + this.incorrect;
-      return attempted ? `${Math.round((this.correct / attempted) * 100)}%` : "";
+      const answered = this.correct + this.incorrect;
+      if (!answered) return '';
+      return Math.round((this.correct / answered) * 100) + '%';
     },
-    get summaryPct() {
-      const attempted = this.correct + this.incorrect;
-      return attempted > 0 ? Math.round((this.correct / attempted) * 100) : 0;
+
+    get retryTag() {
+      return this.isRetry ? ' (retry)' : '';
     },
-    get summaryGrade() {
-      const p = this.summaryPct;
-      if (p >= 80) return { text: "Excellent!", cls: "excellent" };
-      if (p >= 60) return { text: "Good progress", cls: "good" };
-      return { text: "Keep reviewing", cls: "review" };
-    },
-    get summaryDuration() {
-      const s = Math.round((Date.now() - this.startTime) / 1000);
-      return `${Math.floor(s / 60)}m ${s % 60}s`;
-    },
-    get summaryRingOffset() {
-      const circ = 2 * Math.PI * 58;
-      return circ - (this.summaryPct / 100) * circ;
-    },
-    get summaryCircumference() {
-      return 2 * Math.PI * 58;
-    },
+
     get wrongCount() {
       return this.wrongHashes.length;
     },
+
+    get summaryPct() {
+      const answered = this.correct + this.incorrect;
+      return answered ? Math.round((this.correct / answered) * 100) : 0;
+    },
+
+    get summaryCircumference() {
+      return 2 * Math.PI * 58;  // r=58 from SVG
+    },
+
+    get summaryRingOffset() {
+      const pct = this.summaryPct / 100;
+      return this.summaryCircumference * (1 - pct);
+    },
+
+    get summaryGrade() {
+      const pct = this.summaryPct;
+      if (pct >= 90) return { text: 'Excellent!', cls: 'grade-a' };
+      if (pct >= 70) return { text: 'Good work', cls: 'grade-b' };
+      if (pct >= 50) return { text: 'Keep going', cls: 'grade-c' };
+      return { text: 'Review again', cls: 'grade-d' };
+    },
+
+    get summaryDuration() {
+      if (!this.sessionStartTime) return '';
+      const secs = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return m + 'm ' + s + 's';
+    },
+
     get correctQuizIdx() {
-      return this.currentCard?.options?.findIndex((o) => o.is_correct) ?? -1;
-    },
-    get retryTag() {
-      return this.isRetry ? " (Retry)" : "";
+      if (!this.currentCard || this.currentCard.type !== 'quiz') return -1;
+      return this.currentCard.options.findIndex(o => o.is_correct);
     },
 
-    /* --- Init --- */
+    // ------------------------------------------------------------------
+    // Lifecycle
+    // ------------------------------------------------------------------
+
     async init() {
-      await this.loadCourses();
+      await this._loadCourses();
+      await this._loadLiveSession();
     },
 
-    /* --- Navigation --- */
-    goHome() {
-      this.view = "courses";
-      this.isRetry = false;
-      Alpine.store("settings").stopSpeaking();
-      this.loadCourses();
-    },
-
-    /* --- Course grid --- */
-    async loadCourses() {
+    async _loadCourses() {
       try {
-        const [courses, history, sessionState] = await Promise.all([
-          fetch("/api/courses").then((r) => r.json()),
-          fetch("/api/history").then((r) => r.json()),
-          fetch("/api/session/state")
-            .then((r) => r.json())
-            .catch(() => ({})),
-        ]);
-        this.courses = courses;
-        this.history = history;
-        this.heatmapDays = buildHeatmapData(history);
-        this.liveSession = sessionState.study_session_id ? sessionState : null;
-      } catch {
-        this.courses = [];
+        const res = await fetch('/api/courses');
+        if (res.ok) {
+          this.courses = await res.json();
+          await this._loadHistory();
+          this._buildHeatmap();
+        }
+      } catch { /* courses unavailable */ }
+    },
+
+    async _loadLiveSession() {
+      try {
+        const res = await fetch('/api/session/state');
+        if (res.ok) {
+          const state = await res.json();
+          if (state.study_session_id && state.mode !== 'ended') {
+            this.liveSession = state;
+          }
+        }
+      } catch { /* no live session */ }
+    },
+
+    async _loadHistory() {
+      // Build history from course stats — review_sessions table
+      const items = [];
+      for (const c of this.courses) {
+        try {
+          const res = await fetch('/api/stats/' + encodeURIComponent(c.name));
+          if (res.ok) {
+            const stats = await res.json();
+            if (stats.total_reviews > 0) {
+              items.push({
+                course: c.name,
+                mode: this.mode,
+                correct: stats.mastered || 0,
+                total: stats.unique_cards || 0,
+                date: '',
+              });
+            }
+          }
+        } catch { /* skip */ }
       }
+      this.history = items;
     },
 
-    /* --- Session config --- */
-    async openConfig(courseName, mode) {
-      this.course = courseName;
-      this.mode = mode || this.defaultMode;
+    _buildHeatmap() {
+      // Simple 90-day heatmap placeholder — real implementation would
+      // query per-day review counts from the API
+      const days = [];
+      const now = new Date();
+      for (let i = 89; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        days.push({
+          date: d.toISOString().slice(0, 10),
+          count: 0,
+          level: 'level-0',
+        });
+      }
+      this.heatmapDays = days;
+    },
+
+    // ------------------------------------------------------------------
+    // Navigation
+    // ------------------------------------------------------------------
+
+    goHome() {
+      this.view = 'courses';
+      this.cards = [];
+      this.index = 0;
+      this.revealed = false;
+      this.correct = 0;
+      this.incorrect = 0;
+      this.skipped = 0;
+      this.isRetry = false;
+      this.wrongHashes = [];
+      this._loadCourses();
+    },
+
+    async openConfig(course, mode) {
+      this.course = course;
+      this.mode = mode;
+      this.selectedSource = 'all';
+      this.view = 'config';
+
       try {
-        this.sources = await fetch(
-          `/api/sources/${encodeURIComponent(courseName)}?mode=${this.mode}`
-        ).then((r) => r.json());
+        const res = await fetch(
+          '/api/sources/' + encodeURIComponent(course) + '?mode=' + mode
+        );
+        if (res.ok) this.sources = await res.json();
       } catch {
         this.sources = [];
       }
-
-      if (this.sources.length <= 1) {
-        this.startSession("all", 0);
-        return;
-      }
-      this.selectedSource = "all";
-      this.cardLimit = 20;
-      this.view = "config";
     },
 
-    /* --- Start session --- */
+    // ------------------------------------------------------------------
+    // Session lifecycle
+    // ------------------------------------------------------------------
+
     async startSession(source, limit) {
-      let cards;
       try {
-        cards = await fetch(
-          `/api/cards/${encodeURIComponent(this.course)}?mode=${this.mode}`
-        ).then((r) => r.json());
-      } catch {
-        return;
-      }
-      if (!cards.length) return;
+        const res = await fetch(
+          '/api/cards/' + encodeURIComponent(this.course) + '?mode=' + this.mode
+        );
+        if (!res.ok) return;
+        let cards = await res.json();
 
-      if (source && source !== "all") {
-        cards = cards.filter((c) => c.source === source);
-      }
-      shuffleArray(cards);
-      if (limit > 0 && cards.length > limit) {
-        cards = cards.slice(0, limit);
-      }
-      if (!cards.length) return;
+        // Filter by source
+        if (source && source !== 'all') {
+          cards = cards.filter(c => c.source === source);
+        }
 
-      this.cards = cards;
-      this.allCards = [...cards];
+        // Shuffle
+        for (let i = cards.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [cards[i], cards[j]] = [cards[j], cards[i]];
+        }
+
+        // Limit
+        if (limit && limit > 0) {
+          cards = cards.slice(0, limit);
+        }
+
+        if (!cards.length) return;
+
+        this.cards = cards;
+        this.index = 0;
+        this.revealed = false;
+        this.correct = 0;
+        this.incorrect = 0;
+        this.skipped = 0;
+        this.wrongHashes = [];
+        this.isRetry = false;
+        this.sessionStartTime = Date.now();
+        this.view = 'study';
+      } catch { /* load failed */ }
+    },
+
+    restartSession() {
+      this.startSession(this.selectedSource, this.cardLimit);
+    },
+
+    retryWrong() {
+      if (!this.wrongHashes.length) return;
+      const wrongSet = new Set(this.wrongHashes);
+      const retryCards = this.cards.filter(c => wrongSet.has(c.hash));
+      if (!retryCards.length) return;
+
+      this.cards = retryCards;
       this.index = 0;
+      this.revealed = false;
       this.correct = 0;
       this.incorrect = 0;
       this.skipped = 0;
       this.wrongHashes = [];
-      this.revealed = false;
-      this.startTime = Date.now();
-      this.cardStart = Date.now();
-      this.isRetry = false;
-      this.quizAnswered = false;
-      this.quizSelectedIdx = -1;
-      this.view = "study";
-
-      const card = this.currentCard;
-      if (card) {
-        Alpine.store("settings").speak(
-          card.type === "flashcard" ? card.front : card.question
-        );
-      }
+      this.isRetry = true;
+      this.sessionStartTime = Date.now();
+      this.view = 'study';
     },
 
-    /* --- Card actions --- */
+    // ------------------------------------------------------------------
+    // Card interaction
+    // ------------------------------------------------------------------
+
     flipCard() {
-      if (this.revealed || !this.currentCard) return;
-      this.revealed = true;
-      Alpine.store("settings").speak(this.currentCard.back);
-    },
-
-    answerFlashcard(correct) {
-      this.recordAnswer(correct);
-      this.nextCard();
-    },
-
-    answerQuiz(idx) {
-      if (this.quizAnswered) return;
-      this.quizAnswered = true;
-      this.quizSelectedIdx = idx;
-      const isCorrect = idx === this.correctQuizIdx;
-      this.recordAnswer(isCorrect);
-
-      const card = this.currentCard;
-      const correctOpt = card.options[this.correctQuizIdx];
-      if (correctOpt.rationale) {
-        Alpine.store("settings").speak(
-          isCorrect
-            ? "Correct! " + correctOpt.rationale
-            : "Incorrect. The answer is: " + correctOpt.text + ". " + correctOpt.rationale
-        );
-      } else {
-        Alpine.store("settings").speak(
-          isCorrect ? "Correct!" : "Incorrect. The answer is: " + correctOpt.text
-        );
-      }
-
-      setTimeout(() => this.nextCard(), isCorrect ? 1500 : 3000);
-    },
-
-    skipCard() {
-      this.skipped++;
-      Alpine.store("settings").stopSpeaking();
-      this.nextCard();
-    },
-
-    nextCard() {
-      this.index++;
-      this.revealed = false;
-      this.quizAnswered = false;
-      this.quizSelectedIdx = -1;
-      this.cardStart = Date.now();
-
-      if (this.isDone) {
-        this.finishSession();
-        return;
-      }
-
-      const card = this.currentCard;
-      if (card) {
-        Alpine.store("settings").speak(
-          card.type === "flashcard" ? card.front : card.question
-        );
+      if (this.currentCard?.type === 'flashcard') {
+        this.revealed = !this.revealed;
       }
     },
 
-    recordAnswer(correct) {
-      const card = this.currentCard;
-      const elapsed = Date.now() - this.cardStart;
+    async answerFlashcard(correct) {
+      if (!this.currentCard) return;
 
       if (correct) {
         this.correct++;
       } else {
         this.incorrect++;
-        if (!this.wrongHashes.includes(card.hash)) {
-          this.wrongHashes.push(card.hash);
-        }
+        this.wrongHashes.push(this.currentCard.hash);
       }
 
-      if (!this.isRetry) {
-        fetch("/api/review", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            course: this.course,
-            card_type: card.type,
-            card_hash: card.hash,
-            correct,
-            response_time_ms: elapsed,
-          }),
-        }).catch(() => {});
-      }
+      // Record review to server
+      this._recordReview(this.currentCard.hash, correct, 'flashcard');
+      this._advance();
     },
 
-    /* --- Summary --- */
-    finishSession() {
-      this.view = "summary";
-      Alpine.store("settings").stopSpeaking();
+    answerQuiz(idx) {
+      if (this.quizAnswered || !this.currentCard) return;
 
-      if (!this.isRetry) {
-        const duration = Math.round((Date.now() - this.startTime) / 1000);
-        fetch("/api/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            course: this.course,
-            mode: this.mode,
-            total: this.cards.length,
-            correct: this.correct,
-            duration_seconds: duration,
-          }),
-        }).catch(() => {});
+      this.quizAnswered = true;
+      this.quizSelectedIdx = idx;
+      const isCorrect = this.currentCard.options[idx]?.is_correct || false;
+
+      if (isCorrect) {
+        this.correct++;
+      } else {
+        this.incorrect++;
+        this.wrongHashes.push(this.currentCard.hash);
       }
 
-      Alpine.store("settings").speak(
-        `Session complete. You scored ${this.summaryPct} percent. ${this.correct} correct, ${this.incorrect} wrong.`
-      );
+      this._recordReview(this.currentCard.hash, isCorrect, 'quiz');
+
+      // Auto-advance after delay
+      setTimeout(() => this._advance(), 1500);
     },
 
-    retryWrong() {
-      const wrong = this.allCards.filter((c) => this.wrongHashes.includes(c.hash));
-      if (!wrong.length) return;
-      this.cards = wrong;
-      this.index = 0;
-      this.correct = 0;
-      this.incorrect = 0;
-      this.skipped = 0;
-      this.wrongHashes = [];
+    quizOptionClass(idx) {
+      if (!this.quizAnswered) return '';
+      const opt = this.currentCard?.options[idx];
+      if (!opt) return '';
+      if (opt.is_correct) return 'correct';
+      if (idx === this.quizSelectedIdx && !opt.is_correct) return 'incorrect';
+      return 'dimmed';
+    },
+
+    skipCard() {
+      this.skipped++;
+      this._advance();
+    },
+
+    _advance() {
       this.revealed = false;
-      this.startTime = Date.now();
-      this.cardStart = Date.now();
-      this.isRetry = true;
       this.quizAnswered = false;
       this.quizSelectedIdx = -1;
-      this.view = "study";
 
-      const card = this.currentCard;
-      if (card) {
-        Alpine.store("settings").speak(
-          card.type === "flashcard" ? card.front : card.question
-        );
+      if (this.index + 1 < this.cards.length) {
+        this.index++;
+      } else {
+        this.view = 'summary';
       }
     },
 
-    restartSession() {
-      Alpine.store("settings").stopSpeaking();
-      this.openConfig(this.course, this.mode);
+    async _recordReview(cardHash, correct, cardType) {
+      try {
+        await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            course: this.course,
+            card_hash: cardHash,
+            correct: correct,
+            card_type: cardType,
+          }),
+        });
+      } catch { /* best effort */ }
     },
+
+    // ------------------------------------------------------------------
+    // TTS
+    // ------------------------------------------------------------------
 
     speakCurrentCard() {
-      const card = this.currentCard;
-      if (!card) return;
-      if (card.type === "flashcard") {
-        Alpine.store("settings").speakNow(this.revealed ? card.back : card.front);
-      } else {
-        Alpine.store("settings").speakNow(this.quizAnswered ? "" : card.question);
+      if (!this.currentCard) return;
+      const text = this.currentCard.type === 'flashcard'
+        ? (this.revealed ? this.currentCard.back : this.currentCard.front)
+        : this.currentCard.question;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
       }
     },
 
-    /* --- Quiz option styling --- */
-    quizOptionClass(idx) {
-      if (!this.quizAnswered) return "";
-      if (idx === this.correctQuizIdx) return "correct";
-      if (idx === this.quizSelectedIdx && idx !== this.correctQuizIdx) return "incorrect";
-      return "";
-    },
+    // ------------------------------------------------------------------
+    // Keyboard shortcuts
+    // ------------------------------------------------------------------
 
-    /* --- Keyboard handler (called from body @keydown.window) --- */
-    handleKey(e) {
-      if (this.view === "study" && this.currentCard) {
-        const card = this.currentCard;
-        if ((e.key === " " || e.key === "Enter") && card.type === "flashcard" && !this.revealed) {
-          e.preventDefault();
-          this.flipCard();
-        }
-        if (this.revealed && card.type === "flashcard") {
-          if (e.key === "y" || e.key === "Y") this.answerFlashcard(true);
-          if (e.key === "n" || e.key === "N") this.answerFlashcard(false);
-        }
-        if (e.key === "s" || e.key === "S") this.skipCard();
-        if (e.key === "t" || e.key === "T") this.speakCurrentCard();
-        if (e.key === "Escape") this.goHome();
-        if (card.type === "quiz" && !this.quizAnswered) {
-          const num = parseInt(e.key);
-          if (num >= 1 && num <= card.options.length) this.answerQuiz(num - 1);
-          if (e.key >= "a" && e.key <= "d") {
-            const idx = e.key.charCodeAt(0) - 97;
-            if (idx < card.options.length) this.answerQuiz(idx);
+    handleKey(event) {
+      const key = event.key.toLowerCase();
+
+      if (this.view === 'study') {
+        if (this.currentCard?.type === 'flashcard') {
+          if (key === ' ' || key === 'spacebar') { event.preventDefault(); this.flipCard(); }
+          else if (key === 'y' && this.revealed) this.answerFlashcard(true);
+          else if (key === 'n' && this.revealed) this.answerFlashcard(false);
+          else if (key === 's') this.skipCard();
+          else if (key === 't') this.speakCurrentCard();
+          else if (key === 'escape') this.goHome();
+        } else if (this.currentCard?.type === 'quiz') {
+          if (['1', '2', '3', '4'].includes(key) && !this.quizAnswered) {
+            this.answerQuiz(parseInt(key) - 1);
           }
+          else if (key === 't') this.speakCurrentCard();
+          else if (key === 'escape') this.goHome();
         }
-      }
-      if (this.view === "summary") {
-        if (e.key === "r" || e.key === "R") this.retryWrong();
-        if (e.key === "Escape") this.goHome();
+      } else if (this.view === 'summary') {
+        if (key === 'r' && this.wrongCount) this.retryWrong();
+        else if (key === 'escape') this.goHome();
+      } else if (this.view === 'courses') {
+        // No global shortcuts on courses view
       }
     },
   };
-}
-
-/* ====================================================================
- * Pomodoro Timer — Alpine.store('pomodoro')
- * ==================================================================== */
-
-const POMO_CIRCUMFERENCE = 2 * Math.PI * 18;
-
-function _pomoNotify(title, body) {
-  if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(title, { body, icon: "/icon-192.svg" });
-  }
-  try {
-    const ctx = new AudioContext();
-    [0, 200, 400].forEach((delay) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      gain.gain.value = 0.15;
-      osc.start(ctx.currentTime + delay / 1000);
-      osc.stop(ctx.currentTime + delay / 1000 + 0.12);
-    });
-  } catch {
-    /* audio not available */
-  }
-}
-
-/* ====================================================================
- * Service Worker registration
- * ==================================================================== */
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
