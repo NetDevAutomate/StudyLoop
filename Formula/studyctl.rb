@@ -11,8 +11,8 @@ class Studyctl < Formula
 
   desc "AuDHD-aware study tool with AI Socratic mentoring and spaced repetition"
   homepage "https://github.com/NetDevAutomate/socratic-study-mentor"
-  url "https://files.pythonhosted.org/packages/source/s/studyctl/studyctl-2.2.0.tar.gz"
-  sha256 "01d1a2042b2c050253abdae89ec27916bea6b0d9b8d953b47f85dceb288b8af3"  # pragma: allowlist secret
+  url "https://files.pythonhosted.org/packages/source/s/studyctl/studyctl-2.3.0.tar.gz"
+  sha256 "2f0084ed5457a307cba112c40b08ec9b9b18c64aae500eec7ab9c3127ed1459f"  # pragma: allowlist secret
   license "MIT"
 
   depends_on "python@3.12"
