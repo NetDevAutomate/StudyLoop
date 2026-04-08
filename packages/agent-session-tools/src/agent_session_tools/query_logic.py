@@ -1,4 +1,14 @@
-"""Business logic for querying sessions — no CLI concerns."""
+"""Business logic for querying sessions — no CLI concerns.
+
+Public surface
+--------------
+This module is the stable import target for all callers (CLI, MCP server,
+tests).  Internal implementation is split across:
+
+* ``query_db``             — DB connection + lazy config helpers
+* ``session_continuations`` — context generators for resume/branch/summarise
+* this module              — search, list, show, stats, export, check_size
+"""
 
 import json
 import logging
@@ -10,7 +20,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agent_session_tools.config_loader import get_db_path, load_config
 from agent_session_tools.formatters import (
     format_context_only,
     format_markdown,
@@ -19,6 +28,15 @@ from agent_session_tools.formatters import (
     render_profile,
 )
 from agent_session_tools.profiles import load_profile
+
+# Re-export DB helpers so callers that do
+#   ``from agent_session_tools.query_logic import get_connection``
+# continue to work without change.
+from agent_session_tools.query_db import (  # noqa: F401
+    _get_config,
+    get_connection,
+    get_default_db_path,
+)
 from agent_session_tools.query_utils import (
     build_date_filter,
     check_thresholds,
@@ -26,11 +44,15 @@ from agent_session_tools.query_utils import (
     get_db_size,
     resolve_session_id,
 )
-from agent_session_tools.tokens import (
-    TIKTOKEN_AVAILABLE,
-    count_tokens,
-    truncate_to_tokens,
+
+# Re-export continuation generators under their original private names so
+# existing tests that import ``_generate_resume_context`` etc. keep working.
+from agent_session_tools.session_continuations import (  # noqa: F401
+    generate_branch_context as _generate_branch_context,
+    generate_resume_context as _generate_resume_context,
+    generate_summary_context as _generate_summary_context,
 )
+from agent_session_tools.tokens import count_tokens
 
 # Initialize Rich console
 console = Console()
@@ -38,31 +60,6 @@ console = Console()
 # Module-level logger — does NOT configure the root logger (no basicConfig here).
 # Logging setup belongs to the CLI entry point or the consuming application.
 logger = logging.getLogger(__name__)
-
-# Lazy config cache — populated on first use so that importing this module has
-# no side effects (no file I/O, no logging config, no directory creation).
-_config: dict | None = None
-
-
-def _get_config() -> dict:
-    """Return the loaded config, initialising on first call."""
-    global _config
-    if _config is None:
-        _config = load_config()
-    return _config
-
-
-def get_default_db_path() -> Path:
-    """Return the default database path from config (lazy — no import-time I/O)."""
-    return get_db_path(_get_config())
-
-
-def get_connection(db: Path | None = None) -> sqlite3.Connection:
-    """Get database connection."""
-    db_path = db if db else get_default_db_path()
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def search(
@@ -576,150 +573,3 @@ def continue_session(
             print("\nContext (copy manually):")
 
     print(context)
-
-
-def _generate_resume_context(session: dict, messages: list, max_tokens: int) -> str:
-    """Generate context for resuming where conversation left off."""
-    lines = []
-    lines.append(f"# Resume Session: {session['project_path'] or 'Unknown'}")
-    lines.append("")
-
-    # Get last user request and assistant response
-    user_msgs = [m for m in messages if m["role"] == "user"]
-    assistant_msgs = [m for m in messages if m["role"] == "assistant"]
-
-    if user_msgs:
-        lines.append("## Last Request")
-        lines.append(f"**User:** {user_msgs[-1]['content'][:500]}")
-        lines.append("")
-
-    if assistant_msgs:
-        lines.append("## Last Response")
-        lines.append(f"**Assistant:** {assistant_msgs[-1]['content'][:800]}")
-        lines.append("")
-
-    # Extract key artifacts (code, decisions, TODOs)
-    code_blocks = []
-    todos = []
-    decisions = []
-
-    for msg in messages:
-        content = msg["content"] or ""
-
-        # Extract code blocks
-        if "```" in content:
-            parts = content.split("```")
-            for i in range(1, len(parts), 2):
-                if parts[i].strip():
-                    code_blocks.append(parts[i].strip()[:300])
-
-        # Extract TODOs and decisions
-        for line in content.split("\n"):
-            line_lower = line.lower().strip()
-            if any(marker in line_lower for marker in ["todo", "fixme", "next steps"]):
-                todos.append(line.strip()[:200])
-            elif any(
-                marker in line_lower
-                for marker in ["decided", "chosen", "implemented", "using"]
-            ):
-                decisions.append(line.strip()[:200])
-
-    # Add key context sections
-    if code_blocks:
-        lines.append("## Key Code")
-        for block in code_blocks[-3:]:  # Last 3 code blocks
-            lines.append(f"```\n{block}\n```")
-        lines.append("")
-
-    if decisions:
-        lines.append("## Key Decisions")
-        for decision in decisions[-3:]:
-            lines.append(f"- {decision}")
-        lines.append("")
-
-    if todos:
-        lines.append("## Outstanding Items")
-        for todo in todos[-3:]:
-            lines.append(f"- {todo}")
-        lines.append("")
-
-    lines.append("## Continue From Here")
-    lines.append("*Ready to continue the conversation with full context above.*")
-
-    # Truncate if needed (use accurate token counting)
-    content = "\n".join(lines)
-    token_count = estimate_tokens(content, accurate=TIKTOKEN_AVAILABLE)
-
-    if token_count > max_tokens:
-        content = truncate_to_tokens(
-            content, max_tokens, strategy="middle", accurate=TIKTOKEN_AVAILABLE
-        )
-        token_count = estimate_tokens(content, accurate=TIKTOKEN_AVAILABLE)
-
-    result_lines = list(content.split("\n"))
-    result_lines.append("")
-    result_lines.append(f"*Context: {token_count} tokens*")
-
-    return "\n".join(result_lines)
-
-
-def _generate_branch_context(session: dict, messages: list, max_tokens: int) -> str:
-    """Generate context for branching in a new direction."""
-    lines = []
-    lines.append(f"# Branch Session: {session['project_path'] or 'Unknown'}")
-    lines.append("")
-    lines.append("## Previous Work Summary")
-
-    # Summarize what was accomplished
-    key_points = []
-    for msg in messages:
-        if msg["role"] == "assistant" and msg["content"]:
-            # Extract first sentence as key point
-            first_sentence = msg["content"].split(".")[0].strip()[:150]
-            if first_sentence and len(first_sentence) > 20:
-                key_points.append(first_sentence)
-
-    for point in key_points[-5:]:  # Last 5 key points
-        lines.append(f"- {point}")
-
-    lines.append("")
-    lines.append("## Branch Point")
-    lines.append("*Starting new direction based on previous work above.*")
-
-    content = "\n".join(lines)
-    token_count = estimate_tokens(content, accurate=TIKTOKEN_AVAILABLE)
-
-    if token_count > max_tokens:
-        content = truncate_to_tokens(content, max_tokens, accurate=TIKTOKEN_AVAILABLE)
-        token_count = estimate_tokens(content, accurate=TIKTOKEN_AVAILABLE)
-
-    return content + f"\n\n*Context: {token_count} tokens*"
-
-
-def _generate_summary_context(session: dict, messages: list, max_tokens: int) -> str:
-    """Generate high-level summary for fresh start."""
-    lines = []
-    lines.append(f"# Session Summary: {session['project_path'] or 'Unknown'}")
-    lines.append("")
-
-    user_msgs = [m for m in messages if m["role"] == "user"]
-    if user_msgs:
-        lines.append(f"**Goal:** {user_msgs[0]['content'][:300]}")
-        lines.append("")
-
-    # Count outcomes
-    lines.append("## Outcomes")
-    lines.append(f"- {len(messages)} total messages")
-    lines.append(
-        f"- {len([m for m in messages if '```' in (m['content'] or '')])} code blocks"
-    )
-    # sqlite3.Row doesn't have .get() — use dict() conversion for safe access
-    session_dict = dict(session) if not isinstance(session, dict) else session
-    lines.append(
-        f"- Session duration: {session_dict.get('created_at', '')} to {session_dict.get('updated_at', '')}"
-    )
-
-    content = "\n".join(lines)
-    token_count = estimate_tokens(content, accurate=TIKTOKEN_AVAILABLE)
-
-    return content + f"\n\n*Context: {token_count} tokens*"
