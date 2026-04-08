@@ -54,19 +54,19 @@ fi
 # --- Prerequisites ---
 step "Checking prerequisites"
 
-# Python >= 3.10
+# Python >= 3.12
 if command -v python3 &>/dev/null; then
   PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
   PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
   PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-  if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 10 ]; then
+  if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 12 ]; then
     info "Python ${PY_VER} found"
   else
-    err "Python >= 3.10 required (found ${PY_VER})"
+    err "Python >= 3.12 required (found ${PY_VER})"
     exit 1
   fi
 else
-  err "python3 not found. Install Python >= 3.10"
+  err "python3 not found. Install Python >= 3.12"
   exit 1
 fi
 

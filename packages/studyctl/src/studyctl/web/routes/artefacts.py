@@ -38,7 +38,9 @@ def serve_artefact(course: str, artefact_type: str, filename: str) -> FileRespon
 def list_artefacts(course: str) -> list[dict]:
     """List all artefacts for a course grouped by type."""
     base = load_settings().content.base_path
-    course_dir = base / course
+    course_dir = (base / course).resolve()
+    if not course_dir.is_relative_to(base.resolve()):
+        raise HTTPException(status_code=404)
     if not course_dir.is_dir():
         raise HTTPException(status_code=404, detail=f"Course '{course}' not found")
 

@@ -58,5 +58,5 @@ testpaths = ["packages/agent-session-tools/tests", "packages/studyctl/tests"]
 addopts = "--import-mode=importlib"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
-    "e2e: end-to-end browser tests requiring Playwright + web server",
+    "e2e: end-to-end tests requiring full stack (tmux, ttyd, web server)",
 ]
