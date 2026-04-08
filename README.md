@@ -176,7 +176,6 @@ sudo apt install ttyd        # Linux (or build from source)
 - [System Overview](docs/system-overview.md) — architecture and data flow diagrams
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
 - [Voice Output Guide](docs/voice-output.md)
-- [Autoresearch Guide](docs/autoresearch-guide.md) — persona optimization runbook (dev tooling)
 - [Contributing](CONTRIBUTING.md)
 
 <!-- ARTEFACTS:START -->
