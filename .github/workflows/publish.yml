@@ -113,9 +113,10 @@ jobs:
           SHA=$(curl -sL "$URL" | sha256sum | cut -d' ' -f1)
           echo "Version: $VERSION"
           echo "SHA256:  $SHA"
+          # Update only the main package URL and its sha256 (line immediately after url)
           sed -i "s|studyctl-.*\.tar\.gz|studyctl-${VERSION}.tar.gz|" Formula/studyctl.rb
-          sed -i "s|sha256 \".*\"|sha256 \"${SHA}\"|" Formula/studyctl.rb
-          grep -A1 'url ' Formula/studyctl.rb
+          sed -i '/^  url .*studyctl-/{n;s|sha256 ".*"|sha256 "'"${SHA}"'"|;}' Formula/studyctl.rb
+          grep -A1 'url .*studyctl' Formula/studyctl.rb
 
       - name: Commit and push formula
         run: |
