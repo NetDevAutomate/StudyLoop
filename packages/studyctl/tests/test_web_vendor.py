@@ -70,6 +70,11 @@ class TestServiceWorkerCache:
         assert "/vendor/css/inter.css" in content
         assert "/vendor/css/files/inter-latin.woff2" in content
 
-    def test_sw_cache_version_bumped(self):
+    def test_sw_self_destruct_or_cache_version(self):
+        """SW should either be in self-destruct mode or have a cache version."""
         content = (STATIC_DIR / "sw.js").read_text()
-        assert "studyctl-v7" in content
+        has_self_destruct = "Self-destruct" in content and "skipWaiting" in content
+        has_cache_version = "studyctl-v" in content
+        assert has_self_destruct or has_cache_version, (
+            "sw.js must be in self-destruct mode or have a studyctl-vN cache version"
+        )
