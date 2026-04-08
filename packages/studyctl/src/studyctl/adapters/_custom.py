@@ -103,7 +103,9 @@ def build_custom_adapter(name: str, config: dict) -> AgentAdapter:
 
         def _teardown(_session_dir: Path) -> None:
             try:
-                subprocess.run(_cmd, shell=True, timeout=10, check=False)
+                # shell=True is intentional: teardown_cmd is a user-supplied shell string
+                # (e.g. "pkill -f my-agent") that requires shell interpretation.
+                subprocess.run(_cmd, shell=True, timeout=10, check=False)  # nosec B602
             except Exception as exc:
                 log.warning("Teardown command %r failed: %s", _cmd, exc)
 
