@@ -251,3 +251,91 @@ class TestExportAll:
         stats = exporter.export_all(conn, incremental=False)
         assert stats.skipped == 1
         assert stats.added == 0
+
+    def test_incremental_reimports_updated_session(
+        self, migrated_db, tmp_path, monkeypatch
+    ):
+        """Updated session (newer time.updated) replaces old messages and counts as updated."""
+        storage = tmp_path / "storage"
+
+        def _write_session(updated_ms: int, messages: list[dict]) -> None:
+            """Write/overwrite the session and message files."""
+            session_dir = storage / "session" / "proj1"
+            session_dir.mkdir(parents=True, exist_ok=True)
+            session_data = {
+                "id": "sess-update",
+                "title": "Update Test",
+                "version": "0.1",
+                "directory": "/home/user/project",
+                "time": {"created": 1717236000000, "updated": updated_ms},
+            }
+            (session_dir / "sess-update.json").write_text(json.dumps(session_data))
+
+            msg_dir = storage / "message" / "sess-update"
+            msg_dir.mkdir(parents=True, exist_ok=True)
+            for msg in messages:
+                (msg_dir / f"{msg['id']}.json").write_text(json.dumps(msg))
+                part_dir = storage / "part" / msg["id"]
+                part_dir.mkdir(parents=True, exist_ok=True)
+                (part_dir / "part-001.json").write_text(
+                    json.dumps({"type": "text", "text": msg["_text"]})
+                )
+
+        monkeypatch.setattr(opencode_mod, "OPENCODE_DIR", storage)
+
+        initial_msgs = [
+            {
+                "id": "msg-x",
+                "role": "user",
+                "time": {"created": 1717236000000},
+                "tokens": {},
+                "_text": "Original question",
+            }
+        ]
+        _write_session(updated_ms=1717239600000, messages=initial_msgs)
+
+        conn, _ = migrated_db
+        exporter = OpenCodeExporter()
+
+        # First import — should be added
+        stats_first = exporter.export_all(conn, incremental=True)
+        assert stats_first.added == 1
+        assert stats_first.skipped == 0
+
+        # Second import with same updated timestamp — should be skipped
+        stats_second = exporter.export_all(conn, incremental=True)
+        assert stats_second.skipped == 1
+        assert stats_second.added == 0
+        assert stats_second.updated == 0
+
+        # Update session file with newer updated timestamp and extra message
+        updated_msgs = [
+            {
+                "id": "msg-x",
+                "role": "user",
+                "time": {"created": 1717236000000},
+                "tokens": {},
+                "_text": "Original question",
+            },
+            {
+                "id": "msg-y",
+                "role": "assistant",
+                "time": {"created": 1717236060000},
+                "tokens": {"input": 50, "output": 100},
+                "_text": "Updated answer",
+            },
+        ]
+        _write_session(updated_ms=1717243200000, messages=updated_msgs)  # newer
+
+        # Third import — should detect update and re-import
+        stats_third = exporter.export_all(conn, incremental=True)
+        assert stats_third.updated == 1
+        assert stats_third.added == 0
+        assert stats_third.skipped == 0
+
+        messages = conn.execute(
+            "SELECT * FROM messages WHERE session_id = ? ORDER BY seq",
+            ("sess-update",),
+        ).fetchall()
+        assert len(messages) == 2
+        assert messages[1]["content"] == "Updated answer"

@@ -104,7 +104,7 @@ def commit_batch(
                 stats.skipped += 1
 
         conn.commit()
-    except Exception as e:
+    except Exception:
         conn.rollback()
         stats.errors += len(sessions)
-        raise e
+        raise

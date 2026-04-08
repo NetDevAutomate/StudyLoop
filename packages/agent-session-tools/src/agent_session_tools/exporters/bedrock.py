@@ -8,7 +8,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from .base import ExportStats
+from .base import ExportStats, commit_batch
 
 # Bedrock Proxy database location
 BEDROCK_PROXY_DB = Path.home() / ".config/bedrock_proxy/conversations.db"
@@ -125,51 +125,12 @@ class BedrockProxyExporter:
 
                 # Commit batch if full
                 if len(session_batch) >= batch_size:
-                    self._commit_batch(conn, session_batch, message_batch, stats)
+                    commit_batch(conn, session_batch, message_batch, stats)
                     session_batch = []
                     message_batch = []
 
         # Commit remaining batch
         if session_batch:
-            self._commit_batch(conn, session_batch, message_batch, stats)
+            commit_batch(conn, session_batch, message_batch, stats)
 
         return stats
-
-    def _commit_batch(
-        self,
-        conn: sqlite3.Connection,
-        sessions: list,
-        messages: list,
-        stats: ExportStats,
-    ) -> None:
-        """Commit a batch of sessions and messages."""
-        if not sessions:
-            return
-
-        try:
-            conn.executemany(
-                """
-                INSERT OR REPLACE INTO sessions
-                (id, source, project_path, git_branch, created_at, updated_at, metadata)
-                VALUES (:id, :source, :project_path, :git_branch, :created_at, :updated_at, :metadata)
-                """,
-                sessions,
-            )
-
-            if messages:
-                conn.executemany(
-                    """
-                    INSERT OR REPLACE INTO messages
-                    (id, session_id, role, content, model, timestamp, metadata, seq)
-                    VALUES (:id, :session_id, :role, :content, :model, :timestamp, :metadata, :seq)
-                    """,
-                    messages,
-                )
-
-            stats.added += len(sessions)
-            conn.commit()
-
-        except Exception as e:
-            conn.rollback()
-            stats.errors += len(sessions)
-            raise e

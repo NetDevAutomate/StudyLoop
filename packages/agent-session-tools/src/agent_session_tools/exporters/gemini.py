@@ -45,15 +45,22 @@ class GeminiCliExporter:
 
                     session_id, project_path, messages, created_at, updated_at = result
 
-                    # Check if already imported
-                    if (
-                        incremental
-                        and conn.execute(
-                            "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
-                        ).fetchone()
-                    ):
-                        stats.skipped += 1
-                        continue
+                    # Check if already imported (updated_at comparison)
+                    existing = conn.execute(
+                        "SELECT updated_at FROM sessions WHERE id = ?", (session_id,)
+                    ).fetchone()
+
+                    if existing and incremental:
+                        if existing["updated_at"] == updated_at:
+                            stats.skipped += 1
+                            continue
+                        # Session was updated — delete old messages and re-import
+                        conn.execute(
+                            "DELETE FROM messages WHERE session_id = ?", (session_id,)
+                        )
+                        status = "updated"
+                    else:
+                        status = "added"
 
                     if not messages:
                         stats.skipped += 1
@@ -66,7 +73,7 @@ class GeminiCliExporter:
                         "created_at": created_at,
                         "updated_at": updated_at,
                         "metadata": json.dumps({}),
-                        "status": "added",
+                        "status": status,
                     }
                     batch.append(session_data)
                     batch_messages.extend(messages)
