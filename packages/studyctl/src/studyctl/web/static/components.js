@@ -8,6 +8,222 @@
 
 /* eslint-disable no-unused-vars */
 
+/* ====================================================================
+ * Pomodoro helpers
+ * ==================================================================== */
+
+const POMO_CIRCUMFERENCE = 2 * Math.PI * 18;
+
+function _pomoNotify(title, body) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, { body, icon: "/icon-192.svg" });
+  }
+  try {
+    const ctx = new AudioContext();
+    [0, 200, 400].forEach((delay) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.value = 0.15;
+      osc.start(ctx.currentTime + delay / 1000);
+      osc.stop(ctx.currentTime + delay / 1000 + 0.12);
+    });
+  } catch {
+    /* audio not available */
+  }
+}
+
+/* ====================================================================
+ * Alpine stores — settings + pomodoro (registered in alpine:init)
+ * ==================================================================== */
+
+document.addEventListener("alpine:init", () => {
+  Alpine.store("settings", {
+    voiceOn: localStorage.getItem("voice") === "true",
+    dyslexic: localStorage.getItem("dyslexic") === "true",
+    light: localStorage.getItem("theme") === "light",
+    _preferredVoice: null,
+    _voicesLoaded: false,
+
+    init() {
+      if (this.dyslexic) document.body.classList.add("dyslexic");
+      if (this.light) document.body.classList.add("light");
+      this.loadVoices();
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
+      }
+    },
+
+    toggleDyslexic() {
+      this.dyslexic = !this.dyslexic;
+      document.body.classList.toggle("dyslexic", this.dyslexic);
+      localStorage.setItem("dyslexic", this.dyslexic);
+    },
+
+    toggleTheme() {
+      this.light = !this.light;
+      document.body.classList.toggle("light", this.light);
+      localStorage.setItem("theme", this.light ? "light" : "dark");
+    },
+
+    toggleVoice() {
+      this.voiceOn = !this.voiceOn;
+      localStorage.setItem("voice", this.voiceOn);
+      if (this.voiceOn) {
+        this.speak("Voice enabled");
+      } else {
+        this.stopSpeaking();
+      }
+    },
+
+    speak(text) {
+      if (!this.voiceOn || !window.speechSynthesis || !text) return;
+      this.speakNow(text);
+    },
+
+    speakNow(text) {
+      if (!window.speechSynthesis || !text) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.95;
+      u.pitch = 1.0;
+      if (this._preferredVoice) u.voice = this._preferredVoice;
+      window.speechSynthesis.speak(u);
+    },
+
+    stopSpeaking() {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    },
+
+    loadVoices() {
+      if (!window.speechSynthesis) return;
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices.length) return;
+      this._voicesLoaded = true;
+
+      const english = voices.filter((v) => v.lang.startsWith("en"));
+      const select = document.getElementById("voice-select");
+      if (select) {
+        select.innerHTML = "";
+        english.forEach((v) => {
+          const opt = document.createElement("option");
+          opt.value = v.name;
+          const label = v.name.replace(/Microsoft |Google |Apple /i, "");
+          opt.textContent = v.localService ? label : `${label} (online)`;
+          select.appendChild(opt);
+        });
+      }
+
+      const saved = localStorage.getItem("voiceName");
+      const savedVoice = saved && english.find((v) => v.name === saved);
+      if (savedVoice) {
+        this._preferredVoice = savedVoice;
+        if (select) select.value = savedVoice.name;
+      } else {
+        this._preferredVoice =
+          english.find((v) => /premium|enhanced|natural/i.test(v.name)) ||
+          english.find((v) => /samantha|daniel|karen|moira|tessa|fiona/i.test(v.name)) ||
+          english.find((v) => v.lang.startsWith("en-") && !v.name.includes("Google")) ||
+          english[0] ||
+          null;
+        if (this._preferredVoice && select) select.value = this._preferredVoice.name;
+      }
+    },
+
+    onVoiceChange(name) {
+      const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+      this._preferredVoice = voices.find((v) => v.name === name) || null;
+      localStorage.setItem("voiceName", name);
+      if (this.voiceOn) this.speakNow("Voice changed");
+    },
+  });
+
+  Alpine.store("pomodoro", {
+    STUDY: 25 * 60, BREAK: 5 * 60, LONG_BREAK: 15 * 60, CYCLES: 4,
+    focusMin: 25, shortBreakMin: 5, longBreakMin: 15, cycles: 4,
+    running: false, paused: false, visible: false, isBreak: false,
+    remaining: 25 * 60, total: 25 * 60, sessions: 0, _interval: null, _loaded: false,
+
+    get display() {
+      const m = Math.floor(this.remaining / 60);
+      const s = this.remaining % 60;
+      return `${m}:${s.toString().padStart(2, "0")}`;
+    },
+    get label() {
+      if (!this.running) return "Study";
+      return this.isBreak
+        ? (this.sessions > 0 && this.sessions % this.CYCLES === 0 ? "Long Break" : "Break")
+        : "Study";
+    },
+    get arcOffset() { return POMO_CIRCUMFERENCE * (1 - (1 - this.remaining / this.total)); },
+    get pauseIcon() { return this.paused ? "\u25b6" : "\u23f8\ufe0e"; },
+
+    async loadConfig() {
+      if (this._loaded) return;
+      this._loaded = true;
+      let defaults = { focus: 25, short_break: 5, long_break: 15, cycles: 4 };
+      try { const res = await fetch("/api/settings/pomodoro"); if (res.ok) defaults = await res.json(); } catch {}
+      this.focusMin = parseInt(localStorage.getItem("pomoFocus")) || defaults.focus;
+      this.shortBreakMin = parseInt(localStorage.getItem("pomoShortBreak")) || defaults.short_break;
+      this.longBreakMin = parseInt(localStorage.getItem("pomoLongBreak")) || defaults.long_break;
+      this.cycles = parseInt(localStorage.getItem("pomoCycles")) || defaults.cycles;
+      this._applyDurations();
+    },
+    _applyDurations() {
+      this.STUDY = this.focusMin * 60; this.BREAK = this.shortBreakMin * 60;
+      this.LONG_BREAK = this.longBreakMin * 60; this.CYCLES = this.cycles;
+      if (!this.running) { this.remaining = this.STUDY; this.total = this.STUDY; }
+    },
+    saveDurations() {
+      localStorage.setItem("pomoFocus", this.focusMin);
+      localStorage.setItem("pomoShortBreak", this.shortBreakMin);
+      localStorage.setItem("pomoLongBreak", this.longBreakMin);
+      localStorage.setItem("pomoCycles", this.cycles);
+      this._applyDurations();
+    },
+    toggle() { this.visible = !this.visible; },
+    start() {
+      this._applyDurations(); this.isBreak = false;
+      this.remaining = this.STUDY; this.total = this.STUDY;
+      this.running = true; this.paused = false; this.visible = true;
+      this._startInterval();
+      Alpine.store("settings").speak(`Pomodoro started. ${this.focusMin} minutes of focused study.`);
+      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+    },
+    togglePause() {
+      if (this.paused) { this.paused = false; this._startInterval(); }
+      else { this.paused = true; clearInterval(this._interval); }
+    },
+    stop() { this.running = false; this.paused = false; this.visible = false; clearInterval(this._interval); },
+    _startInterval() { clearInterval(this._interval); this._tick(); this._interval = setInterval(() => this._tick(), 1000); },
+    _tick() {
+      if (this.paused) return;
+      this.remaining--;
+      if (this.remaining <= 0) {
+        clearInterval(this._interval);
+        if (this.isBreak) {
+          Alpine.store("settings").speak("Break over! Time to study.");
+          _pomoNotify("Break over!", "Time for another study session.");
+          this.isBreak = false; this.remaining = this.STUDY; this.total = this.STUDY;
+        } else {
+          this.sessions++;
+          const isLong = this.sessions % this.CYCLES === 0;
+          const breakTime = isLong ? this.LONG_BREAK : this.BREAK;
+          const breakMins = Math.round(breakTime / 60);
+          Alpine.store("settings").speak(isLong ? `Great work! Take a ${breakMins} minute break.` : `Good session! Take a ${breakMins} minute break.`);
+          _pomoNotify("Study session complete!", `Take a ${breakMins} minute break.`);
+          this.isBreak = true; this.remaining = breakTime; this.total = breakTime;
+        }
+        this._interval = setInterval(() => this._tick(), 1000);
+      }
+    },
+  });
+
+  Alpine.store("pomodoro").loadConfig();
+});
+
 /**
  * Review application Alpine component.
  * @param {string} defaultMode - 'flashcards' or 'quiz'
