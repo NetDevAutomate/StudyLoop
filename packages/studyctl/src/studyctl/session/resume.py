@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from studyctl.output import console
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import click
 
 
@@ -19,13 +21,22 @@ def get_previous_session_notes(study_id: str | None) -> str | None:
     return get_session_notes(study_id)
 
 
-def handle_resume(ctx: click.Context) -> None:
+def handle_resume(
+    ctx: click.Context,
+    start_fn: Callable | None = None,
+) -> None:
     """Resume an existing study session.
 
     Two resume scenarios:
     1. tmux session still alive -> reattach/switch to it
     2. tmux session dead but session dir exists -> create new tmux session
        with ``-r`` flag to resume the AI conversation from history
+
+    Args:
+        ctx: Click context for exit code propagation.
+        start_fn: Callable with the same signature as ``_handle_start``.
+            The CLI layer passes this in to avoid a upward import.
+            If None and rebuild is needed, a RuntimeError is raised.
     """
     from studyctl.session_state import read_session_state
     from studyctl.tmux import (
@@ -90,9 +101,12 @@ def handle_resume(ctx: click.Context) -> None:
         )
         # State file has mode=ended, is_session_active() returns False -- no need to clear
         # Rebuild tmux in the SAME session directory (preserves conversation history)
-        from studyctl.cli._study import _handle_start
-
-        _handle_start(
+        if start_fn is None:
+            raise RuntimeError(
+                "handle_resume requires a start_fn to rebuild a dead session. "
+                "Pass _handle_start from the CLI layer."
+            )
+        start_fn(
             ctx,
             topic,
             agent,

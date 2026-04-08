@@ -41,6 +41,28 @@ GLOBAL_SYNC_TABLES = [
     "message_concepts",
 ]
 
+# Module-level logger — does NOT configure the root logger (no basicConfig here).
+# Logging is set up in the app callback below, which only runs when this module
+# is used as a CLI tool.  Library callers (tests, MCP server, etc.) are
+# unaffected.
+logger = logging.getLogger(__name__)
+
+# Lazy config / path cache — populated on first use so that importing this
+# module at the top of another file has no file-system side effects.
+_config: dict | None = None
+
+
+def _get_config() -> dict:
+    global _config
+    if _config is None:
+        _config = load_config()
+    return _config
+
+
+def _get_db_path() -> Path:
+    return get_db_path(_get_config())
+
+
 # Create Typer app
 app = typer.Typer(
     name="session-sync",
@@ -51,20 +73,18 @@ app = typer.Typer(
 
 console = Console()
 
-# Load configuration
-config = load_config()
-DB_PATH = get_db_path(config)
 
-# Setup logging
-log_path = get_log_path(config)
-log_path.parent.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    level=getattr(logging, config["logging"]["level"]),
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
-)
-logger = logging.getLogger(__name__)
+@app.callback()
+def _setup_logging() -> None:
+    """Configure logging when running as a CLI tool (not when imported as a library)."""
+    cfg = _get_config()
+    log_path = get_log_path(cfg)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=getattr(logging, cfg["logging"]["level"]),
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
+    )
 
 
 # Session ID validation — prevent SQL injection via crafted IDs from remote DBs
@@ -107,7 +127,7 @@ def _resolve_remote(remote: str) -> tuple[str, str]:
     - A full remote path (e.g. "user@host:/path/to/db")
     """
     # Check if it's a configured endpoint name
-    endpoints = get_endpoints(config)
+    endpoints = get_endpoints(_get_config())
     if remote in endpoints:
         ep = endpoints[remote]
         username = ep["username"]
@@ -391,7 +411,7 @@ def pull(
     no_backup: Annotated[bool, typer.Option("--no-backup", help="Skip backup")] = False,
 ) -> None:
     """Pull new sessions from remote via SQL streaming."""
-    local_db = db or DB_PATH
+    local_db = db or _get_db_path()
     host, remote_db = _resolve_remote(remote)
 
     console.print(f"[bold]Pulling from:[/bold] {remote}")
@@ -492,7 +512,7 @@ def push(
     ] = None,
 ) -> None:
     """Push new and updated sessions to remote via SQL streaming."""
-    local_db = db or DB_PATH
+    local_db = db or _get_db_path()
     host, remote_db = _resolve_remote(remote)
 
     console.print(f"[bold]Pushing to:[/bold] {remote}")
@@ -555,7 +575,7 @@ def sync(
 
     Both machines end up with the same data.
     """
-    local_db = db or DB_PATH
+    local_db = db or _get_db_path()
     host, remote_db = _resolve_remote(remote)
 
     console.print(f"[bold]Syncing with:[/bold] {remote}")
@@ -676,7 +696,7 @@ def status(
     db: Annotated[Path | None, typer.Option("--db", "-d", help="Database path")] = None,
 ) -> None:
     """Show local database status and sync info."""
-    local_db = db or DB_PATH
+    local_db = db or _get_db_path()
 
     if not local_db.exists():
         console.print(f"[red]❌ Database not found: {local_db}[/red]")
@@ -685,7 +705,7 @@ def status(
     show_db_stats(local_db, "Local Database")
 
     # Show recent backups
-    backup_dir = get_backup_dir(config)
+    backup_dir = get_backup_dir(_get_config())
     if backup_dir.exists():
         backups = sorted(
             backup_dir.glob("*.db"), key=lambda p: p.stat().st_mtime, reverse=True
@@ -703,7 +723,7 @@ def status(
 @app.command()
 def endpoints() -> None:
     """List configured sync endpoints."""
-    eps = get_endpoints(config)
+    eps = get_endpoints(_get_config())
     if not eps:
         console.print("[dim]No endpoints configured in config.yaml[/dim]")
         return

@@ -412,9 +412,9 @@ def start_session(body: StartSessionRequest) -> JSONResponse:
     # --- Clean zombies ---
 
     try:
-        from studyctl.cli._study import _auto_clean_zombies
+        from studyctl.session.cleanup import auto_clean_zombies
 
-        _auto_clean_zombies()
+        auto_clean_zombies()
     except Exception:
         pass
 
