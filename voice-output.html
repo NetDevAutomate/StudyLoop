@@ -1258,43 +1258,40 @@
 <hr />
 <h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <h3 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;./packages/agent-session-tools[tts]&quot;</span><span class="w"> </span>--force
-</code></pre></div>
+<p><code>bash
+uv tool install "./packages/agent-session-tools[tts]" --force</code></p>
 <h3 id="download-models">Download Models<a class="headerlink" href="#download-models" title="Permanent link">&para;</a></h3>
 <p>Models download automatically on first run. The install script also offers to pre-download them:</p>
-<div class="highlight"><pre><span></span><code>./scripts/install.sh<span class="w">  </span><span class="c1"># prompts: &quot;Download voice model now? [y/N]&quot;</span>
-</code></pre></div>
+<p><code>bash
+./scripts/install.sh  # prompts: "Download voice model now? [y/N]"</code></p>
 <p>To download manually:</p>
-<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.cache/kokoro-onnx<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-o<span class="w"> </span>~/.cache/kokoro-onnx/kokoro-v1.0.onnx<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-o<span class="w"> </span>~/.cache/kokoro-onnx/voices-v1.0.bin
-</code></pre></div>
+<p><code>bash
+mkdir -p ~/.cache/kokoro-onnx &amp;&amp; \
+  curl -fsSL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx \
+    -o ~/.cache/kokoro-onnx/kokoro-v1.0.onnx &amp;&amp; \
+  curl -fsSL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin \
+    -o ~/.cache/kokoro-onnx/voices-v1.0.bin</code></p>
 <h3 id="test">Test<a class="headerlink" href="#test" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;Hello, can you hear me?&quot;</span>
-</code></pre></div>
+<p><code>bash
+study-speak "Hello, can you hear me?"</code></p>
 <hr />
 <h2 id="agent-integration">Agent Integration<a class="headerlink" href="#agent-integration" title="Permanent link">&para;</a></h2>
 <p>Voice is <strong>off by default</strong>. Toggle it during a session:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Kiro CLI</label><label for="__tabbed_1_2">Claude Code</label><label for="__tabbed_1_3">Gemini / OpenCode / Amp</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>@speak-start    # enable voice
-@speak-stop     # disable voice
-</code></pre></div>
+<p><code>@speak-start    # enable voice
+@speak-stop     # disable voice</code></p>
 <p>Kiro uses a native MCP tool for speech.</p>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>/speak-start    # enable voice
-/speak-stop     # disable voice
-</code></pre></div>
+<p><code>/speak-start    # enable voice
+/speak-stop     # disable voice</code></p>
 <p>Uses shell command <code>~/.local/bin/study-speak</code>.</p>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>@speak-start    # enable voice
-@speak-stop     # disable voice
-</code></pre></div>
+<p><code>@speak-start    # enable voice
+@speak-stop     # disable voice</code></p>
 <p>Uses shell command <code>~/.local/bin/study-speak</code>.</p>
 </div>
 </div>
@@ -1303,12 +1300,12 @@
 <hr />
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p><code>~/.config/studyctl/config.yaml</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">tts</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kokoro</span><span class="w">        </span><span class="c1"># kokoro | qwen3 | macos</span>
-<span class="w">  </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">am_michael</span><span class="w">      </span><span class="c1"># kokoro voices: am_michael, af_heart, bf_emma, etc.</span>
-<span class="w">  </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">             </span><span class="c1"># 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast</span>
-<span class="w">  </span><span class="nt">macos_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Samantha</span><span class="w">  </span><span class="c1"># fallback voice for macOS say</span>
-</code></pre></div>
+<p><code>yaml
+tts:
+  backend: kokoro        # kokoro | qwen3 | macos
+  voice: am_michael      # kokoro voices: am_michael, af_heart, bf_emma, etc.
+  speed: 1.0             # 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast
+  macos_voice: Samantha  # fallback voice for macOS say</code></p>
 <h3 id="available-kokoro-voices">Available Kokoro Voices<a class="headerlink" href="#available-kokoro-voices" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1340,15 +1337,15 @@
 <p>Configured automatically via <code>agents/kiro/study-mentor.json</code>. No manual setup needed — the install script handles it.</p>
 <h3 id="claude-code-gemini-opencode-amp">Claude Code / Gemini / OpenCode / Amp<a class="headerlink" href="#claude-code-gemini-opencode-amp" title="Permanent link">&para;</a></h3>
 <p>Each agent has an <code>mcp.json</code> in its <code>agents/</code> directory. The server command uses <code>uvx</code> to run the standalone MCP server:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;speaker&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uvx&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--from&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp[cli]&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/absolute/path/to/agents/mcp/study-speak-server.py&quot;</span><span class="p">]</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
+<p><code>json
+{
+  "mcpServers": {
+    "speaker": {
+      "command": "uvx",
+      "args": ["--from", "mcp[cli]", "mcp", "run", "/absolute/path/to/agents/mcp/study-speak-server.py"]
+    }
+  }
+}</code></p>
 <p>Replace the path with your actual clone location. The <code>scripts/install-agents.sh</code> script sets this up automatically for detected AI tools.</p>
 <hr />
 <h2 id="web-pwa-voice">Web PWA Voice<a class="headerlink" href="#web-pwa-voice" title="Permanent link">&para;</a></h2>
@@ -1367,13 +1364,13 @@
 </ul>
 <hr />
 <h2 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w">                                        </span><span class="c1"># Speak text</span>
-study-speak<span class="w"> </span>-<span class="w">                                              </span><span class="c1"># Read from stdin</span>
-study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-v<span class="w"> </span>af_heart<span class="w">                            </span><span class="c1"># Different voice</span>
-study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-s<span class="w"> </span><span class="m">1</span>.2<span class="w">                                 </span><span class="c1"># Faster speed</span>
-study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-b<span class="w"> </span>macos<span class="w">                               </span><span class="c1"># Force macOS fallback</span>
-study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-b<span class="w"> </span>qwen3<span class="w"> </span>--instruct<span class="w"> </span><span class="s2">&quot;speak warmly&quot;</span><span class="w">    </span><span class="c1"># Qwen3 with emotion</span>
-</code></pre></div>
+<p><code>bash
+study-speak "text"                                        # Speak text
+study-speak -                                              # Read from stdin
+study-speak "text" -v af_heart                            # Different voice
+study-speak "text" -s 1.2                                 # Faster speed
+study-speak "text" -b macos                               # Force macOS fallback
+study-speak "text" -b qwen3 --instruct "speak warmly"    # Qwen3 with emotion</code></p>
 <hr />
 <h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
 <table>

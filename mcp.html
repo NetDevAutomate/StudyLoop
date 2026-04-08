@@ -1035,17 +1035,17 @@
 <h2 id="session-database-session-db-mcp">Session Database (session-db-mcp)<a class="headerlink" href="#session-database-session-db-mcp" title="Permanent link">&para;</a></h2>
 <p>The primary MCP server for cross-agent session memory. Any MCP-compatible AI tool can search, browse, and retrieve context from past coding sessions.</p>
 <p><strong>Install:</strong></p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>./packages/agent-session-tools
-</code></pre></div>
+<p><code>bash
+uv tool install ./packages/agent-session-tools</code></p>
 <p><strong>Register:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;session-db&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;session-db-mcp&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
+<p><code>json
+{
+  "mcpServers": {
+    "session-db": {
+      "command": "session-db-mcp"
+    }
+  }
+}</code></p>
 <p><strong>7 tools available:</strong></p>
 <table>
 <thead>
@@ -1088,18 +1088,18 @@
 <p>See <a href="system-overview.html#session-db-mcp--mcp-server-for-session-access">System Overview: session-db-mcp</a> for architecture diagrams, design decisions, and usage examples.</p>
 <hr />
 <h2 id="apple-calendar-reminders-macos">Apple Calendar &amp; Reminders (macOS)<a class="headerlink" href="#apple-calendar-reminders-macos" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>npx<span class="w"> </span>-y<span class="w"> </span>@nicepkg/gkd@latest<span class="w"> </span>install<span class="w"> </span>FradSer/mcp-server-apple-reminders
-</code></pre></div>
+<p><code>bash
+npx -y @nicepkg/gkd@latest install FradSer/mcp-server-apple-reminders</code></p>
 <p>Or add manually to your MCP client config:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;apple-reminders&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;npx&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;-y&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp-server-apple-reminders&quot;</span><span class="p">]</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
+<p><code>json
+{
+  "mcpServers": {
+    "apple-reminders": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-apple-reminders"]
+    }
+  }
+}</code></p>
 <p><strong>Config locations:</strong></p>
 <ul>
 <li>Claude Desktop: <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></li>
@@ -1111,19 +1111,19 @@
 <h3 id="claude-desktop-built-in">Claude Desktop (built-in)<a class="headerlink" href="#claude-desktop-built-in" title="Permanent link">&para;</a></h3>
 <p>No MCP needed — use Settings → Extensions → Google Calendar.</p>
 <h3 id="kiro-cli-claude-code-mcp-server">kiro-cli / Claude Code (MCP server)<a class="headerlink" href="#kiro-cli-claude-code-mcp-server" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;google-calendar&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;npx&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;-y&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;@anthropic/mcp-google-calendar&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;GOOGLE_CLIENT_ID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;your-client-id&gt;&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;GOOGLE_CLIENT_SECRET&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;your-client-secret&gt;&quot;</span>
-<span class="w">      </span><span class="p">}</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
+<p><code>json
+{
+  "mcpServers": {
+    "google-calendar": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-google-calendar"],
+      "env": {
+        "GOOGLE_CLIENT_ID": "&lt;your-client-id&gt;",
+        "GOOGLE_CLIENT_SECRET": "&lt;your-client-secret&gt;"
+      }
+    }
+  }
+}</code></p>
 <p>Requires a Google Cloud project with Calendar API enabled.</p>
 <hr />
 <h2 id="suggested-workflow">Suggested Workflow<a class="headerlink" href="#suggested-workflow" title="Permanent link">&para;</a></h2>

@@ -936,102 +936,8 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#subdirectory-filter" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Subdirectory filter
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#notebooklm-notebook-id" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NotebookLM notebook ID
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#content-base-path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content base path
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#topics-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Topics mapping
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#syllabus-workflow-batch-generation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Syllabus Workflow (Batch Generation)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Reference
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1092,24 +998,24 @@
 <h2 id="path-1-pdf-textbook-to-flashcards">Path 1: PDF Textbook to Flashcards<a class="headerlink" href="#path-1-pdf-textbook-to-flashcards" title="Permanent link">&para;</a></h2>
 <p>Use this when you have a PDF ebook or textbook and want to create study materials from it.</p>
 <h3 id="step-1-split-the-pdf-into-chapters">Step 1: Split the PDF into chapters<a class="headerlink" href="#step-1-split-the-pdf-into-chapters" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span><span class="s2">&quot;Computer-Science-APP.pdf&quot;</span><span class="w"> </span>-o<span class="w"> </span>chapters/
-</code></pre></div>
+<p><code>bash
+studyctl content split "Computer-Science-APP.pdf" -o chapters/</code></p>
 <p>This reads the PDF's table of contents (bookmarks) and splits it into one file per chapter. Use <code>-l 2</code> to split at heading level 2 instead of the default level 1.</p>
 <p>If the PDF has no bookmarks, use <code>--ranges</code> to specify page ranges manually:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span><span class="s2">&quot;textbook.pdf&quot;</span><span class="w"> </span>--ranges<span class="w"> </span><span class="s2">&quot;1-30,31-60,61-90&quot;</span>
-</code></pre></div>
+<p><code>bash
+studyctl content split "textbook.pdf" --ranges "1-30,31-60,61-90"</code></p>
 <h3 id="step-2-upload-chapters-to-notebooklm">Step 2: Upload chapters to NotebookLM<a class="headerlink" href="#step-2-upload-chapters-to-notebooklm" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span><span class="s2">&quot;Computer-Science-APP.pdf&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-o<span class="w"> </span>chapters/<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span>
-</code></pre></div>
+<p><code>bash
+studyctl content process "Computer-Science-APP.pdf" \
+    -o chapters/ \
+    -n "$NOTEBOOKLM_NOTEBOOK_ID"</code></p>
 <p>This combines split + upload in one command. It splits the PDF, then uploads each chapter as a source to the specified NotebookLM notebook.</p>
 <p>If you already split in step 1, you can upload manually via the NotebookLM web UI instead.</p>
 <h3 id="step-3-generate-audio-overviews-and-artefacts">Step 3: Generate audio overviews and artefacts<a class="headerlink" href="#step-3-generate-audio-overviews-and-artefacts" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>generate<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-c<span class="w"> </span><span class="m">1</span>-5
-</code></pre></div>
+<p><code>bash
+studyctl content generate \
+    -n "$NOTEBOOKLM_NOTEBOOK_ID" \
+    -c 1-5</code></p>
 <p>This triggers NotebookLM to generate audio overviews for chapters 1-5. Generation takes 15+ minutes per chapter for slides/video types.</p>
 <p>Flags:
 - <code>-c / --chapters</code> — chapter range (e.g. <code>1-5</code>, <code>3</code>, <code>1-12</code>)
@@ -1117,15 +1023,15 @@
 - <code>--no-video</code> — skip video generation
 - <code>-t / --timeout</code> — timeout in seconds (default: 900)</p>
 <h3 id="step-4-download-the-generated-artefacts">Step 4: Download the generated artefacts<a class="headerlink" href="#step-4-download-the-generated-artefacts" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>download<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-o<span class="w"> </span>~/study-materials/csapp/<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-c<span class="w"> </span><span class="m">1</span>-5
-</code></pre></div>
+<p><code>bash
+studyctl content download \
+    -n "$NOTEBOOKLM_NOTEBOOK_ID" \
+    -o ~/study-materials/csapp/ \
+    -c 1-5</code></p>
 <p>This downloads the generated audio, video, flashcard, and quiz files to the specified output directory. The JSON flashcard and quiz files are what the review system reads.</p>
 <h3 id="step-5-review-with-spaced-repetition">Step 5: Review with spaced repetition<a class="headerlink" href="#step-5-review-with-spaced-repetition" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>web
-</code></pre></div>
+<p><code>bash
+studyctl web</code></p>
 <p>Open the PWA in your browser. Your downloaded flashcards and quizzes will appear as a course. See the <a href="web-ui-guide.html">Web UI Guide</a> for the full review walkthrough.</p>
 <hr />
 <h2 id="path-2-obsidian-notes-to-flashcards">Path 2: Obsidian Notes to Flashcards<a class="headerlink" href="#path-2-obsidian-notes-to-flashcards" title="Permanent link">&para;</a></h2>
@@ -1138,10 +1044,10 @@
     E --&gt; F["Download JSON&lt;br/&gt;(built-in)"]
     F --&gt; G["studyctl web&lt;br/&gt;(review)"]</code></pre>
 <h3 id="all-in-one-command">All-in-one command<a class="headerlink" href="#all-in-one-command" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/Obsidian/2-Areas/Study/Python/<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-o<span class="w"> </span>~/study-materials/python/<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$NOTEBOOKLM_NOTEBOOK_ID</span><span class="s2">&quot;</span>
-</code></pre></div>
+<p><code>bash
+studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python/ \
+    -o ~/study-materials/python/ \
+    -n "$NOTEBOOKLM_NOTEBOOK_ID"</code></p>
 <p>This does everything in one step:</p>
 <ol>
 <li>Converts each <code>.md</code> file to PDF via pandoc</li>
@@ -1151,54 +1057,52 @@
 </ol>
 <h3 id="selective-flags">Selective flags<a class="headerlink" href="#selective-flags" title="Permanent link">&para;</a></h3>
 <p>Skip steps you don't need:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Convert and upload only (generate later)</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>--no-generate
-
-<span class="c1"># Skip quiz/flashcard generation</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>--no-quiz<span class="w"> </span>--no-flashcards
-
-<span class="c1"># Convert markdown to PDF only (no NotebookLM)</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>--skip-convert
-</code></pre></div>
+<p>```bash</p>
+<h1 id="convert-and-upload-only-generate-later">Convert and upload only (generate later)<a class="headerlink" href="#convert-and-upload-only-generate-later" title="Permanent link">&para;</a></h1>
+<p>studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID --no-generate</p>
+<h1 id="skip-quizflashcard-generation">Skip quiz/flashcard generation<a class="headerlink" href="#skip-quizflashcard-generation" title="Permanent link">&para;</a></h1>
+<p>studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID --no-quiz --no-flashcards</p>
+<h1 id="convert-markdown-to-pdf-only-no-notebooklm">Convert markdown to PDF only (no NotebookLM)<a class="headerlink" href="#convert-markdown-to-pdf-only-no-notebooklm" title="Permanent link">&para;</a></h1>
+<p>studyctl content from-obsidian ~/notes/ -o output/ --skip-convert
+```</p>
 <h3 id="subdirectory-filter">Subdirectory filter<a class="headerlink" href="#subdirectory-filter" title="Permanent link">&para;</a></h3>
 <p>Process only notes from a specific subdirectory:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/Obsidian/Study/<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;Python/Decorators&quot;</span><span class="w"> </span>-o<span class="w"> </span>output/
-</code></pre></div>
+<p><code>bash
+studyctl content from-obsidian ~/Obsidian/Study/ -s "Python/Decorators" -o output/</code></p>
 <hr />
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <h3 id="notebooklm-notebook-id">NotebookLM notebook ID<a class="headerlink" href="#notebooklm-notebook-id" title="Permanent link">&para;</a></h3>
 <p>Set via environment variable or pass with <code>-n</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">NOTEBOOKLM_NOTEBOOK_ID</span><span class="o">=</span><span class="s2">&quot;your-notebook-id-here&quot;</span>
-</code></pre></div>
+<p><code>bash
+export NOTEBOOKLM_NOTEBOOK_ID="your-notebook-id-here"</code></p>
 <p>Find the ID in the NotebookLM URL: <code>https://notebooklm.google.com/notebook/NOTEBOOK_ID</code></p>
 <h3 id="content-base-path">Content base path<a class="headerlink" href="#content-base-path" title="Permanent link">&para;</a></h3>
 <p>Where flashcard/quiz JSON files are stored. Set in <code>~/.config/studyctl/config.yaml</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">content</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">base_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/study-materials</span><span class="w">    </span><span class="c1"># default</span>
-<span class="w">  </span><span class="nt">notebooklm_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">900</span><span class="w">         </span><span class="c1"># seconds per generation</span>
-<span class="w">  </span><span class="nt">inter_episode_gap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span><span class="w">           </span><span class="c1"># seconds between API calls</span>
-</code></pre></div>
+<p><code>yaml
+content:
+  base_path: ~/study-materials    # default
+  notebooklm_timeout: 900         # seconds per generation
+  inter_episode_gap: 30           # seconds between API calls</code></p>
 <h3 id="topics-mapping">Topics mapping<a class="headerlink" href="#topics-mapping" title="Permanent link">&para;</a></h3>
 <p>Each topic maps to an Obsidian directory and a review path:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">topics</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python</span>
-<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
-<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/Python</span>
-<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">programming</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<p><code>yaml
+topics:
+  - name: Python
+    slug: python
+    obsidian_path: 2-Areas/Study/Python
+    tags: [python, programming]</code></p>
 <p>The <code>slug</code> determines where flashcards are stored: <code>{content.base_path}/{slug}/flashcards/</code></p>
 <hr />
 <h2 id="syllabus-workflow-batch-generation">Syllabus Workflow (Batch Generation)<a class="headerlink" href="#syllabus-workflow-batch-generation" title="Permanent link">&para;</a></h2>
 <p>For large textbooks, use the syllabus workflow to generate episodes in batches:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create a generation plan</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>syllabus<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-b<span class="w"> </span><span class="s2">&quot;CS:APP&quot;</span><span class="w"> </span>-m<span class="w"> </span><span class="m">12</span>
-
-<span class="c1"># Generate the next pending episode</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>autopilot<span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-b<span class="w"> </span><span class="s2">&quot;CS:APP&quot;</span>
-
-<span class="c1"># Check progress</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>status<span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-b<span class="w"> </span><span class="s2">&quot;CS:APP&quot;</span>
-</code></pre></div>
+<p>```bash</p>
+<h1 id="create-a-generation-plan">Create a generation plan<a class="headerlink" href="#create-a-generation-plan" title="Permanent link">&para;</a></h1>
+<p>studyctl content syllabus -n $NB_ID -o chapters/ -b "CS:APP" -m 12</p>
+<h1 id="generate-the-next-pending-episode">Generate the next pending episode<a class="headerlink" href="#generate-the-next-pending-episode" title="Permanent link">&para;</a></h1>
+<p>studyctl content autopilot -o chapters/ -b "CS:APP"</p>
+<h1 id="check-progress">Check progress<a class="headerlink" href="#check-progress" title="Permanent link">&para;</a></h1>
+<p>studyctl content status -o chapters/ -b "CS:APP"
+```</p>
 <p>The autopilot command generates one episode at a time, respecting rate limits. Run it repeatedly (or on a cron) to work through the full book.</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
@@ -1240,33 +1144,26 @@ studyctl<span class="w"> </span>content<span class="w"> </span>status<span class
 </table>
 <hr />
 <h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># List notebooks</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>list
-
-<span class="c1"># List sources in a notebook</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>list<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span>
-
-<span class="c1"># Split PDF by chapters</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span><span class="s2">&quot;book.pdf&quot;</span><span class="w"> </span>-o<span class="w"> </span>chapters/
-
-<span class="c1"># Upload + split in one step</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span><span class="s2">&quot;book.pdf&quot;</span><span class="w"> </span>-o<span class="w"> </span>chapters/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span>
-
-<span class="c1"># Generate audio/video</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>generate<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>-c<span class="w"> </span><span class="m">1</span>-5
-
-<span class="c1"># Download artefacts</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>download<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span><span class="w"> </span>-o<span class="w"> </span>~/study-materials/topic/
-
-<span class="c1"># Obsidian all-in-one</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>~/notes/<span class="w"> </span>-o<span class="w"> </span>output/<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NB_ID</span>
-
-<span class="c1"># Check review due dates</span>
-studyctl<span class="w"> </span>review
-
-<span class="c1"># Launch review PWA</span>
-studyctl<span class="w"> </span>web
-</code></pre></div>
+<p>```bash</p>
+<h1 id="list-notebooks">List notebooks<a class="headerlink" href="#list-notebooks" title="Permanent link">&para;</a></h1>
+<p>studyctl content list</p>
+<h1 id="list-sources-in-a-notebook">List sources in a notebook<a class="headerlink" href="#list-sources-in-a-notebook" title="Permanent link">&para;</a></h1>
+<p>studyctl content list -n $NB_ID</p>
+<h1 id="split-pdf-by-chapters">Split PDF by chapters<a class="headerlink" href="#split-pdf-by-chapters" title="Permanent link">&para;</a></h1>
+<p>studyctl content split "book.pdf" -o chapters/</p>
+<h1 id="upload-split-in-one-step">Upload + split in one step<a class="headerlink" href="#upload-split-in-one-step" title="Permanent link">&para;</a></h1>
+<p>studyctl content process "book.pdf" -o chapters/ -n $NB_ID</p>
+<h1 id="generate-audiovideo">Generate audio/video<a class="headerlink" href="#generate-audiovideo" title="Permanent link">&para;</a></h1>
+<p>studyctl content generate -n $NB_ID -c 1-5</p>
+<h1 id="download-artefacts">Download artefacts<a class="headerlink" href="#download-artefacts" title="Permanent link">&para;</a></h1>
+<p>studyctl content download -n $NB_ID -o ~/study-materials/topic/</p>
+<h1 id="obsidian-all-in-one">Obsidian all-in-one<a class="headerlink" href="#obsidian-all-in-one" title="Permanent link">&para;</a></h1>
+<p>studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID</p>
+<h1 id="check-review-due-dates">Check review due dates<a class="headerlink" href="#check-review-due-dates" title="Permanent link">&para;</a></h1>
+<p>studyctl review</p>
+<h1 id="launch-review-pwa">Launch review PWA<a class="headerlink" href="#launch-review-pwa" title="Permanent link">&para;</a></h1>
+<p>studyctl web
+```</p>
 
 
 

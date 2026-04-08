@@ -1418,10 +1418,10 @@
 <hr />
 <h2 id="3-system-check">3. System Check<a class="headerlink" href="#3-system-check" title="Permanent link">&para;</a></h2>
 <p>After state check, the agent runs:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>status<span class="w">          </span><span class="c1"># Current study state</span>
-studyctl<span class="w"> </span>review<span class="w">          </span><span class="c1"># What&#39;s due for spaced repetition</span>
-studyctl<span class="w"> </span>struggles<span class="w">       </span><span class="c1"># Recurring struggle topics</span>
-</code></pre></div>
+<p><code>bash
+studyctl status          # Current study state
+studyctl review          # What's due for spaced repetition
+studyctl struggles       # Recurring struggle topics</code></p>
 <p>If spaced repetition data shows concepts moving to longer intervals, the agent surfaces one: "By the way — you mastered [concept] last week. That's real progress."</p>
 <hr />
 <h2 id="4-session-selection">4. Session Selection<a class="headerlink" href="#4-session-selection" title="Permanent link">&para;</a></h2>
@@ -1483,8 +1483,8 @@ studyctl<span class="w"> </span>struggles<span class="w">       </span><span cla
 <h2 id="6-end-of-session-protocol">6. End-of-Session Protocol<a class="headerlink" href="#6-end-of-session-protocol" title="Permanent link">&para;</a></h2>
 <h3 id="record-progress">Record Progress<a class="headerlink" href="#record-progress" title="Permanent link">&para;</a></h3>
 <p>For each concept covered:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>progress<span class="w"> </span><span class="s2">&quot;&lt;concept&gt;&quot;</span><span class="w"> </span>-t<span class="w"> </span>&lt;topic&gt;<span class="w"> </span>-c<span class="w"> </span>&lt;confidence&gt;
-</code></pre></div>
+<p><code>bash
+studyctl progress "&lt;concept&gt;" -t &lt;topic&gt; -c &lt;confidence&gt;</code></p>
 <p>Confidence levels: <code>struggling</code> → <code>learning</code> → <code>confident</code> → <code>mastered</code></p>
 <h3 id="surface-parking-lot">Surface Parking Lot<a class="headerlink" href="#surface-parking-lot" title="Permanent link">&para;</a></h3>
 <p>"From today's parking lot: <strong>[X]</strong>, <strong>[Y]</strong>. Want to schedule those for next session?"</p>

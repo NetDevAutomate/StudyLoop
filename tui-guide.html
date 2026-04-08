@@ -924,28 +924,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#ending-a-session" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ending a Session
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resuming-a-session" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resuming a Session
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -970,7 +948,7 @@
 <hr />
 <h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
 <p>When you start a study session with <code>studyctl study "topic"</code>, a tmux session is created with two panes:</p>
-<div class="highlight"><pre><span></span><code>+------------------------------------------+------------------+
+<p><code>+------------------------------------------+------------------+
 |                                          |                  |
 |         AI Agent (main pane)             |    Sidebar       |
 |                                          |                  |
@@ -989,8 +967,7 @@
 |                                          |  p:pause r:reset |
 |                                          |  Q:end session   |
 +------------------------------------------+------------------+
-           ~75% width                          ~25% width
-</code></pre></div>
+           ~75% width                          ~25% width</code></p>
 <p>The sidebar occupies the right 25% of the terminal. The agent gets the remaining 75%.</p>
 <hr />
 <h2 id="data-flow">Data Flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h2>
@@ -1062,9 +1039,9 @@
 <p><strong>Pomodoro mode</strong> (default for <code>--mode co-study</code>):</p>
 <p>Alternates between 25-minute work periods and 5-minute breaks, with a 15-minute break every 4 cycles. The timer counts down and chimes at transitions.</p>
 <p>Switch modes explicitly:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python&quot;</span><span class="w"> </span>--timer<span class="w"> </span>pomodoro<span class="w">    </span><span class="c1"># Force Pomodoro in study mode</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python&quot;</span><span class="w"> </span>--timer<span class="w"> </span>elapsed<span class="w">     </span><span class="c1"># Force elapsed in co-study mode</span>
-</code></pre></div>
+<p><code>bash
+studyctl study "Python" --timer pomodoro    # Force Pomodoro in study mode
+studyctl study "Python" --timer elapsed     # Force elapsed in co-study mode</code></p>
 <h3 id="activity-feed">Activity Feed<a class="headerlink" href="#activity-feed" title="Permanent link">&para;</a></h3>
 <p>Shows topics logged during the session with status icons:</p>
 <table>
@@ -1106,8 +1083,7 @@ studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&q
 <p>Each entry shows the topic name, status, and the note the agent recorded.</p>
 <h3 id="counter-bar">Counter Bar<a class="headerlink" href="#counter-bar" title="Permanent link">&para;</a></h3>
 <p>Running totals at the bottom of the sidebar:</p>
-<div class="highlight"><pre><span></span><code>WINS: 3  |  PARKED: 1  |  REVIEW: 2
-</code></pre></div>
+<p><code>WINS: 3  |  PARKED: 1  |  REVIEW: 2</code></p>
 <ul>
 <li><strong>WINS</strong> — topics with status <code>win</code> or <code>insight</code> (green)</li>
 <li><strong>PARKED</strong> — questions deferred to the parking lot</li>
@@ -1183,18 +1159,16 @@ studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&q
 <p><strong>Important</strong>: <code>Q</code> (uppercase) ends everything. <code>q</code> (lowercase) only quits the sidebar widget.</p>
 <hr />
 <h2 id="starting-a-session">Starting a Session<a class="headerlink" href="#starting-a-session" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Basic session</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span>
-
-<span class="c1"># With web dashboard alongside the TUI</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w"> </span>--web
-
-<span class="c1"># Co-study mode (Pomodoro timer, agent is passive)</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study
-
-<span class="c1"># Choose a specific AI agent</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--agent<span class="w"> </span>gemini
-</code></pre></div>
+<p>```bash</p>
+<h1 id="basic-session">Basic session<a class="headerlink" href="#basic-session" title="Permanent link">&para;</a></h1>
+<p>studyctl study "Python Decorators" --energy 7</p>
+<h1 id="with-web-dashboard-alongside-the-tui">With web dashboard alongside the TUI<a class="headerlink" href="#with-web-dashboard-alongside-the-tui" title="Permanent link">&para;</a></h1>
+<p>studyctl study "Python Decorators" --energy 7 --web</p>
+<h1 id="co-study-mode-pomodoro-timer-agent-is-passive">Co-study mode (Pomodoro timer, agent is passive)<a class="headerlink" href="#co-study-mode-pomodoro-timer-agent-is-passive" title="Permanent link">&para;</a></h1>
+<p>studyctl study "Python Decorators" --mode co-study</p>
+<h1 id="choose-a-specific-ai-agent">Choose a specific AI agent<a class="headerlink" href="#choose-a-specific-ai-agent" title="Permanent link">&para;</a></h1>
+<p>studyctl study "Python Decorators" --agent gemini
+```</p>
 <p>You'll be dropped into the tmux session automatically. The agent starts in the left pane, the sidebar in the right.</p>
 <h2 id="ending-a-session">Ending a Session<a class="headerlink" href="#ending-a-session" title="Permanent link">&para;</a></h2>
 <p>Three ways to end:</p>
@@ -1207,8 +1181,8 @@ studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&q
 <hr />
 <h2 id="resuming-a-session">Resuming a Session<a class="headerlink" href="#resuming-a-session" title="Permanent link">&para;</a></h2>
 <p>If your terminal disconnects or you close the window:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>study<span class="w"> </span>--resume
-</code></pre></div>
+<p><code>bash
+studyctl study --resume</code></p>
 <p>This reattaches to the existing tmux session with your agent conversation and sidebar state intact.</p>
 
 
