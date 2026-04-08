@@ -159,6 +159,35 @@ class Settings:
     lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = auto-generate)
 
 
+def _path(value: object) -> Path:
+    """Coerce a config value to an expanded Path."""
+    return Path(str(value)).expanduser()
+
+
+# Top-level scalar fields: (settings_attr, coerce_fn).
+# When the YAML key matches settings_attr, the value is coerced and set directly.
+_SCALAR_FIELDS: list[tuple[str, object]] = [
+    ("obsidian_base", _path),
+    ("session_db", _path),
+    ("state_dir", _path),
+    ("sync_remote", str),
+    ("sync_user", str),
+    ("ttyd_port", int),
+    ("web_port", int),
+    ("browser", str),
+    ("lan_username", str),
+    ("lan_password", str),
+]
+
+
+def _local_llm(raw: dict, default_model: str, default_base_url: str) -> LocalLLMConfig:
+    """Build a LocalLLMConfig from a raw dict, falling back to explicit defaults."""
+    return LocalLLMConfig(
+        model=str(raw.get("model", default_model)),
+        base_url=str(raw.get("base_url", default_base_url)),
+    )
+
+
 def load_settings() -> Settings:
     """Load settings from config file, falling back to defaults."""
     settings = Settings()
@@ -168,17 +197,12 @@ def load_settings() -> Settings:
     with open(_CONFIG_PATH) as f:
         raw = yaml.safe_load(f) or {}
 
-    if "obsidian_base" in raw:
-        settings.obsidian_base = Path(raw["obsidian_base"]).expanduser()
-    if "session_db" in raw:
-        settings.session_db = Path(raw["session_db"]).expanduser()
-    if "state_dir" in raw:
-        settings.state_dir = Path(raw["state_dir"]).expanduser()
-    if "sync_remote" in raw:
-        settings.sync_remote = raw["sync_remote"]
-    if "sync_user" in raw:
-        settings.sync_user = raw["sync_user"]
+    # scalar top-level fields -- driven by module-level _SCALAR_FIELDS mapping
+    for key, coerce in _SCALAR_FIELDS:
+        if key in raw:
+            setattr(settings, key, coerce(raw[key]))  # type: ignore[operator]
 
+    # --- topics (bespoke: path resolution relative to obsidian_base) ---------
     for t in raw.get("topics", []):
         obsidian_path = Path(t.get("obsidian_path", "")).expanduser()
         if not obsidian_path.is_absolute():
@@ -193,49 +217,23 @@ def load_settings() -> Settings:
             )
         )
 
-    # Knowledge domains configuration
+    # --- knowledge_domains (bespoke: nested KnowledgeDomain list) ------------
     kd = raw.get("knowledge_domains", {})
     if kd:
         settings.knowledge_domains = KnowledgeDomainsConfig(
             primary=kd.get("primary", "networking"),
             anchors=kd.get("anchors", []),
             secondary=[
-                KnowledgeDomain(
-                    domain=s.get("domain", ""),
-                    anchors=s.get("anchors", []),
-                )
+                KnowledgeDomain(domain=s.get("domain", ""), anchors=s.get("anchors", []))
                 for s in kd.get("secondary", [])
             ],
         )
 
-    # NotebookLM configuration
+    # --- flat sub-config sections: (raw_key, dataclass_type, field_coercions) -
     nlm = raw.get("notebooklm", {})
     if nlm:
-        settings.notebooklm = NotebookLMConfig(
-            enabled=bool(nlm.get("enabled", False)),
-        )
+        settings.notebooklm = NotebookLMConfig(enabled=bool(nlm.get("enabled", False)))
 
-    # Agents configuration
-    ag = raw.get("agents", {})
-    if ag:
-        ollama_raw = ag.get("ollama", {})
-        lmstudio_raw = ag.get("lmstudio", {})
-        settings.agents = AgentsConfig(
-            priority=ag.get(
-                "priority", ["claude", "kiro", "gemini", "opencode", "ollama", "lmstudio"]
-            ),
-            ollama=LocalLLMConfig(
-                model=ollama_raw.get("model", "qwen3-coder"),
-                base_url=ollama_raw.get("base_url", "http://localhost:4000"),
-            ),
-            lmstudio=LocalLLMConfig(
-                model=lmstudio_raw.get("model", "qwen3-coder"),
-                base_url=lmstudio_raw.get("base_url", "http://localhost:1234"),
-            ),
-            custom=ag.get("custom", {}),
-        )
-
-    # Pomodoro timer configuration
     pomo = raw.get("pomodoro", {})
     if pomo:
         settings.pomodoro = PomodoroConfig(
@@ -245,28 +243,25 @@ def load_settings() -> Settings:
             cycles=int(pomo.get("cycles", 4)),
         )
 
-    # Content pipeline configuration
     ct = raw.get("content", {})
     if ct:
         settings.content = ContentConfig(
-            base_path=Path(ct.get("base_path", "~/study-materials")).expanduser(),
-            notebooklm_timeout=ct.get("notebooklm_timeout", 900),
-            inter_episode_gap=ct.get("inter_episode_gap", 30),
+            base_path=_path(ct.get("base_path", "~/study-materials")),
+            notebooklm_timeout=int(ct.get("notebooklm_timeout", 900)),
+            inter_episode_gap=int(ct.get("inter_episode_gap", 30)),
             default_types=ct.get("default_types", ["audio"]),
-            pandoc_path=ct.get("pandoc_path", "pandoc"),
+            pandoc_path=str(ct.get("pandoc_path", "pandoc")),
         )
 
-    # Web/ttyd configuration
-    if "ttyd_port" in raw:
-        settings.ttyd_port = int(raw["ttyd_port"])
-    if "web_port" in raw:
-        settings.web_port = int(raw["web_port"])
-    if "browser" in raw:
-        settings.browser = str(raw["browser"])
-    if "lan_username" in raw:
-        settings.lan_username = str(raw["lan_username"])
-    if "lan_password" in raw:
-        settings.lan_password = str(raw["lan_password"])
+    ag = raw.get("agents", {})
+    if ag:
+        default_priority = ["claude", "kiro", "gemini", "opencode", "ollama", "lmstudio"]
+        settings.agents = AgentsConfig(
+            priority=ag.get("priority", default_priority),
+            ollama=_local_llm(ag.get("ollama", {}), "qwen3-coder", "http://localhost:4000"),
+            lmstudio=_local_llm(ag.get("lmstudio", {}), "qwen3-coder", "http://localhost:1234"),
+            custom=ag.get("custom", {}),
+        )
 
     return settings
 
