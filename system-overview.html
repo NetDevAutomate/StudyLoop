@@ -864,102 +864,8 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#3-review-system-spaced-repetition" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Review System — Spaced Repetition
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-session-intelligence-cross-session-learning" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Session Intelligence — Cross-Session Learning
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="4. Session Intelligence — Cross-Session Learning">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#session-db-mcp-mcp-server-for-session-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        session-db-mcp — MCP Server for Session Access
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-agent-protocol-how-ai-mentors-behave" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Agent Protocol — How AI Mentors Behave
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-autoresearch-harness-self-improving-quality-loop" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Autoresearch Harness — Self-Improving Quality Loop
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#data-stores" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Data Stores
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#end-to-end-workflow-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        End-to-End Workflow Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1179,20 +1085,19 @@
 
     Note over U: Session dir preserved with .claude/ history</code></pre>
 <p><strong>Session directory structure:</strong>
-<div class="highlight"><pre><span></span><code>~/.config/studyctl/sessions/
+<code>~/.config/studyctl/sessions/
   study-python-decorators-abc12345/
     .claude/          # Claude conversation history (preserved!)
   study-spark-internals-xyz98765/
-    .claude/          # Separate conversation
-</code></pre></div></p>
+    .claude/          # Separate conversation</code></p>
 <p><strong>Resume flow:</strong>
-<div class="highlight"><pre><span></span><code><span class="c1"># tmux still alive → reattach</span>
-studyctl<span class="w"> </span>study<span class="w"> </span>--resume
-
-<span class="c1"># tmux dead, session dir preserved → rebuild + claude -r</span>
-studyctl<span class="w"> </span>study<span class="w"> </span>--resume
-<span class="c1"># Claude: &quot;Last time we covered closures, you were about to...&quot;</span>
-</code></pre></div></p>
+```bash</p>
+<h1 id="tmux-still-alive-reattach">tmux still alive → reattach<a class="headerlink" href="#tmux-still-alive-reattach" title="Permanent link">&para;</a></h1>
+<p>studyctl study --resume</p>
+<h1 id="tmux-dead-session-dir-preserved-rebuild-claude-r">tmux dead, session dir preserved → rebuild + claude -r<a class="headerlink" href="#tmux-dead-session-dir-preserved-rebuild-claude-r" title="Permanent link">&para;</a></h1>
+<p>studyctl study --resume</p>
+<h1 id="claude-last-time-we-covered-closures-you-were-about-to">Claude: "Last time we covered closures, you were about to..."<a class="headerlink" href="#claude-last-time-we-covered-closures-you-were-about-to" title="Permanent link">&para;</a></h1>
+<p>```</p>
 <hr />
 <h3 id="3-review-system-spaced-repetition">3. Review System — Spaced Repetition<a class="headerlink" href="#3-review-system-spaced-repetition" title="Permanent link">&para;</a></h3>
 <pre class="mermaid"><code>flowchart TB
@@ -1269,13 +1174,13 @@ studyctl<span class="w"> </span>study<span class="w"> </span>--resume
     DB --&gt;|"SQL delta over SSH"| PUSH --&gt; REMOTE
     REMOTE --&gt;|"SQL delta over SSH"| PULL --&gt; DB</code></pre>
 <p><strong>Key commands:</strong>
-<div class="highlight"><pre><span></span><code>session-export<span class="w">                          </span><span class="c1"># Import all AI sessions</span>
-session-query<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;decorators&quot;</span><span class="w">       </span><span class="c1"># Full-text search</span>
-session-query<span class="w"> </span>context<span class="w"> </span>SESSION_ID<span class="w">        </span><span class="c1"># Export for LLM consumption</span>
-session-query<span class="w"> </span><span class="k">continue</span><span class="w"> </span>SESSION_ID<span class="w">       </span><span class="c1"># Resume context</span>
-session-sync<span class="w"> </span>push<span class="w"> </span>mac-mini<span class="w">              </span><span class="c1"># Push to remote</span>
-session-sync<span class="w"> </span>pull<span class="w"> </span>mac-mini<span class="w">              </span><span class="c1"># Pull from remote</span>
-</code></pre></div></p>
+<code>bash
+session-export                          # Import all AI sessions
+session-query search "decorators"       # Full-text search
+session-query context SESSION_ID        # Export for LLM consumption
+session-query continue SESSION_ID       # Resume context
+session-sync push mac-mini              # Push to remote
+session-sync pull mac-mini              # Pull from remote</code></p>
 <h4 id="session-db-mcp-mcp-server-for-session-access">session-db-mcp — MCP Server for Session Access<a class="headerlink" href="#session-db-mcp-mcp-server-for-session-access" title="Permanent link">&para;</a></h4>
 <p>A standalone MCP server exposing the session database to any MCP-compatible AI tool via stdio transport. Installed as part of <code>agent-session-tools</code>.</p>
 <pre class="mermaid"><code>graph TB
@@ -1386,27 +1291,25 @@ session-sync<span class="w"> </span>pull<span class="w"> </span>mac-mini<span cl
     T --&gt; FH
     T --&gt; CL</code></pre>
 <p><strong>Registration:</strong>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;session-db&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;session-db-mcp&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></p>
+<code>json
+{
+  "mcpServers": {
+    "session-db": {
+      "command": "session-db-mcp"
+    }
+  }
+}</code></p>
 <p><strong>Usage examples:</strong>
-<div class="highlight"><pre><span></span><code><span class="c1"># Search past work</span>
-<span class="n">session_search</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;JWT middleware&quot;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">&quot;claude_code&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-
-<span class="c1"># Token-efficient context for reuse</span>
-<span class="n">session_context</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="s2">&quot;sess-auth&quot;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;compressed&quot;</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
-
-<span class="c1"># Most-discussed files this week</span>
-<span class="n">session_hotspots</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-
-<span class="c1"># Audit secrets before sharing</span>
-<span class="n">session_clean</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="s2">&quot;sess-abc123&quot;</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</code></pre></div></p>
+```python</p>
+<h1 id="search-past-work">Search past work<a class="headerlink" href="#search-past-work" title="Permanent link">&para;</a></h1>
+<p>session_search(query="JWT middleware", source="claude_code", limit=5)</p>
+<h1 id="token-efficient-context-for-reuse">Token-efficient context for reuse<a class="headerlink" href="#token-efficient-context-for-reuse" title="Permanent link">&para;</a></h1>
+<p>session_context(session_id="sess-auth", format="compressed", max_tokens=2000)</p>
+<h1 id="most-discussed-files-this-week">Most-discussed files this week<a class="headerlink" href="#most-discussed-files-this-week" title="Permanent link">&para;</a></h1>
+<p>session_hotspots(days=7, limit=10)</p>
+<h1 id="audit-secrets-before-sharing">Audit secrets before sharing<a class="headerlink" href="#audit-secrets-before-sharing" title="Permanent link">&para;</a></h1>
+<p>session_clean(session_id="sess-abc123", dry_run=True)
+```</p>
 <hr />
 <h3 id="5-agent-protocol-how-ai-mentors-behave">5. Agent Protocol — How AI Mentors Behave<a class="headerlink" href="#5-agent-protocol-how-ai-mentors-behave" title="Permanent link">&para;</a></h3>
 <pre class="mermaid"><code>flowchart TB
@@ -1520,15 +1423,14 @@ session-sync<span class="w"> </span>pull<span class="w"> </span>mac-mini<span cl
 </tbody>
 </table>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run the test matrix</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/test_iterate.py<span class="w"> </span>--no-git-check
-
-<span class="c1"># View iteration history</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/test_iterate.py<span class="w"> </span>--progress
-
-<span class="c1"># View persona effectiveness</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness
-</code></pre></div>
+<p>```bash</p>
+<h1 id="run-the-test-matrix">Run the test matrix<a class="headerlink" href="#run-the-test-matrix" title="Permanent link">&para;</a></h1>
+<p>uv run python scripts/test_iterate.py --no-git-check</p>
+<h1 id="view-iteration-history">View iteration history<a class="headerlink" href="#view-iteration-history" title="Permanent link">&para;</a></h1>
+<p>uv run python scripts/test_iterate.py --progress</p>
+<h1 id="view-persona-effectiveness">View persona effectiveness<a class="headerlink" href="#view-persona-effectiveness" title="Permanent link">&para;</a></h1>
+<p>studyctl session effectiveness
+```</p>
 <p><strong>Future (Tier 2):</strong> The iterate runner can target persona templates instead of code — run simulated study sessions against fixed scenarios, measure teaching quality, keep/discard persona changes via git. The infrastructure is ready; the evaluation harness is the next step.</p>
 <hr />
 <h2 id="data-stores">Data Stores<a class="headerlink" href="#data-stores" title="Permanent link">&para;</a></h2>
@@ -1576,54 +1478,61 @@ studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness
 <hr />
 <h2 id="end-to-end-workflow-example">End-to-End Workflow Example<a class="headerlink" href="#end-to-end-workflow-example" title="Permanent link">&para;</a></h2>
 <p>Here's a complete workflow from course materials to mastery:</p>
-<div class="highlight"><pre><span></span><code>1. PREPARE MATERIALS
+<p>```
+1. PREPARE MATERIALS
    ─────────────────
    Take notes in Obsidian → studyctl content from-obsidian ./notes/
-   OR: Have a PDF textbook → studyctl content process textbook.pdf
-
-   Result: chapters uploaded to NotebookLM, artefacts generated
-
-2. REVIEW ARTEFACTS
+   OR: Have a PDF textbook → studyctl content process textbook.pdf</p>
+<p>Result: chapters uploaded to NotebookLM, artefacts generated</p>
+<ol>
+<li>
+<p>REVIEW ARTEFACTS
    ─────────────────
    Listen to NotebookLM audio overviews (podcast-style)
-   Download quiz + flashcard JSON to review directory
-
-3. STUDY WITH AI MENTOR
+   Download quiz + flashcard JSON to review directory</p>
+</li>
+<li>
+<p>STUDY WITH AI MENTOR
    ─────────────────────
-   studyctl study &quot;Python Decorators&quot; --energy 7
-
-   → tmux opens with Claude as Socratic mentor
+   studyctl study "Python Decorators" --energy 7</p>
+</li>
+</ol>
+<p>→ tmux opens with Claude as Socratic mentor
    → Sidebar shows timer, activity, counters
    → Agent asks questions, tracks wins/struggles
    → Park tangential topics for later
-   → Quit Claude when done (auto-cleanup)
-
-4. REVIEW FLASHCARDS
+   → Quit Claude when done (auto-cleanup)</p>
+<ol>
+<li>REVIEW FLASHCARDS
    ──────────────────
-   studyctl web → open localhost:8567
-
-   → SM-2 surfaces due cards
+   studyctl web → open localhost:8567</li>
+</ol>
+<p>→ SM-2 surfaces due cards
    → Review on phone/tablet (PWA)
-   → Track accuracy over time
-
-5. TRACK PROGRESS
+   → Track accuracy over time</p>
+<ol>
+<li>
+<p>TRACK PROGRESS
    ───────────────
    studyctl streaks        → study consistency
    studyctl wins           → mastered concepts
    studyctl struggles      → recurring trouble spots
-   studyctl resume         → last session context
-
-6. SYNC ACROSS MACHINES
+   studyctl resume         → last session context</p>
+</li>
+<li>
+<p>SYNC ACROSS MACHINES
    ─────────────────────
    session-sync push mac-mini   → push session history
-   session-sync pull laptop     → pull on another machine
-
-7. RESUME NEXT DAY
+   session-sync pull laptop     → pull on another machine</p>
+</li>
+<li>
+<p>RESUME NEXT DAY
    ────────────────
-   studyctl study --resume
-
-   → Claude picks up conversation: &quot;Last time we covered...&quot;
-</code></pre></div>
+   studyctl study --resume</p>
+</li>
+</ol>
+<p>→ Claude picks up conversation: "Last time we covered..."
+```</p>
 <hr />
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <table>
@@ -1687,14 +1596,14 @@ studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install everything</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[all]&#39;</span>
-
-<span class="c1"># Or just what you need</span>
-pip<span class="w"> </span>install<span class="w"> </span>studyctl<span class="w">                    </span><span class="c1"># CLI + review only</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[tui,web]&#39;</span><span class="w">        </span><span class="c1"># + sidebar + web dashboard</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;studyctl[content]&#39;</span><span class="w">        </span><span class="c1"># + PDF pipeline</span>
-</code></pre></div>
+<p>```bash</p>
+<h1 id="install-everything">Install everything<a class="headerlink" href="#install-everything" title="Permanent link">&para;</a></h1>
+<p>pip install 'studyctl[all]'</p>
+<h1 id="or-just-what-you-need">Or just what you need<a class="headerlink" href="#or-just-what-you-need" title="Permanent link">&para;</a></h1>
+<p>pip install studyctl                    # CLI + review only
+pip install 'studyctl[tui,web]'        # + sidebar + web dashboard
+pip install 'studyctl[content]'        # + PDF pipeline
+```</p>
 
 
 

@@ -617,95 +617,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="studyctl">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#study-sessions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Study Sessions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#health-updates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health &amp; Updates
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#spaced-repetition-intervals" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Spaced Repetition Intervals
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#web-pwa" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Web PWA
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#agent-session-tools" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        agent-session-tools
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="agent-session-tools">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#supported-sources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Sources
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#optional-extras" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional Extras
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
@@ -979,95 +890,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="studyctl">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#study-sessions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Study Sessions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#health-updates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health &amp; Updates
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#spaced-repetition-intervals" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Spaced Repetition Intervals
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#web-pwa" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Web PWA
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#agent-session-tools" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        agent-session-tools
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="agent-session-tools">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#supported-sources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Sources
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#optional-extras" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional Extras
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
@@ -1090,69 +912,63 @@
 <h1 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h1>
 <h2 id="studyctl">studyctl<a class="headerlink" href="#studyctl" title="Permanent link">&para;</a></h2>
 <p>Study pipeline management — content, review, sessions, and tracking.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Study sessions (tmux + AI agent + Textual sidebar)</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w">        </span><span class="c1"># Full tmux environment in one command</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study<span class="w">   </span><span class="c1"># Co-study mode (user drives)</span>
-studyctl<span class="w"> </span>study<span class="w"> </span>--resume<span class="w">                  </span><span class="c1"># Reattach to existing session</span>
-studyctl<span class="w"> </span>study<span class="w"> </span>--end<span class="w">                     </span><span class="c1"># End session cleanly</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--web<span class="w">             </span><span class="c1"># Also start web dashboard</span>
-studyctl<span class="w"> </span>park<span class="w"> </span>QUESTION<span class="w"> </span><span class="o">[</span>-t<span class="w"> </span>TOPIC<span class="o">]</span><span class="w">        </span><span class="c1"># Park tangential topic</span>
-
-<span class="c1"># Low-level session commands (used internally by study)</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session (DB + IPC files)</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>status<span class="w">                  </span><span class="c1"># Timer, topics, parking lot</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span><span class="o">[</span>-n<span class="w"> </span>NOTES<span class="o">]</span><span class="w">          </span><span class="c1"># End session, show summary</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w">           </span><span class="c1"># Persona effectiveness metrics</span>
-
-<span class="c1"># Content pipeline</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span>SOURCE<span class="w">            </span><span class="c1"># Split PDF by chapters</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span>SOURCE<span class="w">          </span><span class="c1"># Split + upload to NotebookLM</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>autopilot<span class="w">               </span><span class="c1"># Generate next pending episode</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>DIR<span class="w">       </span><span class="c1"># Markdown → PDF → NotebookLM</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>status<span class="w">                  </span><span class="c1"># Show content pipeline status</span>
-studyctl<span class="w"> </span>content<span class="w"> </span>syllabus<span class="w">                </span><span class="c1"># Manage syllabus workflow</span>
-
-<span class="c1"># Sync &amp; topics</span>
-studyctl<span class="w"> </span>sync<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># Sync notes to NotebookLM</span>
-studyctl<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w">                  </span><span class="c1"># Show sync status</span>
-studyctl<span class="w"> </span>topics<span class="w">                          </span><span class="c1"># List configured topics</span>
-studyctl<span class="w"> </span>audio<span class="w"> </span>TOPIC<span class="w">                     </span><span class="c1"># Generate NotebookLM audio overview</span>
-studyctl<span class="w"> </span>dedup<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">   </span><span class="c1"># Remove duplicate notebook sources</span>
-
-<span class="c1"># Review</span>
-studyctl<span class="w"> </span>review<span class="w">                          </span><span class="c1"># Check spaced repetition due dates</span>
-studyctl<span class="w"> </span>struggles<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">             </span><span class="c1"># Find recurring struggle topics</span>
-
-<span class="c1"># Configuration &amp; health</span>
-studyctl<span class="w"> </span>setup<span class="w">                           </span><span class="c1"># Interactive setup wizard</span>
-studyctl<span class="w"> </span>config<span class="w"> </span>init<span class="w">                     </span><span class="c1"># Interactive config (3 questions)</span>
-studyctl<span class="w"> </span>config<span class="w"> </span>show<span class="w">                     </span><span class="c1"># Display current configuration</span>
-studyctl<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check</span>
-studyctl<span class="w"> </span>update<span class="w">                          </span><span class="c1"># Check for available updates</span>
-studyctl<span class="w"> </span>upgrade<span class="w">                         </span><span class="c1"># Apply all available updates</span>
-
-<span class="c1"># Backup &amp; restore</span>
-studyctl<span class="w"> </span>backup<span class="w"> </span><span class="o">[</span>--tag<span class="w"> </span>NAME<span class="o">]</span><span class="w">             </span><span class="c1"># Snapshot DB + config to backups/</span>
-studyctl<span class="w"> </span>restore<span class="w">                         </span><span class="c1"># List available backups</span>
-studyctl<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--confirm<span class="w">        </span><span class="c1"># Restore from backup (safety backup first)</span>
-
-<span class="c1"># Web</span>
-studyctl<span class="w"> </span>web<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--host<span class="w"> </span>HOST<span class="o">]</span><span class="w"> </span><span class="c1"># Launch study web app (PWA)</span>
-</code></pre></div>
+<p>```bash</p>
+<h1 id="study-sessions-tmux-ai-agent-textual-sidebar">Study sessions (tmux + AI agent + Textual sidebar)<a class="headerlink" href="#study-sessions-tmux-ai-agent-textual-sidebar" title="Permanent link">&para;</a></h1>
+<p>studyctl study "topic" --energy 7        # Full tmux environment in one command
+studyctl study "topic" --mode co-study   # Co-study mode (user drives)
+studyctl study --resume                  # Reattach to existing session
+studyctl study --end                     # End session cleanly
+studyctl study "topic" --web             # Also start web dashboard
+studyctl park QUESTION [-t TOPIC]        # Park tangential topic</p>
+<h1 id="low-level-session-commands-used-internally-by-study">Low-level session commands (used internally by study)<a class="headerlink" href="#low-level-session-commands-used-internally-by-study" title="Permanent link">&para;</a></h1>
+<p>studyctl session start -t TOPIC -e 7    # Start session (DB + IPC files)
+studyctl session status                  # Timer, topics, parking lot
+studyctl session end [-n NOTES]          # End session, show summary
+studyctl session effectiveness           # Persona effectiveness metrics</p>
+<h1 id="content-pipeline">Content pipeline<a class="headerlink" href="#content-pipeline" title="Permanent link">&para;</a></h1>
+<p>studyctl content split SOURCE            # Split PDF by chapters
+studyctl content process SOURCE          # Split + upload to NotebookLM
+studyctl content autopilot               # Generate next pending episode
+studyctl content from-obsidian DIR       # Markdown → PDF → NotebookLM
+studyctl content status                  # Show content pipeline status
+studyctl content syllabus                # Manage syllabus workflow</p>
+<h1 id="sync-topics">Sync &amp; topics<a class="headerlink" href="#sync-topics" title="Permanent link">&para;</a></h1>
+<p>studyctl sync [TOPIC] --all --dry-run    # Sync notes to NotebookLM
+studyctl status [TOPIC]                  # Show sync status
+studyctl topics                          # List configured topics
+studyctl audio TOPIC                     # Generate NotebookLM audio overview
+studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources</p>
+<h1 id="review">Review<a class="headerlink" href="#review" title="Permanent link">&para;</a></h1>
+<p>studyctl review                          # Check spaced repetition due dates
+studyctl struggles --days 30             # Find recurring struggle topics</p>
+<h1 id="configuration-health">Configuration &amp; health<a class="headerlink" href="#configuration-health" title="Permanent link">&para;</a></h1>
+<p>studyctl setup                           # Interactive setup wizard
+studyctl config init                     # Interactive config (3 questions)
+studyctl config show                     # Display current configuration
+studyctl doctor                          # Full health check
+studyctl update                          # Check for available updates
+studyctl upgrade                         # Apply all available updates</p>
+<h1 id="backup-restore">Backup &amp; restore<a class="headerlink" href="#backup-restore" title="Permanent link">&para;</a></h1>
+<p>studyctl backup [--tag NAME]             # Snapshot DB + config to backups/
+studyctl restore                         # List available backups
+studyctl restore BACKUP --confirm        # Restore from backup (safety backup first)</p>
+<h1 id="web">Web<a class="headerlink" href="#web" title="Permanent link">&para;</a></h1>
+<p>studyctl web [--port PORT] [--host HOST] # Launch study web app (PWA)
+```</p>
 <h3 id="study-sessions">Study Sessions<a class="headerlink" href="#study-sessions" title="Permanent link">&para;</a></h3>
 <p>The primary entry point is <code>studyctl study</code>, which creates a complete tmux-based study environment:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w">          </span><span class="c1"># Socratic mentor session</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Spark Internals&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study<span class="w">       </span><span class="c1"># User-driven co-study</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--timer<span class="w"> </span>pomodoro<span class="w">                </span><span class="c1"># Override default timer</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>claude<span class="w"> </span>--web<span class="w">            </span><span class="c1"># Explicit agent + web dashboard</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--lan<span class="w">                           </span><span class="c1"># Bind to 0.0.0.0, password-protected (implies --web)</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--lan<span class="w"> </span>--password<span class="w"> </span>SECRET<span class="w">         </span><span class="c1"># Explicit password for LAN auth</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>ollama<span class="w">                  </span><span class="c1"># Local LLM via Ollama + LiteLLM</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>lmstudio<span class="w">                </span><span class="c1"># Local LLM via LM Studio</span>
-studyctl<span class="w"> </span>study<span class="w"> </span>--resume<span class="w">                                </span><span class="c1"># Resume conversation (-r)</span>
-studyctl<span class="w"> </span>study<span class="w"> </span>--end<span class="w">                                   </span><span class="c1"># End session cleanly</span>
-studyctl<span class="w"> </span>park<span class="w"> </span><span class="s2">&quot;How does asyncio compare?&quot;</span><span class="w">              </span><span class="c1"># Park mid-session</span>
-</code></pre></div>
+<p><code>bash
+studyctl study "Python Decorators" --energy 7          # Socratic mentor session
+studyctl study "Spark Internals" --mode co-study       # User-driven co-study
+studyctl study "topic" --timer pomodoro                # Override default timer
+studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
+studyctl study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
+studyctl study "topic" --lan --password SECRET         # Explicit password for LAN auth
+studyctl study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
+studyctl study "topic" --agent lmstudio                # Local LLM via LM Studio
+studyctl study --resume                                # Resume conversation (-r)
+studyctl study --end                                   # End session cleanly
+studyctl park "How does asyncio compare?"              # Park mid-session</code></p>
 <p><strong>What <code>studyctl study</code> creates:</strong>
 - tmux session with agent pane (left) + Textual sidebar (right)
 - AI agent launched with mode-specific persona (clean pane, no visible command)
@@ -1194,23 +1010,23 @@ studyctl<span class="w"> </span>park<span class="w"> </span><span class="s2">&qu
 </tbody>
 </table>
 <p><strong>Low-level session commands</strong> (used internally by <code>studyctl study</code>):</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;Decorators&quot;</span><span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session record</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>status<span class="w">                         </span><span class="c1"># Show current state</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;Got through closures&quot;</span><span class="w">  </span><span class="c1"># End with notes</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w">                  </span><span class="c1"># Win rate per persona version</span>
-studyctl<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w"> </span>-p<span class="w"> </span>abc123...<span class="w">     </span><span class="c1"># Filter by persona hash</span>
-</code></pre></div>
+<p><code>bash
+studyctl session start -t "Decorators" -e 7    # Start session record
+studyctl session status                         # Show current state
+studyctl session end -n "Got through closures"  # End with notes
+studyctl session effectiveness                  # Win rate per persona version
+studyctl session effectiveness -p abc123...     # Filter by persona hash</code></p>
 <h3 id="health-updates">Health &amp; Updates<a class="headerlink" href="#health-updates" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check (Rich table)</span>
-studyctl<span class="w"> </span>doctor<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># JSON output (for AI agents and CI)</span>
-studyctl<span class="w"> </span>doctor<span class="w"> </span>--quiet<span class="w">                  </span><span class="c1"># One-line summary</span>
-studyctl<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>core<span class="w">          </span><span class="c1"># Check specific category only</span>
-studyctl<span class="w"> </span>update<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># Machine-readable update info</span>
-studyctl<span class="w"> </span>upgrade<span class="w"> </span>--dry-run<span class="w">               </span><span class="c1"># Preview what would change</span>
-studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>packages<span class="w">    </span><span class="c1"># Upgrade only packages</span>
-studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>database<span class="w">    </span><span class="c1"># Run DB migrations only</span>
-studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>agents<span class="w">      </span><span class="c1"># Update agent definitions only</span>
-</code></pre></div>
+<p><code>bash
+studyctl doctor                          # Full health check (Rich table)
+studyctl doctor --json                   # JSON output (for AI agents and CI)
+studyctl doctor --quiet                  # One-line summary
+studyctl doctor --category core          # Check specific category only
+studyctl update --json                   # Machine-readable update info
+studyctl upgrade --dry-run               # Preview what would change
+studyctl upgrade --component packages    # Upgrade only packages
+studyctl upgrade --component database    # Run DB migrations only
+studyctl upgrade --component agents      # Update agent definitions only</code></p>
 <p><strong>Exit codes for <code>studyctl doctor</code>:</strong></p>
 <table>
 <thead>
@@ -1240,10 +1056,10 @@ studyctl<span class="w"> </span>upgrade<span class="w"> </span>--component<span 
 <p><code>studyctl review</code> shows what's due based on when you last recorded progress.</p>
 <h3 id="web-pwa">Web PWA<a class="headerlink" href="#web-pwa" title="Permanent link">&para;</a></h3>
 <p><code>studyctl web</code> launches a progressive web app for flashcard and quiz review. LAN accessible by default.</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>web<span class="w">                    </span><span class="c1"># Serve on 0.0.0.0:8567</span>
-studyctl<span class="w"> </span>web<span class="w"> </span>--port<span class="w"> </span><span class="m">9000</span><span class="w">        </span><span class="c1"># Custom port</span>
-studyctl<span class="w"> </span>web<span class="w"> </span>--host<span class="w"> </span>localhost<span class="w">   </span><span class="c1"># Local only</span>
-</code></pre></div>
+<p><code>bash
+studyctl web                    # Serve on 0.0.0.0:8567
+studyctl web --port 9000        # Custom port
+studyctl web --host localhost   # Local only</code></p>
 <table>
 <thead>
 <tr>
@@ -1306,24 +1122,24 @@ studyctl<span class="w"> </span>web<span class="w"> </span>--host<span class="w"
 - <strong>Read once</strong> — speaker icon on card or <code>T</code> key
 - <strong>Auto-voice</strong> — header toggle or <code>V</code> key (reads everything automatically)</p>
 <p><strong>Web + terminal config</strong> (<code>~/.config/studyctl/config.yaml</code>):</p>
-<div class="highlight"><pre><span></span><code><span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8567</span><span class="w">       </span><span class="c1"># web dashboard port (default 8567)</span>
-<span class="nt">ttyd_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7681</span><span class="w">      </span><span class="c1"># ttyd web terminal port (default 7681)</span>
-<span class="nt">browser</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">          </span><span class="c1"># auto-open browser: chrome, safari, firefox, brave, or empty for system default</span>
-<span class="nt">lan_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">     </span><span class="c1"># persistent password for --lan mode (auto-generated if empty)</span>
-</code></pre></div>
+<p><code>yaml
+web_port: 8567       # web dashboard port (default 8567)
+ttyd_port: 7681      # ttyd web terminal port (default 7681)
+browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
+lan_password: ""     # persistent password for --lan mode (auto-generated if empty)</code></p>
 <hr />
 <h2 id="agent-session-tools">agent-session-tools<a class="headerlink" href="#agent-session-tools" title="Permanent link">&para;</a></h2>
 <p>AI session export, search, and cross-machine sync.</p>
-<div class="highlight"><pre><span></span><code>session-export<span class="w"> </span><span class="o">[</span>--source<span class="w"> </span>SOURCE<span class="o">]</span><span class="w">         </span><span class="c1"># Export AI sessions to SQLite</span>
-session-query<span class="w"> </span>search<span class="w"> </span>QUERY<span class="w">               </span><span class="c1"># Full-text search across sessions</span>
-session-query<span class="w"> </span>list<span class="w"> </span>--since<span class="w"> </span>7d<span class="w">            </span><span class="c1"># List recent sessions</span>
-session-query<span class="w"> </span>show<span class="w"> </span>SESSION_ID<span class="w">            </span><span class="c1"># Show session details</span>
-session-query<span class="w"> </span>context<span class="w"> </span>SESSION_ID<span class="w">         </span><span class="c1"># Generate context for resuming</span>
-session-query<span class="w"> </span>stats<span class="w">                      </span><span class="c1"># Database statistics</span>
-session-sync<span class="w"> </span>push<span class="p">|</span>pull<span class="p">|</span>sync<span class="w"> </span>REMOTE<span class="w">       </span><span class="c1"># Sync database across machines</span>
-session-maint<span class="w"> </span>vacuum<span class="p">|</span>reindex<span class="p">|</span>schema<span class="p">|</span>archive<span class="w">  </span><span class="c1"># Database maintenance</span>
-study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span><span class="o">[</span>-v<span class="w"> </span>VOICE<span class="o">]</span><span class="w"> </span><span class="o">[</span>-s<span class="w"> </span>SPEED<span class="o">]</span><span class="w"> </span><span class="c1"># Speak text aloud using TTS</span>
-</code></pre></div>
+<p><code>bash
+session-export [--source SOURCE]         # Export AI sessions to SQLite
+session-query search QUERY               # Full-text search across sessions
+session-query list --since 7d            # List recent sessions
+session-query show SESSION_ID            # Show session details
+session-query context SESSION_ID         # Generate context for resuming
+session-query stats                      # Database statistics
+session-sync push|pull|sync REMOTE       # Sync database across machines
+session-maint vacuum|reindex|schema|archive  # Database maintenance
+study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS</code></p>
 <h3 id="supported-sources">Supported Sources<a class="headerlink" href="#supported-sources" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1364,9 +1180,9 @@ study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span
 </tbody>
 </table>
 <h3 id="optional-extras">Optional Extras<a class="headerlink" href="#optional-extras" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>semantic<span class="o">]</span><span class="w">  </span><span class="c1"># Vector embeddings search</span>
-uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>tokens<span class="o">]</span><span class="w">    </span><span class="c1"># Token counting</span>
-</code></pre></div>
+<p><code>bash
+uv pip install agent-session-tools[semantic]  # Vector embeddings search
+uv pip install agent-session-tools[tokens]    # Token counting</code></p>
 
 
 

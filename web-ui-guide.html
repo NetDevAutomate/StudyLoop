@@ -1114,11 +1114,11 @@
 </blockquote>
 <hr />
 <h2 id="starting-the-web-ui">Starting the Web UI<a class="headerlink" href="#starting-the-web-ui" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>web<span class="w">                        </span><span class="c1"># localhost:8567</span>
-studyctl<span class="w"> </span>web<span class="w"> </span>--lan<span class="w">                  </span><span class="c1"># LAN-accessible with auto-generated password</span>
-studyctl<span class="w"> </span>web<span class="w"> </span>--lan<span class="w"> </span>--password<span class="w"> </span>SECRET<span class="w">  </span><span class="c1"># LAN with explicit password</span>
-studyctl<span class="w"> </span>web<span class="w"> </span>-p<span class="w"> </span><span class="m">9000</span><span class="w">                </span><span class="c1"># custom port</span>
-</code></pre></div>
+<p><code>bash
+studyctl web                        # localhost:8567
+studyctl web --lan                  # LAN-accessible with auto-generated password
+studyctl web --lan --password SECRET  # LAN with explicit password
+studyctl web -p 9000                # custom port</code></p>
 <p>Open your browser to <code>http://localhost:8567</code>. The PWA is installable — add it to your home screen on mobile for offline review.</p>
 <hr />
 <h2 id="flashcard-review">Flashcard Review<a class="headerlink" href="#flashcard-review" title="Permanent link">&para;</a></h2>
@@ -1260,8 +1260,8 @@ studyctl<span class="w"> </span>web<span class="w"> </span>-p<span class="w"> </
 <hr />
 <h2 id="live-session-dashboard">Live Session Dashboard<a class="headerlink" href="#live-session-dashboard" title="Permanent link">&para;</a></h2>
 <p>When you start a study session with <code>--web</code>, the dashboard provides a real-time view of your session from any device:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w"> </span>--web
-</code></pre></div>
+<p><code>bash
+studyctl study "Python Decorators" --energy 7 --web</code></p>
 <h3 id="accessing-the-dashboard">Accessing the Dashboard<a class="headerlink" href="#accessing-the-dashboard" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Local</strong>: <code>http://localhost:8567/session</code></li>
@@ -1304,14 +1304,14 @@ studyctl<span class="w"> </span>web<span class="w"> </span>-p<span class="w"> </
 <p>The terminal stays connected during pop-out/return — your tmux session is not interrupted.</p>
 <h3 id="lan-access">LAN access<a class="headerlink" href="#lan-access" title="Permanent link">&para;</a></h3>
 <p>With <code>--lan</code>, the terminal is accessible from other devices on your network:</p>
-<div class="highlight"><pre><span></span><code>studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--web<span class="w"> </span>--lan<span class="w"> </span>--password<span class="w"> </span>mypassword
-</code></pre></div>
+<p><code>bash
+studyctl study "topic" --web --lan --password mypassword</code></p>
 <p>Access from a tablet or phone at <code>http://&lt;host-ip&gt;:8567/session</code>. HTTP Basic Auth protects the connection.</p>
 <h3 id="without-ttyd">Without ttyd<a class="headerlink" href="#without-ttyd" title="Permanent link">&para;</a></h3>
 <p>If ttyd is not installed, the dashboard works without the terminal panel. The activity feed, timer, and counters still function. Install ttyd with:</p>
-<div class="highlight"><pre><span></span><code>brew<span class="w"> </span>install<span class="w"> </span>ttyd<span class="w">      </span><span class="c1"># macOS</span>
-apt<span class="w"> </span>install<span class="w"> </span>ttyd<span class="w">       </span><span class="c1"># Debian/Ubuntu</span>
-</code></pre></div>
+<p><code>bash
+brew install ttyd      # macOS
+apt install ttyd       # Debian/Ubuntu</code></p>
 <hr />
 <h2 id="accessibility">Accessibility<a class="headerlink" href="#accessibility" title="Permanent link">&para;</a></h2>
 <h3 id="opendyslexic-font">OpenDyslexic Font<a class="headerlink" href="#opendyslexic-font" title="Permanent link">&para;</a></h3>
@@ -1337,21 +1337,18 @@ apt<span class="w"> </span>install<span class="w"> </span>ttyd<span class="w">  
 <p>The service worker caches all vendored assets (HTMX, Alpine.js, fonts) for offline use.</p>
 <hr />
 <h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Start flashcard/quiz review</span>
-studyctl<span class="w"> </span>web
-
-<span class="c1"># Start a study session with web dashboard</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--web
-
-<span class="c1"># LAN access (tablet/phone)</span>
-studyctl<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--web<span class="w"> </span>--lan
-
-<span class="c1"># Check what&#39;s due for review</span>
-studyctl<span class="w"> </span>review
-
-<span class="c1"># View study streaks and patterns</span>
-studyctl<span class="w"> </span>streaks
-</code></pre></div>
+<p>```bash</p>
+<h1 id="start-flashcardquiz-review">Start flashcard/quiz review<a class="headerlink" href="#start-flashcardquiz-review" title="Permanent link">&para;</a></h1>
+<p>studyctl web</p>
+<h1 id="start-a-study-session-with-web-dashboard">Start a study session with web dashboard<a class="headerlink" href="#start-a-study-session-with-web-dashboard" title="Permanent link">&para;</a></h1>
+<p>studyctl study "topic" --web</p>
+<h1 id="lan-access-tabletphone">LAN access (tablet/phone)<a class="headerlink" href="#lan-access-tabletphone" title="Permanent link">&para;</a></h1>
+<p>studyctl study "topic" --web --lan</p>
+<h1 id="check-whats-due-for-review">Check what's due for review<a class="headerlink" href="#check-whats-due-for-review" title="Permanent link">&para;</a></h1>
+<p>studyctl review</p>
+<h1 id="view-study-streaks-and-patterns">View study streaks and patterns<a class="headerlink" href="#view-study-streaks-and-patterns" title="Permanent link">&para;</a></h1>
+<p>studyctl streaks
+```</p>
 
 
 
