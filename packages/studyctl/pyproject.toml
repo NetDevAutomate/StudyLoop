@@ -58,6 +58,7 @@ markers = [
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
+extraPaths = ["../agent-session-tools/src"]  # workspace sibling for cross-package imports
 exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/cli/_web.py", "src/studyctl/web", "src/studyctl/mcp", "src/studyctl/eval/llm_client.py"]  # optional deps not in CI
 
 [dependency-groups]
