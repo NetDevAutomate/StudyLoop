@@ -16,14 +16,18 @@ from __future__ import annotations
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 
 
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
 from studyctl.web.app import create_app
 
@@ -48,10 +52,10 @@ class _TtydHTTPHandler(BaseHTTPRequestHandler):
 
 
 @pytest.fixture()
-def fake_ttyd_port(tmp_path) -> int:
+def fake_ttyd_port(tmp_path) -> Generator[int, None, None]:
     """Spin up a minimal HTTP server that acts as a fake ttyd upstream.
 
-    Returns the port it's listening on.
+    Yields the port it's listening on.
     """
     server = HTTPServer(("127.0.0.1", 0), _TtydHTTPHandler)
     port = server.server_address[1]

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 pytest = __import__("pytest")
 pytest.importorskip("fastapi")
 
 from unittest.mock import patch  # noqa: E402
 
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 from studyctl.session_state import TopicEntry  # noqa: E402
 from studyctl.web.app import create_app  # noqa: E402
@@ -260,8 +262,8 @@ class TestTopicsAPI:
         from studyctl.settings import TopicConfig
 
         mock_topics = [
-            TopicConfig(name="Python", slug="python", obsidian_path="", tags=["python"]),
-            TopicConfig(name="Spark", slug="spark", obsidian_path="", tags=["data"]),
+            TopicConfig(name="Python", slug="python", obsidian_path=Path(""), tags=["python"]),
+            TopicConfig(name="Spark", slug="spark", obsidian_path=Path(""), tags=["data"]),
         ]
         settings = MagicMock()
         settings.topics = mock_topics

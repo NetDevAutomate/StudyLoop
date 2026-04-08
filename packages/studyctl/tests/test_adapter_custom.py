@@ -26,7 +26,7 @@ class TestCustomAgentFromConfig:
         persona = tmp_path / "persona.md"
         persona.touch()
         with patch("shutil.which", return_value="/usr/local/bin/aider"):
-            cmd = adapter.launch_cmd(persona, resume=False)
+            cmd = adapter.launch_cmd(persona, False)
         assert "/usr/local/bin/aider" in cmd
         assert str(persona) in cmd
 
@@ -43,7 +43,7 @@ class TestCustomAgentFromConfig:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("shutil.which", return_value="/usr/bin/aider"):
-            cmd = adapter.launch_cmd(persona, resume=True)
+            cmd = adapter.launch_cmd(persona, True)
         assert "--resume" in cmd
 
     def test_env_vars_prepended(self, tmp_path):
@@ -59,7 +59,7 @@ class TestCustomAgentFromConfig:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("shutil.which", return_value="/usr/bin/claude"):
-            cmd = adapter.launch_cmd(persona, resume=False)
+            cmd = adapter.launch_cmd(persona, False)
         assert "ANTHROPIC_BASE_URL=http://localhost:4000" in cmd
         assert "MODEL=qwen3" in cmd
 
@@ -102,6 +102,7 @@ class TestCustomAgentFromConfig:
             "teardown": "true",
         }
         adapter = build_custom_adapter("agent", config)
+        assert adapter.teardown is not None
         adapter.teardown(tmp_path)
         adapter.teardown(tmp_path)  # Must not raise
 

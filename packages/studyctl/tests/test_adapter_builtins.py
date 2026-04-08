@@ -386,6 +386,7 @@ class TestKiroAdapter:
         backup.write_text(json.dumps({"prompt": "restored"}))
         target.write_text(json.dumps({"prompt": "studyctl-managed"}))
 
+        assert ADAPTER.teardown is not None
         ADAPTER.teardown(tmp_path / "session")
 
         assert not backup.exists()
@@ -402,7 +403,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.ollama.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "ANTHROPIC_BASE_URL=" in cmd
         assert str(persona) in cmd
 
@@ -412,7 +413,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.ollama.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=True)
+            cmd = ADAPTER.launch_cmd(persona, True)
         assert "-r" in cmd or "--resume" in cmd
 
     def test_ollama_launch_no_resume_no_r_flag(self, tmp_path):
@@ -421,7 +422,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.ollama.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         # -r should NOT appear in a non-resume launch
         parts = cmd.split()
         assert "-r" not in parts
@@ -432,7 +433,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.ollama.shutil.which", return_value=None):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         # Falls back to bare "claude" string
         assert "claude" in cmd
 
@@ -442,7 +443,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.gemini.shutil.which", return_value="/usr/bin/gemini"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "/usr/bin/gemini" in cmd
 
     def test_gemini_launch_resume(self, tmp_path):
@@ -451,7 +452,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.gemini.shutil.which", return_value="/usr/bin/gemini"):
-            cmd = ADAPTER.launch_cmd(persona, resume=True)
+            cmd = ADAPTER.launch_cmd(persona, True)
         assert "-r" in cmd
 
     def test_gemini_launch_no_resume_no_r_flag(self, tmp_path):
@@ -460,7 +461,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.gemini.shutil.which", return_value="/usr/bin/gemini"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "-r" not in cmd.split()
 
     def test_gemini_launch_fallback_binary(self, tmp_path):
@@ -469,7 +470,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.gemini.shutil.which", return_value=None):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "gemini" in cmd
 
     def test_opencode_launch(self, tmp_path):
@@ -478,7 +479,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.opencode.shutil.which", return_value="/usr/bin/opencode"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "study-mentor" in cmd
 
     def test_opencode_launch_resume(self, tmp_path):
@@ -487,7 +488,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.opencode.shutil.which", return_value="/usr/bin/opencode"):
-            cmd = ADAPTER.launch_cmd(persona, resume=True)
+            cmd = ADAPTER.launch_cmd(persona, True)
         assert "-c" in cmd
 
     def test_opencode_launch_binary_in_cmd(self, tmp_path):
@@ -496,7 +497,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.opencode.shutil.which", return_value="/usr/bin/opencode"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert cmd.startswith("/usr/bin/opencode")
 
     def test_opencode_launch_fallback_binary(self, tmp_path):
@@ -505,7 +506,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.opencode.shutil.which", return_value=None):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "opencode" in cmd
 
     def test_lmstudio_launch_includes_env_vars(self, tmp_path):
@@ -514,7 +515,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.lmstudio.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "ANTHROPIC_BASE_URL=" in cmd
 
     def test_lmstudio_launch_resume(self, tmp_path):
@@ -523,7 +524,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.lmstudio.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=True)
+            cmd = ADAPTER.launch_cmd(persona, True)
         assert "-r" in cmd
 
     def test_lmstudio_launch_includes_persona_path(self, tmp_path):
@@ -532,7 +533,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.lmstudio.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert str(persona) in cmd
 
     def test_claude_launch_absolute_path(self, tmp_path):
@@ -541,7 +542,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.claude.shutil.which", return_value="/usr/local/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert cmd.startswith("/usr/local/bin/claude")
         assert "--append-system-prompt-file" in cmd
 
@@ -551,7 +552,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.claude.shutil.which", return_value="/usr/local/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=True)
+            cmd = ADAPTER.launch_cmd(persona, True)
         assert "-r" in cmd
 
     def test_claude_launch_includes_persona_path(self, tmp_path):
@@ -560,7 +561,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.claude.shutil.which", return_value="/usr/local/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert str(persona) in cmd
 
     def test_claude_launch_no_resume_no_r_flag(self, tmp_path):
@@ -569,7 +570,7 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.claude.shutil.which", return_value="/usr/local/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         parts = cmd.split()
         assert "-r" not in parts
 
@@ -579,5 +580,5 @@ class TestLaunchCommands:
         persona = tmp_path / "p.md"
         persona.touch()
         with patch("studyctl.adapters.claude.shutil.which", return_value=None):
-            cmd = ADAPTER.launch_cmd(persona, resume=False)
+            cmd = ADAPTER.launch_cmd(persona, False)
         assert "claude" in cmd

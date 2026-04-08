@@ -160,8 +160,10 @@ class StudySession:
         )
 
         # Wait for both panes to exist
+        assert self._session_name is not None
+        session_name = self._session_name
         self.tmux.wait_for(
-            lambda: len(self.tmux.list_panes(self._session_name)) >= 2,
+            lambda: len(self.tmux.list_panes(session_name)) >= 2,
             timeout=10,
             msg="expected 2 panes (agent + sidebar)",
         )
@@ -249,8 +251,9 @@ class StudySession:
     def assert_agent_running(self, *, timeout: float = 10) -> None:
         """Assert the agent pane has a running child process."""
         assert self._main_pane, "No main pane — was start() called?"
+        main_pane = self._main_pane
         self.tmux.wait_for(
-            lambda: self.tmux.pane_has_children(self._main_pane),
+            lambda: self.tmux.pane_has_children(main_pane),
             timeout=timeout,
             msg="agent pane has no child processes (agent not running)",
         )
@@ -262,8 +265,9 @@ class StudySession:
         so we check that the pane's process hasn't exited.
         """
         assert self._sidebar_pane, "No sidebar pane — was start() called?"
+        sidebar_pane = self._sidebar_pane
         self.tmux.wait_for(
-            lambda: self.tmux.pane_process_alive(self._sidebar_pane),
+            lambda: self.tmux.pane_process_alive(sidebar_pane),
             timeout=timeout,
             msg="sidebar pane process is dead",
         )
