@@ -7,8 +7,10 @@ tmux client attachment, nested sessions).
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+from typing import cast
 
 import pexpect
 
@@ -43,7 +45,7 @@ class TerminalSession:
         """
         cmd = f"{sys.executable} -m studyctl.cli study '{topic}' --energy {energy} --agent claude"
 
-        env = dict(__import__("os").environ)
+        env: dict[str, str] = dict(os.environ)
         if agent_cmd:
             env["STUDYCTL_TEST_AGENT_CMD"] = agent_cmd
         # Remove TMUX so studyctl uses attach mode (which fails gracefully
@@ -52,7 +54,9 @@ class TerminalSession:
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
 
-        self._child = pexpect.spawn(cmd, env=env, timeout=timeout, encoding="utf-8")
+        self._child = pexpect.spawn(
+            cmd, env=cast("os._Environ[str]", env), timeout=timeout, encoding="utf-8"
+        )
         # Wait for session creation — the command will try to exec tmux attach
         # which will fail/exit since pexpect isn't a tmux client. But the
         # detached session is already created.

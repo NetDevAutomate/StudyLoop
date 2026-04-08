@@ -490,7 +490,7 @@ class TestRealTtyd:
         "Use headed mode with manual interaction to test typing."
     )
     def test_popout_ttyd_window_is_interactive(
-        self, web_server_with_ttyd, ttyd_process, page, context
+        self, web_server_with_ttyd, ttyd_process, page, context, web_page_ttyd
     ):
         """Pop-out window opens /terminal/ and loads an interactive ttyd terminal."""
         _write_state(

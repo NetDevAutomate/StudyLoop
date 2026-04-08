@@ -9,7 +9,7 @@ pytest.importorskip("fastapi")
 
 from unittest.mock import patch  # noqa: E402
 
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 from studyctl.web.app import create_app  # noqa: E402
 

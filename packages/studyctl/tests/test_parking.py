@@ -104,6 +104,7 @@ def test_get_parked_topics_filters_by_status(parking_db: Path) -> None:
 
     id1 = park_topic("Topic A")
     park_topic("Topic B")
+    assert id1 is not None
     resolve_parked_topic(id1)
 
     pending = get_parked_topics(status="pending")
@@ -126,7 +127,7 @@ def test_get_unscheduled_parked_topics(parking_db: Path) -> None:
     park_topic("Topic A", topic_tag="python")
     id2 = park_topic("Topic B", topic_tag="python")
     park_topic("Topic C", topic_tag="sql")
-
+    assert id2 is not None
     schedule_parked_topic(id2, "2026-04-01")
 
     # All pending
@@ -148,6 +149,7 @@ def test_schedule_parked_topic(parking_db: Path) -> None:
     from studyctl.parking import get_parked_topics, park_topic, schedule_parked_topic
 
     row_id = park_topic("Learn asyncio")
+    assert row_id is not None
     result = schedule_parked_topic(row_id, "2026-04-01")
     assert result is True
 
@@ -168,6 +170,7 @@ def test_resolve_parked_topic(parking_db: Path) -> None:
     from studyctl.parking import get_parked_topics, park_topic, resolve_parked_topic
 
     row_id = park_topic("GIL question")
+    assert row_id is not None
     result = resolve_parked_topic(row_id)
     assert result is True
 
@@ -181,6 +184,7 @@ def test_dismiss_parked_topic(parking_db: Path) -> None:
     from studyctl.parking import dismiss_parked_topic, get_parked_topics, park_topic
 
     row_id = park_topic("Not worth pursuing")
+    assert row_id is not None
     result = dismiss_parked_topic(row_id)
     assert result is True
 
@@ -200,6 +204,7 @@ def test_dismiss_only_pending(parking_db: Path) -> None:
     )
 
     row_id = park_topic("Scheduled topic")
+    assert row_id is not None
     schedule_parked_topic(row_id, "2026-04-01")
     # Can't dismiss a scheduled topic
     assert dismiss_parked_topic(row_id) is False

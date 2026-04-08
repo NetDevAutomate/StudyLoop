@@ -113,6 +113,7 @@ class TestShortBreak:
         result = check_break_needed(
             elapsed_minutes=40, energy=5, last_break_at=None, breaks_taken=0
         )
+        assert result is not None
         assert result.break_type == "short"
 
 
@@ -148,6 +149,7 @@ class TestLongBreak:
         result = check_break_needed(
             elapsed_minutes=75, energy=5, last_break_at=None, breaks_taken=0
         )
+        assert result is not None
         assert result.break_type == "long"
 
 
@@ -169,14 +171,17 @@ class TestEnergyAdaptation:
         """Suggestions from non-default thresholds are flagged."""
         # Medium energy (default) — not adapted
         med = check_break_needed(elapsed_minutes=20, energy=5, last_break_at=None, breaks_taken=0)
+        assert med is not None
         assert med.energy_adapted is False
 
         # Low energy — adapted
         low = check_break_needed(elapsed_minutes=15, energy=2, last_break_at=None, breaks_taken=0)
+        assert low is not None
         assert low.energy_adapted is True
 
         # High energy — adapted
         high = check_break_needed(elapsed_minutes=25, energy=8, last_break_at=None, breaks_taken=0)
+        assert high is not None
         assert high.energy_adapted is True
 
     def test_default_energy_when_not_declared(self):
@@ -198,12 +203,14 @@ class TestBreakSuggestionFields:
         result = check_break_needed(
             elapsed_minutes=20, energy=5, last_break_at=None, breaks_taken=0
         )
+        assert result is not None
         assert result.elapsed_minutes == 20
 
     def test_suggestion_has_message(self):
         result = check_break_needed(
             elapsed_minutes=20, energy=5, last_break_at=None, breaks_taken=0
         )
+        assert result is not None
         assert isinstance(result.message, str)
         assert len(result.message) > 0
 
@@ -213,5 +220,6 @@ class TestBreakSuggestionFields:
             elapsed_minutes=75, energy=5, last_break_at=None, breaks_taken=0
         )
         # The message should indicate this is important, not optional
+        assert result is not None
         assert result.break_type == "long"
         assert len(result.message) > 10

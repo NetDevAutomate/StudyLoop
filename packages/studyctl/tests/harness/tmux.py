@@ -8,6 +8,13 @@ from __future__ import annotations
 
 import re
 import subprocess
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import TypeVar
+
+    _T = TypeVar("_T")
 import time
 
 
@@ -23,7 +30,7 @@ class TmuxHarness:
 
     @staticmethod
     def wait_for(
-        predicate: callable,
+        predicate: Callable[[], bool],
         *,
         timeout: float = 15,
         interval: float = 0.5,
@@ -42,12 +49,12 @@ class TmuxHarness:
 
     @staticmethod
     def wait_for_value(
-        func: callable,
+        func: Callable[[], _T | None],
         *,
         timeout: float = 15,
         interval: float = 0.5,
         msg: str = "",
-    ):
+    ) -> _T:
         """Poll until func returns a truthy value. Returns that value."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:

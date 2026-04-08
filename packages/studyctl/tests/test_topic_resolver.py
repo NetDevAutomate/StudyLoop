@@ -39,16 +39,19 @@ class TestExactMatch:
     def test_exact_name_casefold(self):
         result = resolve_topic("python", TOPICS)
         assert result.kind == MatchKind.EXACT
+        assert result.resolved is not None
         assert result.resolved.name == "Python"
 
     def test_exact_name_uppercase(self):
         result = resolve_topic("SQL", TOPICS)
         assert result.kind == MatchKind.EXACT
+        assert result.resolved is not None
         assert result.resolved.name == "SQL"
 
     def test_exact_multi_word(self):
         result = resolve_topic("data engineering", TOPICS)
         assert result.kind == MatchKind.EXACT
+        assert result.resolved is not None
         assert result.resolved.name == "Data Engineering"
 
 
@@ -87,6 +90,7 @@ class TestNameSubstring:
     def test_substring_case_insensitive(self):
         result = resolve_topic("python decorators", TOPICS)
         assert result.kind == MatchKind.NAME
+        assert result.resolved is not None
         assert result.resolved.name == "Python"
 
 
@@ -106,6 +110,7 @@ class TestTagMatch:
         """Tag 'databases' matches query containing 'databases'."""
         result = resolve_topic("databases fundamentals", TOPICS)
         assert result.kind == MatchKind.TAG
+        assert result.resolved is not None
         assert result.resolved.name == "SQL"
 
     def test_tag_match_multiple(self):
@@ -172,6 +177,7 @@ class TestUnicode:
         topics = [_topic("Café Networking")]
         result = resolve_topic("café networking", topics)
         assert result.kind == MatchKind.EXACT
+        assert result.resolved is not None
         assert result.resolved.name == "Café Networking"
 
     def test_casefold_german_eszett(self):
@@ -194,6 +200,7 @@ class TestPrecedence:
         ]
         result = resolve_topic("Python", topics)
         assert result.kind == MatchKind.EXACT
+        assert result.resolved is not None
         assert result.resolved.name == "Python"
 
     def test_name_beats_tag(self):
@@ -204,6 +211,7 @@ class TestPrecedence:
         ]
         result = resolve_topic("Spark Joins", topics)
         assert result.kind == MatchKind.NAME
+        assert result.resolved is not None
         assert result.resolved.name == "Spark"
 
 
