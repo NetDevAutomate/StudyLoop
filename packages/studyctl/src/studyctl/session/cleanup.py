@@ -37,44 +37,20 @@ def build_session_notes(
     return "\n".join(lines)
 
 
-def end_session_common(
+def _persist_session_data(
+    study_id: str,
     state: dict,
+    topic_entries: list,
+    notes: str,
     *,
-    auto_persist: bool = True,
-) -> str | None:
-    """Shared session-ending logic used by both _handle_end and cleanup_on_exit.
+    auto_persist: bool,
+) -> None:
+    """Persist session data: backlog, flashcards, and DB record.
 
-    Captures session notes, ends the DB record, cleans up temp files, kills
-    tmux sessions, and clears IPC files. Returns the topic name or None.
-
-    The caller controls user-facing output and error handling -- this function
-    only does the work.
+    All three operations are individually guarded so a failure in one does
+    not prevent the others from running.
     """
-    import contextlib
-    import os
-
     from studyctl.history import end_study_session
-    from studyctl.session_state import (
-        PARKING_FILE,
-        SESSION_DIR,
-        TOPICS_FILE,
-        parse_parking_file,
-        parse_topics_file,
-        write_session_state,
-    )
-    from studyctl.tmux import kill_all_study_sessions
-
-    study_id = state.get("study_session_id")
-    session_name = state.get("tmux_session")
-    persona_file = state.get("persona_file")
-    topic = state.get("topic", "unknown")
-
-    if not study_id:
-        return None
-
-    # Capture session context as notes
-    topic_entries = parse_topics_file()
-    notes = build_session_notes(topic_entries, parse_parking_file())
 
     # Auto-persist struggled topics to backlog.
     # Log on failure — silent suppression here means struggled topics are lost.
@@ -113,11 +89,19 @@ def end_session_common(
     except Exception:
         logger.exception("Failed to end study session in DB")
 
-    # Signal dashboard summary view
+
+def _signal_dashboard_ended() -> None:
+    """Write mode=ended to session state so the dashboard shows a summary."""
+    import contextlib
+
+    from studyctl.session_state import write_session_state
+
     with contextlib.suppress(Exception):
         write_session_state({"mode": "ended"})
 
-    # Run agent-specific teardown (e.g. Kiro restores backed-up JSON)
+
+def _teardown_agent(state: dict) -> None:
+    """Run agent-specific teardown (e.g. Kiro restores backed-up JSON)."""
     try:
         from studyctl.agent_launcher import AGENTS
 
@@ -131,20 +115,18 @@ def end_session_common(
     except Exception:
         logger.exception("Agent teardown failed")
 
-    # Clean up temp files
-    if persona_file:
-        with contextlib.suppress(OSError):
-            os.unlink(persona_file)
-    oneline = SESSION_DIR / "session-oneline.txt"
-    with contextlib.suppress(OSError):
-        oneline.unlink()
 
-    # Kill background processes (web dashboard, ttyd).
-    # Strategy: kill by PID first (fast), then by port as fallback
-    # to catch processes started by a different code path.
+def _kill_background_processes(state: dict) -> None:
+    """Kill web dashboard and ttyd processes by PID, then by port as fallback.
+
+    PID-based kill is tried first (fast). Port-based kill handles orphaned
+    processes whose PIDs were lost between code paths.
+    """
+    import contextlib
+    import os
     import subprocess as _sp
 
-    # PID-based kill — check command matches to guard against PID recycling.
+    # PID-based kill — verify command matches to guard against PID recycling.
     # "studyctl" matches both the binary and "python -m studyctl.cli".
     pid_checks = {"web_pid": "studyctl", "ttyd_pid": "ttyd"}
     for pid_key, expected in pid_checks.items():
@@ -163,15 +145,39 @@ def end_session_common(
         except (OSError, _sp.TimeoutExpired):
             pass
 
-    # Port-based kill — fallback for orphaned processes whose PIDs we lost.
+    # Port-based fallback
     from studyctl.session.orchestrator import _kill_port_occupant
 
     ttyd_port = state.get("ttyd_port")
     if ttyd_port:
-        _kill_port_occupant(int(ttyd_port), expected_cmd="ttyd")
+        with contextlib.suppress(Exception):
+            _kill_port_occupant(int(ttyd_port), expected_cmd="ttyd")
     web_port = state.get("web_port")
     if web_port:
-        _kill_port_occupant(int(web_port), expected_cmd="studyctl")
+        with contextlib.suppress(Exception):
+            _kill_port_occupant(int(web_port), expected_cmd="studyctl")
+
+
+def _cleanup_tmux_and_files(session_name: str | None, persona_file: str | None) -> None:
+    """Kill tmux study sessions and remove transient IPC files.
+
+    Keeps session-state.json (mode=ended) so the dashboard can render a
+    summary view before the next session starts.
+    """
+    import contextlib
+    import os
+
+    from studyctl.session_state import PARKING_FILE, SESSION_DIR, TOPICS_FILE
+    from studyctl.tmux import kill_all_study_sessions
+
+    # Remove persona temp file
+    if persona_file:
+        with contextlib.suppress(OSError):
+            os.unlink(persona_file)
+
+    oneline = SESSION_DIR / "session-oneline.txt"
+    with contextlib.suppress(OSError):
+        oneline.unlink()
 
     # Kill all study tmux sessions
     with contextlib.suppress(Exception):
@@ -181,6 +187,41 @@ def end_session_common(
     for f in [TOPICS_FILE, PARKING_FILE, oneline]:
         with contextlib.suppress(OSError):
             f.unlink()
+
+
+def end_session_common(
+    state: dict,
+    *,
+    auto_persist: bool = True,
+) -> str | None:
+    """Shared session-ending logic used by both _handle_end and cleanup_on_exit.
+
+    Captures session notes, ends the DB record, cleans up temp files, kills
+    tmux sessions, and clears IPC files. Returns the topic name or None.
+
+    The caller controls user-facing output and error handling -- this function
+    only does the work.
+    """
+    from studyctl.session_state import parse_parking_file, parse_topics_file
+
+    study_id = state.get("study_session_id")
+    topic = state.get("topic", "unknown")
+
+    if not study_id:
+        return None
+
+    # Capture session context as notes
+    topic_entries = parse_topics_file()
+    notes = build_session_notes(topic_entries, parse_parking_file())
+
+    _persist_session_data(study_id, state, topic_entries, notes, auto_persist=auto_persist)
+    _signal_dashboard_ended()
+    _teardown_agent(state)
+    _kill_background_processes(state)
+    _cleanup_tmux_and_files(
+        session_name=state.get("tmux_session"),
+        persona_file=state.get("persona_file"),
+    )
 
     return topic
 
