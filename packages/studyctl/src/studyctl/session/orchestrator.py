@@ -233,7 +233,7 @@ def attach_if_needed(session_name: str, already_in_tmux: bool) -> None:
 
 def start_web_background(session_name: str, *, lan: bool = False, password: str = "") -> None:
     """Start the web dashboard as a background process and open browser."""
-    from studyctl.cli._shared import console
+    from studyctl.output import console
 
     port = _get_web_port()
 

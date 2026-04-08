@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 
 from studyctl.db import connect_db
 from studyctl.settings import get_db_path
@@ -232,7 +232,7 @@ def resolve_parked_topic(parked_id: int) -> bool:
             """UPDATE parked_topics
                SET status = 'resolved', resolved_at = ?
                WHERE id = ? AND status IN ('pending', 'scheduled')""",
-            (datetime.now().isoformat(), parked_id),
+            (datetime.now(UTC).isoformat(), parked_id),
         )
         conn.commit()
         return cursor.rowcount > 0

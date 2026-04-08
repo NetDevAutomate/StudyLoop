@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agent_session_tools.config_loader import get_log_path, load_config
+from agent_session_tools.config_loader import get_db_path, load_config
 from agent_session_tools.formatters import (
     format_context_only,
     format_markdown,
@@ -35,25 +35,31 @@ from agent_session_tools.tokens import (
 # Initialize Rich console
 console = Console()
 
-# Load configuration
-config = load_config()
-DB_PATH = Path(config["database"]["path"])
-
-# Setup logging
-log_path = get_log_path(config)
-log_path.parent.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    level=getattr(logging, config["logging"]["level"]),
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
-)
+# Module-level logger — does NOT configure the root logger (no basicConfig here).
+# Logging setup belongs to the CLI entry point or the consuming application.
 logger = logging.getLogger(__name__)
+
+# Lazy config cache — populated on first use so that importing this module has
+# no side effects (no file I/O, no logging config, no directory creation).
+_config: dict | None = None
+
+
+def _get_config() -> dict:
+    """Return the loaded config, initialising on first call."""
+    global _config
+    if _config is None:
+        _config = load_config()
+    return _config
+
+
+def get_default_db_path() -> Path:
+    """Return the default database path from config (lazy — no import-time I/O)."""
+    return get_db_path(_get_config())
 
 
 def get_connection(db: Path | None = None) -> sqlite3.Connection:
     """Get database connection."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else get_default_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
@@ -240,7 +246,7 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
     # Database size information
     db_path = Path(conn.execute("PRAGMA database_list").fetchone()[2])
     size_info = get_db_size(db_path)
-    threshold_check = check_thresholds(size_info["mb"], config)
+    threshold_check = check_thresholds(size_info["mb"], _get_config())
 
     if use_rich:
         # Rich TUI output
@@ -355,7 +361,7 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
 def check_size(db_path: Path) -> int:
     """Check database size against thresholds."""
     size_info = get_db_size(db_path)
-    threshold_check = check_thresholds(size_info["mb"], config)
+    threshold_check = check_thresholds(size_info["mb"], _get_config())
 
     print("\nDatabase Size Check")
     print("=" * 50)

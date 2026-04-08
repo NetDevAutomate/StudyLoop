@@ -19,22 +19,16 @@ from agent_session_tools.profiles import (
     load_profile,
 )
 from agent_session_tools.query_logic import (
-    DB_PATH,
     check_size,
     continue_session,
     export_context,
     get_connection,
+    get_default_db_path,
     list_sessions,
     search,
     show_session,
     stats,
 )
-
-# VSCode integration temporarily disabled due to circular import
-# from agent_session_tools.integrations.vscode import (
-#     create_workspace_settings,
-#     export_session_as_snippet,
-# )
 
 # Create Typer app with completion support
 app = typer.Typer(
@@ -47,10 +41,6 @@ app = typer.Typer(
 # Sub-app for profiles
 profiles_app = typer.Typer(help="Manage export profiles/templates")
 app.add_typer(profiles_app, name="profiles")
-
-# Sub-app for vscode integration
-vscode_app = typer.Typer(help="VSCode integration commands")
-app.add_typer(vscode_app, name="vscode")
 
 # Global database path option
 db_option = typer.Option("-d", "--db", help="Database path (default: from config)")
@@ -338,7 +328,7 @@ def check_size_cmd(
     db: Annotated[Path | None, db_option] = None,
 ) -> None:
     """Check database size against thresholds."""
-    db_path = db if db else DB_PATH
+    db_path = db if db else get_default_db_path()
     exit_code = check_size(db_path)
     raise typer.Exit(exit_code)
 
@@ -457,39 +447,6 @@ def edit_profile(
 def path() -> None:
     """Print the profiles directory path."""
     print(str(get_profiles_dir()))
-
-
-# ==================== VSCode Sub-App ====================
-
-
-@vscode_app.command()
-def snippet(
-    session_id: Annotated[str, typer.Argument(help="Session ID to export")],
-    workspace: Annotated[
-        Path, typer.Option("-w", "--workspace", help="VSCode workspace path")
-    ],
-    db: Annotated[Path | None, db_option] = None,
-) -> None:
-    """Export session as VSCode snippet."""
-    # VSCode integration temporarily disabled
-    print("❌ VSCode integration is temporarily disabled due to circular import")
-    raise typer.Exit(1)
-
-
-@vscode_app.command()
-def setup(
-    workspace: Annotated[
-        Path, typer.Option("-w", "--workspace", help="VSCode workspace path")
-    ],
-    db_path: Annotated[
-        Path | None, typer.Option("--db-path", help="Session database path")
-    ] = None,
-    db: Annotated[Path | None, db_option] = None,
-) -> None:
-    """Setup VSCode workspace for session integration."""
-    # VSCode integration temporarily disabled
-    print("❌ VSCode integration is temporarily disabled due to circular import")
-    raise typer.Exit(1)
 
 
 # ==================== Main Entry Point ====================

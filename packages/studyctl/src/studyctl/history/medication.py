@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 
 def check_medication_window(medication_config: dict) -> dict | None:
@@ -17,7 +17,7 @@ def check_medication_window(medication_config: dict) -> dict | None:
     if not medication_config or "dose_time" not in medication_config:
         return None
 
-    now = datetime.now()
+    now = datetime.now(UTC)
     dose_h, dose_m = medication_config["dose_time"].split(":")
     dose_time = now.replace(hour=int(dose_h), minute=int(dose_m), second=0, microsecond=0)
 

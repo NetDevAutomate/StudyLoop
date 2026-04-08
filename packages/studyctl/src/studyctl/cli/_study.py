@@ -141,7 +141,7 @@ def study(
     if resume:
         from studyctl.session.resume import handle_resume
 
-        handle_resume(ctx)
+        handle_resume(ctx, start_fn=_handle_start)
         return
 
     if not topic:
@@ -171,71 +171,6 @@ def study(
         password=password,
         topic_config=topic_config,
     )
-
-
-def _auto_clean_zombies() -> None:
-    """Silently kill zombie study sessions before starting a new one.
-
-    Handles tmux-resurrect restoring previously killed sessions.
-    Uses the FCIS clean logic -- gather data, decide, execute.
-    Runs quietly: no output unless something goes wrong.
-    """
-    import contextlib
-    import shutil
-
-    from studyctl.logic.clean_logic import DirInfo, plan_clean
-    from studyctl.session_state import SESSION_DIR, STATE_FILE, read_session_state
-    from studyctl.tmux import (
-        is_tmux_server_running,
-        is_zombie_session,
-        kill_session,
-        list_study_sessions,
-    )
-
-    with contextlib.suppress(Exception):
-        tmux_running = is_tmux_server_running()
-        if not tmux_running:
-            return
-
-        study_sessions = list_study_sessions()
-        zombie_sessions = [s for s in study_sessions if is_zombie_session(s)]
-
-        sessions_dir = SESSION_DIR / "sessions"
-        session_dirs = (
-            [
-                DirInfo(name=d.name, path=d, is_symlink=d.is_symlink())
-                for d in sorted(sessions_dir.iterdir())
-                if d.is_dir() or d.is_symlink()
-            ]
-            if sessions_dir.exists()
-            else []
-        )
-
-        plan = plan_clean(
-            tmux_running=True,
-            zombie_sessions=zombie_sessions,
-            session_dirs=session_dirs,
-            live_tmux_names=set(study_sessions),
-            state=read_session_state(),
-            state_file_exists=STATE_FILE.exists(),
-        )
-
-        if not plan.has_work:
-            return
-
-        for name in plan.sessions_to_kill:
-            kill_session(name)
-        for path in plan.dirs_to_remove:
-            shutil.rmtree(path, ignore_errors=True)
-        if plan.state_to_clean:
-            STATE_FILE.unlink(missing_ok=True)
-
-        if plan.sessions_to_kill:
-            console.print(
-                f"[dim]Cleaned {len(plan.sessions_to_kill)} "
-                f"stale session{'s' if len(plan.sessions_to_kill) != 1 else ''} "
-                f"(tmux-resurrect)[/dim]"
-            )
 
 
 def _build_backlog_notes(topic: str) -> str | None:
@@ -445,7 +380,9 @@ def _handle_start(
         ctx.exit(1)
         return
 
-    _auto_clean_zombies()
+    from studyctl.session.cleanup import auto_clean_zombies
+
+    auto_clean_zombies()
 
     if agent is None:
         available = detect_agents()
