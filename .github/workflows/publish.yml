@@ -82,3 +82,47 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         # No API token needed -- uses OIDC
+
+  update-formula:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Wait for PyPI availability
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          URL="https://files.pythonhosted.org/packages/source/s/studyctl/studyctl-${VERSION}.tar.gz"
+          for i in $(seq 1 30); do
+            if curl -sfI "$URL" >/dev/null 2>&1; then
+              echo "PyPI tarball available after ${i}0s"
+              break
+            fi
+            echo "Waiting for PyPI... (attempt $i/30)"
+            sleep 10
+          done
+
+      - name: Update Homebrew formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          URL="https://files.pythonhosted.org/packages/source/s/studyctl/studyctl-${VERSION}.tar.gz"
+          SHA=$(curl -sL "$URL" | sha256sum | cut -d' ' -f1)
+          echo "Version: $VERSION"
+          echo "SHA256:  $SHA"
+          sed -i "s|studyctl-.*\.tar\.gz|studyctl-${VERSION}.tar.gz|" Formula/studyctl.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${SHA}\"|" Formula/studyctl.rb
+          grep -A1 'url ' Formula/studyctl.rb
+
+      - name: Commit and push formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/studyctl.rb
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: update Homebrew formula to v${VERSION} [skip ci]"
+          git push
