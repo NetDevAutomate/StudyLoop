@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --all-packages
-      - run: uv run pyright packages/agent-session-tools/
+      - run: cd packages/agent-session-tools && uv run pyright src/
       - run: cd packages/studyctl && uv run pyright src/
 
   sast:
