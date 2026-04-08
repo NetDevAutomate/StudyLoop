@@ -189,7 +189,7 @@ class TestGatherReviewContext:
         """Gatherer returns None when get_stats raises — DB missing/corrupt."""
         with patch("studyctl.services.review.get_stats", side_effect=RuntimeError("DB down")):
             # Import the gatherer from the CLI module
-            from studyctl.cli._study import _gather_review_context
+            from studyctl.session.start import _gather_review_context
 
             result = _gather_review_context("python")
             assert result is None
@@ -210,7 +210,7 @@ class TestGatherReviewContext:
             ),
             patch("studyctl.services.review.get_due", return_value=[mock_card, mock_card]),
         ):
-            from studyctl.cli._study import _gather_review_context
+            from studyctl.session.start import _gather_review_context
 
             result = _gather_review_context("python")
             assert result is not None
