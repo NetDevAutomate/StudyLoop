@@ -14,8 +14,6 @@
   <!-- HTMX + SSE extension (vendored for offline PWA) -->
   <script src="/vendor/js/htmx-2.0.4.min.js"></script>
   <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
-  <!-- Split.js — lightweight resizable split panes (vendored for offline PWA) -->
-  <script src="/vendor/js/split.min.js"></script>
   <!-- Alpine.js (vendored for offline PWA) -->
   <script defer src="/vendor/js/alpine-3.14.8.min.js"></script>
 </head>
@@ -1105,6 +1103,7 @@
       _createSplit(dash, term) {
         if (this._split) return;
         if (!this.$el.offsetHeight) return; /* hidden tab — skip */
+        if (typeof Split === 'undefined') return; /* split.js not loaded — CSS fallback */
         this._split = Split([dash, term], {
           direction: 'vertical',
           sizes: [40, 60],
