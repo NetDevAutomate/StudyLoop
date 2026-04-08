@@ -929,7 +929,7 @@
 
         Container(cli, "studyctl CLI", "Python / Click + LazyGroup", "Entry point for all commands. 26 commands across 12 lazy-loaded modules. Delegates to services, session orchestrator, and specialist packages.")
 
-        Container(web, "Web UI", "Python / FastAPI + Alpine.js PWA", "Dashboard served on localhost:8567 (configurable). Shows session state, flashcard review, artefacts, and terminal embed. Optional HTTP Basic Auth for LAN mode.")
+        Container(web, "Web UI", "Python / FastAPI + Alpine.js PWA", "Dashboard served on localhost:8567 (configurable). Study session view: full-screen terminal embed with sidebar activity feed and bottom status bar (timer, controls, counters). Also provides flashcard review and body-double timer. Optional HTTP Basic Auth for LAN mode.")
 
         Container(mcp_server, "MCP Server (studyctl-mcp)", "Python / FastMCP via stdio", "Exposes study tools to AI agents: list_courses, get_study_context, record_study_progress, park_question, get_session_state. Launched automatically by each agent adapter.")
 
@@ -977,13 +977,13 @@
 
         Component(content_pkg, "content/", "Python", "Content pipeline (absorbed from pdf-by-chapters). splitter.py: PDF chapter splitting. notebooklm_client.py: upload and trigger artefact generation. syllabus.py: course syllabus parsing. storage.py, models.py, markdown_converter.py.")
 
-        Component(web_pkg, "web/", "Python / FastAPI", "Web dashboard. app.py: FastAPI application factory with security headers and optional Basic Auth middleware. auth.py: HTTP Basic Auth. routes/: artefacts, cards, courses, history, session, terminal_proxy. static/: Alpine.js PWA assets.")
+        Component(web_pkg, "web/", "Python / FastAPI", "Web dashboard. app.py: FastAPI application factory with security headers and optional Basic Auth middleware. auth.py: HTTP Basic Auth. routes/: artefacts, cards, courses, history, session, terminal_proxy. static/: Alpine.js PWA assets. Study session layout: sidebar activity feed (SSE-driven), full-screen terminal iframe (no Split.js resize — avoids tmux SIGWINCH), bottom status bar. Body-double view uses Split.js for timer+terminal split.")
 
         Component(mcp_pkg, "mcp/", "Python / FastMCP", "MCP server entry point. server.py: FastMCP app with lifespan DB connection. tools.py: register_tools() wires list_courses, get_study_context, record_study_progress, park_question, get_session_state.")
 
         Component(logic_pkg, "logic/", "Python", "Domain logic modules. break_logic.py: break detection and timing. streaks_logic.py: study streak calculation. briefing_logic.py: pre-session briefing generation. backlog_logic.py: topic backlog management. clean_logic.py: orphan cleanup. topic_resolver.py: topic name resolution.")
 
-        Component(settings_mod, "settings.py", "Python / dataclasses", "Single configuration source. Settings dataclass loaded from ~/.config/studyctl/config.yaml. Contains: TopicConfig, AgentsConfig, ContentConfig, NotebookLMConfig, KnowledgeDomainsConfig, EvalConfig.")
+        Component(settings_mod, "settings.py", "Python / dataclasses", "Single configuration source. Settings dataclass loaded from ~/.config/studyctl/config.yaml. Contains: TopicConfig, AgentsConfig, ContentConfig, NotebookLMConfig, KnowledgeDomainsConfig, PomodoroConfig. session_state.py: IPC file paths overridable via STUDYCTL_SESSION_DIR env var for test isolation.")
     }
 
     Rel(cli_entry, services, "Calls business logic", "import")

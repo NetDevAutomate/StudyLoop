@@ -1,0 +1,1168 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/solutions/integration-issues/web-ui-four-bug-fix-pomodoro-auth-ttyd-cleanup.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>studyctl Web UI: Four-Bug Fix (Pomodoro Config, ttyd Auth, Port Cleanup, Terminal Resilience) - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#web-ui-four-bug-fix-session" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              studyctl Web UI: Four-Bug Fix (Pomodoro Config, ttyd Auth, Port Cleanup, Terminal Resilience)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../artefacts.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-causes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Causes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Root Causes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-pomodoro-hardcoded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pomodoro Hardcoded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-ttyd-no-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. ttyd No Auth
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-stale-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Stale Processes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-terminal-panel-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Terminal Panel Error
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solutions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fix-1-configurable-pomodoro-timer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix 1: Configurable Pomodoro Timer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix-2-ttyd-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix 2: ttyd Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix-3-stale-process-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix 3: Stale Process Cleanup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix-4-terminal-panel-resilience" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix 4: Terminal Panel Resilience
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#investigation-steps-that-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Investigation Steps That Failed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prevention-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prevention Strategies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="web-ui-four-bug-fix-session">Web UI: Four-Bug Fix Session<a class="headerlink" href="#web-ui-four-bug-fix-session" title="Permanent link">&para;</a></h1>
+<h2 id="problem-summary">Problem Summary<a class="headerlink" href="#problem-summary" title="Permanent link">&para;</a></h2>
+<p>Four user-reported issues with the studyctl web UI during v2.2.0 usage:</p>
+<ol>
+<li><strong>Pomodoro timer hardcoded to 25 minutes</strong> — no way to adjust focus/break durations</li>
+<li><strong>ttyd terminal accessible without auth</strong> — <code>-c</code> flag not passed, WebSocket proxy didn't forward credentials</li>
+<li><strong>Stale ttyd/web server processes blocked new sessions</strong> — orphaned processes on ports 7681/8567 prevented startup</li>
+<li><strong>Terminal panel showed raw tmux error</strong> — "can't find session: study-harness-matrix-1d96f243" when ttyd attached to dead session</li>
+</ol>
+<h2 id="root-causes">Root Causes<a class="headerlink" href="#root-causes" title="Permanent link">&para;</a></h2>
+<h3 id="1-pomodoro-hardcoded">1. Pomodoro Hardcoded<a class="headerlink" href="#1-pomodoro-hardcoded" title="Permanent link">&para;</a></h3>
+<p>Module-level constants in <code>sidebar.py</code> (<code>POMODORO_FOCUS = 25 * 60</code>) and <code>components.js</code> (<code>STUDY: 25 * 60</code>). No config path existed — <code>Settings</code> dataclass had no pomodoro fields.</p>
+<h3 id="2-ttyd-no-auth">2. ttyd No Auth<a class="headerlink" href="#2-ttyd-no-auth" title="Permanent link">&para;</a></h3>
+<p><code>start_ttyd_background()</code> built the ttyd command without <code>-c</code> credentials. The WebSocket proxy in <code>terminal_proxy.py</code> connected to upstream ttyd without forwarding the browser's <code>Authorization</code> header — HTTP proxy forwarded it but WS didn't.</p>
+<h3 id="3-stale-processes">3. Stale Processes<a class="headerlink" href="#3-stale-processes" title="Permanent link">&para;</a></h3>
+<p><code>end_session_common()</code> killed processes by PID only (from session state). When cleanup didn't run (abrupt exit, test harness crash), PIDs were lost. New session's <code>start_web_background()</code> / <code>start_ttyd_background()</code> silently failed to bind the occupied port.</p>
+<h3 id="4-terminal-panel-error">4. Terminal Panel Error<a class="headerlink" href="#4-terminal-panel-error" title="Permanent link">&para;</a></h3>
+<p>The <code>terminalPanel()</code> Alpine component checked <code>state.ttyd_port</code> to set <code>available=true</code> but never verified ttyd was actually reachable. ttyd stayed running after tmux session died (no <code>--once</code> flag), serving the raw tmux "can't find session" error to every new client.</p>
+<h2 id="solutions">Solutions<a class="headerlink" href="#solutions" title="Permanent link">&para;</a></h2>
+<h3 id="fix-1-configurable-pomodoro-timer">Fix 1: Configurable Pomodoro Timer<a class="headerlink" href="#fix-1-configurable-pomodoro-timer" title="Permanent link">&para;</a></h3>
+<p><strong>Settings layer</strong> (<code>settings.py</code>):
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PomodoroConfig</span><span class="p">:</span>
+    <span class="n">focus</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span>        <span class="c1"># minutes</span>
+    <span class="n">short_break</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">long_break</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>
+    <span class="n">cycles</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
+</code></pre></div>
+Added to <code>Settings</code>, loaded from YAML <code>pomodoro:</code> section.</p>
+<p><strong>API endpoint</strong> (<code>web/routes/session.py</code>):
+<div class="highlight"><pre><span></span><code><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/settings/pomodoro&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_pomodoro_settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="n">pomo</span> <span class="o">=</span> <span class="n">load_settings</span><span class="p">()</span><span class="o">.</span><span class="n">pomodoro</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;focus&quot;</span><span class="p">:</span> <span class="n">pomo</span><span class="o">.</span><span class="n">focus</span><span class="p">,</span> <span class="s2">&quot;short_break&quot;</span><span class="p">:</span> <span class="n">pomo</span><span class="o">.</span><span class="n">short_break</span><span class="p">,</span> <span class="o">...</span><span class="p">}</span>
+</code></pre></div></p>
+<p><strong>Web UI</strong> (<code>components.js</code>): Alpine store loads <code>localStorage &gt; API &gt; defaults</code>. <code>saveDurations()</code> persists to localStorage. Editable number inputs in header overlay and body-double panel.</p>
+<p><strong>TUI sidebar</strong> (<code>sidebar.py</code>): Reads from <code>load_settings().pomodoro</code>. Keybindings: <code>s</code> start/stop, <code>+/-</code> adjust focus, <code>p</code> pause, <code>r</code> reset.</p>
+<h3 id="fix-2-ttyd-authentication">Fix 2: ttyd Authentication<a class="headerlink" href="#fix-2-ttyd-authentication" title="Permanent link">&para;</a></h3>
+<p><strong>Credential passthrough</strong> (<code>orchestrator.py</code>):
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">start_ttyd_background</span><span class="p">(</span><span class="n">session_name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lan</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">username</span> <span class="ow">and</span> <span class="n">password</span><span class="p">:</span>
+        <span class="n">cmd</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;-c&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">username</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">password</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
+</code></pre></div></p>
+<p><strong>WebSocket auth</strong> (<code>terminal_proxy.py</code>):
+<div class="highlight"><pre><span></span><code><span class="n">auth_header</span> <span class="o">=</span> <span class="n">ws</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;authorization&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">auth_header</span><span class="p">:</span>
+    <span class="n">upstream_kwargs</span><span class="p">[</span><span class="s2">&quot;additional_headers&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="n">auth_header</span><span class="p">}</span>
+</code></pre></div></p>
+<p>Both CLI (<code>_study.py</code>) and web route (<code>session.py</code>) read config credentials and pass them through.</p>
+<h3 id="fix-3-stale-process-cleanup">Fix 3: Stale Process Cleanup<a class="headerlink" href="#fix-3-stale-process-cleanup" title="Permanent link">&para;</a></h3>
+<p><strong>Port-based kill</strong> (<code>orchestrator.py</code>):
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_kill_port_occupant</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">expected_cmd</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kill any process listening on port. Safety guard: only kills if command matches.&quot;&quot;&quot;</span>
+    <span class="c1"># Uses lsof -ti :port, ps -p PID -o command=, os.kill(SIGTERM)</span>
+    <span class="c1"># 0.5s grace period after kill for port release</span>
+</code></pre></div></p>
+<p>Called before <code>start_ttyd_background()</code> and <code>start_web_background()</code>. Port-based fallback also added to <code>end_session_common()</code> in <code>cleanup.py</code>. <code>web_port</code> now stored in session state.</p>
+<h3 id="fix-4-terminal-panel-resilience">Fix 4: Terminal Panel Resilience<a class="headerlink" href="#fix-4-terminal-panel-resilience" title="Permanent link">&para;</a></h3>
+<p><strong>Zombie ttyd killer</strong> (<code>session.py</code>):
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_kill_stale_ttyd</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kill stale ttyd process if the tmux session it attaches to is gone.&quot;&quot;&quot;</span>
+</code></pre></div>
+Called from <code>_get_full_state()</code> during zombie detection.</p>
+<p><strong>Health check</strong> (<code>index.html</code>): <code>terminalPanel()</code> component split into <code>available</code> (state has ttyd_port) vs <code>connected</code> (probe <code>/terminal/</code> succeeds). 10s periodic health check. <code>.terminal-unavailable</code> overlay shows "Terminal session ended" when connected=false.</p>
+<h2 id="investigation-steps-that-failed">Investigation Steps That Failed<a class="headerlink" href="#investigation-steps-that-failed" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Split-pane resizable layout</strong>: Attempted CSS Flexbox, CSS Grid, absolute positioning (Alpine), absolute positioning (vanilla JS). ALL produced correct DOM values in Playwright but didn't render correctly in real browsers (Chrome/Brave/Firefox on macOS). Deferred to next session — see handoff document.</li>
+</ul>
+<h2 id="prevention-strategies">Prevention Strategies<a class="headerlink" href="#prevention-strategies" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Always pass auth credentials through the full chain</strong> — HTTP proxy, WebSocket proxy, and the underlying service. Test with <code>curl -u</code> against both the proxy and direct endpoints.</li>
+<li><strong>Kill by port, not just PID</strong> — PIDs are fragile (recycling, lost state). Port-based cleanup is reliable. Always call <code>_kill_port_occupant()</code> before binding.</li>
+<li><strong>Health-check backing services</strong> — don't assume a port number in state means the service is actually running. Probe the endpoint before showing UI.</li>
+<li><strong>Config should flow to ALL consumers</strong> — if a value is configurable, wire it through to every place that uses it (API, web UI, TUI, CLI).</li>
+</ol>
+<h2 id="test-coverage">Test Coverage<a class="headerlink" href="#test-coverage" title="Permanent link">&para;</a></h2>
+<p>20 new tests in <code>tests/test_fixes_pomodoro_auth_terminal.py</code>:
+- <code>TestPomodoroConfig</code> (4 tests): defaults, custom values, YAML loading
+- <code>TestPomodoroAPI</code> (3 tests): endpoint returns config/defaults/fallback
+- <code>TestTtydAuth</code> (3 tests): <code>-c</code> flag present/absent based on credentials
+- <code>TestTtydLifecycle</code> (4 tests): kill stale ttyd, zombie detector integration
+- <code>TestPomodoroWebUI</code> (4 Playwright E2E): settings row visible/hidden, custom duration, API
+- <code>TestTerminalResilience</code> (2 Playwright E2E): unavailable message, hidden when no ttyd</p>
+<h2 id="related-documentation">Related Documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>docs/plans/2026-04-04-ttyd-integration.md</code> — original ttyd integration plan</li>
+<li><code>docs/plans/2026-04-05-web-ui-alpine-sidebar-plan.md</code> — Alpine sidebar plan</li>
+<li><code>docs/internal/solutions/tmux-session-management-and-ci-issues.md</code> — prior session cleanup patterns</li>
+<li><code>docs/internal/solutions/parallel-research-catches-pre-implementation-assumptions.md</code> — ttyd auth research (Note: <code>-c</code> flag IS supported despite this doc's finding about <code>TTYD_CREDENTIAL</code>)</li>
+<li><code>.claude/handoffs/2026-04-07-184001-web-ui-split-layout-rewrite.md</code> — handoff for the unfinished split layout rewrite</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
