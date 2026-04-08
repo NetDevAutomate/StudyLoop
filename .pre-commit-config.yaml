@@ -49,7 +49,7 @@ repos:
   - id: pyright-agent-session-tools
     name: pyright (agent-session-tools)
     language: system
-    entry: uv run pyright packages/agent-session-tools/
+    entry: bash -c 'cd packages/agent-session-tools && uv run pyright src/'
     pass_filenames: false
     files: ^packages/agent-session-tools/.*\.py$
   - id: pyright-studyctl
