@@ -13,7 +13,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-SESSION_DIR = Path.home() / ".config" / "studyctl"
+SESSION_DIR = Path(os.environ.get("STUDYCTL_SESSION_DIR", Path.home() / ".config" / "studyctl"))
 STATE_FILE = SESSION_DIR / "session-state.json"
 TOPICS_FILE = SESSION_DIR / "session-topics.md"
 PARKING_FILE = SESSION_DIR / "session-parking.md"

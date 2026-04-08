@@ -122,10 +122,14 @@ async def proxy_terminal_ws(ws: WebSocket) -> None:
         qs = "&".join(f"{k}={v}" for k, v in ws.query_params.items())
         upstream_ws_url = f"{upstream_ws_url}?{qs}"
 
-    # Connect to upstream with the same subprotocol
+    # Connect to upstream with the same subprotocol.
+    # Forward the Authorization header so ttyd's -c auth is satisfied.
     upstream_kwargs: dict = {}
     if subprotocol:
         upstream_kwargs["subprotocols"] = [subprotocol]
+    auth_header = ws.headers.get("authorization")
+    if auth_header:
+        upstream_kwargs["additional_headers"] = {"Authorization": auth_header}
 
     try:
         async with websockets.connect(upstream_ws_url, **upstream_kwargs) as upstream:

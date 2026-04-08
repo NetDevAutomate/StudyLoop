@@ -96,16 +96,34 @@ def _timer_phase(elapsed_secs: int, energy: int) -> str:
     return "red"
 
 
-# Pomodoro cycle: 25 focus, 5 break, repeated 4 times, then 15 long break.
-# All durations in seconds.
-POMODORO_FOCUS = 25 * 60
-POMODORO_SHORT_BREAK = 5 * 60
-POMODORO_LONG_BREAK = 15 * 60
-POMODORO_CYCLE_LENGTH = 4  # long break after this many focus blocks
+# Pomodoro defaults (overridden by config via load_settings().pomodoro).
+_POMO_FOCUS = 25 * 60
+_POMO_SHORT_BREAK = 5 * 60
+_POMO_LONG_BREAK = 15 * 60
+_POMO_CYCLES = 4
 
 
-def _pomodoro_state(elapsed_secs: int) -> tuple[str, int, int, int]:
+def _load_pomodoro_config() -> tuple[int, int, int, int]:
+    """Load pomodoro durations from settings. Returns (focus, short, long, cycles) in seconds."""
+    try:
+        from studyctl.settings import load_settings
+
+        pomo = load_settings().pomodoro
+        return (pomo.focus * 60, pomo.short_break * 60, pomo.long_break * 60, pomo.cycles)
+    except Exception:
+        return (_POMO_FOCUS, _POMO_SHORT_BREAK, _POMO_LONG_BREAK, _POMO_CYCLES)
+
+
+def _pomodoro_state(
+    elapsed_secs: int,
+    focus: int = 0,
+    short_break: int = 0,
+    long_break: int = 0,
+    cycles: int = 0,
+) -> tuple[str, int, int, int]:
     """Compute pomodoro state from total elapsed seconds.
+
+    If durations are not passed (0), loads from config.
 
     Returns:
         (phase, remaining_secs, cycle_number, block_in_cycle)
@@ -114,36 +132,33 @@ def _pomodoro_state(elapsed_secs: int) -> tuple[str, int, int, int]:
         cycle_number: which full cycle (1-based)
         block_in_cycle: which focus block within the cycle (1-4)
     """
-    # One full cycle = 4x(focus + short_break) - last short_break + long_break
-    # = 4*25 + 3*5 + 15 = 130 min
-    single_block = POMODORO_FOCUS + POMODORO_SHORT_BREAK  # 30 min
-    full_cycle = (single_block * POMODORO_CYCLE_LENGTH) - POMODORO_SHORT_BREAK + POMODORO_LONG_BREAK
+    if not focus:
+        focus, short_break, long_break, cycles = _load_pomodoro_config()
+
+    single_block = focus + short_break
+    full_cycle = (single_block * cycles) - short_break + long_break
 
     cycle_number = elapsed_secs // full_cycle + 1
     pos_in_cycle = elapsed_secs % full_cycle
 
-    # Walk through the blocks in the cycle
-    for block_idx in range(POMODORO_CYCLE_LENGTH):
-        # Focus phase
-        if pos_in_cycle < POMODORO_FOCUS:
-            remaining = POMODORO_FOCUS - pos_in_cycle
+    for block_idx in range(cycles):
+        if pos_in_cycle < focus:
+            remaining = focus - pos_in_cycle
             return ("focus", remaining, cycle_number, block_idx + 1)
-        pos_in_cycle -= POMODORO_FOCUS
+        pos_in_cycle -= focus
 
-        # Break phase (short for blocks 1-3, long for block 4)
-        if block_idx < POMODORO_CYCLE_LENGTH - 1:
-            if pos_in_cycle < POMODORO_SHORT_BREAK:
-                remaining = POMODORO_SHORT_BREAK - pos_in_cycle
+        if block_idx < cycles - 1:
+            if pos_in_cycle < short_break:
+                remaining = short_break - pos_in_cycle
                 return ("short_break", remaining, cycle_number, block_idx + 1)
-            pos_in_cycle -= POMODORO_SHORT_BREAK
+            pos_in_cycle -= short_break
         else:
-            if pos_in_cycle < POMODORO_LONG_BREAK:
-                remaining = POMODORO_LONG_BREAK - pos_in_cycle
+            if pos_in_cycle < long_break:
+                remaining = long_break - pos_in_cycle
                 return ("long_break", remaining, cycle_number, block_idx + 1)
-            pos_in_cycle -= POMODORO_LONG_BREAK
+            pos_in_cycle -= long_break
 
-    # Shouldn't reach here, but safety: start a new focus
-    return ("focus", POMODORO_FOCUS, cycle_number + 1, 1)
+    return ("focus", focus, cycle_number + 1, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -156,13 +171,24 @@ class TimerWidget(Static):
 
     Two modes:
     - **elapsed**: counts up, colour transitions at energy thresholds
-    - **pomodoro**: 25/5/25/5/25/5/25/15 cycle, counts down within each phase
+    - **pomodoro**: configurable focus/break cycles, counts down within each phase
     """
 
     elapsed: reactive[int] = reactive(0)
     paused: reactive[bool] = reactive(False)
     energy: reactive[int] = reactive(5)
     timer_mode: reactive[str] = reactive("elapsed")
+
+    # Pomodoro durations (seconds) — loaded from config on mount
+    pomo_focus: int = 25 * 60
+    pomo_short_break: int = 5 * 60
+    pomo_long_break: int = 15 * 60
+    pomo_cycles: int = 4
+
+    def on_mount(self) -> None:
+        self.pomo_focus, self.pomo_short_break, self.pomo_long_break, self.pomo_cycles = (
+            _load_pomodoro_config()
+        )
 
     def render(self) -> str:
         indicator = " [bold red]PAUSED[/]" if self.paused else ""
@@ -182,12 +208,18 @@ class TimerWidget(Static):
 
     def _render_pomodoro(self) -> str:
         """Countdown timer with focus/break cycle display."""
-        phase, remaining, _cycle, block = _pomodoro_state(self.elapsed)
+        phase, remaining, _cycle, block = _pomodoro_state(
+            self.elapsed,
+            focus=self.pomo_focus,
+            short_break=self.pomo_short_break,
+            long_break=self.pomo_long_break,
+            cycles=self.pomo_cycles,
+        )
         mins, secs = divmod(remaining, 60)
 
         if phase == "focus":
             colour = "green"
-            label = f"FOCUS {block}/{POMODORO_CYCLE_LENGTH}"
+            label = f"FOCUS {block}/{self.pomo_cycles}"
         elif phase == "short_break":
             colour = "cyan"
             label = "BREAK"
@@ -195,7 +227,9 @@ class TimerWidget(Static):
             colour = "magenta"
             label = "LONG BREAK"
 
-        return f"[bold {colour}]{mins:02d}:{secs:02d}[/] [{colour}]{label}[/]"
+        focus_min = self.pomo_focus // 60
+        time_part = f"[bold {colour}]{mins:02d}:{secs:02d}[/]"
+        return f"{time_part} [{colour}]{label}[/] [dim]({focus_min}m)[/]"
 
 
 class ActivityFeed(Static):
@@ -312,7 +346,10 @@ class SidebarApp(App[None]):
 
     BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
         ("p", "toggle_pause", "Pause/Resume"),
+        ("s", "toggle_pomodoro", "Start/Stop Pomodoro"),
         ("r", "reset_timer", "Reset"),
+        ("plus_sign", "pomo_focus_up", "+5min focus"),
+        ("minus", "pomo_focus_down", "-5min focus"),
         ("Q", "end_session", "End Session"),
         ("q", "quit", "Quit sidebar"),
     ]
@@ -322,7 +359,7 @@ class SidebarApp(App[None]):
         yield BreakBanner(id="break_banner")
         yield ActivityFeed(id="activity")
         yield CounterBar(id="counters")
-        yield Static("[dim]p:pause  r:reset  Q:end session[/]", id="status")
+        yield Static("[dim]p:pause s:pomodoro +/-:adjust r:reset Q:end[/]", id="status")
 
     def on_mount(self) -> None:
         self._poll_ipc_files()
@@ -427,7 +464,14 @@ class SidebarApp(App[None]):
 
         timer_mode = state.get("timer_mode", "elapsed")
         if timer_mode == "pomodoro":
-            phase, remaining, _cycle, block = _pomodoro_state(elapsed)
+            tw = self.query_one("#timer", TimerWidget)
+            phase, remaining, _cycle, block = _pomodoro_state(
+                elapsed,
+                focus=tw.pomo_focus,
+                short_break=tw.pomo_short_break,
+                long_break=tw.pomo_long_break,
+                cycles=tw.pomo_cycles,
+            )
             r_mins, r_secs = divmod(remaining, 60)
             if phase == "focus":
                 timer_str = f"{r_mins:02d}:{r_secs:02d} F{block}"
@@ -489,6 +533,25 @@ class SidebarApp(App[None]):
                 "total_paused_seconds": 0,
             }
         )
+
+    def action_toggle_pomodoro(self) -> None:
+        """Toggle between elapsed and pomodoro timer modes."""
+        state = read_session_state()
+        current = state.get("timer_mode", "elapsed")
+        new_mode = "elapsed" if current == "pomodoro" else "pomodoro"
+        write_session_state({"timer_mode": new_mode})
+
+    def action_pomo_focus_up(self) -> None:
+        """Increase pomodoro focus duration by 5 minutes."""
+        timer = self.query_one("#timer", TimerWidget)
+        timer.pomo_focus = min(timer.pomo_focus + 5 * 60, 120 * 60)  # cap at 120min
+        timer.refresh()
+
+    def action_pomo_focus_down(self) -> None:
+        """Decrease pomodoro focus duration by 5 minutes."""
+        timer = self.query_one("#timer", TimerWidget)
+        timer.pomo_focus = max(timer.pomo_focus - 5 * 60, 5 * 60)  # min 5min
+        timer.refresh()
 
     def action_end_session(self) -> None:
         """End the entire study session (agent + sidebar + tmux).

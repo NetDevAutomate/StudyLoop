@@ -84,10 +84,13 @@ def create_app(
     except ImportError:
         pass  # httpx/websockets not installed — proxy unavailable
 
-    # Serve index.html at root
+    # Serve index.html at root (no-cache to prevent stale SW/browser cache)
     @app.get("/")
     async def index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(
+            STATIC_DIR / "index.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 
     # Redirect /session to hash-routed study-session tab
     @app.get("/session")

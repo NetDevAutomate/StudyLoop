@@ -188,6 +188,7 @@ header h1 {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  position: relative; /* containing block for absolutely-positioned split-container */
 }
 
 /* Main within content-area (for app.js compatibility) */
@@ -751,6 +752,40 @@ body.dyslexic .card-content {
 
 .pomo-btn:hover { border-color: var(--accent); color: var(--text); }
 
+.pomo-settings {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pomo-settings label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pomo-input {
+  width: 36px;
+  padding: 2px 4px;
+  text-align: center;
+  font-size: 0.7rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  -moz-appearance: textfield;
+}
+.pomo-input::-webkit-inner-spin-button,
+.pomo-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+.bd-pomo-settings {
+  justify-content: center;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
 .pomodoro .pomo-ring {
   width: 44px;
   height: 44px;
@@ -1233,66 +1268,98 @@ main:has(.split-container) .session-dashboard {
   max-width: none;
 }
 
-/* Split container inside the unified sidebar layout */
+/* Split container fills content-area via absolute positioning.
+   No hardcoded header height — works regardless of actual header size. */
 .content-area .split-container {
-  height: calc(100vh - 60px);
+  position: absolute;
+  inset: 0;
+  height: auto;
 }
 .content-area .session-dashboard {
   max-width: none;
 }
 
-/* Split-pane layout */
+/* Split-pane layout — Split.js handles sizing and gutter creation.
+   Container must be display:flex flex-direction:column.
+   Height comes from absolute positioning in content-area (no calc needed). */
 .split-container {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: calc(100vh - 60px);  /* full height minus header */
   overflow: hidden;
 }
-.split-container.split-horizontal {
-  flex-direction: row;
-}
 .split-panel {
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
-  min-width: 0;
 }
+/* Dashboard content must fill its panel so resize is visible */
 .split-dashboard {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
-.split-terminal {
+.split-dashboard .session-dashboard {
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+/* The activity feed is wrapped in a classless SSE div (<div hx-ext="sse">).
+   That wrapper is the actual flex child — IT must grow, not just .activity-feed.
+   Target: .session-dashboard > wrapper > .activity-feed chain. */
+.split-dashboard .session-dashboard > [hx-ext="sse"] {
+  flex: 1 1 0px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.split-dashboard .session-dashboard > [hx-ext="sse"] > .activity-feed {
+  flex: 1 1 0px;
+  min-height: 100px;
+  max-height: none;
+}
+/* Terminal content must fill its panel too */
+.split-terminal {
+  display: flex;
+  flex-direction: column;
+}
+.split-terminal .terminal-panel {
+  flex: 1;
+  min-height: 0;
 }
 
-/* Draggable divider */
-.split-divider {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Split.js gutter — the drag handle between panels */
+.gutter {
   background: var(--bg-card);
   cursor: row-resize;
   user-select: none;
   -webkit-user-select: none;
-  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
 }
-.split-container.split-horizontal .split-divider {
-  cursor: col-resize;
-  padding: 0 2px;
+.gutter:hover {
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg-card));
 }
-.divider-handle {
-  width: 32px;
-  height: 4px;
-  border-radius: 2px;
+.gutter:active {
+  background: color-mix(in srgb, var(--accent) 25%, var(--bg-card));
+}
+/* Visible drag handle pill inside the gutter */
+.gutter::after {
+  content: '';
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
   background: var(--border);
+  transition: background 0.15s, transform 0.15s;
 }
-.split-container.split-horizontal .divider-handle {
-  width: 4px;
-  height: 32px;
-}
-.split-divider:hover .divider-handle,
-.split-divider:active .divider-handle {
+.gutter:hover::after {
   background: var(--accent);
+  transform: scaleX(1.3);
+}
+.gutter:active::after {
+  background: var(--accent);
+  transform: scaleX(1.5);
 }
 
 /* Terminal panel */
@@ -1353,8 +1420,186 @@ main:has(.split-container) .session-dashboard {
   justify-content: center;
   gap: 1rem;
 }
+.terminal-unavailable {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .placeholder-hint {
   font-size: 0.85rem;
   font-style: normal;
   color: var(--text-muted);
 }
+
+/* ==========================================================================
+   STUDY SESSION LAYOUT: sidebar activity feed + terminal + bottom status bar
+   No Split.js, no resize, no tmux SIGWINCH issues.
+   ========================================================================== */
+
+/* --- Sidebar activity feed (below nav buttons) --- */
+.sidebar-activity {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.sidebar-activity .activity-feed.sidebar-feed {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  border: none;
+  padding: 8px;
+  font-size: 0.8rem;
+  background: transparent;
+}
+.sidebar-activity .activity-feed.sidebar-feed .activity-item {
+  font-size: 0.8rem;
+  padding: 4px 0;
+}
+.sidebar-activity .activity-feed.sidebar-feed .activity-time {
+  display: none; /* save space in narrow sidebar */
+}
+
+/* --- Active session layout: terminal + status bar --- */
+.session-active-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+
+/* Terminal fills available space */
+.session-terminal-area {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: #1a1b26;
+}
+.session-terminal-iframe {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: #1a1b26;
+}
+
+/* Floating popout button */
+.terminal-popout-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(26, 27, 38, 0.8);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+.terminal-popout-btn:hover {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* --- Bottom status bar --- */
+.session-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border-top: 2px solid var(--border);
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  transition: border-color 0.5s;
+}
+.session-status-bar.phase-green { border-top-color: var(--green); }
+.session-status-bar.phase-amber { border-top-color: var(--yellow); }
+.session-status-bar.phase-red { border-top-color: var(--red); }
+
+.status-timer-icon { font-size: 1rem; }
+.status-timer-time {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+}
+.status-controls {
+  display: flex;
+  gap: 4px;
+}
+.status-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+.status-btn:hover { border-color: var(--accent); color: var(--text); }
+.status-btn.end-btn { color: var(--red) !important; }
+
+.status-topic {
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.status-energy {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.status-counters {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.status-message {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.session-status-bar { position: relative; }

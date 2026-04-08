@@ -237,6 +237,9 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
 
     port = _get_web_port()
 
+    # Kill any stale web server left over from a previous session
+    _kill_port_occupant(port, expected_cmd="studyctl")
+
     studyctl_bin = shutil.which("studyctl")
     cmd = (
         [studyctl_bin, "web", "--port", str(port)]
@@ -255,10 +258,51 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
         )
         from studyctl.session_state import write_session_state
 
-        write_session_state({"web_pid": proc.pid})
+        write_session_state({"web_pid": proc.pid, "web_port": port})
         _open_browser(f"http://127.0.0.1:{port}/session")
     except Exception:
         console.print("[yellow]Could not start web dashboard.[/yellow]")
+
+
+def _kill_port_occupant(port: int, expected_cmd: str = "") -> None:
+    """Kill any process listening on *port*.
+
+    If *expected_cmd* is given, only kill when the process command contains
+    that string (safety guard against killing unrelated processes).
+    """
+    import signal
+    import time as _time
+
+    killed = False
+    try:
+        result = subprocess.run(
+            ["lsof", "-ti", f":{port}"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if not result.stdout.strip():
+            return
+        for pid_str in result.stdout.strip().splitlines():
+            pid = int(pid_str)
+            if expected_cmd:
+                ps_result = subprocess.run(
+                    ["ps", "-p", str(pid), "-o", "command="],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if expected_cmd not in ps_result.stdout:
+                    continue
+            with __import__("contextlib").suppress(OSError):
+                os.kill(pid, signal.SIGTERM)
+                killed = True
+    except (subprocess.TimeoutExpired, ValueError, OSError):
+        pass
+
+    # Wait for the port to be released after killing
+    if killed:
+        _time.sleep(0.5)
 
 
 def _get_web_port() -> int:
@@ -339,10 +383,18 @@ def _get_ttyd_port() -> int:
         return 7681
 
 
-def start_ttyd_background(session_name: str, *, lan: bool = False) -> None:
+def start_ttyd_background(
+    session_name: str,
+    *,
+    lan: bool = False,
+    username: str = "",
+    password: str = "",
+) -> None:
     """Start ttyd to expose the tmux session over HTTP.
 
     Attaches a writable ttyd client to the study tmux session.
+    When credentials are provided, passes ``-c username:password``
+    so ttyd enforces HTTP Basic Auth on direct connections.
     Skips silently if ttyd is not installed.
     """
     from studyctl.session_state import write_session_state
@@ -354,6 +406,9 @@ def start_ttyd_background(session_name: str, *, lan: bool = False) -> None:
     host = "0.0.0.0" if lan else "127.0.0.1"
     port = _get_ttyd_port()
 
+    # Kill any stale ttyd left over from a previous session
+    _kill_port_occupant(port, expected_cmd="ttyd")
+
     cmd = [
         ttyd_bin,
         "-W",  # writable (user interacts with the agent)
@@ -361,11 +416,20 @@ def start_ttyd_background(session_name: str, *, lan: bool = False) -> None:
         host,
         "-p",
         str(port),
-        "tmux",
-        "attach",
-        "-t",
-        session_name,
     ]
+
+    # Enforce auth on ttyd when credentials are available
+    if username and password:
+        cmd.extend(["-c", f"{username}:{password}"])
+
+    cmd.extend(
+        [
+            "tmux",
+            "attach",
+            "-t",
+            session_name,
+        ]
+    )
 
     try:
         proc = subprocess.Popen(

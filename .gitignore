@@ -500,6 +500,7 @@ eval-results.tsv
 .pytest-junit.xml
 docs/reports/
 docs/brainstorms/
+packages/studyctl/tests/results/
 
 # Dev-only tooling (autoresearch eval harness — not shipped to users)
 dev/

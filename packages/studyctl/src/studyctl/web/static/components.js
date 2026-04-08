@@ -160,11 +160,21 @@ document.addEventListener("alpine:init", () => {
 
   /* ----------------------------------------------------------------
    * Pomodoro store — reactive timer state
+   *
+   * Durations are configurable: localStorage > /api/settings/pomodoro > defaults.
+   * Users can change durations in the settings row (visible when stopped).
    * ---------------------------------------------------------------- */
   Alpine.store("pomodoro", {
     STUDY: 25 * 60,
     BREAK: 5 * 60,
     LONG_BREAK: 15 * 60,
+    CYCLES: 4,
+
+    /* Editable minute values (bound to settings inputs) */
+    focusMin: 25,
+    shortBreakMin: 5,
+    longBreakMin: 15,
+    cycles: 4,
 
     running: false,
     paused: false,
@@ -174,6 +184,7 @@ document.addEventListener("alpine:init", () => {
     total: 25 * 60,
     sessions: 0,
     _interval: null,
+    _loaded: false,
 
     get display() {
       const m = Math.floor(this.remaining / 60);
@@ -184,7 +195,7 @@ document.addEventListener("alpine:init", () => {
     get label() {
       if (!this.running) return "Study";
       if (this.isBreak) {
-        return this.sessions > 0 && this.sessions % 4 === 0 ? "Long Break" : "Break";
+        return this.sessions > 0 && this.sessions % this.CYCLES === 0 ? "Long Break" : "Break";
       }
       return "Study";
     },
@@ -198,15 +209,58 @@ document.addEventListener("alpine:init", () => {
       return this.paused ? "\u25b6" : "\u23f8\ufe0e";
     },
 
-    toggle() {
-      if (this.running) {
-        this.visible = !this.visible;
-      } else {
-        this.start();
+    /** Load durations from localStorage, falling back to API config. */
+    async loadConfig() {
+      if (this._loaded) return;
+      this._loaded = true;
+
+      /* Defaults from API (config.yaml) */
+      let defaults = { focus: 25, short_break: 5, long_break: 15, cycles: 4 };
+      try {
+        const res = await fetch("/api/settings/pomodoro");
+        if (res.ok) defaults = await res.json();
+      } catch { /* use hardcoded defaults */ }
+
+      /* localStorage overrides */
+      const focus = parseInt(localStorage.getItem("pomoFocus")) || defaults.focus;
+      const shortBreak = parseInt(localStorage.getItem("pomoShortBreak")) || defaults.short_break;
+      const longBreak = parseInt(localStorage.getItem("pomoLongBreak")) || defaults.long_break;
+      const cycles = parseInt(localStorage.getItem("pomoCycles")) || defaults.cycles;
+
+      this.focusMin = focus;
+      this.shortBreakMin = shortBreak;
+      this.longBreakMin = longBreak;
+      this.cycles = cycles;
+      this._applyDurations();
+    },
+
+    /** Apply current minute values to the internal second constants. */
+    _applyDurations() {
+      this.STUDY = this.focusMin * 60;
+      this.BREAK = this.shortBreakMin * 60;
+      this.LONG_BREAK = this.longBreakMin * 60;
+      this.CYCLES = this.cycles;
+      if (!this.running) {
+        this.remaining = this.STUDY;
+        this.total = this.STUDY;
       }
     },
 
+    /** Save current values to localStorage and apply. */
+    saveDurations() {
+      localStorage.setItem("pomoFocus", this.focusMin);
+      localStorage.setItem("pomoShortBreak", this.shortBreakMin);
+      localStorage.setItem("pomoLongBreak", this.longBreakMin);
+      localStorage.setItem("pomoCycles", this.cycles);
+      this._applyDurations();
+    },
+
+    toggle() {
+      this.visible = !this.visible;
+    },
+
     start() {
+      this._applyDurations();
       this.isBreak = false;
       this.remaining = this.STUDY;
       this.total = this.STUDY;
@@ -214,7 +268,8 @@ document.addEventListener("alpine:init", () => {
       this.paused = false;
       this.visible = true;
       this._startInterval();
-      Alpine.store("settings").speak("Pomodoro started. 25 minutes of focused study.");
+      const mins = this.focusMin;
+      Alpine.store("settings").speak(`Pomodoro started. ${mins} minutes of focused study.`);
       if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
       }
@@ -256,14 +311,15 @@ document.addEventListener("alpine:init", () => {
           this.total = this.STUDY;
         } else {
           this.sessions++;
-          const isLong = this.sessions % 4 === 0;
+          const isLong = this.sessions % this.CYCLES === 0;
           const breakTime = isLong ? this.LONG_BREAK : this.BREAK;
+          const breakMins = Math.round(breakTime / 60);
           Alpine.store("settings").speak(
-            isLong ? "Great work! Take a 15 minute break." : "Good session! Take a 5 minute break."
+            isLong ? `Great work! Take a ${breakMins} minute break.` : `Good session! Take a ${breakMins} minute break.`
           );
           _pomoNotify(
             "Study session complete!",
-            isLong ? "Take a 15 minute break." : "Take a 5 minute break."
+            isLong ? `Take a ${breakMins} minute break.` : `Take a ${breakMins} minute break.`
           );
           this.isBreak = true;
           this.remaining = breakTime;
@@ -273,6 +329,9 @@ document.addEventListener("alpine:init", () => {
       }
     },
   });
+
+  /* Load pomodoro config (localStorage > API > defaults) */
+  Alpine.store("pomodoro").loadConfig();
 });
 
 /* ====================================================================

@@ -104,6 +104,16 @@ class LocalLLMConfig:
 
 
 @dataclass
+class PomodoroConfig:
+    """Configuration for the Pomodoro timer (web UI + TUI sidebar)."""
+
+    focus: int = 25  # minutes
+    short_break: int = 5
+    long_break: int = 15
+    cycles: int = 4  # long break after this many focus blocks
+
+
+@dataclass
 class AgentsConfig:
     """Configuration for AI agent detection and priority."""
 
@@ -143,6 +153,7 @@ class Settings:
     ttyd_port: int = 7681
     web_port: int = 8567
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
+    pomodoro: PomodoroConfig = field(default_factory=PomodoroConfig)
     lan_username: str = "study"  # username for HTTP Basic Auth when using --lan
     lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = auto-generate)
 
@@ -220,6 +231,16 @@ def load_settings() -> Settings:
                 model=lmstudio_raw.get("model", "qwen3-coder"),
                 base_url=lmstudio_raw.get("base_url", "http://localhost:1234"),
             ),
+        )
+
+    # Pomodoro timer configuration
+    pomo = raw.get("pomodoro", {})
+    if pomo:
+        settings.pomodoro = PomodoroConfig(
+            focus=int(pomo.get("focus", 25)),
+            short_break=int(pomo.get("short_break", 5)),
+            long_break=int(pomo.get("long_break", 15)),
+            cycles=int(pomo.get("cycles", 4)),
         )
 
     # Content pipeline configuration
@@ -361,6 +382,15 @@ topics:
 #   secondary:
 #     - domain: cooking
 #       anchors: ["mise en place", "flavour balancing"]
+
+# Pomodoro timer (web UI + TUI sidebar)
+# Adjust focus/break durations and cycle length.
+# These are defaults — can also be changed in the web UI per-session.
+# pomodoro:
+#   focus: 25            # Focus duration in minutes
+#   short_break: 5       # Short break in minutes
+#   long_break: 15       # Long break in minutes (after 'cycles' focus blocks)
+#   cycles: 4            # Number of focus blocks before a long break
 
 # LAN access credentials (for --lan mode)
 # Set these to avoid auto-generated passwords each session.
