@@ -127,7 +127,7 @@ install_links() {
   echo ""
   echo "=== Installing ${label} agents ==="
   local count=0
-  eval "local entries=(\"\${${arr_name}[@]}\")"
+  eval "local entries=(\${${arr_name}[@]+\"\${${arr_name}[@]}\"})"
   for entry in "${entries[@]}"; do
     local src="${REPO_DIR}/${entry%%:*}"
     local target="${entry#*:}"
@@ -144,7 +144,7 @@ uninstall_links() {
   local label="$2"
   echo ""
   echo "=== Uninstalling ${label} agents ==="
-  eval "local entries=(\"\${${arr_name}[@]}\")"
+  eval "local entries=(\${${arr_name}[@]+\"\${${arr_name}[@]}\"})"
   for entry in "${entries[@]}"; do
     local target="${entry#*:}"
     remove_symlink "$target"
