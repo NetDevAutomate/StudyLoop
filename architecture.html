@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/content-pipeline.html">
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/architecture.html">
       
       
-        <link rel="prev" href="architecture.html">
+        <link rel="prev" href="agent-install.html">
       
       
-        <link rel="next" href="audhd-learning-philosophy.html">
+        <link rel="next" href="content-pipeline.html">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Content Pipeline - Socratic Study Mentor</title>
+        <title>Architecture - Socratic Study Mentor</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#content-pipeline-guide" class="md-skip">
+        <a href="#architecture" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Content Pipeline
+              Architecture
             
           </span>
         </div>
@@ -258,8 +258,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -270,13 +272,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -297,7 +297,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -368,95 +368,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="architecture.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Learning
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Learning
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
     
   
   
@@ -476,7 +387,7 @@
   <span class="md-ellipsis">
     
   
-    Content Pipeline
+    Architecture
   
 
     
@@ -487,14 +398,14 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <a href="content-pipeline.html" class="md-nav__link md-nav__link--active">
+      <a href="architecture.html" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    Content Pipeline
+    Architecture
   
 
     
@@ -520,10 +431,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#c4-context" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How It Works
+        C4 Context
       
     </span>
   </a>
@@ -531,22 +442,44 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#path-1-pdf-textbook-to-flashcards" class="md-nav__link">
+  <a href="#c4-container" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Path 1: PDF Textbook to Flashcards
+        C4 Container
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Path 1: PDF Textbook to Flashcards">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c4-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C4 Component
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Map
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code Map">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-split-the-pdf-into-chapters" class="md-nav__link">
+  <a href="#monorepo" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Split the PDF into chapters
+        Monorepo
       
     </span>
   </a>
@@ -554,43 +487,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-2-upload-chapters-to-notebooklm" class="md-nav__link">
+  <a href="#important-entry-points" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Upload chapters to NotebookLM
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-generate-audio-overviews-and-artefacts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Generate audio overviews and artefacts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-download-the-generated-artefacts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Download the generated artefacts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-review-with-spaced-repetition" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Review with spaced repetition
+        Important entry points
       
     </span>
   </a>
@@ -603,41 +503,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#path-2-obsidian-notes-to-flashcards" class="md-nav__link">
+  <a href="#design-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Path 2: Obsidian Notes to Flashcards
+        Design Notes
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Path 2: Obsidian Notes to Flashcards">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#all-in-one-command" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        All-in-one command
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#selective-flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Selective flags
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -645,6 +517,95 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1133,10 +1094,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#c4-context" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How It Works
+        C4 Context
       
     </span>
   </a>
@@ -1144,22 +1105,44 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#path-1-pdf-textbook-to-flashcards" class="md-nav__link">
+  <a href="#c4-container" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Path 1: PDF Textbook to Flashcards
+        C4 Container
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Path 1: PDF Textbook to Flashcards">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c4-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C4 Component
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Map
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code Map">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-split-the-pdf-into-chapters" class="md-nav__link">
+  <a href="#monorepo" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Split the PDF into chapters
+        Monorepo
       
     </span>
   </a>
@@ -1167,43 +1150,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-2-upload-chapters-to-notebooklm" class="md-nav__link">
+  <a href="#important-entry-points" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Upload chapters to NotebookLM
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-generate-audio-overviews-and-artefacts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Generate audio overviews and artefacts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-download-the-generated-artefacts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Download the generated artefacts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-review-with-spaced-repetition" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Review with spaced repetition
+        Important entry points
       
     </span>
   </a>
@@ -1216,41 +1166,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#path-2-obsidian-notes-to-flashcards" class="md-nav__link">
+  <a href="#design-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Path 2: Obsidian Notes to Flashcards
+        Design Notes
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Path 2: Obsidian Notes to Flashcards">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#all-in-one-command" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        All-in-one command
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#selective-flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Selective flags
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1271,212 +1193,200 @@
 
 
 
-<h1 id="content-pipeline-guide">Content Pipeline Guide<a class="headerlink" href="#content-pipeline-guide" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p>From raw materials (Obsidian notes, PDF textbooks) to study-ready flashcards and quizzes via Google NotebookLM.</p>
-</blockquote>
-<hr />
-<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<p>There are two paths into the pipeline. Both end at the same place: flashcard and quiz JSON files ready for spaced repetition review.</p>
-<pre class="mermaid"><code>graph TB
-    subgraph "Source Materials"
-        OB["Obsidian Notes&lt;br/&gt;(.md files)"]
-        PDF["PDF Textbooks"]
-    end
+<h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
+<p>Current architecture and code map for the <code>studyctl</code> monorepo.</p>
+<p>This page is the release-oriented source of truth for:
+- system boundaries
+- runtime containers
+- major internal components
+- repo structure / code map</p>
+<p>For workflow-heavy operational detail, see <a href="system-overview.html">System Overview</a>.</p>
+<h2 id="c4-context">C4 Context<a class="headerlink" href="#c4-context" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>C4Context
+    title System Context - Socratic Study Mentor
 
-    subgraph "Content Pipeline"
-        SPLIT["studyctl content split&lt;br/&gt;(PDF → per-chapter files)"]
-        OBS["studyctl content from-obsidian&lt;br/&gt;(markdown → PDF → upload)"]
-        PROC["studyctl content process&lt;br/&gt;(split + upload in one step)"]
-        GEN["studyctl content generate&lt;br/&gt;(trigger NotebookLM generation)"]
-        DL["studyctl content download&lt;br/&gt;(download audio/video artefacts)"]
-    end
+    Person(learner, "Learner", "Studies with AI mentors, review workflows, and NotebookLM-backed content")
+    System(studyctl, "Socratic Study Mentor", "AuDHD-aware study toolkit for sessions, review, content processing, and session intelligence")
 
-    subgraph "Google NotebookLM"
-        NB["Notebook&lt;br/&gt;(per-topic)"]
-        ART["Generated Artefacts&lt;br/&gt;(audio overviews,&lt;br/&gt;flashcards, quizzes)"]
-    end
+    System_Ext(obsidian, "Obsidian Vault", "Markdown study notes and course materials")
+    System_Ext(notebooklm, "Google NotebookLM", "Uploads source material and generates study artefacts")
+    System_Ext(ai_tools, "AI Coding Tools", "Claude Code, Codex CLI, Kiro, Gemini CLI, OpenCode, Amp")
+    System_Ext(remote_host, "Remote Host", "SSH-accessible machine for session DB sync")
 
-    subgraph "Review System"
-        JSON["Flashcard/Quiz JSON&lt;br/&gt;(in review directories)"]
-        WEB["studyctl web&lt;br/&gt;(PWA with SM-2)"]
-    end
+    Rel(learner, studyctl, "Uses")
+    Rel(studyctl, obsidian, "Reads and converts notes from")
+    Rel(studyctl, notebooklm, "Uploads sources to and downloads artefacts from")
+    Rel(ai_tools, studyctl, "Provide study sessions and exported transcripts to")
+    Rel(studyctl, remote_host, "Syncs sessions.db with", "SSH + SQLite delta")</code></pre>
+<h2 id="c4-container">C4 Container<a class="headerlink" href="#c4-container" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>C4Container
+    title Container Diagram - Socratic Study Mentor
 
-    PDF --&gt; SPLIT --&gt; NB
-    PDF --&gt; PROC --&gt; NB
-    OB --&gt; OBS --&gt; NB
-    NB --&gt; GEN --&gt; ART
-    ART --&gt; DL --&gt; JSON --&gt; WEB</code></pre>
-<hr />
-<h2 id="path-1-pdf-textbook-to-flashcards">Path 1: PDF Textbook to Flashcards<a class="headerlink" href="#path-1-pdf-textbook-to-flashcards" title="Permanent link">&para;</a></h2>
-<p>Use this when you have a PDF ebook or textbook and want to create study materials from it.</p>
-<h3 id="step-1-split-the-pdf-into-chapters">Step 1: Split the PDF into chapters<a class="headerlink" href="#step-1-split-the-pdf-into-chapters" title="Permanent link">&para;</a></h3>
-<p><code>bash
-studyctl content split "Computer-Science-APP.pdf" -o chapters/</code></p>
-<p>This reads the PDF's table of contents (bookmarks) and splits it into one file per chapter. Use <code>-l 2</code> to split at heading level 2 instead of the default level 1.</p>
-<p>If the PDF has no bookmarks, use <code>--ranges</code> to specify page ranges manually:</p>
-<p><code>bash
-studyctl content split "textbook.pdf" --ranges "1-30,31-60,61-90"</code></p>
-<h3 id="step-2-upload-chapters-to-notebooklm">Step 2: Upload chapters to NotebookLM<a class="headerlink" href="#step-2-upload-chapters-to-notebooklm" title="Permanent link">&para;</a></h3>
-<p><code>bash
-studyctl content process "Computer-Science-APP.pdf" \
-    -o chapters/ \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID"</code></p>
-<p>This combines split + upload in one command. It splits the PDF, then uploads each chapter as a source to the specified NotebookLM notebook.</p>
-<p>If you already split in step 1, you can upload manually via the NotebookLM web UI instead.</p>
-<h3 id="step-3-generate-audio-overviews-and-artefacts">Step 3: Generate audio overviews and artefacts<a class="headerlink" href="#step-3-generate-audio-overviews-and-artefacts" title="Permanent link">&para;</a></h3>
-<p><code>bash
-studyctl content generate \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID" \
-    -c 1-5</code></p>
-<p>This triggers NotebookLM to generate audio overviews for chapters 1-5. Generation takes 15+ minutes per chapter for slides/video types.</p>
-<p>Flags:
-- <code>-c / --chapters</code> — chapter range (e.g. <code>1-5</code>, <code>3</code>, <code>1-12</code>)
-- <code>--no-audio</code> — skip audio overview generation
-- <code>--no-video</code> — skip video generation
-- <code>-t / --timeout</code> — timeout in seconds (default: 900)</p>
-<h3 id="step-4-download-the-generated-artefacts">Step 4: Download the generated artefacts<a class="headerlink" href="#step-4-download-the-generated-artefacts" title="Permanent link">&para;</a></h3>
-<p><code>bash
-studyctl content download \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID" \
-    -o ~/study-materials/csapp/ \
-    -c 1-5</code></p>
-<p>This downloads the generated audio, video, flashcard, and quiz files to the specified output directory. The JSON flashcard and quiz files are what the review system reads.</p>
-<h3 id="step-5-review-with-spaced-repetition">Step 5: Review with spaced repetition<a class="headerlink" href="#step-5-review-with-spaced-repetition" title="Permanent link">&para;</a></h3>
-<p><code>bash
-studyctl web</code></p>
-<p>Open the PWA in your browser. Your downloaded flashcards and quizzes will appear as a course. See the <a href="web-ui-guide.html">Web UI Guide</a> for the full review walkthrough.</p>
-<hr />
-<h2 id="path-2-obsidian-notes-to-flashcards">Path 2: Obsidian Notes to Flashcards<a class="headerlink" href="#path-2-obsidian-notes-to-flashcards" title="Permanent link">&para;</a></h2>
-<p>Use this when you have Obsidian markdown notes and want to create study materials from them.</p>
-<pre class="mermaid"><code>graph LR
-    A["Obsidian .md files"] --&gt; B["studyctl content from-obsidian"]
-    B --&gt; C["pandoc converts&lt;br/&gt;to PDF"]
-    C --&gt; D["Upload to&lt;br/&gt;NotebookLM"]
-    D --&gt; E["Generate artefacts&lt;br/&gt;(built-in)"]
-    E --&gt; F["Download JSON&lt;br/&gt;(built-in)"]
-    F --&gt; G["studyctl web&lt;br/&gt;(review)"]</code></pre>
-<h3 id="all-in-one-command">All-in-one command<a class="headerlink" href="#all-in-one-command" title="Permanent link">&para;</a></h3>
-<p><code>bash
-studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python/ \
-    -o ~/study-materials/python/ \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID"</code></p>
-<p>This does everything in one step:</p>
-<ol>
-<li>Converts each <code>.md</code> file to PDF via pandoc</li>
-<li>Uploads PDFs as sources to NotebookLM</li>
-<li>Generates audio overviews (unless <code>--no-generate</code>)</li>
-<li>Downloads artefacts (unless <code>--no-download</code>)</li>
-</ol>
-<h3 id="selective-flags">Selective flags<a class="headerlink" href="#selective-flags" title="Permanent link">&para;</a></h3>
-<p>Skip steps you don't need:</p>
-<p>```bash</p>
-<h1 id="convert-and-upload-only-generate-later">Convert and upload only (generate later)<a class="headerlink" href="#convert-and-upload-only-generate-later" title="Permanent link">&para;</a></h1>
-<p>studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID --no-generate</p>
-<h1 id="skip-quizflashcard-generation">Skip quiz/flashcard generation<a class="headerlink" href="#skip-quizflashcard-generation" title="Permanent link">&para;</a></h1>
-<p>studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID --no-quiz --no-flashcards</p>
-<h1 id="convert-markdown-to-pdf-only-no-notebooklm">Convert markdown to PDF only (no NotebookLM)<a class="headerlink" href="#convert-markdown-to-pdf-only-no-notebooklm" title="Permanent link">&para;</a></h1>
-<p>studyctl content from-obsidian ~/notes/ -o output/ --skip-convert
-```</p>
-<h3 id="subdirectory-filter">Subdirectory filter<a class="headerlink" href="#subdirectory-filter" title="Permanent link">&para;</a></h3>
-<p>Process only notes from a specific subdirectory:</p>
-<p><code>bash
-studyctl content from-obsidian ~/Obsidian/Study/ -s "Python/Decorators" -o output/</code></p>
-<hr />
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<h3 id="notebooklm-notebook-id">NotebookLM notebook ID<a class="headerlink" href="#notebooklm-notebook-id" title="Permanent link">&para;</a></h3>
-<p>Set via environment variable or pass with <code>-n</code>:</p>
-<p><code>bash
-export NOTEBOOKLM_NOTEBOOK_ID="your-notebook-id-here"</code></p>
-<p>Find the ID in the NotebookLM URL: <code>https://notebooklm.google.com/notebook/NOTEBOOK_ID</code></p>
-<h3 id="content-base-path">Content base path<a class="headerlink" href="#content-base-path" title="Permanent link">&para;</a></h3>
-<p>Where flashcard/quiz JSON files are stored. Set in <code>~/.config/studyctl/config.yaml</code>:</p>
-<p><code>yaml
-content:
-  base_path: ~/study-materials    # default
-  notebooklm_timeout: 900         # seconds per generation
-  inter_episode_gap: 30           # seconds between API calls</code></p>
-<h3 id="topics-mapping">Topics mapping<a class="headerlink" href="#topics-mapping" title="Permanent link">&para;</a></h3>
-<p>Each topic maps to an Obsidian directory and a review path:</p>
-<p><code>yaml
-topics:
-  - name: Python
-    slug: python
-    obsidian_path: 2-Areas/Study/Python
-    tags: [python, programming]</code></p>
-<p>The <code>slug</code> determines where flashcards are stored: <code>{content.base_path}/{slug}/flashcards/</code></p>
-<hr />
-<h2 id="syllabus-workflow-batch-generation">Syllabus Workflow (Batch Generation)<a class="headerlink" href="#syllabus-workflow-batch-generation" title="Permanent link">&para;</a></h2>
-<p>For large textbooks, use the syllabus workflow to generate episodes in batches:</p>
-<p>```bash</p>
-<h1 id="create-a-generation-plan">Create a generation plan<a class="headerlink" href="#create-a-generation-plan" title="Permanent link">&para;</a></h1>
-<p>studyctl content syllabus -n $NB_ID -o chapters/ -b "CS:APP" -m 12</p>
-<h1 id="generate-the-next-pending-episode">Generate the next pending episode<a class="headerlink" href="#generate-the-next-pending-episode" title="Permanent link">&para;</a></h1>
-<p>studyctl content autopilot -o chapters/ -b "CS:APP"</p>
-<h1 id="check-progress">Check progress<a class="headerlink" href="#check-progress" title="Permanent link">&para;</a></h1>
-<p>studyctl content status -o chapters/ -b "CS:APP"
-```</p>
-<p>The autopilot command generates one episode at a time, respecting rate limits. Run it repeatedly (or on a cron) to work through the full book.</p>
-<hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+    Person(learner, "Learner", "Runs study sessions and review workflows")
+    System_Ext(obsidian, "Obsidian Vault", "Markdown notes")
+    System_Ext(notebooklm, "Google NotebookLM", "Study artefact generation")
+    System_Ext(ai_tools, "AI Coding Tools", "Claude, Codex, Kiro, Gemini, OpenCode, Amp")
+    System_Ext(remote_host, "Remote Host", "SSH target for DB sync")
+
+    System_Boundary(repo, "Socratic Study Mentor Monorepo") {
+        Container(studyctl_cli, "studyctl", "Python / Click", "Primary CLI for sessions, review, content, doctor, install, and web")
+        Container(agent_tools, "agent-session-tools", "Python / Typer", "Exports, queries, syncs, and maintains AI session history")
+        Container(web_ui, "Web UI", "FastAPI + HTMX + Alpine", "Flashcard review PWA and live session dashboard")
+        Container(sidebar, "Sidebar", "Textual", "Right-hand tmux pane with timer, activity, and counters")
+        ContainerDb(session_db, "sessions.db", "SQLite", "Study sessions, reviews, exported transcripts, tags, notes, concepts, parked topics")
+        Container(ipc_files, "IPC State", "JSON / Markdown files", "Live session state shared between tmux pane and dashboard")
+    }
+
+    Rel(learner, studyctl_cli, "Runs")
+    Rel(studyctl_cli, sidebar, "Launches in tmux")
+    Rel(studyctl_cli, web_ui, "Starts optionally", "uvicorn")
+    Rel(studyctl_cli, session_db, "Reads and writes")
+    Rel(studyctl_cli, ipc_files, "Writes live session state")
+    Rel(sidebar, ipc_files, "Polls")
+    Rel(web_ui, ipc_files, "Streams via SSE")
+    Rel(agent_tools, session_db, "Reads and writes")
+    Rel(agent_tools, ai_tools, "Imports transcript/session data from")
+    Rel(studyctl_cli, obsidian, "Reads notes and materials from")
+    Rel(studyctl_cli, notebooklm, "Uploads sources and fetches artefacts from")
+    Rel(agent_tools, remote_host, "Syncs DB to/from", "SSH")</code></pre>
+<h2 id="c4-component">C4 Component<a class="headerlink" href="#c4-component" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>C4Component
+    title Component Diagram - studyctl + agent-session-tools
+
+    Container(studyctl_cli, "studyctl", "Python / Click")
+    Container(agent_tools, "agent-session-tools", "Python / Typer")
+    ContainerDb(session_db, "sessions.db", "SQLite")
+    Container(ipc_files, "IPC State", "JSON / Markdown")
+
+    Container_Boundary(studyctl_boundary, "studyctl internals") {
+        Component(cli_cmds, "CLI commands", "studyctl/cli", "User-facing command groups and entry points")
+        Component(session_runtime, "Session runtime", "studyctl/session + studyctl/history", "tmux orchestration, lifecycle, rollback, persistence")
+        Component(adapter_layer, "Agent adapters", "studyctl/adapters + agent_launcher", "Launch strategy for Claude, Codex, Gemini, Kiro, OpenCode, Ollama, LM Studio")
+        Component(review_engine, "Review engine", "review_db + review_loader + services/review", "Flashcard review state and spaced repetition")
+        Component(content_pipeline, "Content pipeline", "studyctl/content", "PDF splitting, note conversion, NotebookLM integration")
+        Component(install_doctor, "Install + doctor", "installers + doctor", "Source install flow, diagnostics, and safe repairs")
+        Component(web_sidebar, "UI layer", "web + tui", "PWA dashboard, SSE routes, and Textual sidebar")
+    }
+
+    Container_Boundary(agent_boundary, "agent-session-tools internals") {
+        Component(exporters, "Exporters", "exporters/*", "Per-tool transcript importers")
+        Component(query_sync, "Query + sync", "query_sessions + query_logic + sync", "Search, continuation context, and cross-machine sync")
+        Component(schema, "Schema + migrations", "schema.sql + migrations", "SQLite schema evolution and compatibility")
+        Component(extras, "Optional extras", "mcp_server + embeddings + semantic_search", "MCP access and semantic retrieval")
+    }
+
+    Rel(cli_cmds, session_runtime, "Invokes")
+    Rel(cli_cmds, adapter_layer, "Invokes")
+    Rel(cli_cmds, review_engine, "Invokes")
+    Rel(cli_cmds, content_pipeline, "Invokes")
+    Rel(cli_cmds, install_doctor, "Invokes")
+    Rel(session_runtime, session_db, "Reads and writes")
+    Rel(session_runtime, ipc_files, "Writes")
+    Rel(web_sidebar, ipc_files, "Reads")
+    Rel(web_sidebar, session_db, "Reads and writes")
+    Rel(adapter_layer, session_db, "Uses for session metadata")
+    Rel(exporters, schema, "Writes through")
+    Rel(query_sync, schema, "Reads through")
+    Rel(exporters, session_db, "Writes")
+    Rel(query_sync, session_db, "Reads and syncs")</code></pre>
+<h2 id="code-map">Code Map<a class="headerlink" href="#code-map" title="Permanent link">&para;</a></h2>
+<h3 id="monorepo">Monorepo<a class="headerlink" href="#monorepo" title="Permanent link">&para;</a></h3>
+<p><code>text
+socratic-study-mentor/
+├── packages/
+│   ├── studyctl/
+│   │   ├── src/studyctl/
+│   │   │   ├── adapters/      # Agent launch adapters and local-LLM frontends
+│   │   │   ├── cli/           # Click command surface
+│   │   │   ├── content/       # NotebookLM and PDF processing pipeline
+│   │   │   ├── doctor/        # Health checks and auto-fix diagnostics
+│   │   │   ├── history/       # Study session persistence layer
+│   │   │   ├── logic/         # Functional-core orchestration helpers
+│   │   │   ├── mcp/           # studyctl MCP server/tooling
+│   │   │   ├── services/      # Review/content service wrappers
+│   │   │   ├── session/       # tmux orchestration and cleanup
+│   │   │   ├── tui/           # Textual sidebar
+│   │   │   ├── web/           # FastAPI routes and static assets
+│   │   │   ├── installers.py  # Typed source-install helpers
+│   │   │   ├── review_db.py   # Flashcard scheduling DB
+│   │   │   └── settings.py    # Shared config loading
+│   │   └── tests/
+│   └── agent-session-tools/
+│       ├── src/agent_session_tools/
+│       │   ├── exporters/     # Claude, Codex, Gemini, Kiro, OpenCode, Aider, LiteLLM, RepoPrompt
+│       │   ├── integrations/  # Git / editor integration helpers
+│       │   ├── migrations.py  # sessions.db schema evolution
+│       │   ├── query_logic.py # Search / continuation logic
+│       │   ├── query_sessions.py
+│       │   ├── sync.py
+│       │   ├── mcp_server.py
+│       │   └── export_sessions.py
+│       └── tests/
+├── agents/                    # Per-tool agent definitions and shared prompts
+├── docs/                      # User, developer, architecture, and ops docs
+├── scripts/                   # Thin source-install and helper scripts
+├── Formula/studyctl.rb        # Homebrew formula
+└── pyproject.toml             # Workspace root</code></p>
+<h3 id="important-entry-points">Important entry points<a class="headerlink" href="#important-entry-points" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Problem</th>
-<th>Cause</th>
-<th>Fix</th>
+<th>Area</th>
+<th>Entry point</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>content generate</code> times out</td>
-<td>NotebookLM generation takes 15+ min</td>
-<td>Increase timeout: <code>-t 1800</code></td>
+<td>Main CLI</td>
+<td><code>packages/studyctl/src/studyctl/cli/__init__.py</code></td>
+<td>Lazy command registration</td>
 </tr>
 <tr>
-<td>Daily quota exceeded</td>
-<td>~20-25 generations per day (Pro tier)</td>
-<td>Wait 24h UTC for reset</td>
+<td>Study sessions</td>
+<td><code>packages/studyctl/src/studyctl/cli/_study.py</code></td>
+<td>High-level session UX</td>
 </tr>
 <tr>
-<td>Mermaid parse errors in <code>from-obsidian</code></td>
-<td>Special characters in diagram node labels</td>
-<td>Non-fatal; ~15 diagrams may fail. Fix labels or ignore.</td>
+<td>Session runtime</td>
+<td><code>packages/studyctl/src/studyctl/session/start.py</code></td>
+<td>Startup, rollback, tmux orchestration</td>
 </tr>
 <tr>
-<td>Double-nested output path</td>
-<td><code>from-obsidian</code> creates <code>pdfs/pdfs/</code></td>
-<td>Known issue; manually flatten or use <code>-o</code> to specify exact path</td>
+<td>Install flow</td>
+<td><code>packages/studyctl/src/studyctl/cli/_install.py</code></td>
+<td>Typed tool/agent install commands</td>
 </tr>
 <tr>
-<td>PDF has no bookmarks</td>
-<td><code>content split</code> needs TOC structure</td>
-<td>Use <code>--ranges</code> for manual page ranges</td>
+<td>Doctor</td>
+<td><code>packages/studyctl/src/studyctl/cli/_doctor.py</code></td>
+<td>Diagnostics and <code>--fix</code></td>
+</tr>
+<tr>
+<td>Export</td>
+<td><code>packages/agent-session-tools/src/agent_session_tools/export_sessions.py</code></td>
+<td>Transcript import CLI</td>
+</tr>
+<tr>
+<td>Query</td>
+<td><code>packages/agent-session-tools/src/agent_session_tools/query_sessions.py</code></td>
+<td>Search and write actions</td>
+</tr>
+<tr>
+<td>Sync</td>
+<td><code>packages/agent-session-tools/src/agent_session_tools/sync.py</code></td>
+<td>Cross-machine DB sync</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
-<p>```bash</p>
-<h1 id="list-notebooks">List notebooks<a class="headerlink" href="#list-notebooks" title="Permanent link">&para;</a></h1>
-<p>studyctl content list</p>
-<h1 id="list-sources-in-a-notebook">List sources in a notebook<a class="headerlink" href="#list-sources-in-a-notebook" title="Permanent link">&para;</a></h1>
-<p>studyctl content list -n $NB_ID</p>
-<h1 id="split-pdf-by-chapters">Split PDF by chapters<a class="headerlink" href="#split-pdf-by-chapters" title="Permanent link">&para;</a></h1>
-<p>studyctl content split "book.pdf" -o chapters/</p>
-<h1 id="upload-split-in-one-step">Upload + split in one step<a class="headerlink" href="#upload-split-in-one-step" title="Permanent link">&para;</a></h1>
-<p>studyctl content process "book.pdf" -o chapters/ -n $NB_ID</p>
-<h1 id="generate-audiovideo">Generate audio/video<a class="headerlink" href="#generate-audiovideo" title="Permanent link">&para;</a></h1>
-<p>studyctl content generate -n $NB_ID -c 1-5</p>
-<h1 id="download-artefacts">Download artefacts<a class="headerlink" href="#download-artefacts" title="Permanent link">&para;</a></h1>
-<p>studyctl content download -n $NB_ID -o ~/study-materials/topic/</p>
-<h1 id="obsidian-all-in-one">Obsidian all-in-one<a class="headerlink" href="#obsidian-all-in-one" title="Permanent link">&para;</a></h1>
-<p>studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID</p>
-<h1 id="check-review-due-dates">Check review due dates<a class="headerlink" href="#check-review-due-dates" title="Permanent link">&para;</a></h1>
-<p>studyctl review</p>
-<h1 id="launch-review-pwa">Launch review PWA<a class="headerlink" href="#launch-review-pwa" title="Permanent link">&para;</a></h1>
-<p>studyctl web
-```</p>
+<h2 id="design-notes">Design Notes<a class="headerlink" href="#design-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>studyctl</code> is the user-facing orchestration package.</li>
+<li><code>agent-session-tools</code> is the durable session-intelligence/data package.</li>
+<li>The cross-package dependency is one-way: <code>studyctl</code> uses <code>agent-session-tools</code>, not the reverse.</li>
+<li>Source installs are now driven by <code>studyctl install tools</code>, <code>studyctl install agents</code>, and <code>studyctl doctor --fix</code>; the shell scripts are compatibility wrappers.</li>
+<li>Session startup is designed to fail closed: if tmux/sidebar/agent startup breaks, the DB session and IPC state are rolled back.</li>
+</ul>
 
 
 
