@@ -1,5 +1,7 @@
 # System Overview — How Everything Connects
 
+For release-oriented C4 diagrams and the repo code map, see [Architecture](architecture.md).
+
 > A complete map of the studyctl ecosystem: from Obsidian notes to AI study sessions to spaced repetition.
 
 ---
@@ -33,7 +35,7 @@ graph TB
     subgraph "Study Sessions"
         STUDY["studyctl study 'topic'"]
         TMUX["tmux Session"]
-        AGENT["AI Agent<br/>(Claude Code)"]
+        AGENT["AI Agent<br/>(Claude, Codex, Gemini,<br/>Kiro, OpenCode, local LLMs)"]
         SIDEBAR["Textual Sidebar<br/>(timer, activity, counters)"]
         DASH["Live Dashboard<br/>/session (SSE + HTMX)"]
     end
@@ -146,7 +148,7 @@ sequenceDiagram
     participant CLI as studyctl study
     participant DB as sessions.db
     participant TMUX as tmux
-    participant AGENT as Claude Code
+    participant AGENT as Active Agent CLI
     participant TUI as Textual Sidebar
     participant IPC as IPC Files
     participant WEB as Web Dashboard
@@ -156,7 +158,7 @@ sequenceDiagram
     CLI->>IPC: Write session-state.json + empty topics/parking
     CLI->>TMUX: Create session (cwd=sessions/study-decorators-xxx/, window-size largest)
     CLI->>TMUX: Split pane 75/25
-    TMUX->>AGENT: Main pane: claude --append-system-prompt-file persona.md
+    TMUX->>AGENT: Main pane: selected adapter launch command
     TMUX->>TUI: Sidebar pane: python -m studyctl.tui.sidebar
 
     opt --lan flag
@@ -188,7 +190,7 @@ sequenceDiagram
     CLI->>TMUX: Switch to previous session
     CLI->>TMUX: Kill study session
 
-    Note over U: Session dir preserved with .claude/ history
+    Note over U: Session dir preserved with agent-specific history (.claude/, AGENTS.md, etc.)
 ```
 
 **Session directory structure:**
@@ -261,8 +263,10 @@ flowchart TB
 flowchart LR
     subgraph "AI Sessions"
         CC["Claude Code"]
+        CX["Codex CLI"]
         KI["Kiro CLI"]
         GE["Gemini CLI"]
+        OC["OpenCode"]
     end
 
     subgraph "Export"
@@ -284,8 +288,10 @@ flowchart LR
     REMOTE[(Remote DB<br/>via SSH)]
 
     CC -->|"~/.claude/projects/"| EX
+    CX -->|"Codex storage"| EX
     KI --> EX
     GE -->|"~/.gemini/tmp/"| EX
+    OC -->|"~/.local/share/opencode/storage/"| EX
     EX --> DB
 
     DB --> FTS
@@ -306,7 +312,7 @@ session-sync push mac-mini              # Push to remote
 session-sync pull mac-mini              # Pull from remote
 ```
 
-#### session-db-mcp — MCP Server for Session Access
+#### Session Database (session-db-mcp)
 
 A standalone MCP server exposing the session database to any MCP-compatible AI tool via stdio transport. Installed as part of `agent-session-tools`.
 
@@ -314,6 +320,7 @@ A standalone MCP server exposing the session database to any MCP-compatible AI t
 graph TB
     subgraph "AI Coding Tools"
         CC["Claude Code"]
+        CX["Codex CLI"]
         KC["Kiro CLI"]
         GC["Gemini CLI"]
         OC["OpenCode / Aider"]
@@ -438,8 +445,10 @@ flowchart TB
 
     subgraph "Per-Agent Config"
         CLAUDE["agents/claude/<br/>socratic-mentor.md"]
+        CODEX["agents/codex/<br/>AGENTS.md"]
         GEMINI["agents/gemini/<br/>study-mentor.md"]
         KIRO["agents/kiro/<br/>rules"]
+        OPENCODE["agents/opencode/<br/>study-mentor.md"]
     end
 
     SP --> PS
@@ -455,8 +464,11 @@ flowchart TB
 
     PS --> CLAUDE
     PC --> CLAUDE
+    PS --> CODEX
+    PC --> CODEX
     PS --> GEMINI
     PS --> KIRO
+    PS --> OPENCODE
 ```
 
 ---
@@ -604,7 +616,7 @@ Here's a complete workflow from course materials to mastery:
 | Python 3.12+ | Yes | `mise install python` or system package |
 | tmux 3.1+ | For `studyctl study` | `brew install tmux` / `apt install tmux` |
 | ttyd | Optional — remote terminal (`--lan`) | `brew install ttyd` / `apt install ttyd` |
-| Claude Code | For AI study sessions | `npm install -g @anthropic-ai/claude-code` |
+| Claude Code / Codex CLI / Gemini / Kiro / OpenCode | For AI study sessions | Install at least one supported agent CLI |
 | pandoc | For markdown to PDF | `brew install pandoc` |
 | typst | For PDF rendering | `brew install typst` |
 | PyMuPDF | For PDF splitting | `pip install 'studyctl[content]'` |
@@ -613,11 +625,8 @@ Here's a complete workflow from course materials to mastery:
 | FastAPI + uvicorn | For web UI | `pip install 'studyctl[web]'` |
 
 ```bash
-# Install everything
-pip install 'studyctl[all]'
-
-# Or just what you need
-pip install studyctl                    # CLI + review only
-pip install 'studyctl[tui,web]'        # + sidebar + web dashboard
-pip install 'studyctl[content]'        # + PDF pipeline
+# Preferred local source workflow
+uv sync
+uv run studyctl install agents
+uv run studyctl doctor --fix
 ```

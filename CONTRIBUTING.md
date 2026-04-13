@@ -80,91 +80,49 @@ Tests live in:
 ```
 socratic-study-mentor/
 ├── packages/
-│   ├── studyctl/                    # Study pipeline CLI
+│   ├── studyctl/                    # User-facing study toolkit
 │   │   ├── src/studyctl/
-│   │   │   ├── cli/                # Click CLI (LazyGroup package)
-│   │   │   │   ├── __init__.py     # Root group + lazy registration
-│   │   │   │   ├── _lazy.py        # LazyGroup class
-│   │   │   │   ├── _shared.py      # Console, helpers, constants
-│   │   │   │   ├── _sync.py        # sync, status, audio, topics, dedup
-│   │   │   │   ├── _review.py      # review, struggles, wins, progress, bridges
-│   │   │   │   ├── _config.py      # config init, config show
-│   │   │   │   ├── _state.py       # state push/pull/status/init
-│   │   │   │   ├── _content.py     # content group (split, process, syllabus, etc.)
-│   │   │   │   ├── _schedule.py    # schedule group + calendar blocks
-│   │   │   │   └── _web.py         # web, tui, docs commands
-│   │   │   ├── content/             # Content pipeline (absorbed from pdf-by-chapters)
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── splitter.py     # PDF splitting by TOC bookmarks or page ranges
-│   │   │   │   ├── notebooklm_client.py  # NotebookLM API (upload, generate, download)
-│   │   │   │   ├── syllabus.py     # Podcast syllabus chunking and state machine
-│   │   │   │   ├── markdown_converter.py # Obsidian markdown → PDF conversion
-│   │   │   │   ├── models.py       # Shared data models (UploadResult, etc.)
-│   │   │   │   └── storage.py      # Course directory management
-│   │   │   ├── services/           # Framework-agnostic service layer
-│   │   │   │   ├── review.py       # Review operations (cards, stats, SM-2)
-│   │   │   │   └── content.py      # Content service wrappers
-│   │   │   ├── settings.py         # Configuration and path resolution
-│   │   │   ├── topics.py           # Topic definitions (Topic, get_topics)
-│   │   │   ├── review_db.py        # SQLite SM-2 spaced repetition (WAL mode)
-│   │   │   ├── review_loader.py    # Flashcard/quiz JSON loader + validation
-│   │   │   ├── sync.py             # NotebookLM sync
-│   │   │   ├── state.py            # Sync state tracking
-│   │   │   ├── history/            # Session history (9 focused modules)
-│   │   │   │   ├── sessions.py     # Session CRUD + summary
-│   │   │   │   ├── progress.py     # Progress tracking + spaced repetition
-│   │   │   │   ├── search.py       # FTS5 topic frequency + struggles
-│   │   │   │   ├── teachback.py    # 5-dimension teach-back scoring
-│   │   │   │   ├── bridges.py      # Knowledge bridge CRUD + migration
-│   │   │   │   ├── concepts.py     # Concept seeding + listing
-│   │   │   │   ├── streaks.py      # Study streak calculation
-│   │   │   │   └── medication.py   # Medication window checking
-│   │   │   ├── session/            # Session orchestration
-│   │   │   │   ├── orchestrator.py # tmux env creation + pane layout
-│   │   │   │   ├── resume.py       # Reattach/rebuild sessions
-│   │   │   │   └── cleanup.py      # End session + IPC cleanup
-│   │   │   ├── scheduler.py        # launchd/cron jobs
-│   │   │   ├── shared.py           # Cross-machine sync
-│   │   │   ├── maintenance.py      # Notebook deduplication
-│   │   │   ├── tui/                # Textual TUI app
-│   │   │   ├── web/                # Web PWA server + static assets
-│   │   │   └── pdf.py              # Markdown→PDF export
+│   │   │   ├── adapters/           # Claude, Codex, Gemini, Kiro, OpenCode, local-LLM adapters
+│   │   │   ├── cli/                # Click command surface
+│   │   │   ├── content/            # NotebookLM and PDF processing
+│   │   │   ├── doctor/             # Diagnostics and auto-fix checks
+│   │   │   ├── history/            # Study session persistence helpers
+│   │   │   ├── logic/              # Functional-core orchestration helpers
+│   │   │   ├── mcp/                # studyctl MCP server/tooling
+│   │   │   ├── services/           # Review/content service wrappers
+│   │   │   ├── session/            # tmux startup, rollback, resume, cleanup
+│   │   │   ├── tui/                # Textual sidebar
+│   │   │   ├── web/                # FastAPI routes and static assets
+│   │   │   ├── installers.py       # Typed install helpers used by CLI/doctor
+│   │   │   ├── review_db.py        # Flashcard scheduling DB
+│   │   │   └── settings.py         # Shared config loading
 │   │   ├── tests/
 │   │   └── pyproject.toml
-│   └── agent-session-tools/         # Session management CLI
+│   └── agent-session-tools/         # Session intelligence and export tooling
 │       ├── src/agent_session_tools/
-│       │   ├── exporters/           # Source-specific exporters
-│       │   │   ├── base.py          # Exporter protocol
-│       │   │   ├── claude.py        # Claude Code
-│       │   │   ├── kiro.py          # Kiro CLI
-│       │   │   ├── gemini.py        # Gemini CLI
-│       │   │   ├── aider.py         # Aider
-│       │   │   ├── opencode.py      # OpenCode
-│       │   │   ├── litellm.py       # LiteLLM
-│       │   │   ├── repoprompt.py    # RepoPrompt
+│       │   ├── exporters/           # Per-tool exporters
+│       │   ├── integrations/        # Git/editor integration helpers
 │       │   ├── export_sessions.py   # Export CLI
-│       │   ├── query_sessions.py    # Query CLI
+│       │   ├── query_sessions.py    # Query/write CLI
+│       │   ├── query_logic.py       # Search/context helpers
 │       │   ├── sync.py              # Cross-machine sync
 │       │   ├── maintenance.py       # DB maintenance CLI
-│       │   ├── embeddings.py        # Vector embeddings
-│       │   ├── semantic_search.py   # Hybrid FTS+vector search
-│       │   ├── classifier.py        # Session classification
-│       │   ├── deduplication.py     # Duplicate detection
+│       │   ├── mcp_server.py        # FastMCP server
 │       │   ├── migrations.py        # Schema migrations
-│       │   └── config_loader.py     # Config management
+│       │   └── schema.sql           # Base SQLite schema
 │       ├── tests/
 │       └── pyproject.toml
 ├── agents/
+│   ├── claude/                      # Claude Code agent assets
+│   ├── codex/                       # Codex AGENTS.md source
+│   ├── gemini/                      # Gemini agent assets
 │   ├── kiro/                        # Kiro CLI agent + skills
-│   │   ├── study-mentor.json
-│   │   ├── study-mentor/
-│   │   └── skills/
-│   └── claude/                      # Claude Code agents
-│       ├── socratic-mentor.md
-│       └── mentor-reviewer.yaml
+│   ├── opencode/                    # OpenCode agent assets
+│   └── shared/                      # Cross-tool prompts/framework
 ├── scripts/
-│   ├── install.sh                   # Full installer
-│   └── install-agents.sh            # Agent-only installer
+│   ├── install.sh                   # Thin source-install bootstrap wrapper
+│   └── install-agents.sh            # Thin compatibility wrapper
+├── Formula/studyctl.rb              # Homebrew formula
 ├── docs/                            # Documentation
 ├── pyproject.toml                   # Workspace root
 └── CONTRIBUTING.md

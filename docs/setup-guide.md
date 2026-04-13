@@ -654,9 +654,9 @@ studyctl doctor --json
 
 If you're using an AI coding assistant, the **install-mentor agent** can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs `studyctl doctor`, and fixes issues.
 
-The prompt lives at `agents/shared/install-mentor.md` and works with any AI tool that can run shell commands — Claude Code, Kiro CLI, Gemini CLI, OpenCode, or Amp.
+The prompt lives at `agents/shared/install-mentor.md` and works with any AI tool that can run shell commands — Claude Code, Codex CLI, Kiro CLI, Gemini CLI, OpenCode, or Amp.
 
-To use it in Claude Code:
+For example, in Claude Code or Codex:
 ```
 Read agents/shared/install-mentor.md and follow its instructions to set up studyctl
 ```

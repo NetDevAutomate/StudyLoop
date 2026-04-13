@@ -58,17 +58,24 @@ exclude_docs: |
   solutions/**
   codebase-review-2026-04-08.md
   remediation-log-2026-04-08.md
+  architecture/study-backlog-phase1.md
+  architecture/study-backlog-phase2.md
 
 nav:
   - Home: index.md
   - Getting Started:
     - Setup Guide: setup-guide.md
     - Agent Installation: agent-install.md
+    - Architecture: architecture.md
   - Learning:
+    - Content Pipeline: content-pipeline.md
     - AuDHD Philosophy: audhd-learning-philosophy.md
     - Session Protocol: session-protocol.md
   - Reference:
     - CLI Reference: cli-reference.md
+    - System Overview: system-overview.md
+    - TUI Guide: tui-guide.md
+    - Web UI Guide: web-ui-guide.md
     - Voice Output: voice-output.md
     - AuDHD Framework: audhd-framework.md
     - Socratic Engine: socratic-engine.md

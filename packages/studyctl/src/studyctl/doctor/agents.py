@@ -235,7 +235,7 @@ def check_agent_definitions() -> list[CheckResult]:
                 "no_ai_tools",
                 "info",
                 "No AI coding tools detected",
-                "Install Claude Code, Kiro CLI, Gemini CLI, or OpenCode",
+                "Install Claude Code, Codex CLI, Kiro CLI, Gemini CLI, OpenCode, or Amp",
                 False,
             )
         ]
