@@ -320,3 +320,44 @@ class TestMigrationV17:
 
         cols = {r[1] for r in fresh_db.execute("PRAGMA table_info(parked_topics)")}
         assert "priority" in cols
+
+    def test_v16_and_v17_tolerate_already_extended_table(self, fresh_db):
+        fresh_db.executescript(
+            """
+            CREATE TABLE parked_topics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                study_session_id TEXT,
+                session_id TEXT,
+                topic_tag TEXT,
+                question TEXT NOT NULL,
+                context TEXT,
+                status TEXT NOT NULL DEFAULT 'pending'
+                    CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
+                scheduled_for TEXT,
+                resolved_at TEXT,
+                parked_at TEXT NOT NULL DEFAULT (datetime('now')),
+                created_by TEXT DEFAULT 'agent',
+                source TEXT NOT NULL DEFAULT 'parked',
+                tech_area TEXT,
+                priority INTEGER
+            );
+            CREATE UNIQUE INDEX uix_parked_topics_session_question
+            ON parked_topics (study_session_id, question);
+            """
+        )
+
+        from agent_session_tools.migrations import migrate_v16, migrate_v17
+
+        migrate_v16(fresh_db)
+        migrate_v17(fresh_db)
+
+        cols = {r[1] for r in fresh_db.execute("PRAGMA table_info(parked_topics)")}
+        assert {"source", "tech_area", "priority"} <= cols
+
+        index_cols = [
+            r[2]
+            for r in fresh_db.execute(
+                "PRAGMA index_info(uix_parked_topics_session_question)"
+            ).fetchall()
+        ]
+        assert index_cols == ["study_session_id", "question", "source"]
