@@ -133,7 +133,7 @@ class TestStartSessionPreflightFailures:
             pytest.raises(SessionStartError) as exc_info,
         ):
             start_session("Test Topic", "claude", "study", "elapsed", 5, False)
-        assert "Failed to start session" in exc_info.value.message
+        assert "Failed to create session in DB" in exc_info.value.message
 
 
 # ---------------------------------------------------------------------------

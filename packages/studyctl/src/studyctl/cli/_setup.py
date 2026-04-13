@@ -58,14 +58,14 @@ def setup() -> None:
     # Step 2 — AI coding assistant / MCP registration
     # ------------------------------------------------------------------
     console.print("[bold]Step 2 of 5[/bold]  Do you use an AI coding assistant?")
-    console.print("  [dim](Claude Code, Kiro, Gemini CLI, etc.)[/dim]")
+    console.print("  [dim](Claude Code, Codex CLI, Kiro, Gemini CLI, etc.)[/dim]")
     has_ai = click.confirm("  Use an AI assistant?", default=True)
     if has_ai:
         assistant = click.prompt(
             "  Which one",
             default="claude-code",
             type=click.Choice(
-                ["claude-code", "kiro", "gemini-cli", "other"],
+                ["claude-code", "codex", "kiro", "gemini-cli", "other"],
                 case_sensitive=False,
             ),
             show_choices=True,

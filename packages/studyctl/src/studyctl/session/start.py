@@ -237,6 +237,14 @@ def start_session(
             "[bold]apt install tmux[/bold] (Linux)"
         )
 
+    try:
+        import textual  # noqa: F401
+    except ImportError as exc:
+        raise SessionStartError(
+            "[red]The study sidebar requires Textual, but it is not installed.[/red]\n"
+            "  Reinstall or add the TUI extra: pip install 'studyctl[tui]'"
+        ) from exc
+
     from studyctl.session.cleanup import auto_clean_zombies
 
     auto_clean_zombies()
@@ -246,7 +254,7 @@ def start_session(
         if not available:
             raise SessionStartError(
                 "[red]No AI agent found.[/red]\n"
-                "  Install one of: Claude Code, Gemini CLI, Kiro CLI, or OpenCode\n"
+                "  Install one of: Claude Code, Gemini CLI, Kiro CLI, OpenCode, or Codex CLI\n"
                 "  e.g. [bold]npm install -g @anthropic-ai/claude-code[/bold]"
             )
         agent = available[0]
@@ -268,7 +276,12 @@ def start_session(
         topic, energy_label, topic_slug=topic_config.slug if topic_config else None
     )
     if not study_id:
-        raise SessionStartError("[red]Failed to start session. Run 'studyctl doctor'.[/red]")
+        raise SessionStartError(
+            "[red]Failed to create session in DB.[/red]\n"
+            "  Likely cause: agent-session-tools not installed or sessions DB has no schema.\n"
+            "  Fix: [bold]uv pip install agent-session-tools[/bold], then retry.\n"
+            "  Run [bold]studyctl doctor[/bold] for full diagnostics."
+        )
 
     # Write session state
     _ensure_session_dir()
@@ -333,7 +346,10 @@ def start_session(
     persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
     from studyctl.history.sessions import update_persona_hash
 
-    update_persona_hash(study_id, persona_hash)
+    try:
+        update_persona_hash(study_id, persona_hash)
+    except Exception:
+        logger.warning("failed to persist persona hash for %s", study_id, exc_info=True)
 
     persona_file = adapter.setup(canonical, session_dir)
     if adapter.mcp_setup:

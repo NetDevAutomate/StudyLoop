@@ -3,51 +3,55 @@
   "agents": {
     "claude/socratic-mentor.md": {
       "hash": "1cfb13b620a74ab2",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
+    },
+    "codex/AGENTS.md": {
+      "hash": "4b11b0cd7e83ad53",
+      "updated": "2026-04-13"
     },
     "gemini/study-mentor.md": {
       "hash": "261812c97e310036",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "kiro/study-mentor.json": {
       "hash": "7922206563cbc927",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "opencode/study-mentor.md": {
       "hash": "dce4e9e04c087cd8",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/audhd-framework.md": {
       "hash": "b348d17a8d545288",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/break-science.md": {
       "hash": "74541a44431f7f6a",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/knowledge-bridging.md": {
       "hash": "d7905e0fc036a404",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/network-bridges.md": {
       "hash": "eebe8a4ec9de6330",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/session-protocol.md": {
       "hash": "740f283a70807c74",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/socratic-engine.md": {
       "hash": "044281e8c81723de",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/teach-back-protocol.md": {
       "hash": "46f5d9fd8cd1155b",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     },
     "shared/wind-down-protocol.md": {
       "hash": "c4e79730c2dde3ac",
-      "updated": "2026-04-08"
+      "updated": "2026-04-13"
     }
   }
 }

@@ -7,6 +7,7 @@
 #   ./scripts/install-agents.sh --claude     # Claude Code only
 #   ./scripts/install-agents.sh --gemini     # Gemini CLI only
 #   ./scripts/install-agents.sh --opencode   # OpenCode only
+#   ./scripts/install-agents.sh --codex      # OpenAI Codex CLI only
 #   ./scripts/install-agents.sh --amp        # Amp only
 #   ./scripts/install-agents.sh --uninstall
 set -euo pipefail
@@ -37,10 +38,11 @@ for arg in "$@"; do
     --claude)    MODE="claude" ;;
     --gemini)    MODE="gemini" ;;
     --opencode)  MODE="opencode" ;;
+    --codex)     MODE="codex" ;;
     --amp)       MODE="amp" ;;
     --uninstall) UNINSTALL=true ;;
     -h|--help)
-      sed -n '2,11p' "$0"; exit 0 ;;
+      sed -n '2,12p' "$0"; exit 0 ;;
     *) err "Unknown option: $arg"; exit 1 ;;
   esac
 done
@@ -112,6 +114,11 @@ OPENCODE_LINKS=(
   "agents/opencode/study-mentor.md:${OPENCODE_HOME}/agents/study-mentor.md"
 )
 
+# OpenAI Codex CLI reads AGENTS.md from the project root automatically.
+CODEX_LINKS=(
+  "agents/codex/AGENTS.md:${REPO_DIR}/AGENTS.md"
+)
+
 AMP_LINKS=(
   # agents/amp/ removed — no active Amp agent definition in this repo
 )
@@ -158,6 +165,7 @@ if $UNINSTALL; then
   [[ "$MODE" == "auto" || "$MODE" == "claude" ]]    && uninstall_links CLAUDE_LINKS "Claude Code"
   [[ "$MODE" == "auto" || "$MODE" == "gemini" ]]    && uninstall_links GEMINI_LINKS "Gemini CLI"
   [[ "$MODE" == "auto" || "$MODE" == "opencode" ]]  && uninstall_links OPENCODE_LINKS "OpenCode"
+  [[ "$MODE" == "auto" || "$MODE" == "codex" ]]     && uninstall_links CODEX_LINKS "Codex CLI"
   [[ "$MODE" == "auto" || "$MODE" == "amp" ]]       && uninstall_links AMP_LINKS "Amp"
   uninstall_links SHARED_LINKS "Shared"
   echo ""
@@ -165,19 +173,21 @@ if $UNINSTALL; then
   exit 0
 fi
 
-do_kiro=false; do_claude=false; do_gemini=false; do_opencode=false; do_amp=false
+do_kiro=false; do_claude=false; do_gemini=false; do_opencode=false; do_codex=false; do_amp=false
 
 case "$MODE" in
   kiro)     do_kiro=true ;;
   claude)   do_claude=true ;;
   gemini)   do_gemini=true ;;
   opencode) do_opencode=true ;;
+  codex)    do_codex=true ;;
   amp)      do_amp=true ;;
   auto)
     [ -d "$KIRO_HOME" ]     && do_kiro=true     || warn "kiro-cli not detected (~/.kiro/ missing)"
     [ -d "$CLAUDE_HOME" ]   && do_claude=true    || warn "Claude Code not detected (~/.claude/ missing)"
     [ -d "$GEMINI_HOME" ]   && do_gemini=true    || warn "Gemini CLI not detected (~/.gemini/ missing)"
     command -v opencode &>/dev/null && do_opencode=true || warn "OpenCode not detected"
+    command -v codex &>/dev/null    && do_codex=true    || warn "Codex CLI not detected"
     command -v amp &>/dev/null      && do_amp=true      || warn "Amp not detected"
     ;;
 esac
@@ -189,6 +199,7 @@ $do_kiro     && install_links KIRO_LINKS "kiro-cli"
 $do_claude   && install_links CLAUDE_LINKS "Claude Code"
 $do_gemini   && install_links GEMINI_LINKS "Gemini CLI"
 $do_opencode && install_links OPENCODE_LINKS "OpenCode"
+$do_codex    && install_links CODEX_LINKS "Codex CLI"
 $do_amp      && install_links AMP_LINKS "Amp"
 
 # --- Claude Code status line ---
@@ -232,8 +243,8 @@ EOF
   fi
 fi
 
-if ! $do_kiro && ! $do_claude && ! $do_gemini && ! $do_opencode && ! $do_amp; then
-  err "No AI tools detected. Install kiro-cli, Claude Code, Gemini CLI, OpenCode, or Amp first."
+if ! $do_kiro && ! $do_claude && ! $do_gemini && ! $do_opencode && ! $do_codex && ! $do_amp; then
+  err "No AI tools detected. Install kiro-cli, Claude Code, Gemini CLI, OpenCode, Codex CLI, or Amp first."
   exit 1
 fi
 
@@ -245,6 +256,7 @@ $do_kiro     && echo "  • kiro-cli    — select 'study-mentor' agent"
 $do_claude   && echo "  • Claude Code — /agent socratic-mentor"
 $do_gemini   && echo "  • Gemini CLI  — study-mentor subagent (auto-detected)"
 $do_opencode && echo "  • OpenCode    — Tab to switch to study-mentor"
+$do_codex    && echo "  • Codex CLI   — AGENTS.md loaded automatically"
 $do_amp      && echo "  • Amp         — AGENTS.md loaded automatically"
 echo ""
 echo "Shared framework: ${AGENTS_SHARED}/shared/"

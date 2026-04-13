@@ -887,6 +887,19 @@ class TestMultiAgentSessionLaunch:
         data = json.loads(settings.read_text())
         assert "studyctl-mcp" in data["mcpServers"]
 
+    def test_codex_session_creates_agents_md(self, tmp_path):
+        """Codex adapter writes AGENTS.md to the session directory."""
+        info = self._start_with_agent(tmp_path, "codex")
+        session_dir = Path(info["session_dir"])
+
+        agents_md = session_dir / "AGENTS.md"
+        assert agents_md.exists(), "Codex adapter should write AGENTS.md"
+        content = agents_md.read_text()
+        assert "Integration Test" in content
+        assert "5/10" in content
+
+        assert info["state"]["agent"] == "codex"
+
     def test_kiro_session_writes_agent_json(self, tmp_path):
         """Kiro adapter writes study-mentor.json to the Kiro agents directory."""
         # Redirect Kiro agents dir to temp to avoid polluting real config
@@ -961,7 +974,7 @@ class TestMultiAgentSessionLaunch:
 
     def test_all_agents_support_topic_logging(self, tmp_path):
         """All agents can log topics via the studyctl wrapper in the session dir."""
-        for agent_name in ("claude", "gemini", "opencode"):
+        for agent_name in ("claude", "codex", "gemini", "opencode"):
             _cleanup_all()
             extra_env = {}
             if agent_name == "kiro":

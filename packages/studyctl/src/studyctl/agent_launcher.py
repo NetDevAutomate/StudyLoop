@@ -24,6 +24,7 @@ from studyctl.adapters._local_llm import _get_local_llm_config, _local_llm_env_p
 from studyctl.adapters._protocol import AgentAdapter
 from studyctl.adapters._strategies import cli_flag_setup as _claude_setup
 from studyctl.adapters.claude import _claude_launch
+from studyctl.adapters.codex import _codex_launch, _codex_setup
 from studyctl.adapters.gemini import _gemini_launch, _gemini_setup
 from studyctl.adapters.kiro import _KIRO_BACKUP_SUFFIX, KIRO_AGENT_NAME
 from studyctl.adapters.lmstudio import _lmstudio_launch
@@ -42,6 +43,8 @@ __all__ = [
     "AgentAdapter",
     "_claude_launch",
     "_claude_setup",
+    "_codex_launch",
+    "_codex_setup",
     "_gemini_launch",
     "_gemini_mcp",
     "_gemini_setup",

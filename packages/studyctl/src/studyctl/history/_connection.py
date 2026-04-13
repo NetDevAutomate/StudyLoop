@@ -20,36 +20,50 @@ def _get_db_path():
     return load_settings().session_db
 
 
-def _connect():
-    """Open a connection to sessions.db, creating it if necessary.
+def _has_schema(conn) -> bool:
+    """Check whether the study_sessions table exists."""
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='study_sessions'"
+    ).fetchone()
+    return row is not None
 
-    On first use the file and all tables are created via the
-    agent-session-tools migration chain.  Returns ``None`` only if
-    the migration import is unavailable (agent-session-tools not
-    installed).
+
+def _connect():
+    """Open a connection to sessions.db, applying schema and migrations.
+
+    On every connection: applies base schema if tables are missing, then
+    runs any pending migrations.  Both operations are idempotent.
+    Returns ``None`` only if agent-session-tools is not installed or
+    schema setup fails.
     """
     db = _get_db_path()
     db.parent.mkdir(parents=True, exist_ok=True)
 
-    is_new = not db.exists()
     conn = connect_db(db, row_factory=True)
 
-    if is_new:
-        try:
-            from agent_session_tools.export_sessions import SCHEMA_FILE
-            from agent_session_tools.migrations import migrate
+    try:
+        from agent_session_tools.export_sessions import SCHEMA_FILE
+        from agent_session_tools.migrations import migrate
+    except ImportError:
+        # Without agent-session-tools we can still read an existing DB
+        # but cannot create or upgrade one.
+        if _has_schema(conn):
+            return conn
+        logger.warning("agent-session-tools not installed — cannot initialise sessions DB")
+        conn.close()
+        return None
 
-            # Apply base schema first — migrations assume tables exist
+    try:
+        if not _has_schema(conn):
             with open(SCHEMA_FILE) as f:
                 conn.executescript(f.read())
-
-            migrate(conn)
             logger.info("Created sessions DB at %s", db)
-        except ImportError:
-            logger.debug("agent-session-tools not installed — skipping migrations")
-        except Exception:
-            logger.exception("Failed to initialise sessions DB")
-            conn.close()
-            return None
+
+        # Always run pending migrations — safe on an up-to-date DB
+        migrate(conn)
+    except Exception:
+        logger.exception("Failed to initialise/migrate sessions DB")
+        conn.close()
+        return None
 
     return conn

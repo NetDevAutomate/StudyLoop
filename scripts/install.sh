@@ -102,6 +102,14 @@ for pkg in "${REPO_DIR}"/packages/*/; do
     uv tool install "${pkg}[tts]" --editable --force 2>&1 | while read -r line; do
       echo "  $line"
     done
+  elif [ "$pkg_name" = "studyctl" ]; then
+    # Include TUI + web extras so `studyctl study` gets the Textual sidebar
+    # and `studyctl web` works from the globally installed tool.
+    # Inject agent-session-tools into studyctl's tool venv so migrations
+    # and session DB schema are available at runtime.
+    uv tool install "${pkg}[tui,web]" --with-editable "${REPO_DIR}/packages/agent-session-tools" --editable --force 2>&1 | while read -r line; do
+      echo "  $line"
+    done
   else
     uv tool install "$pkg" --editable --force 2>&1 | while read -r line; do
       echo "  $line"
@@ -226,6 +234,7 @@ echo "  1. Run 'studyctl setup' to configure your study environment"
 echo "  2. Start a study session:"
 echo "     • kiro-cli: select the 'study-mentor' agent"
 echo "     • Claude Code: /agent socratic-mentor"
+echo "     • Codex CLI: run codex in the project (AGENTS.md is auto-loaded)"
 echo "     • Amp: just start amp in the project directory"
 echo "  3. Launch the web UI: studyctl web"
 echo "  4. See docs/setup-guide.md for detailed instructions"

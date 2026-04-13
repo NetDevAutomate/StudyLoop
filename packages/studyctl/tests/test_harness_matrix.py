@@ -1,6 +1,6 @@
 """Autoresearch-style E2E test matrix for all agent adapters.
 
-Parametrized over all 6 agents.  Each test uses a mock agent script
+Parametrized over all 7 agents.  Each test uses a mock agent script
 injected via ``STUDYCTL_TEST_AGENT_CMD``.
 
 Run::
@@ -34,7 +34,7 @@ from harness.agents import matrix_agent
 # Constants
 # ---------------------------------------------------------------------------
 
-AGENTS = ["claude", "gemini", "kiro", "opencode", "ollama", "lmstudio"]
+AGENTS = ["claude", "codex", "gemini", "kiro", "opencode", "ollama", "lmstudio"]
 
 TOPIC = "Harness Matrix"
 ENERGY = 5

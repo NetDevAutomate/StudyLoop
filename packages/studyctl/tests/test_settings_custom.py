@@ -228,6 +228,21 @@ def test_agents_priority_parsed(tmp_path):
     assert s.agents.priority == ["gemini", "claude"]
 
 
+def test_agents_default_priority_includes_codex():
+    from studyctl.settings import Settings
+
+    s = Settings()
+    assert s.agents.priority == [
+        "claude",
+        "kiro",
+        "gemini",
+        "opencode",
+        "codex",
+        "ollama",
+        "lmstudio",
+    ]
+
+
 def test_agents_ollama_custom_model(tmp_path):
     config_path = _write_config(
         tmp_path, {"agents": {"ollama": {"model": "llama3", "base_url": "http://gpu:4000"}}}
