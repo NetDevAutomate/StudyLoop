@@ -14,11 +14,7 @@ uv tool install "./packages/agent-session-tools[tts]" --force
 
 ### Download Models
 
-Models download automatically on first run. The install script also offers to pre-download them:
-
-```bash
-./scripts/install.sh  # prompts: "Download voice model now? [y/N]"
-```
+Models download automatically on first run. If you want to pre-download them, fetch the files manually:
 
 To download manually:
 

@@ -39,6 +39,49 @@ class SessionStartError(Exception):
         self.message = message
 
 
+def _rollback_failed_startup(
+    *,
+    study_id: str | None,
+    session_name: str | None,
+    session_dir,
+    remove_session_dir: bool,
+    reason: str,
+) -> None:
+    """Best-effort cleanup when startup fails after partial initialization."""
+    import shutil
+    from pathlib import Path
+
+    from studyctl.history import abort_study_session
+    from studyctl.session_state import SESSION_DIR, clear_session_files
+    from studyctl.tmux import kill_session, session_exists
+
+    if study_id:
+        abort_study_session(study_id, f"Startup failed: {reason}")
+
+    if session_name and session_exists(session_name):
+        try:
+            kill_session(session_name)
+        except Exception:
+            logger.warning("failed to kill partially started tmux session %s", session_name)
+
+    try:
+        clear_session_files()
+    except Exception:
+        logger.warning("failed to clear session IPC files after startup failure", exc_info=True)
+
+    oneline = SESSION_DIR / "session-oneline.txt"
+    try:
+        oneline.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("failed to remove session-oneline.txt after startup failure", exc_info=True)
+
+    if remove_session_dir and session_dir:
+        try:
+            shutil.rmtree(Path(session_dir), ignore_errors=True)
+        except Exception:
+            logger.warning("failed to remove session dir after startup failure", exc_info=True)
+
+
 # ---------------------------------------------------------------------------
 # Briefing / backlog helpers
 # ---------------------------------------------------------------------------
@@ -304,6 +347,7 @@ def start_session(
 
     # --- Resolve session directory ---
 
+    remove_session_dir_on_failure = False
     if resume_session_name and resume_session_dir:
         session_name = resume_session_name
         session_dir = Path(resume_session_dir)
@@ -313,6 +357,7 @@ def start_session(
         short_id = study_id[:8] if study_id else "unknown"
         session_name = f"study-{slug}-{short_id}"
         session_dir = SESSION_DIR / "sessions" / session_name
+        remove_session_dir_on_failure = True
         claude_project_key = str(session_dir).replace("/", "-").lstrip("-")
         claude_project_dir = Path.home() / ".claude" / "projects" / claude_project_key
         is_resuming = claude_project_dir.exists()
@@ -323,131 +368,145 @@ def start_session(
 
     # --- Build commands and orchestrate tmux ---
 
-    setup_session_dir(session_dir, topic)
-
-    backlog_notes = _build_backlog_notes(topic)
-    if backlog_notes:
-        previous_notes = f"{previous_notes}\n\n{backlog_notes}" if previous_notes else backlog_notes
-
-    # Build study briefing from topic resolution (review stats, content inventory)
-    briefing = build_study_briefing(topic_config)
-    if briefing:
-        previous_notes = f"{previous_notes}\n\n{briefing}" if previous_notes else briefing
-        # Echo brief summary to terminal for user orientation
-        console.print(f"\n[dim]{brief_summary(topic_config)}[/dim]")
-
-    # Build persona + MCP config via adapter pattern
-    adapter = AGENTS[agent]
-    canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
-
-    # Track persona version for effectiveness analysis
-    import hashlib
-
-    persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
-    from studyctl.history.sessions import update_persona_hash
-
     try:
-        update_persona_hash(study_id, persona_hash)
-    except Exception:
-        logger.warning("failed to persist persona hash for %s", study_id, exc_info=True)
+        setup_session_dir(session_dir, topic)
 
-    persona_file = adapter.setup(canonical, session_dir)
-    if adapter.mcp_setup:
-        adapter.mcp_setup(session_dir)
+        backlog_notes = _build_backlog_notes(topic)
+        if backlog_notes:
+            previous_notes = (
+                f"{previous_notes}\n\n{backlog_notes}" if previous_notes else backlog_notes
+            )
 
-    # Allow integration tests to inject a mock agent command
-    import os
+        # Build study briefing from topic resolution (review stats, content inventory)
+        briefing = build_study_briefing(topic_config)
+        if briefing:
+            previous_notes = f"{previous_notes}\n\n{briefing}" if previous_notes else briefing
+            # Echo brief summary to terminal for user orientation
+            console.print(f"\n[dim]{brief_summary(topic_config)}[/dim]")
 
-    test_agent_cmd = os.environ.get("STUDYCTL_TEST_AGENT_CMD")
-    if test_agent_cmd:
-        agent_cmd = test_agent_cmd.format(persona_file=persona_file)
-    else:
-        agent_cmd = adapter.launch_cmd(persona_file, is_resuming)
+        # Build persona + MCP config via adapter pattern
+        adapter = AGENTS[agent]
+        canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
 
-    wrapped_cmd = build_wrapped_agent_cmd(session_dir, agent_cmd)
+        # Track persona version for effectiveness analysis
+        import hashlib
 
-    result = create_tmux_environment(
-        session_name=session_name,
-        session_dir=session_dir,
-        wrapped_agent_cmd=wrapped_cmd,
-        session_state_dir=SESSION_DIR,
-    )
-
-    # Store tmux metadata + topic resolution in session state for resume/end
-    state_update = {
-        "tmux_session": session_name,
-        "tmux_main_pane": result["tmux_main_pane"],
-        "tmux_sidebar_pane": result["tmux_sidebar_pane"],
-        "persona_file": str(persona_file),
-        "session_dir": str(session_dir),
-        "agent": agent,
-    }
-    state_update["persona_hash"] = persona_hash
-    if topic_config:
-        state_update["topic_slug"] = topic_config.slug
-        state_update["topic_config_name"] = topic_config.name
-    write_session_state(state_update)
-
-    # Resolve LAN credentials: CLI flag > config > auto-generate
-    lan_username = "study"
-    lan_password = password
-    if lan:
-        try:
-            from studyctl.settings import load_settings as _ls_inner
-
-            _settings = _ls_inner()
-            lan_username = _settings.lan_username or "study"
-            if not lan_password:
-                lan_password = _settings.lan_password
-        except Exception:
-            pass
-    if lan and not lan_password:
-        import secrets
-
-        lan_password = secrets.token_urlsafe(16)
-
-    if lan and lan_password:
-        console.print(
-            f"\n[bold yellow]LAN credentials:[/bold yellow] "
-            f"[green]{lan_username}[/green] / [green]{lan_password}[/green]"
-        )
-        console.print(
-            "[dim]Set lan_username and lan_password in config.yaml to avoid "
-            "auto-generated passwords.[/dim]"
-        )
-
-    if web:
-        start_web_background(session_name, lan=lan, password=lan_password)
-
-    # Start ttyd if installed (allows iPad/LAN terminal access)
-    start_ttyd_background(session_name, lan=lan, username=lan_username, password=lan_password)
-
-    # Persist LAN info to session state so it's visible after os.execvp
-    if lan:
-        import socket
+        persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+        from studyctl.history.sessions import update_persona_hash
 
         try:
-            hostname = socket.gethostname()
-            lan_ip = socket.gethostbyname(hostname)
+            update_persona_hash(study_id, persona_hash)
         except Exception:
-            lan_ip = "<your-ip>"
-        from studyctl.session.orchestrator import _get_web_port
+            logger.warning("failed to persist persona hash for %s", study_id, exc_info=True)
 
-        web_port = _get_web_port()
-        write_session_state(
-            {
-                "lan_ip": lan_ip,
-                "lan_password": lan_password,
-                "lan_url": f"http://{lan_ip}:{web_port}/session",
-            }
+        persona_file = adapter.setup(canonical, session_dir)
+        if adapter.mcp_setup:
+            adapter.mcp_setup(session_dir)
+
+        # Allow integration tests to inject a mock agent command
+        import os
+
+        test_agent_cmd = os.environ.get("STUDYCTL_TEST_AGENT_CMD")
+        if test_agent_cmd:
+            agent_cmd = test_agent_cmd.format(persona_file=persona_file)
+        else:
+            agent_cmd = adapter.launch_cmd(persona_file, is_resuming)
+
+        wrapped_cmd = build_wrapped_agent_cmd(session_dir, agent_cmd)
+
+        result = create_tmux_environment(
+            session_name=session_name,
+            session_dir=session_dir,
+            wrapped_agent_cmd=wrapped_cmd,
+            session_state_dir=SESSION_DIR,
         )
 
-        # Print LAN info — this shows briefly before tmux takes over,
-        # but is also saved in session state (visible via web dashboard
-        # and `studyctl study --resume` output).
-        console.print("\n[bold]LAN access:[/bold]")
-        console.print(f"  Dashboard: http://{lan_ip}:{web_port}/session")
-        console.print(f"  Username:  {lan_username}")
-        console.print(f"  Password:  {lan_password}")
+        # Store tmux metadata + topic resolution in session state for resume/end
+        state_update = {
+            "tmux_session": session_name,
+            "tmux_main_pane": result["tmux_main_pane"],
+            "tmux_sidebar_pane": result["tmux_sidebar_pane"],
+            "persona_file": str(persona_file),
+            "session_dir": str(session_dir),
+            "agent": agent,
+        }
+        state_update["persona_hash"] = persona_hash
+        if topic_config:
+            state_update["topic_slug"] = topic_config.slug
+            state_update["topic_config_name"] = topic_config.name
+        write_session_state(state_update)
 
-    attach_if_needed(session_name, result["already_in_tmux"])
+        # Resolve LAN credentials: CLI flag > config > auto-generate
+        lan_username = "study"
+        lan_password = password
+        if lan:
+            try:
+                from studyctl.settings import load_settings as _ls_inner
+
+                _settings = _ls_inner()
+                lan_username = _settings.lan_username or "study"
+                if not lan_password:
+                    lan_password = _settings.lan_password
+            except Exception:
+                pass
+        if lan and not lan_password:
+            import secrets
+
+            lan_password = secrets.token_urlsafe(16)
+
+        if lan and lan_password:
+            console.print(
+                f"\n[bold yellow]LAN credentials:[/bold yellow] "
+                f"[green]{lan_username}[/green] / [green]{lan_password}[/green]"
+            )
+            console.print(
+                "[dim]Set lan_username and lan_password in config.yaml to avoid "
+                "auto-generated passwords.[/dim]"
+            )
+
+        if web:
+            start_web_background(session_name, lan=lan, password=lan_password)
+
+        # Start ttyd if installed (allows iPad/LAN terminal access)
+        start_ttyd_background(session_name, lan=lan, username=lan_username, password=lan_password)
+
+        # Persist LAN info to session state so it's visible after os.execvp
+        if lan:
+            import socket
+
+            try:
+                hostname = socket.gethostname()
+                lan_ip = socket.gethostbyname(hostname)
+            except Exception:
+                lan_ip = "<your-ip>"
+            from studyctl.session.orchestrator import _get_web_port
+
+            web_port = _get_web_port()
+            write_session_state(
+                {
+                    "lan_ip": lan_ip,
+                    "lan_password": lan_password,
+                    "lan_url": f"http://{lan_ip}:{web_port}/session",
+                }
+            )
+
+            # Print LAN info — this shows briefly before tmux takes over,
+            # but is also saved in session state (visible via web dashboard
+            # and `studyctl study --resume` output).
+            console.print("\n[bold]LAN access:[/bold]")
+            console.print(f"  Dashboard: http://{lan_ip}:{web_port}/session")
+            console.print(f"  Username:  {lan_username}")
+            console.print(f"  Password:  {lan_password}")
+
+        attach_if_needed(session_name, result["already_in_tmux"])
+    except Exception as exc:
+        _rollback_failed_startup(
+            study_id=study_id,
+            session_name=session_name,
+            session_dir=session_dir,
+            remove_session_dir=remove_session_dir_on_failure,
+            reason=str(exc),
+        )
+        raise SessionStartError(
+            f"[red]Failed to start study session.[/red]\n  Cause: {exc}"
+        ) from exc

@@ -51,21 +51,34 @@ def commit_batch(
         return
 
     try:
+        session_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()
+        }
+        include_import_fingerprint = "import_fingerprint" in session_columns
+
+        session_insert_columns = [
+            "id",
+            "source",
+            "project_path",
+            "git_branch",
+            "created_at",
+            "updated_at",
+            "metadata",
+        ]
+        if include_import_fingerprint:
+            session_insert_columns.insert(6, "import_fingerprint")
+
+        placeholders = ", ".join("?" for _ in session_insert_columns)
         conn.executemany(
-            """
+            f"""
             INSERT OR REPLACE INTO sessions (
-                id, source, project_path, git_branch, created_at, updated_at, metadata
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                {", ".join(session_insert_columns)}
+            ) VALUES ({placeholders})
         """,
-            [
-                (
-                    s["id"],
-                    s["source"],
-                    s["project_path"],
-                    s.get("git_branch"),
-                    s.get("created_at"),
-                    s.get("updated_at"),
-                    s.get("metadata"),
+            [  # noqa: C416 - clearer than nested helper for optional columns
+                tuple(
+                    s.get(column) if column != "id" else s["id"]
+                    for column in session_insert_columns
                 )
                 for s in sessions
             ],

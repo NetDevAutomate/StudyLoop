@@ -46,6 +46,36 @@ app.add_typer(profiles_app, name="profiles")
 db_option = typer.Option("-d", "--db", help="Database path (default: from config)")
 
 
+def _resolve_write_session_id(conn, session_id: str) -> str:
+    """Resolve a session ID for write commands without allowing ambiguous matches."""
+    exact = conn.execute(
+        "SELECT id FROM sessions WHERE id = ?", (session_id,)
+    ).fetchone()
+    if exact:
+        return exact[0]
+
+    matches = conn.execute(
+        "SELECT id FROM sessions WHERE id LIKE ? ORDER BY id LIMIT 11",
+        (f"{session_id}%",),
+    ).fetchall()
+
+    if not matches:
+        print(f"❌ Session not found: {session_id}")
+        raise typer.Exit(1)
+
+    if len(matches) > 1:
+        print(f"❌ Ambiguous session ID: {session_id}")
+        print("   Matches:")
+        for row in matches[:10]:
+            print(f"   - {row[0]}")
+        if len(matches) > 10:
+            print("   - ...")
+        print("   Use a longer prefix or the full session ID.")
+        raise typer.Exit(1)
+
+    return matches[0][0]
+
+
 # ==================== Main Commands ====================
 
 
@@ -200,18 +230,7 @@ def tag(
 ) -> None:
     """Manage session tags."""
     conn = get_connection(db)
-
-    # Resolve session ID safely
-    session = conn.execute(
-        "SELECT id FROM sessions WHERE id = ? OR id LIKE ? LIMIT 1",
-        (session_id, f"%{session_id}%"),
-    ).fetchone()
-
-    if not session:
-        print(f"❌ Session not found: {session_id}")
-        raise typer.Exit(1)
-
-    resolved_id = session[0]
+    resolved_id = _resolve_write_session_id(conn, session_id)
 
     if add:
         for t in add:
@@ -252,18 +271,7 @@ def note(
 ) -> None:
     """Manage session notes."""
     conn = get_connection(db)
-
-    # Resolve session ID safely
-    session = conn.execute(
-        "SELECT id FROM sessions WHERE id = ? OR id LIKE ? LIMIT 1",
-        (session_id, f"%{session_id}%"),
-    ).fetchone()
-
-    if not session:
-        print(f"❌ Session not found: {session_id}")
-        raise typer.Exit(1)
-
-    resolved_id = session[0]
+    resolved_id = _resolve_write_session_id(conn, session_id)
 
     if text:
         conn.execute(

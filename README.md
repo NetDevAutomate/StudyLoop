@@ -21,12 +21,12 @@ Built by a neurodivergent learner transitioning from networking to data engineer
 ## Quick Start
 
 ```bash
-# Install
-pip install studyctl agent-session-tools
+# Install (preferred on macOS)
+brew install NetDevAutomate/studyctl/studyctl
 
 # Configure
 studyctl setup              # Interactive 3-question wizard
-studyctl doctor             # Verify everything is healthy
+studyctl doctor --fix       # Verify and apply safe fixes
 
 # Use
 studyctl content process SOURCE   # Split PDF → upload to NotebookLM
@@ -52,6 +52,7 @@ graph LR
 
     subgraph "AI Agents"
         CA[Claude Code]
+        CX[Codex CLI]
         KA[Kiro CLI]
         GA[Gemini CLI]
         OA[OpenCode]
@@ -69,6 +70,7 @@ graph LR
     SC -->|spaced repetition| DB
     AST -->|export sessions| DB
     CA -->|Socratic sessions| DB
+    CX -->|Socratic sessions| DB
     KA -->|Socratic sessions| DB
     GA -->|Socratic sessions| DB
     OA -->|Socratic sessions| DB
@@ -110,6 +112,8 @@ studyctl topics                     # List configured topics
 
 # Health & metrics
 studyctl doctor                     # Check installation health
+studyctl doctor --fix               # Apply safe automatic fixes
+studyctl install agents             # Install AI agent definitions from source checkout
 studyctl setup                      # Interactive configuration
 studyctl session effectiveness      # Persona effectiveness over time
 ```
@@ -118,6 +122,7 @@ studyctl session effectiveness      # Persona effectiveness over time
 
 ```bash
 session-export                       # Export AI sessions to SQLite
+session-export --sources claude codex
 session-query search QUERY           # Full-text search across sessions
 session-query list --since 7d        # List recent sessions
 session-query stats                  # Database statistics
@@ -129,6 +134,7 @@ session-sync push/pull/sync HOST     # Cross-machine sync
 | Platform | Agent | Start With |
 |----------|-------|------------|
 | Claude Code | `socratic-mentor` | `/agent socratic-mentor` |
+| Codex CLI | `AGENTS.md` | `codex` in the project root |
 | Kiro CLI | `study-mentor` | `kiro-cli chat --agent study-mentor` |
 | Gemini CLI | `study-mentor` | `gemini` (auto-detected) |
 | OpenCode | `study-mentor` | Tab to switch agent |

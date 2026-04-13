@@ -15,6 +15,7 @@ from rich.table import Table
 
 from studyctl.cli._doctor import _get_registry
 from studyctl.cli._shared import console
+from studyctl.installers import InstallError, install_agent_definitions, require_repo_root
 
 if TYPE_CHECKING:
     from studyctl.doctor.models import CheckResult
@@ -171,6 +172,28 @@ def _upgrade_database(dry_run: bool) -> bool:
     return True
 
 
+def _upgrade_agents(dry_run: bool) -> bool:
+    """Install or refresh agent definitions from the current source checkout."""
+    try:
+        repo_root = require_repo_root()
+    except InstallError as exc:
+        console.print(f"[red]  Agent upgrade failed:[/red] {exc}")
+        return False
+
+    if dry_run:
+        console.print(f"  [dim]Would refresh agent definitions from {repo_root}[/dim]")
+        return True
+
+    try:
+        install_agent_definitions(repo_root)
+    except Exception as exc:
+        console.print(f"[red]  Agent upgrade failed:[/red] {exc}")
+        return False
+
+    console.print("[green]  Agent definitions refreshed.[/green]")
+    return True
+
+
 def _result_matches_component(result: CheckResult, component: str) -> bool:
     """Return True if *result* is relevant to the upgrade *component*."""
     if component == "all":
@@ -263,12 +286,15 @@ def upgrade(ctx: click.Context, dry_run: bool, component: str, force: bool) -> N
                 _upgrade_packages(manager, dry_run=True)
             elif mapped == "database":
                 _upgrade_database(dry_run=True)
+            elif mapped == "agents":
+                _upgrade_agents(dry_run=True)
         ctx.exit(0)
         return
 
     # Non-dry-run: apply upgrades grouped by component
     needs_packages = any(_CATEGORY_TO_COMPONENT.get(r.category) == "packages" for r in actionable)
     needs_database = any(_CATEGORY_TO_COMPONENT.get(r.category) == "database" for r in actionable)
+    needs_agents = any(_CATEGORY_TO_COMPONENT.get(r.category) == "agents" for r in actionable)
 
     success = True
 
@@ -281,6 +307,11 @@ def upgrade(ctx: click.Context, dry_run: bool, component: str, force: bool) -> N
     if needs_database:
         console.print("[bold]Upgrading database...[/bold]")
         if not _upgrade_database(dry_run=False):
+            success = False
+
+    if needs_agents:
+        console.print("[bold]Upgrading agent definitions...[/bold]")
+        if not _upgrade_agents(dry_run=False):
             success = False
 
     if success:

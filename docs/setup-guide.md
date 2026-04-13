@@ -62,7 +62,19 @@ tmux-resurrect and warns if the restore hook is not detected.
 
 ## Installation
 
-### Automatic (recommended)
+### User Install (recommended)
+
+For end users on macOS, prefer the Homebrew formula over the repo bootstrap script:
+
+```bash
+brew install NetDevAutomate/studyctl/studyctl
+studyctl setup
+studyctl doctor --fix
+```
+
+This gives you managed upgrades, uninstall, and a cleaner default install path.
+
+### Repo Bootstrap
 
 ```bash
 git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
@@ -73,21 +85,48 @@ cd socratic-study-mentor
 This will:
 1. Verify Python 3.12+ is installed
 2. Install `uv` if not already available
-3. Run `uv sync` to install both packages
-4. Run `install-agents.sh` to set up AI agent definitions
-5. Create a default config at `~/.config/studyctl/config.yaml`
-6. Optionally download the kokoro-onnx voice model (~85MB) for TTS support
+3. Run `uv sync`
+4. Delegate to `studyctl install tools`
+5. Delegate to `studyctl install agents`
 
-### Manual
+The shell script is now only a bootstrap wrapper. The real install surface lives in typed CLI commands:
+
+```bash
+studyctl install tools
+studyctl install agents
+studyctl doctor --fix
+```
+
+### Developer Install
+
+If you are contributing to the repo or running from source, prefer `uv sync` in the checkout:
+
+```bash
+git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
+cd Socratic-Study-Mentor
+uv sync
+```
+
+Then use the repo-local commands directly, or install/editable tools only when you explicitly want global entrypoints.
+
+For contributor setups, the cleanest flow is usually:
+
+```bash
+uv sync
+uv run studyctl install agents
+uv run studyctl doctor --fix
+```
+
+### Legacy Script Modes
 
 ```bash
 git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 cd Socratic-Study-Mentor
 
-# Full install (interactive — prompts for TTS voice model)
+# Full bootstrap from a repo checkout
 ./scripts/install.sh
 
-# Full install without prompts (for Ansible/CI)
+# Full install without prompts (for Ansible/CI compatibility)
 ./scripts/install.sh --non-interactive
 
 # Just reinstall/upgrade CLI tools globally
@@ -95,6 +134,11 @@ cd Socratic-Study-Mentor
 
 # Just reinstall agent definitions
 ./scripts/install.sh --agents-only
+
+# Direct typed commands
+studyctl install tools
+studyctl install agents
+studyctl doctor --fix
 
 # Install optional extras
 uv pip install studyctl[notebooklm]
@@ -155,7 +199,7 @@ The study web app requires no extra dependencies — just run:
 studyctl web
 ```
 
-This starts a web server on `http://0.0.0.0:8567` accessible from any device on your network. Open it on your phone, tablet, or laptop.
+This starts a web server on `http://127.0.0.1:8567`. Use `studyctl web --lan` if you want to expose it to other devices on your network.
 
 **Install as PWA (iOS/Android):** Open in Safari → Share → Add to Home Screen. The app then works full-screen like a native app.
 
@@ -420,13 +464,17 @@ The session database stores exported AI conversations from all your tools. It po
 # Export from all detected sources
 session-export
 
-# Export from a specific source
-session-export --source claude
-session-export --source kiro
-session-export --source aider
+# Export specific sources
+session-export --sources claude codex
+session-export --sources gemini opencode
+
+# Legacy convenience flags
+session-export --claude-only
+session-export --kiro-only
+session-export --gemini-only
 ```
 
-Supported sources: `claude`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`
+Supported sources: `claude`, `codex`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`
 
 ### Verify it's working
 
@@ -479,7 +527,7 @@ studyctl content autopilot -o ./chapters
 studyctl content from-obsidian ~/Obsidian/Vault/Study/Python
 ```
 
-See the [CLI Reference](../README.md#studyctl-content) for all available commands.
+See the [CLI Reference](cli-reference.md) for all available commands.
 
 ## Cross-Machine Sync
 
@@ -494,7 +542,7 @@ session-sync sync work-macbook   # Two-way sync with a host
 session-sync endpoints           # List all configured remote hosts
 ```
 
-Both commands read host definitions from `~/.config/studyctl/config.yaml` (the `hosts` section). See the [Hosts configuration](#hosts--cross-machine-sync) in the README for the full schema. Delta sync transfers only new sessions, not the entire database.
+Both commands read host definitions from `~/.config/studyctl/config.yaml` (the `hosts` section). See [Host Configuration](#host-configuration) below for the schema. Delta sync transfers only new sessions, not the entire database.
 
 ## Scheduling
 
@@ -591,7 +639,8 @@ This checks Python version, installed packages, config validity, databases, opti
 If issues are found:
 
 ```bash
-studyctl upgrade              # Fix auto-fixable issues (packages, DB, agents)
+studyctl doctor --fix         # Apply safe auto-fixes first
+studyctl upgrade              # Apply package/database/agent upgrades
 studyctl upgrade --dry-run    # Preview changes first
 ```
 
@@ -623,6 +672,7 @@ studyctl doctor
 ```
 
 This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run `studyctl upgrade` to resolve them.
+This will identify most common problems and tell you how to fix them. Start with `studyctl doctor --fix` for safe local repairs, then use `studyctl upgrade` for package-level updates.
 
 ### `studyctl: command not found`
 
@@ -636,6 +686,8 @@ Check that the AI tool's data directory exists:
 - Claude Code: `~/.claude/projects/`
 - Kiro CLI: `~/Library/Application Support/kiro-cli/data.sqlite3` (macOS)
 - Gemini CLI: `~/.gemini/tmp/`
+- Codex CLI: exported from Codex transcript storage if present on this machine
+- OpenCode: `~/.local/share/opencode/storage/`
 - Aider: `.aider.chat.history.md` files in project directories
 
 ### `studyctl review` shows nothing

@@ -53,6 +53,24 @@ known-first-party = ["studyctl", "agent_session_tools"]
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
+include = [
+    "packages/studyctl/src",
+    "packages/studyctl/tests",
+    "packages/agent-session-tools/src",
+    "packages/agent-session-tools/tests",
+]
+exclude = [
+    "packages/studyctl/src/studyctl/tui",
+    "packages/studyctl/src/studyctl/content",
+    "packages/studyctl/src/studyctl/cli/_content.py",
+    "packages/studyctl/src/studyctl/cli/_web.py",
+    "packages/studyctl/src/studyctl/web",
+    "packages/studyctl/src/studyctl/mcp",
+    "packages/studyctl/src/studyctl/eval/llm_client.py",
+    "packages/agent-session-tools/tests/test_embeddings.py",
+    "scripts/capture_tui_screenshot.py",
+    "scripts/record-demo.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["packages/agent-session-tools/tests", "packages/studyctl/tests"]

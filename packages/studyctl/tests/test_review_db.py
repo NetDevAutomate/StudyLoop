@@ -19,6 +19,22 @@ def db_path(tmp_path: Path) -> Path:
 
 
 class TestEnsureTables:
+    def test_bootstraps_missing_db_file(self, tmp_path: Path) -> None:
+        from studyctl.review_db import ensure_tables
+
+        path = tmp_path / "nested" / "sessions.db"
+        ensure_tables(path)
+
+        assert path.exists()
+        conn = sqlite3.connect(path)
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+        conn.close()
+        assert "card_reviews" in tables
+        assert "review_sessions" in tables
+
     def test_creates_card_reviews_table(self, db_path: Path) -> None:
         from studyctl.review_db import ensure_tables
 
@@ -108,6 +124,26 @@ class TestRecordCardReview:
 
         assert before > 1
         assert after == 1  # Reset
+
+    def test_schedule_history_is_isolated_per_course(self, db_path: Path) -> None:
+        from studyctl.review_db import record_card_review
+
+        shared_hash = "shared-hash"
+
+        record_card_review("Course-A", "flashcard", shared_hash, True, db_path=db_path)
+        record_card_review("Course-A", "flashcard", shared_hash, True, db_path=db_path)
+        record_card_review("Course-B", "flashcard", shared_hash, True, db_path=db_path)
+
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute(
+            "SELECT course, interval_days FROM card_reviews WHERE card_hash = ? ORDER BY id ASC",
+            (shared_hash,),
+        ).fetchall()
+        conn.close()
+
+        assert rows[0] == ("Course-A", 2)
+        assert rows[1] == ("Course-A", 5)
+        assert rows[2] == ("Course-B", 2)
 
 
 class TestRecordSession:

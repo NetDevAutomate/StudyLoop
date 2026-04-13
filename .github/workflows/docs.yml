@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
       - "mkdocs.yml"
       - ".github/workflows/docs.yml"
 

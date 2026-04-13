@@ -90,3 +90,17 @@ class TestDoctorCommand:
             result = runner.invoke(doctor, ["--category", "core"], catch_exceptions=False)
         mock_reg.return_value.run_category.assert_called_once_with("core")
         assert result.exit_code == 0
+
+    def test_fix_applies_and_reruns(self, runner: CliRunner):
+        from studyctl.cli._doctor import doctor
+
+        with (
+            patch("studyctl.cli._doctor._get_registry") as mock_reg,
+            patch("studyctl.cli._doctor._apply_fixes", return_value=["created config"]),
+        ):
+            mock_reg.return_value.run_all.side_effect = [FAIL_RESULTS, HEALTHY_RESULTS]
+            result = runner.invoke(doctor, ["--fix"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert mock_reg.return_value.run_all.call_count == 2
+        assert "Applied fixes" in result.output

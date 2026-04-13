@@ -9,6 +9,15 @@ from rich.table import Table
 
 from studyctl.cli._shared import console
 from studyctl.doctor.models import VALID_CATEGORIES, CheckResult
+from studyctl.installers import (
+    InstallError,
+    ensure_default_config,
+    ensure_review_database,
+    ensure_review_directories,
+    install_agent_definitions,
+    install_workspace_tools,
+    require_repo_root,
+)
 
 
 def _get_registry():
@@ -94,13 +103,70 @@ def _summary_line(results: list[CheckResult]) -> str:
         parts.append(f"{counts['info']} info")
     summary = ", ".join(parts) + "."
     if auto_fixable:
-        summary += f" Run 'studyctl upgrade' to fix {auto_fixable} issues."
+        summary += f" Run 'studyctl doctor --fix' to fix {auto_fixable} issues."
     return summary
+
+
+def _apply_fixes(results: list[CheckResult]) -> list[str]:
+    """Apply safe automatic fixes for the provided results."""
+    actions: list[str] = []
+
+    def needs(category: str, name: str | None = None) -> bool:
+        return any(
+            r.category == category
+            and (name is None or r.name == name)
+            and r.status in ("warn", "fail")
+            and r.fix_auto
+            for r in results
+        )
+
+    if needs("core", "config_file"):
+        path = ensure_default_config()
+        actions.append(f"created config: {path}")
+
+    if needs("core", "agent_session_tools"):
+        repo_root = require_repo_root()
+        install_workspace_tools(repo_root, sync_workspace=True, force=True)
+        actions.append("reinstalled workspace tools")
+
+    if any(
+        r.category == "config"
+        and r.name.startswith("review_dir_")
+        and r.status in ("warn", "fail")
+        and r.fix_auto
+        for r in results
+    ):
+        created = ensure_review_directories()
+        actions.append(f"ensured review directories ({len(created)} created)")
+
+    if needs("database", "review_db"):
+        db_path = ensure_review_database()
+        actions.append(f"migrated review DB: {db_path}")
+
+    if any(r.category == "agents" and r.status in ("warn", "fail") and r.fix_auto for r in results):
+        repo_root = require_repo_root()
+        summary = install_agent_definitions(repo_root)
+        changed = sum(summary.values())
+        actions.append(f"refreshed agent definitions ({changed} changes)")
+
+    if any(
+        r.category == "updates" and r.status in ("warn", "fail") and r.fix_auto for r in results
+    ):
+        from studyctl.cli._upgrade import _detect_package_manager, _upgrade_packages
+
+        manager = _detect_package_manager()
+        if not _upgrade_packages(manager, dry_run=False):
+            msg = "package upgrade failed"
+            raise InstallError(msg)
+        actions.append(f"upgraded packages via {manager}")
+
+    return actions
 
 
 @click.command("doctor")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON array")
 @click.option("--quiet", is_flag=True, help="Summary line only")
+@click.option("--fix", is_flag=True, help="Apply safe automatic fixes before reporting.")
 @click.option(
     "--category",
     type=click.Choice(sorted(VALID_CATEGORIES)),
@@ -108,11 +174,25 @@ def _summary_line(results: list[CheckResult]) -> str:
     help="Check specific category",
 )
 @click.pass_context
-def doctor(ctx: click.Context, as_json: bool, quiet: bool, category: str | None) -> None:
+def doctor(
+    ctx: click.Context,
+    as_json: bool,
+    quiet: bool,
+    fix: bool,
+    category: str | None,
+) -> None:
     """Check installation health and report issues."""
     registry = _get_registry()
 
     results = registry.run_category(category) if category else registry.run_all()
+    applied: list[str] = []
+    if fix:
+        try:
+            applied = _apply_fixes(results)
+        except (InstallError, click.ClickException) as exc:
+            raise click.ClickException(str(exc)) from exc
+        if applied:
+            results = registry.run_category(category) if category else registry.run_all()
 
     exit_code = _compute_exit_code(results)
 
@@ -127,6 +207,12 @@ def doctor(ctx: click.Context, as_json: bool, quiet: bool, category: str | None)
         return
 
     # Rich table output grouped by category
+    if applied:
+        console.print("[bold green]Applied fixes:[/bold green]")
+        for action in applied:
+            console.print(f"  {action}")
+        console.print()
+
     table = Table(title="studyctl doctor", show_lines=False)
     table.add_column("Status", justify="center", width=3)
     table.add_column("Check", style="cyan")

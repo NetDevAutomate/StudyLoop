@@ -232,6 +232,96 @@ class TestStartSessionHappyPath:
         assert "study-old-session-abcd1234" in created_names
 
 
+class TestStartSessionRollback:
+    def _mock_adapter(self, tmp_path):
+        adapter = MagicMock()
+        adapter.setup.return_value = tmp_path / "persona.md"
+        adapter.mcp_setup = None
+        adapter.launch_cmd.return_value = "claude --resume"
+        return adapter
+
+    def test_rolls_back_partial_startup_for_new_session(self, tmp_path):
+        adapter = self._mock_adapter(tmp_path)
+        session_dir = tmp_path / "sessions" / "study-python-deadbeef"
+
+        with (
+            patch("studyctl.tmux.is_tmux_available", return_value=True),
+            patch("studyctl.session.cleanup.auto_clean_zombies"),
+            patch("studyctl.session_state.read_session_state", return_value={}),
+            patch("studyctl.session_state.STATE_FILE", tmp_path / "state.json"),
+            patch("studyctl.session_state.SESSION_DIR", tmp_path),
+            patch("studyctl.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+            patch("studyctl.session_state.PARKING_FILE", tmp_path / "parking.md"),
+            patch("studyctl.history.start_study_session", return_value="deadbeef12345678"),
+            patch("studyctl.history.abort_study_session") as mock_abort,
+            patch("studyctl.history.sessions.update_persona_hash", return_value=True),
+            patch("studyctl.agent_launcher.AGENTS", {"claude": adapter}),
+            patch("studyctl.agent_launcher.build_canonical_persona", return_value="persona"),
+            patch(
+                "studyctl.session.orchestrator.create_tmux_environment",
+                side_effect=RuntimeError("tmux split failed"),
+            ),
+            patch("studyctl.session_state.clear_session_files") as mock_clear,
+            patch("studyctl.tmux.session_exists", side_effect=[False, True]),
+            patch("studyctl.tmux.kill_session") as mock_kill,
+            patch("shutil.rmtree") as mock_rmtree,
+            patch.dict("os.environ", {"TMUX": "/tmp/tmux"}),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Python", "claude", "study", "elapsed", 5, False)
+
+        assert "Failed to start study session" in exc_info.value.message
+        mock_abort.assert_called_once()
+        abort_reason = mock_abort.call_args.args[1]
+        assert abort_reason == "Startup failed: tmux split failed"
+        mock_clear.assert_called_once()
+        mock_kill.assert_called_once_with("study-python-deadbeef")
+        mock_rmtree.assert_called_once_with(session_dir, ignore_errors=True)
+
+    def test_resume_failure_keeps_existing_session_dir(self, tmp_path):
+        adapter = self._mock_adapter(tmp_path)
+        session_dir = tmp_path / "sessions" / "study-existing-abcd1234"
+        session_dir.mkdir(parents=True)
+
+        with (
+            patch("studyctl.tmux.is_tmux_available", return_value=True),
+            patch("studyctl.session.cleanup.auto_clean_zombies"),
+            patch("studyctl.session_state.read_session_state", return_value={}),
+            patch("studyctl.session_state.STATE_FILE", tmp_path / "state.json"),
+            patch("studyctl.session_state.SESSION_DIR", tmp_path),
+            patch("studyctl.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+            patch("studyctl.session_state.PARKING_FILE", tmp_path / "parking.md"),
+            patch("studyctl.history.start_study_session", return_value="study-session-test-id"),
+            patch("studyctl.history.abort_study_session") as mock_abort,
+            patch("studyctl.history.sessions.update_persona_hash", return_value=True),
+            patch("studyctl.agent_launcher.AGENTS", {"claude": adapter}),
+            patch("studyctl.agent_launcher.build_canonical_persona", return_value="persona"),
+            patch(
+                "studyctl.session.orchestrator.create_tmux_environment",
+                side_effect=RuntimeError("sidebar start failed"),
+            ),
+            patch("studyctl.session_state.clear_session_files"),
+            patch("studyctl.tmux.session_exists", side_effect=[False, True]),
+            patch("studyctl.tmux.kill_session"),
+            patch("shutil.rmtree") as mock_rmtree,
+            patch.dict("os.environ", {"TMUX": "/tmp/tmux"}),
+            pytest.raises(SessionStartError),
+        ):
+            start_session(
+                "Python",
+                "claude",
+                "study",
+                "elapsed",
+                5,
+                False,
+                resume_session_name="study-existing-abcd1234",
+                resume_session_dir=str(session_dir),
+            )
+
+        mock_abort.assert_called_once()
+        mock_rmtree.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # CLI wrapper: _handle_start delegates and translates errors
 # ---------------------------------------------------------------------------

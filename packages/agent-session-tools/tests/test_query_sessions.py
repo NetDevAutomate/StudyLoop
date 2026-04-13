@@ -3,14 +3,18 @@
 from datetime import datetime, timedelta
 
 import pytest
+from typer.testing import CliRunner
 
 from agent_session_tools.query_logic import estimate_tokens
+from agent_session_tools.query_sessions import app
 from agent_session_tools.query_utils import (
     build_date_filter,
     check_thresholds,
     get_db_size,
     parse_date,
 )
+
+runner = CliRunner()
 
 
 class TestParseDate:
@@ -173,3 +177,106 @@ class TestSearchFunctionality:
         assert len(sessions) == 1
         assert sessions[0]["source"] == "claude_code"
         assert sessions[0]["project_path"] == "/test/project"
+
+
+class TestSessionWriteResolution:
+    def test_tag_uses_exact_match(self, migrated_db):
+        conn, db_path = migrated_db
+        conn.execute(
+            """
+            INSERT INTO sessions (id, source, project_path, git_branch, created_at, updated_at, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "study-python-aaaa1111",
+                "claude_code",
+                "/test/project",
+                "main",
+                "2024-01-01T10:00:00",
+                "2024-01-01T12:00:00",
+                None,
+            ),
+        )
+        conn.commit()
+
+        result = runner.invoke(
+            app,
+            ["tag", "study-python-aaaa1111", "--db", str(db_path), "--add", "focus"],
+        )
+
+        assert result.exit_code == 0
+        tags = conn.execute("SELECT session_id, tag FROM session_tags").fetchall()
+        assert [(row[0], row[1]) for row in tags] == [
+            ("study-python-aaaa1111", "focus")
+        ]
+
+    def test_tag_rejects_ambiguous_prefix(self, migrated_db):
+        conn, db_path = migrated_db
+        for session_id in ("study-python-aaaa1111", "study-python-bbbb2222"):
+            conn.execute(
+                """
+                INSERT INTO sessions (id, source, project_path, git_branch, created_at, updated_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    "claude_code",
+                    "/test/project",
+                    "main",
+                    "2024-01-01T10:00:00",
+                    "2024-01-01T12:00:00",
+                    None,
+                ),
+            )
+        conn.commit()
+
+        result = runner.invoke(
+            app, ["tag", "study-python", "--db", str(db_path), "--add", "x"]
+        )
+
+        assert result.exit_code == 1
+        assert "Ambiguous session ID" in result.output
+        tag_count = conn.execute("SELECT COUNT(*) FROM session_tags").fetchone()[0]
+        assert tag_count == 0
+
+    def test_note_allows_unique_prefix(self, migrated_db):
+        conn, db_path = migrated_db
+        conn.execute(
+            """
+            INSERT INTO sessions (id, source, project_path, git_branch, created_at, updated_at, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "study-rust-cccc3333",
+                "claude_code",
+                "/test/project",
+                "main",
+                "2024-01-01T10:00:00",
+                "2024-01-01T12:00:00",
+                None,
+            ),
+        )
+        conn.commit()
+
+        result = runner.invoke(
+            app,
+            ["note", "study-rust-c", "--db", str(db_path), "--text", "remember this"],
+        )
+
+        assert result.exit_code == 0
+        note = conn.execute("SELECT session_id, notes FROM session_notes").fetchone()
+        assert (note["session_id"], note["notes"]) == (
+            "study-rust-cccc3333",
+            "remember this",
+        )
+
+    def test_note_rejects_missing_session(self, migrated_db):
+        _, db_path = migrated_db
+
+        result = runner.invoke(
+            app,
+            ["note", "missing-session", "--db", str(db_path), "--text", "hello"],
+        )
+
+        assert result.exit_code == 1
+        assert "Session not found" in result.output

@@ -115,6 +115,34 @@ def end_study_session(
         conn.close()
 
 
+def abort_study_session(study_id: str, reason: str) -> bool:
+    """Mark a study session as ended when startup fails before steady state."""
+    conn = _connection._connect()
+    if not conn:
+        return False
+    try:
+        now = datetime.now(UTC).isoformat()
+        conn.execute(
+            """
+            UPDATE study_sessions
+            SET ended_at = COALESCE(ended_at, ?),
+                duration_minutes = COALESCE(duration_minutes, 0),
+                notes = CASE
+                    WHEN notes IS NULL OR notes = '' THEN ?
+                    ELSE notes || char(10) || ?
+                END
+            WHERE id = ?
+            """,
+            (now, reason, reason, study_id),
+        )
+        conn.commit()
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
+
+
 def get_study_session_stats(days: int = 30) -> list[dict]:
     """Get study session stats grouped by course slug (or raw topic) for the given period."""
     conn = _connection._connect()

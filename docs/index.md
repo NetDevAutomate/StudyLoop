@@ -7,10 +7,10 @@
 ## Quick Start
 
 ```bash
-# 1. Clone and install
-git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd socratic-study-mentor
-./scripts/install.sh
+# 1. Install and configure
+brew install NetDevAutomate/studyctl/studyctl
+studyctl setup
+studyctl doctor --fix
 
 # 2. Start a study session
 kiro-cli chat --agent study-mentor   # or Claude Code: /agent socratic-mentor

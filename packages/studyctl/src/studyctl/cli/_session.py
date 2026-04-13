@@ -29,8 +29,17 @@ def session_start(topic: str, energy: int) -> None:
         PARKING_FILE,
         TOPICS_FILE,
         _ensure_session_dir,
+        is_session_active,
         write_session_state,
     )
+
+    if is_session_active():
+        console.print(
+            "[yellow]A session is already active.[/yellow]\n"
+            "  Check:  [bold]studyctl session status[/bold]\n"
+            "  End:    [bold]studyctl session end[/bold]"
+        )
+        raise SystemExit(1)
 
     _ensure_session_dir()
 
