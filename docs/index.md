@@ -13,7 +13,11 @@ studyctl setup
 studyctl doctor --fix
 
 # 2. Start a study session
-kiro-cli chat --agent study-mentor   # or Claude Code: /agent socratic-mentor
+studyctl study "Python" --mode co-study
+# or launch your preferred assistant directly:
+# kiro-cli chat --agent study-mentor
+# claude      # then /agent socratic-mentor
+# codex       # in the project root with AGENTS.md present
 
 # 3. Check what's due for review
 studyctl review
@@ -42,6 +46,7 @@ graph LR
     subgraph "AI Agents"
         KA[kiro-cli]
         CA[Claude Code]
+        CX[Codex CLI]
         GA[Gemini CLI]
         OA[OpenCode]
         AA[Amp]
@@ -54,6 +59,7 @@ graph LR
     DB -->|query history| SC
     KA -->|Socratic sessions| DB
     CA -->|Socratic sessions| DB
+    CX -->|Socratic sessions| DB
     GA -->|Socratic sessions| DB
     OA -->|Socratic sessions| DB
     AA -->|Socratic sessions| DB
@@ -66,7 +72,7 @@ graph LR
 | Tool | Purpose |
 |------|---------|
 | **studyctl** | Study pipeline — sync notes, spaced repetition, struggle detection, win tracking |
-| **agent-session-tools** | Export and search AI sessions from Claude Code, Kiro, Gemini, Aider, and more |
+| **agent-session-tools** | Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, and more |
 | **AI Agents** | Socratic mentors that adapt to your energy, emotional state, and sensory environment |
 
 !!! energy-check "Designed for AuDHD brains"
@@ -77,6 +83,7 @@ graph LR
 ## Key Sections
 
 - **[Content Pipeline](content-pipeline.md)** — PDF/Obsidian to flashcards via NotebookLM (end-to-end)
+- **[Architecture](architecture.md)** — C4 diagrams and repo code map
 - **[TUI Sidebar Guide](tui-guide.md)** — Terminal sidebar layout, timer modes, key bindings
 - **[Web UI Guide](web-ui-guide.md)** — Flashcards, quizzes, session dashboard, ttyd terminal
 - **[Session Protocol](session-protocol.md)** — How every study session flows, from arrival to close

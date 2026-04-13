@@ -475,16 +475,14 @@ A focused Socratic teaching agent with AuDHD-aware pedagogy:
 - Tracks principle mastery: discovered → applied → mastered
 - Never gives direct answers unless explicitly asked (or after 4+ rounds stuck)
 
-### mentor-reviewer (Claude Code)
+### AGENTS.md (Codex CLI)
 
-An autonomous code reviewer that runs without prompting:
+Codex uses the repository-root `AGENTS.md` as its project contract:
 
-- Reads all code files, analyzes against SOLID/OWASP/testing standards
-- Scores across 5 categories (1-10): Architecture, Testing, Code Quality, Security, Performance
-- Generates detailed reports with critical issues, improvements, and learning opportunities
-- Creates tutorials for concepts scoring below 5/10
-- Tracks score trends across reviews with evidence-based assessments
-- Brutally honest — no praise for mediocre code
+- Auto-loads study mentor guidance when you start `codex` in the repo
+- Keeps the session aligned with the studyctl workflow and session-state tooling
+- Works well with `studyctl study ...` when studyctl launches Codex inside tmux
+- Can also be used manually for ad-hoc study, review, and note-refinement sessions
 
 ## Skills Reference
 

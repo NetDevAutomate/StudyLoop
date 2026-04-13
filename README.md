@@ -14,7 +14,7 @@ Four things:
 1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
 2. **Content pipeline** — Chunk eBooks and Obsidian notes into Google NotebookLM notebooks → generate audio overviews, quizzes, and flashcards.
 3. **Flashcard review** — Spaced repetition (SM-2) via a PWA web app. Works on phone, tablet, laptop.
-4. **Session tracking** — Export AI coding sessions (Claude Code, Kiro, Gemini, etc.) into a searchable SQLite database. Track trends, find struggle topics, search across sessions.
+4. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions.
 
 Built by a neurodivergent learner transitioning from networking to data engineering. If you're self-teaching and AuDHD, this might help.
 
@@ -175,6 +175,7 @@ sudo apt install ttyd        # Linux (or build from source)
 ## Documentation
 
 - [Setup Guide](docs/setup-guide.md) — installation and configuration
+- [Architecture](docs/architecture.md) — C4 diagrams and repo code map
 - [Content Pipeline](docs/content-pipeline.md) — PDF/Obsidian to flashcards via NotebookLM
 - [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
 - [Web UI Guide](docs/web-ui-guide.md) — flashcards, quizzes, session dashboard, ttyd
