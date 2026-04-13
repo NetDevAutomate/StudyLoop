@@ -5,6 +5,7 @@ How to set up a development environment, add features, and submit changes.
 ## Table of Contents
 
 - [Development Setup](#development-setup)
+- [Task Runner](#task-runner)
 - [Code Style](#code-style)
 - [Running Tests](#running-tests)
 - [Release Build](#release-build)
@@ -33,6 +34,32 @@ Pre-commit runs automatically on each commit:
 - `trailing-whitespace`, `end-of-file-fixer` — file hygiene
 - `detect-secrets`, `detect-private-key`, `detect-aws-credentials` — security checks
 
+## Task Runner
+
+Contributor workflows are exposed through `just`:
+
+```bash
+just test
+just lint
+just typecheck
+just docs
+just build-release
+just release-check
+```
+
+Install `just` if needed:
+
+```bash
+brew install just
+```
+
+`just release-check` runs the full local release gate:
+- tests
+- lint
+- typecheck
+- strict docs build
+- release artifact build
+
 ## Code Style
 
 - **Linter/formatter**: [ruff](https://docs.astral.sh/ruff/) (configured in each `pyproject.toml`)
@@ -60,7 +87,7 @@ Key conventions:
 
 ```bash
 # Run all tests
-uv run pytest
+just test
 
 # Run with verbose output
 uv run pytest -v
@@ -81,10 +108,10 @@ Tests live in:
 Use the shared release-build script for local package verification:
 
 ```bash
-./scripts/build-release.sh
+just build-release
 ```
 
-This script:
+This recipe calls `./scripts/build-release.sh`, which:
 - deletes old contents from `dist/`
 - builds the `studyctl` sdist and wheel with `uv build --package studyctl --no-sources`
 
@@ -138,6 +165,7 @@ socratic-study-mentor/
 │   ├── build-release.sh            # Clean dist/ and build release artifacts
 │   ├── install.sh                   # Thin source-install bootstrap wrapper
 │   └── install-agents.sh            # Thin compatibility wrapper
+├── Justfile                         # Contributor task runner
 ├── Formula/studyctl.rb              # Homebrew formula
 ├── docs/                            # Documentation
 ├── pyproject.toml                   # Workspace root
@@ -236,10 +264,7 @@ Agent files are symlinked by the installer, so edits in the repo are immediately
 3. Make your changes
 4. Run checks:
    ```bash
-   uv run ruff check .
-   uv run ruff format --check .
-   uv run pyright packages/
-   uv run pytest
+   just release-check
    ```
 5. Commit with a descriptive message
 6. Open a PR against `main`
