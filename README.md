@@ -185,6 +185,25 @@ sudo apt install ttyd        # Linux (or build from source)
 - [Voice Output Guide](docs/voice-output.md)
 - [Contributing](CONTRIBUTING.md)
 
+## Maintainer Tasks
+
+For local contributor and release workflows, use `just`:
+
+```bash
+just test
+just lint
+just typecheck
+just docs
+just build-release
+just release-check
+```
+
+Install `just` with:
+
+```bash
+brew install just
+```
+
 <!-- ARTEFACTS:START -->
 ## Generated Artefacts
 
