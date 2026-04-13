@@ -7,6 +7,7 @@ How to set up a development environment, add features, and submit changes.
 - [Development Setup](#development-setup)
 - [Code Style](#code-style)
 - [Running Tests](#running-tests)
+- [Release Build](#release-build)
 - [Project Structure](#project-structure)
 - [How to Add a New Session Exporter](#how-to-add-a-new-session-exporter)
 - [How to Add a New Study Topic](#how-to-add-a-new-study-topic)
@@ -75,6 +76,20 @@ Tests live in:
 - `packages/studyctl/tests/` — studyctl CLI and review tests
 - `packages/agent-session-tools/tests/` — session tools tests
 
+## Release Build
+
+Use the shared release-build script for local package verification:
+
+```bash
+./scripts/build-release.sh
+```
+
+This script:
+- deletes old contents from `dist/`
+- builds the `studyctl` sdist and wheel with `uv build --package studyctl --no-sources`
+
+The release workflow uses the same script, so local and CI builds follow the same path.
+
 ## Project Structure
 
 ```
@@ -120,6 +135,7 @@ socratic-study-mentor/
 │   ├── opencode/                    # OpenCode agent assets
 │   └── shared/                      # Cross-tool prompts/framework
 ├── scripts/
+│   ├── build-release.sh            # Clean dist/ and build release artifacts
 │   ├── install.sh                   # Thin source-install bootstrap wrapper
 │   └── install-agents.sh            # Thin compatibility wrapper
 ├── Formula/studyctl.rb              # Homebrew formula
@@ -209,7 +225,7 @@ If you want to add default topics that ship with the project, edit `packages/stu
 | Network→DE bridges | `agents/kiro/skills/audhd-socratic-mentor/references/network-bridges.md` |
 | Progress tracking | `agents/kiro/skills/tutor-progress-tracker/SKILL.md` |
 | Claude socratic-mentor | `agents/claude/socratic-mentor.md` |
-| Claude mentor-reviewer | `agents/claude/mentor-reviewer.yaml` |
+| Codex project instructions | `agents/codex/AGENTS.md` |
 
 Agent files are symlinked by the installer, so edits in the repo are immediately reflected.
 
