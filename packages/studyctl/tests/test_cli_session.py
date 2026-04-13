@@ -47,6 +47,11 @@ def session_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             priority INTEGER
         )
     """)
+    # Mark schema as fully migrated so _connect() doesn't try to run
+    # agent-session-tools migrations against this minimal test schema.
+    from agent_session_tools.migrations import CURRENT_VERSION
+
+    conn.execute(f"PRAGMA user_version = {CURRENT_VERSION}")
     conn.commit()
     conn.close()
 

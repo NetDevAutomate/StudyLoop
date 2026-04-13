@@ -118,7 +118,15 @@ class AgentsConfig:
     """Configuration for AI agent detection and priority."""
 
     priority: list[str] = field(
-        default_factory=lambda: ["claude", "kiro", "gemini", "opencode", "ollama", "lmstudio"]
+        default_factory=lambda: [
+            "claude",
+            "kiro",
+            "gemini",
+            "opencode",
+            "codex",
+            "ollama",
+            "lmstudio",
+        ]
     )
     ollama: LocalLLMConfig = field(
         default_factory=lambda: LocalLLMConfig(
@@ -255,7 +263,7 @@ def load_settings() -> Settings:
 
     ag = raw.get("agents", {})
     if ag:
-        default_priority = ["claude", "kiro", "gemini", "opencode", "ollama", "lmstudio"]
+        default_priority = ["claude", "kiro", "gemini", "opencode", "codex", "ollama", "lmstudio"]
         settings.agents = AgentsConfig(
             priority=ag.get("priority", default_priority),
             ollama=_local_llm(ag.get("ollama", {}), "qwen3-coder", "http://localhost:4000"),
@@ -346,7 +354,7 @@ topics:
 # Override per-session with: studyctl study "topic" --agent gemini
 # Override via env var: STUDYCTL_AGENT=gemini
 # agents:
-#   priority: [claude, kiro, gemini, opencode, ollama, lmstudio]
+#   priority: [codex, claude, kiro, gemini, opencode, ollama, lmstudio]
 #   ollama:
 #     model: qwen3-coder                # Model name from 'ollama list'
 #     # base_url: http://localhost:4000   # LiteLLM proxy (Ollama needs a translation layer)

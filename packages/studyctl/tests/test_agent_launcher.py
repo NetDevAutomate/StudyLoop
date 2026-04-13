@@ -17,11 +17,12 @@ import pytest
 
 
 class TestAgentRegistry:
-    def test_six_agents_registered(self):
+    def test_seven_agents_registered(self):
         from studyctl.agent_launcher import AGENTS
 
         assert set(AGENTS.keys()) == {
             "claude",
+            "codex",
             "gemini",
             "kiro",
             "opencode",
@@ -53,7 +54,7 @@ class TestAgentRegistry:
     def test_all_agents_are_wired(self, tmp_path):
         from studyctl.agent_launcher import AGENTS
 
-        for name in ("gemini", "opencode"):
+        for name in ("codex", "gemini", "opencode"):
             # These write to session_dir — should not raise
             path = AGENTS[name].setup("# test content", tmp_path)
             assert path.exists()
@@ -520,6 +521,28 @@ class TestGeminiAdapter:
 
         cmd = _gemini_launch(Path("/tmp/GEMINI.md"), resume=True)
         assert "-r" in cmd
+
+
+class TestCodexAdapter:
+    def test_setup_writes_agents_md(self, tmp_path):
+        from studyctl.agent_launcher import _codex_setup
+
+        path = _codex_setup("# Codex Persona", tmp_path)
+        assert path == tmp_path / "AGENTS.md"
+        assert path.exists()
+        assert path.read_text() == "# Codex Persona"
+
+    def test_launch_new_session(self):
+        from studyctl.agent_launcher import _codex_launch
+
+        cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=False)
+        assert cmd.endswith("codex")
+
+    def test_launch_resume(self):
+        from studyctl.agent_launcher import _codex_launch
+
+        cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
+        assert cmd.endswith("codex --resume")
 
 
 # ---------------------------------------------------------------------------

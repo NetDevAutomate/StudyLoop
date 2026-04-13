@@ -64,6 +64,7 @@ studyctl study "Python Decorators" --energy 7          # Socratic mentor session
 studyctl study "Spark Internals" --mode co-study       # User-driven co-study
 studyctl study "topic" --timer pomodoro                # Override default timer
 studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
+studyctl study "topic" --agent codex                  # Explicit Codex CLI session
 studyctl study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
 studyctl study "topic" --lan --password SECRET         # Explicit password for LAN auth
 studyctl study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
@@ -176,6 +177,13 @@ browser: ""          # auto-open browser: chrome, safari, firefox, brave, or emp
 lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
 ```
 
+**Agent priority config** (`~/.config/studyctl/config.yaml`):
+
+```yaml
+agents:
+  priority: [codex, claude, gemini, opencode, kiro, ollama, lmstudio]
+```
+
 ---
 
 ## agent-session-tools
@@ -199,6 +207,7 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 | Source | Tool |
 |--------|------|
 | `claude` | Claude Code |
+| `codex` | OpenAI Codex CLI |
 | `kiro` | Kiro CLI |
 | `gemini` | Gemini CLI |
 | `aider` | Aider |

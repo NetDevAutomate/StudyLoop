@@ -21,6 +21,7 @@ TRACKED_FILES: dict[str, list[str]] = {
     "kiro": ["kiro/study-mentor.json"],
     "gemini": ["gemini/study-mentor.md"],
     "opencode": ["opencode/study-mentor.md"],
+    "codex": ["codex/AGENTS.md"],
 }
 
 SHARED_FILES = [

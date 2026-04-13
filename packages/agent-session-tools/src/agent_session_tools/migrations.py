@@ -35,6 +35,12 @@ def get_user_version(conn: sqlite3.Connection) -> int:
     return result[0] if result else 0
 
 
+def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
+    """Return the column names currently present on a table."""
+    cursor = conn.execute(f"PRAGMA table_info({table_name})")
+    return {row[1] for row in cursor.fetchall()}
+
+
 def set_user_version(conn: sqlite3.Connection, version: int) -> None:
     """Set database schema version."""
     conn.execute(f"PRAGMA user_version = {version}")
@@ -596,15 +602,20 @@ def migrate_v16(conn: sqlite3.Connection) -> None:
     - Updated unique index to allow same question from different sources
     - FKs are already nullable (ON DELETE SET NULL) from v14
     """
-    conn.execute("""
-        ALTER TABLE parked_topics
-        ADD COLUMN source TEXT NOT NULL DEFAULT 'parked'
-        CHECK(source IN ('parked', 'struggled', 'manual'))
-    """)
-    conn.execute("""
-        ALTER TABLE parked_topics
-        ADD COLUMN tech_area TEXT
-    """)
+    columns = _table_columns(conn, "parked_topics")
+
+    if "source" not in columns:
+        conn.execute("""
+            ALTER TABLE parked_topics
+            ADD COLUMN source TEXT NOT NULL DEFAULT 'parked'
+            CHECK(source IN ('parked', 'struggled', 'manual'))
+        """)
+    if "tech_area" not in columns:
+        conn.execute("""
+            ALTER TABLE parked_topics
+            ADD COLUMN tech_area TEXT
+        """)
+
     # Rebuild unique index to include source — allows same question
     # from different sources (e.g. parked during session, then manually added)
     conn.execute("DROP INDEX IF EXISTS uix_parked_topics_session_question")

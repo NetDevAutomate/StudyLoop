@@ -140,6 +140,13 @@ The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices
 
 All configuration lives in a single file: `~/.config/studyctl/config.yaml`. This file is shared between `studyctl` and all `session-*` tools — use the same file on every machine.
 
+To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:
+
+```yaml
+agents:
+  priority: [codex, claude, gemini, opencode, kiro, ollama, lmstudio]
+```
+
 ### Web PWA (recommended)
 
 The study web app requires no extra dependencies — just run:

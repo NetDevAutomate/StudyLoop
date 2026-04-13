@@ -51,7 +51,11 @@ def _ensure_claude_trust(directory: Path) -> None:
     # Atomic write via temp file
     import tempfile
 
-    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(claude_settings.parent), suffix=".json")
+    try:
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(claude_settings.parent), suffix=".json")
+    except OSError:
+        return
+
     try:
         with os.fdopen(tmp_fd, "w") as f:
             json.dump(data, f, indent=2)

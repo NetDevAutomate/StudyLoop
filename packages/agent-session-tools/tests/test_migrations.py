@@ -242,3 +242,47 @@ class TestMigrationV13:
             ).fetchall()
         }
         assert "idx_msg_concepts_concept" in indexes
+
+
+class TestMigrationV16:
+    """Test parked_topics source/tech_area migration idempotency."""
+
+    def test_skips_existing_source_column_and_rebuilds_index(self, fresh_db):
+        fresh_db.executescript(
+            """
+            CREATE TABLE parked_topics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                study_session_id TEXT,
+                session_id TEXT,
+                topic_tag TEXT,
+                question TEXT NOT NULL,
+                context TEXT,
+                status TEXT NOT NULL DEFAULT 'pending'
+                    CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
+                scheduled_for TEXT,
+                resolved_at TEXT,
+                parked_at TEXT NOT NULL DEFAULT (datetime('now')),
+                created_by TEXT DEFAULT 'agent',
+                source TEXT NOT NULL DEFAULT 'parked',
+                tech_area TEXT
+            );
+            CREATE UNIQUE INDEX uix_parked_topics_session_question
+            ON parked_topics (study_session_id, question);
+            """
+        )
+
+        from agent_session_tools.migrations import migrate_v16
+
+        migrate_v16(fresh_db)
+
+        cols = {r[1] for r in fresh_db.execute("PRAGMA table_info(parked_topics)")}
+        assert "source" in cols
+        assert "tech_area" in cols
+
+        index_cols = [
+            r[2]
+            for r in fresh_db.execute(
+                "PRAGMA index_info(uix_parked_topics_session_question)"
+            ).fetchall()
+        ]
+        assert index_cols == ["study_session_id", "question", "source"]

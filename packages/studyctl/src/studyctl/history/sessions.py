@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 import uuid
 from datetime import UTC, datetime
 
 from . import _connection, search
+
+logger = logging.getLogger(__name__)
 
 
 def start_study_session(
@@ -34,6 +37,10 @@ def start_study_session(
         conn.commit()
         return study_id
     except sqlite3.OperationalError:
+        logger.warning(
+            "Failed to insert study session — sessions DB may lack schema",
+            exc_info=True,
+        )
         return None
     finally:
         conn.close()

@@ -1,6 +1,6 @@
 # Agent Installation Guide
 
-How to set up the AI mentor agents for kiro-cli, Claude Code, Gemini CLI, OpenCode, and Amp.
+How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini CLI, OpenCode, and Amp.
 
 ## Table of Contents
 
@@ -8,6 +8,7 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Gemini CLI, OpenCo
 - [Automatic Installation](#automatic-installation)
 - [Kiro CLI Setup](#kiro-cli-setup)
 - [Claude Code Setup](#claude-code-setup)
+- [Codex CLI Setup](#codex-cli-setup)
 - [Gemini CLI Setup](#gemini-cli-setup)
 - [OpenCode Setup](#opencode-setup)
 - [Amp Setup](#amp-setup)
@@ -35,10 +36,11 @@ The install-mentor uses `studyctl doctor --json` as its contract — it parses t
 
 AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.
 
-This project ships agents for five platforms:
+This project ships agents for six platforms:
 - **study-mentor** (kiro-cli) — full study pipeline with spaced repetition
 - **socratic-mentor** (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
 - **mentor-reviewer** (Claude Code) — autonomous code review with scoring
+- **AGENTS.md** (Codex CLI) — Socratic mentoring auto-loaded from project context
 - **study-mentor** (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
 - **study-mentor** (OpenCode) — AuDHD-aware study mentor with spaced repetition
 - **AGENTS.md** (Amp) — Socratic mentoring loaded automatically from project context
@@ -51,13 +53,14 @@ The install script detects which AI tools you have and symlinks the agent defini
 ./scripts/install-agents.sh
 ```
 
-It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `opencode`/`amp` commands on PATH. If found, it creates symlinks from the repo's `agents/` directory into the tool's config.
+It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `opencode`/`codex`/`amp` commands on PATH. If found, it creates symlinks from the repo's `agents/` directory into the tool's config.
 
 Options:
 
 ```bash
 ./scripts/install-agents.sh --kiro      # Kiro CLI only
 ./scripts/install-agents.sh --claude    # Claude Code only
+./scripts/install-agents.sh --codex     # Codex CLI only
 ./scripts/install-agents.sh --gemini    # Gemini CLI only
 ./scripts/install-agents.sh --opencode  # OpenCode only
 ./scripts/install-agents.sh --amp       # Amp only
@@ -139,6 +142,49 @@ Edit skills in `agents/kiro/skills/` to modify:
 The mentor-reviewer supports environment variable configuration:
 - `MENTOR_REVIEW_OUTPUT_DIR` — where review reports are saved (default: `./reviews`)
 - `MENTOR_TUTORIAL_DIR` — where tutorials are generated (default: `./tutorials`)
+
+## Codex CLI Setup
+
+### Prerequisites
+
+- Codex CLI installed
+- `codex` command available on PATH
+
+### What gets installed
+
+| Source | Target | Purpose |
+|--------|--------|---------|
+| `agents/codex/AGENTS.md` | `AGENTS.md` (project root) | Project-level Codex instructions |
+| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
+
+Codex auto-loads `AGENTS.md` from the current working directory, so the installer symlinks the study mentor instructions into the repo root.
+
+### Auto-install
+
+```bash
+./scripts/install-agents.sh --codex
+```
+
+### Manual install
+
+```bash
+# Symlink AGENTS.md to project root
+ln -s "$(pwd)/agents/codex/AGENTS.md" ./AGENTS.md
+
+# Symlink shared framework
+mkdir -p ~/.agents
+ln -s "$(pwd)/agents/shared" ~/.agents/shared
+```
+
+### Starting a session
+
+```bash
+codex
+# AGENTS.md is loaded automatically
+
+# Or let studyctl launch Codex directly
+studyctl study "Python" --agent codex
+```
 
 ## Gemini CLI Setup
 

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-BUILTIN_ADAPTERS = ["claude", "gemini", "kiro", "opencode", "ollama", "lmstudio"]
+BUILTIN_ADAPTERS = ["claude", "codex", "gemini", "kiro", "opencode", "ollama", "lmstudio"]
 
 
 class TestBuiltinAdapters:
@@ -30,7 +31,7 @@ class TestBuiltinAdapters:
         assert callable(adapter.setup)
         assert callable(adapter.launch_cmd)
 
-    @pytest.mark.parametrize("name", ["gemini", "opencode"])
+    @pytest.mark.parametrize("name", ["codex", "gemini", "opencode"])
     def test_setup_creates_file_in_session_dir(self, name, tmp_path):
         import importlib
 
@@ -74,8 +75,30 @@ class TestBuiltinAdapters:
 
         reset_registry()
         adapters = get_all_adapters()
-        expected = {"claude", "gemini", "kiro", "opencode", "ollama", "lmstudio"}
+        expected = {"claude", "codex", "gemini", "kiro", "opencode", "ollama", "lmstudio"}
         assert set(adapters.keys()) >= expected
+
+
+class TestCodexAdapter:
+    def test_codex_setup_writes_agents_md(self, tmp_path):
+        from studyctl.adapters.codex import _codex_setup
+
+        path = _codex_setup("# Codex Persona", tmp_path)
+        assert path == tmp_path / "AGENTS.md"
+        assert path.exists()
+        assert path.read_text() == "# Codex Persona"
+
+    def test_codex_launch_new_session(self):
+        from studyctl.adapters.codex import _codex_launch
+
+        cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=False)
+        assert cmd.endswith("codex")
+
+    def test_codex_launch_resume(self):
+        from studyctl.adapters.codex import _codex_launch
+
+        cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
+        assert cmd.endswith("codex --resume")
 
 
 class TestKiroAdapter:

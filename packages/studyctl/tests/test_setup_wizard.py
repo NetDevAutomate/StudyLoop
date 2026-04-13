@@ -173,6 +173,20 @@ class TestSetupCustomValues:
         config = yaml.safe_load(config_path.read_text())
         assert config["ai_assistant"] == "kiro"
 
+    def test_codex_ai_assistant_selection(
+        self,
+        runner: CliRunner,
+        _patch_config_dir: Path,
+    ) -> None:
+        """Codex can be selected in the setup wizard."""
+        config_path = _patch_config_dir / "config.yaml"
+
+        user_input = "\ny\ncodex\nn\nn\nn\n"
+        runner.invoke(cli, ["setup"], input=user_input)
+
+        config = yaml.safe_load(config_path.read_text())
+        assert config["ai_assistant"] == "codex"
+
     def test_no_ai_assistant(
         self,
         runner: CliRunner,

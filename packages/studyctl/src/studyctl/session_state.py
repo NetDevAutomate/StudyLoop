@@ -10,6 +10,7 @@ import fcntl
 import json
 import os
 import threading
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,7 +18,6 @@ SESSION_DIR = Path(os.environ.get("STUDYCTL_SESSION_DIR", Path.home() / ".config
 STATE_FILE = SESSION_DIR / "session-state.json"
 TOPICS_FILE = SESSION_DIR / "session-topics.md"
 PARKING_FILE = SESSION_DIR / "session-parking.md"
-_LOCK_FILE = SESSION_DIR / ".session-state.lock"
 
 
 @dataclass
@@ -49,8 +49,16 @@ def read_session_state() -> dict:
 
 def _ensure_session_dir() -> None:
     """Ensure SESSION_DIR exists with 0700 permissions (owner-only access)."""
+    created = not SESSION_DIR.exists()
     SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    SESSION_DIR.chmod(0o700)
+    if created:
+        with suppress(OSError):
+            SESSION_DIR.chmod(0o700)
+
+
+def _lock_file() -> Path:
+    """Return the current lock file path derived from SESSION_DIR."""
+    return SESSION_DIR / ".session-state.lock"
 
 
 def _write_file_secure(path: Path, content: str) -> None:
@@ -80,7 +88,7 @@ def write_session_state(updates: dict) -> None:
     """
     _ensure_session_dir()
     with _state_lock:
-        lock_fd = os.open(str(_LOCK_FILE), os.O_WRONLY | os.O_CREAT, 0o600)
+        lock_fd = os.open(str(_lock_file()), os.O_WRONLY | os.O_CREAT, 0o600)
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             current = read_session_state()
@@ -174,7 +182,8 @@ def clear_session_files(*, keep_state: bool = False) -> None:
     targets = (TOPICS_FILE, PARKING_FILE) if keep_state else (STATE_FILE, TOPICS_FILE, PARKING_FILE)
     for f in targets:
         if f.exists():
-            f.unlink()
+            with suppress(OSError):
+                f.unlink()
 
 
 def is_session_active() -> bool:

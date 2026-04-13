@@ -242,7 +242,7 @@ def sidebar_cmd() -> None:
     except ImportError:
         console.print(
             "[red]Textual is required for the sidebar.[/red]\n"
-            "  Install: [bold]pip install 'studyctl[tui]'[/bold]"
+            "  Install: pip install 'studyctl[tui]'"
         )
         raise SystemExit(1) from None
 
