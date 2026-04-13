@@ -1,6 +1,6 @@
 [project]
 name = "studyctl"
-version = "2.4.0"
+version = "2.5.0"
 description = "AuDHD-aware study tool with AI Socratic mentoring, spaced repetition, and content pipeline"
 requires-python = ">=3.12"
 readme = "README.md"
