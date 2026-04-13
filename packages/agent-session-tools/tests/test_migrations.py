@@ -286,3 +286,37 @@ class TestMigrationV16:
             ).fetchall()
         ]
         assert index_cols == ["study_session_id", "question", "source"]
+
+
+class TestMigrationV17:
+    """Test parked_topics priority migration idempotency."""
+
+    def test_skips_existing_priority_column(self, fresh_db):
+        fresh_db.executescript(
+            """
+            CREATE TABLE parked_topics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                study_session_id TEXT,
+                session_id TEXT,
+                topic_tag TEXT,
+                question TEXT NOT NULL,
+                context TEXT,
+                status TEXT NOT NULL DEFAULT 'pending'
+                    CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
+                scheduled_for TEXT,
+                resolved_at TEXT,
+                parked_at TEXT NOT NULL DEFAULT (datetime('now')),
+                created_by TEXT DEFAULT 'agent',
+                source TEXT NOT NULL DEFAULT 'parked',
+                tech_area TEXT,
+                priority INTEGER
+            );
+            """
+        )
+
+        from agent_session_tools.migrations import migrate_v17
+
+        migrate_v17(fresh_db)
+
+        cols = {r[1] for r in fresh_db.execute("PRAGMA table_info(parked_topics)")}
+        assert "priority" in cols

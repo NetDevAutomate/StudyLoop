@@ -635,9 +635,11 @@ def migrate_v17(conn: sqlite3.Connection) -> None:
     - 1 = low importance (niche/optional)
     - 5 = critical/foundational (e.g. OOP basics, closures)
     """
-    conn.execute("""
-        ALTER TABLE parked_topics ADD COLUMN priority INTEGER
-    """)
+    columns = _table_columns(conn, "parked_topics")
+    if "priority" not in columns:
+        conn.execute("""
+            ALTER TABLE parked_topics ADD COLUMN priority INTEGER
+        """)
 
 
 @migration(18, "Add scrub_log table for PII redaction audit trail")
