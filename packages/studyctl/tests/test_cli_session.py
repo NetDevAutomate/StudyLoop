@@ -103,6 +103,19 @@ def test_session_start_then_status(session_env: Path) -> None:
     assert "Python" in result.output
 
 
+def test_session_start_rejects_when_already_active(session_env: Path) -> None:
+    """session start should fail closed when another session is active."""
+    from studyctl.cli._session import session_group
+
+    runner = CliRunner()
+    first = runner.invoke(session_group, ["start", "--topic", "Python", "--energy", "5"])
+    assert first.exit_code == 0
+
+    second = runner.invoke(session_group, ["start", "--topic", "Rust", "--energy", "6"])
+    assert second.exit_code != 0
+    assert "already active" in second.output
+
+
 def test_park_command(session_env: Path) -> None:
     """park command writes to DB and parking file."""
     from studyctl.cli._session import park, session_group

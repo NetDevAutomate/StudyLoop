@@ -16,11 +16,13 @@ import urllib.request
 from pathlib import Path
 
 from studyctl.doctor.models import CheckResult
+from studyctl.installers import find_repo_root
 
 MANIFEST_URL = "https://raw.githubusercontent.com/NetDevAutomate/socratic-study-mentor/main/agents/manifest.json"
 
 TOOL_AGENTS: dict[str, tuple[str, str]] = {
     "claude": ("claude", "~/.claude/commands/socratic-mentor.md"),
+    "codex": ("codex", "{repo_root}/AGENTS.md"),
     "kiro": ("kiro-cli", "~/.kiro/agents/study-mentor.json"),
     "gemini": ("gemini", "~/.gemini/agents/study-mentor.md"),
     "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
@@ -35,6 +37,9 @@ def _detect_ai_tools() -> list[str]:
 
 def _get_agent_install_path(tool: str) -> Path:
     _, path_template = TOOL_AGENTS[tool]
+    if "{repo_root}" in path_template:
+        repo_root = find_repo_root(Path.cwd()) or Path.cwd()
+        return Path(path_template.format(repo_root=repo_root)).expanduser()
     return Path(path_template).expanduser()
 
 

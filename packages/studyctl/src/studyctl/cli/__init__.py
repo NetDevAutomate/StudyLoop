@@ -22,6 +22,8 @@ from studyctl.cli._lazy import LazyGroup
         "dedup": "studyctl.cli._sync:dedup",
         # _setup.py — first-run setup wizard
         "setup": "studyctl.cli._setup:setup",
+        # _install.py — typed installation helpers
+        "install": "studyctl.cli._install:install_group",
         # _config.py — configuration
         "config": "studyctl.cli._config:config_group",
         # _review.py — spaced repetition, progress, wins, streaks, bridges

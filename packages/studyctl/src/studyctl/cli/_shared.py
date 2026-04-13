@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
+from click import ClickException
+
+from studyctl.installers import InstallError, install_agent_definitions, require_repo_root
 from studyctl.output import console
 from studyctl.topics import Topic, get_topics
 
@@ -50,31 +52,26 @@ def offer_agent_install(flag: bool | None) -> None:
     Args:
         flag: True = install, False = skip, None = ask interactively.
     """
-    # Find install-agents.sh relative to the package
-    candidate = Path(__file__).resolve().parent.parent
-    for _ in range(6):
-        script = candidate / "scripts" / "install-agents.sh"
-        if script.exists():
-            break
-        candidate = candidate.parent
-    else:
-        return  # Script not found — skip silently (pip install, not git clone)
-
     if flag is None:
         console.print("\n[bold cyan]Agent Installation[/bold cyan]")
         console.print(
             "The study mentor agents can be installed for detected AI tools\n"
-            "(Claude Code, Kiro CLI, Gemini, OpenCode, Amp).\n"
+            "(Claude Code, Codex CLI, Kiro CLI, Gemini, OpenCode, Amp).\n"
         )
         reply = input("Install agent definitions now? [Y/n] ").strip().lower()
         flag = reply in ("", "y", "yes")
 
     if flag:
-        console.print("[dim]Running install-agents.sh...[/dim]")
-        result = subprocess.run(["bash", str(script)], capture_output=True, text=True)
-        if result.returncode == 0:
-            for line in result.stdout.strip().splitlines():
-                console.print(f"  {line}")
-        else:
-            console.print("[yellow]Agent install had issues — run manually:[/yellow]")
-            console.print(f"  bash {script}")
+        try:
+            repo_root = require_repo_root(Path.cwd())
+            summary = install_agent_definitions(repo_root)
+        except (InstallError, OSError) as exc:
+            console.print(f"[yellow]Agent install skipped:[/yellow] {exc}")
+            return
+        except ClickException as exc:
+            console.print(f"[yellow]Agent install skipped:[/yellow] {exc}")
+            return
+
+        console.print("[green]Agent definitions installed.[/green]")
+        for name, count in summary.items():
+            console.print(f"  {name}: {count}")

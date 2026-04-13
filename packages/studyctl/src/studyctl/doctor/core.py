@@ -68,7 +68,7 @@ def check_agent_session_tools() -> list[CheckResult]:
                 "agent_session_tools",
                 "warn",
                 "agent-session-tools not installed (sessions DB unavailable)",
-                "uv pip install agent-session-tools",
+                "studyctl install tools",
                 fix_auto=True,
             )
         ]
@@ -101,7 +101,7 @@ def check_config_file() -> list[CheckResult]:
                 "config_file",
                 "warn",
                 f"Config not found: {config_path}",
-                "studyctl config init",
+                "studyctl doctor --fix",
                 fix_auto=True,
             )
         ]

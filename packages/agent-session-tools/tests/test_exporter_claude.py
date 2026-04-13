@@ -228,15 +228,10 @@ class TestClaudeStableSessionIds:
 
 
 class TestClaudeIncremental:
-    def test_unchanged_file_reimported_as_update(self, projects_dir, migrated_db):
-        """Unchanged files are re-imported as 'updated' on second run.
-
-        BUG: commit_batch() does not persist import_fingerprint to the sessions
-        table, so _process_session_file always sees NULL when checking the
-        stored fingerprint.  The file is re-processed every time incremental
-        mode is used.  Once commit_batch is fixed to write import_fingerprint,
-        this test should be updated to assert stats2.updated == 0.
-        """
+    def test_unchanged_file_is_skipped_when_fingerprint_matches(
+        self, projects_dir, migrated_db
+    ):
+        """Incremental export skips unchanged files once fingerprint is persisted."""
         conn, _ = migrated_db
 
         session_file = projects_dir / "proj" / "agent-inc.jsonl"
@@ -247,12 +242,9 @@ class TestClaudeIncremental:
         stats1 = exporter.export_all(conn, incremental=True)
         assert stats1.added == 1
 
-        # Second run -- file unchanged, but fingerprint is not persisted by
-        # commit_batch so the exporter cannot detect it as unchanged.
         stats2 = exporter.export_all(conn, incremental=True)
         assert stats2.added == 0
-        # Session already exists so it is marked "updated"
-        assert stats2.updated == 1
+        assert stats2.updated == 0
 
     def test_modified_file_is_reimported(self, projects_dir, migrated_db):
         conn, _ = migrated_db
@@ -449,12 +441,7 @@ class TestClaudeMetadata:
         assert session["git_branch"] == "feature/cool-thing"
 
     def test_fingerprint_in_metadata_json(self, projects_dir, migrated_db):
-        """The exporter stores the fingerprint inside the metadata JSON column.
-
-        NOTE: import_fingerprint is NOT written to its own column because
-        commit_batch() does not include it in its INSERT statement.  The
-        fingerprint is available in the metadata JSON blob instead.
-        """
+        """The exporter stores the fingerprint inside the metadata JSON column."""
         conn, _ = migrated_db
 
         _write_jsonl(
@@ -471,14 +458,8 @@ class TestClaudeMetadata:
         # Fingerprint format is "{mtime}:{size}"
         assert ":" in meta["fingerprint"]
 
-    def test_import_fingerprint_column_is_null(self, projects_dir, migrated_db):
-        """Document that import_fingerprint column is NOT populated.
-
-        BUG: commit_batch() only inserts the 7 base session columns and does
-        not include import_fingerprint.  This test documents the current
-        (broken) behaviour.  When commit_batch is fixed, this test should be
-        updated to assert the column IS populated.
-        """
+    def test_import_fingerprint_column_is_populated(self, projects_dir, migrated_db):
+        """commit_batch persists import_fingerprint when the column exists."""
         conn, _ = migrated_db
 
         _write_jsonl(
@@ -490,8 +471,7 @@ class TestClaudeMetadata:
         exporter.export_all(conn)
 
         session = conn.execute("SELECT import_fingerprint FROM sessions").fetchone()
-        # Currently always NULL due to commit_batch not writing this column
-        assert session["import_fingerprint"] is None
+        assert session["import_fingerprint"]
 
     def test_message_uuid_preserved(self, projects_dir, migrated_db):
         conn, _ = migrated_db

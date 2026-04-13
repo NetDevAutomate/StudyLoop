@@ -18,6 +18,7 @@ from .progress import (
 )
 from .search import struggle_topics, topic_frequency
 from .sessions import (
+    abort_study_session,
     end_study_session,
     get_energy_session_data,
     get_last_session_summary,
@@ -30,6 +31,7 @@ from .teachback import get_teachback_history, record_teachback
 
 __all__ = [
     "ConceptSummary",
+    "abort_study_session",
     "check_medication_window",
     "end_study_session",
     "get_bridges",

@@ -53,6 +53,12 @@ extra_css:
 extra_javascript:
   - javascripts/preferences.js
 
+exclude_docs: |
+  local_repo_docs/**
+  solutions/**
+  codebase-review-2026-04-08.md
+  remediation-log-2026-04-08.md
+
 nav:
   - Home: index.md
   - Getting Started:

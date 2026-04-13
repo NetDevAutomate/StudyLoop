@@ -13,7 +13,7 @@ import re
 import shlex
 import sqlite3
 import subprocess
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -31,15 +31,170 @@ from agent_session_tools.config_loader import (
 
 # Tables to sync (order matters — sessions before messages for FK)
 # Session-scoped tables: filtered by session_id during delta sync
-SYNC_TABLES = ["sessions", "messages", "session_notes", "session_tags"]
+SYNC_TABLES = [
+    "sessions",
+    "messages",
+    "session_notes",
+    "session_tags",
+    "session_learning_metadata",
+    "file_references",
+]
 
 # Global tables: synced in full (small metadata, no session_id column)
 GLOBAL_SYNC_TABLES = [
+    "study_progress",
+    "study_sessions",
+    "teach_back_scores",
+    "knowledge_bridges",
     "concepts",
     "concept_aliases",
     "concept_relations",
     "message_concepts",
+    "parked_topics",
+    "scrub_log",
 ]
+
+TABLE_SYNC_COLUMNS = {
+    "sessions": [
+        "id",
+        "source",
+        "project_path",
+        "git_branch",
+        "created_at",
+        "updated_at",
+        "metadata",
+    ],
+    "messages": [
+        "id",
+        "session_id",
+        "parent_id",
+        "role",
+        "content",
+        "model",
+        "timestamp",
+        "metadata",
+    ],
+    "session_notes": ["session_id", "notes", "updated_at"],
+    "session_tags": ["session_id", "tag"],
+    "session_learning_metadata": [
+        "session_id",
+        "topics",
+        "concepts_practiced",
+        "skill_gaps",
+        "assessment_score",
+        "notes",
+        "created_at",
+        "updated_at",
+    ],
+    "file_references": [
+        "id",
+        "session_id",
+        "message_id",
+        "file_path",
+        "tool_name",
+        "timestamp",
+    ],
+    "study_progress": [
+        "id",
+        "topic",
+        "concept",
+        "confidence",
+        "first_seen",
+        "last_seen",
+        "session_count",
+        "notes",
+        "created_at",
+        "updated_at",
+        "last_teachback_score",
+        "angles_used",
+        "mastery_signals",
+        "concept_id",
+    ],
+    "study_sessions": [
+        "id",
+        "session_id",
+        "topic",
+        "energy_level",
+        "started_at",
+        "ended_at",
+        "duration_minutes",
+        "pomodoro_cycles",
+        "notes",
+        "created_at",
+        "persona_hash",
+        "win_count",
+        "struggle_count",
+        "topic_slug",
+    ],
+    "teach_back_scores": [
+        "id",
+        "concept",
+        "topic",
+        "session_id",
+        "score_accuracy",
+        "score_own_words",
+        "score_structure",
+        "score_depth",
+        "score_transfer",
+        "review_type",
+        "question_angle",
+        "notes",
+        "created_at",
+    ],
+    "knowledge_bridges": [
+        "id",
+        "source_concept",
+        "source_domain",
+        "target_concept",
+        "target_domain",
+        "structural_mapping",
+        "quality",
+        "times_used",
+        "times_helpful",
+        "created_by",
+        "created_at",
+        "updated_at",
+    ],
+    "concepts": ["id", "name", "domain", "description", "created_at", "updated_at"],
+    "concept_aliases": ["alias", "concept_id"],
+    "concept_relations": [
+        "id",
+        "source_concept_id",
+        "target_concept_id",
+        "relation_type",
+        "confidence",
+        "evidence_session_id",
+        "evidence_message_id",
+        "created_by",
+        "created_at",
+        "updated_at",
+    ],
+    "message_concepts": ["message_id", "concept_id", "confidence"],
+    "parked_topics": [
+        "id",
+        "study_session_id",
+        "session_id",
+        "topic_tag",
+        "question",
+        "context",
+        "status",
+        "scheduled_for",
+        "resolved_at",
+        "parked_at",
+        "created_by",
+        "source",
+        "tech_area",
+        "priority",
+    ],
+    "scrub_log": [
+        "id",
+        "session_id",
+        "message_id",
+        "entity_type",
+        "placeholder",
+        "scrubbed_at",
+    ],
+}
 
 # Module-level logger — does NOT configure the root logger (no basicConfig here).
 # Logging is set up in the app callback below, which only runs when this module
@@ -246,6 +401,92 @@ def _get_session_ids(
     return set(raw.splitlines()) if raw else set()
 
 
+def _quote_identifier(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _build_insert_select_sql(
+    table: str,
+    *,
+    id_filter: str | None = None,
+) -> str:
+    """Build a SELECT that emits INSERT OR REPLACE statements for a table."""
+    columns = TABLE_SYNC_COLUMNS[table]
+    quoted_columns = [_quote_identifier(column) for column in columns]
+    literal_expr = " || ',' || ".join(f"quote({col})" for col in quoted_columns)
+    where_clause = f" WHERE {id_filter}" if id_filter else ""
+    return (
+        f"SELECT 'INSERT OR REPLACE INTO {table} "
+        f"({', '.join(quoted_columns)}) VALUES (' || {literal_expr} || ');' "
+        f"FROM {table}{where_clause};"
+    )
+
+
+def _build_dump_queries(
+    session_ids: set[str], available_tables: set[str] | None = None
+) -> list[str]:
+    """Build SQL queries that emit replayable INSERT statements."""
+
+    def _has_table(table: str) -> bool:
+        return available_tables is None or table in available_tables
+
+    queries: list[str] = []
+    if session_ids:
+        placeholders = ",".join(f"'{sid}'" for sid in session_ids)
+        if _has_table("sessions"):
+            queries.append(
+                _build_insert_select_sql(
+                    "sessions", id_filter=f"id IN ({placeholders})"
+                )
+            )
+        for table in SYNC_TABLES:
+            if table == "sessions" or not _has_table(table):
+                continue
+            queries.append(
+                _build_insert_select_sql(
+                    table, id_filter=f"session_id IN ({placeholders})"
+                )
+            )
+
+    for table in GLOBAL_SYNC_TABLES:
+        if not _has_table(table):
+            continue
+        queries.append(_build_insert_select_sql(table))
+    return queries
+
+
+def _timestamp_key(value: str | None) -> tuple[int, object]:
+    """Return a comparable key for sync timestamps across mixed formats."""
+    if value is None:
+        return (0, "")
+
+    text = str(value).strip()
+    if not text:
+        return (0, "")
+
+    if text.isdigit():
+        raw = int(text)
+        # Treat 13+ digit values as milliseconds since epoch
+        if raw >= 10**12:
+            raw = raw / 1000
+        try:
+            return (2, datetime.fromtimestamp(raw, tz=UTC))
+        except (OverflowError, OSError, ValueError):
+            return (1, text)
+
+    normalized = text.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        return (1, text)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    else:
+        dt = dt.astimezone(UTC)
+    return (2, dt)
+
+
 def _get_sync_state(
     local_db: Path, host: str, remote_db: str
 ) -> tuple[set[str], set[str]]:
@@ -278,7 +519,7 @@ def _get_sync_state(
     for sid in set(local_sessions) & set(remote_sessions):
         local_ts = local_sessions[sid] or ""
         remote_ts = remote_sessions[sid] or ""
-        if local_ts > remote_ts:
+        if _timestamp_key(local_ts) > _timestamp_key(remote_ts):
             updated_ids.add(sid)
 
     return new_ids, updated_ids
@@ -294,31 +535,20 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
         return ""
 
     _validate_session_ids(session_ids)
-    placeholders = ",".join(f"'{sid}'" for sid in session_ids)
-    commands = [
-        ".mode insert sessions",
-        f"SELECT * FROM sessions WHERE id IN ({placeholders});",
-        ".mode insert messages",
-        f"SELECT * FROM messages WHERE session_id IN ({placeholders});",
-    ]
-    for table in ["session_notes", "session_tags"]:
-        commands.append(f".mode insert {table}")
-        commands.append(f"SELECT * FROM {table} WHERE session_id IN ({placeholders});")
-
-    # Global tables: sync all rows (small metadata, not session-scoped)
-    for table in GLOBAL_SYNC_TABLES:
-        commands.append(f".mode insert {table}")
-        commands.append(f"SELECT * FROM {table};")
-
-    result = subprocess.run(
-        ["sqlite3", str(db_path)],
-        input="\n".join(commands),
-        capture_output=True,
-        text=True,
-    )
-    # Ignore errors from missing optional tables
-    sql = result.stdout.replace("INSERT INTO", "INSERT OR REPLACE INTO")
-    return sql
+    conn = sqlite3.connect(db_path)
+    try:
+        available_tables = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        lines: list[str] = []
+        for query in _build_dump_queries(session_ids, available_tables):
+            lines.extend(row[0] for row in conn.execute(query).fetchall())
+        return "\n".join(lines) + ("\n" if lines else "")
+    finally:
+        conn.close()
 
 
 def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
@@ -461,7 +691,7 @@ def pull(
     updated_ids = {
         sid
         for sid in set(remote_sessions) & set(local_sessions)
-        if remote_sessions[sid] > local_sessions[sid]
+        if _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
     }
     all_ids = new_ids | updated_ids
 
@@ -475,23 +705,14 @@ def pull(
 
     # Dump from remote
     _validate_session_ids(all_ids)
-    placeholders = ",".join(f"'{sid}'" for sid in all_ids)
-    commands = []
-    for table in SYNC_TABLES:
-        commands.append(f".mode insert {table}")
-        id_col = "id" if table == "sessions" else "session_id"
-        commands.append(f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});")
-    for table in GLOBAL_SYNC_TABLES:
-        commands.append(f".mode insert {table}")
-        commands.append(f"SELECT * FROM {table};")
-
+    commands = _build_dump_queries(all_ids)
     result = subprocess.run(
         ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],
         input="\n".join(commands),
         capture_output=True,
         text=True,
     )
-    sql = result.stdout.replace("INSERT INTO", "INSERT OR REPLACE INTO")
+    sql = result.stdout
 
     console.print("[bold]Importing...[/bold]")
     if not _stream_sql_to_target(sql, local_db):
@@ -614,14 +835,14 @@ def sync(
     push_updated = {
         sid
         for sid in set(local_sessions) & set(remote_sessions)
-        if local_sessions[sid] > remote_sessions[sid]
+        if _timestamp_key(local_sessions[sid]) > _timestamp_key(remote_sessions[sid])
     }
     # Pull: remote new + remote newer
     pull_new = set(remote_sessions) - set(local_sessions)
     pull_updated = {
         sid
         for sid in set(local_sessions) & set(remote_sessions)
-        if remote_sessions[sid] > local_sessions[sid]
+        if _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
     }
 
     console.print(
@@ -636,17 +857,7 @@ def sync(
     if pull_ids:
         console.print(f"\n[bold]Step 1: Pulling {len(pull_ids)} sessions...[/bold]")
         _validate_session_ids(pull_ids)
-        placeholders = ",".join(f"'{sid}'" for sid in pull_ids)
-        commands = []
-        for table in SYNC_TABLES:
-            id_col = "id" if table == "sessions" else "session_id"
-            commands.append(f".mode insert {table}")
-            commands.append(
-                f"SELECT * FROM {table} WHERE {id_col} IN ({placeholders});"
-            )
-        for table in GLOBAL_SYNC_TABLES:
-            commands.append(f".mode insert {table}")
-            commands.append(f"SELECT * FROM {table};")
+        commands = _build_dump_queries(pull_ids)
 
         result = subprocess.run(
             [
@@ -660,7 +871,7 @@ def sync(
             capture_output=True,
             text=True,
         )
-        sql = result.stdout.replace("INSERT INTO", "INSERT OR REPLACE INTO")
+        sql = result.stdout
         if sql.strip() and not _stream_sql_to_target(sql, local_db):
             console.print("[red]❌ Failed to pull[/red]")
             raise typer.Exit(1)

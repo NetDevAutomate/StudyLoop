@@ -169,3 +169,27 @@ class TestUpgradeCommand:
             result = runner.invoke(upgrade)
         assert result.exit_code == 0
         assert "up to date" in result.output.lower()
+
+    def test_agents_component_runs_refresh(self, runner: CliRunner):
+        from studyctl.cli._upgrade import upgrade
+
+        mock_results = [
+            CheckResult(
+                "agents",
+                "agent_codex",
+                "warn",
+                "codex agent definition outdated",
+                "studyctl upgrade --component agents",
+                True,
+            ),
+        ]
+
+        with (
+            patch("studyctl.cli._upgrade._get_registry") as mock_reg,
+            patch("studyctl.cli._upgrade._upgrade_agents", return_value=True) as mock_upgrade,
+        ):
+            mock_reg.return_value.run_all.return_value = mock_results
+            result = runner.invoke(upgrade, ["--component", "agents"])
+
+        assert result.exit_code == 0
+        mock_upgrade.assert_called_once_with(dry_run=False)

@@ -40,6 +40,8 @@ studyctl struggles --days 30             # Find recurring struggle topics
 
 # Configuration & health
 studyctl setup                           # Interactive setup wizard
+studyctl install tools                   # Install global CLI entrypoints from repo
+studyctl install agents                  # Install agent definitions for detected tools
 studyctl config init                     # Interactive config (3 questions)
 studyctl config show                     # Display current configuration
 studyctl doctor                          # Full health check
@@ -52,7 +54,7 @@ studyctl restore                         # List available backups
 studyctl restore BACKUP --confirm        # Restore from backup (safety backup first)
 
 # Web
-studyctl web [--port PORT] [--host HOST] # Launch study web app (PWA)
+studyctl web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
 ```
 
 ### Study Sessions
@@ -115,6 +117,7 @@ studyctl doctor                          # Full health check (Rich table)
 studyctl doctor --json                   # JSON output (for AI agents and CI)
 studyctl doctor --quiet                  # One-line summary
 studyctl doctor --category core          # Check specific category only
+studyctl doctor --fix                    # Apply safe automatic fixes
 studyctl update --json                   # Machine-readable update info
 studyctl upgrade --dry-run               # Preview what would change
 studyctl upgrade --component packages    # Upgrade only packages
@@ -127,7 +130,7 @@ studyctl upgrade --component agents      # Update agent definitions only
 | Code | Meaning |
 |------|---------|
 | `0` | All checks pass — installation is healthy |
-| `1` | Warnings or failures that can be fixed — run `studyctl upgrade` |
+| `1` | Warnings or failures that can be fixed — run `studyctl doctor --fix` |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
 **Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `updates` (PyPI versions).
@@ -140,12 +143,13 @@ Review schedule: **1 → 3 → 7 → 14 → 30 days**
 
 ### Web PWA
 
-`studyctl web` launches a progressive web app for flashcard and quiz review. LAN accessible by default.
+`studyctl web` launches a progressive web app for flashcard and quiz review. By default it binds to `127.0.0.1`; use `--lan` to expose it on your network with HTTP Basic Auth.
 
 ```bash
-studyctl web                    # Serve on 0.0.0.0:8567
+studyctl web                    # Serve on 127.0.0.1:8567
 studyctl web --port 9000        # Custom port
-studyctl web --host localhost   # Local only
+studyctl web --lan              # Bind to 0.0.0.0 with auth
+studyctl web --lan --password SECRET
 ```
 
 | Key | Action | When |
@@ -191,7 +195,7 @@ agents:
 AI session export, search, and cross-machine sync.
 
 ```bash
-session-export [--source SOURCE]         # Export AI sessions to SQLite
+session-export [--sources SOURCE ...]    # Export AI sessions to SQLite
 session-query search QUERY               # Full-text search across sessions
 session-query list --since 7d            # List recent sessions
 session-query show SESSION_ID            # Show session details
@@ -214,6 +218,22 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 | `opencode` | OpenCode |
 | `litellm` | LiteLLM |
 | `repoprompt` | RepoPrompt |
+
+### Install & Export Examples
+
+```bash
+studyctl install tools
+studyctl install agents
+studyctl install agents --tool codex
+studyctl install agents --tool claude --tool gemini
+
+session-export
+session-export --sources claude codex
+session-export --sources gemini opencode
+session-export --claude-only
+session-export --gemini-only
+session-export --full
+```
 
 ### Optional Extras
 

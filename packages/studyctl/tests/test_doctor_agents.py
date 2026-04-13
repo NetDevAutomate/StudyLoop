@@ -40,6 +40,16 @@ class TestAgentToolDetection:
             tools = _detect_ai_tools()
         assert tools == []
 
+    def test_detect_codex(self):
+        from studyctl.doctor.agents import _detect_ai_tools
+
+        def _which(binary: str) -> str | None:
+            return "/usr/local/bin/codex" if binary == "codex" else None
+
+        with patch("shutil.which", side_effect=_which):
+            tools = _detect_ai_tools()
+        assert "codex" in tools
+
 
 class TestAgentSmokeTests:
     def test_smoke_test_success(self):
@@ -166,6 +176,14 @@ class TestAgentDefinitionCheck:
         ):
             results = check_agent_definitions()
         assert any(r.status == "warn" for r in results)
+
+    def test_codex_install_path_uses_repo_root(self, tmp_path: Path):
+        from studyctl.doctor.agents import _get_agent_install_path
+
+        with patch("studyctl.doctor.agents.find_repo_root", return_value=tmp_path):
+            path = _get_agent_install_path("codex")
+
+        assert path == tmp_path / "AGENTS.md"
 
     def test_manifest_fetch_fails(self):
         from studyctl.doctor.agents import check_agent_definitions

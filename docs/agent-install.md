@@ -12,7 +12,7 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini 
 - [Gemini CLI Setup](#gemini-cli-setup)
 - [OpenCode Setup](#opencode-setup)
 - [Amp Setup](#amp-setup)
-- [Local LLMs (Ollama / LM Studio)](#local-llms-ollama--lm-studio)
+- [Local LLMs](#local-llms)
 - [Agent Descriptions](#agent-descriptions)
 - [Skills Reference](#skills-reference)
 - [Uninstalling](#uninstalling)
@@ -21,7 +21,7 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini 
 
 The **install-mentor agent** can guide you through the entire setup process conversationally. It detects your environment, installs packages, configures studyctl, and verifies everything works using `studyctl doctor`.
 
-The prompt lives at [`agents/shared/install-mentor.md`](../agents/shared/install-mentor.md) and works with any AI coding tool. To use it:
+The prompt lives at `agents/shared/install-mentor.md` in the repo and works with any AI coding tool. To use it:
 
 ```bash
 # In Claude Code — just ask:
@@ -39,7 +39,6 @@ AI agents are custom personas you load into tools like kiro-cli or Claude Code. 
 This project ships agents for six platforms:
 - **study-mentor** (kiro-cli) — full study pipeline with spaced repetition
 - **socratic-mentor** (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
-- **mentor-reviewer** (Claude Code) — autonomous code review with scoring
 - **AGENTS.md** (Codex CLI) — Socratic mentoring auto-loaded from project context
 - **study-mentor** (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
 - **study-mentor** (OpenCode) — AuDHD-aware study mentor with spaced repetition
@@ -47,7 +46,13 @@ This project ships agents for six platforms:
 
 ## Automatic Installation
 
-The install script detects which AI tools you have and symlinks the agent definitions:
+The preferred interface is the typed CLI command:
+
+```bash
+studyctl install agents
+```
+
+The compatibility wrapper still exists if you are working from a repo checkout:
 
 ```bash
 ./scripts/install-agents.sh
@@ -58,13 +63,13 @@ It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `openc
 Options:
 
 ```bash
-./scripts/install-agents.sh --kiro      # Kiro CLI only
-./scripts/install-agents.sh --claude    # Claude Code only
-./scripts/install-agents.sh --codex     # Codex CLI only
-./scripts/install-agents.sh --gemini    # Gemini CLI only
-./scripts/install-agents.sh --opencode  # OpenCode only
-./scripts/install-agents.sh --amp       # Amp only
-./scripts/install-agents.sh --uninstall # Remove all agent links
+studyctl install agents --tool kiro
+studyctl install agents --tool claude
+studyctl install agents --tool codex
+studyctl install agents --tool gemini
+studyctl install agents --tool opencode
+studyctl install agents --tool amp
+studyctl install agents --uninstall
 ```
 
 ## Kiro CLI Setup
@@ -122,26 +127,16 @@ Edit skills in `agents/kiro/skills/` to modify:
 | Source | Target | Purpose |
 |--------|--------|---------|
 | `agents/claude/socratic-mentor.md` | `~/.claude/agents/socratic-mentor.md` | Socratic teaching agent |
-| `agents/claude/mentor-reviewer.yaml` | `~/.claude/agents/mentor-reviewer.yaml` | Code review agent |
 
 ### Starting a session
 
 ```bash
-# Socratic mentor — guided learning
 /agent socratic-mentor
-
-# Code reviewer — autonomous review with scoring
-/agent mentor-reviewer
 ```
 
 ### Customizing
 
 - **socratic-mentor**: Edit `agents/claude/socratic-mentor.md` — it's a markdown file with the full persona, questioning techniques, and learning session orchestration
-- **mentor-reviewer**: Edit `agents/claude/mentor-reviewer.yaml` — configure output directories, scoring methodology, and review format
-
-The mentor-reviewer supports environment variable configuration:
-- `MENTOR_REVIEW_OUTPUT_DIR` — where review reports are saved (default: `./reviews`)
-- `MENTOR_TUTORIAL_DIR` — where tutorials are generated (default: `./tutorials`)
 
 ## Codex CLI Setup
 
@@ -162,7 +157,7 @@ Codex auto-loads `AGENTS.md` from the current working directory, so the installe
 ### Auto-install
 
 ```bash
-./scripts/install-agents.sh --codex
+studyctl install agents --tool codex
 ```
 
 ### Manual install
@@ -206,7 +201,7 @@ The installer also creates `~/.gemini/settings.json` with `experimental.enableAg
 ### Auto-install
 
 ```bash
-./scripts/install-agents.sh --gemini
+studyctl install agents --tool gemini
 ```
 
 ### Manual install
@@ -259,7 +254,7 @@ OpenCode discovers agents from `.opencode/agents/*.md` (project-level) or `~/.co
 ### Auto-install
 
 ```bash
-./scripts/install-agents.sh --opencode
+studyctl install agents --tool opencode
 ```
 
 ### Manual install
@@ -294,15 +289,14 @@ opencode
 
 | Source | Target | Purpose |
 |--------|--------|---------|
-| `agents/amp/AGENTS.md` | `AGENTS.md` (project root) | Project-level agent instructions |
 | `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
 
-Amp reads `AGENTS.md` from the project root automatically — no additional configuration needed.
+Amp currently has no dedicated project-level agent file in this repo. `studyctl install agents --tool amp` installs the shared framework only; if you want project-level instructions, create or link `AGENTS.md` in the repo root yourself.
 
 ### Auto-install
 
 ```bash
-./scripts/install-agents.sh --amp
+studyctl install agents --tool amp
 ```
 
 ### Manual install
@@ -323,7 +317,7 @@ amp
 # AGENTS.md is loaded automatically — just start asking for a study session
 ```
 
-## Local LLMs (Ollama / LM Studio)
+## Local LLMs
 
 studyctl can use local LLMs as the study mentor backend instead of cloud Claude. This uses Claude Code as the frontend but points it at a local model server via environment variables.
 
@@ -525,7 +519,7 @@ Cross-agent progress tracking. Provides:
 Remove all symlinks created by the installer:
 
 ```bash
-./scripts/install-agents.sh --uninstall
+studyctl install agents --uninstall
 ```
 
 This only removes symlinks that point into this repo. It won't touch agent files you've created manually or from other sources. Any existing files that were backed up during installation (with `.bak` suffix) remain untouched.

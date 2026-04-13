@@ -35,8 +35,7 @@ def _connect(db_path: Path) -> sqlite3.Connection:
 def ensure_tables(db_path: Path | None = None) -> None:
     """Create card_reviews and review_sessions tables if they don't exist."""
     path = db_path or _get_db()
-    if not path.exists():
-        return
+    path.parent.mkdir(parents=True, exist_ok=True)
 
     with _connect(path) as conn:
         conn.execute("""
@@ -93,8 +92,9 @@ def record_card_review(
         # Get previous review for this card
         row = conn.execute(
             "SELECT ease_factor, interval_days FROM card_reviews "
-            "WHERE card_hash = ? ORDER BY reviewed_at DESC LIMIT 1",
-            (card_hash,),
+            "WHERE course = ? AND card_hash = ? "
+            "ORDER BY reviewed_at DESC LIMIT 1",
+            (course, card_hash),
         ).fetchone()
 
         if row:
