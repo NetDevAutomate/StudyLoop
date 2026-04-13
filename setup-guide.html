@@ -450,6 +450,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -510,6 +538,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -643,6 +699,90 @@
     
   
     CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="system-overview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
   
 
     
@@ -1018,7 +1158,14 @@ tmux source-file ~/.tmux.conf</code></p>
 <p>Run <code>studyctl doctor</code> to verify the configuration — it checks for
 tmux-resurrect and warns if the restore hook is not detected.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<h3 id="automatic-recommended">Automatic (recommended)<a class="headerlink" href="#automatic-recommended" title="Permanent link">&para;</a></h3>
+<h3 id="user-install-recommended">User Install (recommended)<a class="headerlink" href="#user-install-recommended" title="Permanent link">&para;</a></h3>
+<p>For end users on macOS, prefer the Homebrew formula over the repo bootstrap script:</p>
+<p><code>bash
+brew install NetDevAutomate/studyctl/studyctl
+studyctl setup
+studyctl doctor --fix</code></p>
+<p>This gives you managed upgrades, uninstall, and a cleaner default install path.</p>
+<h3 id="repo-bootstrap">Repo Bootstrap<a class="headerlink" href="#repo-bootstrap" title="Permanent link">&para;</a></h3>
 <p><code>bash
 git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 cd socratic-study-mentor
@@ -1026,22 +1173,42 @@ cd socratic-study-mentor
 <p>This will:
 1. Verify Python 3.12+ is installed
 2. Install <code>uv</code> if not already available
-3. Run <code>uv sync</code> to install both packages
-4. Run <code>install-agents.sh</code> to set up AI agent definitions
-5. Create a default config at <code>~/.config/studyctl/config.yaml</code>
-6. Optionally download the kokoro-onnx voice model (~85MB) for TTS support</p>
-<h3 id="manual">Manual<a class="headerlink" href="#manual" title="Permanent link">&para;</a></h3>
+3. Run <code>uv sync</code>
+4. Delegate to <code>studyctl install tools</code>
+5. Delegate to <code>studyctl install agents</code></p>
+<p>The shell script is now only a bootstrap wrapper. The real install surface lives in typed CLI commands:</p>
+<p><code>bash
+studyctl install tools
+studyctl install agents
+studyctl doctor --fix</code></p>
+<h3 id="developer-install">Developer Install<a class="headerlink" href="#developer-install" title="Permanent link">&para;</a></h3>
+<p>If you are contributing to the repo or running from source, prefer <code>uv sync</code> in the checkout:</p>
+<p><code>bash
+git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
+cd Socratic-Study-Mentor
+uv sync</code></p>
+<p>Then use the repo-local commands directly, or install/editable tools only when you explicitly want global entrypoints.</p>
+<p>For contributor setups, the cleanest flow is usually:</p>
+<p><code>bash
+uv sync
+uv run studyctl install agents
+uv run studyctl doctor --fix</code></p>
+<h3 id="legacy-script-modes">Legacy Script Modes<a class="headerlink" href="#legacy-script-modes" title="Permanent link">&para;</a></h3>
 <p>```bash
 git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
 cd Socratic-Study-Mentor</p>
-<h1 id="full-install-interactive-prompts-for-tts-voice-model">Full install (interactive — prompts for TTS voice model)<a class="headerlink" href="#full-install-interactive-prompts-for-tts-voice-model" title="Permanent link">&para;</a></h1>
+<h1 id="full-bootstrap-from-a-repo-checkout">Full bootstrap from a repo checkout<a class="headerlink" href="#full-bootstrap-from-a-repo-checkout" title="Permanent link">&para;</a></h1>
 <p>./scripts/install.sh</p>
-<h1 id="full-install-without-prompts-for-ansibleci">Full install without prompts (for Ansible/CI)<a class="headerlink" href="#full-install-without-prompts-for-ansibleci" title="Permanent link">&para;</a></h1>
+<h1 id="full-install-without-prompts-for-ansibleci-compatibility">Full install without prompts (for Ansible/CI compatibility)<a class="headerlink" href="#full-install-without-prompts-for-ansibleci-compatibility" title="Permanent link">&para;</a></h1>
 <p>./scripts/install.sh --non-interactive</p>
 <h1 id="just-reinstallupgrade-cli-tools-globally">Just reinstall/upgrade CLI tools globally<a class="headerlink" href="#just-reinstallupgrade-cli-tools-globally" title="Permanent link">&para;</a></h1>
 <p>./scripts/install.sh --tools-only</p>
 <h1 id="just-reinstall-agent-definitions">Just reinstall agent definitions<a class="headerlink" href="#just-reinstall-agent-definitions" title="Permanent link">&para;</a></h1>
 <p>./scripts/install.sh --agents-only</p>
+<h1 id="direct-typed-commands">Direct typed commands<a class="headerlink" href="#direct-typed-commands" title="Permanent link">&para;</a></h1>
+<p>studyctl install tools
+studyctl install agents
+studyctl doctor --fix</p>
 <h1 id="install-optional-extras">Install optional extras<a class="headerlink" href="#install-optional-extras" title="Permanent link">&para;</a></h1>
 <p>uv pip install studyctl[notebooklm]
 uv pip install agent-session-tools[semantic]
@@ -1075,11 +1242,15 @@ studyctl config init</code></p>
 <p>The wizard creates or updates <code>~/.config/studyctl/config.yaml</code> with your choices. You can re-run it at any time to change settings.</p>
 <h3 id="manual-configuration">Manual Configuration<a class="headerlink" href="#manual-configuration" title="Permanent link">&para;</a></h3>
 <p>All configuration lives in a single file: <code>~/.config/studyctl/config.yaml</code>. This file is shared between <code>studyctl</code> and all <code>session-*</code> tools — use the same file on every machine.</p>
+<p>To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:</p>
+<p><code>yaml
+agents:
+  priority: [codex, claude, gemini, opencode, kiro, ollama, lmstudio]</code></p>
 <h3 id="web-pwa-recommended">Web PWA (recommended)<a class="headerlink" href="#web-pwa-recommended" title="Permanent link">&para;</a></h3>
 <p>The study web app requires no extra dependencies — just run:</p>
 <p><code>bash
 studyctl web</code></p>
-<p>This starts a web server on <code>http://0.0.0.0:8567</code> accessible from any device on your network. Open it on your phone, tablet, or laptop.</p>
+<p>This starts a web server on <code>http://127.0.0.1:8567</code>. Use <code>studyctl web --lan</code> if you want to expose it to other devices on your network.</p>
 <p><strong>Install as PWA (iOS/Android):</strong> Open in Safari → Share → Add to Home Screen. The app then works full-screen like a native app.</p>
 <p>Configure flashcard/quiz directories:</p>
 <p>```yaml</p>
@@ -1350,12 +1521,15 @@ tts:
 <p>```bash</p>
 <h1 id="export-from-all-detected-sources">Export from all detected sources<a class="headerlink" href="#export-from-all-detected-sources" title="Permanent link">&para;</a></h1>
 <p>session-export</p>
-<h1 id="export-from-a-specific-source">Export from a specific source<a class="headerlink" href="#export-from-a-specific-source" title="Permanent link">&para;</a></h1>
-<p>session-export --source claude
-session-export --source kiro
-session-export --source aider
+<h1 id="export-specific-sources">Export specific sources<a class="headerlink" href="#export-specific-sources" title="Permanent link">&para;</a></h1>
+<p>session-export --sources claude codex
+session-export --sources gemini opencode</p>
+<h1 id="legacy-convenience-flags">Legacy convenience flags<a class="headerlink" href="#legacy-convenience-flags" title="Permanent link">&para;</a></h1>
+<p>session-export --claude-only
+session-export --kiro-only
+session-export --gemini-only
 ```</p>
-<p>Supported sources: <code>claude</code>, <code>kiro</code>, <code>gemini</code>, <code>opencode</code>, <code>aider</code>, <code>litellm</code>, <code>repoprompt</code></p>
+<p>Supported sources: <code>claude</code>, <code>codex</code>, <code>kiro</code>, <code>gemini</code>, <code>opencode</code>, <code>aider</code>, <code>litellm</code>, <code>repoprompt</code></p>
 <h3 id="verify-its-working">Verify it's working<a class="headerlink" href="#verify-its-working" title="Permanent link">&para;</a></h3>
 <p><code>bash
 session-query stats              # Show database statistics
@@ -1391,7 +1565,7 @@ studyctl content autopilot -o ./chapters</p>
 <h1 id="4-convert-obsidian-notes-to-pdfs-and-upload-in-one-step">4. Convert Obsidian notes to PDFs and upload in one step<a class="headerlink" href="#4-convert-obsidian-notes-to-pdfs-and-upload-in-one-step" title="Permanent link">&para;</a></h1>
 <p>studyctl content from-obsidian ~/Obsidian/Vault/Study/Python
 ```</p>
-<p>See the <a href="../README.md#studyctl-content">CLI Reference</a> for all available commands.</p>
+<p>See the <a href="cli-reference.html">CLI Reference</a> for all available commands.</p>
 <h2 id="cross-machine-sync">Cross-Machine Sync<a class="headerlink" href="#cross-machine-sync" title="Permanent link">&para;</a></h2>
 <p>Both tools support syncing state across machines via SSH.</p>
 <h3 id="session-database-sync">Session database sync<a class="headerlink" href="#session-database-sync" title="Permanent link">&para;</a></h3>
@@ -1400,7 +1574,7 @@ session-sync push macmini        # Push sessions to a named host
 session-sync pull macbookpro     # Pull sessions from a named host
 session-sync sync work-macbook   # Two-way sync with a host
 session-sync endpoints           # List all configured remote hosts</code></p>
-<p>Both commands read host definitions from <code>~/.config/studyctl/config.yaml</code> (the <code>hosts</code> section). See the <a href="#hosts--cross-machine-sync">Hosts configuration</a> in the README for the full schema. Delta sync transfers only new sessions, not the entire database.</p>
+<p>Both commands read host definitions from <code>~/.config/studyctl/config.yaml</code> (the <code>hosts</code> section). See <a href="#host-configuration">Host Configuration</a> below for the schema. Delta sync transfers only new sessions, not the entire database.</p>
 <h2 id="scheduling">Scheduling<a class="headerlink" href="#scheduling" title="Permanent link">&para;</a></h2>
 <p>Set up automatic sync so your notes and sessions stay current.</p>
 <p>```bash</p>
@@ -1503,22 +1677,24 @@ studyctl doctor</code></p>
 </ul>
 <p>If issues are found:</p>
 <p><code>bash
-studyctl upgrade              # Fix auto-fixable issues (packages, DB, agents)
+studyctl doctor --fix         # Apply safe auto-fixes first
+studyctl upgrade              # Apply package/database/agent upgrades
 studyctl upgrade --dry-run    # Preview changes first</code></p>
 <p>For machine-readable output (used by CI pipelines and AI agents):</p>
 <p><code>bash
 studyctl doctor --json</code></p>
 <h3 id="ai-guided-setup">AI-Guided Setup<a class="headerlink" href="#ai-guided-setup" title="Permanent link">&para;</a></h3>
 <p>If you're using an AI coding assistant, the <strong>install-mentor agent</strong> can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs <code>studyctl doctor</code>, and fixes issues.</p>
-<p>The prompt lives at <code>agents/shared/install-mentor.md</code> and works with any AI tool that can run shell commands — Claude Code, Kiro CLI, Gemini CLI, OpenCode, or Amp.</p>
-<p>To use it in Claude Code:
+<p>The prompt lives at <code>agents/shared/install-mentor.md</code> and works with any AI tool that can run shell commands — Claude Code, Codex CLI, Kiro CLI, Gemini CLI, OpenCode, or Amp.</p>
+<p>For example, in Claude Code or Codex:
 <code>Read agents/shared/install-mentor.md and follow its instructions to set up studyctl</code></p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="first-step-run-studyctl-doctor">First step: run <code>studyctl doctor</code><a class="headerlink" href="#first-step-run-studyctl-doctor" title="Permanent link">&para;</a></h3>
 <p>Before investigating specific issues, always start with the health check:</p>
 <p><code>bash
 studyctl doctor</code></p>
-<p>This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run <code>studyctl upgrade</code> to resolve them.</p>
+<p>This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run <code>studyctl upgrade</code> to resolve them.
+This will identify most common problems and tell you how to fix them. Start with <code>studyctl doctor --fix</code> for safe local repairs, then use <code>studyctl upgrade</code> for package-level updates.</p>
 <h3 id="studyctl-command-not-found"><code>studyctl: command not found</code><a class="headerlink" href="#studyctl-command-not-found" title="Permanent link">&para;</a></h3>
 <p>The package isn't on your PATH. Either:
 - Run via <code>uv run studyctl</code> instead
@@ -1528,6 +1704,8 @@ studyctl doctor</code></p>
 - Claude Code: <code>~/.claude/projects/</code>
 - Kiro CLI: <code>~/Library/Application Support/kiro-cli/data.sqlite3</code> (macOS)
 - Gemini CLI: <code>~/.gemini/tmp/</code>
+- Codex CLI: exported from Codex transcript storage if present on this machine
+- OpenCode: <code>~/.local/share/opencode/storage/</code>
 - Aider: <code>.aider.chat.history.md</code> files in project directories</p>
 <h3 id="studyctl-review-shows-nothing"><code>studyctl review</code> shows nothing<a class="headerlink" href="#studyctl-review-shows-nothing" title="Permanent link">&para;</a></h3>
 <p>The session database may be empty. Run <code>session-export</code> first to populate it, then <code>studyctl review</code> can check your study history.</p>

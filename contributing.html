@@ -364,6 +364,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -424,6 +452,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -557,6 +613,90 @@
     
   
     CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="system-overview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
   
 
     
@@ -936,8 +1076,10 @@
 <h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="#development-setup">Development Setup</a></li>
+<li><a href="#task-runner">Task Runner</a></li>
 <li><a href="#code-style">Code Style</a></li>
 <li><a href="#running-tests">Running Tests</a></li>
+<li><a href="#release-build">Release Build</a></li>
 <li><a href="#project-structure">Project Structure</a></li>
 <li><a href="#how-to-add-a-new-session-exporter">How to Add a New Session Exporter</a></li>
 <li><a href="#how-to-add-a-new-study-topic">How to Add a New Study Topic</a></li>
@@ -958,6 +1100,24 @@ cd socratic-study-mentor</p>
 - <code>ruff</code> — linting and formatting
 - <code>trailing-whitespace</code>, <code>end-of-file-fixer</code> — file hygiene
 - <code>detect-secrets</code>, <code>detect-private-key</code>, <code>detect-aws-credentials</code> — security checks</p>
+<h2 id="task-runner">Task Runner<a class="headerlink" href="#task-runner" title="Permanent link">&para;</a></h2>
+<p>Contributor workflows are exposed through <code>just</code>:</p>
+<p><code>bash
+just test
+just lint
+just typecheck
+just docs
+just build-release
+just release-check</code></p>
+<p>Install <code>just</code> if needed:</p>
+<p><code>bash
+brew install just</code></p>
+<p><code>just release-check</code> runs the full local release gate:
+- tests
+- lint
+- typecheck
+- strict docs build
+- release artifact build</p>
 <h2 id="code-style">Code Style<a class="headerlink" href="#code-style" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Linter/formatter</strong>: <a href="https://docs.astral.sh/ruff/">ruff</a> (configured in each <code>pyproject.toml</code>)</li>
@@ -980,7 +1140,7 @@ uv run pyright packages/         # Type check</code></p>
 <h2 id="running-tests">Running Tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h2>
 <p>```bash</p>
 <h1 id="run-all-tests">Run all tests<a class="headerlink" href="#run-all-tests" title="Permanent link">&para;</a></h1>
-<p>uv run pytest</p>
+<p>just test</p>
 <h1 id="run-with-verbose-output">Run with verbose output<a class="headerlink" href="#run-with-verbose-output" title="Permanent link">&para;</a></h1>
 <p>uv run pytest -v</p>
 <h1 id="run-a-specific-test-file">Run a specific test file<a class="headerlink" href="#run-a-specific-test-file" title="Permanent link">&para;</a></h1>
@@ -991,94 +1151,62 @@ uv run pyright packages/         # Type check</code></p>
 <p>Tests live in:
 - <code>packages/studyctl/tests/</code> — studyctl CLI and review tests
 - <code>packages/agent-session-tools/tests/</code> — session tools tests</p>
+<h2 id="release-build">Release Build<a class="headerlink" href="#release-build" title="Permanent link">&para;</a></h2>
+<p>Use the shared release-build script for local package verification:</p>
+<p><code>bash
+just build-release</code></p>
+<p>This recipe calls <code>./scripts/build-release.sh</code>, which:
+- deletes old contents from <code>dist/</code>
+- builds the <code>studyctl</code> sdist and wheel with <code>uv build --package studyctl --no-sources</code></p>
+<p>The release workflow uses the same script, so local and CI builds follow the same path.</p>
 <h2 id="project-structure">Project Structure<a class="headerlink" href="#project-structure" title="Permanent link">&para;</a></h2>
 <p><code>socratic-study-mentor/
 ├── packages/
-│   ├── studyctl/                    # Study pipeline CLI
+│   ├── studyctl/                    # User-facing study toolkit
 │   │   ├── src/studyctl/
-│   │   │   ├── cli/                # Click CLI (LazyGroup package)
-│   │   │   │   ├── __init__.py     # Root group + lazy registration
-│   │   │   │   ├── _lazy.py        # LazyGroup class
-│   │   │   │   ├── _shared.py      # Console, helpers, constants
-│   │   │   │   ├── _sync.py        # sync, status, audio, topics, dedup
-│   │   │   │   ├── _review.py      # review, struggles, wins, progress, bridges
-│   │   │   │   ├── _config.py      # config init, config show
-│   │   │   │   ├── _state.py       # state push/pull/status/init
-│   │   │   │   ├── _content.py     # content group (split, process, syllabus, etc.)
-│   │   │   │   ├── _schedule.py    # schedule group + calendar blocks
-│   │   │   │   └── _web.py         # web, tui, docs commands
-│   │   │   ├── content/             # Content pipeline (absorbed from pdf-by-chapters)
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── splitter.py     # PDF splitting by TOC bookmarks or page ranges
-│   │   │   │   ├── notebooklm_client.py  # NotebookLM API (upload, generate, download)
-│   │   │   │   ├── syllabus.py     # Podcast syllabus chunking and state machine
-│   │   │   │   ├── markdown_converter.py # Obsidian markdown → PDF conversion
-│   │   │   │   ├── models.py       # Shared data models (UploadResult, etc.)
-│   │   │   │   └── storage.py      # Course directory management
-│   │   │   ├── services/           # Framework-agnostic service layer
-│   │   │   │   ├── review.py       # Review operations (cards, stats, SM-2)
-│   │   │   │   └── content.py      # Content service wrappers
-│   │   │   ├── settings.py         # Configuration and path resolution
-│   │   │   ├── topics.py           # Topic definitions (Topic, get_topics)
-│   │   │   ├── review_db.py        # SQLite SM-2 spaced repetition (WAL mode)
-│   │   │   ├── review_loader.py    # Flashcard/quiz JSON loader + validation
-│   │   │   ├── sync.py             # NotebookLM sync
-│   │   │   ├── state.py            # Sync state tracking
-│   │   │   ├── history/            # Session history (9 focused modules)
-│   │   │   │   ├── sessions.py     # Session CRUD + summary
-│   │   │   │   ├── progress.py     # Progress tracking + spaced repetition
-│   │   │   │   ├── search.py       # FTS5 topic frequency + struggles
-│   │   │   │   ├── teachback.py    # 5-dimension teach-back scoring
-│   │   │   │   ├── bridges.py      # Knowledge bridge CRUD + migration
-│   │   │   │   ├── concepts.py     # Concept seeding + listing
-│   │   │   │   ├── streaks.py      # Study streak calculation
-│   │   │   │   └── medication.py   # Medication window checking
-│   │   │   ├── session/            # Session orchestration
-│   │   │   │   ├── orchestrator.py # tmux env creation + pane layout
-│   │   │   │   ├── resume.py       # Reattach/rebuild sessions
-│   │   │   │   └── cleanup.py      # End session + IPC cleanup
-│   │   │   ├── scheduler.py        # launchd/cron jobs
-│   │   │   ├── shared.py           # Cross-machine sync
-│   │   │   ├── maintenance.py      # Notebook deduplication
-│   │   │   ├── tui/                # Textual TUI app
-│   │   │   ├── web/                # Web PWA server + static assets
-│   │   │   └── pdf.py              # Markdown→PDF export
+│   │   │   ├── adapters/           # Claude, Codex, Gemini, Kiro, OpenCode, local-LLM adapters
+│   │   │   ├── cli/                # Click command surface
+│   │   │   ├── content/            # NotebookLM and PDF processing
+│   │   │   ├── doctor/             # Diagnostics and auto-fix checks
+│   │   │   ├── history/            # Study session persistence helpers
+│   │   │   ├── logic/              # Functional-core orchestration helpers
+│   │   │   ├── mcp/                # studyctl MCP server/tooling
+│   │   │   ├── services/           # Review/content service wrappers
+│   │   │   ├── session/            # tmux startup, rollback, resume, cleanup
+│   │   │   ├── tui/                # Textual sidebar
+│   │   │   ├── web/                # FastAPI routes and static assets
+│   │   │   ├── installers.py       # Typed install helpers used by CLI/doctor
+│   │   │   ├── review_db.py        # Flashcard scheduling DB
+│   │   │   └── settings.py         # Shared config loading
 │   │   ├── tests/
 │   │   └── pyproject.toml
-│   └── agent-session-tools/         # Session management CLI
+│   └── agent-session-tools/         # Session intelligence and export tooling
 │       ├── src/agent_session_tools/
-│       │   ├── exporters/           # Source-specific exporters
-│       │   │   ├── base.py          # Exporter protocol
-│       │   │   ├── claude.py        # Claude Code
-│       │   │   ├── kiro.py          # Kiro CLI
-│       │   │   ├── gemini.py        # Gemini CLI
-│       │   │   ├── aider.py         # Aider
-│       │   │   ├── opencode.py      # OpenCode
-│       │   │   ├── litellm.py       # LiteLLM
-│       │   │   ├── repoprompt.py    # RepoPrompt
+│       │   ├── exporters/           # Per-tool exporters
+│       │   ├── integrations/        # Git/editor integration helpers
 │       │   ├── export_sessions.py   # Export CLI
-│       │   ├── query_sessions.py    # Query CLI
+│       │   ├── query_sessions.py    # Query/write CLI
+│       │   ├── query_logic.py       # Search/context helpers
 │       │   ├── sync.py              # Cross-machine sync
 │       │   ├── maintenance.py       # DB maintenance CLI
-│       │   ├── embeddings.py        # Vector embeddings
-│       │   ├── semantic_search.py   # Hybrid FTS+vector search
-│       │   ├── classifier.py        # Session classification
-│       │   ├── deduplication.py     # Duplicate detection
+│       │   ├── mcp_server.py        # FastMCP server
 │       │   ├── migrations.py        # Schema migrations
-│       │   └── config_loader.py     # Config management
+│       │   └── schema.sql           # Base SQLite schema
 │       ├── tests/
 │       └── pyproject.toml
 ├── agents/
+│   ├── claude/                      # Claude Code agent assets
+│   ├── codex/                       # Codex AGENTS.md source
+│   ├── gemini/                      # Gemini agent assets
 │   ├── kiro/                        # Kiro CLI agent + skills
-│   │   ├── study-mentor.json
-│   │   ├── study-mentor/
-│   │   └── skills/
-│   └── claude/                      # Claude Code agents
-│       ├── socratic-mentor.md
-│       └── mentor-reviewer.yaml
+│   ├── opencode/                    # OpenCode agent assets
+│   └── shared/                      # Cross-tool prompts/framework
 ├── scripts/
-│   ├── install.sh                   # Full installer
-│   └── install-agents.sh            # Agent-only installer
+│   ├── build-release.sh            # Clean dist/ and build release artifacts
+│   ├── install.sh                   # Thin source-install bootstrap wrapper
+│   └── install-agents.sh            # Thin compatibility wrapper
+├── Justfile                         # Contributor task runner
+├── Formula/studyctl.rb              # Homebrew formula
 ├── docs/                            # Documentation
 ├── pyproject.toml                   # Workspace root
 └── CONTRIBUTING.md</code></p>
@@ -1174,8 +1302,8 @@ topics:
 <td><code>agents/claude/socratic-mentor.md</code></td>
 </tr>
 <tr>
-<td>Claude mentor-reviewer</td>
-<td><code>agents/claude/mentor-reviewer.yaml</code></td>
+<td>Codex project instructions</td>
+<td><code>agents/codex/AGENTS.md</code></td>
 </tr>
 </tbody>
 </table>
@@ -1187,10 +1315,7 @@ topics:
 <li>Make your changes</li>
 <li>Run checks:
    <code>bash
-   uv run ruff check .
-   uv run ruff format --check .
-   uv run pyright packages/
-   uv run pytest</code></li>
+   just release-check</code></li>
 <li>Commit with a descriptive message</li>
 <li>Open a PR against <code>main</code></li>
 </ol>

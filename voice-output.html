@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/voice-output.html">
       
       
-        <link rel="prev" href="cli-reference.html">
+        <link rel="prev" href="web-ui-guide.html">
       
       
         <link rel="next" href="audhd-framework.html">
@@ -364,6 +364,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -424,6 +452,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -557,6 +613,90 @@
     
   
     CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="system-overview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
   
 
     
@@ -1261,9 +1401,7 @@
 <p><code>bash
 uv tool install "./packages/agent-session-tools[tts]" --force</code></p>
 <h3 id="download-models">Download Models<a class="headerlink" href="#download-models" title="Permanent link">&para;</a></h3>
-<p>Models download automatically on first run. The install script also offers to pre-download them:</p>
-<p><code>bash
-./scripts/install.sh  # prompts: "Download voice model now? [y/N]"</code></p>
+<p>Models download automatically on first run. If you want to pre-download them, fetch the files manually:</p>
 <p>To download manually:</p>
 <p><code>bash
 mkdir -p ~/.cache/kokoro-onnx &amp;&amp; \

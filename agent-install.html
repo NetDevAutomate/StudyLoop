@@ -16,7 +16,7 @@
         <link rel="prev" href="setup-guide.html">
       
       
-        <link rel="next" href="audhd-learning-philosophy.html">
+        <link rel="next" href="architecture.html">
       
       
         
@@ -433,6 +433,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -493,6 +521,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -626,6 +682,90 @@
     
   
     CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="system-overview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
   
 
     
@@ -932,24 +1072,25 @@
 
 
 <h1 id="agent-installation-guide">Agent Installation Guide<a class="headerlink" href="#agent-installation-guide" title="Permanent link">&para;</a></h1>
-<p>How to set up the AI mentor agents for kiro-cli, Claude Code, Gemini CLI, OpenCode, and Amp.</p>
+<p>How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini CLI, OpenCode, and Amp.</p>
 <h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="#what-are-ai-agents">What are AI Agents?</a></li>
 <li><a href="#automatic-installation">Automatic Installation</a></li>
 <li><a href="#kiro-cli-setup">Kiro CLI Setup</a></li>
 <li><a href="#claude-code-setup">Claude Code Setup</a></li>
+<li><a href="#codex-cli-setup">Codex CLI Setup</a></li>
 <li><a href="#gemini-cli-setup">Gemini CLI Setup</a></li>
 <li><a href="#opencode-setup">OpenCode Setup</a></li>
 <li><a href="#amp-setup">Amp Setup</a></li>
-<li><a href="#local-llms-ollama--lm-studio">Local LLMs (Ollama / LM Studio)</a></li>
+<li><a href="#local-llms">Local LLMs</a></li>
 <li><a href="#agent-descriptions">Agent Descriptions</a></li>
 <li><a href="#skills-reference">Skills Reference</a></li>
 <li><a href="#uninstalling">Uninstalling</a></li>
 </ul>
 <h2 id="ai-guided-setup-recommended-for-new-users">AI-Guided Setup (Recommended for New Users)<a class="headerlink" href="#ai-guided-setup-recommended-for-new-users" title="Permanent link">&para;</a></h2>
 <p>The <strong>install-mentor agent</strong> can guide you through the entire setup process conversationally. It detects your environment, installs packages, configures studyctl, and verifies everything works using <code>studyctl doctor</code>.</p>
-<p>The prompt lives at <a href="../agents/shared/install-mentor.md"><code>agents/shared/install-mentor.md</code></a> and works with any AI coding tool. To use it:</p>
+<p>The prompt lives at <code>agents/shared/install-mentor.md</code> in the repo and works with any AI coding tool. To use it:</p>
 <p>```bash</p>
 <h1 id="in-claude-code-just-ask">In Claude Code — just ask:<a class="headerlink" href="#in-claude-code-just-ask" title="Permanent link">&para;</a></h1>
 <h1 id="read-agentssharedinstall-mentormd-and-follow-it-to-set-up-studyctl">"Read agents/shared/install-mentor.md and follow it to set up studyctl"<a class="headerlink" href="#read-agentssharedinstall-mentormd-and-follow-it-to-set-up-studyctl" title="Permanent link">&para;</a></h1>
@@ -958,26 +1099,30 @@
 <p>The install-mentor uses <code>studyctl doctor --json</code> as its contract — it parses the health check output and fixes issues automatically (up to 3 iterations).</p>
 <h2 id="what-are-ai-agents">What are AI Agents?<a class="headerlink" href="#what-are-ai-agents" title="Permanent link">&para;</a></h2>
 <p>AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.</p>
-<p>This project ships agents for five platforms:
+<p>This project ships agents for six platforms:
 - <strong>study-mentor</strong> (kiro-cli) — full study pipeline with spaced repetition
 - <strong>socratic-mentor</strong> (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
-- <strong>mentor-reviewer</strong> (Claude Code) — autonomous code review with scoring
+- <strong>AGENTS.md</strong> (Codex CLI) — Socratic mentoring auto-loaded from project context
 - <strong>study-mentor</strong> (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
 - <strong>study-mentor</strong> (OpenCode) — AuDHD-aware study mentor with spaced repetition
 - <strong>AGENTS.md</strong> (Amp) — Socratic mentoring loaded automatically from project context</p>
 <h2 id="automatic-installation">Automatic Installation<a class="headerlink" href="#automatic-installation" title="Permanent link">&para;</a></h2>
-<p>The install script detects which AI tools you have and symlinks the agent definitions:</p>
+<p>The preferred interface is the typed CLI command:</p>
+<p><code>bash
+studyctl install agents</code></p>
+<p>The compatibility wrapper still exists if you are working from a repo checkout:</p>
 <p><code>bash
 ./scripts/install-agents.sh</code></p>
-<p>It checks for <code>~/.kiro/</code>, <code>~/.claude/</code>, and <code>~/.gemini/</code> directories, and <code>opencode</code>/<code>amp</code> commands on PATH. If found, it creates symlinks from the repo's <code>agents/</code> directory into the tool's config.</p>
+<p>It checks for <code>~/.kiro/</code>, <code>~/.claude/</code>, and <code>~/.gemini/</code> directories, and <code>opencode</code>/<code>codex</code>/<code>amp</code> commands on PATH. If found, it creates symlinks from the repo's <code>agents/</code> directory into the tool's config.</p>
 <p>Options:</p>
 <p><code>bash
-./scripts/install-agents.sh --kiro      # Kiro CLI only
-./scripts/install-agents.sh --claude    # Claude Code only
-./scripts/install-agents.sh --gemini    # Gemini CLI only
-./scripts/install-agents.sh --opencode  # OpenCode only
-./scripts/install-agents.sh --amp       # Amp only
-./scripts/install-agents.sh --uninstall # Remove all agent links</code></p>
+studyctl install agents --tool kiro
+studyctl install agents --tool claude
+studyctl install agents --tool codex
+studyctl install agents --tool gemini
+studyctl install agents --tool opencode
+studyctl install agents --tool amp
+studyctl install agents --uninstall</code></p>
 <h2 id="kiro-cli-setup">Kiro CLI Setup<a class="headerlink" href="#kiro-cli-setup" title="Permanent link">&para;</a></h2>
 <h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
 <ul>
@@ -1060,35 +1205,69 @@ kiro-cli chat --agent study-mentor</code></p>
 <td><code>~/.claude/agents/socratic-mentor.md</code></td>
 <td>Socratic teaching agent</td>
 </tr>
-<tr>
-<td><code>agents/claude/mentor-reviewer.yaml</code></td>
-<td><code>~/.claude/agents/mentor-reviewer.yaml</code></td>
-<td>Code review agent</td>
-</tr>
 </tbody>
 </table>
 <h3 id="starting-a-session_1">Starting a session<a class="headerlink" href="#starting-a-session_1" title="Permanent link">&para;</a></h3>
-<p>```bash</p>
-<h1 id="socratic-mentor-guided-learning">Socratic mentor — guided learning<a class="headerlink" href="#socratic-mentor-guided-learning" title="Permanent link">&para;</a></h1>
-<p>/agent socratic-mentor</p>
-<h1 id="code-reviewer-autonomous-review-with-scoring">Code reviewer — autonomous review with scoring<a class="headerlink" href="#code-reviewer-autonomous-review-with-scoring" title="Permanent link">&para;</a></h1>
-<p>/agent mentor-reviewer
-```</p>
+<p><code>bash
+/agent socratic-mentor</code></p>
 <h3 id="customizing_1">Customizing<a class="headerlink" href="#customizing_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>socratic-mentor</strong>: Edit <code>agents/claude/socratic-mentor.md</code> — it's a markdown file with the full persona, questioning techniques, and learning session orchestration</li>
-<li><strong>mentor-reviewer</strong>: Edit <code>agents/claude/mentor-reviewer.yaml</code> — configure output directories, scoring methodology, and review format</li>
 </ul>
-<p>The mentor-reviewer supports environment variable configuration:
-- <code>MENTOR_REVIEW_OUTPUT_DIR</code> — where review reports are saved (default: <code>./reviews</code>)
-- <code>MENTOR_TUTORIAL_DIR</code> — where tutorials are generated (default: <code>./tutorials</code>)</p>
-<h2 id="gemini-cli-setup">Gemini CLI Setup<a class="headerlink" href="#gemini-cli-setup" title="Permanent link">&para;</a></h2>
+<h2 id="codex-cli-setup">Codex CLI Setup<a class="headerlink" href="#codex-cli-setup" title="Permanent link">&para;</a></h2>
 <h3 id="prerequisites_2">Prerequisites<a class="headerlink" href="#prerequisites_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Codex CLI installed</li>
+<li><code>codex</code> command available on PATH</li>
+</ul>
+<h3 id="what-gets-installed_2">What gets installed<a class="headerlink" href="#what-gets-installed_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Target</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agents/codex/AGENTS.md</code></td>
+<td><code>AGENTS.md</code> (project root)</td>
+<td>Project-level Codex instructions</td>
+</tr>
+<tr>
+<td><code>agents/shared/</code></td>
+<td><code>~/.agents/shared/</code></td>
+<td>Shared framework (cross-tool)</td>
+</tr>
+</tbody>
+</table>
+<p>Codex auto-loads <code>AGENTS.md</code> from the current working directory, so the installer symlinks the study mentor instructions into the repo root.</p>
+<h3 id="auto-install">Auto-install<a class="headerlink" href="#auto-install" title="Permanent link">&para;</a></h3>
+<p><code>bash
+studyctl install agents --tool codex</code></p>
+<h3 id="manual-install">Manual install<a class="headerlink" href="#manual-install" title="Permanent link">&para;</a></h3>
+<p>```bash</p>
+<h1 id="symlink-agentsmd-to-project-root">Symlink AGENTS.md to project root<a class="headerlink" href="#symlink-agentsmd-to-project-root" title="Permanent link">&para;</a></h1>
+<p>ln -s "$(pwd)/agents/codex/AGENTS.md" ./AGENTS.md</p>
+<h1 id="symlink-shared-framework">Symlink shared framework<a class="headerlink" href="#symlink-shared-framework" title="Permanent link">&para;</a></h1>
+<p>mkdir -p ~/.agents
+ln -s "$(pwd)/agents/shared" ~/.agents/shared
+```</p>
+<h3 id="starting-a-session_2">Starting a session<a class="headerlink" href="#starting-a-session_2" title="Permanent link">&para;</a></h3>
+<p>```bash
+codex</p>
+<h1 id="agentsmd-is-loaded-automatically">AGENTS.md is loaded automatically<a class="headerlink" href="#agentsmd-is-loaded-automatically" title="Permanent link">&para;</a></h1>
+<h1 id="or-let-studyctl-launch-codex-directly">Or let studyctl launch Codex directly<a class="headerlink" href="#or-let-studyctl-launch-codex-directly" title="Permanent link">&para;</a></h1>
+<p>studyctl study "Python" --agent codex
+```</p>
+<h2 id="gemini-cli-setup">Gemini CLI Setup<a class="headerlink" href="#gemini-cli-setup" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites_3">Prerequisites<a class="headerlink" href="#prerequisites_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li><a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> installed</li>
 <li><code>~/.gemini/</code> directory exists</li>
 </ul>
-<h3 id="what-gets-installed_2">What gets installed<a class="headerlink" href="#what-gets-installed_2" title="Permanent link">&para;</a></h3>
+<h3 id="what-gets-installed_3">What gets installed<a class="headerlink" href="#what-gets-installed_3" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -1116,17 +1295,17 @@ kiro-cli chat --agent study-mentor</code></p>
 </tbody>
 </table>
 <p>The installer also creates <code>~/.gemini/settings.json</code> with <code>experimental.enableAgents</code> enabled (required for subagent support). If the file already exists, you'll be prompted to add the setting manually.</p>
-<h3 id="auto-install">Auto-install<a class="headerlink" href="#auto-install" title="Permanent link">&para;</a></h3>
+<h3 id="auto-install_1">Auto-install<a class="headerlink" href="#auto-install_1" title="Permanent link">&para;</a></h3>
 <p><code>bash
-./scripts/install-agents.sh --gemini</code></p>
-<h3 id="manual-install">Manual install<a class="headerlink" href="#manual-install" title="Permanent link">&para;</a></h3>
+studyctl install agents --tool gemini</code></p>
+<h3 id="manual-install_1">Manual install<a class="headerlink" href="#manual-install_1" title="Permanent link">&para;</a></h3>
 <p>```bash</p>
 <h1 id="create-directories">Create directories<a class="headerlink" href="#create-directories" title="Permanent link">&para;</a></h1>
 <p>mkdir -p ~/.gemini/agents</p>
 <h1 id="symlink-agent-definition">Symlink agent definition<a class="headerlink" href="#symlink-agent-definition" title="Permanent link">&para;</a></h1>
 <p>ln -s "$(pwd)/agents/gemini/study-mentor.md" ~/.gemini/agents/study-mentor.md
 ln -s "$(pwd)/agents/gemini/GEMINI.md" ./GEMINI.md</p>
-<h1 id="symlink-shared-framework">Symlink shared framework<a class="headerlink" href="#symlink-shared-framework" title="Permanent link">&para;</a></h1>
+<h1 id="symlink-shared-framework_1">Symlink shared framework<a class="headerlink" href="#symlink-shared-framework_1" title="Permanent link">&para;</a></h1>
 <p>mkdir -p ~/.agents
 ln -s "$(pwd)/agents/shared" ~/.agents/shared</p>
 <h1 id="enable-subagents-in-settings">Enable subagents in settings<a class="headerlink" href="#enable-subagents-in-settings" title="Permanent link">&para;</a></h1>
@@ -1138,18 +1317,18 @@ ln -s "$(pwd)/agents/shared" ~/.agents/shared</p>
 }
 EOF
 ```</p>
-<h3 id="starting-a-session_2">Starting a session<a class="headerlink" href="#starting-a-session_2" title="Permanent link">&para;</a></h3>
+<h3 id="starting-a-session_3">Starting a session<a class="headerlink" href="#starting-a-session_3" title="Permanent link">&para;</a></h3>
 <p>```bash
 gemini</p>
 <h1 id="then-ask-for-a-study-session-the-study-mentor-subagent-is-auto-detected">Then ask for a study session — the study-mentor subagent is auto-detected<a class="headerlink" href="#then-ask-for-a-study-session-the-study-mentor-subagent-is-auto-detected" title="Permanent link">&para;</a></h1>
 <p>```</p>
 <h2 id="opencode-setup">OpenCode Setup<a class="headerlink" href="#opencode-setup" title="Permanent link">&para;</a></h2>
-<h3 id="prerequisites_3">Prerequisites<a class="headerlink" href="#prerequisites_3" title="Permanent link">&para;</a></h3>
+<h3 id="prerequisites_4">Prerequisites<a class="headerlink" href="#prerequisites_4" title="Permanent link">&para;</a></h3>
 <ul>
 <li><a href="https://github.com/opencode-ai/opencode">OpenCode</a> installed</li>
 <li><code>opencode</code> command available on PATH</li>
 </ul>
-<h3 id="what-gets-installed_3">What gets installed<a class="headerlink" href="#what-gets-installed_3" title="Permanent link">&para;</a></h3>
+<h3 id="what-gets-installed_4">What gets installed<a class="headerlink" href="#what-gets-installed_4" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -1172,31 +1351,31 @@ gemini</p>
 </tbody>
 </table>
 <p>OpenCode discovers agents from <code>.opencode/agents/*.md</code> (project-level) or <code>~/.config/opencode/agents/*.md</code> (global). The installer uses the global path.</p>
-<h3 id="auto-install_1">Auto-install<a class="headerlink" href="#auto-install_1" title="Permanent link">&para;</a></h3>
+<h3 id="auto-install_2">Auto-install<a class="headerlink" href="#auto-install_2" title="Permanent link">&para;</a></h3>
 <p><code>bash
-./scripts/install-agents.sh --opencode</code></p>
-<h3 id="manual-install_1">Manual install<a class="headerlink" href="#manual-install_1" title="Permanent link">&para;</a></h3>
+studyctl install agents --tool opencode</code></p>
+<h3 id="manual-install_2">Manual install<a class="headerlink" href="#manual-install_2" title="Permanent link">&para;</a></h3>
 <p>```bash</p>
 <h1 id="create-directories_1">Create directories<a class="headerlink" href="#create-directories_1" title="Permanent link">&para;</a></h1>
 <p>mkdir -p ~/.config/opencode/agents</p>
 <h1 id="symlink-agent-definition_1">Symlink agent definition<a class="headerlink" href="#symlink-agent-definition_1" title="Permanent link">&para;</a></h1>
 <p>ln -s "$(pwd)/agents/opencode/study-mentor.md" ~/.config/opencode/agents/study-mentor.md</p>
-<h1 id="symlink-shared-framework_1">Symlink shared framework<a class="headerlink" href="#symlink-shared-framework_1" title="Permanent link">&para;</a></h1>
+<h1 id="symlink-shared-framework_2">Symlink shared framework<a class="headerlink" href="#symlink-shared-framework_2" title="Permanent link">&para;</a></h1>
 <p>mkdir -p ~/.agents
 ln -s "$(pwd)/agents/shared" ~/.agents/shared
 ```</p>
-<h3 id="starting-a-session_3">Starting a session<a class="headerlink" href="#starting-a-session_3" title="Permanent link">&para;</a></h3>
+<h3 id="starting-a-session_4">Starting a session<a class="headerlink" href="#starting-a-session_4" title="Permanent link">&para;</a></h3>
 <p>```bash
 opencode</p>
 <h1 id="press-tab-to-switch-to-the-study-mentor-agent">Press Tab to switch to the study-mentor agent<a class="headerlink" href="#press-tab-to-switch-to-the-study-mentor-agent" title="Permanent link">&para;</a></h1>
 <p>```</p>
 <h2 id="amp-setup">Amp Setup<a class="headerlink" href="#amp-setup" title="Permanent link">&para;</a></h2>
-<h3 id="prerequisites_4">Prerequisites<a class="headerlink" href="#prerequisites_4" title="Permanent link">&para;</a></h3>
+<h3 id="prerequisites_5">Prerequisites<a class="headerlink" href="#prerequisites_5" title="Permanent link">&para;</a></h3>
 <ul>
 <li><a href="https://ampcode.com">Amp</a> installed</li>
 <li><code>amp</code> command available on PATH</li>
 </ul>
-<h3 id="what-gets-installed_4">What gets installed<a class="headerlink" href="#what-gets-installed_4" title="Permanent link">&para;</a></h3>
+<h3 id="what-gets-installed_5">What gets installed<a class="headerlink" href="#what-gets-installed_5" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -1207,35 +1386,30 @@ opencode</p>
 </thead>
 <tbody>
 <tr>
-<td><code>agents/amp/AGENTS.md</code></td>
-<td><code>AGENTS.md</code> (project root)</td>
-<td>Project-level agent instructions</td>
-</tr>
-<tr>
 <td><code>agents/shared/</code></td>
 <td><code>~/.agents/shared/</code></td>
 <td>Shared framework (cross-tool)</td>
 </tr>
 </tbody>
 </table>
-<p>Amp reads <code>AGENTS.md</code> from the project root automatically — no additional configuration needed.</p>
-<h3 id="auto-install_2">Auto-install<a class="headerlink" href="#auto-install_2" title="Permanent link">&para;</a></h3>
+<p>Amp currently has no dedicated project-level agent file in this repo. <code>studyctl install agents --tool amp</code> installs the shared framework only; if you want project-level instructions, create or link <code>AGENTS.md</code> in the repo root yourself.</p>
+<h3 id="auto-install_3">Auto-install<a class="headerlink" href="#auto-install_3" title="Permanent link">&para;</a></h3>
 <p><code>bash
-./scripts/install-agents.sh --amp</code></p>
-<h3 id="manual-install_2">Manual install<a class="headerlink" href="#manual-install_2" title="Permanent link">&para;</a></h3>
+studyctl install agents --tool amp</code></p>
+<h3 id="manual-install_3">Manual install<a class="headerlink" href="#manual-install_3" title="Permanent link">&para;</a></h3>
 <p>```bash</p>
-<h1 id="symlink-agentsmd-to-project-root">Symlink AGENTS.md to project root<a class="headerlink" href="#symlink-agentsmd-to-project-root" title="Permanent link">&para;</a></h1>
+<h1 id="symlink-agentsmd-to-project-root_1">Symlink AGENTS.md to project root<a class="headerlink" href="#symlink-agentsmd-to-project-root_1" title="Permanent link">&para;</a></h1>
 <p>ln -s "$(pwd)/agents/amp/AGENTS.md" ./AGENTS.md</p>
-<h1 id="symlink-shared-framework_2">Symlink shared framework<a class="headerlink" href="#symlink-shared-framework_2" title="Permanent link">&para;</a></h1>
+<h1 id="symlink-shared-framework_3">Symlink shared framework<a class="headerlink" href="#symlink-shared-framework_3" title="Permanent link">&para;</a></h1>
 <p>mkdir -p ~/.agents
 ln -s "$(pwd)/agents/shared" ~/.agents/shared
 ```</p>
-<h3 id="starting-a-session_4">Starting a session<a class="headerlink" href="#starting-a-session_4" title="Permanent link">&para;</a></h3>
+<h3 id="starting-a-session_5">Starting a session<a class="headerlink" href="#starting-a-session_5" title="Permanent link">&para;</a></h3>
 <p>```bash
 amp</p>
 <h1 id="agentsmd-is-loaded-automatically-just-start-asking-for-a-study-session">AGENTS.md is loaded automatically — just start asking for a study session<a class="headerlink" href="#agentsmd-is-loaded-automatically-just-start-asking-for-a-study-session" title="Permanent link">&para;</a></h1>
 <p>```</p>
-<h2 id="local-llms-ollama-lm-studio">Local LLMs (Ollama / LM Studio)<a class="headerlink" href="#local-llms-ollama-lm-studio" title="Permanent link">&para;</a></h2>
+<h2 id="local-llms">Local LLMs<a class="headerlink" href="#local-llms" title="Permanent link">&para;</a></h2>
 <p>studyctl can use local LLMs as the study mentor backend instead of cloud Claude. This uses Claude Code as the frontend but points it at a local model server via environment variables.</p>
 <h3 id="honest-expectations">Honest expectations<a class="headerlink" href="#honest-expectations" title="Permanent link">&para;</a></h3>
 <p>Local models are a <strong>cost/privacy trade-off with significant capability regression</strong>:</p>
@@ -1412,15 +1586,13 @@ studyctl doctor</code></p>
 <li>Tracks principle mastery: discovered → applied → mastered</li>
 <li>Never gives direct answers unless explicitly asked (or after 4+ rounds stuck)</li>
 </ul>
-<h3 id="mentor-reviewer-claude-code">mentor-reviewer (Claude Code)<a class="headerlink" href="#mentor-reviewer-claude-code" title="Permanent link">&para;</a></h3>
-<p>An autonomous code reviewer that runs without prompting:</p>
+<h3 id="agentsmd-codex-cli">AGENTS.md (Codex CLI)<a class="headerlink" href="#agentsmd-codex-cli" title="Permanent link">&para;</a></h3>
+<p>Codex uses the repository-root <code>AGENTS.md</code> as its project contract:</p>
 <ul>
-<li>Reads all code files, analyzes against SOLID/OWASP/testing standards</li>
-<li>Scores across 5 categories (1-10): Architecture, Testing, Code Quality, Security, Performance</li>
-<li>Generates detailed reports with critical issues, improvements, and learning opportunities</li>
-<li>Creates tutorials for concepts scoring below 5/10</li>
-<li>Tracks score trends across reviews with evidence-based assessments</li>
-<li>Brutally honest — no praise for mediocre code</li>
+<li>Auto-loads study mentor guidance when you start <code>codex</code> in the repo</li>
+<li>Keeps the session aligned with the studyctl workflow and session-state tooling</li>
+<li>Works well with <code>studyctl study ...</code> when studyctl launches Codex inside tmux</li>
+<li>Can also be used manually for ad-hoc study, review, and note-refinement sessions</li>
 </ul>
 <h2 id="skills-reference">Skills Reference<a class="headerlink" href="#skills-reference" title="Permanent link">&para;</a></h2>
 <p>Skills are modular knowledge packages that agents load for specific capabilities.</p>
@@ -1445,7 +1617,7 @@ studyctl doctor</code></p>
 <h2 id="uninstalling">Uninstalling<a class="headerlink" href="#uninstalling" title="Permanent link">&para;</a></h2>
 <p>Remove all symlinks created by the installer:</p>
 <p><code>bash
-./scripts/install-agents.sh --uninstall</code></p>
+studyctl install agents --uninstall</code></p>
 <p>This only removes symlinks that point into this repo. It won't touch agent files you've created manually or from other sources. Any existing files that were backed up during installation (with <code>.bak</code> suffix) remain untouched.</p>
 
 

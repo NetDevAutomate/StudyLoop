@@ -420,6 +420,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -480,6 +508,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -613,6 +669,90 @@
     
   
     CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="system-overview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
   
 
     
@@ -912,12 +1052,16 @@
 <hr />
 <h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>```bash</p>
-<h1 id="1-clone-and-install">1. Clone and install<a class="headerlink" href="#1-clone-and-install" title="Permanent link">&para;</a></h1>
-<p>git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd socratic-study-mentor
-./scripts/install.sh</p>
+<h1 id="1-install-and-configure">1. Install and configure<a class="headerlink" href="#1-install-and-configure" title="Permanent link">&para;</a></h1>
+<p>brew install NetDevAutomate/studyctl/studyctl
+studyctl setup
+studyctl doctor --fix</p>
 <h1 id="2-start-a-study-session">2. Start a study session<a class="headerlink" href="#2-start-a-study-session" title="Permanent link">&para;</a></h1>
-<p>kiro-cli chat --agent study-mentor   # or Claude Code: /agent socratic-mentor</p>
+<p>studyctl study "Python" --mode co-study</p>
+<h1 id="or-launch-your-preferred-assistant-directly">or launch your preferred assistant directly:<a class="headerlink" href="#or-launch-your-preferred-assistant-directly" title="Permanent link">&para;</a></h1>
+<h1 id="kiro-cli-chat-agent-study-mentor">kiro-cli chat --agent study-mentor<a class="headerlink" href="#kiro-cli-chat-agent-study-mentor" title="Permanent link">&para;</a></h1>
+<h1 id="claude-then-agent-socratic-mentor">claude      # then /agent socratic-mentor<a class="headerlink" href="#claude-then-agent-socratic-mentor" title="Permanent link">&para;</a></h1>
+<h1 id="codex-in-the-project-root-with-agentsmd-present">codex       # in the project root with AGENTS.md present<a class="headerlink" href="#codex-in-the-project-root-with-agentsmd-present" title="Permanent link">&para;</a></h1>
 <h1 id="3-check-whats-due-for-review">3. Check what's due for review<a class="headerlink" href="#3-check-whats-due-for-review" title="Permanent link">&para;</a></h1>
 <p>studyctl review
 ```</p>
@@ -942,6 +1086,7 @@ cd socratic-study-mentor
     subgraph "AI Agents"
         KA[kiro-cli]
         CA[Claude Code]
+        CX[Codex CLI]
         GA[Gemini CLI]
         OA[OpenCode]
         AA[Amp]
@@ -954,6 +1099,7 @@ cd socratic-study-mentor
     DB --&gt;|query history| SC
     KA --&gt;|Socratic sessions| DB
     CA --&gt;|Socratic sessions| DB
+    CX --&gt;|Socratic sessions| DB
     GA --&gt;|Socratic sessions| DB
     OA --&gt;|Socratic sessions| DB
     AA --&gt;|Socratic sessions| DB</code></pre>
@@ -973,7 +1119,7 @@ cd socratic-study-mentor
 </tr>
 <tr>
 <td><strong>agent-session-tools</strong></td>
-<td>Export and search AI sessions from Claude Code, Kiro, Gemini, Aider, and more</td>
+<td>Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, and more</td>
 </tr>
 <tr>
 <td><strong>AI Agents</strong></td>
@@ -989,6 +1135,7 @@ cd socratic-study-mentor
 <h2 id="key-sections">Key Sections<a class="headerlink" href="#key-sections" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="content-pipeline.html">Content Pipeline</a></strong> — PDF/Obsidian to flashcards via NotebookLM (end-to-end)</li>
+<li><strong><a href="architecture.html">Architecture</a></strong> — C4 diagrams and repo code map</li>
 <li><strong><a href="tui-guide.html">TUI Sidebar Guide</a></strong> — Terminal sidebar layout, timer modes, key bindings</li>
 <li><strong><a href="web-ui-guide.html">Web UI Guide</a></strong> — Flashcards, quizzes, session dashboard, ttyd terminal</li>
 <li><strong><a href="session-protocol.html">Session Protocol</a></strong> — How every study session flows, from arrival to close</li>

@@ -16,7 +16,7 @@
         <link rel="prev" href="session-protocol.html">
       
       
-        <link rel="next" href="voice-output.html">
+        <link rel="next" href="system-overview.html">
       
       
         
@@ -364,6 +364,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -424,6 +452,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -623,6 +679,90 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="system-overview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -943,6 +1083,8 @@ studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources</p>
 studyctl struggles --days 30             # Find recurring struggle topics</p>
 <h1 id="configuration-health">Configuration &amp; health<a class="headerlink" href="#configuration-health" title="Permanent link">&para;</a></h1>
 <p>studyctl setup                           # Interactive setup wizard
+studyctl install tools                   # Install global CLI entrypoints from repo
+studyctl install agents                  # Install agent definitions for detected tools
 studyctl config init                     # Interactive config (3 questions)
 studyctl config show                     # Display current configuration
 studyctl doctor                          # Full health check
@@ -953,7 +1095,7 @@ studyctl upgrade                         # Apply all available updates</p>
 studyctl restore                         # List available backups
 studyctl restore BACKUP --confirm        # Restore from backup (safety backup first)</p>
 <h1 id="web">Web<a class="headerlink" href="#web" title="Permanent link">&para;</a></h1>
-<p>studyctl web [--port PORT] [--host HOST] # Launch study web app (PWA)
+<p>studyctl web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
 ```</p>
 <h3 id="study-sessions">Study Sessions<a class="headerlink" href="#study-sessions" title="Permanent link">&para;</a></h3>
 <p>The primary entry point is <code>studyctl study</code>, which creates a complete tmux-based study environment:</p>
@@ -962,6 +1104,7 @@ studyctl study "Python Decorators" --energy 7          # Socratic mentor session
 studyctl study "Spark Internals" --mode co-study       # User-driven co-study
 studyctl study "topic" --timer pomodoro                # Override default timer
 studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
+studyctl study "topic" --agent codex                  # Explicit Codex CLI session
 studyctl study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
 studyctl study "topic" --lan --password SECRET         # Explicit password for LAN auth
 studyctl study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
@@ -1022,6 +1165,7 @@ studyctl doctor                          # Full health check (Rich table)
 studyctl doctor --json                   # JSON output (for AI agents and CI)
 studyctl doctor --quiet                  # One-line summary
 studyctl doctor --category core          # Check specific category only
+studyctl doctor --fix                    # Apply safe automatic fixes
 studyctl update --json                   # Machine-readable update info
 studyctl upgrade --dry-run               # Preview what would change
 studyctl upgrade --component packages    # Upgrade only packages
@@ -1042,7 +1186,7 @@ studyctl upgrade --component agents      # Update agent definitions only</code><
 </tr>
 <tr>
 <td><code>1</code></td>
-<td>Warnings or failures that can be fixed — run <code>studyctl upgrade</code></td>
+<td>Warnings or failures that can be fixed — run <code>studyctl doctor --fix</code></td>
 </tr>
 <tr>
 <td><code>2</code></td>
@@ -1055,11 +1199,12 @@ studyctl upgrade --component agents      # Update agent definitions only</code><
 <p>Review schedule: <strong>1 → 3 → 7 → 14 → 30 days</strong></p>
 <p><code>studyctl review</code> shows what's due based on when you last recorded progress.</p>
 <h3 id="web-pwa">Web PWA<a class="headerlink" href="#web-pwa" title="Permanent link">&para;</a></h3>
-<p><code>studyctl web</code> launches a progressive web app for flashcard and quiz review. LAN accessible by default.</p>
+<p><code>studyctl web</code> launches a progressive web app for flashcard and quiz review. By default it binds to <code>127.0.0.1</code>; use <code>--lan</code> to expose it on your network with HTTP Basic Auth.</p>
 <p><code>bash
-studyctl web                    # Serve on 0.0.0.0:8567
+studyctl web                    # Serve on 127.0.0.1:8567
 studyctl web --port 9000        # Custom port
-studyctl web --host localhost   # Local only</code></p>
+studyctl web --lan              # Bind to 0.0.0.0 with auth
+studyctl web --lan --password SECRET</code></p>
 <table>
 <thead>
 <tr>
@@ -1127,11 +1272,15 @@ web_port: 8567       # web dashboard port (default 8567)
 ttyd_port: 7681      # ttyd web terminal port (default 7681)
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent password for --lan mode (auto-generated if empty)</code></p>
+<p><strong>Agent priority config</strong> (<code>~/.config/studyctl/config.yaml</code>):</p>
+<p><code>yaml
+agents:
+  priority: [codex, claude, gemini, opencode, kiro, ollama, lmstudio]</code></p>
 <hr />
 <h2 id="agent-session-tools">agent-session-tools<a class="headerlink" href="#agent-session-tools" title="Permanent link">&para;</a></h2>
 <p>AI session export, search, and cross-machine sync.</p>
 <p><code>bash
-session-export [--source SOURCE]         # Export AI sessions to SQLite
+session-export [--sources SOURCE ...]    # Export AI sessions to SQLite
 session-query search QUERY               # Full-text search across sessions
 session-query list --since 7d            # List recent sessions
 session-query show SESSION_ID            # Show session details
@@ -1152,6 +1301,10 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS</code></p>
 <tr>
 <td><code>claude</code></td>
 <td>Claude Code</td>
+</tr>
+<tr>
+<td><code>codex</code></td>
+<td>OpenAI Codex CLI</td>
 </tr>
 <tr>
 <td><code>kiro</code></td>
@@ -1179,6 +1332,19 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS</code></p>
 </tr>
 </tbody>
 </table>
+<h3 id="install-export-examples">Install &amp; Export Examples<a class="headerlink" href="#install-export-examples" title="Permanent link">&para;</a></h3>
+<p>```bash
+studyctl install tools
+studyctl install agents
+studyctl install agents --tool codex
+studyctl install agents --tool claude --tool gemini</p>
+<p>session-export
+session-export --sources claude codex
+session-export --sources gemini opencode
+session-export --claude-only
+session-export --gemini-only
+session-export --full
+```</p>
 <h3 id="optional-extras">Optional Extras<a class="headerlink" href="#optional-extras" title="Permanent link">&para;</a></h3>
 <p><code>bash
 uv pip install agent-session-tools[semantic]  # Vector embeddings search
