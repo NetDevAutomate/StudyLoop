@@ -7,6 +7,7 @@ Heavy imports (pymupdf, notebooklm-py) are deferred to function bodies.
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -100,6 +101,155 @@ def _configured_study_sources() -> list[Path]:
 @click.group(name="content")
 def content_group() -> None:
     """Content pipeline -- PDF splitting, NotebookLM, and syllabus workflow."""
+
+
+@content_group.command("discover")
+@click.argument("source_dirs", nargs=-1, type=click.Path(path_type=Path))
+@click.option("--json", "as_json", is_flag=True, help="Output discovered materials as JSON.")
+def discover(source_dirs: tuple[Path, ...], as_json: bool) -> None:
+    """Discover configured Obsidian/course materials without uploading anything."""
+    from studyctl.content.discovery import discover_materials
+
+    sources = list(source_dirs) if source_dirs else _configured_study_sources()
+    missing = [path for path in sources if not path.expanduser().is_dir()]
+    if missing:
+        joined = ", ".join(str(path) for path in missing)
+        raise click.ClickException(f"Study source directory not found: {joined}")
+
+    materials = discover_materials(sources)
+    if as_json:
+        click.echo(json.dumps([material.to_json_dict() for material in materials], indent=2))
+        return
+
+    table = Table(title="Discovered Study Materials")
+    table.add_column("Source", style="dim")
+    table.add_column("Title", style="bold")
+    table.add_column("Type")
+    table.add_column("Size", justify="right")
+    table.add_column("Path")
+    for material in materials:
+        table.add_row(
+            material.source_root.name,
+            material.title,
+            material.kind,
+            _format_size(material.size_bytes),
+            str(material.path),
+        )
+    console.print(table)
+    console.print(f"\nFound {len(materials)} study material file(s).")
+
+
+def _format_size(size_bytes: int) -> str:
+    """Format a byte count for compact CLI display."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    if size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KiB"
+    return f"{size_bytes / (1024 * 1024):.1f} MiB"
+
+
+@content_group.command("ingest")
+@click.argument("source_dirs", nargs=-1, type=click.Path(path_type=Path))
+@click.option(
+    "--course", default=None, help="Course slug/name to group discovered materials under."
+)
+@click.option("--dry-run", is_flag=True, help="Preview ingest actions without uploading.")
+@click.option("--json", "as_json", is_flag=True, help="Output ingest plan as JSON.")
+def ingest(
+    source_dirs: tuple[Path, ...],
+    course: str | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
+    """Plan a course-material ingest workflow."""
+    from studyctl.content.workflow import build_ingest_plan
+    from studyctl.settings import load_settings
+
+    if not dry_run:
+        raise click.ClickException(
+            "Only 'studyctl content ingest --dry-run' is currently supported. "
+            "NotebookLM upload/update behavior will be added after dry-run planning."
+        )
+
+    sources = list(source_dirs) if source_dirs else _configured_study_sources()
+    missing = [path for path in sources if not path.expanduser().is_dir()]
+    if missing:
+        joined = ", ".join(str(path) for path in missing)
+        raise click.ClickException(f"Study source directory not found: {joined}")
+
+    settings = load_settings()
+    plan = build_ingest_plan(
+        source_roots=sources,
+        base_path=settings.content.base_path,
+        course=course,
+    )
+    if as_json:
+        click.echo(json.dumps([item.to_json_dict() for item in plan], indent=2))
+        return
+
+    table = Table(title="Ingest Dry Run")
+    table.add_column("Action")
+    table.add_column("Course", style="bold")
+    table.add_column("Type")
+    table.add_column("Title")
+    table.add_column("Destination", style="dim")
+    for item in plan:
+        table.add_row(
+            item.action,
+            item.course_slug,
+            item.material.kind,
+            item.material.title,
+            str(item.course_dir),
+        )
+    console.print(table)
+    console.print(f"\nPlanned {len(plan)} ingest action(s). No files were uploaded or changed.")
+
+
+@content_group.command("import-review")
+@click.argument("source_dir", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--course", required=True, help="Course slug/name to import artefacts into.")
+@click.option("--dry-run", is_flag=True, help="Validate and preview without copying files.")
+@click.option("--json", "as_json", is_flag=True, help="Output import results as JSON.")
+def import_review(source_dir: Path, course: str, dry_run: bool, as_json: bool) -> None:
+    """Validate and import generated flashcard/quiz artefacts for review."""
+    from studyctl.content.importer import import_review_artefacts
+    from studyctl.settings import load_settings
+
+    settings = load_settings()
+    try:
+        results = import_review_artefacts(
+            source_dir=source_dir,
+            base_path=settings.content.base_path,
+            course=course,
+            dry_run=dry_run,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if as_json:
+        click.echo(json.dumps([result.to_json_dict() for result in results], indent=2))
+        return
+
+    table = Table(title="Review Artefact Import" + (" Dry Run" if dry_run else ""))
+    table.add_column("Action")
+    table.add_column("Type")
+    table.add_column("Items", justify="right")
+    table.add_column("Source", style="dim")
+    table.add_column("Message")
+    for result in results:
+        table.add_row(
+            result.action,
+            result.kind,
+            str(result.item_count),
+            str(result.source),
+            result.message,
+        )
+    console.print(table)
+    console.print(
+        f"\nImported {sum(1 for result in results if result.action == 'imported')} file(s), "
+        f"skipped {sum(1 for result in results if result.action == 'skipped')}, "
+        f"invalid {sum(1 for result in results if result.action == 'invalid')}."
+    )
 
 
 # ---------------------------------------------------------------------------
