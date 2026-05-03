@@ -36,6 +36,10 @@ studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
 
 # Review
 studyctl review                          # Check spaced repetition due dates
+studyctl progress                        # Summarize local course progress
+studyctl progress --course python        # Summarize one course
+studyctl progress --json                 # Machine-readable progress summary
+studyctl progress CONCEPT -t TOPIC -c confident # Record concept confidence
 studyctl struggles --days 30             # Find recurring struggle topics
 
 # Configuration & health
@@ -140,6 +144,24 @@ studyctl upgrade --component agents      # Update agent definitions only
 Review schedule: **1 → 3 → 7 → 14 → 30 days**
 
 `studyctl review` shows what's due based on when you last recorded progress.
+
+### Progress
+
+`studyctl progress` has two modes:
+
+- With no concept argument, it summarizes local course progress from `content.base_path` and the review database.
+- With a concept argument, it records confidence for a study concept.
+
+```bash
+studyctl progress                                  # Course summary table
+studyctl progress --course python                  # One course only
+studyctl progress --json                           # JSON for scripts/agents
+studyctl progress "list comprehensions" \
+  --topic python \
+  --confidence confident                           # Record concept confidence
+```
+
+The summary includes local source count, unique review cards, due cards, mastered cards, review sessions, and review accuracy. Course filtering uses the course slug, such as `python` or `data-engineering`.
 
 ### Web PWA
 

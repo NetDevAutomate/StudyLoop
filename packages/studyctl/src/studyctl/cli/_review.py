@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import click
 from rich.table import Table
 
@@ -91,18 +93,40 @@ def wins(days: int) -> None:
 
 
 @click.command()
-@click.argument("concept")
-@click.option("--topic", "-t", required=True, help="Study topic.")
+@click.argument("concept", required=False)
+@click.option("--topic", "-t", default=None, help="Study topic for record mode.")
+@click.option("--course", default=None, help="Show summary for one course.")
 @click.option(
     "--confidence",
     "-c",
     type=click.Choice(["struggling", "learning", "confident", "mastered"]),
-    required=True,
+    default=None,
     help="Current confidence level.",
 )
 @click.option("--notes", "-n", default=None, help="Optional notes.")
-def progress(concept: str, topic: str, confidence: str, notes: str | None) -> None:
-    """Record progress on a concept."""
+@click.option("--json", "json_output", is_flag=True, help="Output course summary as JSON.")
+def progress(
+    concept: str | None,
+    topic: str | None,
+    course: str | None,
+    confidence: str | None,
+    notes: str | None,
+    json_output: bool,
+) -> None:
+    """Record progress on a concept, or show course progress with no concept."""
+    if concept is None:
+        _print_course_progress(course=course, json_output=json_output)
+        return
+
+    if course:
+        raise click.ClickException("--course is only valid when showing the progress summary.")
+    if json_output:
+        raise click.ClickException("--json is only valid when showing the progress summary.")
+    if not topic:
+        raise click.ClickException("--topic is required when recording concept progress.")
+    if not confidence:
+        raise click.ClickException("--confidence is required when recording concept progress.")
+
     from studyctl.history import record_progress
 
     if record_progress(topic, concept, confidence, notes=notes):
@@ -118,6 +142,50 @@ def progress(concept: str, topic: str, confidence: str, notes: str | None) -> No
         )
     else:
         console.print("[red]Failed to record progress. Run 'studyctl doctor' to diagnose.[/red]")
+
+
+def _print_course_progress(*, course: str | None, json_output: bool) -> None:
+    """Render local course progress summary."""
+    from studyctl.progress import summarize_course_progress
+    from studyctl.settings import get_db_path, load_settings
+
+    settings = load_settings()
+    summary = summarize_course_progress(
+        base_path=settings.content.base_path,
+        db_path=get_db_path(),
+        course=course,
+    )
+
+    if json_output:
+        click.echo(json.dumps(summary.to_json_dict(), indent=2))
+        return
+
+    if not summary.courses:
+        console.print("[dim]No local course progress found.[/dim]")
+        return
+
+    table = Table(title="Course Progress")
+    table.add_column("Course", style="bold cyan")
+    table.add_column("Sources", justify="right")
+    table.add_column("Cards", justify="right")
+    table.add_column("Due", justify="right")
+    table.add_column("Mastered", justify="right")
+    table.add_column("Sessions", justify="right")
+    table.add_column("Accuracy", justify="right")
+
+    for item in summary.courses:
+        accuracy = f"{item.review.accuracy:.1f}%" if item.review.accuracy is not None else "-"
+        table.add_row(
+            item.slug,
+            str(item.source_count),
+            str(item.review.unique_cards),
+            str(item.review.due_today),
+            str(item.review.mastered),
+            str(item.review.sessions),
+            accuracy,
+        )
+
+    console.print(table)
 
 
 @click.command()

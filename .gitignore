@@ -479,7 +479,9 @@ site/
 docs/internal/
 docs/local_repo_docs/
 docs/plans/
-docs/architecture/
+docs/architecture/*
+!docs/architecture/
+!docs/architecture/adapter-pattern-notebooklm.md
 
 # Demo recordings (large, local-only)
 demos/
