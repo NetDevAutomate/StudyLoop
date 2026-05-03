@@ -123,6 +123,44 @@ graph LR
     F --> G["studyctl web<br/>(review)"]
 ```
 
+### Preview source material
+
+Before uploading anything to NotebookLM, inspect the files that `studyctl` can use as
+study material:
+
+```bash
+# Uses topics[].obsidian_path, content.study_paths, then obsidian_base fallback
+studyctl content discover
+
+# Inspect one or more manual source directories
+studyctl content discover ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes
+
+# Machine-readable output for scripts
+studyctl content discover --json
+```
+
+Discovery includes Markdown, PDF, and text files. It skips low-value noise such as
+`.obsidian/`, `node_modules/`, tiny stub files, and index files like `Courses.md`.
+
+### Plan an ingest
+
+Use `ingest --dry-run` to see what would be created, updated, or skipped based on
+course metadata and file hashes:
+
+```bash
+# Plan against configured study sources
+studyctl content ingest --dry-run
+
+# Group manual sources under one course slug
+studyctl content ingest ~/Obsidian/2-Areas/Study/Python --course python --dry-run
+
+# Machine-readable plan
+studyctl content ingest --dry-run --json
+```
+
+The dry run does not upload to NotebookLM and does not change local metadata. It is the
+safe preview step before source upload/update support is enabled.
+
 ### All-in-one command
 
 ```bash
@@ -153,6 +191,25 @@ This does everything in one step:
 2. Uploads PDFs as sources to NotebookLM
 3. Generates audio overviews (unless `--no-generate`)
 4. Downloads artefacts (unless `--no-download`)
+
+### Import generated review artefacts
+
+After NotebookLM artefacts are downloaded, validate and copy flashcard/quiz JSON into
+the standard course review layout under `content.base_path`:
+
+```bash
+# Validate only; no files are copied
+studyctl content import-review ~/study-materials/python/downloads --course python --dry-run
+
+# Import valid flashcard/quiz JSON into ~/study-materials/python/{flashcards,quizzes}
+studyctl content import-review ~/study-materials/python/downloads --course python
+
+# Machine-readable import report
+studyctl content import-review ~/study-materials/python/downloads --course python --json
+```
+
+The importer validates the JSON shape used by `studyctl web`, reports invalid files,
+skips unchanged files, and records a small import summary in course metadata.
 
 ### Selective flags
 
