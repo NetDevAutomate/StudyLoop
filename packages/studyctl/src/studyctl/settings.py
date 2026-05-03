@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -89,6 +90,7 @@ class ContentConfig:
     """Configuration for the content pipeline (pdf-by-chapters absorption)."""
 
     base_path: Path = field(default_factory=lambda: Path.home() / "study-materials")
+    study_paths: list[Path] = field(default_factory=list)
     notebooklm_timeout: int = 900
     inter_episode_gap: int = 30
     default_types: list[str] = field(default_factory=lambda: ["audio"])
@@ -172,6 +174,39 @@ def _path(value: object) -> Path:
     return Path(str(value)).expanduser()
 
 
+def get_config_path() -> Path:
+    """Return the active studyctl config path.
+
+    ``STUDYCTL_CONFIG`` is resolved lazily so tests and subprocesses can set it
+    after module import. ``_CONFIG_PATH`` remains as the fallback compatibility
+    hook for existing tests while callers migrate to this public helper.
+    """
+    if env_path := os.environ.get("STUDYCTL_CONFIG"):
+        return Path(env_path).expanduser()
+    return _CONFIG_PATH.expanduser()
+
+
+def get_config_dir() -> Path:
+    """Return the active studyctl config directory."""
+    return get_config_path().parent
+
+
+def load_raw_config() -> dict[str, Any]:
+    """Load the raw YAML config from the active config path."""
+    config_path = get_config_path()
+    if not config_path.exists():
+        return {}
+    return yaml.safe_load(config_path.read_text()) or {}
+
+
+def write_raw_config(data: dict[str, Any]) -> Path:
+    """Write raw YAML config to the active config path and return the path."""
+    config_path = get_config_path()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+    return config_path
+
+
 # Top-level scalar fields: (settings_attr, coerce_fn).
 # When the YAML key matches settings_attr, the value is coerced and set directly.
 _SCALAR_FIELDS: list[tuple[str, object]] = [
@@ -199,11 +234,9 @@ def _local_llm(raw: dict, default_model: str, default_base_url: str) -> LocalLLM
 def load_settings() -> Settings:
     """Load settings from config file, falling back to defaults."""
     settings = Settings()
-    if not _CONFIG_PATH.exists():
+    raw = load_raw_config()
+    if not raw:
         return settings
-
-    with open(_CONFIG_PATH) as f:
-        raw = yaml.safe_load(f) or {}
 
     # scalar top-level fields -- driven by module-level _SCALAR_FIELDS mapping
     for key, coerce in _SCALAR_FIELDS:
@@ -255,6 +288,10 @@ def load_settings() -> Settings:
     if ct:
         settings.content = ContentConfig(
             base_path=_path(ct.get("base_path", "~/study-materials")),
+            study_paths=[
+                p if p.is_absolute() else settings.obsidian_base / p
+                for p in (_path(path) for path in ct.get("study_paths", []))
+            ],
             notebooklm_timeout=int(ct.get("notebooklm_timeout", 900)),
             inter_episode_gap=int(ct.get("inter_episode_gap", 30)),
             default_types=ct.get("default_types", ["audio"]),
@@ -281,18 +318,16 @@ def load_settings() -> Settings:
 
 def get_db_path() -> Path:
     """Get sessions.db path from config, or use default."""
-    config_file = _CONFIG_PATH
-    if config_file.exists():
-        try:
-            data = yaml.safe_load(config_file.read_text()) or {}
-            # Support both old 'database.path' key and new 'session_db' key
-            db_str = data.get("session_db", "")
-            if not db_str:
-                db_str = data.get("database", {}).get("path", "")
-            if db_str:
-                return Path(db_str).expanduser()
-        except Exception:
-            pass
+    try:
+        data = load_raw_config()
+        # Support both old 'database.path' key and new 'session_db' key
+        db_str = data.get("session_db", "")
+        if not db_str:
+            db_str = data.get("database", {}).get("path", "")
+        if db_str:
+            return Path(db_str).expanduser()
+    except Exception:
+        pass
     return DEFAULT_DB
 
 
@@ -406,6 +441,7 @@ topics:
 # Content pipeline (studyctl content commands)
 # content:
 #   base_path: ~/study-materials       # Where course directories are stored
+#   study_paths: []                    # Extra Obsidian/content source dirs for NotebookLM uploads
 #   notebooklm_timeout: 900            # Timeout for generation (seconds)
 #   inter_episode_gap: 30              # Seconds between episode generations
 #   default_types: [audio]             # Default artifact types to generate

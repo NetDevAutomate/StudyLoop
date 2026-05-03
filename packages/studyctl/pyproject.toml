@@ -49,7 +49,7 @@ packages = ["src/studyctl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short -m 'not integration'"
+addopts = "--tb=short -m 'not integration and not e2e'"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "e2e: end-to-end browser tests requiring Playwright + web server",
@@ -59,9 +59,10 @@ markers = [
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 extraPaths = ["../agent-session-tools/src"]  # workspace sibling for cross-package imports
-exclude = ["src/studyctl/tui", "src/studyctl/content", "src/studyctl/cli/_content.py", "src/studyctl/cli/_web.py", "src/studyctl/web", "src/studyctl/mcp", "src/studyctl/eval/llm_client.py"]  # optional deps not in CI
+exclude = ["src/studyctl/eval/llm_client.py"]  # optional deps not in CI
 
 [dependency-groups]
 dev = [
+    "pytest-asyncio>=1.3.0",
     "pytest-playwright>=0.7.2",
 ]

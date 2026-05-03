@@ -42,6 +42,41 @@ def test_defaults_when_no_config_file(tmp_path):
     assert s.agents.custom == {}
 
 
+def test_get_config_path_honors_env_lazily(monkeypatch, tmp_path):
+    from studyctl.settings import get_config_path
+
+    first = tmp_path / "first.yaml"
+    second = tmp_path / "second.yaml"
+
+    monkeypatch.setenv("STUDYCTL_CONFIG", str(first))
+    assert get_config_path() == first
+
+    monkeypatch.setenv("STUDYCTL_CONFIG", str(second))
+    assert get_config_path() == second
+
+
+def test_load_raw_config_reads_env_override(monkeypatch, tmp_path):
+    from studyctl.settings import load_raw_config
+
+    config_path = tmp_path / "custom.yaml"
+    config_path.write_text("browser: firefox\n")
+    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+    assert load_raw_config() == {"browser": "firefox"}
+
+
+def test_write_raw_config_creates_parent_and_round_trips(monkeypatch, tmp_path):
+    from studyctl.settings import load_raw_config, write_raw_config
+
+    config_path = tmp_path / "nested" / "config.yaml"
+    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+    written_path = write_raw_config({"browser": "brave", "web_port": 9000})
+
+    assert written_path == config_path
+    assert load_raw_config() == {"browser": "brave", "web_port": 9000}
+
+
 # ---------------------------------------------------------------------------
 # Scalar top-level fields (data-driven mapping)
 # ---------------------------------------------------------------------------
@@ -208,11 +243,28 @@ def test_content_base_path_expanded(tmp_path):
     assert s.content.base_path == Path.home() / "courses"
 
 
+def test_content_study_paths_resolve_against_obsidian_base(tmp_path):
+    config_path = _write_config(
+        tmp_path,
+        {
+            "obsidian_base": str(tmp_path / "vault"),
+            "content": {"study_paths": ["2-Areas/Study/Python", "~/external-course"]},
+        },
+    )
+    s = _load(config_path)
+
+    assert s.content.study_paths == [
+        tmp_path / "vault" / "2-Areas/Study/Python",
+        Path.home() / "external-course",
+    ]
+
+
 def test_content_defaults_when_absent(tmp_path):
     config_path = _write_config(tmp_path, {"browser": "brave"})
     s = _load(config_path)
 
     assert s.content.base_path == Path.home() / "study-materials"
+    assert s.content.study_paths == []
     assert s.content.notebooklm_timeout == 900
     assert s.content.pandoc_path == "pandoc"
 

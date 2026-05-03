@@ -51,6 +51,35 @@ def _parse_chapter_range(raw: str) -> tuple[int, int]:
     return (start, end)
 
 
+def _display_name_for_path(path: Path) -> str:
+    """Turn a source directory name into a NotebookLM-friendly title."""
+    return path.name.replace("-", " ").replace("_", " ").title()
+
+
+def _configured_study_sources() -> list[Path]:
+    """Return configured Obsidian/content sources for NotebookLM uploads."""
+    from studyctl.settings import load_settings
+
+    settings = load_settings()
+    paths = [topic.obsidian_path for topic in settings.topics]
+    paths.extend(settings.content.study_paths)
+
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for path in paths:
+        resolved = path.expanduser()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        unique.append(resolved)
+
+    if unique:
+        return unique
+
+    default_study_path = settings.obsidian_base / "2-Areas" / "Study"
+    return [default_study_path.expanduser()]
+
+
 @click.group(name="content")
 def content_group() -> None:
     """Content pipeline -- PDF splitting, NotebookLM, and syllabus workflow."""
@@ -417,7 +446,7 @@ def status_cmd(output_dir: Path, book_name: str | None) -> None:
 
 
 @content_group.command("from-obsidian")
-@click.argument("source_dir", type=click.Path(exists=True, path_type=Path))
+@click.argument("source_dirs", nargs=-1, type=click.Path(exists=True, path_type=Path))
 @click.option("-o", "--output-dir", type=click.Path(path_type=Path), default=None)
 @click.option("--name", "notebook_name", default=None, help="Notebook name.")
 @click.option("-n", "--notebook-id", envvar="NOTEBOOK_ID", default=None)
@@ -429,7 +458,7 @@ def status_cmd(output_dir: Path, book_name: str | None) -> None:
 @click.option("--skip-convert", is_flag=True, help="Skip PDF conversion, use existing PDFs.")
 @click.option("-s", "--subdir", default=None, help="Subdirectory within source.")
 def from_obsidian(
-    source_dir: Path,
+    source_dirs: tuple[Path, ...],
     output_dir: Path | None,
     notebook_name: str | None,
     notebook_id: str | None,
@@ -444,29 +473,76 @@ def from_obsidian(
     """Convert Obsidian markdown to PDFs and upload to NotebookLM."""
     from studyctl.content.markdown_converter import convert_directory
     from studyctl.content.notebooklm_client import (
+        download_artifacts,
         generate_for_chapters,
         upload_chapters,
     )
 
+    sources = list(source_dirs) if source_dirs else _configured_study_sources()
+    if notebook_id and len(sources) > 1:
+        raise click.ClickException(
+            "--notebook-id can only be used with one source directory. "
+            "Use configured topic notebook IDs or run one source at a time."
+        )
+
+    for source_dir in sources:
+        _process_obsidian_source(
+            source_dir=source_dir,
+            output_dir=output_dir,
+            notebook_name=notebook_name,
+            notebook_id=notebook_id,
+            no_generate=no_generate,
+            no_audio=no_audio,
+            no_download=no_download,
+            no_quiz=no_quiz,
+            no_flashcards=no_flashcards,
+            skip_convert=skip_convert,
+            subdir=subdir,
+            convert_directory=convert_directory,
+            upload_chapters=upload_chapters,
+            generate_for_chapters=generate_for_chapters,
+            download_artifacts=download_artifacts,
+        )
+
+
+def _process_obsidian_source(
+    *,
+    source_dir: Path,
+    output_dir: Path | None,
+    notebook_name: str | None,
+    notebook_id: str | None,
+    no_generate: bool,
+    no_audio: bool,
+    no_download: bool,
+    no_quiz: bool,
+    no_flashcards: bool,
+    skip_convert: bool,
+    subdir: str | None,
+    convert_directory,
+    upload_chapters,
+    generate_for_chapters,
+    download_artifacts,
+) -> None:
+    """Convert/upload one Obsidian source directory."""
     actual_dir = source_dir / subdir if subdir else source_dir
     if not actual_dir.is_dir():
         raise click.ClickException(f"Directory not found: {actual_dir}")
 
     out = output_dir or source_dir / "downloads"
     out.mkdir(parents=True, exist_ok=True)
-    name = notebook_name or source_dir.name.replace("-", " ").replace("_", " ").title()
+    name = notebook_name or _display_name_for_path(source_dir)
 
     # Step 1: Convert markdown to PDFs
     if not skip_convert:
         console.print(f"Converting markdown in {actual_dir}...")
+        pdf_files = convert_directory(actual_dir, out)
         pdf_dir = out / "pdfs"
-        convert_directory(actual_dir, pdf_dir)
         console.print(f"[green]\u2713[/green] PDFs written to {pdf_dir}")
     else:
         pdf_dir = out / "pdfs"
+        pdf_files = sorted(pdf_dir.glob("*.pdf")) if pdf_dir.is_dir() else []
 
     # Step 2: Upload
-    pdf_files = sorted(pdf_dir.glob("*.pdf")) if pdf_dir.is_dir() else []
     if not pdf_files:
         console.print("[yellow]No PDFs to upload[/yellow]")
         return
@@ -497,8 +573,6 @@ def from_obsidian(
         console.print("[green]\u2713[/green] Generation complete")
 
     if not no_download:
-        from studyctl.content.notebooklm_client import download_artifacts
-
         console.print("Downloading artifacts...")
         asyncio.run(download_artifacts(nid, out))
         console.print(f"[green]\u2713[/green] Artifacts saved to {out}")

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from agent_session_tools.config_loader import (
     DEFAULT_CONFIG,
+    ensure_config_dir,
     expand_path,
     get_backup_dir,
     get_db_path,
@@ -77,6 +78,49 @@ class TestLoadConfig:
         monkeypatch.setenv("LOG_LEVEL", "DEBUG")
         config = load_config()
         assert config["logging"]["level"] == "DEBUG"
+
+    def test_reads_yaml_from_studyctl_config_path(self, tmp_path, monkeypatch):
+        """Test that STUDYCTL_CONFIG points load_config at a custom YAML file."""
+        config_path = tmp_path / "custom" / "studyctl.yaml"
+        config_path.parent.mkdir()
+        config_path.write_text(
+            """
+database:
+  path: /tmp/custom-sessions.db
+logging:
+  level: DEBUG
+thresholds:
+  warning_mb: 42
+""",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+        monkeypatch.delenv("DATABASE_PATH", raising=False)
+        monkeypatch.delenv("LOG_LEVEL", raising=False)
+        monkeypatch.delenv("WARNING_THRESHOLD_MB", raising=False)
+
+        config = load_config()
+
+        assert config["database"]["path"] == "/tmp/custom-sessions.db"
+        assert config["logging"]["level"] == "DEBUG"
+        assert config["thresholds"]["warning_mb"] == 42
+
+
+class TestEnsureConfigDir:
+    """Tests for ensure_config_dir function."""
+
+    def test_creates_config_and_env_at_studyctl_config_path(
+        self, tmp_path, monkeypatch
+    ):
+        """Test that STUDYCTL_CONFIG controls created config and .env paths."""
+        config_path = tmp_path / "profile" / "config.yaml"
+        env_path = config_path.parent / ".env"
+        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+        ensure_config_dir()
+
+        assert config_path.exists()
+        assert env_path.exists()
 
 
 class TestDefaultConfig:
