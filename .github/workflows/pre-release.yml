@@ -24,6 +24,17 @@ jobs:
       - name: Install workspace dependencies
         run: uv sync --all-packages --group dev
 
+      - name: Release consistency
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            python scripts/check-release-consistency.py \
+              --tag "${GITHUB_REF_NAME}" \
+              --require-release-notes \
+              --allow-formula-lag
+          else
+            python scripts/check-release-consistency.py
+          fi
+
       - name: Ruff
         run: |
           uv run ruff check .

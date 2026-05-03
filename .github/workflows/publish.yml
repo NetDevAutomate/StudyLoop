@@ -37,6 +37,13 @@ jobs:
       - name: Install workspace dependencies
         run: uv sync --all-packages --group dev
 
+      - name: Release consistency
+        run: |
+          python scripts/check-release-consistency.py \
+            --tag "${GITHUB_REF_NAME}" \
+            --require-release-notes \
+            --allow-formula-lag
+
       - name: Ruff
         run: |
           uv run ruff check .
@@ -155,6 +162,13 @@ jobs:
           sed -i "s|studyctl-.*\.tar\.gz|studyctl-${VERSION}.tar.gz|" Formula/studyctl.rb
           sed -i '/^  url .*studyctl-/{n;s|sha256 ".*"|sha256 "'"${SHA}"'"|;}' Formula/studyctl.rb
           grep -A1 'url .*studyctl' Formula/studyctl.rb
+
+      - name: Verify formula consistency
+        run: |
+          python scripts/check-release-consistency.py \
+            --tag "${GITHUB_REF_NAME}" \
+            --require-release-notes \
+            --require-formula-current
 
       - name: Commit and push formula
         run: |
