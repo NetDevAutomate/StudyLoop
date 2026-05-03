@@ -77,6 +77,37 @@ def test_write_raw_config_creates_parent_and_round_trips(monkeypatch, tmp_path):
     assert load_raw_config() == {"browser": "brave", "web_port": 9000}
 
 
+def test_load_raw_config_rejects_invalid_yaml(monkeypatch, tmp_path):
+    from studyctl.settings import ConfigError, load_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("browser: [unterminated\n")
+    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+    try:
+        load_raw_config()
+    except ConfigError as exc:
+        assert "Invalid YAML" in exc.message
+        assert str(config_path) in exc.message
+    else:
+        raise AssertionError("Expected ConfigError")
+
+
+def test_load_raw_config_rejects_non_mapping(monkeypatch, tmp_path):
+    from studyctl.settings import ConfigError, load_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("- not\n- a\n- mapping\n")
+    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+    try:
+        load_raw_config()
+    except ConfigError as exc:
+        assert "expected a YAML mapping" in exc.message
+    else:
+        raise AssertionError("Expected ConfigError")
+
+
 # ---------------------------------------------------------------------------
 # Scalar top-level fields (data-driven mapping)
 # ---------------------------------------------------------------------------

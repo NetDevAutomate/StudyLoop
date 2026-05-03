@@ -8,10 +8,15 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 from rich.console import Console
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+    from typing import Any
 
 console = Console()
 
@@ -49,6 +54,18 @@ def _parse_chapter_range(raw: str) -> tuple[int, int]:
             f"Invalid range: start must be >= 1 and <= end (got {start}-{end})"
         )
     return (start, end)
+
+
+def _run_notebooklm[T](coro: Coroutine[Any, Any, T]) -> T:
+    """Run a NotebookLM coroutine and convert expected failures into CLI errors."""
+    try:
+        return asyncio.run(coro)
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except TimeoutError as exc:
+        raise click.ClickException(f"NotebookLM operation timed out: {exc}") from exc
+    except RuntimeError as exc:
+        raise click.ClickException(f"NotebookLM operation failed: {exc}") from exc
 
 
 def _display_name_for_path(path: Path) -> str:
@@ -128,7 +145,7 @@ def process(source: Path, output_dir: Path, level: int, notebook_id: str | None)
         console.print(f"[green]\u2713[/green] Split into {len(chapter_paths)} chapters")
 
         nid = _get_notebook_id(notebook_id)
-        result = asyncio.run(upload_chapters(chapter_paths, book_name, notebook_id=nid))
+        result = _run_notebooklm(upload_chapters(chapter_paths, book_name, notebook_id=nid))
         console.print(
             f"[green]\u2713[/green] Uploaded {result.chapters} chapters "
             f"to notebook {result.id[:8]}..."
@@ -142,7 +159,7 @@ def list_cmd(notebook_id: str | None) -> None:
     from studyctl.content.notebooklm_client import list_notebooks, list_sources
 
     if notebook_id:
-        sources = asyncio.run(list_sources(notebook_id))
+        sources = _run_notebooklm(list_sources(notebook_id))
         table = Table(title=f"Sources in {notebook_id[:8]}...")
         table.add_column("ID", style="dim")
         table.add_column("Title")
@@ -150,7 +167,7 @@ def list_cmd(notebook_id: str | None) -> None:
             table.add_row(s.id[:8] + "...", s.title)
         console.print(table)
     else:
-        notebooks = asyncio.run(list_notebooks())
+        notebooks = _run_notebooklm(list_notebooks())
         table = Table(title="NotebookLM Notebooks")
         table.add_column("ID", style="dim")
         table.add_column("Title", style="bold")
@@ -187,7 +204,7 @@ def generate(
         raise click.ClickException("Nothing to generate (both audio and video disabled).")
 
     console.print(f"Generating {', '.join(types)} for chapters {start}-{end}...")
-    asyncio.run(
+    _run_notebooklm(
         generate_for_chapters(
             notebook_id,
             (start, end),
@@ -209,7 +226,7 @@ def download(notebook_id: str, output_dir: Path, chapters: str | None) -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     chapter_range = _parse_chapter_range(chapters) if chapters else None
-    asyncio.run(download_artifacts(notebook_id, output_dir, chapter_range))
+    _run_notebooklm(download_artifacts(notebook_id, output_dir, chapter_range))
     console.print(f"[green]\u2713[/green] Artifacts saved to {output_dir}")
 
 
@@ -220,7 +237,7 @@ def delete_cmd(notebook_id: str) -> None:
     """Delete a notebook and all its contents."""
     from studyctl.content.notebooklm_client import delete_notebook
 
-    asyncio.run(delete_notebook(notebook_id))
+    _run_notebooklm(delete_notebook(notebook_id))
     console.print(f"[green]\u2713[/green] Deleted notebook {notebook_id[:8]}...")
 
 
@@ -273,7 +290,7 @@ def syllabus(
         return
 
     # Get sources and build source map
-    raw_sources = asyncio.run(list_sources(notebook_id))
+    raw_sources = _run_notebooklm(list_sources(notebook_id))
     source_tuples = [(s.id, s.title) for s in raw_sources]
     source_map, title_map = map_sources_to_chapters(source_tuples)
 
@@ -289,7 +306,7 @@ def syllabus(
 
     console.print(f"Generating syllabus from {len(raw_sources)} sources...")
     try:
-        chunks = asyncio.run(_generate_syllabus())
+        chunks = _run_notebooklm(_generate_syllabus())
     except Exception:
         console.print("[yellow]AI syllabus failed, using fixed-size chunks[/yellow]")
         chunks = build_fixed_size_chunks(source_map, max_chapters, title_map)
@@ -388,7 +405,7 @@ def autopilot(output_dir: Path, book_name: str | None, timeout: int) -> None:
                 )
 
     try:
-        asyncio.run(_run_episode())
+        _run_notebooklm(_run_episode())
         chunk.status = ChunkStatus.COMPLETED
         console.print(f"[green]\u2713[/green] Episode {chunk.episode} complete")
     except Exception as exc:
@@ -550,7 +567,7 @@ def _process_obsidian_source(
     nid = notebook_id
     if not nid:
         console.print(f"Creating notebook: [bold]{name}[/bold]")
-    result = asyncio.run(upload_chapters(pdf_files, name, notebook_id=nid))
+    result = _run_notebooklm(upload_chapters(pdf_files, name, notebook_id=nid))
     nid = result.id
     console.print(
         f"[green]\u2713[/green] Uploaded {result.chapters} files to notebook {nid[:8]}..."
@@ -562,7 +579,7 @@ def _process_obsidian_source(
     # Step 3: Generate artifacts
     if not no_audio or not no_quiz or not no_flashcards:
         console.print("Generating artifacts...")
-        asyncio.run(
+        _run_notebooklm(
             generate_for_chapters(
                 nid,
                 (1, len(pdf_files)),
@@ -574,5 +591,5 @@ def _process_obsidian_source(
 
     if not no_download:
         console.print("Downloading artifacts...")
-        asyncio.run(download_artifacts(nid, out))
+        _run_notebooklm(download_artifacts(nid, out))
         console.print(f"[green]\u2713[/green] Artifacts saved to {out}")

@@ -182,7 +182,51 @@ The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices
 
 ### Manual Configuration
 
-All configuration lives in a single file: `~/.config/studyctl/config.yaml`. This file is shared between `studyctl` and all `session-*` tools — use the same file on every machine.
+All configuration lives in a single YAML file: `~/.config/studyctl/config.yaml`. This file is shared between `studyctl` and all `session-*` tools — use the same file on every machine.
+
+`STUDYCTL_CONFIG` can point at a different YAML file for testing, alternate profiles, or machine-specific overrides:
+
+```bash
+export STUDYCTL_CONFIG=~/.config/studyctl/work.yaml
+studyctl config show
+```
+
+TOML is not currently supported. Use YAML for the production config contract; adding TOML would require a deliberate parser, migration, and compatibility test pass.
+
+Minimal production example:
+
+```yaml
+obsidian_base: ~/Obsidian/Personal
+session_db: ~/.config/studyctl/sessions.db
+state_dir: ~/.local/share/studyctl
+
+content:
+  base_path: ~/study-materials
+  study_paths:
+    - 2-Areas/Study
+    - ~/Desktop/current-course-materials
+  notebooklm_timeout: 900
+  inter_episode_gap: 30
+
+topics:
+  - name: Python
+    slug: python
+    obsidian_path: 2-Areas/Study/Python
+    notebook_id: ""  # optional NotebookLM notebook ID
+    tags: [python, programming]
+
+  - name: Data Engineering
+    slug: data-engineering
+    obsidian_path: ~/Obsidian/Work/Study/Data-Engineering
+    tags: [data-engineering, analytics]
+```
+
+Path rules:
+
+- Relative `topics[].obsidian_path` values are resolved under `obsidian_base`.
+- Absolute `topics[].obsidian_path` values are used as-is.
+- Relative `content.study_paths` values are resolved under `obsidian_base`.
+- `content.study_paths` augments topic paths for `studyctl content from-obsidian` when you do not pass source directories manually.
 
 To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:
 
@@ -525,6 +569,9 @@ studyctl content autopilot -o ./chapters
 
 # 4. Convert Obsidian notes to PDFs and upload in one step
 studyctl content from-obsidian ~/Obsidian/Vault/Study/Python
+
+# Or use configured topics and content.study_paths
+studyctl content from-obsidian
 ```
 
 See the [CLI Reference](cli-reference.md) for all available commands.

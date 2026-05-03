@@ -11,12 +11,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import click
 import yaml
 
 CONFIG_DIR = Path.home() / ".config" / "studyctl"
 DEFAULT_DB = CONFIG_DIR / "sessions.db"
 
 _CONFIG_PATH = Path(os.environ.get("STUDYCTL_CONFIG", CONFIG_DIR / "config.yaml"))
+
+
+class ConfigError(click.ClickException):
+    """User-facing error for invalid studyctl configuration."""
+
 
 # File extensions we sync as sources
 SYNCABLE_EXTENSIONS = {".md", ".pdf", ".txt"}
@@ -196,7 +202,20 @@ def load_raw_config() -> dict[str, Any]:
     config_path = get_config_path()
     if not config_path.exists():
         return {}
-    return yaml.safe_load(config_path.read_text()) or {}
+    try:
+        loaded = yaml.safe_load(config_path.read_text())
+    except yaml.YAMLError as exc:
+        raise ConfigError(
+            f"Invalid YAML in {config_path}. Fix the file or rerun 'studyctl config init'."
+        ) from exc
+
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ConfigError(
+            f"Invalid config in {config_path}: expected a YAML mapping at the top level."
+        )
+    return loaded
 
 
 def write_raw_config(data: dict[str, Any]) -> Path:
@@ -326,7 +345,7 @@ def get_db_path() -> Path:
             db_str = data.get("database", {}).get("path", "")
         if db_str:
             return Path(db_str).expanduser()
-    except Exception:
+    except (OSError, TypeError, AttributeError):
         pass
     return DEFAULT_DB
 

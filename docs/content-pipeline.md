@@ -131,6 +131,22 @@ studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python/ \
     -n "$NOTEBOOKLM_NOTEBOOK_ID"
 ```
 
+If no source directory is provided, `from-obsidian` uses configured study sources:
+
+1. every `topics[].obsidian_path`
+2. every `content.study_paths`
+3. fallback: `{obsidian_base}/2-Areas/Study`
+
+Manual source directories still override the configured defaults:
+
+```bash
+# Uses topics[].obsidian_path and content.study_paths
+studyctl content from-obsidian
+
+# Overrides configured defaults for this run
+studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes
+```
+
 This does everything in one step:
 
 1. Converts each `.md` file to PDF via pandoc
@@ -182,6 +198,9 @@ Where flashcard/quiz JSON files are stored. Set in `~/.config/studyctl/config.ya
 ```yaml
 content:
   base_path: ~/study-materials    # default
+  study_paths:                    # extra Obsidian/course-material source dirs
+    - 2-Areas/Study
+    - ~/Desktop/current-course
   notebooklm_timeout: 900         # seconds per generation
   inter_episode_gap: 30           # seconds between API calls
 ```
@@ -228,7 +247,6 @@ The autopilot command generates one episode at a time, respecting rate limits. R
 | `content generate` times out | NotebookLM generation takes 15+ min | Increase timeout: `-t 1800` |
 | Daily quota exceeded | ~20-25 generations per day (Pro tier) | Wait 24h UTC for reset |
 | Mermaid parse errors in `from-obsidian` | Special characters in diagram node labels | Non-fatal; ~15 diagrams may fail. Fix labels or ignore. |
-| Double-nested output path | `from-obsidian` creates `pdfs/pdfs/` | Known issue; manually flatten or use `-o` to specify exact path |
 | PDF has no bookmarks | `content split` needs TOC structure | Use `--ranges` for manual page ranges |
 
 ---
