@@ -499,3 +499,6 @@ results.tsv
 .pytest-junit.xml
 docs/reports/
 docs/brainstorms/
+
+# Stray mock path artefacts from tests that stringify MagicMock path objects
+<MagicMock id='*'>

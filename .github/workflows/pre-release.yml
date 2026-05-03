@@ -11,7 +11,44 @@ on:
         required: false
 
 jobs:
+  local-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace dependencies
+        run: uv sync --all-packages --group dev
+
+      - name: Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Pyright
+        run: |
+          cd packages/agent-session-tools && uv run pyright src/
+          cd ../studyctl && uv run pyright src/
+
+      - name: Unit tests
+        run: uv run pytest --tb=short -m "not integration and not e2e" --cov=packages --cov-report=term-missing
+
+      - name: Build release package
+        run: ./scripts/build-release.sh
+
+      - name: Install smoke test
+        run: |
+          uv venv /tmp/studyctl-smoke
+          uv pip install --python /tmp/studyctl-smoke/bin/python dist/studyctl-*.whl
+          export PATH="/tmp/studyctl-smoke/bin:$PATH"
+          ./scripts/smoke-installed-cli.sh
+
   upgrade-path:
+    needs: local-quality-gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -91,7 +128,9 @@ jobs:
   # independently. To block publish on failure, add this as a required
   # status check in GitHub branch protection rules.
   gate:
-    needs: upgrade-path
+    needs:
+      - local-quality-gate
+      - upgrade-path
     runs-on: ubuntu-latest
     steps:
       - run: echo "Pre-release gate passed"

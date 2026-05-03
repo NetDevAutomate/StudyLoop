@@ -120,3 +120,30 @@ def test_from_obsidian_explicit_source_overrides_configured_defaults(
 
     assert result.exit_code == 0, result.output
     assert converted == [explicit_dir]
+
+
+def test_from_obsidian_reports_missing_notebooklm_dependency(
+    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source_dir = tmp_path / "notes"
+    source_dir.mkdir()
+
+    def fake_convert_directory(source_dir: Path, output_dir: Path) -> list[Path]:
+        pdf_dir = output_dir / "pdfs"
+        pdf_dir.mkdir(parents=True)
+        pdf = pdf_dir / "chapter.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
+        return [pdf]
+
+    async def fake_upload_chapters(chapter_pdfs, book_name, notebook_id=None):
+        raise ImportError("notebooklm-py is required for NotebookLM integration")
+
+    monkeypatch.setattr(
+        "studyctl.content.markdown_converter.convert_directory", fake_convert_directory
+    )
+    monkeypatch.setattr("studyctl.content.notebooklm_client.upload_chapters", fake_upload_chapters)
+
+    result = runner.invoke(cli, ["content", "from-obsidian", str(source_dir), "--no-generate"])
+
+    assert result.exit_code == 1
+    assert "notebooklm-py is required" in result.output
