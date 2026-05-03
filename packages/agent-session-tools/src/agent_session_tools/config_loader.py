@@ -79,6 +79,27 @@ def expand_path(path_str: str) -> Path:
     return Path(os.path.expanduser(os.path.expandvars(path_str)))
 
 
+def get_config_file() -> Path:
+    """Get the shared studyctl config file path.
+
+    STUDYCTL_CONFIG is resolved at call time so tests and long-running processes can
+    change the active config without re-importing this module.
+    """
+    if config_path := os.getenv("STUDYCTL_CONFIG"):
+        return expand_path(config_path)
+    return CONFIG_FILE
+
+
+def get_config_dir() -> Path:
+    """Get the directory containing the shared studyctl config file."""
+    return get_config_file().parent
+
+
+def get_env_file() -> Path:
+    """Get the .env file stored beside the shared studyctl config file."""
+    return get_config_dir() / ".env"
+
+
 def get_endpoints(config: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
     """Get configured sync endpoints from hosts section.
 
@@ -113,7 +134,7 @@ def get_endpoints(config: dict[str, Any] | None = None) -> dict[str, dict[str, A
 
             endpoints[name] = {
                 "username": host.get("user", ""),
-                "path": host.get("sessions_db", str(CONFIG_DIR / "sessions.db")),
+                "path": host.get("sessions_db", str(get_config_dir() / "sessions.db")),
                 "ip_address": ip_address,
             }
 
@@ -135,13 +156,18 @@ def load_config() -> dict[str, Any]:
     config = copy.deepcopy(DEFAULT_CONFIG)
 
     # Load .env file if exists
-    if ENV_FILE.exists():
-        load_dotenv(ENV_FILE)
+    env_file = get_env_file()
+    if env_file.exists():
+        load_dotenv(env_file)
 
     # Try loading config.yaml (new location first, then legacy)
-    config_file = CONFIG_FILE
+    config_file = get_config_file()
     legacy_config = Path.home() / ".config" / "agent_session" / "config.yaml"
-    if not config_file.exists() and legacy_config.exists():
+    if (
+        not os.getenv("STUDYCTL_CONFIG")
+        and not config_file.exists()
+        and legacy_config.exists()
+    ):
         config_file = legacy_config
 
     if config_file.exists():
@@ -241,18 +267,22 @@ def get_embedding_model(config: dict[str, Any] | None = None) -> str:
 
 def ensure_config_dir() -> None:
     """Ensure config directory structure exists."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    config_dir = get_config_dir()
+    config_file = get_config_file()
+    env_file = get_env_file()
+
+    config_dir.mkdir(parents=True, exist_ok=True)
 
     # Create config.yaml if it doesn't exist
-    if not CONFIG_FILE.exists():
-        with open(CONFIG_FILE, "w") as f:
+    if not config_file.exists():
+        with open(config_file, "w") as f:
             yaml.dump(DEFAULT_CONFIG, f, default_flow_style=False, sort_keys=False)
-        print(f"✅ Created default config: {CONFIG_FILE}")
+        print(f"✅ Created default config: {config_file}")
 
     # Create .env if it doesn't exist
-    if not ENV_FILE.exists():
-        ENV_FILE.touch()
-        print(f"✅ Created empty .env: {ENV_FILE}")
+    if not env_file.exists():
+        env_file.touch()
+        print(f"✅ Created empty .env: {env_file}")
 
     # Create backup directory
     backup_dir = expand_path(DEFAULT_CONFIG["database"]["backup_dir"])

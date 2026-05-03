@@ -14,11 +14,12 @@ from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[repor
 from studyctl.web.app import create_app  # noqa: E402
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 
 @pytest.fixture
-def artefact_client(tmp_path: Path) -> TestClient:
+def artefact_client(tmp_path: Path) -> Iterator[TestClient]:
     """Create a TestClient with a temp content base_path."""
     # Set up course with artefacts
     course_dir = tmp_path / "my-course"

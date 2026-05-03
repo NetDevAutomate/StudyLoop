@@ -60,12 +60,6 @@ include = [
     "packages/agent-session-tools/tests",
 ]
 exclude = [
-    "packages/studyctl/src/studyctl/tui",
-    "packages/studyctl/src/studyctl/content",
-    "packages/studyctl/src/studyctl/cli/_content.py",
-    "packages/studyctl/src/studyctl/cli/_web.py",
-    "packages/studyctl/src/studyctl/web",
-    "packages/studyctl/src/studyctl/mcp",
     "packages/studyctl/src/studyctl/eval/llm_client.py",
     "packages/agent-session-tools/tests/test_embeddings.py",
     "scripts/capture_tui_screenshot.py",
@@ -74,7 +68,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 testpaths = ["packages/agent-session-tools/tests", "packages/studyctl/tests"]
-addopts = "--import-mode=importlib"
+addopts = "--import-mode=importlib -m 'not integration and not e2e'"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "e2e: end-to-end tests requiring full stack (tmux, ttyd, web server)",

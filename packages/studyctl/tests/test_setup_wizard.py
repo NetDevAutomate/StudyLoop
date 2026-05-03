@@ -106,6 +106,22 @@ class TestSetupDefaults:
         config = yaml.safe_load(config_path.read_text())
         assert config["notebooklm"]["enabled"] is False
 
+    def test_setup_honors_studyctl_config_env(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """STUDYCTL_CONFIG controls where setup writes config."""
+        config_path = tmp_path / "custom" / "studyctl.yaml"
+        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+        user_input = "\ny\n\nn\ny\n\nn\n"
+        result = runner.invoke(cli, ["setup"], input=user_input)
+
+        assert result.exit_code == 0, result.output
+        assert config_path.exists()
+
 
 # ---------------------------------------------------------------------------
 # Custom values

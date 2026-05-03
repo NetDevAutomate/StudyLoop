@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import click
 from rich.table import Table
 
@@ -169,12 +167,9 @@ def resume() -> None:
         )
 
     # Medication window (if configured)
-    raw_config = {}
-    config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
-    if config_path.exists():
-        import yaml
+    from studyctl.settings import load_raw_config
 
-        raw_config = yaml.safe_load(config_path.read_text()) or {}
+    raw_config = load_raw_config()
     med_config = raw_config.get("medication")
     if med_config:
         med = check_medication_window(med_config)

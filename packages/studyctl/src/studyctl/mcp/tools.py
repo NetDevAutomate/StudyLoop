@@ -8,14 +8,16 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as param type
 from mcp.server.fastmcp.exceptions import ToolError
 
 from studyctl.services.review import get_due, get_stats, record_review
-from studyctl.settings import load_settings
+from studyctl.settings import load_raw_config, load_settings
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +46,7 @@ def register_tools(mcp: FastMCP) -> None:
         """
         from studyctl.services.review import list_course_summaries
 
-        raw_config = {}
-        config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
-        if config_path.exists():
-            import yaml
-
-            raw_config = yaml.safe_load(config_path.read_text()) or {}
-        study_dirs = raw_config.get("review", {}).get("directories", [])
+        study_dirs = load_raw_config().get("review", {}).get("directories", [])
 
         return {"courses": list_course_summaries(study_dirs)}
 
@@ -216,7 +212,10 @@ def register_tools(mcp: FastMCP) -> None:
         doc = pymupdf.open(str(pdf_path))
         text = ""
         for page in doc:
-            text += page.get_text()
+            page_text = page.get_text()
+            if not isinstance(page_text, str):
+                raise ToolError(f"Could not extract text from {pdf_path.name}")
+            text += page_text
         doc.close()
 
         title = pdf_path.stem.replace("_", " ").replace("-", " ").title()

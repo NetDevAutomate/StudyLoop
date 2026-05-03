@@ -8,7 +8,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from studyctl.settings import _CONFIG_PATH, generate_default_config, load_settings
+from studyctl.settings import generate_default_config, get_config_path, load_settings
 
 
 class InstallError(RuntimeError):
@@ -262,10 +262,11 @@ def install_agent_definitions(
 
 def ensure_default_config() -> Path:
     """Create a default config file if it does not already exist."""
-    _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if not _CONFIG_PATH.exists():
-        _CONFIG_PATH.write_text(generate_default_config())
-    return _CONFIG_PATH
+    config_path = get_config_path()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    if not config_path.exists():
+        config_path.write_text(generate_default_config())
+    return config_path
 
 
 def ensure_review_directories() -> list[Path]:

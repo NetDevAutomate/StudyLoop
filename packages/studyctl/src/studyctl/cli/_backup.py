@@ -7,6 +7,7 @@ process with a safety backup of the current state first.
 
 from __future__ import annotations
 
+import os
 import shutil
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -17,7 +18,16 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from studyctl.cli._shared import console
-from studyctl.settings import _CONFIG_PATH, CONFIG_DIR, DEFAULT_DB
+from studyctl.settings import CONFIG_DIR, DEFAULT_DB, get_config_path
+
+_CONFIG_PATH = get_config_path()
+
+
+def _active_config_path() -> Path:
+    """Return active config path while preserving old test monkeypatch hooks."""
+    if os.environ.get("STUDYCTL_CONFIG"):
+        return get_config_path()
+    return _CONFIG_PATH
 
 
 def _get_backup_dir() -> Path:
@@ -30,7 +40,7 @@ def _get_assets() -> list[tuple[str, Path]]:
     return [
         ("sessions.db", DEFAULT_DB),
         ("review.db", review_db),
-        ("config.yaml", _CONFIG_PATH),
+        ("config.yaml", _active_config_path()),
     ]
 
 

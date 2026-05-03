@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
 
 import pytest as _pytest  # noqa: E402
 
+pytestmark = _pytest.mark.asyncio
+
 from studyctl.content.notebooklm_client import (  # noqa: E402
     create_syllabus,
     delete_notebook,
@@ -18,6 +20,12 @@ from studyctl.content.notebooklm_client import (  # noqa: E402
     start_chunk_generation,
     upload_chapters,
 )
+
+
+@_pytest.fixture(autouse=True)
+def _no_real_sleep():
+    with patch("studyctl.content.notebooklm_client.asyncio.sleep", new_callable=AsyncMock):
+        yield
 
 
 @_pytest.fixture
@@ -64,8 +72,9 @@ def patch_notebooklm(mock_notebooklm_client):
     acm.__aexit__.return_value = None
     with patch(
         "studyctl.content.notebooklm_client.NotebookLMClient.from_storage",
-        return_value=acm,
+        new_callable=AsyncMock,
     ) as mock_from_storage:
+        mock_from_storage.return_value = acm
         yield mock_notebooklm_client, mock_from_storage
 
 
@@ -148,6 +157,14 @@ class TestListSources:
         assert len(result) == 1
         assert result[0].id == "test-source-id"
 
+    async def test_missing_source_title_becomes_empty_string(self, patch_notebooklm):
+        client, _ = patch_notebooklm
+        client.sources.list.return_value[0].title = None
+
+        result = await list_sources("test-notebook-id")
+
+        assert result[0].title == ""
+
 
 class TestGenerateForChapters:
     """Tests for generate_for_chapters."""
@@ -157,6 +174,14 @@ class TestGenerateForChapters:
         await generate_for_chapters("test-notebook-id", (1, 1))
         client.artifacts.generate_audio.assert_called_once()
         client.artifacts.generate_video.assert_called_once()
+
+    async def test_generates_with_missing_source_title(self, patch_notebooklm):
+        client, _ = patch_notebooklm
+        client.sources.list.return_value[0].title = None
+
+        await generate_for_chapters("test-notebook-id", (1, 1))
+
+        client.artifacts.generate_audio.assert_called_once()
 
     async def test_skip_audio(self, patch_notebooklm):
         client, _ = patch_notebooklm

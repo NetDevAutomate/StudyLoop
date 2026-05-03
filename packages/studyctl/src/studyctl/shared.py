@@ -29,11 +29,19 @@ from pathlib import Path
 
 import yaml
 
-from .settings import load_settings
+from .settings import get_config_path, load_raw_config, load_settings, write_raw_config
 
-CONFIG_PATH = Path(
-    os.environ.get("STUDYCTL_CONFIG", Path.home() / ".config" / "studyctl" / "config.yaml")
-)
+CONFIG_PATH = get_config_path()
+_DEFAULT_CONFIG_PATH = CONFIG_PATH
+
+
+def _active_config_path() -> Path:
+    """Return active config path while preserving old test monkeypatch hooks."""
+    if os.environ.get("STUDYCTL_CONFIG"):
+        return get_config_path()
+    if CONFIG_PATH != _DEFAULT_CONFIG_PATH:
+        return CONFIG_PATH
+    return get_config_path()
 
 
 def _get_default_user() -> str:
@@ -42,9 +50,12 @@ def _get_default_user() -> str:
 
 
 def _load_config() -> dict:
-    if not CONFIG_PATH.exists():
+    config_path = _active_config_path()
+    if config_path == get_config_path():
+        return load_raw_config()
+    if not config_path.exists():
         return {}
-    return yaml.safe_load(CONFIG_PATH.read_text()) or {}
+    return yaml.safe_load(config_path.read_text()) or {}
 
 
 def _resolve_hosts(config: dict) -> tuple[str | None, dict, dict[str, dict]]:
@@ -116,7 +127,7 @@ def push_state(remote: str | None = None) -> list[str]:
     """
     config = _load_config()
     if not config:
-        raise FileNotFoundError(f"No config at {CONFIG_PATH}. Run 'studyctl state init'.")
+        raise FileNotFoundError(f"No config at {_active_config_path()}. Run 'studyctl state init'.")
 
     _, local_config, remotes = _resolve_hosts(config)
     if remote:
@@ -161,7 +172,7 @@ def pull_state(remote: str | None = None) -> list[str]:
     """Pull state from remote machine(s). Sessions DB uses merge logic."""
     config = _load_config()
     if not config:
-        raise FileNotFoundError(f"No config at {CONFIG_PATH}")
+        raise FileNotFoundError(f"No config at {_active_config_path()}")
 
     _, local_config, remotes = _resolve_hosts(config)
     if remote:
@@ -204,7 +215,7 @@ def sync_status() -> dict:
     """Check config and connectivity."""
     config = _load_config()
     if not config:
-        return {"configured": False, "config_path": str(CONFIG_PATH)}
+        return {"configured": False, "config_path": str(_active_config_path())}
 
     local_name, _, remotes = _resolve_hosts(config)
 
@@ -259,13 +270,14 @@ def init_interactive_config(console: object) -> Path:
     if not isinstance(console, Console):
         console = Console()
 
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    config_path = _active_config_path()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Load existing config or start fresh
     existing: dict = {}
-    if CONFIG_PATH.exists():
-        existing = yaml.safe_load(CONFIG_PATH.read_text()) or {}
-        console.print(f"[dim]Existing config found at {CONFIG_PATH} — updating.[/dim]\n")
+    if config_path.exists():
+        existing = _load_config()
+        console.print(f"[dim]Existing config found at {config_path} — updating.[/dim]\n")
 
     console.print(
         Panel(
@@ -384,8 +396,10 @@ def init_interactive_config(console: object) -> Path:
     # Ensure topics key exists
     config.setdefault("topics", [])
 
-    CONFIG_PATH.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
-    return CONFIG_PATH
+    if config_path == get_config_path():
+        return write_raw_config(config)
+    config_path.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
+    return config_path
 
 
 def _prompt_yn(question: str, default: bool = False) -> bool:
@@ -406,9 +420,10 @@ def _prompt_text(question: str, default: str = "") -> str:
 
 def init_config() -> Path:
     """Create default config file with unified hosts schema."""
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if CONFIG_PATH.exists():
-        return CONFIG_PATH
+    config_path = _active_config_path()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    if config_path.exists():
+        return config_path
 
     hostname = socket.gethostname().split(".")[0]
     default = {
@@ -424,5 +439,7 @@ def init_config() -> Path:
             },
         },
     }
-    CONFIG_PATH.write_text(yaml.dump(default, default_flow_style=False, sort_keys=False))
-    return CONFIG_PATH
+    if config_path == get_config_path():
+        return write_raw_config(default)
+    config_path.write_text(yaml.dump(default, default_flow_style=False, sort_keys=False))
+    return config_path

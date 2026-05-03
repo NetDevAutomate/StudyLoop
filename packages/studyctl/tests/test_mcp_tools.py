@@ -48,6 +48,21 @@ class TestListCourses:
         assert result["courses"][0]["name"] == "test-course"
         assert result["courses"][0]["flashcard_count"] == 1
 
+    def test_reads_review_dirs_from_studyctl_config_env(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        config_path = tmp_path / "custom-config.yaml"
+        course_dir = tmp_path / "course-a"
+        config_path.write_text(f"review:\n  directories:\n    - {course_dir}\n")
+        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+        with patch("studyctl.services.review.list_course_summaries", return_value=[]) as summaries:
+            tool = _get_tool("list_courses")
+            result = tool()
+
+        assert result == {"courses": []}
+        summaries.assert_called_once_with([str(course_dir)])
+
 
 class TestGetStudyContext:
     def test_returns_context(self) -> None:

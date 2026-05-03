@@ -16,9 +16,9 @@ from studyctl.doctor.models import CheckResult
 
 
 def _get_config_path() -> Path:
-    from studyctl.settings import _CONFIG_PATH
+    from studyctl.settings import get_config_path
 
-    return _CONFIG_PATH
+    return get_config_path()
 
 
 def _get_package_version(name: str) -> str:

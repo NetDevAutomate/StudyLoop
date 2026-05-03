@@ -11,10 +11,13 @@ from unittest.mock import patch  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
 
+from studyctl.cli import cli  # noqa: E402
 from studyctl.web.app import create_app  # noqa: E402
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from pytest import MonkeyPatch
 
 
 @pytest.fixture
@@ -102,6 +105,32 @@ class TestCoursesAPI:
         resp = client.get("/api/due/test-course")
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
+
+
+class TestWebCommandConfig:
+    def test_web_reads_review_dirs_from_studyctl_config_env(
+        self, monkeypatch: MonkeyPatch, tmp_path: Path
+    ) -> None:
+        from click.testing import CliRunner
+
+        config_path = tmp_path / "custom-config.yaml"
+        course_dir = tmp_path / "course-a"
+        config_path.write_text(f"review:\n  directories:\n    - {course_dir}\n")
+        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+
+        captured: dict[str, object] = {}
+
+        def fake_create_app(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr("studyctl.web.app.create_app", fake_create_app)
+        monkeypatch.setattr("uvicorn.run", lambda *args, **kwargs: None)
+
+        result = CliRunner().invoke(cli, ["web"])
+
+        assert result.exit_code == 0, result.output
+        assert captured["study_dirs"] == [str(course_dir)]
 
     def test_wrong(self, client: TestClient) -> None:
         resp = client.get("/api/wrong/test-course")
