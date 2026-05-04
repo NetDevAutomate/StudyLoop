@@ -122,13 +122,52 @@ class OllamaBackendConfig:
 
 
 @dataclass
+class BedrockBackendConfig:
+    """AWS Bedrock-specific settings for the card generator.
+
+    ``profile`` is tried first; if the profile is missing or the call
+    fails with a credential error, ``profile_fallback`` is tried. This
+    makes the same config portable across machines where one has the
+    prod profile and another only has a local / dev profile. Set the
+    fallback to an empty string to disable fallback.
+
+    ``fallback_region`` + ``fallback_model`` enable cross-region
+    failover on ``ThrottlingException``. If capacity in the primary
+    region (e.g. ``us-east-1``) is exhausted, the generator retries the
+    same request once in the secondary region (e.g. ``eu-west-1``)
+    using the region-matched inference profile. Leave both empty to
+    disable the cross-region fallback.
+    """
+
+    # Inference profile ID on Bedrock (cross-region endpoint). Sonnet 4.6
+    # is only invokable via an inference profile, not by the raw model ID.
+    model: str = "us.anthropic.claude-sonnet-4-6"
+    region: str = "us-east-1"
+    profile: str = "bedrock-prod"
+    profile_fallback: str = "bedrock-local"
+    # Bedrock Converse API's maxTokens. Flashcard / quiz outputs rarely
+    # exceed 4k tokens; 8k gives headroom for quiz decks.
+    max_tokens: int = 8000
+    # Optional region fallback on ThrottlingException. If both are set,
+    # a throttled call in ``region``/``model`` retries once in
+    # ``fallback_region`` using ``fallback_model``.
+    fallback_region: str = "eu-west-1"
+    fallback_model: str = "eu.anthropic.claude-sonnet-4-6"
+
+
+@dataclass
 class CardGeneratorConfig:
     """Configuration for the local card generator (flashcards + quizzes).
 
     Wired by ``content.generators.get_generator()``. The ``backend`` field
-    selects which provider-specific sub-config is used.
+    selects which provider-specific sub-config is used. Providers that
+    aren't the active backend are still loaded with defaults so switching
+    backends is a one-line config change.
     """
 
+    # Default to Ollama -- fully offline, zero-cost, no credential setup.
+    # Set ``backend: bedrock`` in config.yaml for higher-quality cards
+    # via Claude on AWS Bedrock (requires AWS credentials).
     backend: str = "ollama"
     # Low temperature -- flashcards want deterministic factual output,
     # not creative variance. Applies to every backend.
@@ -136,12 +175,17 @@ class CardGeneratorConfig:
     # Retries on JSON parse / schema validation failure. Transport errors
     # do not retry (backend dead = backend dead).
     max_retries: int = 2
-    # HTTP request timeout in seconds. 14B-class models can be slow on
-    # cold start; 180 s gives head-room without hanging the CLI.
+    # HTTP / SDK request timeout in seconds. 14B-class models can be slow
+    # on cold start; 180 s gives head-room without hanging the CLI.
     request_timeout: float = 180.0
-    # Per-backend sub-config. Only the one matching ``backend`` is used
-    # at runtime.
+    # Concurrency for multi-source generation. One worker per source file.
+    # Bedrock throttles around 4 concurrent Converse calls per account;
+    # Ollama serialises at the model level anyway.
+    max_workers: int = 4
+    # Per-backend sub-configs. Only the one matching ``backend`` is used
+    # at runtime, but all are loaded so switching backends is config-only.
     ollama: OllamaBackendConfig = field(default_factory=OllamaBackendConfig)
+    bedrock: BedrockBackendConfig = field(default_factory=BedrockBackendConfig)
 
 
 @dataclass
@@ -307,14 +351,31 @@ def load_settings() -> Settings:
     if cg:
         defaults = CardGeneratorConfig()
         ollama_raw = cg.get("ollama", {})
+        bedrock_raw = cg.get("bedrock", {})
         settings.card_generator = CardGeneratorConfig(
             backend=str(cg.get("backend", defaults.backend)),
             temperature=float(cg.get("temperature", defaults.temperature)),
             max_retries=int(cg.get("max_retries", defaults.max_retries)),
             request_timeout=float(cg.get("request_timeout", defaults.request_timeout)),
+            max_workers=int(cg.get("max_workers", defaults.max_workers)),
             ollama=OllamaBackendConfig(
                 base_url=str(ollama_raw.get("base_url", defaults.ollama.base_url)),
                 model=str(ollama_raw.get("model", defaults.ollama.model)),
+            ),
+            bedrock=BedrockBackendConfig(
+                model=str(bedrock_raw.get("model", defaults.bedrock.model)),
+                region=str(bedrock_raw.get("region", defaults.bedrock.region)),
+                profile=str(bedrock_raw.get("profile", defaults.bedrock.profile)),
+                profile_fallback=str(
+                    bedrock_raw.get("profile_fallback", defaults.bedrock.profile_fallback)
+                ),
+                max_tokens=int(bedrock_raw.get("max_tokens", defaults.bedrock.max_tokens)),
+                fallback_region=str(
+                    bedrock_raw.get("fallback_region", defaults.bedrock.fallback_region)
+                ),
+                fallback_model=str(
+                    bedrock_raw.get("fallback_model", defaults.bedrock.fallback_model)
+                ),
             ),
         )
 

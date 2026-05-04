@@ -103,8 +103,15 @@ def get_generator(config: CardGeneratorConfig) -> CardGenerator:
         from studyctl.content.generators.ollama import OllamaGenerator
 
         return OllamaGenerator(config)
+    if backend == "bedrock":
+        # Local import so importing the package root doesn't pull boto3
+        # for users who only use the Ollama path.
+        from studyctl.content.generators.bedrock import BedrockGenerator
+
+        return BedrockGenerator(config)
     raise ValueError(
-        f"Unknown card_generator.backend: {config.backend!r}. Supported backends: 'ollama'."
+        f"Unknown card_generator.backend: {config.backend!r}. "
+        "Supported backends: 'ollama', 'bedrock'."
     )
 
 
