@@ -1,0 +1,1481 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AuDHD-aware Socratic study toolkit with AI session management">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/Socratic-Study-Mentor/architecture/adapter-pattern-notebooklm.html">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Adapter Pattern For NotebookLM Workflows - Socratic Study Mentor</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="../assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adapter-pattern-for-notebooklm-workflows" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-header__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Socratic Study Mentor
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Adapter Pattern For NotebookLM Workflows
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Socratic Study Mentor" class="md-nav__button md-logo" aria-label="Socratic Study Mentor" data-md-component="logo">
+      
+  <img src="../images/logo.png" alt="logo">
+
+    </a>
+    Socratic Study Mentor
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Learning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-protocol.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../system-overview.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audhd-framework.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../socratic-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Socratic Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-bridges.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Bridges
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../artefacts.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artefacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It Matters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#networking-analogy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Networking Analogy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shape-in-this-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shape In This Repo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependency-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency Direction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#minimal-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal Port
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow Code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fake-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fake Adapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real Adapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tdd-method-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TDD Method Used
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contract-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contract Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-mistakes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Mistakes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#practical-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Practical Rule
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="adapter-pattern-for-notebooklm-workflows">Adapter Pattern For NotebookLM Workflows<a class="headerlink" href="#adapter-pattern-for-notebooklm-workflows" title="Permanent link">&para;</a></h1>
+<p>This note explains the strict adapter approach used for the local NotebookLM
+simulation boundary in <code>studyctl</code>.</p>
+<h2 id="what">What<a class="headerlink" href="#what" title="Permanent link">&para;</a></h2>
+<p>The adapter pattern puts a stable interface between application code and an
+external dependency.</p>
+<p>In this repo, the application logic should depend on a small <code>NotebookClient</code>
+contract, not directly on <code>notebooklm-py</code>, browser auth, Google RPC responses,
+or network timing.</p>
+<h2 id="why-it-matters">Why It Matters<a class="headerlink" href="#why-it-matters" title="Permanent link">&para;</a></h2>
+<p>NotebookLM is valuable but operationally awkward:</p>
+<ul>
+<li>It needs authentication.</li>
+<li>It depends on a third-party service.</li>
+<li>It can fail because of quota, browser state, cookies, rate limits, or RPC
+  changes.</li>
+<li>It is expensive to test repeatedly.</li>
+</ul>
+<p>Those are infrastructure concerns. They should sit at the edge of the system.
+The study workflow itself should be testable using local files and local data.</p>
+<p>The production rule is:</p>
+<blockquote>
+<p>Core workflow code talks to a port. Real services and fakes are adapters.</p>
+</blockquote>
+<h2 id="networking-analogy">Networking Analogy<a class="headerlink" href="#networking-analogy" title="Permanent link">&para;</a></h2>
+<p>Think of the adapter like a routing boundary.</p>
+<p>Your internal network should not depend on the exact implementation details of
+an upstream provider. You define your local routing policy, then peer with the
+provider through a controlled edge.</p>
+<p>In code:</p>
+<ul>
+<li>The protocol is the routing policy.</li>
+<li>The real adapter is the provider edge.</li>
+<li>The fake adapter is a lab router.</li>
+<li>Contract tests are your BGP/session validation checks.</li>
+</ul>
+<h2 id="shape-in-this-repo">Shape In This Repo<a class="headerlink" href="#shape-in-this-repo" title="Permanent link">&para;</a></h2>
+<p><code>text
+studyctl content workflow
+        |
+        v
+NotebookClient protocol
+        |
+        +--&gt; InMemoryNotebookClient fake
+        |
+        +--&gt; NotebookLMPyAdapter real implementation</code></p>
+<p>The workflow owns the behavior:</p>
+<ul>
+<li>create notebook if missing</li>
+<li>upload new source</li>
+<li>skip unchanged source</li>
+<li>replace changed source</li>
+<li>report stale remote source</li>
+<li>surface auth failures as expected errors</li>
+</ul>
+<p>The adapter owns the mechanics:</p>
+<ul>
+<li>how to authenticate</li>
+<li>how to call NotebookLM</li>
+<li>how to map external source objects into internal dataclasses</li>
+<li>how to translate upstream exceptions</li>
+</ul>
+<h2 id="dependency-direction">Dependency Direction<a class="headerlink" href="#dependency-direction" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    CLI["studyctl CLI"] --&gt; Workflow["Content workflow"]
+    Workflow --&gt; Port["NotebookClient protocol"]
+    Fake["InMemoryNotebookClient"] --&gt; Port
+    Real["NotebookLMPyAdapter"] --&gt; Port
+    Real --&gt; Lib["notebooklm-py"]
+    Lib --&gt; Service["Google NotebookLM"]
+
+    classDef core fill:#e8f4ff,stroke:#2463a6,color:#111;
+    classDef edge fill:#fff4e5,stroke:#b46b00,color:#111;
+    classDef external fill:#f5e8ff,stroke:#7140a0,color:#111;
+
+    class CLI,Workflow,Port core;
+    class Fake,Real edge;
+    class Lib,Service external;</code></pre>
+<p>The important detail: the workflow imports the protocol, not the real adapter.</p>
+<p>That keeps this kind of dependency out of core workflow code:</p>
+<p><code>python
+from notebooklm import NotebookLMClient  # avoid in workflow code</code></p>
+<p>Instead, workflow code receives a client that satisfies the protocol:</p>
+<p><code>python
+async def sync_notebook_sources(
+    client: NotebookClient,
+    *,
+    notebook_title: str,
+    uploads: list[SourceUpload],
+) -&gt; NotebookSyncResult:
+    ...</code></p>
+<h2 id="minimal-port">Minimal Port<a class="headerlink" href="#minimal-port" title="Permanent link">&para;</a></h2>
+<p>The port should be boring and small. It expresses what <code>studyctl</code> needs, not
+everything NotebookLM can do.</p>
+<p>```python
+from pathlib import Path
+from typing import Protocol
+from dataclasses import dataclass</p>
+<p>@dataclass(frozen=True)
+class NotebookRef:
+    id: str
+    title: str</p>
+<p>@dataclass(frozen=True)
+class SourceUpload:
+    path: Path
+    title: str
+    content_hash: str</p>
+<p>@dataclass(frozen=True)
+class NotebookSource:
+    id: str
+    title: str
+    path: Path
+    content_hash: str
+    status: str = "ready"</p>
+<p>class NotebookClient(Protocol):
+    async def ensure_notebook(self, title: str) -&gt; NotebookRef: ...</p>
+<pre><code>async def list_sources(self, notebook_id: str) -&gt; list[NotebookSource]: ...
+
+async def add_source(self, notebook_id: str, upload: SourceUpload) -&gt; NotebookSource: ...
+
+async def replace_source(
+    self,
+    notebook_id: str,
+    source_id: str,
+    upload: SourceUpload,
+) -&gt; NotebookSource: ...
+</code></pre>
+<p>```</p>
+<p><strong>Teaching moment</strong>: a <code>Protocol</code> is structural typing - if an object has the
+right methods, it satisfies the interface. This is Python's duck typing with
+type-checker support.</p>
+<h2 id="workflow-code">Workflow Code<a class="headerlink" href="#workflow-code" title="Permanent link">&para;</a></h2>
+<p>The workflow has no idea whether the client is fake or real.</p>
+<p>```python
+async def sync_notebook_sources(
+    client: NotebookClient,
+    *,
+    notebook_title: str,
+    uploads: list[SourceUpload],
+) -&gt; NotebookSyncResult:
+    notebook = await client.ensure_notebook(notebook_title)
+    existing = await client.list_sources(notebook.id)
+    existing_by_path = {source.path: source for source in existing}
+    desired_paths = {upload.path for upload in uploads}</p>
+<pre><code>created: list[str] = []
+updated: list[str] = []
+skipped: list[str] = []
+
+for upload in uploads:
+    current = existing_by_path.get(upload.path)
+    if current is None:
+        source = await client.add_source(notebook.id, upload)
+        created.append(source.title)
+        continue
+
+    if current.content_hash == upload.content_hash:
+        skipped.append(current.title)
+        continue
+
+    source = await client.replace_source(notebook.id, current.id, upload)
+    updated.append(source.title)
+
+stale = [source.title for source in existing if source.path not in desired_paths]
+return NotebookSyncResult(
+    notebook=notebook,
+    created=created,
+    updated=updated,
+    skipped=skipped,
+    stale=stale,
+)
+</code></pre>
+<p>```</p>
+<p>This is the core value of the pattern: the interesting behavior is simple,
+local, and directly testable.</p>
+<h2 id="fake-adapter">Fake Adapter<a class="headerlink" href="#fake-adapter" title="Permanent link">&para;</a></h2>
+<p>The fake adapter is not a mock. It is a small implementation of the same port.</p>
+<p>```python
+class InMemoryNotebookClient:
+    def <strong>init</strong>(self, *, authenticated: bool = True) -&gt; None:
+        self._authenticated = authenticated
+        self._notebooks: dict[str, _NotebookState] = {}
+        self._next_notebook_id = 1
+        self._next_source_id = 1</p>
+<pre><code>async def ensure_notebook(self, title: str) -&gt; NotebookRef:
+    self._require_auth()
+    for state in self._notebooks.values():
+        if state.notebook.title == title:
+            return state.notebook
+
+    notebook = NotebookRef(id=f"nb-{self._next_notebook_id}", title=title)
+    self._next_notebook_id += 1
+    self._notebooks[notebook.id] = _NotebookState(notebook=notebook)
+    return notebook
+</code></pre>
+<p>```</p>
+<p>Use this fake for:</p>
+<ul>
+<li>unit tests</li>
+<li>local simulation</li>
+<li>planner development</li>
+<li>CI</li>
+<li>demos that should not touch real NotebookLM</li>
+</ul>
+<p>Do not use it to prove Google integration works. That belongs in a smaller
+number of integration tests around the real adapter.</p>
+<h2 id="real-adapter">Real Adapter<a class="headerlink" href="#real-adapter" title="Permanent link">&para;</a></h2>
+<p>The real adapter should map <code>notebooklm-py</code> into the internal protocol.</p>
+<p>Sketch:</p>
+<p>```python
+class NotebookLMPyAdapter:
+    def <strong>init</strong>(self, client: NotebookLMClient) -&gt; None:
+        self._client = client</p>
+<pre><code>async def ensure_notebook(self, title: str) -&gt; NotebookRef:
+    try:
+        notebooks = await self._client.notebooks.list()
+        for notebook in notebooks:
+            if notebook.title == title:
+                return NotebookRef(id=notebook.id, title=notebook.title)
+
+        created = await self._client.notebooks.create(title=title)
+        return NotebookRef(id=created.id, title=created.title)
+    except NotebookLMError as exc:
+        raise NotebookClientError(str(exc)) from exc
+</code></pre>
+<p>```</p>
+<p>The adapter can use current <code>notebooklm-py</code> features:</p>
+<ul>
+<li><code>client.notebooks.get_metadata()</code> for source metadata inspection</li>
+<li><code>client.sources.list()</code> for source inventory</li>
+<li><code>client.sources.add_file()</code> for upload</li>
+<li>source status helpers for readiness</li>
+<li><code>download_quiz()</code> and <code>download_flashcards()</code> for review import</li>
+<li>the upstream exception hierarchy for clean user-facing errors</li>
+</ul>
+<p>The workflow should not depend on those concrete types directly.</p>
+<h2 id="tdd-method-used">TDD Method Used<a class="headerlink" href="#tdd-method-used" title="Permanent link">&para;</a></h2>
+<p>The implementation follows this loop:</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; Red
+    Red --&gt; VerifyRed: run focused pytest
+    VerifyRed --&gt; Green: expected failure
+    VerifyRed --&gt; Red: wrong failure
+    Green --&gt; VerifyGreen: implement smallest code
+    VerifyGreen --&gt; Refactor: tests pass
+    VerifyGreen --&gt; Green: tests fail
+    Refactor --&gt; VerifyGreen
+    VerifyGreen --&gt; [*]: focused suite green</code></pre>
+<p>For the NotebookLM boundary, the first tests define behavior:</p>
+<p>```python
+async def test_sync_skips_unchanged_sources() -&gt; None:
+    client = InMemoryNotebookClient()
+    await sync_notebook_sources(
+        client,
+        notebook_title="Python",
+        uploads=[SourceUpload(path=Path("a.md"), title="a", content_hash="same")],
+    )</p>
+<pre><code>result = await sync_notebook_sources(
+    client,
+    notebook_title="Python",
+    uploads=[SourceUpload(path=Path("a.md"), title="a", content_hash="same")],
+)
+
+assert result.created == []
+assert result.updated == []
+assert result.skipped == ["a"]
+</code></pre>
+<p>```</p>
+<p>That test fails before the module exists. Then the minimum protocol and fake are
+created to pass it.</p>
+<h2 id="contract-tests">Contract Tests<a class="headerlink" href="#contract-tests" title="Permanent link">&para;</a></h2>
+<p>Contract tests validate behavior shared by all adapters.</p>
+<pre class="mermaid"><code>flowchart LR
+    Contract["contract tests"] --&gt; Fake["fake adapter"]
+    Contract --&gt; Real["real adapter"]
+    Fake --&gt; SameRules["same behavior rules"]
+    Real --&gt; SameRules</code></pre>
+<p>The contract should cover:</p>
+<ul>
+<li>creates notebook</li>
+<li>uploads new sources</li>
+<li>skips unchanged sources</li>
+<li>updates changed sources</li>
+<li>reports stale sources</li>
+<li>raises a stable auth error</li>
+</ul>
+<p>Later, the same contract can run against the real adapter with explicit
+credentials and an integration-test marker.</p>
+<h2 id="common-mistakes">Common Mistakes<a class="headerlink" href="#common-mistakes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Putting <code>notebooklm-py</code> imports in core workflow code.</li>
+<li>Mocking every method call instead of using a small fake with real behavior.</li>
+<li>Making the port mirror the full external library API.</li>
+<li>Testing only the happy path and missing stale/update/auth cases.</li>
+<li>Letting adapter exceptions leak directly into CLI tracebacks.</li>
+<li>Using the fake as proof that the external service still works.</li>
+</ul>
+<h2 id="practical-rule">Practical Rule<a class="headerlink" href="#practical-rule" title="Permanent link">&para;</a></h2>
+<p>If a behavior can be expressed as local data in and local data out, test it with
+the fake.</p>
+<p>Only use real NotebookLM tests for the thin edge where <code>studyctl</code> maps its
+internal protocol to the external library.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

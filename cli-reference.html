@@ -1080,6 +1080,10 @@ studyctl audio TOPIC                     # Generate NotebookLM audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources</p>
 <h1 id="review">Review<a class="headerlink" href="#review" title="Permanent link">&para;</a></h1>
 <p>studyctl review                          # Check spaced repetition due dates
+studyctl progress                        # Summarize local course progress
+studyctl progress --course python        # Summarize one course
+studyctl progress --json                 # Machine-readable progress summary
+studyctl progress CONCEPT -t TOPIC -c confident # Record concept confidence
 studyctl struggles --days 30             # Find recurring struggle topics</p>
 <h1 id="configuration-health">Configuration &amp; health<a class="headerlink" href="#configuration-health" title="Permanent link">&para;</a></h1>
 <p>studyctl setup                           # Interactive setup wizard
@@ -1198,6 +1202,20 @@ studyctl upgrade --component agents      # Update agent definitions only</code><
 <h3 id="spaced-repetition-intervals">Spaced Repetition Intervals<a class="headerlink" href="#spaced-repetition-intervals" title="Permanent link">&para;</a></h3>
 <p>Review schedule: <strong>1 → 3 → 7 → 14 → 30 days</strong></p>
 <p><code>studyctl review</code> shows what's due based on when you last recorded progress.</p>
+<h3 id="progress">Progress<a class="headerlink" href="#progress" title="Permanent link">&para;</a></h3>
+<p><code>studyctl progress</code> has two modes:</p>
+<ul>
+<li>With no concept argument, it summarizes local course progress from <code>content.base_path</code> and the review database.</li>
+<li>With a concept argument, it records confidence for a study concept.</li>
+</ul>
+<p><code>bash
+studyctl progress                                  # Course summary table
+studyctl progress --course python                  # One course only
+studyctl progress --json                           # JSON for scripts/agents
+studyctl progress "list comprehensions" \
+  --topic python \
+  --confidence confident                           # Record concept confidence</code></p>
+<p>The summary includes local source count, unique review cards, due cards, mastered cards, review sessions, and review accuracy. Course filtering uses the course slug, such as <code>python</code> or <code>data-engineering</code>.</p>
 <h3 id="web-pwa">Web PWA<a class="headerlink" href="#web-pwa" title="Permanent link">&para;</a></h3>
 <p><code>studyctl web</code> launches a progressive web app for flashcard and quiz review. By default it binds to <code>127.0.0.1</code>; use <code>--lan</code> to expose it on your network with HTTP Basic Auth.</p>
 <p><code>bash
