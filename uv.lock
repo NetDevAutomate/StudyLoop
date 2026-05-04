@@ -2900,7 +2900,7 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.1" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115" },
-    { name = "httpx", marker = "extra == 'content'" },
+    { name = "httpx", marker = "extra == 'content'", specifier = ">=0.27" },
     { name = "httpx", marker = "extra == 'web'", specifier = ">=0.27" },
     { name = "mcp", extras = ["cli"], marker = "extra == 'mcp'", specifier = ">=1.0.0" },
     { name = "notebooklm-py", marker = "extra == 'notebooklm'", specifier = ">=0.3.4" },
