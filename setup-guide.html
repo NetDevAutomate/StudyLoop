@@ -1241,7 +1241,44 @@ studyctl config init</code></p>
 </ol>
 <p>The wizard creates or updates <code>~/.config/studyctl/config.yaml</code> with your choices. You can re-run it at any time to change settings.</p>
 <h3 id="manual-configuration">Manual Configuration<a class="headerlink" href="#manual-configuration" title="Permanent link">&para;</a></h3>
-<p>All configuration lives in a single file: <code>~/.config/studyctl/config.yaml</code>. This file is shared between <code>studyctl</code> and all <code>session-*</code> tools — use the same file on every machine.</p>
+<p>All configuration lives in a single YAML file: <code>~/.config/studyctl/config.yaml</code>. This file is shared between <code>studyctl</code> and all <code>session-*</code> tools — use the same file on every machine.</p>
+<p><code>STUDYCTL_CONFIG</code> can point at a different YAML file for testing, alternate profiles, or machine-specific overrides:</p>
+<p><code>bash
+export STUDYCTL_CONFIG=~/.config/studyctl/work.yaml
+studyctl config show</code></p>
+<p>TOML is not currently supported. Use YAML for the production config contract; adding TOML would require a deliberate parser, migration, and compatibility test pass.</p>
+<p>Minimal production example:</p>
+<p>```yaml
+obsidian_base: ~/Obsidian/Personal
+session_db: ~/.config/studyctl/sessions.db
+state_dir: ~/.local/share/studyctl</p>
+<p>content:
+  base_path: ~/study-materials
+  study_paths:
+    - 2-Areas/Study
+    - ~/Desktop/current-course-materials
+  notebooklm_timeout: 900
+  inter_episode_gap: 30</p>
+<p>topics:
+  - name: Python
+    slug: python
+    obsidian_path: 2-Areas/Study/Python
+    notebook_id: ""  # optional NotebookLM notebook ID
+    tags: [python, programming]</p>
+<ul>
+<li>name: Data Engineering
+    slug: data-engineering
+    obsidian_path: ~/Obsidian/Work/Study/Data-Engineering
+    tags: [data-engineering, analytics]
+```</li>
+</ul>
+<p>Path rules:</p>
+<ul>
+<li>Relative <code>topics[].obsidian_path</code> values are resolved under <code>obsidian_base</code>.</li>
+<li>Absolute <code>topics[].obsidian_path</code> values are used as-is.</li>
+<li>Relative <code>content.study_paths</code> values are resolved under <code>obsidian_base</code>.</li>
+<li><code>content.study_paths</code> augments topic paths for <code>studyctl content from-obsidian</code> when you do not pass source directories manually.</li>
+</ul>
 <p>To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:</p>
 <p><code>yaml
 agents:
@@ -1563,7 +1600,9 @@ session-query search "python"    # Search across all sessions</code></p>
 <p>studyctl content syllabus -n NOTEBOOK_ID -o ./chapters
 studyctl content autopilot -o ./chapters</p>
 <h1 id="4-convert-obsidian-notes-to-pdfs-and-upload-in-one-step">4. Convert Obsidian notes to PDFs and upload in one step<a class="headerlink" href="#4-convert-obsidian-notes-to-pdfs-and-upload-in-one-step" title="Permanent link">&para;</a></h1>
-<p>studyctl content from-obsidian ~/Obsidian/Vault/Study/Python
+<p>studyctl content from-obsidian ~/Obsidian/Vault/Study/Python</p>
+<h1 id="or-use-configured-topics-and-contentstudy_paths">Or use configured topics and content.study_paths<a class="headerlink" href="#or-use-configured-topics-and-contentstudy_paths" title="Permanent link">&para;</a></h1>
+<p>studyctl content from-obsidian
 ```</p>
 <p>See the <a href="cli-reference.html">CLI Reference</a> for all available commands.</p>
 <h2 id="cross-machine-sync">Cross-Machine Sync<a class="headerlink" href="#cross-machine-sync" title="Permanent link">&para;</a></h2>

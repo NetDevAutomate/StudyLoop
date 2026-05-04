@@ -615,21 +615,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#all-in-one-command" class="md-nav__link">
+  <a href="#preview-source-material" class="md-nav__link">
     <span class="md-ellipsis">
       
-        All-in-one command
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#selective-flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Selective flags
+        Preview source material
       
     </span>
   </a>
@@ -1228,21 +1217,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#all-in-one-command" class="md-nav__link">
+  <a href="#preview-source-material" class="md-nav__link">
     <span class="md-ellipsis">
       
-        All-in-one command
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#selective-flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Selective flags
+        Preview source material
       
     </span>
   </a>
@@ -1356,11 +1334,50 @@ studyctl web</code></p>
     D --&gt; E["Generate artefacts&lt;br/&gt;(built-in)"]
     E --&gt; F["Download JSON&lt;br/&gt;(built-in)"]
     F --&gt; G["studyctl web&lt;br/&gt;(review)"]</code></pre>
+<h3 id="preview-source-material">Preview source material<a class="headerlink" href="#preview-source-material" title="Permanent link">&para;</a></h3>
+<p>Before uploading anything to NotebookLM, inspect the files that <code>studyctl</code> can use as
+study material:</p>
+<p>```bash</p>
+<h1 id="uses-topicsobsidian_path-contentstudy_paths-then-obsidian_base-fallback">Uses topics[].obsidian_path, content.study_paths, then obsidian_base fallback<a class="headerlink" href="#uses-topicsobsidian_path-contentstudy_paths-then-obsidian_base-fallback" title="Permanent link">&para;</a></h1>
+<p>studyctl content discover</p>
+<h1 id="inspect-one-or-more-manual-source-directories">Inspect one or more manual source directories<a class="headerlink" href="#inspect-one-or-more-manual-source-directories" title="Permanent link">&para;</a></h1>
+<p>studyctl content discover ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes</p>
+<h1 id="machine-readable-output-for-scripts">Machine-readable output for scripts<a class="headerlink" href="#machine-readable-output-for-scripts" title="Permanent link">&para;</a></h1>
+<p>studyctl content discover --json
+```</p>
+<p>Discovery includes Markdown, PDF, and text files. It skips low-value noise such as
+<code>.obsidian/</code>, <code>node_modules/</code>, tiny stub files, and index files like <code>Courses.md</code>.</p>
+<h3 id="plan-an-ingest">Plan an ingest<a class="headerlink" href="#plan-an-ingest" title="Permanent link">&para;</a></h3>
+<p>Use <code>ingest --dry-run</code> to see what would be created, updated, or skipped based on
+course metadata and file hashes:</p>
+<p>```bash</p>
+<h1 id="plan-against-configured-study-sources">Plan against configured study sources<a class="headerlink" href="#plan-against-configured-study-sources" title="Permanent link">&para;</a></h1>
+<p>studyctl content ingest --dry-run</p>
+<h1 id="group-manual-sources-under-one-course-slug">Group manual sources under one course slug<a class="headerlink" href="#group-manual-sources-under-one-course-slug" title="Permanent link">&para;</a></h1>
+<p>studyctl content ingest ~/Obsidian/2-Areas/Study/Python --course python --dry-run</p>
+<h1 id="machine-readable-plan">Machine-readable plan<a class="headerlink" href="#machine-readable-plan" title="Permanent link">&para;</a></h1>
+<p>studyctl content ingest --dry-run --json
+```</p>
+<p>The dry run does not upload to NotebookLM and does not change local metadata. It is the
+safe preview step before source upload/update support is enabled.</p>
 <h3 id="all-in-one-command">All-in-one command<a class="headerlink" href="#all-in-one-command" title="Permanent link">&para;</a></h3>
 <p><code>bash
 studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python/ \
     -o ~/study-materials/python/ \
     -n "$NOTEBOOKLM_NOTEBOOK_ID"</code></p>
+<p>If no source directory is provided, <code>from-obsidian</code> uses configured study sources:</p>
+<ol>
+<li>every <code>topics[].obsidian_path</code></li>
+<li>every <code>content.study_paths</code></li>
+<li>fallback: <code>{obsidian_base}/2-Areas/Study</code></li>
+</ol>
+<p>Manual source directories still override the configured defaults:</p>
+<p>```bash</p>
+<h1 id="uses-topicsobsidian_path-and-contentstudy_paths">Uses topics[].obsidian_path and content.study_paths<a class="headerlink" href="#uses-topicsobsidian_path-and-contentstudy_paths" title="Permanent link">&para;</a></h1>
+<p>studyctl content from-obsidian</p>
+<h1 id="overrides-configured-defaults-for-this-run">Overrides configured defaults for this run<a class="headerlink" href="#overrides-configured-defaults-for-this-run" title="Permanent link">&para;</a></h1>
+<p>studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes
+```</p>
 <p>This does everything in one step:</p>
 <ol>
 <li>Converts each <code>.md</code> file to PDF via pandoc</li>
@@ -1368,6 +1385,19 @@ studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python/ \
 <li>Generates audio overviews (unless <code>--no-generate</code>)</li>
 <li>Downloads artefacts (unless <code>--no-download</code>)</li>
 </ol>
+<h3 id="import-generated-review-artefacts">Import generated review artefacts<a class="headerlink" href="#import-generated-review-artefacts" title="Permanent link">&para;</a></h3>
+<p>After NotebookLM artefacts are downloaded, validate and copy flashcard/quiz JSON into
+the standard course review layout under <code>content.base_path</code>:</p>
+<p>```bash</p>
+<h1 id="validate-only-no-files-are-copied">Validate only; no files are copied<a class="headerlink" href="#validate-only-no-files-are-copied" title="Permanent link">&para;</a></h1>
+<p>studyctl content import-review ~/study-materials/python/downloads --course python --dry-run</p>
+<h1 id="import-valid-flashcardquiz-json-into-study-materialspythonflashcardsquizzes">Import valid flashcard/quiz JSON into ~/study-materials/python/{flashcards,quizzes}<a class="headerlink" href="#import-valid-flashcardquiz-json-into-study-materialspythonflashcardsquizzes" title="Permanent link">&para;</a></h1>
+<p>studyctl content import-review ~/study-materials/python/downloads --course python</p>
+<h1 id="machine-readable-import-report">Machine-readable import report<a class="headerlink" href="#machine-readable-import-report" title="Permanent link">&para;</a></h1>
+<p>studyctl content import-review ~/study-materials/python/downloads --course python --json
+```</p>
+<p>The importer validates the JSON shape used by <code>studyctl web</code>, reports invalid files,
+skips unchanged files, and records a small import summary in course metadata.</p>
 <h3 id="selective-flags">Selective flags<a class="headerlink" href="#selective-flags" title="Permanent link">&para;</a></h3>
 <p>Skip steps you don't need:</p>
 <p>```bash</p>
@@ -1394,6 +1424,9 @@ export NOTEBOOKLM_NOTEBOOK_ID="your-notebook-id-here"</code></p>
 <p><code>yaml
 content:
   base_path: ~/study-materials    # default
+  study_paths:                    # extra Obsidian/course-material source dirs
+    - 2-Areas/Study
+    - ~/Desktop/current-course
   notebooklm_timeout: 900         # seconds per generation
   inter_episode_gap: 30           # seconds between API calls</code></p>
 <h3 id="topics-mapping">Topics mapping<a class="headerlink" href="#topics-mapping" title="Permanent link">&para;</a></h3>
@@ -1442,11 +1475,6 @@ topics:
 <td>Mermaid parse errors in <code>from-obsidian</code></td>
 <td>Special characters in diagram node labels</td>
 <td>Non-fatal; ~15 diagrams may fail. Fix labels or ignore.</td>
-</tr>
-<tr>
-<td>Double-nested output path</td>
-<td><code>from-obsidian</code> creates <code>pdfs/pdfs/</code></td>
-<td>Known issue; manually flatten or use <code>-o</code> to specify exact path</td>
 </tr>
 <tr>
 <td>PDF has no bookmarks</td>
