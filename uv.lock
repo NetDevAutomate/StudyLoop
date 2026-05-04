@@ -2864,6 +2864,7 @@ all = [
     { name = "httpx" },
     { name = "mcp", extra = ["cli"] },
     { name = "notebooklm-py" },
+    { name = "pydantic" },
     { name = "pymupdf" },
     { name = "textual" },
     { name = "uvicorn", extra = ["standard"] },
@@ -2871,6 +2872,7 @@ all = [
 ]
 content = [
     { name = "httpx" },
+    { name = "pydantic" },
     { name = "pymupdf" },
 ]
 mcp = [
@@ -2902,6 +2904,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'web'", specifier = ">=0.27" },
     { name = "mcp", extras = ["cli"], marker = "extra == 'mcp'", specifier = ">=1.0.0" },
     { name = "notebooklm-py", marker = "extra == 'notebooklm'", specifier = ">=0.3.4" },
+    { name = "pydantic", marker = "extra == 'content'", specifier = ">=2" },
     { name = "pymupdf", marker = "extra == 'content'", specifier = ">=1.25" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0" },
