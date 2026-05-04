@@ -7,11 +7,17 @@ Heavy imports (pymupdf, notebooklm-py) are deferred to function bodies.
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 from rich.console import Console
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+    from typing import Any
 
 console = Console()
 
@@ -51,9 +57,199 @@ def _parse_chapter_range(raw: str) -> tuple[int, int]:
     return (start, end)
 
 
+def _run_notebooklm[T](coro: Coroutine[Any, Any, T]) -> T:
+    """Run a NotebookLM coroutine and convert expected failures into CLI errors."""
+    try:
+        return asyncio.run(coro)
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except TimeoutError as exc:
+        raise click.ClickException(f"NotebookLM operation timed out: {exc}") from exc
+    except RuntimeError as exc:
+        raise click.ClickException(f"NotebookLM operation failed: {exc}") from exc
+
+
+def _display_name_for_path(path: Path) -> str:
+    """Turn a source directory name into a NotebookLM-friendly title."""
+    return path.name.replace("-", " ").replace("_", " ").title()
+
+
+def _configured_study_sources() -> list[Path]:
+    """Return configured Obsidian/content sources for NotebookLM uploads."""
+    from studyctl.settings import load_settings
+
+    settings = load_settings()
+    paths = [topic.obsidian_path for topic in settings.topics]
+    paths.extend(settings.content.study_paths)
+
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for path in paths:
+        resolved = path.expanduser()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        unique.append(resolved)
+
+    if unique:
+        return unique
+
+    default_study_path = settings.obsidian_base / "2-Areas" / "Study"
+    return [default_study_path.expanduser()]
+
+
 @click.group(name="content")
 def content_group() -> None:
     """Content pipeline -- PDF splitting, NotebookLM, and syllabus workflow."""
+
+
+@content_group.command("discover")
+@click.argument("source_dirs", nargs=-1, type=click.Path(path_type=Path))
+@click.option("--json", "as_json", is_flag=True, help="Output discovered materials as JSON.")
+def discover(source_dirs: tuple[Path, ...], as_json: bool) -> None:
+    """Discover configured Obsidian/course materials without uploading anything."""
+    from studyctl.content.discovery import discover_materials
+
+    sources = list(source_dirs) if source_dirs else _configured_study_sources()
+    missing = [path for path in sources if not path.expanduser().is_dir()]
+    if missing:
+        joined = ", ".join(str(path) for path in missing)
+        raise click.ClickException(f"Study source directory not found: {joined}")
+
+    materials = discover_materials(sources)
+    if as_json:
+        click.echo(json.dumps([material.to_json_dict() for material in materials], indent=2))
+        return
+
+    table = Table(title="Discovered Study Materials")
+    table.add_column("Source", style="dim")
+    table.add_column("Title", style="bold")
+    table.add_column("Type")
+    table.add_column("Size", justify="right")
+    table.add_column("Path")
+    for material in materials:
+        table.add_row(
+            material.source_root.name,
+            material.title,
+            material.kind,
+            _format_size(material.size_bytes),
+            str(material.path),
+        )
+    console.print(table)
+    console.print(f"\nFound {len(materials)} study material file(s).")
+
+
+def _format_size(size_bytes: int) -> str:
+    """Format a byte count for compact CLI display."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    if size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KiB"
+    return f"{size_bytes / (1024 * 1024):.1f} MiB"
+
+
+@content_group.command("ingest")
+@click.argument("source_dirs", nargs=-1, type=click.Path(path_type=Path))
+@click.option(
+    "--course", default=None, help="Course slug/name to group discovered materials under."
+)
+@click.option("--dry-run", is_flag=True, help="Preview ingest actions without uploading.")
+@click.option("--json", "as_json", is_flag=True, help="Output ingest plan as JSON.")
+def ingest(
+    source_dirs: tuple[Path, ...],
+    course: str | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
+    """Plan a course-material ingest workflow."""
+    from studyctl.content.workflow import build_ingest_plan
+    from studyctl.settings import load_settings
+
+    if not dry_run:
+        raise click.ClickException(
+            "Only 'studyctl content ingest --dry-run' is currently supported. "
+            "NotebookLM upload/update behavior will be added after dry-run planning."
+        )
+
+    sources = list(source_dirs) if source_dirs else _configured_study_sources()
+    missing = [path for path in sources if not path.expanduser().is_dir()]
+    if missing:
+        joined = ", ".join(str(path) for path in missing)
+        raise click.ClickException(f"Study source directory not found: {joined}")
+
+    settings = load_settings()
+    plan = build_ingest_plan(
+        source_roots=sources,
+        base_path=settings.content.base_path,
+        course=course,
+    )
+    if as_json:
+        click.echo(json.dumps([item.to_json_dict() for item in plan], indent=2))
+        return
+
+    table = Table(title="Ingest Dry Run")
+    table.add_column("Action")
+    table.add_column("Course", style="bold")
+    table.add_column("Type")
+    table.add_column("Title")
+    table.add_column("Destination", style="dim")
+    for item in plan:
+        table.add_row(
+            item.action,
+            item.course_slug,
+            item.material.kind,
+            item.material.title,
+            str(item.course_dir),
+        )
+    console.print(table)
+    console.print(f"\nPlanned {len(plan)} ingest action(s). No files were uploaded or changed.")
+
+
+@content_group.command("import-review")
+@click.argument("source_dir", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--course", required=True, help="Course slug/name to import artefacts into.")
+@click.option("--dry-run", is_flag=True, help="Validate and preview without copying files.")
+@click.option("--json", "as_json", is_flag=True, help="Output import results as JSON.")
+def import_review(source_dir: Path, course: str, dry_run: bool, as_json: bool) -> None:
+    """Validate and import generated flashcard/quiz artefacts for review."""
+    from studyctl.content.importer import import_review_artefacts
+    from studyctl.settings import load_settings
+
+    settings = load_settings()
+    try:
+        results = import_review_artefacts(
+            source_dir=source_dir,
+            base_path=settings.content.base_path,
+            course=course,
+            dry_run=dry_run,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if as_json:
+        click.echo(json.dumps([result.to_json_dict() for result in results], indent=2))
+        return
+
+    table = Table(title="Review Artefact Import" + (" Dry Run" if dry_run else ""))
+    table.add_column("Action")
+    table.add_column("Type")
+    table.add_column("Items", justify="right")
+    table.add_column("Source", style="dim")
+    table.add_column("Message")
+    for result in results:
+        table.add_row(
+            result.action,
+            result.kind,
+            str(result.item_count),
+            str(result.source),
+            result.message,
+        )
+    console.print(table)
+    console.print(
+        f"\nImported {sum(1 for result in results if result.action == 'imported')} file(s), "
+        f"skipped {sum(1 for result in results if result.action == 'skipped')}, "
+        f"invalid {sum(1 for result in results if result.action == 'invalid')}."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +295,7 @@ def process(source: Path, output_dir: Path, level: int, notebook_id: str | None)
         console.print(f"[green]\u2713[/green] Split into {len(chapter_paths)} chapters")
 
         nid = _get_notebook_id(notebook_id)
-        result = asyncio.run(upload_chapters(chapter_paths, book_name, notebook_id=nid))
+        result = _run_notebooklm(upload_chapters(chapter_paths, book_name, notebook_id=nid))
         console.print(
             f"[green]\u2713[/green] Uploaded {result.chapters} chapters "
             f"to notebook {result.id[:8]}..."
@@ -113,7 +309,7 @@ def list_cmd(notebook_id: str | None) -> None:
     from studyctl.content.notebooklm_client import list_notebooks, list_sources
 
     if notebook_id:
-        sources = asyncio.run(list_sources(notebook_id))
+        sources = _run_notebooklm(list_sources(notebook_id))
         table = Table(title=f"Sources in {notebook_id[:8]}...")
         table.add_column("ID", style="dim")
         table.add_column("Title")
@@ -121,7 +317,7 @@ def list_cmd(notebook_id: str | None) -> None:
             table.add_row(s.id[:8] + "...", s.title)
         console.print(table)
     else:
-        notebooks = asyncio.run(list_notebooks())
+        notebooks = _run_notebooklm(list_notebooks())
         table = Table(title="NotebookLM Notebooks")
         table.add_column("ID", style="dim")
         table.add_column("Title", style="bold")
@@ -158,7 +354,7 @@ def generate(
         raise click.ClickException("Nothing to generate (both audio and video disabled).")
 
     console.print(f"Generating {', '.join(types)} for chapters {start}-{end}...")
-    asyncio.run(
+    _run_notebooklm(
         generate_for_chapters(
             notebook_id,
             (start, end),
@@ -180,7 +376,7 @@ def download(notebook_id: str, output_dir: Path, chapters: str | None) -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     chapter_range = _parse_chapter_range(chapters) if chapters else None
-    asyncio.run(download_artifacts(notebook_id, output_dir, chapter_range))
+    _run_notebooklm(download_artifacts(notebook_id, output_dir, chapter_range))
     console.print(f"[green]\u2713[/green] Artifacts saved to {output_dir}")
 
 
@@ -191,7 +387,7 @@ def delete_cmd(notebook_id: str) -> None:
     """Delete a notebook and all its contents."""
     from studyctl.content.notebooklm_client import delete_notebook
 
-    asyncio.run(delete_notebook(notebook_id))
+    _run_notebooklm(delete_notebook(notebook_id))
     console.print(f"[green]\u2713[/green] Deleted notebook {notebook_id[:8]}...")
 
 
@@ -244,7 +440,7 @@ def syllabus(
         return
 
     # Get sources and build source map
-    raw_sources = asyncio.run(list_sources(notebook_id))
+    raw_sources = _run_notebooklm(list_sources(notebook_id))
     source_tuples = [(s.id, s.title) for s in raw_sources]
     source_map, title_map = map_sources_to_chapters(source_tuples)
 
@@ -260,7 +456,7 @@ def syllabus(
 
     console.print(f"Generating syllabus from {len(raw_sources)} sources...")
     try:
-        chunks = asyncio.run(_generate_syllabus())
+        chunks = _run_notebooklm(_generate_syllabus())
     except Exception:
         console.print("[yellow]AI syllabus failed, using fixed-size chunks[/yellow]")
         chunks = build_fixed_size_chunks(source_map, max_chapters, title_map)
@@ -359,7 +555,7 @@ def autopilot(output_dir: Path, book_name: str | None, timeout: int) -> None:
                 )
 
     try:
-        asyncio.run(_run_episode())
+        _run_notebooklm(_run_episode())
         chunk.status = ChunkStatus.COMPLETED
         console.print(f"[green]\u2713[/green] Episode {chunk.episode} complete")
     except Exception as exc:
@@ -417,7 +613,7 @@ def status_cmd(output_dir: Path, book_name: str | None) -> None:
 
 
 @content_group.command("from-obsidian")
-@click.argument("source_dir", type=click.Path(exists=True, path_type=Path))
+@click.argument("source_dirs", nargs=-1, type=click.Path(exists=True, path_type=Path))
 @click.option("-o", "--output-dir", type=click.Path(path_type=Path), default=None)
 @click.option("--name", "notebook_name", default=None, help="Notebook name.")
 @click.option("-n", "--notebook-id", envvar="NOTEBOOK_ID", default=None)
@@ -429,7 +625,7 @@ def status_cmd(output_dir: Path, book_name: str | None) -> None:
 @click.option("--skip-convert", is_flag=True, help="Skip PDF conversion, use existing PDFs.")
 @click.option("-s", "--subdir", default=None, help="Subdirectory within source.")
 def from_obsidian(
-    source_dir: Path,
+    source_dirs: tuple[Path, ...],
     output_dir: Path | None,
     notebook_name: str | None,
     notebook_id: str | None,
@@ -444,29 +640,76 @@ def from_obsidian(
     """Convert Obsidian markdown to PDFs and upload to NotebookLM."""
     from studyctl.content.markdown_converter import convert_directory
     from studyctl.content.notebooklm_client import (
+        download_artifacts,
         generate_for_chapters,
         upload_chapters,
     )
 
+    sources = list(source_dirs) if source_dirs else _configured_study_sources()
+    if notebook_id and len(sources) > 1:
+        raise click.ClickException(
+            "--notebook-id can only be used with one source directory. "
+            "Use configured topic notebook IDs or run one source at a time."
+        )
+
+    for source_dir in sources:
+        _process_obsidian_source(
+            source_dir=source_dir,
+            output_dir=output_dir,
+            notebook_name=notebook_name,
+            notebook_id=notebook_id,
+            no_generate=no_generate,
+            no_audio=no_audio,
+            no_download=no_download,
+            no_quiz=no_quiz,
+            no_flashcards=no_flashcards,
+            skip_convert=skip_convert,
+            subdir=subdir,
+            convert_directory=convert_directory,
+            upload_chapters=upload_chapters,
+            generate_for_chapters=generate_for_chapters,
+            download_artifacts=download_artifacts,
+        )
+
+
+def _process_obsidian_source(
+    *,
+    source_dir: Path,
+    output_dir: Path | None,
+    notebook_name: str | None,
+    notebook_id: str | None,
+    no_generate: bool,
+    no_audio: bool,
+    no_download: bool,
+    no_quiz: bool,
+    no_flashcards: bool,
+    skip_convert: bool,
+    subdir: str | None,
+    convert_directory,
+    upload_chapters,
+    generate_for_chapters,
+    download_artifacts,
+) -> None:
+    """Convert/upload one Obsidian source directory."""
     actual_dir = source_dir / subdir if subdir else source_dir
     if not actual_dir.is_dir():
         raise click.ClickException(f"Directory not found: {actual_dir}")
 
     out = output_dir or source_dir / "downloads"
     out.mkdir(parents=True, exist_ok=True)
-    name = notebook_name or source_dir.name.replace("-", " ").replace("_", " ").title()
+    name = notebook_name or _display_name_for_path(source_dir)
 
     # Step 1: Convert markdown to PDFs
     if not skip_convert:
         console.print(f"Converting markdown in {actual_dir}...")
+        pdf_files = convert_directory(actual_dir, out)
         pdf_dir = out / "pdfs"
-        convert_directory(actual_dir, pdf_dir)
         console.print(f"[green]\u2713[/green] PDFs written to {pdf_dir}")
     else:
         pdf_dir = out / "pdfs"
+        pdf_files = sorted(pdf_dir.glob("*.pdf")) if pdf_dir.is_dir() else []
 
     # Step 2: Upload
-    pdf_files = sorted(pdf_dir.glob("*.pdf")) if pdf_dir.is_dir() else []
     if not pdf_files:
         console.print("[yellow]No PDFs to upload[/yellow]")
         return
@@ -474,7 +717,7 @@ def from_obsidian(
     nid = notebook_id
     if not nid:
         console.print(f"Creating notebook: [bold]{name}[/bold]")
-    result = asyncio.run(upload_chapters(pdf_files, name, notebook_id=nid))
+    result = _run_notebooklm(upload_chapters(pdf_files, name, notebook_id=nid))
     nid = result.id
     console.print(
         f"[green]\u2713[/green] Uploaded {result.chapters} files to notebook {nid[:8]}..."
@@ -486,7 +729,7 @@ def from_obsidian(
     # Step 3: Generate artifacts
     if not no_audio or not no_quiz or not no_flashcards:
         console.print("Generating artifacts...")
-        asyncio.run(
+        _run_notebooklm(
             generate_for_chapters(
                 nid,
                 (1, len(pdf_files)),
@@ -497,8 +740,6 @@ def from_obsidian(
         console.print("[green]\u2713[/green] Generation complete")
 
     if not no_download:
-        from studyctl.content.notebooklm_client import download_artifacts
-
         console.print("Downloading artifacts...")
-        asyncio.run(download_artifacts(nid, out))
+        _run_notebooklm(download_artifacts(nid, out))
         console.print(f"[green]\u2713[/green] Artifacts saved to {out}")

@@ -37,10 +37,10 @@ def config_init(install_agents: bool | None) -> None:
 @config_group.command(name="show")
 def config_show() -> None:
     """Display current configuration."""
-    from studyctl.settings import _CONFIG_PATH, load_settings
+    from studyctl.settings import get_config_path, load_settings
 
     settings = load_settings()
-    config_path = _CONFIG_PATH
+    config_path = get_config_path()
 
     if not config_path.exists():
         console.print("[red]No config file found.[/red] Run: studyctl config init")

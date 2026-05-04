@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import contextlib
 
 import click
 
@@ -33,16 +33,11 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
 
     import secrets
 
-    import yaml
+    from studyctl.settings import load_raw_config
 
-    config_path = Path.home() / ".config" / "studyctl" / "config.yaml"
     study_dirs: list[str] = []
-    if config_path.exists():
-        try:
-            data = yaml.safe_load(config_path.read_text()) or {}
-            study_dirs = data.get("review", {}).get("directories", [])
-        except Exception:
-            pass
+    with contextlib.suppress(Exception):
+        study_dirs = load_raw_config().get("review", {}).get("directories", [])
 
     # Resolve credentials: always read username from config; password from CLI > config > auto
     username = "study"

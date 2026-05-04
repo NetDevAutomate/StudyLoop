@@ -123,6 +123,44 @@ graph LR
     F --> G["studyctl web<br/>(review)"]
 ```
 
+### Preview source material
+
+Before uploading anything to NotebookLM, inspect the files that `studyctl` can use as
+study material:
+
+```bash
+# Uses topics[].obsidian_path, content.study_paths, then obsidian_base fallback
+studyctl content discover
+
+# Inspect one or more manual source directories
+studyctl content discover ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes
+
+# Machine-readable output for scripts
+studyctl content discover --json
+```
+
+Discovery includes Markdown, PDF, and text files. It skips low-value noise such as
+`.obsidian/`, `node_modules/`, tiny stub files, and index files like `Courses.md`.
+
+### Plan an ingest
+
+Use `ingest --dry-run` to see what would be created, updated, or skipped based on
+course metadata and file hashes:
+
+```bash
+# Plan against configured study sources
+studyctl content ingest --dry-run
+
+# Group manual sources under one course slug
+studyctl content ingest ~/Obsidian/2-Areas/Study/Python --course python --dry-run
+
+# Machine-readable plan
+studyctl content ingest --dry-run --json
+```
+
+The dry run does not upload to NotebookLM and does not change local metadata. It is the
+safe preview step before source upload/update support is enabled.
+
 ### All-in-one command
 
 ```bash
@@ -131,12 +169,47 @@ studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python/ \
     -n "$NOTEBOOKLM_NOTEBOOK_ID"
 ```
 
+If no source directory is provided, `from-obsidian` uses configured study sources:
+
+1. every `topics[].obsidian_path`
+2. every `content.study_paths`
+3. fallback: `{obsidian_base}/2-Areas/Study`
+
+Manual source directories still override the configured defaults:
+
+```bash
+# Uses topics[].obsidian_path and content.study_paths
+studyctl content from-obsidian
+
+# Overrides configured defaults for this run
+studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes
+```
+
 This does everything in one step:
 
 1. Converts each `.md` file to PDF via pandoc
 2. Uploads PDFs as sources to NotebookLM
 3. Generates audio overviews (unless `--no-generate`)
 4. Downloads artefacts (unless `--no-download`)
+
+### Import generated review artefacts
+
+After NotebookLM artefacts are downloaded, validate and copy flashcard/quiz JSON into
+the standard course review layout under `content.base_path`:
+
+```bash
+# Validate only; no files are copied
+studyctl content import-review ~/study-materials/python/downloads --course python --dry-run
+
+# Import valid flashcard/quiz JSON into ~/study-materials/python/{flashcards,quizzes}
+studyctl content import-review ~/study-materials/python/downloads --course python
+
+# Machine-readable import report
+studyctl content import-review ~/study-materials/python/downloads --course python --json
+```
+
+The importer validates the JSON shape used by `studyctl web`, reports invalid files,
+skips unchanged files, and records a small import summary in course metadata.
 
 ### Selective flags
 
@@ -182,6 +255,9 @@ Where flashcard/quiz JSON files are stored. Set in `~/.config/studyctl/config.ya
 ```yaml
 content:
   base_path: ~/study-materials    # default
+  study_paths:                    # extra Obsidian/course-material source dirs
+    - 2-Areas/Study
+    - ~/Desktop/current-course
   notebooklm_timeout: 900         # seconds per generation
   inter_episode_gap: 30           # seconds between API calls
 ```
@@ -228,7 +304,6 @@ The autopilot command generates one episode at a time, respecting rate limits. R
 | `content generate` times out | NotebookLM generation takes 15+ min | Increase timeout: `-t 1800` |
 | Daily quota exceeded | ~20-25 generations per day (Pro tier) | Wait 24h UTC for reset |
 | Mermaid parse errors in `from-obsidian` | Special characters in diagram node labels | Non-fatal; ~15 diagrams may fail. Fix labels or ignore. |
-| Double-nested output path | `from-obsidian` creates `pdfs/pdfs/` | Known issue; manually flatten or use `-o` to specify exact path |
 | PDF has no bookmarks | `content split` needs TOC structure | Use `--ranges` for manual page ranges |
 
 ---

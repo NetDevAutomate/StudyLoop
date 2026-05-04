@@ -24,7 +24,68 @@ permissions:
   contents: write
 
 jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install workspace dependencies
+        run: uv sync --all-packages --group dev
+
+      - name: Release consistency
+        run: |
+          python scripts/check-release-consistency.py \
+            --tag "${GITHUB_REF_NAME}" \
+            --require-release-notes \
+            --allow-formula-lag
+
+      - name: Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Pyright
+        run: |
+          cd packages/agent-session-tools && uv run pyright src/
+          cd ../studyctl && uv run pyright src/
+
+      - name: Unit tests
+        run: uv run pytest --tb=short -m "not integration and not e2e" --cov=packages --cov-report=term-missing
+
+  build:
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Build package
+        run: ./scripts/build-release.sh
+
+      - name: Smoke-test built wheel without optional extras
+        run: |
+          uv venv /tmp/studyctl-smoke
+          uv pip install --python /tmp/studyctl-smoke/bin/python dist/studyctl-*.whl
+          export PATH="/tmp/studyctl-smoke/bin:$PATH"
+          ./scripts/smoke-installed-cli.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
   release:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,26 +106,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Build package
-        run: ./scripts/build-release.sh
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
   publish:
-    needs: build
+    needs:
+      - build
+      - release
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -117,6 +162,13 @@ jobs:
           sed -i "s|studyctl-.*\.tar\.gz|studyctl-${VERSION}.tar.gz|" Formula/studyctl.rb
           sed -i '/^  url .*studyctl-/{n;s|sha256 ".*"|sha256 "'"${SHA}"'"|;}' Formula/studyctl.rb
           grep -A1 'url .*studyctl' Formula/studyctl.rb
+
+      - name: Verify formula consistency
+        run: |
+          python scripts/check-release-consistency.py \
+            --tag "${GITHUB_REF_NAME}" \
+            --require-release-notes \
+            --require-formula-current
 
       - name: Commit and push formula
         run: |

@@ -12,8 +12,24 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from notebooklm import NotebookLMClient
+else:
+
+    class _NotebookLMClientProxy:
+        """Lazy proxy so tests can patch NotebookLMClient without eager imports."""
+
+        @staticmethod
+        def from_storage():
+            return _import_notebooklm().NotebookLMClient.from_storage()
+
+    NotebookLMClient = _NotebookLMClientProxy
 
 logger = logging.getLogger(__name__)
+
+
+def _source_title(source: object) -> str:
+    """Return a stable title for a NotebookLM source object."""
+    title = getattr(source, "title", None)
+    return title or ""
 
 
 def _import_notebooklm():
@@ -38,8 +54,7 @@ async def upload_chapters(
     If no notebook_id is given, checks for an existing notebook with a
     matching title before creating a new one.
     """
-    nlm = _import_notebooklm()
-    async with await nlm.NotebookLMClient.from_storage() as client:
+    async with await NotebookLMClient.from_storage() as client:
         if notebook_id:
             nb_id = notebook_id
             nb_title = book_name
@@ -67,9 +82,8 @@ async def upload_chapters(
 
 async def list_notebooks() -> list[NotebookInfo]:
     """List all NotebookLM notebooks with source counts."""
-    nlm = _import_notebooklm()
     results: list[NotebookInfo] = []
-    async with await nlm.NotebookLMClient.from_storage() as client:
+    async with await NotebookLMClient.from_storage() as client:
         notebooks = await client.notebooks.list()
         for nb in notebooks:
             sources = await client.sources.list(nb.id)
@@ -79,12 +93,11 @@ async def list_notebooks() -> list[NotebookInfo]:
 
 async def list_sources(notebook_id: str) -> list[SourceInfo]:
     """List all sources in a notebook."""
-    nlm = _import_notebooklm()
     results: list[SourceInfo] = []
-    async with await nlm.NotebookLMClient.from_storage() as client:
+    async with await NotebookLMClient.from_storage() as client:
         sources = await client.sources.list(notebook_id)
         for src in sources:
-            results.append(SourceInfo(id=src.id, title=src.title))
+            results.append(SourceInfo(id=src.id, title=_source_title(src)))
     return results
 
 
@@ -144,13 +157,12 @@ async def generate_for_chapters(
     Fires off requests concurrently, polls every 30s. Retries failed
     artifacts up to MAX_RETRIES times.
     """
-    nlm = _import_notebooklm()
     start, end = chapter_range
     range_label = f"ch{start}-{end}"
 
-    async with await nlm.NotebookLMClient.from_storage() as client:
+    async with await NotebookLMClient.from_storage() as client:
         sources = await client.sources.list(notebook_id)
-        sources.sort(key=lambda s: s.title)
+        sources.sort(key=_source_title)
         selected = sources[start - 1 : end]
 
         if not selected:
@@ -163,7 +175,7 @@ async def generate_for_chapters(
             start,
             end,
             len(selected),
-            ", ".join(s.title for s in selected),
+            ", ".join(_source_title(s) for s in selected),
         )
 
         tasks: dict[str, str] = {}
@@ -258,11 +270,10 @@ async def download_artifacts(
     If chapter_range is given, files are named by range (e.g. audio_ch1-3.mp3).
     Otherwise, files are numbered sequentially.
     """
-    nlm = _import_notebooklm()
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    async with await nlm.NotebookLMClient.from_storage() as client:
+    async with await NotebookLMClient.from_storage() as client:
         range_tag = f"_ch{chapter_range[0]}-{chapter_range[1]}" if chapter_range else ""
 
         audios = await client.artifacts.list_audio(notebook_id)
@@ -284,8 +295,7 @@ async def download_artifacts(
 
 async def delete_notebook(notebook_id: str) -> None:
     """Delete a notebook and all its contents."""
-    nlm = _import_notebooklm()
-    async with await nlm.NotebookLMClient.from_storage() as client:
+    async with await NotebookLMClient.from_storage() as client:
         await client.notebooks.delete(notebook_id)
         logger.info("Deleted notebook %s", notebook_id)
 
