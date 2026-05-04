@@ -69,6 +69,12 @@ exclude = [
 [tool.pytest.ini_options]
 testpaths = ["packages/agent-session-tools/tests", "packages/studyctl/tests"]
 addopts = "--import-mode=importlib -m 'not integration and not e2e'"
+# Multi-package workspace: both packages/studyctl/tests/ and
+# packages/agent-session-tools/tests/ have their own conftest.py.
+# Without this, pytest's plugin manager tries to register both under
+# the same implicit name "tests.conftest" and fails with
+# "Plugin already registered under a different name".
+consider_namespace_packages = true
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "e2e: end-to-end tests requiring full stack (tmux, ttyd, web server)",

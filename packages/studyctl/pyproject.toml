@@ -64,6 +64,7 @@ exclude = ["src/studyctl/eval/llm_client.py"]  # optional deps not in CI
 
 [dependency-groups]
 dev = [
+    "pexpect>=4.9",
     "pytest-asyncio>=1.3.0",
     "pytest-playwright>=0.7.2",
 ]
