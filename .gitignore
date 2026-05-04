@@ -479,7 +479,9 @@ site/
 docs/internal/
 docs/local_repo_docs/
 docs/plans/
-docs/architecture/
+docs/architecture/*
+!docs/architecture/
+!docs/architecture/adapter-pattern-notebooklm.md
 
 # Demo recordings (large, local-only)
 demos/
@@ -502,3 +504,6 @@ docs/brainstorms/
 
 # Benchmark output (large regenerable artefacts — keep local)
 benchmarks/d2-output/
+
+# Stray mock path artefacts from tests that stringify MagicMock path objects
+<MagicMock id='*'>

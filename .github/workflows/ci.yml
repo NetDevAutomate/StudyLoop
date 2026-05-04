@@ -51,6 +51,15 @@ jobs:
       - name: Audit dependencies for known vulnerabilities
         run: uv audit
 
+  release-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - run: python scripts/check-release-consistency.py
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -61,5 +70,32 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --all-packages --extra dev --extra test
-      - run: uv run pytest --tb=short -m "not integration" --cov=packages --cov-report=term-missing
+      - run: uv sync --all-packages --group dev
+      - run: uv run pytest --tb=short -m "not integration and not e2e" --cov=packages --cov-report=term-missing
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - run: ./scripts/build-release.sh
+
+  install-smoke:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - run: ./scripts/build-release.sh
+      - name: Install built wheel without optional extras
+        run: |
+          uv venv /tmp/studyctl-smoke
+          uv pip install --python /tmp/studyctl-smoke/bin/python dist/studyctl-*.whl
+      - name: Smoke-test installed CLI entry points
+        run: |
+          export PATH="/tmp/studyctl-smoke/bin:$PATH"
+          ./scripts/smoke-installed-cli.sh

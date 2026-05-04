@@ -15,7 +15,18 @@ import click
 import yaml
 
 from studyctl.cli._shared import console
-from studyctl.settings import CONFIG_DIR
+from studyctl.settings import CONFIG_DIR, get_config_path
+
+
+def _setup_config_path() -> Path:
+    """Return setup's target config path.
+
+    ``STUDYCTL_CONFIG`` wins for production behavior. ``CONFIG_DIR`` remains
+    patchable for existing isolated setup tests.
+    """
+    if "STUDYCTL_CONFIG" in __import__("os").environ:
+        return get_config_path()
+    return CONFIG_DIR / "config.yaml"
 
 
 def _validate_path(value: str) -> Path:
@@ -118,8 +129,8 @@ def setup() -> None:
     # ------------------------------------------------------------------
     console.print("[bold]Step 5 of 5[/bold]  Writing configuration...")
 
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    config_path = CONFIG_DIR / "config.yaml"
+    config_path = _setup_config_path()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Preserve any existing keys by loading first, then merging
     existing: dict = {}
