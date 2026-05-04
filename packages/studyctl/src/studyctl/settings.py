@@ -114,6 +114,37 @@ class PomodoroConfig:
 
 
 @dataclass
+class OllamaBackendConfig:
+    """Ollama-specific settings for the card generator."""
+
+    base_url: str = "http://localhost:11434"
+    model: str = "qwen2.5:7b"
+
+
+@dataclass
+class CardGeneratorConfig:
+    """Configuration for the local card generator (flashcards + quizzes).
+
+    Wired by ``content.generators.get_generator()``. The ``backend`` field
+    selects which provider-specific sub-config is used.
+    """
+
+    backend: str = "ollama"
+    # Low temperature -- flashcards want deterministic factual output,
+    # not creative variance. Applies to every backend.
+    temperature: float = 0.1
+    # Retries on JSON parse / schema validation failure. Transport errors
+    # do not retry (backend dead = backend dead).
+    max_retries: int = 2
+    # HTTP request timeout in seconds. 14B-class models can be slow on
+    # cold start; 180 s gives head-room without hanging the CLI.
+    request_timeout: float = 180.0
+    # Per-backend sub-config. Only the one matching ``backend`` is used
+    # at runtime.
+    ollama: OllamaBackendConfig = field(default_factory=OllamaBackendConfig)
+
+
+@dataclass
 class AgentsConfig:
     """Configuration for AI agent detection and priority."""
 
@@ -159,6 +190,7 @@ class Settings:
     notebooklm: NotebookLMConfig = field(default_factory=NotebookLMConfig)
     content: ContentConfig = field(default_factory=ContentConfig)
     agents: AgentsConfig = field(default_factory=AgentsConfig)
+    card_generator: CardGeneratorConfig = field(default_factory=CardGeneratorConfig)
     ttyd_port: int = 7681
     web_port: int = 8567
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
@@ -269,6 +301,21 @@ def load_settings() -> Settings:
             ollama=_local_llm(ag.get("ollama", {}), "qwen3-coder", "http://localhost:4000"),
             lmstudio=_local_llm(ag.get("lmstudio", {}), "qwen3-coder", "http://localhost:1234"),
             custom=ag.get("custom", {}),
+        )
+
+    cg = raw.get("card_generator", {})
+    if cg:
+        defaults = CardGeneratorConfig()
+        ollama_raw = cg.get("ollama", {})
+        settings.card_generator = CardGeneratorConfig(
+            backend=str(cg.get("backend", defaults.backend)),
+            temperature=float(cg.get("temperature", defaults.temperature)),
+            max_retries=int(cg.get("max_retries", defaults.max_retries)),
+            request_timeout=float(cg.get("request_timeout", defaults.request_timeout)),
+            ollama=OllamaBackendConfig(
+                base_url=str(ollama_raw.get("base_url", defaults.ollama.base_url)),
+                model=str(ollama_raw.get("model", defaults.ollama.model)),
+            ),
         )
 
     return settings

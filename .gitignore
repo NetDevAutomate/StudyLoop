@@ -499,3 +499,6 @@ results.tsv
 .pytest-junit.xml
 docs/reports/
 docs/brainstorms/
+
+# Benchmark output (large regenerable artefacts — keep local)
+benchmarks/d2-output/
