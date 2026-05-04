@@ -136,19 +136,19 @@ class TestEstimateTokens:
 
     def test_empty_string(self):
         """Test token estimation for empty string."""
-        assert estimate_tokens("") == 0
+        assert estimate_tokens("", accurate=False) == 0
 
     def test_short_string(self):
         """Test token estimation for short string."""
         # 12 characters ≈ 3 tokens
-        result = estimate_tokens("Hello world!")
+        result = estimate_tokens("Hello world!", accurate=False)
         assert result == 3
 
     def test_longer_string(self):
         """Test token estimation for longer string."""
         # 400 characters ≈ 100 tokens
         text = "a" * 400
-        result = estimate_tokens(text)
+        result = estimate_tokens(text, accurate=False)
         assert result == 100
 
 

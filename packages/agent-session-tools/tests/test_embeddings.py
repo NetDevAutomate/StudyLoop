@@ -402,8 +402,10 @@ def test_generate_embedding_populates_model_cache(mock_model):
         patch.object(emb, "_models", {}),
     ):
         emb.generate_embedding("test text", "all-MiniLM-L6-v2")
-
-    assert "all-MiniLM-L6-v2" in emb._models
+        # The cache assertion MUST happen inside the patch context -- the
+        # patched ``emb._models`` dict is restored to the original on exit,
+        # so ``emb._models`` outside the ``with`` has never seen the write.
+        assert "all-MiniLM-L6-v2" in emb._models
 
 
 # ===========================================================================
@@ -479,7 +481,9 @@ def test_cosine_similarity_result_within_minus_one_to_one():
     a = _embedding_bytes(384)
     b = _embedding_bytes(384)
     score = emb.cosine_similarity(a, b)
-    assert -1.0 <= score <= 1.0
+    # Floating-point cosine similarity can land at 1.0 + eps (or -1.0 - eps)
+    # for near-identical vectors; allow a tiny tolerance on both ends.
+    assert -1.0 - 1e-6 <= score <= 1.0 + 1e-6
 
 
 @requires_numpy
