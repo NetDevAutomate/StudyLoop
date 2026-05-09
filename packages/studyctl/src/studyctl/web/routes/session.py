@@ -571,6 +571,7 @@ def get_session_options() -> dict[str, list[dict]]:
         "vendors": [option.model_dump() for option in _vendor_options()],
         "courses": [option.model_dump() for option in _course_options()],
         "lessons": [option.model_dump() for option in _lesson_options()],
+        "agents": _agent_options(),
     }
 
 
@@ -782,3 +783,33 @@ def _existing_unique_dirs(paths: list[Path]) -> list[Path]:
         seen.add(resolved)
         roots.append(expanded)
     return roots
+
+
+def _agent_options() -> list[dict[str, object]]:
+    try:
+        from studyctl.agent_launcher import AGENTS, detect_agents
+
+        detected = set(detect_agents())
+        return [
+            {
+                "label": _agent_label(name),
+                "value": name,
+                "available": name in detected,
+                "supports_acp": name in {"kiro", "gemini"},
+                "binary": adapter.binary,
+            }
+            for name, adapter in AGENTS.items()
+            if name in {"codex", "claude", "gemini", "kiro", "opencode"}
+        ]
+    except Exception:
+        return []
+
+
+def _agent_label(name: str) -> str:
+    return {
+        "claude": "Claude Code",
+        "codex": "Codex",
+        "gemini": "Gemini",
+        "kiro": "Kiro",
+        "opencode": "OpenCode",
+    }.get(name, name)
