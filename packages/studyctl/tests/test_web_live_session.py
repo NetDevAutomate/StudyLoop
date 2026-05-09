@@ -80,6 +80,7 @@ def test_session_options_returns_course_hierarchy(
     assert body["vendors"][0]["label"] == "Udemy"
     assert body["courses"][0]["label"] == "Python 101"
     assert body["lessons"][0]["label"] == "Section 01"
+    assert "agents" in body
 
 
 def test_live_session_websocket_streams_events_and_accepts_input() -> None:

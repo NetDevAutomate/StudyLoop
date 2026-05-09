@@ -9,6 +9,7 @@ import pytest
 
 from studyctl.session_runtime import AgentSessionManager, PtyAgentSessionTransport, SessionStartSpec
 from studyctl.session_runtime.manager import _acp_command
+from studyctl.session_runtime.pty import clean_terminal_output
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,6 +60,12 @@ def test_acp_command_supports_kiro_and_gemini(monkeypatch: pytest.MonkeyPatch) -
 
     assert _acp_command("kiro") == ["/usr/bin/kiro-cli", "acp"]
     assert _acp_command("gemini") == ["/usr/bin/gemini", "--acp"]
+
+
+def test_clean_terminal_output_strips_ansi_and_control_codes() -> None:
+    raw = "\x1b[1D\x1b[4B\x1b[2K\x1b[1mClaude\x1b[0m\r\n\x07Ready"
+
+    assert clean_terminal_output(raw) == "Claude\nReady"
 
 
 @pytest.mark.asyncio

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import shlex
 from typing import TYPE_CHECKING
 
@@ -29,8 +30,9 @@ class PtyAgentSessionTransport:
         env = _merged_env(self.spec.env)
         command = self.spec.command
         if isinstance(command, str):
+            shell = os.environ.get("SHELL", "/bin/zsh")
             child = pexpect.spawn(
-                "/bin/sh",
+                shell,
                 ["-lc", command],
                 cwd=str(self.spec.cwd),
                 env=env,  # pyright: ignore[reportArgumentType]
@@ -83,8 +85,9 @@ class PtyAgentSessionTransport:
                 continue
             except pexpect.EOF:
                 break
-            if chunk:
-                yield SessionEvent("output", self.session_id, {"text": chunk})
+            text = clean_terminal_output(chunk)
+            if text.strip():
+                yield SessionEvent("output", self.session_id, {"text": text})
 
         exitstatus = child.exitstatus
         signalstatus = child.signalstatus
@@ -110,7 +113,9 @@ class PtyAgentSessionTransport:
 def _merged_env(extra: Mapping[str, str]) -> dict[str, str]:
     env = os.environ.copy()
     env.update(extra)
-    env.setdefault("TERM", "xterm-256color")
+    env["TERM"] = env.get("STUDYLOOP_TERM", "dumb")
+    env["NO_COLOR"] = "1"
+    env["CLICOLOR"] = "0"
     return env
 
 
@@ -118,3 +123,24 @@ def _display_command(command: str | list[str]) -> str:
     if isinstance(command, str):
         return command
     return " ".join(shlex.quote(part) for part in command)
+
+
+_ANSI_RE = re.compile(
+    r"""
+    \x1b
+    (?:
+        \[[0-?]*[ -/]*[@-~] |
+        \][^\x07]*(?:\x07|\x1b\\) |
+        [@-Z\\-_]
+    )
+    """,
+    re.VERBOSE,
+)
+_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+
+
+def clean_terminal_output(text: str) -> str:
+    """Convert full-screen terminal output into readable plain text."""
+    cleaned = _ANSI_RE.sub("", text)
+    cleaned = _CONTROL_RE.sub("", cleaned)
+    return cleaned.replace("\r\n", "\n").replace("\r", "\n")

@@ -652,10 +652,10 @@
             </div>
           </div>
 
-          <div class="picker-field" x-show="targetKind === 'vendor'">
+          <div class="picker-field" x-show="targetKind === 'vendor' || targetKind === 'course' || targetKind === 'lesson'">
             <label for="vendor-select">Course Vendor</label>
             <select id="vendor-select" x-model="selectedVendor"
-                    @change="selectOption('vendor', selectedVendor)"
+                    @change="selectOption('vendor', selectedVendor); selectedCourse = ''; selectedLesson = ''"
                     class="picker-select">
               <option value="">Choose a vendor...</option>
               <template x-for="v in studyOptions.vendors" :key="v.path || v.value">
@@ -690,18 +690,38 @@
 
           <div class="picker-field picker-inline">
             <label for="agent-select">Agent</label>
-            <select id="agent-select" x-model="agent" class="picker-select">
+            <select id="agent-select" x-model="agent"
+                    @change="if (!selectedAgentSupportsAcp()) transport = 'pty'"
+                    class="picker-select">
               <option value="">Auto</option>
-              <option value="codex">Codex</option>
-              <option value="claude">Claude Code</option>
-              <option value="gemini">Gemini</option>
-              <option value="kiro">Kiro</option>
+              <template x-for="a in agentOptions()" :key="a.value">
+                <option :value="a.value" :disabled="!a.available"
+                        x-text="a.label + (a.available ? '' : ' (not found)')"></option>
+              </template>
             </select>
             <label for="transport-select">Transport</label>
             <select id="transport-select" x-model="transport" class="picker-select">
-              <option value="pty">PTY</option>
-              <option value="acp">ACP</option>
+              <option value="pty">PTY text</option>
+              <option value="ttyd">Terminal fallback</option>
+              <option value="acp" :disabled="!selectedAgentSupportsAcp()">ACP experimental</option>
             </select>
+          </div>
+
+          <div class="picker-field" x-show="agentOptions().length > 0">
+            <label>Detected Agents</label>
+            <div class="agent-choice-grid">
+              <template x-for="a in agentOptions()" :key="a.value">
+                <button type="button"
+                        class="agent-choice"
+                        :class="{ active: agent === a.value, unavailable: !a.available }"
+                        :disabled="!a.available"
+                        @click="agent = a.value; if (!selectedAgentSupportsAcp()) transport = 'pty'">
+                  <span class="agent-choice-check" x-text="agent === a.value ? '✓' : ''"></span>
+                  <span x-text="a.label"></span>
+                  <small x-text="a.supports_acp ? 'PTY + ACP' : 'PTY'"></small>
+                </button>
+              </template>
+            </div>
           </div>
 
           <!-- Energy selector -->
@@ -922,7 +942,8 @@
               targetKind: this.targetKind,
               targetPath: this.selectedOption?.path || null,
               agent: this.agent || null,
-              transport: this.transport,
+              transport: this.transport === 'ttyd' ? 'pty' : this.transport,
+              terminalFallback: this.transport === 'ttyd',
             }
           }));
         });
@@ -948,13 +969,22 @@
         if (this.selectedOption) this.topicInput = this.selectedOption.label;
       },
 
+      agentOptions() {
+        return this.studyOptions.agents || [];
+      },
+
+      selectedAgentSupportsAcp() {
+        const selected = this.agentOptions().find((item) => item.value === this.agent);
+        return !!(selected && selected.supports_acp && selected.available);
+      },
+
       filteredCourses() {
-        if (!this.selectedVendor) return this.studyOptions.courses;
+        if (!this.selectedVendor) return [];
         return this.studyOptions.courses.filter((course) => course.parent === this.selectedVendor);
       },
 
       filteredLessons() {
-        if (!this.selectedCourse) return this.studyOptions.lessons;
+        if (!this.selectedCourse) return [];
         return this.studyOptions.lessons.filter((lesson) => lesson.parent === this.selectedCourse);
       },
 
@@ -1156,6 +1186,12 @@
       start(detail) {
         this.stop();
         this.messages = [];
+        if (detail.terminalFallback) {
+          this.status = 'Terminal fallback';
+          this.addMessage('system', 'Opening ttyd terminal fallback. Use it for full-screen assistant TUIs.');
+          this.openTerminalFallback();
+          return;
+        }
         this.status = 'Connecting';
         const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
         this.socket = new WebSocket(`${scheme}://${window.location.host}/api/session/ws`);
