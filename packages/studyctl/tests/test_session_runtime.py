@@ -9,7 +9,7 @@ import pytest
 
 from studyctl.session_runtime import AgentSessionManager, PtyAgentSessionTransport, SessionStartSpec
 from studyctl.session_runtime.manager import _acp_command
-from studyctl.session_runtime.pty import clean_terminal_output
+from studyctl.session_runtime.pty import _merged_env, clean_terminal_output
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -66,6 +66,14 @@ def test_clean_terminal_output_strips_ansi_and_control_codes() -> None:
     raw = "\x1b[1D\x1b[4B\x1b[2K\x1b[1mClaude\x1b[0m\r\n\x07Ready"
 
     assert clean_terminal_output(raw) == "Claude\nReady"
+
+
+def test_pty_env_uses_real_terminal_for_codex() -> None:
+    assert _merged_env({"STUDYLOOP_AGENT": "codex"})["TERM"] == "xterm-256color"
+
+
+def test_pty_env_keeps_claude_in_plain_text_mode() -> None:
+    assert _merged_env({"STUDYLOOP_AGENT": "claude"})["TERM"] == "dumb"
 
 
 @pytest.mark.asyncio

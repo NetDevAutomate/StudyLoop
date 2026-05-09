@@ -113,7 +113,9 @@ class PtyAgentSessionTransport:
 def _merged_env(extra: Mapping[str, str]) -> dict[str, str]:
     env = os.environ.copy()
     env.update(extra)
-    env["TERM"] = env.get("STUDYLOOP_TERM", "dumb")
+    agent = env.get("STUDYLOOP_AGENT", "")
+    default_term = "dumb" if agent == "claude" else "xterm-256color"
+    env["TERM"] = env.get("STUDYLOOP_TERM", default_term)
     env["NO_COLOR"] = "1"
     env["CLICOLOR"] = "0"
     return env

@@ -64,6 +64,7 @@ class AgentSessionManager:
 
         resolved_agent = agent or _default_agent()
         command = _build_command(resolved_agent, transport, session_dir, topic, energy)
+        env = {"STUDYLOOP_AGENT": resolved_agent}
         return SessionStartSpec(
             session_id=session_id,
             topic=topic,
@@ -72,6 +73,7 @@ class AgentSessionManager:
             command=command,
             cwd=session_dir,
             transport=transport,
+            env=env,
         )
 
     @staticmethod
