@@ -114,6 +114,9 @@ def _build_command(
 
     canonical = build_canonical_persona("focus", topic, energy)
     persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    from studyctl.session.orchestrator import setup_session_dir
+
+    setup_session_dir(session_dir, topic)
     persona_file = adapter.setup(canonical, session_dir)
     if adapter.mcp_setup:
         adapter.mcp_setup(session_dir)
