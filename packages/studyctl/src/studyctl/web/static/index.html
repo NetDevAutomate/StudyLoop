@@ -700,11 +700,20 @@
             </select>
             <label for="transport-select">Transport</label>
             <select id="transport-select" x-model="transport" class="picker-select">
-              <option value="pty">PTY text</option>
-              <option value="ttyd">Terminal fallback</option>
-              <option value="acp">ACP experimental</option>
+              <option value="ttyd">Browser terminal</option>
+              <option value="pty">PTY text diagnostics</option>
+              <option value="acp" disabled>ACP experimental (not ready)</option>
             </select>
           </div>
+          <p class="picker-hint" x-show="transport === 'ttyd'">
+            Recommended for Codex, Claude Code, Gemini, Kiro and OpenCode because they use full-screen terminal interfaces.
+          </p>
+          <p class="picker-hint" x-show="transport === 'pty'">
+            Diagnostic text stream only. Use the message box to answer prompts, for example type 1 then Send.
+          </p>
+          <p class="picker-error" x-show="transport === 'acp'">
+            ACP is scaffolded but disabled until Kiro and Gemini pass a real protocol handshake test.
+          </p>
 
           <div class="picker-field" x-show="agentOptions().length > 0">
             <label>Detected Agents</label>
@@ -717,7 +726,7 @@
                         @click="agent = a.value">
                   <span class="agent-choice-check" x-text="agent === a.value ? '✓' : ''"></span>
                   <span x-text="a.label"></span>
-                  <small x-text="a.supports_acp ? 'PTY + ACP' : 'PTY'"></small>
+                  <small x-text="a.acp_ready ? 'Terminal + ACP' : 'Terminal'"></small>
                 </button>
               </template>
             </div>
@@ -877,7 +886,7 @@
       sessionType: 'study',
       targetKind: 'topic',
       agent: '',
-      transport: 'pty',
+      transport: 'ttyd',
       studyOptions: { topics: [], vendors: [], courses: [], lessons: [] },
       starting: false,
       startError: '',
