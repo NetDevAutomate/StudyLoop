@@ -691,7 +691,6 @@
           <div class="picker-field picker-inline">
             <label for="agent-select">Agent</label>
             <select id="agent-select" x-model="agent"
-                    @change="if (!selectedAgentSupportsAcp()) transport = 'pty'"
                     class="picker-select">
               <option value="">Auto</option>
               <template x-for="a in agentOptions()" :key="a.value">
@@ -703,7 +702,7 @@
             <select id="transport-select" x-model="transport" class="picker-select">
               <option value="pty">PTY text</option>
               <option value="ttyd">Terminal fallback</option>
-              <option value="acp" :disabled="!selectedAgentSupportsAcp()">ACP experimental</option>
+              <option value="acp">ACP experimental</option>
             </select>
           </div>
 
@@ -715,7 +714,7 @@
                         class="agent-choice"
                         :class="{ active: agent === a.value, unavailable: !a.available }"
                         :disabled="!a.available"
-                        @click="agent = a.value; if (!selectedAgentSupportsAcp()) transport = 'pty'">
+                        @click="agent = a.value">
                   <span class="agent-choice-check" x-text="agent === a.value ? '✓' : ''"></span>
                   <span x-text="a.label"></span>
                   <small x-text="a.supports_acp ? 'PTY + ACP' : 'PTY'"></small>
@@ -926,6 +925,25 @@
         if (!topic) return;
         this.starting = true;
         this.startError = '';
+        if (this.transport === 'ttyd') {
+          try {
+            const res = await fetch('/api/session/start', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ topic, energy: this.energy, agent: this.agent || null }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              this.startError = data.error || 'Failed to start terminal session';
+              this.starting = false;
+              return;
+            }
+          } catch {
+            this.startError = 'Network error — could not start terminal session';
+            this.starting = false;
+            return;
+          }
+        }
         this.topic = topic;
         this.startTime = new Date();
         this.sessionActive = true;
@@ -1188,8 +1206,8 @@
         this.messages = [];
         if (detail.terminalFallback) {
           this.status = 'Terminal fallback';
-          this.addMessage('system', 'Opening ttyd terminal fallback. Use it for full-screen assistant TUIs.');
-          this.openTerminalFallback();
+          this.addMessage('system', 'Terminal fallback session started. Opening ttyd in a new browser window.');
+          setTimeout(() => this.openTerminalFallback(), 750);
           return;
         }
         this.status = 'Connecting';
