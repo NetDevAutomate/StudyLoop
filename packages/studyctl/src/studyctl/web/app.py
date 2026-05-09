@@ -49,7 +49,7 @@ def create_app(
                   If empty, no authentication is applied.
     """
     app = FastAPI(
-        title="Socratic Study Mentor",
+        title="StudyLoop",
         docs_url=None,
         redoc_url=None,
     )

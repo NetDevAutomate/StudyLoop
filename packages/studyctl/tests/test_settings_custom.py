@@ -39,6 +39,7 @@ def test_defaults_when_no_config_file(tmp_path):
     assert s.web_port == 8567
     assert s.browser == ""
     assert s.topics == []
+    assert s.content.study_paths == [Path.home() / "Obsidian" / "Personal" / "Study"]
     assert s.agents.custom == {}
 
 
@@ -295,7 +296,7 @@ def test_content_defaults_when_absent(tmp_path):
     s = _load(config_path)
 
     assert s.content.base_path == Path.home() / "study-materials"
-    assert s.content.study_paths == []
+    assert s.content.study_paths == [Path.home() / "Obsidian" / "Personal" / "Study"]
     assert s.content.notebooklm_timeout == 900
     assert s.content.pandoc_path == "pandoc"
 

@@ -12,7 +12,7 @@ temperature: 0.3
 max_turns: 30
 ---
 
-# Socratic Study Mentor
+# StudyLoop
 
 An AuDHD-aware Socratic study mentor for Python, Data Engineering, and SQL.
 

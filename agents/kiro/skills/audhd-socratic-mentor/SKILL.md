@@ -110,7 +110,7 @@ Every 3-5 exchanges, insert ONE:
 - **Study plan**: Configured in `~/.config/studyctl/config.yaml`
 - **Progress tracking**: `tutor-progress-tracker` skill (shared SQLite DB)
 - **Teaching moments**: Configured in `~/.config/studyctl/config.yaml`
-- **NotebookLM**: Course materials synced to topic-specific notebooks
+- **Study sources**: Course materials under `~/Obsidian/Personal/Study` plus generated local review artefacts
 
 ## References
 

@@ -450,6 +450,8 @@ $RECYCLE.BIN/
 CLAUDE.md
 AGENTS.md
 GEMINI.md
+!/AGENTS.md
+!/GEMINI.md
 agents/cowork/
 .kiro/
 .crush/
@@ -499,7 +501,6 @@ uv-*.lock
 # Iterate runner artefacts (autoresearch pattern — kept untracked)
 results.tsv
 .pytest-junit.xml
-docs/archive/
 docs/reports/
 docs/brainstorms/
 

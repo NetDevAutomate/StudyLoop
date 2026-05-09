@@ -460,7 +460,7 @@ The primary study agent. Integrates with the full studyctl pipeline:
 
 - Checks spaced repetition schedule before each session
 - Detects struggle topics from your session history
-- Syncs notes to NotebookLM and queries them during teaching
+- Uses local study sources, generated review artefacts, and shared session history during teaching
 - Records progress via `tutor-checkpoint`
 - Adapts session type to your energy level (deep study, light review, body doubling)
 - Uses network→data engineering analogies for concept bridging
@@ -501,7 +501,7 @@ The core teaching methodology skill. Defines:
 Session workflow and pipeline integration. Defines:
 - Session start protocol (status → review → struggles → energy check)
 - Spaced repetition schedule and review types
-- NotebookLM query integration
+- Local study-source and session-history integration
 - Session type selection based on energy level
 
 ### tutor-progress-tracker

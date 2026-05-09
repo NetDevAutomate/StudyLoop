@@ -281,7 +281,7 @@ def init_interactive_config(console: object) -> Path:
 
     console.print(
         Panel(
-            "[bold]Socratic Study Mentor — Interactive Setup[/bold]\n\n"
+            "[bold]StudyLoop — Interactive Setup[/bold]\n\n"
             "This will configure your study environment.\n"
             "Press Enter to accept defaults shown in [dim]brackets[/dim].",
             title="🧠 studyctl config init",

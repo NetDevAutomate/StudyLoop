@@ -1,6 +1,6 @@
 # Web UI Guide
 
-> The studyctl web interface serves two purposes: a spaced repetition review app (flashcards + quizzes) and a live study session dashboard with embedded terminal.
+> The web interface is the primary direction for learner-facing study: live interactive mentor sessions, body-doubling, session state, and supporting flashcards/quizzes.
 
 ---
 
@@ -13,7 +13,10 @@ studyctl web --lan --password SECRET  # LAN with explicit password
 studyctl web -p 9000                # custom port
 ```
 
-Open your browser to `http://localhost:8567`. The PWA is installable — add it to your home screen on mobile for offline review.
+Open your browser to `http://localhost:8567`. The PWA is installable; add it to your home screen on mobile for review and session visibility.
+
+!!! note "Core workflow"
+    The core workflow is interactive study with an agent. Flashcards and quizzes are useful support tools, but the web UI should increasingly serve the live mentor/body-doubling experience.
 
 ---
 
@@ -106,7 +109,7 @@ graph TB
 
 ---
 
-## Live Session Dashboard
+## Live Interactive Sessions
 
 When you start a study session with `--web`, the dashboard provides a real-time view of your session from any device:
 
@@ -123,11 +126,11 @@ The LAN URL and password are printed to the terminal at session start.
 
 ```mermaid
 graph LR
-    subgraph "Session Dashboard"
+    subgraph "Current Session Dashboard"
         META["Topic + Energy + Timer"]
         FEED["Live Activity Feed<br/>(SSE streaming)"]
         COUNTERS["WINS / PARKED / REVIEW"]
-        TERM["Embedded Terminal<br/>(ttyd iframe)"]
+        TERM["Embedded Terminal<br/>(ttyd iframe, current fallback)"]
     end
 
     subgraph "Data Sources"
@@ -142,7 +145,7 @@ graph LR
     IPC --> SSE
 ```
 
-### Dashboard Sections
+### Current Dashboard Sections
 
 **Header** — shows the study topic, energy level (as a `/10` badge), and a live timer matching the sidebar.
 
@@ -150,13 +153,90 @@ graph LR
 
 **Counter Bar** — WINS, PARKED, and REVIEW counts updated live.
 
-**Embedded Terminal** — the ttyd terminal panel shows your tmux session, letting you interact with the agent from the browser. See the Terminal section below.
+**Embedded Terminal** — the ttyd terminal panel shows your tmux session, letting you interact with the agent from the browser. This is currently the main browser-based way to ask questions and have a live mentor conversation.
+
+## Target Session Presentation
+
+The target web UI should support live agent interaction without requiring a terminal emulator for the normal learner path.
+
+```mermaid
+flowchart TD
+    Learner["Learner"]
+    Web["Web/PWA<br/>chat + context + controls"]
+    API["Local Study API"]
+    Runtime["Agent Runtime"]
+    ACP["ACP transport<br/>structured JSON-RPC"]
+    PTY["PTY transport<br/>terminal fallback"]
+    DB["Shared SQLite DB<br/>progress, struggles, sessions"]
+
+    Learner --> Web
+    Web -->|"messages + controls"| API
+    API --> Runtime
+    Runtime --> ACP
+    Runtime --> PTY
+    Runtime --> DB
+    DB --> API
+    API -->|"streamed events"| Web
+```
+
+### Target Session Controls
+
+The web UI should expose structured controls:
+
+- start session
+- choose assistant
+- ask a question
+- stream agent response
+- interrupt/cancel current turn
+- park topic
+- mark win
+- mark struggle
+- show recent struggles and wins from the DB
+- end and summarize session
+- resume previous session
+
+Example target request:
+
+```http
+POST /api/sessions
+Content-Type: application/json
+
+{
+  "topic": "Spark partitioning",
+  "mode": "study",
+  "agent": "kiro",
+  "energy": 5,
+  "transport": "auto"
+}
+```
+
+Example target event:
+
+```json
+{
+  "type": "agent_message_chunk",
+  "content": "What do you already know about partition skew?"
+}
+```
+
+### Transport Strategy
+
+| Transport | Role | Use when |
+|---|---|---|
+| ACP | Preferred structured session transport | Agent supports Agent Client Protocol |
+| PTY | Compatibility fallback | Agent only has an interactive terminal UI |
+| Headless CLI | Background jobs only | One-shot summaries, generation, checks |
+| ttyd | Current web terminal bridge | Until ACP/PTY web sessions are complete |
+
+Do not remove ttyd until the web UI can complete an interactive study session without it.
 
 ---
 
-## Terminal (ttyd)
+## Terminal Fallback (ttyd)
 
-The web dashboard embeds a terminal via [ttyd](https://github.com/nickolasgaddis/ttyd), giving you full terminal access to the study session from a browser.
+The web dashboard embeds a terminal via ttyd, giving you full terminal access to the study session from a browser.
+
+ttyd is currently important because it preserves the critical capability: the learner can ask questions and interact with the selected agent during study or body-doubling.
 
 ### How it works
 
@@ -181,7 +261,9 @@ Access from a tablet or phone at `http://<host-ip>:8567/session`. HTTP Basic Aut
 
 ### Without ttyd
 
-If ttyd is not installed, the dashboard works without the terminal panel. The activity feed, timer, and counters still function. Install ttyd with:
+If ttyd is not installed, the current dashboard works without the terminal panel. The activity feed, timer, and counters still function, but browser-based live agent interaction is degraded until the target ACP/PTY session transport exists.
+
+Install ttyd with:
 
 ```bash
 brew install ttyd      # macOS

@@ -233,7 +233,7 @@ The full break protocol is in `break-science.md`. Key ADHD-specific rules:
 
 ## Dopamine-Driven Learning Loop
 
-From NotebookLM research: the effort of actively reasoning your way to an answer triggers a dopamine release that keeps the ADHD brain engaged.
+Research note: the effort of actively reasoning your way to an answer triggers a dopamine release that keeps the ADHD brain engaged.
 
 **The loop:**
 1. Present a puzzle/challenge (not an explanation)

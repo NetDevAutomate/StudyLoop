@@ -21,17 +21,18 @@ studyctl session effectiveness           # Persona effectiveness metrics
 
 # Content pipeline
 studyctl content split SOURCE            # Split PDF by chapters
-studyctl content process SOURCE          # Split + upload to NotebookLM
-studyctl content autopilot               # Generate next pending episode
-studyctl content from-obsidian DIR       # Markdown → PDF → NotebookLM
-studyctl content status                  # Show content pipeline status
-studyctl content syllabus                # Manage syllabus workflow
+studyctl content generate-cards DIR --course COURSE # Local quiz/flashcard JSON
+studyctl content discover                # Preview configured study sources
+studyctl content ingest --dry-run        # Plan source ingest
+studyctl content import-review DIR --course COURSE  # Import existing JSON artefacts
+studyctl content process SOURCE          # Legacy optional NotebookLM upload path
+studyctl content from-obsidian DIR       # Legacy optional NotebookLM path
 
 # Sync & topics
-studyctl sync [TOPIC] --all --dry-run    # Sync notes to NotebookLM
+studyctl sync [TOPIC] --all --dry-run    # Legacy optional notebook sync
 studyctl status [TOPIC]                  # Show sync status
 studyctl topics                          # List configured topics
-studyctl audio TOPIC                     # Generate NotebookLM audio overview
+studyctl audio TOPIC                     # Legacy optional audio overview
 studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
 
 # Review
@@ -79,6 +80,8 @@ studyctl study --resume                                # Resume conversation (-r
 studyctl study --end                                   # End session cleanly
 studyctl park "How does asyncio compare?"              # Park mid-session
 ```
+
+Run `studyctl study` without a topic to open the textual picker for body double, topic directory, course vendor, or course.
 
 **What `studyctl study` creates:**
 - tmux session with agent pane (left) + Textual sidebar (right)

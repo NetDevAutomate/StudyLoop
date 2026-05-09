@@ -1,340 +1,198 @@
-# Content Pipeline Guide
+# Content Pipeline
 
-> From raw materials (Obsidian notes, PDF textbooks) to study-ready flashcards and quizzes via Google NotebookLM.
+The content pipeline turns study sources into review artefacts that support interactive mentor sessions.
 
----
-
-## How It Works
-
-There are two paths into the pipeline. Both end at the same place: flashcard and quiz JSON files ready for spaced repetition review.
-
-```mermaid
-graph TB
-    subgraph "Source Materials"
-        OB["Obsidian Notes<br/>(.md files)"]
-        PDF["PDF Textbooks"]
-    end
-
-    subgraph "Content Pipeline"
-        SPLIT["studyctl content split<br/>(PDF → per-chapter files)"]
-        OBS["studyctl content from-obsidian<br/>(markdown → PDF → upload)"]
-        PROC["studyctl content process<br/>(split + upload in one step)"]
-        GEN["studyctl content generate<br/>(trigger NotebookLM generation)"]
-        DL["studyctl content download<br/>(download audio/video artefacts)"]
-    end
-
-    subgraph "Google NotebookLM"
-        NB["Notebook<br/>(per-topic)"]
-        ART["Generated Artefacts<br/>(audio overviews,<br/>flashcards, quizzes)"]
-    end
-
-    subgraph "Review System"
-        JSON["Flashcard/Quiz JSON<br/>(in review directories)"]
-        WEB["studyctl web<br/>(PWA with SM-2)"]
-    end
-
-    PDF --> SPLIT --> NB
-    PDF --> PROC --> NB
-    OB --> OBS --> NB
-    NB --> GEN --> ART
-    ART --> DL --> JSON --> WEB
-```
-
----
-
-## Path 1: PDF Textbook to Flashcards
-
-Use this when you have a PDF ebook or textbook and want to create study materials from it.
-
-### Step 1: Split the PDF into chapters
+The primary path is local:
 
 ```bash
-studyctl content split "Computer-Science-APP.pdf" -o chapters/
-```
-
-This reads the PDF's table of contents (bookmarks) and splits it into one file per chapter. Use `-l 2` to split at heading level 2 instead of the default level 1.
-
-If the PDF has no bookmarks, use `--ranges` to specify page ranges manually:
-
-```bash
-studyctl content split "textbook.pdf" --ranges "1-30,31-60,61-90"
-```
-
-### Step 2: Upload chapters to NotebookLM
-
-```bash
-studyctl content process "Computer-Science-APP.pdf" \
-    -o chapters/ \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID"
-```
-
-This combines split + upload in one command. It splits the PDF, then uploads each chapter as a source to the specified NotebookLM notebook.
-
-If you already split in step 1, you can upload manually via the NotebookLM web UI instead.
-
-### Step 3: Generate audio overviews and artefacts
-
-```bash
-studyctl content generate \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID" \
-    -c 1-5
-```
-
-This triggers NotebookLM to generate audio overviews for chapters 1-5. Generation takes 15+ minutes per chapter for slides/video types.
-
-Flags:
-- `-c / --chapters` — chapter range (e.g. `1-5`, `3`, `1-12`)
-- `--no-audio` — skip audio overview generation
-- `--no-video` — skip video generation
-- `-t / --timeout` — timeout in seconds (default: 900)
-
-### Step 4: Download the generated artefacts
-
-```bash
-studyctl content download \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID" \
-    -o ~/study-materials/csapp/ \
-    -c 1-5
-```
-
-This downloads the generated audio, video, flashcard, and quiz files to the specified output directory. The JSON flashcard and quiz files are what the review system reads.
-
-### Step 5: Review with spaced repetition
-
-```bash
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
 studyctl web
 ```
 
-Open the PWA in your browser. Your downloaded flashcards and quizzes will appear as a course. See the [Web UI Guide](web-ui-guide.md) for the full review walkthrough.
+NotebookLM is not required for flashcards, quizzes, study sessions, review, or session history.
 
----
-
-## Path 2: Obsidian Notes to Flashcards
-
-Use this when you have Obsidian markdown notes and want to create study materials from them.
+## Current Flow
 
 ```mermaid
-graph LR
-    A["Obsidian .md files"] --> B["studyctl content from-obsidian"]
-    B --> C["pandoc converts<br/>to PDF"]
-    C --> D["Upload to<br/>NotebookLM"]
-    D --> E["Generate artefacts<br/>(built-in)"]
-    E --> F["Download JSON<br/>(built-in)"]
-    F --> G["studyctl web<br/>(review)"]
+flowchart TB
+    subgraph Sources["Study Sources"]
+        MD["Markdown"]
+        TXT["Text"]
+        PDF["PDF/eBook<br/>(split first)"]
+        OBS["Obsidian<br/>~/Obsidian/Personal/Study"]
+    end
+
+    Discover["studyctl content discover"]
+    Generate["studyctl content generate-cards"]
+    Backend["CardGenerator<br/>Ollama or Bedrock"]
+    Validate["Pydantic validation<br/>FlashcardDeck / QuizDeck"]
+    Artefacts["content.base_path/course<br/>flashcards + quizzes"]
+    Web["studyctl web<br/>review + progress"]
+
+    MD --> Discover
+    TXT --> Discover
+    PDF --> Discover
+    OBS --> Discover
+    Discover --> Generate
+    Generate --> Backend
+    Backend --> Validate
+    Validate --> Artefacts
+    Artefacts --> Web
 ```
 
-### Preview source material
+## Default Study Location
 
-Before uploading anything to NotebookLM, inspect the files that `studyctl` can use as
-study material:
+The default study material source is:
+
+```text
+~/Obsidian/Personal/Study
+```
+
+Recommended structure:
+
+```text
+~/Obsidian/Personal/Study/
+├── Python/
+├── Data-Engineering/
+├── SQL/
+└── Courses/
+    ├── Udemy/
+    │   └── Ultimate_AWS_Data_Engineering_Bootcamp_with_Real_World_Labs/
+    └── ArjanCodes/
+        └── ...
+```
+
+## Commands
+
+### Discover Sources
 
 ```bash
-# Uses topics[].obsidian_path, content.study_paths, then obsidian_base fallback
 studyctl content discover
-
-# Inspect one or more manual source directories
-studyctl content discover ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes
-
-# Machine-readable output for scripts
+studyctl content discover ~/Obsidian/Personal/Study/Python
 studyctl content discover --json
 ```
 
-Discovery includes Markdown, PDF, and text files. It skips low-value noise such as
-`.obsidian/`, `node_modules/`, tiny stub files, and index files like `Courses.md`.
-
-### Plan an ingest
-
-Use `ingest --dry-run` to see what would be created, updated, or skipped based on
-course metadata and file hashes:
+### Generate Flashcards And Quizzes
 
 ```bash
-# Plan against configured study sources
-studyctl content ingest --dry-run
-
-# Group manual sources under one course slug
-studyctl content ingest ~/Obsidian/2-Areas/Study/Python --course python --dry-run
-
-# Machine-readable plan
-studyctl content ingest --dry-run --json
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 ```
 
-The dry run does not upload to NotebookLM and does not change local metadata. It is the
-safe preview step before source upload/update support is enabled.
-
-### All-in-one command
+Generate only one artefact type:
 
 ```bash
-studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python/ \
-    -o ~/study-materials/python/ \
-    -n "$NOTEBOOKLM_NOTEBOOK_ID"
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```
 
-If no source directory is provided, `from-obsidian` uses configured study sources:
-
-1. every `topics[].obsidian_path`
-2. every `content.study_paths`
-3. fallback: `{obsidian_base}/2-Areas/Study`
-
-Manual source directories still override the configured defaults:
+### Split PDFs
 
 ```bash
-# Uses topics[].obsidian_path and content.study_paths
-studyctl content from-obsidian
-
-# Overrides configured defaults for this run
-studyctl content from-obsidian ~/Obsidian/2-Areas/Study/Python ~/Desktop/CourseNotes
+studyctl content split "book.pdf" -o chapters/
+studyctl content split "book.pdf" --ranges "1-30,31-60,61-90"
 ```
 
-This does everything in one step:
+After splitting, generate from extracted Markdown/text chunks where available. PDF parsing/chapter extraction should move behind a `ContentParser` plugin in the target architecture.
 
-1. Converts each `.md` file to PDF via pandoc
-2. Uploads PDFs as sources to NotebookLM
-3. Generates audio overviews (unless `--no-generate`)
-4. Downloads artefacts (unless `--no-download`)
-
-### Import generated review artefacts
-
-After NotebookLM artefacts are downloaded, validate and copy flashcard/quiz JSON into
-the standard course review layout under `content.base_path`:
+### Import Existing Review JSON
 
 ```bash
-# Validate only; no files are copied
-studyctl content import-review ~/study-materials/python/downloads --course python --dry-run
-
-# Import valid flashcard/quiz JSON into ~/study-materials/python/{flashcards,quizzes}
-studyctl content import-review ~/study-materials/python/downloads --course python
-
-# Machine-readable import report
-studyctl content import-review ~/study-materials/python/downloads --course python --json
+studyctl content import-review ~/Downloads/generated-review --course python --dry-run
+studyctl content import-review ~/Downloads/generated-review --course python
 ```
 
-The importer validates the JSON shape used by `studyctl web`, reports invalid files,
-skips unchanged files, and records a small import summary in course metadata.
+## Output Format
 
-### Selective flags
+Flashcards:
 
-Skip steps you don't need:
-
-```bash
-# Convert and upload only (generate later)
-studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID --no-generate
-
-# Skip quiz/flashcard generation
-studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID --no-quiz --no-flashcards
-
-# Convert markdown to PDF only (no NotebookLM)
-studyctl content from-obsidian ~/notes/ -o output/ --skip-convert
+```json
+{
+  "title": "Python Collections",
+  "cards": [
+    {
+      "front": "When would you use deque instead of list?",
+      "back": "Use deque when you need efficient append/pop from both ends."
+    }
+  ]
+}
 ```
 
-### Subdirectory filter
+Quizzes:
 
-Process only notes from a specific subdirectory:
-
-```bash
-studyctl content from-obsidian ~/Obsidian/Study/ -s "Python/Decorators" -o output/
+```json
+{
+  "title": "Python Collections",
+  "questions": [
+    {
+      "question": "Which structure is best for O(1) left append?",
+      "hint": "Think double-ended queue.",
+      "answerOptions": [
+        {
+          "text": "deque",
+          "isCorrect": true,
+          "rationale": "deque.appendleft is O(1)."
+        },
+        {
+          "text": "list",
+          "isCorrect": false,
+          "rationale": "list.insert(0, value) is O(n)."
+        }
+      ]
+    }
+  ]
+}
 ```
-
----
 
 ## Configuration
 
-### NotebookLM notebook ID
-
-Set via environment variable or pass with `-n`:
-
-```bash
-export NOTEBOOKLM_NOTEBOOK_ID="your-notebook-id-here"
-```
-
-Find the ID in the NotebookLM URL: `https://notebooklm.google.com/notebook/NOTEBOOK_ID`
-
-### Content base path
-
-Where flashcard/quiz JSON files are stored. Set in `~/.config/studyctl/config.yaml`:
-
 ```yaml
 content:
-  base_path: ~/study-materials    # default
-  study_paths:                    # extra Obsidian/course-material source dirs
-    - 2-Areas/Study
-    - ~/Desktop/current-course
-  notebooklm_timeout: 900         # seconds per generation
-  inter_episode_gap: 30           # seconds between API calls
+  base_path: ~/study-materials
+  study_paths:
+    - ~/Obsidian/Personal/Study
+
+card_generator:
+  backend: ollama
+  max_workers: 4
+  ollama:
+    base_url: http://localhost:11434
+    model: qwen2.5:7b
 ```
 
-### Topics mapping
+## Target Parser Architecture
 
-Each topic maps to an Obsidian directory and a review path:
+```mermaid
+flowchart LR
+    Source["Source"]
+    Registry["ContentParserRegistry"]
+    Parsed["ParsedDocument"]
+    Chunker["Chunker"]
+    Generator["CardGenerator"]
+    JSON["Review JSON"]
 
-```yaml
-topics:
-  - name: Python
-    slug: python
-    obsidian_path: 2-Areas/Study/Python
-    tags: [python, programming]
+    Source --> Registry
+    Registry --> Parsed
+    Parsed --> Chunker
+    Chunker --> Generator
+    Generator --> JSON
 ```
 
-The `slug` determines where flashcards are stored: `{content.base_path}/{slug}/flashcards/`
+Planned parsers:
 
----
+- Markdown
+- text
+- PDF
+- eBook/EPUB chapter splitting
+- OCR/images
+- Word
+- Excel
+- PowerPoint
+- website to Markdown
+- Obsidian vault parser with wikilinks/backlinks
 
-## Syllabus Workflow (Batch Generation)
+## Optional Legacy NotebookLM Path
 
-For large textbooks, use the syllabus workflow to generate episodes in batches:
+NotebookLM commands may still exist for historical audio/video workflows, but they are not the default path and should move behind an optional plugin.
 
-```bash
-# Create a generation plan
-studyctl content syllabus -n $NB_ID -o chapters/ -b "CS:APP" -m 12
-
-# Generate the next pending episode
-studyctl content autopilot -o chapters/ -b "CS:APP"
-
-# Check progress
-studyctl content status -o chapters/ -b "CS:APP"
-```
-
-The autopilot command generates one episode at a time, respecting rate limits. Run it repeatedly (or on a cron) to work through the full book.
-
----
-
-## Troubleshooting
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `content generate` times out | NotebookLM generation takes 15+ min | Increase timeout: `-t 1800` |
-| Daily quota exceeded | ~20-25 generations per day (Pro tier) | Wait 24h UTC for reset |
-| Mermaid parse errors in `from-obsidian` | Special characters in diagram node labels | Non-fatal; ~15 diagrams may fail. Fix labels or ignore. |
-| PDF has no bookmarks | `content split` needs TOC structure | Use `--ranges` for manual page ranges |
-
----
-
-## Quick Reference
-
-```bash
-# List notebooks
-studyctl content list
-
-# List sources in a notebook
-studyctl content list -n $NB_ID
-
-# Split PDF by chapters
-studyctl content split "book.pdf" -o chapters/
-
-# Upload + split in one step
-studyctl content process "book.pdf" -o chapters/ -n $NB_ID
-
-# Generate audio/video
-studyctl content generate -n $NB_ID -c 1-5
-
-# Download artefacts
-studyctl content download -n $NB_ID -o ~/study-materials/topic/
-
-# Obsidian all-in-one
-studyctl content from-obsidian ~/notes/ -o output/ -n $NB_ID
-
-# Check review due dates
-studyctl review
-
-# Launch review PWA
-studyctl web
-```
+Use local generation unless you explicitly need NotebookLM-specific audio/video artefacts.

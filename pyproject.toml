@@ -1,7 +1,7 @@
 [project]
 name = "socratic-study-mentor"
 version = "1.0.0"
-description = "AuDHD-aware Socratic study mentor with AI session management"
+description = "StudyLoop: AuDHD-aware Socratic mentoring with AI session management"
 requires-python = ">=3.12"
 readme = "README.md"
 license = "MIT"
