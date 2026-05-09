@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# study-statusline.sh — Claude Code status line for Socratic Study Mentor
+# study-statusline.sh — Claude Code status line for StudyLoop
 # Shows: energy level, session timer, pomodoro phase, context usage
 #
 # Claude Code pipes JSON to stdin with: model, cost, context_window, session_id, etc.

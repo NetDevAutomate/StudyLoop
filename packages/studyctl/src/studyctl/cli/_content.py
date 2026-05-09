@@ -76,11 +76,13 @@ def _display_name_for_path(path: Path) -> str:
 
 def _configured_study_sources() -> list[Path]:
     """Return configured Obsidian/content sources for NotebookLM uploads."""
-    from studyctl.settings import load_settings
+    from studyctl.settings import load_raw_config, load_settings
 
     settings = load_settings()
     paths = [topic.obsidian_path for topic in settings.topics]
-    paths.extend(settings.content.study_paths)
+    raw_content = load_raw_config().get("content", {})
+    if isinstance(raw_content, dict) and "study_paths" in raw_content:
+        paths.extend(settings.content.study_paths)
 
     seen: set[Path] = set()
     unique: list[Path] = []
@@ -94,7 +96,7 @@ def _configured_study_sources() -> list[Path]:
     if unique:
         return unique
 
-    default_study_path = settings.obsidian_base / "2-Areas" / "Study"
+    default_study_path = Path.home() / "Obsidian" / "Personal" / "Study"
     return [default_study_path.expanduser()]
 
 
@@ -250,6 +252,107 @@ def import_review(source_dir: Path, course: str, dry_run: bool, as_json: bool) -
         f"skipped {sum(1 for result in results if result.action == 'skipped')}, "
         f"invalid {sum(1 for result in results if result.action == 'invalid')}."
     )
+
+
+@content_group.command("generate-cards")
+@click.argument("sources", nargs=-1, type=click.Path(exists=True, path_type=Path))
+@click.option("--course", required=True, help="Course slug/name to write review artefacts under.")
+@click.option("--no-quiz", is_flag=True, help="Skip quiz generation.")
+@click.option("--no-flashcards", is_flag=True, help="Skip flashcard generation.")
+@click.option("--max-workers", type=int, default=None, help="Override card generation concurrency.")
+def generate_cards(
+    sources: tuple[Path, ...],
+    course: str,
+    no_quiz: bool,
+    no_flashcards: bool,
+    max_workers: int | None,
+) -> None:
+    """Generate local flashcard/quiz JSON from markdown or text sources."""
+    from studyctl.content.generators import get_generator
+    from studyctl.content.generators.runner import GenerationTask, generate_concurrently
+    from studyctl.content.storage import get_course_dir, slugify
+    from studyctl.settings import load_settings
+
+    if no_quiz and no_flashcards:
+        raise click.ClickException("Nothing to generate (both quiz and flashcards disabled).")
+
+    files = _resolve_card_sources(list(sources))
+    if not files:
+        raise click.ClickException("No markdown or text sources found.")
+
+    settings = load_settings()
+    course_slug = slugify(course) or "course"
+    course_dir = get_course_dir(settings.content.base_path, course_slug)
+    tasks: list[GenerationTask] = []
+    for source in files:
+        text = source.read_text(encoding="utf-8")
+        title = source.stem.replace("_", " ").replace("-", " ").title()
+        identifier = slugify(source.stem) or f"source-{len(tasks) + 1}"
+        if not no_flashcards:
+            tasks.append(
+                GenerationTask(
+                    identifier=identifier,
+                    kind="flashcards",
+                    source=text,
+                    title=title,
+                )
+            )
+        if not no_quiz:
+            tasks.append(
+                GenerationTask(identifier=identifier, kind="quiz", source=text, title=title)
+            )
+
+    workers = max_workers if max_workers is not None else settings.card_generator.max_workers
+    generator = get_generator(settings.card_generator)
+    try:
+        results = generate_concurrently(generator, tasks, max_workers=workers)
+    finally:
+        close = getattr(generator, "close", None)
+        if close is not None:
+            close()
+
+    failures = 0
+    written = 0
+    for result in results:
+        if result.error:
+            failures += 1
+            console.print(f"[red]x[/red] {result.task.title} {result.task.kind}: {result.error}")
+            continue
+        if result.deck is None:
+            failures += 1
+            console.print(f"[red]x[/red] {result.task.title} {result.task.kind}: no deck returned")
+            continue
+        if result.task.kind == "flashcards":
+            path = result.deck.write_json(course_dir / "flashcards", result.task.identifier)
+        else:
+            path = result.deck.write_json(course_dir / "quizzes", result.task.identifier)
+        written += 1
+        console.print(f"[green]\u2713[/green] Wrote {path}")
+
+    if failures:
+        raise click.ClickException(
+            f"Generated {written} deck(s), {failures} failed. See messages above."
+        )
+    console.print(f"[green]\u2713[/green] Generated {written} deck(s) for {course_slug}.")
+
+
+def _resolve_card_sources(sources: list[Path]) -> list[Path]:
+    """Resolve files/directories into markdown/text files for local card generation."""
+    allowed = {".md", ".markdown", ".txt"}
+    resolved: list[Path] = []
+    for source in sources:
+        expanded = source.expanduser()
+        if expanded.is_dir():
+            resolved.extend(
+                sorted(
+                    path
+                    for path in expanded.rglob("*")
+                    if path.is_file() and path.suffix.lower() in allowed
+                )
+            )
+        elif expanded.suffix.lower() in allowed:
+            resolved.append(expanded)
+    return resolved
 
 
 # ---------------------------------------------------------------------------

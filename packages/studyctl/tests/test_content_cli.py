@@ -12,6 +12,13 @@ import yaml
 from click.testing import CliRunner
 
 from studyctl.cli import cli
+from studyctl.content.schemas import (
+    FlashcardDeck,
+    FlashcardItem,
+    QuizDeck,
+    QuizOption,
+    QuizQuestion,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -257,3 +264,53 @@ def test_import_review_dry_run_outputs_json(
     assert payload[0]["action"] == "imported"
     assert payload[0]["kind"] == "flashcards"
     assert not (tmp_path / "materials" / "python").exists()
+
+
+def test_generate_cards_writes_flashcards_and_quiz_without_notebooklm(
+    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = tmp_path / "lesson.md"
+    source.write_text("# Lesson\n\nETL means extract, transform, load.\n")
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump({"content": {"base_path": str(tmp_path / "materials")}}))
+    monkeypatch.setattr("studyctl.settings._CONFIG_PATH", config_path)
+
+    class FakeGenerator:
+        def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
+            return FlashcardDeck(
+                title=title,
+                cards=[FlashcardItem(front="Why use ETL?", back="To prepare data for use.")],
+            )
+
+        def generate_quiz(self, source: str, title: str) -> QuizDeck:
+            return QuizDeck(
+                title=title,
+                questions=[
+                    QuizQuestion(
+                        question="What does ETL start with?",
+                        answerOptions=[
+                            QuizOption(text="Extract", isCorrect=True, rationale="E is extract."),
+                            QuizOption(text="Encrypt", isCorrect=False, rationale="Not in ETL."),
+                        ],
+                    )
+                ],
+            )
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr("studyctl.content.generators.get_generator", lambda config: FakeGenerator())
+
+    result = runner.invoke(
+        cli,
+        ["content", "generate-cards", str(source), "--course", "Data Engineering"],
+    )
+
+    assert result.exit_code == 0, result.output
+    course_dir = tmp_path / "materials" / "data-engineering"
+    flashcards = course_dir / "flashcards" / "lesson-flashcards.json"
+    quiz = course_dir / "quizzes" / "lesson-quiz.json"
+    assert flashcards.exists()
+    assert quiz.exists()
+    assert json.loads(flashcards.read_text())["cards"][0]["front"] == "Why use ETL?"
+    assert json.loads(quiz.read_text())["questions"][0]["answerOptions"][0]["isCorrect"] is True

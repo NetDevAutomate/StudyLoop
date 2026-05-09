@@ -96,7 +96,9 @@ class ContentConfig:
     """Configuration for the content pipeline (pdf-by-chapters absorption)."""
 
     base_path: Path = field(default_factory=lambda: Path.home() / "study-materials")
-    study_paths: list[Path] = field(default_factory=list)
+    study_paths: list[Path] = field(
+        default_factory=lambda: [Path.home() / "Obsidian" / "Personal" / "Study"]
+    )
     notebooklm_timeout: int = 900
     inter_episode_gap: int = 30
     default_types: list[str] = field(default_factory=lambda: ["audio"])
@@ -381,11 +383,13 @@ def load_settings() -> Settings:
 
     ct = raw.get("content", {})
     if ct:
+        content_defaults = ContentConfig()
+        raw_study_paths = ct.get("study_paths", content_defaults.study_paths)
         settings.content = ContentConfig(
             base_path=_path(ct.get("base_path", "~/study-materials")),
             study_paths=[
                 p if p.is_absolute() else settings.obsidian_base / p
-                for p in (_path(path) for path in ct.get("study_paths", []))
+                for p in (_path(path) for path in raw_study_paths)
             ],
             notebooklm_timeout=int(ct.get("notebooklm_timeout", 900)),
             inter_episode_gap=int(ct.get("inter_episode_gap", 30)),
@@ -568,7 +572,8 @@ topics:
 # Content pipeline (studyctl content commands)
 # content:
 #   base_path: ~/study-materials       # Where course directories are stored
-#   study_paths: []                    # Extra Obsidian/content source dirs for NotebookLM uploads
+#   study_paths:
+#     - ~/Obsidian/Personal/Study      # Default study material source directory
 #   notebooklm_timeout: 900            # Timeout for generation (seconds)
 #   inter_episode_gap: 30              # Seconds between episode generations
 #   default_types: [audio]             # Default artifact types to generate

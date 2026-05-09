@@ -1,6 +1,6 @@
 # Setup Guide
 
-Step-by-step installation and configuration for Socratic Study Mentor.
+Step-by-step installation and configuration for StudyLoop.
 
 ## Table of Contents
 
@@ -9,7 +9,6 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Obsidian Vault Setup](#obsidian-vault-setup)
-- [NotebookLM Setup](#notebooklm-setup-optional)
 - [Session Database](#session-database)
 - [Content Pipeline](#content-pipeline)
 - [Cross-Machine Sync](#cross-machine-sync)
@@ -22,7 +21,6 @@ Step-by-step installation and configuration for Socratic Study Mentor.
 - **[uv](https://docs.astral.sh/uv/)** — Python package manager
 - **tmux 3.1+** — required for `studyctl study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
 - **Obsidian** — for study notes (any vault structure works)
-- **Optional**: `notebooklm-py` for Google NotebookLM sync
 - **Optional**: `sentence-transformers` for semantic search
 - **Optional**: `ttyd` — enables web terminal access from browser or iPad (`brew install ttyd` on macOS, `apt install ttyd` on Linux)
 
@@ -140,15 +138,14 @@ studyctl install tools
 studyctl install agents
 studyctl doctor --fix
 
-# Install optional extras
-uv pip install studyctl[notebooklm]
+# Install optional semantic search support
 uv pip install agent-session-tools[semantic]
 ```
 
 For **Ansible playbooks**, clone the repo then run the install script:
 
 ```yaml
-- name: Install Socratic Study Mentor
+- name: Install StudyLoop
   hosts: study_machines
   tasks:
     - name: Clone repo
@@ -175,8 +172,8 @@ studyctl config init
 This walks you through three core questions:
 
 1. **Knowledge bridging** — Do you want to leverage a topic you already know well (e.g. networking, cooking, music theory) so the mentor can draw analogies to new topics you're studying?
-2. **NotebookLM integration** — Do you want to integrate with Google's NotebookLM to use notebooks as a knowledge source?
-3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Vault`).
+2. **Study material location** — Where are your study sources? The default is `~/Obsidian/Personal/Study`.
+3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Personal`).
 
 The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices. You can re-run it at any time to change settings.
 
@@ -203,16 +200,13 @@ state_dir: ~/.local/share/studyctl
 content:
   base_path: ~/study-materials
   study_paths:
-    - 2-Areas/Study
-    - ~/Desktop/current-course-materials
-  notebooklm_timeout: 900
+    - ~/Obsidian/Personal/Study
   inter_episode_gap: 30
 
 topics:
   - name: Python
     slug: python
     obsidian_path: 2-Areas/Study/Python
-    notebook_id: ""  # optional NotebookLM notebook ID
     tags: [python, programming]
 
   - name: Data Engineering
@@ -226,7 +220,7 @@ Path rules:
 - Relative `topics[].obsidian_path` values are resolved under `obsidian_base`.
 - Absolute `topics[].obsidian_path` values are used as-is.
 - Relative `content.study_paths` values are resolved under `obsidian_base`.
-- `content.study_paths` augments topic paths for `studyctl content from-obsidian` when you do not pass source directories manually.
+- `content.study_paths` augments topic paths for `studyctl content discover` and `studyctl content generate-cards` when you do not pass source directories manually.
 
 To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:
 
@@ -379,7 +373,6 @@ topics:
   - name: Python
     slug: python
     obsidian_path: 2-Areas/Study/Python
-    # notebook_id: your-notebooklm-notebook-id  # optional
     tags: [python, programming]
 
   - name: SQL
@@ -393,7 +386,6 @@ topics:
 | `topics[].name` | Display name for the topic | required |
 | `topics[].slug` | URL-safe identifier | required |
 | `topics[].obsidian_path` | Path relative to `obsidian_base` | required |
-| `topics[].notebook_id` | NotebookLM notebook ID (if using sync) | empty |
 | `topics[].tags` | Keywords for session search matching | `[]` |
 
 ### Database & Search Settings
@@ -467,30 +459,6 @@ studyctl syncs `.md`, `.pdf`, and `.txt` files. It skips:
 - Obsidian metadata files (`.obsidian/`, index files)
 - Common non-content directories (`node_modules`, `__pycache__`)
 
-## NotebookLM Setup (optional)
-
-NotebookLM sync lets you upload your Obsidian notes as sources in Google NotebookLM notebooks, then generate audio overviews.
-
-1. Install the optional dependency:
-   ```bash
-   uv pip install studyctl[notebooklm]
-   ```
-
-2. Create notebooks in [NotebookLM](https://notebooklm.google.com/) — one per study topic
-
-3. Get each notebook's ID from its URL:
-   ```
-   https://notebooklm.google.com/notebook/NOTEBOOK_ID_HERE
-   ```
-
-4. Add the IDs to your config:
-   ```yaml
-   topics:
-     - name: Python
-       slug: python
-       obsidian_path: 2-Areas/Study/Python
-       notebook_id: your-notebook-id-here
-   ```
 
 5. Sync and generate audio:
    ```bash
@@ -530,48 +498,38 @@ session-query search "python"    # Search across all sessions
 
 ## Content Pipeline
 
-The content pipeline converts PDFs and Obsidian notes into NotebookLM-powered study materials (audio overviews, flashcards, quizzes). It was absorbed from [notebooklm-pdf-by-chapters](https://github.com/andytaylor/notebooklm-pdf-by-chapters) and lives under `studyctl content`.
+The content pipeline converts local study sources into review artefacts that support interactive study sessions. The primary path is local quiz/flashcard generation.
 
 ### Install content dependencies
 
 ```bash
-# PDF splitting (pymupdf + httpx)
+# PDF splitting and local content processing
 uv pip install studyctl[content]
-
-# NotebookLM integration (required for upload/generate/download commands)
-uv pip install studyctl[notebooklm]
 ```
 
-### Configure review directories
+### Configure study sources
 
-Point studyctl at the directories where content pipeline outputs land (flashcards, quizzes). These are picked up by `studyctl review`, the web PWA, and the TUI:
+The default study material source is `~/Obsidian/Personal/Study`.
 
 ```yaml
 # ~/.config/studyctl/config.yaml
-review:
-  directories:
-    - ~/Desktop/ZTM-DE/downloads
-    - ~/Desktop/Python/downloads
+content:
+  base_path: ~/study-materials
+  study_paths:
+    - ~/Obsidian/Personal/Study
 ```
 
 ### Typical workflow
 
 ```bash
-# 1. Split a PDF textbook into per-chapter files
-studyctl content split ~/Books/my-textbook.pdf -o ./chapters
+# 1. Preview available sources
+studyctl content discover
 
-# 2. Upload chapters to NotebookLM and generate audio overviews
-studyctl content process ~/Books/my-textbook.pdf -n NOTEBOOK_ID
+# 2. Generate local flashcards and quizzes
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
 
-# 3. Or use the syllabus workflow for multi-episode podcast generation
-studyctl content syllabus -n NOTEBOOK_ID -o ./chapters
-studyctl content autopilot -o ./chapters
-
-# 4. Convert Obsidian notes to PDFs and upload in one step
-studyctl content from-obsidian ~/Obsidian/Vault/Study/Python
-
-# Or use configured topics and content.study_paths
-studyctl content from-obsidian
+# 3. Review
+studyctl web
 ```
 
 See the [CLI Reference](cli-reference.md) for all available commands.
@@ -740,12 +698,6 @@ Check that the AI tool's data directory exists:
 ### `studyctl review` shows nothing
 
 The session database may be empty. Run `session-export` first to populate it, then `studyctl review` can check your study history.
-
-### NotebookLM sync fails
-
-- Verify `notebooklm-py` is installed: `uv pip install studyctl[notebooklm]`
-- Check that your `notebook_id` is correct (copy from the NotebookLM URL)
-- Ensure you're authenticated with Google (follow `notebooklm-py` auth docs)
 
 ### Config file not loading
 

@@ -1,11 +1,11 @@
 ---
 name: study-mentor
-description: "AuDHD-aware Socratic study mentor with NotebookLM integration. Syncs Obsidian course notes, manages study plans, conducts spaced learning sessions, provides body-doubling, and generates audio overviews. Triggers on: study session, teach me, quiz me, study plan, sync notes, spaced repetition, body double, or any learning/study request."
+description: "AuDHD-aware Socratic study mentor with local quiz/flashcard generation, Obsidian course notes, shared session history, spaced learning sessions, and body-doubling. Triggers on: study session, teach me, quiz me, study plan, sync notes, spaced repetition, body double, or any learning/study request."
 ---
 
 # Study Mentor
 
-Socratic study mentor integrated with NotebookLM, Obsidian, and spaced repetition tracking.
+StudyLoop mentor integrated with Obsidian, local quiz/flashcard generation, shared session history, and spaced repetition tracking.
 
 ## Session Start (Always Run)
 
@@ -54,11 +54,9 @@ Use this to adapt: "I see you've asked about Spark partitioning in 5 sessions. L
 ## Tools
 
 ```bash
-# Sync & status
-studyctl sync --all              # Sync changed notes to NotebookLM
-studyctl sync python             # Sync specific topic
+# Source & status
+studyctl content discover        # Preview configured study sources
 studyctl status                  # Show sync state
-studyctl audio python -i "..."   # Generate audio overview
 
 # Spaced repetition & history
 studyctl review                  # What's due for review?
@@ -72,22 +70,12 @@ studyctl teachback-history "concept"
 studyctl bridge add "source" "target" -s networking -t spark -m "why they map"
 studyctl bridge list -s networking
 
-# NotebookLM direct queries
-notebooklm ask "question" --notebook <id>
-notebooklm source list --notebook <id>
+# Local quiz and flashcard generation
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 
-# eBook audio overviews (pdf-by-chapters)
-pdf-by-chapters process "Book.pdf" -o ./chapters           # Split + upload
-pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video  # Episode plan
-pdf-by-chapters generate-next -o ./chapters --no-wait      # Generate next episode
-pdf-by-chapters status -o ./chapters --poll                 # Check progress
-pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
-
-# Quiz & flashcard generation from Obsidian notes (pdf-by-chapters)
-pdf-by-chapters from-obsidian ~/Obsidian/path/to/course/    # Full: audio + quiz + flashcards
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --subdir study-notes  # Specific subdirectory
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-audio   # Quiz + flashcards only
-pdf-by-chapters from-obsidian ~/Obsidian/path/ -n $NOTEBOOK_ID --skip-convert  # Reuse existing
+# Quiz & flashcard generation from Obsidian notes
+studyctl content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --course <course-slug>
 
 # Progress tracking
 uv run tutor-progress
@@ -102,81 +90,34 @@ studyctl schedule list           # Show active jobs
 studyctl schedule install        # Install all default jobs
 ```
 
-## eBook Audio Overviews (pdf-by-chapters)
-
-For book-based study, generate chunked audio overviews of entire eBooks using `pdf-by-chapters`.
-This splits a PDF by chapter, uploads to NotebookLM, creates a syllabus, and generates audio
-episode-by-episode.
-
-```bash
-# 1. Split eBook and upload chapters to a new NotebookLM notebook
-pdf-by-chapters process "Book Title.pdf" -o ./chapters
-
-# 2. Generate a podcast syllabus (AI groups chapters into logical episodes)
-pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video
-
-# 3. Generate audio for the next episode (repeat until all done)
-pdf-by-chapters generate-next -o ./chapters --no-wait
-pdf-by-chapters status -o ./chapters --poll     # check progress
-pdf-by-chapters generate-next -o ./chapters --no-wait
-# ... repeat for each episode
-
-# 4. Download all completed audio
-pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews
-```
-
-**When to use:** Starting a new textbook, low-energy days (listen instead of read),
-commute-friendly study material, or when the learner wants audio reinforcement.
-
-**Energy adaptation:**
-- Energy 1-3: Suggest listening to already-generated episodes
-- Energy 4-6: Generate next episode, listen to previous ones
-- Energy 7+: Active study session with audio as supplementary material
-
-Install: `uv tool install notebooklm-pdf-by-chapters`
-
 ## Quiz & Flashcard Generation from Obsidian Notes
 
-Generate NotebookLM quizzes and flashcards directly from Obsidian study notes using `pdf-by-chapters from-obsidian`. Converts markdown to PDF (with Mermaid diagram rendering), uploads to NotebookLM, and generates per-source artifacts.
+Generate quizzes and flashcards directly from Obsidian study notes using `studyctl content generate-cards`. It writes the same JSON format consumed by `studyctl web`.
 
 ```bash
-# Full pipeline: convert notes → upload → generate audio + quiz + flashcards
-pdf-by-chapters from-obsidian ~/Obsidian/Personal/2-Areas/Courses/MyCourse/
-
-# Target a specific subdirectory (e.g. study-notes within a course)
-pdf-by-chapters from-obsidian ~/Obsidian/Personal/2-Areas/Courses/MyCourse/ \
-  --subdir study-notes -o ~/Desktop/MyCourse-output
-
-# Quiz + flashcards only (skip audio — faster, avoids audio rate limits)
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-audio
-
-# Reuse existing notebook and skip PDF conversion
-pdf-by-chapters from-obsidian ~/Obsidian/path/ -n $NOTEBOOK_ID --skip-convert
+# Full local pipeline: notes -> quiz + flashcards
+studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 
 # Skip quiz or flashcards individually
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-quiz
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-flashcards
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```
 
-**What it generates per source:** Audio deep-dive, quiz (JSON), flashcards (JSON). Downloads go to `<output>/downloads/`.
+**What it generates per source:** quiz JSON and flashcard JSON under `content.base_path/<course>/`.
 
 **When to use:**
 - After adding new study notes to Obsidian — generate quizzes to test comprehension
 - Spaced review sessions — use flashcards for rapid recall testing
 - Before exams — batch-generate quizzes across all course materials
-- Low-energy days — use `--no-audio` for quick quiz/flashcard generation only
+- Low-energy days — generate only flashcards or only quiz to reduce session load
 
-**Requires:** `pandoc` (brew install pandoc) and `@mermaid-js/mermaid-cli` (npm install -g @mermaid-js/mermaid-cli) for markdown-to-PDF conversion with Mermaid diagram support.
-
-## Notebook IDs
-
-Run `studyctl config show` to see your configured notebook IDs.
+**Requires:** a configured `card_generator` backend, defaulting to Ollama.
 
 ## Session Types
 
 **Scheduled study:** review → select topic → sync → Socratic session → record progress
-**Ad-hoc question:** identify topic → query NotebookLM → respond Socratically
-**Spaced review:** check what's due → quiz from NotebookLM → score and record
+**Ad-hoc question:** identify topic → use local notes/history → respond Socratically
+**Spaced review:** check what's due → quiz from local generated JSON → score and record
 **Body doubling:** agree on goal + time → start/mid/end check-ins → record
 
 ## Integration

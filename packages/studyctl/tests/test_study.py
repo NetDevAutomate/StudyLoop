@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from studyctl.cli._study import study
+from studyctl.cli._study import StudySessionSelection, study
 
 # Inline fixtures only (no conftest.py — pluggy conflict)
 
@@ -27,9 +27,29 @@ def _tmux_side_effect(args, **kwargs):
 
 
 class TestStudyCommand:
-    def test_requires_topic(self, runner):
-        result = runner.invoke(study, [])
-        assert result.exit_code != 0 or "Topic is required" in result.output
+    def test_no_topic_cancel_exits_without_starting(self, runner):
+        with patch("studyctl.cli._study._prompt_study_session", return_value=None):
+            result = runner.invoke(study, [])
+        assert result.exit_code == 1
+
+    def test_no_topic_uses_picker_selection(self, runner):
+        selection = StudySessionSelection(
+            topic="Ultimate AWS Data Engineering Bootcamp",
+            mode="study",
+            topic_config=None,
+        )
+        with (
+            patch("studyctl.cli._study._prompt_study_session", return_value=selection),
+            patch("studyctl.cli._study._handle_start") as start,
+        ):
+            result = runner.invoke(study, ["--energy", "7"])
+
+        assert result.exit_code == 0
+        start.assert_called_once()
+        args = start.call_args.args
+        assert args[1] == "Ultimate AWS Data Engineering Bootcamp"
+        assert args[3] == "study"
+        assert args[5] == 7
 
     def test_tmux_not_available(self, runner):
         with patch("studyctl.tmux.shutil.which", return_value=None):

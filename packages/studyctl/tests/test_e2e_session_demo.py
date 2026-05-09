@@ -146,7 +146,7 @@ def _make_demo_agent(tmp_path: Path) -> str:
     script.write_text(
         textwrap.dedent(f"""\
         #!/bin/bash
-        echo "=== Socratic Study Mentor (Demo) ==="
+        echo "=== StudyLoop (Demo) ==="
         echo "Topic: {TOPIC}"
         echo ""
         sleep 2

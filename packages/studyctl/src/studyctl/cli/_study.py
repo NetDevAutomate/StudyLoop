@@ -7,6 +7,8 @@ resume, and cleanup.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
@@ -17,6 +19,15 @@ if TYPE_CHECKING:
     from studyctl.settings import TopicConfig
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class StudySessionSelection:
+    """Resolved startup choice from the textual study picker."""
+
+    topic: str
+    mode: str
+    topic_config: TopicConfig | None = None
 
 
 def _resolve_topic_config(topic: str) -> TopicConfig | None:
@@ -58,6 +69,107 @@ def _interactive_pick(candidates: list[TopicConfig], query: str) -> TopicConfig 
     except (click.Abort, EOFError):
         pass
     return None
+
+
+def _first_existing_study_root() -> Path:
+    """Return the preferred configured study root, even if it does not exist yet."""
+    from studyctl.settings import load_settings
+
+    settings = load_settings()
+    roots = settings.content.study_paths or [Path.home() / "Obsidian" / "Personal" / "Study"]
+    for root in roots:
+        expanded = root.expanduser()
+        if expanded.is_dir():
+            return expanded
+    return roots[0].expanduser()
+
+
+def _child_dirs(path: Path) -> list[Path]:
+    """Return visible child directories sorted for picker display."""
+    if not path.is_dir():
+        return []
+    return sorted(
+        [child for child in path.iterdir() if child.is_dir() and not child.name.startswith(".")],
+        key=lambda p: p.name.lower(),
+    )
+
+
+def _prompt_choice(title: str, options: list[str]) -> int | None:
+    """Prompt for a numbered choice. Returns zero-based index or None."""
+    console.print(f"\n[bold]{title}[/bold]")
+    for index, label in enumerate(options, 1):
+        console.print(f"  [bold]{index}[/bold]. {label}")
+    console.print("  [bold]0[/bold]. Cancel")
+    try:
+        choice = click.prompt("Select", type=int, default=1)
+    except (click.Abort, EOFError):
+        return None
+    if choice == 0:
+        return None
+    if 1 <= choice <= len(options):
+        return choice - 1
+    console.print("[red]Invalid selection.[/red]")
+    return None
+
+
+def _topic_from_path(path: Path, fallback: str) -> str:
+    """Build a readable topic label from a selected directory."""
+    name = path.name.replace("_", " ").replace("-", " ").strip()
+    return name or fallback
+
+
+def _prompt_study_session() -> StudySessionSelection | None:
+    """Textual startup picker for no-argument ``studyctl study``."""
+    study_root = _first_existing_study_root()
+    selected = _prompt_choice(
+        "Start Study Session",
+        [
+            "Body Double",
+            f"Course Material or Topic ({study_root})",
+            f"Course Vendor ({study_root / 'Courses'})",
+            f"Course ({study_root / 'Courses' / '<vendor>' / '<course>'})",
+        ],
+    )
+    if selected is None:
+        return None
+
+    if selected == 0:
+        return StudySessionSelection(topic="Body Double", mode="co-study")
+
+    if selected == 1:
+        topic_dirs = _child_dirs(study_root)
+        if not topic_dirs:
+            topic = click.prompt("Topic", default="Study Session")
+            return StudySessionSelection(topic=topic, mode="study")
+        choice = _prompt_choice("Choose Topic Directory", [path.name for path in topic_dirs])
+        if choice is None:
+            return None
+        path = topic_dirs[choice]
+        return StudySessionSelection(topic=_topic_from_path(path, "Study Session"), mode="study")
+
+    courses_root = study_root / "Courses"
+    vendors = _child_dirs(courses_root)
+    if not vendors:
+        console.print(f"[yellow]No course vendors found under {courses_root}[/yellow]")
+        return None
+
+    vendor_choice = _prompt_choice("Choose Course Vendor", [path.name for path in vendors])
+    if vendor_choice is None:
+        return None
+    vendor = vendors[vendor_choice]
+
+    if selected == 2:
+        return StudySessionSelection(topic=_topic_from_path(vendor, "Course Vendor"), mode="study")
+
+    courses = _child_dirs(vendor)
+    if not courses:
+        console.print(f"[yellow]No courses found under {vendor}[/yellow]")
+        return None
+    course_choice = _prompt_choice("Choose Course", [path.name for path in courses])
+    if course_choice is None:
+        return None
+    course = courses[course_choice]
+    return StudySessionSelection(topic=_topic_from_path(course, "Course"), mode="study")
 
 
 def _agent_names() -> list[str]:
@@ -141,10 +253,15 @@ def study(
         handle_resume(ctx, start_fn=_handle_start)
         return
 
+    topic_config = None
     if not topic:
-        console.print("[red]Topic is required. Usage: studyctl study 'topic'[/red]")
-        ctx.exit(1)
-        return
+        selection = _prompt_study_session()
+        if selection is None:
+            ctx.exit(1)
+            return
+        topic = selection.topic
+        mode = selection.mode
+        topic_config = selection.topic_config
 
     # Resolve defaults
     if timer is None:
@@ -154,7 +271,8 @@ def study(
         web = True
 
     # Resolve free-text topic to a TopicConfig (for briefing, content, review)
-    topic_config = _resolve_topic_config(topic)
+    if topic_config is None:
+        topic_config = _resolve_topic_config(topic)
 
     _handle_start(
         ctx,

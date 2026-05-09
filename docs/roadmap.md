@@ -1,6 +1,6 @@
 # Roadmap
 
-> ⚠️ **Compaction (March 2026)**: The project was stripped to 4 core features: Socratic AI sessions, content pipeline (NotebookLM), flashcard/quiz review (PWA), and session intelligence (export + search + sync). Features listed below as completed may have been archived — see `docs/plans/compaction-plan.md` for details. The TUI dashboard, scheduler, calendar, knowledge bridges DB, teach-back scoring DB, win/streak tracking CLI commands, and state push/pull CLI were removed. Agent support was consolidated to Claude Code, Kiro, Gemini, and OpenCode.
+> **Current direction (May 2026)**: the core product is interactive Socratic study and body-doubling with shared session intelligence. Local quiz/flashcard generation supports that workflow. NotebookLM is not a core dependency and any remaining NotebookLM workflows should become optional plugins or archived legacy paths.
 
 ## v1.0 — Foundation
 
@@ -10,7 +10,7 @@
 - [x] Session export from 8+ AI tools
 - [x] FTS5 + hybrid semantic search
 - [x] Cross-machine sync
-- [x] Obsidian → NotebookLM sync
+- [x] Obsidian/local source integration
 - [x] Install scripts for both platforms
 
 ## v1.1 — AuDHD Learning Intelligence

@@ -1,6 +1,6 @@
-# Socratic Study Mentor
+# StudyLoop
 
-**TL;DR:** An AuDHD-aware study toolkit that teaches through Socratic questioning, tracks AI sessions across 7+ tools, and uses spaced repetition to fight imposter syndrome with evidence of progress.
+**TL;DR:** A local-first, AuDHD-aware study toolkit for live Socratic mentoring, body-doubling, cross-assistant session memory, and supporting spaced repetition.
 
 ---
 
@@ -12,14 +12,17 @@ brew install NetDevAutomate/studyctl/studyctl
 studyctl setup
 studyctl doctor --fix
 
-# 2. Start a study session
+# 2. Start an interactive study session
+studyctl study
+# or specify a topic directly
 studyctl study "Python" --mode co-study
 # or launch your preferred assistant directly:
 # kiro-cli chat --agent study-mentor
 # claude      # then /agent socratic-mentor
 # codex       # in the project root with AGENTS.md present
 
-# 3. Check what's due for review
+# 3. Optional: generate and review flashcards/quizzes
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
 studyctl review
 ```
 
@@ -34,7 +37,7 @@ studyctl review
 graph LR
     subgraph "Study Materials"
         OB[Obsidian Vault]
-        NLM[NotebookLM]
+        SRC[Markdown/PDF/text]
     end
 
     subgraph "CLI Tools"
@@ -52,9 +55,9 @@ graph LR
         AA[Amp]
     end
 
-    OB -->|sync| SC
-    SC -->|upload| NLM
-    SC -->|spaced repetition| DB
+    OB -->|study sources| SC
+    SRC -->|parse/generate| SC
+    SC -->|sessions + review| DB
     AST -->|export sessions| DB
     DB -->|query history| SC
     KA -->|Socratic sessions| DB
@@ -71,7 +74,7 @@ graph LR
 
 | Tool | Purpose |
 |------|---------|
-| **studyctl** | Study pipeline — sync notes, spaced repetition, struggle detection, win tracking |
+| **studyctl** | Interactive study sessions, local content generation, spaced repetition, struggle detection, win tracking |
 | **agent-session-tools** | Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, and more |
 | **AI Agents** | Socratic mentors that adapt to your energy, emotional state, and sensory environment |
 
@@ -82,12 +85,14 @@ graph LR
 
 ## Key Sections
 
-- **[Content Pipeline](content-pipeline.md)** — PDF/Obsidian to flashcards via NotebookLM (end-to-end)
-- **[Architecture](architecture.md)** — C4 diagrams and repo code map
+- **[Content Pipeline](content-pipeline.md)** — local review artefact generation from study sources
+- **[Architecture](architecture.md)** — current and target architecture docs
+- **[Target Architecture](architecture/target.md)** — plugin architecture, ACP/PTY live sessions, macOS/iOS direction
 - **[TUI Sidebar Guide](tui-guide.md)** — Terminal sidebar layout, timer modes, key bindings
-- **[Web UI Guide](web-ui-guide.md)** — Flashcards, quizzes, session dashboard, ttyd terminal
+- **[Web UI Guide](web-ui-guide.md)** — live sessions, session dashboard, terminal fallback, review UI
 - **[Session Protocol](session-protocol.md)** — How every study session flows, from arrival to close
 - **[CLI Reference](cli-reference.md)** — Full command reference for `studyctl` and `session-query`
+- **[Repository Standards](standards/repo-standards.md)** — naming, doc, and structure standards
 - **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents
 - **[Network Bridges](network-bridges.md)** — Network→Data Engineering analogies for infrastructure people
 - **[Roadmap](roadmap.md)** — What's coming next

@@ -5,7 +5,7 @@ category: communication
 tools: Read, Write, Grep, Bash
 ---
 
-# Socratic Study Mentor
+# StudyLoop
 
 An AuDHD-aware Socratic study mentor for Python, Data Engineering, and SQL.
 
@@ -131,35 +131,19 @@ Time-of-day aware: morning → afternoon, afternoon → tomorrow morning, evenin
 
 ---
 
-## eBook Audio Overviews
-
-For book-based study, use `pdf-by-chapters` to generate chunked audio overviews:
-
-```bash
-pdf-by-chapters process "Book.pdf" -o ./chapters           # Split + upload
-pdf-by-chapters syllabus -n $NOTEBOOK_ID -o ./chapters --no-video  # Create episode plan
-pdf-by-chapters generate-next -o ./chapters --no-wait      # Generate next episode
-pdf-by-chapters status -o ./chapters --poll                 # Check progress
-pdf-by-chapters download -n $NOTEBOOK_ID -o ./overviews     # Download audio
-```
-
-Use for: new textbooks, low-energy days (listen vs read), commute study material.
-Install: `uv tool install notebooklm-pdf-by-chapters`
-
 ## Quiz & Flashcard Generation from Obsidian Notes
 
-Generate NotebookLM quizzes and flashcards from Obsidian study notes:
+Generate quizzes and flashcards locally from Obsidian study notes:
 
 ```bash
-pdf-by-chapters from-obsidian ~/Obsidian/path/to/course/                        # Full: audio + quiz + flashcards
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --subdir study-notes --no-audio   # Quiz + flashcards only
-pdf-by-chapters from-obsidian ~/Obsidian/path/ -n $NOTEBOOK_ID --skip-convert    # Reuse existing notebook
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-quiz                         # Skip quiz
-pdf-by-chapters from-obsidian ~/Obsidian/path/ --no-flashcards                   # Skip flashcards
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
+studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```
 
 Use for: testing comprehension after note-taking, spaced review with flashcards, exam prep, batch quiz generation.
-Requires: pandoc, @mermaid-js/mermaid-cli for markdown→PDF with diagram support.
+Requires: configured `card_generator` backend, defaulting to Ollama.
 
 ---
 

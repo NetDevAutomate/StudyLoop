@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Text-to-speech for the Socratic Study Mentor.
+"""Text-to-speech for the StudyLoop.
 
 Backends (in priority order):
   1. kokoro-onnx — 82M params, ~1.5s TTFA, am_michael voice

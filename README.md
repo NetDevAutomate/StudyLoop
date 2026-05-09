@@ -1,6 +1,6 @@
-# Socratic Study Mentor
+# StudyLoop
 
-> 🧠 An AuDHD-aware study toolkit: Socratic questioning, content pipelines, spaced repetition, and AI session tracking.
+> An AuDHD-aware study toolkit for live Socratic mentoring, body-doubling, local study artefacts, and cross-assistant session memory.
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
@@ -12,7 +12,7 @@
 Four things:
 
 1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
-2. **Content pipeline** — Chunk eBooks and Obsidian notes into Google NotebookLM notebooks → generate audio overviews, quizzes, and flashcards.
+2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes and flashcards locally, without requiring external notebook services.
 3. **Flashcard review** — Spaced repetition (SM-2) via a PWA web app. Works on phone, tablet, laptop.
 4. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions.
 
@@ -29,7 +29,7 @@ studyctl setup              # Interactive 3-question wizard
 studyctl doctor --fix       # Verify and apply safe fixes
 
 # Use
-studyctl content process SOURCE   # Split PDF → upload to NotebookLM
+studyctl content generate-cards SOURCE --course python  # Local quiz + flashcard JSON
 studyctl web                      # Launch flashcard/quiz PWA
 session-export                    # Export AI sessions to SQLite
 session-query search "decorators" # Search across all sessions
@@ -41,7 +41,7 @@ session-query search "decorators" # Search across all sessions
 graph LR
     subgraph "Study Materials"
         OB[Obsidian Vault]
-        NLM[NotebookLM]
+        SRC[Markdown/PDF/text]
     end
 
     subgraph "CLI Tools"
@@ -65,9 +65,9 @@ graph LR
         SSE["Web Dashboard<br/>(SSE + HTMX)"]
     end
 
-    OB -->|sync| SC
-    SC -->|upload| NLM
-    SC -->|spaced repetition| DB
+    OB -->|study source| SC
+    SRC -->|parse/generate| SC
+    SC -->|sessions + review| DB
     AST -->|export sessions| DB
     CA -->|Socratic sessions| DB
     CX -->|Socratic sessions| DB
@@ -96,17 +96,16 @@ studyctl park "question"               # Park tangential topic
 
 # Content pipeline
 studyctl content split SOURCE       # Split PDF by chapters
-studyctl content process SOURCE     # Split + upload to NotebookLM
-studyctl content autopilot          # Generate next pending episode
-studyctl content from-obsidian DIR  # Markdown → PDF → NotebookLM
+studyctl content generate-cards DIR --course COURSE  # Generate local quiz/flashcard JSON
+studyctl content discover           # Preview configured study sources
+studyctl content ingest --dry-run   # Plan course-material ingest
 
 # Review
 studyctl review                     # Check spaced repetition due dates
 studyctl struggles --days 30        # Find recurring struggle topics
 studyctl web                        # Launch flashcard/quiz PWA
 
-# Sync
-studyctl sync [TOPIC] --all        # Sync notes to NotebookLM
+# Status/topics
 studyctl status                     # Show sync status
 studyctl topics                     # List configured topics
 
@@ -156,7 +155,7 @@ Launch with `studyctl web`. Accessible from any device on the network.
 - Timer with energy-adaptive colour phases (green/amber/red)
 - Topic counters (wins, parked, review)
 - Session summary on completion
-- **Terminal panel** — embedded ttyd iframe proxied same-origin at `/terminal/` with draggable split-pane (stacked or side-by-side). Pop-out to new window and seamless return. HTTP Basic Auth when using `--lan`. Requires ttyd (optional but recommended).
+- **Terminal panel** — embedded ttyd iframe proxied same-origin at `/terminal/` for current live agent interaction. Target architecture is ACP-first web sessions with PTY fallback.
 - HTMX + Alpine.js — no build step
 
 ## Optional Extras
@@ -164,8 +163,7 @@ Launch with `studyctl web`. Accessible from any device on the network.
 ```bash
 pip install 'studyctl[all]'          # Everything
 pip install 'studyctl[web]'          # FastAPI web UI
-pip install 'studyctl[content]'      # PDF splitting + NotebookLM
-pip install 'studyctl[notebooklm]'   # NotebookLM API client
+pip install 'studyctl[content]'      # PDF splitting + content pipeline
 
 # ttyd — web terminal (enables the terminal panel in the live dashboard)
 brew install ttyd            # macOS
@@ -175,12 +173,13 @@ sudo apt install ttyd        # Linux (or build from source)
 ## Documentation
 
 - [Setup Guide](docs/setup-guide.md) — installation and configuration
-- [Architecture](docs/architecture.md) — C4 diagrams and repo code map
-- [Content Pipeline](docs/content-pipeline.md) — PDF/Obsidian to flashcards via NotebookLM
+- [Architecture](docs/architecture.md) — current and target architecture
+- [Content Pipeline](docs/content-pipeline.md) — local generation of review artefacts
 - [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
-- [Web UI Guide](docs/web-ui-guide.md) — flashcards, quizzes, session dashboard, ttyd
+- [Web UI Guide](docs/web-ui-guide.md) — live sessions, terminal fallback, flashcards, quizzes
 - [Agent Installation](docs/agent-install.md) — per-platform agent setup
 - [System Overview](docs/system-overview.md) — architecture and data flow diagrams
+- [Repository Standards](docs/standards/repo-standards.md)
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
 - [Voice Output Guide](docs/voice-output.md)
 - [Contributing](CONTRIBUTING.md)
@@ -207,7 +206,7 @@ brew install just
 <!-- ARTEFACTS:START -->
 ## Generated Artefacts
 
-> 🔍 **Explore this project** — AI-generated overviews via [Google NotebookLM](https://notebooklm.google.com)
+> Explore this project — generated overviews from the historical artefact pipeline.
 
 | | |
 |---|---|
@@ -216,7 +215,7 @@ brew install just
 | 🖼️ **[View the Infographic](https://artefacts.netdevautomate.dev/socratic-study-mentor/artefacts/#infographic)** | Architecture and flow at a glance |
 | 📊 **[Browse the Slide Deck](https://artefacts.netdevautomate.dev/socratic-study-mentor/artefacts/#slides)** | Presentation-ready project overview |
 
-*Generated by [notebooklm-repo-artefacts](https://github.com/NetDevAutomate/notebooklm-repo-artefacts)*
+*Historical generated artefacts. NotebookLM is not required for the core study workflow.*
 <!-- ARTEFACTS:END -->
 
 ## License
