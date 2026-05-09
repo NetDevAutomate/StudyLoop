@@ -17,6 +17,8 @@ import httpx
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 
+from studyctl.session_state import read_session_state
+
 router = APIRouter()
 
 # Headers that must not be forwarded between proxy and upstream (hop-by-hop).
@@ -34,6 +36,15 @@ def _ttyd_base(request: Request) -> str:
     return f"http://127.0.0.1:{port}"
 
 
+def _session_matches(request: Request) -> bool:
+    """Return False when a terminal iframe is for an old study session."""
+    requested_session = request.query_params.get("session")
+    if not requested_session:
+        return True
+    state = read_session_state()
+    return requested_session == state.get("study_session_id")
+
+
 # ---------------------------------------------------------------------------
 # HTTP proxy — forwards GET/HEAD/POST etc. to ttyd
 # ---------------------------------------------------------------------------
@@ -45,6 +56,14 @@ async def proxy_terminal_http(path: str, request: Request) -> Response:
 
     Maps /terminal/{path} → http://127.0.0.1:{ttyd_port}/{path}
     """
+    if not _session_matches(request):
+        return Response(
+            content=b"Terminal session is no longer active",
+            status_code=409,
+            media_type="text/plain",
+            headers={"Cache-Control": "no-store"},
+        )
+
     upstream_url = f"{_ttyd_base(request)}/{path}"
 
     # Forward query string
@@ -86,6 +105,7 @@ async def proxy_terminal_http(path: str, request: Request) -> Response:
     resp_headers = {
         k: v for k, v in upstream_resp.headers.items() if k.lower() not in _STRIP_FROM_RESPONSE
     }
+    resp_headers["Cache-Control"] = "no-store"
 
     return Response(
         content=upstream_resp.content,
@@ -109,6 +129,11 @@ async def proxy_terminal_ws(ws: WebSocket) -> None:
 
     port: int = getattr(ws.app.state, "ttyd_port", 7681)
     upstream_ws_base = f"ws://127.0.0.1:{port}"
+
+    requested_session = ws.query_params.get("session")
+    if requested_session and requested_session != read_session_state().get("study_session_id"):
+        await ws.close(code=1008)
+        return
 
     # Accept the connection, forwarding the subprotocol if present (ttyd uses "tty")
     subprotocol = None
