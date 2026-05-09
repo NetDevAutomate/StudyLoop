@@ -1245,7 +1245,12 @@
         if (detail.terminalFallback) {
           const key = detail.studySessionId || `${Date.now()}`;
           this.terminalKey = key;
-          window.__studyLoopTerminalUrl = `/terminal/?session=${encodeURIComponent(key)}`;
+          const params = new URLSearchParams({
+            session: key,
+            agent: detail.resolvedAgent || detail.agent || 'auto',
+            t: `${Date.now()}`,
+          });
+          window.__studyLoopTerminalUrl = `/terminal/?${params.toString()}`;
           this.terminalMode = false;
           this.$nextTick(() => {
             this.terminalMode = true;
