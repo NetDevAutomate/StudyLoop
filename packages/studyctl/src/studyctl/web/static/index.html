@@ -956,6 +956,7 @@
         if (!topic) return;
         this.starting = true;
         this.startError = '';
+        let startedSession = null;
         if (this.transport === 'ttyd') {
           try {
             const res = await fetch('/api/session/start', {
@@ -969,6 +970,7 @@
               this.starting = false;
               return;
             }
+            startedSession = data;
           } catch {
             this.startError = 'Network error — could not start terminal session';
             this.starting = false;
@@ -991,6 +993,8 @@
               targetKind: this.targetKind,
               targetPath: this.selectedOption?.path || null,
               agent: this.agent || null,
+              resolvedAgent: startedSession?.agent || this.agent || null,
+              studySessionId: startedSession?.study_session_id || null,
               transport: this.transport === 'ttyd' ? 'pty' : this.transport,
               terminalFallback: this.transport === 'ttyd',
             }
@@ -1158,7 +1162,7 @@
       _healthInterval: null,
       unavailableMessage: '',
 
-      get ttydUrl() { return '/terminal/'; },
+      get ttydUrl() { return window.__studyLoopTerminalUrl || '/terminal/'; },
 
       async init() {
         await this._checkAvailability();
@@ -1224,6 +1228,7 @@
       connected: false,
       terminalMode: false,
       status: 'Waiting',
+      terminalKey: '',
       draft: '',
       messages: [],
       _id: 0,
@@ -1238,7 +1243,14 @@
         this.messages = [];
         this.terminalMode = !!detail.terminalFallback;
         if (detail.terminalFallback) {
-          this.status = 'Browser terminal';
+          const key = detail.studySessionId || `${Date.now()}`;
+          this.terminalKey = key;
+          window.__studyLoopTerminalUrl = `/terminal/?session=${encodeURIComponent(key)}`;
+          this.terminalMode = false;
+          this.$nextTick(() => {
+            this.terminalMode = true;
+            this.status = `Browser terminal · ${detail.resolvedAgent || detail.agent || 'Auto'}`;
+          });
           return;
         }
         this.status = 'Connecting';
