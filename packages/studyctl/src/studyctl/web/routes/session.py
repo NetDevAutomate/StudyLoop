@@ -517,6 +517,7 @@ def start_session(body: StartSessionRequest) -> JSONResponse:
         session_dir=session_dir,
         wrapped_agent_cmd=wrapped_cmd,
         session_state_dir=SESSION_DIR,
+        sidebar=False,
     )
 
     # Persist tmux metadata

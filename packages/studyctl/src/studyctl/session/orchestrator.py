@@ -143,6 +143,7 @@ def create_tmux_environment(
     session_dir: Path,
     wrapped_agent_cmd: str,
     session_state_dir: Path,
+    sidebar: bool = True,
 ) -> dict:
     """Create tmux session with agent and sidebar panes.
 
@@ -189,6 +190,10 @@ def create_tmux_environment(
     # Use the largest client's size for the window. Without this, ttyd's
     # smaller viewport constrains the native terminal, causing dotted fill.
     set_option(session_name, "window-size", "largest")
+    if not sidebar:
+        # Web sessions render activity/progress in native StudyLoop panels.
+        # Hide tmux chrome so the learner sees only the agent terminal.
+        set_option(session_name, "status", "off")
 
     # Load user's studyctl tmux overlay if they've explicitly created one.
     user_conf = session_state_dir / "tmux-studyctl.conf"
@@ -203,14 +208,16 @@ def create_tmux_environment(
     if already_in_tmux:
         switch_client(session_name)
 
-    # Split for sidebar (right pane, 25% width)
-    sidebar_pane = split_pane(
-        main_pane,
-        direction="right",
-        size=25,
-        percentage=True,
-        command=sidebar_cmd,
-    )
+    sidebar_pane = ""
+    if sidebar:
+        # Split for sidebar (right pane, 25% width)
+        sidebar_pane = split_pane(
+            main_pane,
+            direction="right",
+            size=25,
+            percentage=True,
+            command=sidebar_cmd,
+        )
 
     # Focus main pane (agent)
     select_pane(main_pane)
