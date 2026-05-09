@@ -664,8 +664,8 @@
             </select>
           </div>
 
-          <div class="picker-field" x-show="targetKind === 'course' || targetKind === 'lesson'">
-            <label for="course-select">Course</label>
+          <div class="picker-field" x-show="targetKind === 'vendor' || targetKind === 'course' || targetKind === 'lesson'">
+            <label for="course-select" x-text="targetKind === 'vendor' ? 'Course (optional)' : 'Course'"></label>
             <select id="course-select" x-model="selectedCourse"
                     @change="selectOption('course', selectedCourse)"
                     class="picker-select">
@@ -774,7 +774,7 @@
                   <button class="agent-console-tool" @click="popOut()" title="Open in separate window">&#x29c9;</button>
                 </div>
                 <div class="embedded-terminal-content">
-                  <iframe :src="ttydUrl" class="terminal-iframe"
+                  <iframe x-show="connected" :src="activeTtydUrl" class="terminal-iframe"
                           allow="clipboard-read; clipboard-write"></iframe>
                   <div x-show="!connected && unavailableMessage" class="terminal-unavailable">
                     <div x-text="unavailableMessage"></div>
@@ -1051,6 +1051,8 @@
           if (course) return course.label;
         }
         if (this.targetKind === 'vendor') {
+          const course = this.studyOptions.courses.find((item) => item.value === this.selectedCourse);
+          if (course) return course.label;
           const vendor = this.studyOptions.vendors.find((item) => item.value === this.selectedVendor);
           if (vendor) return vendor.label;
         }
@@ -1161,13 +1163,14 @@
       _popoutWindow: null,
       _healthInterval: null,
       unavailableMessage: '',
+      activeTtydUrl: '',
 
       get ttydUrl() { return window.__studyLoopTerminalUrl || '/terminal/'; },
 
       async init() {
         await this._checkAvailability();
-        /* Re-check every 10s so panel updates if session ends */
-        this._healthInterval = setInterval(() => this._checkAvailability(), 10000);
+        /* Re-check quickly during startup, then keep watching for session end. */
+        this._healthInterval = setInterval(() => this._checkAvailability(), 1000);
       },
 
       async _checkAvailability() {
@@ -1190,9 +1193,10 @@
           if (probe.ok || probe.status === 401) {
             this.connected = true;
             this.unavailableMessage = '';
+            if (this.activeTtydUrl !== this.ttydUrl) this.activeTtydUrl = this.ttydUrl;
           } else {
             this.connected = false;
-            this.unavailableMessage = 'Terminal session ended';
+            this.unavailableMessage = probe.status === 502 ? 'Starting terminal...' : 'Terminal session ended';
           }
         } catch {
           this.connected = false;
