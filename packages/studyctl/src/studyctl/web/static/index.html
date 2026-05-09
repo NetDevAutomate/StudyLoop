@@ -615,16 +615,34 @@
         <div x-show="!sessionActive && !starting" class="session-start-picker" x-transition>
           <h2>Start a Study Session</h2>
 
-          <!-- Topic selector -->
           <div class="picker-field">
+            <label for="session-type-select">Session Type</label>
+            <select id="session-type-select" x-model="sessionType" class="picker-select">
+              <option value="study">Study Session</option>
+              <option value="body_double">Body Double</option>
+            </select>
+          </div>
+
+          <div class="picker-field">
+            <label for="target-kind-select">Study Target</label>
+            <select id="target-kind-select" x-model="targetKind" class="picker-select">
+              <option value="topic">Course Material or Topic</option>
+              <option value="vendor">Course Vendor</option>
+              <option value="course">Course</option>
+              <option value="lesson">Lesson / Section</option>
+            </select>
+          </div>
+
+          <!-- Topic selector -->
+          <div class="picker-field" x-show="targetKind === 'topic'">
             <label for="topic-input">Topic</label>
             <div class="topic-select-row">
-              <select x-show="topics.length > 0" x-model="selectedTopic"
-                      @change="if (selectedTopic) topicInput = selectedTopic"
+              <select x-show="studyOptions.topics.length > 0" x-model="selectedTopic"
+                      @change="selectOption('topic', selectedTopic)"
                       class="picker-select">
                 <option value="">Choose a topic...</option>
-                <template x-for="t in topics" :key="t.slug">
-                  <option :value="t.name" x-text="t.name"></option>
+                <template x-for="t in studyOptions.topics" :key="t.path || t.value">
+                  <option :value="t.value" x-text="t.label"></option>
                 </template>
               </select>
               <input id="topic-input" type="text" x-model="topicInput"
@@ -632,6 +650,58 @@
                      class="picker-input"
                      @input="selectedTopic = ''">
             </div>
+          </div>
+
+          <div class="picker-field" x-show="targetKind === 'vendor'">
+            <label for="vendor-select">Course Vendor</label>
+            <select id="vendor-select" x-model="selectedVendor"
+                    @change="selectOption('vendor', selectedVendor)"
+                    class="picker-select">
+              <option value="">Choose a vendor...</option>
+              <template x-for="v in studyOptions.vendors" :key="v.path || v.value">
+                <option :value="v.value" x-text="v.label"></option>
+              </template>
+            </select>
+          </div>
+
+          <div class="picker-field" x-show="targetKind === 'course' || targetKind === 'lesson'">
+            <label for="course-select">Course</label>
+            <select id="course-select" x-model="selectedCourse"
+                    @change="selectOption('course', selectedCourse)"
+                    class="picker-select">
+              <option value="">Choose a course...</option>
+              <template x-for="c in filteredCourses()" :key="c.path || c.value">
+                <option :value="c.value" x-text="c.label"></option>
+              </template>
+            </select>
+          </div>
+
+          <div class="picker-field" x-show="targetKind === 'lesson'">
+            <label for="lesson-select">Lesson / Section</label>
+            <select id="lesson-select" x-model="selectedLesson"
+                    @change="selectOption('lesson', selectedLesson)"
+                    class="picker-select">
+              <option value="">Choose a lesson...</option>
+              <template x-for="l in filteredLessons()" :key="l.path || l.value">
+                <option :value="l.value" x-text="l.label"></option>
+              </template>
+            </select>
+          </div>
+
+          <div class="picker-field picker-inline">
+            <label for="agent-select">Agent</label>
+            <select id="agent-select" x-model="agent" class="picker-select">
+              <option value="">Auto</option>
+              <option value="codex">Codex</option>
+              <option value="claude">Claude Code</option>
+              <option value="gemini">Gemini</option>
+              <option value="kiro">Kiro</option>
+            </select>
+            <label for="transport-select">Transport</label>
+            <select id="transport-select" x-model="transport" class="picker-select">
+              <option value="pty">PTY</option>
+              <option value="acp">ACP</option>
+            </select>
           </div>
 
           <!-- Energy selector -->
@@ -647,8 +717,8 @@
 
           <!-- Start button -->
           <button class="start-session-btn" @click="startSession()"
-                  :disabled="!topicInput.trim()"
-                  :class="{ disabled: !topicInput.trim() }">
+                  :disabled="!resolvedTopic().trim()"
+                  :class="{ disabled: !resolvedTopic().trim() }">
             Start Session
           </button>
 
@@ -664,20 +734,30 @@
         <!-- ── Active Session: terminal + status bar ── -->
         <div x-show="sessionActive" x-transition class="session-active-layout">
 
-          <!-- Terminal fills the content area -->
-          <div class="session-terminal-area" x-data="terminalPanel()" x-init="init()">
-            <template x-if="connected">
-              <iframe :src="ttydUrl" class="terminal-iframe session-terminal-iframe"
-                      allow="clipboard-read; clipboard-write"></iframe>
-            </template>
-            <div x-show="!connected && unavailableMessage" class="terminal-unavailable">
-              <div x-text="unavailableMessage"></div>
+          <!-- Native web agent console fills the content area -->
+          <div class="session-terminal-area agent-console" x-data="liveAgentConsole()" x-init="init()">
+            <div class="agent-console-toolbar">
+              <span class="agent-console-title">Live Mentor</span>
+              <span class="agent-console-state" x-text="status"></span>
+              <button class="agent-console-tool" @click="$store.settings.speakNow(lastText())" title="Speak latest output">&#9654;</button>
+              <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
+              <button class="agent-console-tool" @click="openTerminalFallback()" title="Open ttyd fallback">&#x29c9;</button>
             </div>
-            <div x-show="!available && !unavailableMessage" class="terminal-unavailable">
-              <div>Terminal loading...</div>
+            <div class="agent-console-log" x-ref="log">
+              <template x-for="item in messages" :key="item.id">
+                <div class="agent-message" :class="'agent-message-' + item.role">
+                  <span class="agent-message-role" x-text="item.role"></span>
+                  <pre x-text="item.text"></pre>
+                </div>
+              </template>
             </div>
-            <!-- Popout button (floating top-right) -->
-            <button x-show="available" class="terminal-popout-btn" @click="popOut()" title="Open in new window">&#x29c9;</button>
+            <form class="agent-console-input" @submit.prevent="send()">
+              <textarea x-model="draft" rows="2"
+                        placeholder="Ask the mentor a question, or say what you are stuck on..."
+                        @keydown.meta.enter.prevent="send()"
+                        @keydown.ctrl.enter.prevent="send()"></textarea>
+              <button type="submit" :disabled="!connected || !draft.trim()">Send</button>
+            </form>
           </div>
 
           <!-- Bottom status bar: timer + controls + topic + energy + counters -->
@@ -770,7 +850,16 @@
       // Start-picker state
       topics: [],
       selectedTopic: '',
+      selectedVendor: '',
+      selectedCourse: '',
+      selectedLesson: '',
       topicInput: '',
+      selectedOption: null,
+      sessionType: 'study',
+      targetKind: 'topic',
+      agent: '',
+      transport: 'pty',
+      studyOptions: { topics: [], vendors: [], courses: [], lessons: [] },
       starting: false,
       startError: '',
 
@@ -786,6 +875,11 @@
           const topicsRes = await fetch('/api/session/topics');
           if (topicsRes.ok) this.topics = await topicsRes.json();
         } catch { /* topics list unavailable — free-text still works */ }
+
+        try {
+          const optionsRes = await fetch('/api/session/options');
+          if (optionsRes.ok) this.studyOptions = await optionsRes.json();
+        } catch { /* enhanced picker unavailable — free-text still works */ }
 
         try {
           const res = await fetch('/api/session/state');
@@ -808,34 +902,30 @@
       },
 
       async startSession() {
-        const topic = this.topicInput.trim();
+        const topic = this.resolvedTopic().trim();
         if (!topic) return;
         this.starting = true;
         this.startError = '';
-        try {
-          const res = await fetch('/api/session/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic, energy: this.energy }),
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            this.startError = data.error || 'Failed to start session';
-            this.starting = false;
-            return;
-          }
-          // Session started — switch to dashboard view
-          this.topic = data.topic;
-          this.startTime = new Date();
-          this.sessionActive = true;
-          this.starting = false;
-          this.elapsed = 0;
-          this.tick();
-          this.interval = setInterval(() => this.tick(), 1000);
-        } catch (e) {
-          this.startError = 'Network error — could not reach server';
-          this.starting = false;
-        }
+        this.topic = topic;
+        this.startTime = new Date();
+        this.sessionActive = true;
+        this.starting = false;
+        this.elapsed = 0;
+        this.tick();
+        this.interval = setInterval(() => this.tick(), 1000);
+        this.$nextTick(() => {
+          window.dispatchEvent(new CustomEvent('study-session-start', {
+            detail: {
+              topic,
+              energy: this.energy,
+              sessionType: this.sessionType,
+              targetKind: this.targetKind,
+              targetPath: this.selectedOption?.path || null,
+              agent: this.agent || null,
+              transport: this.transport,
+            }
+          }));
+        });
       },
 
       async endSession() {
@@ -844,11 +934,44 @@
         try {
           await fetch('/api/session/end', { method: 'POST' });
         } catch { /* best effort */ }
+        window.dispatchEvent(new CustomEvent('study-session-stop'));
         this.sessionActive = false;
         clearInterval(this.interval);
         this.topic = 'Session ended';
         this.topicInput = '';
         this.selectedTopic = '';
+      },
+
+      selectOption(kind, value) {
+        const collection = this.studyOptions[`${kind}s`] || [];
+        this.selectedOption = collection.find((item) => item.value === value) || null;
+        if (this.selectedOption) this.topicInput = this.selectedOption.label;
+      },
+
+      filteredCourses() {
+        if (!this.selectedVendor) return this.studyOptions.courses;
+        return this.studyOptions.courses.filter((course) => course.parent === this.selectedVendor);
+      },
+
+      filteredLessons() {
+        if (!this.selectedCourse) return this.studyOptions.lessons;
+        return this.studyOptions.lessons.filter((lesson) => lesson.parent === this.selectedCourse);
+      },
+
+      resolvedTopic() {
+        if (this.targetKind === 'lesson') {
+          const lesson = this.studyOptions.lessons.find((item) => item.value === this.selectedLesson);
+          if (lesson) return lesson.label;
+        }
+        if (this.targetKind === 'course') {
+          const course = this.studyOptions.courses.find((item) => item.value === this.selectedCourse);
+          if (course) return course.label;
+        }
+        if (this.targetKind === 'vendor') {
+          const vendor = this.studyOptions.vendors.find((item) => item.value === this.selectedVendor);
+          if (vendor) return vendor.label;
+        }
+        return this.topicInput;
       },
 
       togglePause() {
@@ -1013,6 +1136,104 @@
         this.embedded = false;
         this.poppedOut = true;
       }
+    };
+  }
+
+  function liveAgentConsole() {
+    return {
+      socket: null,
+      connected: false,
+      status: 'Waiting',
+      draft: '',
+      messages: [],
+      _id: 0,
+
+      init() {
+        window.addEventListener('study-session-start', (event) => this.start(event.detail));
+        window.addEventListener('study-session-stop', () => this.stop());
+      },
+
+      start(detail) {
+        this.stop();
+        this.messages = [];
+        this.status = 'Connecting';
+        const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        this.socket = new WebSocket(`${scheme}://${window.location.host}/api/session/ws`);
+
+        this.socket.addEventListener('open', () => {
+          this.connected = true;
+          this.status = `${detail.transport.toUpperCase()} · ${detail.agent || 'Auto'}`;
+          this.socket.send(JSON.stringify({
+            type: 'start',
+            topic: detail.topic,
+            energy: detail.energy,
+            agent: detail.agent,
+            transport: detail.transport,
+          }));
+          this.addMessage('system', `${detail.sessionType === 'body_double' ? 'Body double' : 'Study'} session started for ${detail.topic}.`);
+        });
+
+        this.socket.addEventListener('message', (event) => {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'output') {
+            this.addMessage('agent', payload.data.text || '');
+            if (Alpine.store('settings').voiceOn) Alpine.store('settings').speak(payload.data.text || '');
+          } else if (payload.type === 'started') {
+            this.status = `${payload.data.transport.toUpperCase()} · ${payload.data.agent}`;
+          } else if (payload.type === 'ended') {
+            this.connected = false;
+            this.status = 'Ended';
+          } else if (payload.type === 'error') {
+            this.addMessage('system', payload.data.message || 'Session error');
+          } else if (payload.type === 'acp') {
+            this.addMessage('agent', payload.data.text || JSON.stringify(payload.data.json || {}));
+          }
+        });
+
+        this.socket.addEventListener('close', () => {
+          this.connected = false;
+          if (this.status !== 'Ended') this.status = 'Disconnected';
+        });
+
+        this.socket.addEventListener('error', () => {
+          this.connected = false;
+          this.status = 'Connection error';
+        });
+      },
+
+      send() {
+        const text = this.draft.trim();
+        if (!text || !this.socket || !this.connected) return;
+        this.addMessage('learner', text);
+        this.socket.send(JSON.stringify({ type: 'input', text }));
+        this.draft = '';
+      },
+
+      stop() {
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+          this.socket.send(JSON.stringify({ type: 'stop' }));
+        }
+        if (this.socket) this.socket.close();
+        this.socket = null;
+        this.connected = false;
+      },
+
+      addMessage(role, text) {
+        if (!text) return;
+        this.messages.push({ id: ++this._id, role, text });
+        this.$nextTick(() => {
+          if (this.$refs.log) this.$refs.log.scrollTop = this.$refs.log.scrollHeight;
+        });
+      },
+
+      lastText() {
+        const item = [...this.messages].reverse().find((message) => message.role === 'agent');
+        return item ? item.text : '';
+      },
+
+      openTerminalFallback() {
+        window.open('/terminal/', 'studyloop-terminal', 'width=900,height=600,menubar=no,toolbar=no');
+      },
     };
   }
 

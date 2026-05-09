@@ -1491,6 +1491,133 @@ main:has(.split-container) .session-dashboard {
   position: relative;
   background: #1a1b26;
 }
+
+.agent-console {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.agent-console-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.agent-console-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.agent-console-state {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-right: auto;
+}
+
+.agent-console-tool {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.agent-console-tool:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.agent-console-log {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.agent-message {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.12);
+}
+
+.agent-message-role {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.agent-message pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.agent-message-learner pre {
+  color: var(--accent);
+}
+
+.agent-message-system pre {
+  color: var(--text-muted);
+}
+
+.agent-console-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.agent-console-input textarea {
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px;
+  font: inherit;
+  min-height: 48px;
+}
+
+.agent-console-input button {
+  min-width: 78px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agent-console-input button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.picker-inline {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto minmax(120px, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.picker-inline label {
+  margin: 0;
+}
+
 .session-terminal-iframe {
   width: 100%;
   height: 100%;

@@ -7,9 +7,10 @@ import hashlib
 import logging
 from datetime import UTC, datetime
 from html import escape
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -340,6 +341,16 @@ class StartSessionRequest(BaseModel):
     agent: str | None = None
 
 
+class SessionOption(BaseModel):
+    """Selectable study target for the web start picker."""
+
+    label: str
+    value: str
+    kind: str
+    path: str | None = None
+    parent: str | None = None
+
+
 @router.post("/session/start")
 def start_session(body: StartSessionRequest) -> JSONResponse:
     """Start a new study session from the web UI.
@@ -548,6 +559,82 @@ def start_session(body: StartSessionRequest) -> JSONResponse:
     )
 
 
+@router.get("/session/options")
+def get_session_options() -> dict[str, list[dict]]:
+    """Return local study choices for the web session picker."""
+    return {
+        "session_types": [
+            {"label": "Study Session", "value": "study", "kind": "session_type"},
+            {"label": "Body Double", "value": "body_double", "kind": "session_type"},
+        ],
+        "topics": [option.model_dump() for option in _topic_options()],
+        "vendors": [option.model_dump() for option in _vendor_options()],
+        "courses": [option.model_dump() for option in _course_options()],
+        "lessons": [option.model_dump() for option in _lesson_options()],
+    }
+
+
+@router.websocket("/session/ws")
+async def live_session_socket(websocket: WebSocket) -> None:
+    """Bidirectional live agent session socket.
+
+    Client messages:
+    - {"type": "start", "topic": "...", "energy": 5, "agent": "codex", "transport": "pty"}
+    - {"type": "input", "text": "..."}
+    - {"type": "stop"}
+    """
+    await websocket.accept()
+    manager = websocket.app.state.agent_session_manager
+    session_id: str | None = None
+    event_task: asyncio.Task[None] | None = None
+
+    async def forward_events(events) -> None:  # type: ignore[no-untyped-def]
+        async for event in events:
+            await websocket.send_json(event.as_dict())
+
+    try:
+        while True:
+            message = await websocket.receive_json()
+            message_type = message.get("type")
+            if message_type == "start":
+                if session_id is not None:
+                    await websocket.send_json(
+                        {"type": "error", "data": {"message": "Session already started"}}
+                    )
+                    continue
+                session_id, events = await manager.start_session(
+                    topic=str(message.get("topic") or "Study Session"),
+                    energy=int(message.get("energy") or 5),
+                    agent=message.get("agent"),
+                    transport=str(message.get("transport") or "pty"),
+                )
+                event_task = asyncio.create_task(forward_events(events))
+            elif message_type == "input":
+                if session_id is None:
+                    await websocket.send_json(
+                        {"type": "error", "data": {"message": "No active session"}}
+                    )
+                    continue
+                await manager.send(session_id, str(message.get("text") or ""))
+            elif message_type == "stop":
+                if session_id:
+                    await manager.stop(session_id)
+                    session_id = None
+                await websocket.close()
+                return
+            else:
+                await websocket.send_json(
+                    {"type": "error", "data": {"message": "Unknown message type"}}
+                )
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if event_task:
+            event_task.cancel()
+        if session_id:
+            await manager.stop(session_id)
+
+
 @router.post("/session/end")
 def end_session() -> JSONResponse:
     """End the current study session from the web UI."""
@@ -567,3 +654,92 @@ def end_session() -> JSONResponse:
         {"ended": True, "topic": topic or "Unknown"},
         status_code=200,
     )
+
+
+def _study_roots() -> list[Path]:
+    try:
+        from studyctl.settings import load_settings
+
+        settings = load_settings()
+        return [Path(path).expanduser() for path in settings.content.study_paths]
+    except Exception:
+        return [Path("~/Obsidian/Personal/Study").expanduser()]
+
+
+def _topic_options() -> list[SessionOption]:
+    options: list[SessionOption] = []
+    for root in _study_roots():
+        if not root.exists():
+            continue
+        for child in sorted(root.iterdir(), key=lambda p: p.name.lower()):
+            if child.is_dir() and not child.name.startswith("."):
+                options.append(
+                    SessionOption(
+                        label=child.name.replace("_", " "),
+                        value=child.name,
+                        kind="topic",
+                        path=str(child),
+                    )
+                )
+    return options
+
+
+def _vendor_options() -> list[SessionOption]:
+    courses_root = _courses_root()
+    if not courses_root.exists():
+        return []
+    return [
+        SessionOption(
+            label=vendor.name.replace("_", " "),
+            value=vendor.name,
+            kind="vendor",
+            path=str(vendor),
+        )
+        for vendor in sorted(courses_root.iterdir(), key=lambda p: p.name.lower())
+        if vendor.is_dir() and not vendor.name.startswith(".")
+    ]
+
+
+def _course_options() -> list[SessionOption]:
+    courses: list[SessionOption] = []
+    for vendor in _vendor_options():
+        vendor_path = Path(vendor.path or "")
+        if not vendor_path.exists():
+            continue
+        for course in sorted(vendor_path.iterdir(), key=lambda p: p.name.lower()):
+            if course.is_dir() and not course.name.startswith("."):
+                courses.append(
+                    SessionOption(
+                        label=course.name.replace("_", " "),
+                        value=f"{vendor.value}/{course.name}",
+                        kind="course",
+                        path=str(course),
+                        parent=vendor.value,
+                    )
+                )
+    return courses
+
+
+def _lesson_options() -> list[SessionOption]:
+    lessons: list[SessionOption] = []
+    for course in _course_options():
+        course_path = Path(course.path or "")
+        if not course_path.exists():
+            continue
+        for lesson in sorted(course_path.iterdir(), key=lambda p: p.name.lower()):
+            if lesson.is_dir() and not lesson.name.startswith("."):
+                lessons.append(
+                    SessionOption(
+                        label=lesson.name.replace("_", " "),
+                        value=f"{course.value}/{lesson.name}",
+                        kind="lesson",
+                        path=str(lesson),
+                        parent=course.value,
+                    )
+                )
+    return lessons
+
+
+def _courses_root() -> Path:
+    roots = _study_roots()
+    return roots[0] / "Courses" if roots else Path("~/Obsidian/Personal/Study/Courses").expanduser()
