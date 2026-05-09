@@ -81,6 +81,8 @@ def test_session_options_returns_course_hierarchy(
     assert body["courses"][0]["label"] == "Python 101"
     assert body["lessons"][0]["label"] == "Section 01"
     assert "agents" in body
+    assert all(agent["recommended_transport"] == "ttyd" for agent in body["agents"])
+    assert all(agent["acp_ready"] is False for agent in body["agents"])
 
 
 def test_live_session_websocket_streams_events_and_accepts_input() -> None:
@@ -98,3 +100,19 @@ def test_live_session_websocket_streams_events_and_accepts_input() -> None:
 
     assert manager.sent == ["fake-session:what is a decorator?"]
     assert manager.stopped == ["fake-session"]
+
+
+def test_live_session_websocket_rejects_acp_until_handshake_is_implemented() -> None:
+    app = create_app()
+    manager = FakeManager()
+    app.state.agent_session_manager = manager
+    client = TestClient(app)
+
+    with client.websocket_connect("/api/session/ws") as websocket:
+        websocket.send_json({"type": "start", "topic": "Python", "energy": 6, "transport": "acp"})
+        payload = websocket.receive_json()
+        websocket.close()
+
+    assert payload["type"] == "error"
+    assert "ACP transport is scaffolded" in payload["data"]["message"]
+    assert manager.sent == []

@@ -598,6 +598,20 @@ async def live_session_socket(websocket: WebSocket) -> None:
             message = await websocket.receive_json()
             message_type = message.get("type")
             if message_type == "start":
+                requested_transport = str(message.get("transport") or "pty")
+                if requested_transport == "acp":
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "data": {
+                                "message": (
+                                    "ACP transport is scaffolded but not enabled yet. "
+                                    "Use Browser terminal for Gemini or Kiro."
+                                )
+                            },
+                        }
+                    )
+                    continue
                 if session_id is not None:
                     await websocket.send_json(
                         {"type": "error", "data": {"message": "Session already started"}}
@@ -607,7 +621,7 @@ async def live_session_socket(websocket: WebSocket) -> None:
                     topic=str(message.get("topic") or "Study Session"),
                     energy=int(message.get("energy") or 5),
                     agent=message.get("agent"),
-                    transport=str(message.get("transport") or "pty"),
+                    transport=requested_transport,
                 )
                 event_task = asyncio.create_task(forward_events(events))
             elif message_type == "input":
@@ -796,6 +810,8 @@ def _agent_options() -> list[dict[str, object]]:
                 "value": name,
                 "available": name in detected,
                 "supports_acp": name in {"kiro", "gemini"},
+                "acp_ready": False,
+                "recommended_transport": "ttyd",
                 "binary": adapter.binary,
             }
             for name, adapter in AGENTS.items()
