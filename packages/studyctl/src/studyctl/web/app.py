@@ -79,6 +79,27 @@ def create_app(
     app.include_router(session.router, prefix="/api")
     app.include_router(artefacts.router)
 
+    # Pomodoro config endpoint — serves configured durations for the slider
+    @app.get("/api/config/pomodoro")
+    async def pomodoro_config() -> dict:
+        try:
+            from studyctl.settings import load_settings
+
+            pom = load_settings().pomodoro
+            return {
+                "focus_minutes": pom.focus,
+                "short_break_minutes": pom.short_break,
+                "long_break_minutes": pom.long_break,
+                "cycle_length": pom.cycles,
+            }
+        except Exception:
+            return {
+                "focus_minutes": 25,
+                "short_break_minutes": 5,
+                "long_break_minutes": 15,
+                "cycle_length": 4,
+            }
+
     # Terminal proxy — MUST be registered before the static files catch-all
     try:
         from studyctl.web.routes import terminal_proxy

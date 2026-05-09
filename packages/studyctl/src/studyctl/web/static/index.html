@@ -692,7 +692,7 @@
             <label for="agent-select">Agent</label>
             <select id="agent-select" x-model="agent"
                     class="picker-select">
-              <option value="">Auto</option>
+              <option value="" disabled>Select an agent</option>
               <template x-for="a in agentOptions()" :key="a.value">
                 <option :value="a.value" :disabled="!a.available"
                         x-text="a.label + (a.available ? '' : ' (not found)')"></option>
@@ -745,10 +745,12 @@
 
           <!-- Start button -->
           <button class="start-session-btn" @click="startSession()"
-                  :disabled="!resolvedTopic().trim()"
-                  :class="{ disabled: !resolvedTopic().trim() }">
+                  :disabled="!resolvedTopic().trim() || !agent"
+                  :class="{ disabled: !resolvedTopic().trim() || !agent }">
             Start Session
           </button>
+          <p class="picker-hint" x-show="!agent" x-cloak>Select an agent to continue.</p>
+          <p class="picker-hint" x-show="agent && !resolvedTopic().trim()" x-cloak>Add a topic or pick a lesson.</p>
 
           <p x-show="startError" class="picker-error" x-text="startError"></p>
         </div>
@@ -928,7 +930,16 @@
 
         try {
           const optionsRes = await fetch('/api/session/options');
-          if (optionsRes.ok) this.studyOptions = await optionsRes.json();
+          if (optionsRes.ok) {
+            this.studyOptions = await optionsRes.json();
+            // Pre-select the first detected-available agent so the user
+            // sees an explicit choice rather than the previous "Auto"
+            // default that silently fell back to Claude.
+            if (!this.agent) {
+              const firstAvailable = (this.studyOptions.agents || []).find((a) => a.available);
+              if (firstAvailable) this.agent = firstAvailable.value;
+            }
+          }
         } catch { /* enhanced picker unavailable — free-text still works */ }
 
         try {
@@ -962,7 +973,7 @@
             const res = await fetch('/api/session/start', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ topic, energy: this.energy, agent: this.agent || null }),
+              body: JSON.stringify({ topic, energy: this.energy, agent: this.agent }),
             });
             const data = await res.json();
             if (!res.ok) {
