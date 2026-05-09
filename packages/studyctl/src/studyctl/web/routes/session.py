@@ -657,13 +657,27 @@ def end_session() -> JSONResponse:
 
 
 def _study_roots() -> list[Path]:
+    candidates: list[Path] = []
     try:
         from studyctl.settings import load_settings
 
         settings = load_settings()
-        return [Path(path).expanduser() for path in settings.content.study_paths]
+        candidates.extend(Path(path).expanduser() for path in settings.content.study_paths)
+        candidates.extend(
+            [
+                settings.obsidian_base / "Personal" / "Study",
+                settings.obsidian_base / "Personal" / "2-Areas" / "Study",
+            ]
+        )
+        candidates.extend(topic.obsidian_path for topic in settings.topics)
     except Exception:
-        return [Path("~/Obsidian/Personal/Study").expanduser()]
+        candidates.extend(
+            [
+                Path("~/Obsidian/Personal/Study").expanduser(),
+                Path("~/Obsidian/Personal/2-Areas/Study").expanduser(),
+            ]
+        )
+    return _existing_unique_dirs(candidates)
 
 
 def _topic_options() -> list[SessionOption]:
@@ -685,19 +699,23 @@ def _topic_options() -> list[SessionOption]:
 
 
 def _vendor_options() -> list[SessionOption]:
-    courses_root = _courses_root()
-    if not courses_root.exists():
-        return []
-    return [
-        SessionOption(
-            label=vendor.name.replace("_", " "),
-            value=vendor.name,
-            kind="vendor",
-            path=str(vendor),
-        )
-        for vendor in sorted(courses_root.iterdir(), key=lambda p: p.name.lower())
-        if vendor.is_dir() and not vendor.name.startswith(".")
-    ]
+    vendors: list[SessionOption] = []
+    seen: set[Path] = set()
+    for courses_root in _courses_roots():
+        for vendor in sorted(courses_root.iterdir(), key=lambda p: p.name.lower()):
+            resolved = vendor.resolve()
+            if resolved in seen or not vendor.is_dir() or vendor.name.startswith("."):
+                continue
+            seen.add(resolved)
+            vendors.append(
+                SessionOption(
+                    label=vendor.name.replace("_", " "),
+                    value=vendor.name,
+                    kind="vendor",
+                    path=str(vendor),
+                )
+            )
+    return vendors
 
 
 def _course_options() -> list[SessionOption]:
@@ -740,6 +758,27 @@ def _lesson_options() -> list[SessionOption]:
     return lessons
 
 
-def _courses_root() -> Path:
-    roots = _study_roots()
-    return roots[0] / "Courses" if roots else Path("~/Obsidian/Personal/Study/Courses").expanduser()
+def _courses_roots() -> list[Path]:
+    candidates = [root / "Courses" for root in _study_roots()]
+    candidates.extend(
+        [
+            Path("~/Obsidian/Personal/Study/Courses").expanduser(),
+            Path("~/Obsidian/Personal/2-Areas/Study/Courses").expanduser(),
+        ]
+    )
+    return _existing_unique_dirs(candidates)
+
+
+def _existing_unique_dirs(paths: list[Path]) -> list[Path]:
+    roots: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        expanded = path.expanduser()
+        if not expanded.exists() or not expanded.is_dir():
+            continue
+        resolved = expanded.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        roots.append(expanded)
+    return roots
