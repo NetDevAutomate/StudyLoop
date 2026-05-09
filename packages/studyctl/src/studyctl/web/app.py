@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
 
+from studyctl.session_runtime import AgentSessionManager
+
 if TYPE_CHECKING:
     from starlette.responses import Response
 
@@ -57,6 +59,7 @@ def create_app(
     # Store config on app state for route access
     app.state.study_dirs = study_dirs or []
     app.state.ttyd_port = ttyd_port
+    app.state.agent_session_manager = AgentSessionManager()
 
     # Optional password protection (LAN mode)
     if password:
