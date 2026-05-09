@@ -362,6 +362,28 @@ class TestStartSessionAPI:
         assert resp.status_code == 400
         assert "Unknown agent" in resp.json()["error"]
 
+    def test_start_rejects_agent_when_binary_missing(self, client: TestClient) -> None:
+        """User picks gemini but only claude is on PATH → 503, not a silent Claude session.
+
+        Locks in the Phase 0 decision that agent selection is always respected:
+        no `null`-fallback substitution, no silent routing to the first detected
+        binary. Matches docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+        Phase 0 acceptance criteria.
+        """
+        with (
+            patch("studyctl.tmux.is_tmux_available", return_value=True),
+            patch("studyctl.web.routes.session.is_session_active", return_value=False),
+            patch("shutil.which", return_value=None),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "gemini"},
+            )
+        assert resp.status_code == 503
+        error = resp.json()["error"]
+        assert "gemini" in error
+        assert "not found" in error
+
     def test_start_validates_energy_range(self, client: TestClient) -> None:
         resp = client.post(
             "/api/session/start",
