@@ -762,30 +762,52 @@
         <!-- ── Active Session: terminal + status bar ── -->
         <div x-show="sessionActive" x-transition class="session-active-layout">
 
-          <!-- Native web agent console fills the content area -->
+          <!-- Live mentor surface: browser terminal for CLI agents, native console for protocol transports -->
           <div class="session-terminal-area agent-console" x-data="liveAgentConsole()" x-init="init()">
-            <div class="agent-console-toolbar">
-              <span class="agent-console-title">Live Mentor</span>
-              <span class="agent-console-state" x-text="status"></span>
-              <button class="agent-console-tool" @click="$store.settings.speakNow(lastText())" title="Speak latest output">&#9654;</button>
-              <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
-              <button class="agent-console-tool" @click="openTerminalFallback()" title="Open ttyd fallback">&#x29c9;</button>
-            </div>
-            <div class="agent-console-log" x-ref="log">
-              <template x-for="item in messages" :key="item.id">
-                <div class="agent-message" :class="'agent-message-' + item.role">
-                  <span class="agent-message-role" x-text="item.role"></span>
-                  <pre x-text="item.text"></pre>
+            <template x-if="terminalMode">
+              <div class="embedded-terminal-panel" x-data="terminalPanel()" x-init="init()">
+                <div class="agent-console-toolbar">
+                  <span class="agent-console-title">Agent Terminal</span>
+                  <span class="agent-console-state"
+                        x-text="connected ? 'Connected' : (unavailableMessage || 'Starting')"></span>
+                  <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
+                  <button class="agent-console-tool" @click="popOut()" title="Open in separate window">&#x29c9;</button>
                 </div>
-              </template>
-            </div>
-            <form class="agent-console-input" @submit.prevent="send()">
-              <textarea x-model="draft" rows="2"
-                        placeholder="Ask the mentor a question, or say what you are stuck on..."
-                        @keydown.meta.enter.prevent="send()"
-                        @keydown.ctrl.enter.prevent="send()"></textarea>
-              <button type="submit" :disabled="!connected || !draft.trim()">Send</button>
-            </form>
+                <div class="embedded-terminal-content">
+                  <iframe :src="ttydUrl" class="terminal-iframe"
+                          allow="clipboard-read; clipboard-write"></iframe>
+                  <div x-show="!connected && unavailableMessage" class="terminal-unavailable">
+                    <div x-text="unavailableMessage"></div>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="!terminalMode">
+              <div class="agent-console-surface">
+                <div class="agent-console-toolbar">
+                  <span class="agent-console-title">Live Mentor</span>
+                  <span class="agent-console-state" x-text="status"></span>
+                  <button class="agent-console-tool" @click="$store.settings.speakNow(lastText())" title="Speak latest output">&#9654;</button>
+                  <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
+                </div>
+                <div class="agent-console-log" x-ref="log">
+                  <template x-for="item in messages" :key="item.id">
+                    <div class="agent-message" :class="'agent-message-' + item.role">
+                      <span class="agent-message-role" x-text="item.role"></span>
+                      <pre x-text="item.text"></pre>
+                    </div>
+                  </template>
+                </div>
+                <form class="agent-console-input" @submit.prevent="send()">
+                  <textarea x-model="draft" rows="2"
+                            placeholder="Ask the mentor a question, or say what you are stuck on..."
+                            @keydown.meta.enter.prevent="send()"
+                            @keydown.ctrl.enter.prevent="send()"></textarea>
+                  <button type="submit" :disabled="!connected || !draft.trim()">Send</button>
+                </form>
+              </div>
+            </template>
           </div>
 
           <!-- Bottom status bar: timer + controls + topic + energy + counters -->
@@ -1200,6 +1222,7 @@
     return {
       socket: null,
       connected: false,
+      terminalMode: false,
       status: 'Waiting',
       draft: '',
       messages: [],
@@ -1213,10 +1236,9 @@
       start(detail) {
         this.stop();
         this.messages = [];
+        this.terminalMode = !!detail.terminalFallback;
         if (detail.terminalFallback) {
-          this.status = 'Terminal fallback';
-          this.addMessage('system', 'Terminal fallback session started. Opening ttyd in a new browser window.');
-          setTimeout(() => this.openTerminalFallback(), 750);
+          this.status = 'Browser terminal';
           return;
         }
         this.status = 'Connecting';

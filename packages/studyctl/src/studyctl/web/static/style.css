@@ -1498,6 +1498,14 @@ main:has(.split-container) .session-dashboard {
   background: var(--bg);
 }
 
+.agent-console-surface,
+.embedded-terminal-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .agent-console-toolbar {
   display: flex;
   align-items: center;
@@ -1605,6 +1613,13 @@ main:has(.split-container) .session-dashboard {
 .agent-console-input button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.embedded-terminal-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #1a1b26;
 }
 
 .picker-inline {
