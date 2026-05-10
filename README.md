@@ -4,7 +4,7 @@
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![CI](https://github.com/NetDevAutomate/socratic-study-mentor/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Hookey-Street-Software/StudyLoop/actions/workflows/ci.yml/badge.svg)
 
 ## What Does It Do?
 
@@ -21,7 +21,7 @@ Built by a neurodivergent learner transitioning from networking to data engineer
 
 ```bash
 # Install from source (no PyPI release)
-git clone https://github.com/NetDevAutomate/socratic-study-mentor studyloop
+git clone https://github.com/Hookey-Street-Software/StudyLoop studyloop
 cd studyloop
 uv sync --all-packages
 uv tool install ./packages/studyctl
@@ -163,9 +163,9 @@ Launch with `studyctl web`. Accessible from any device on the network.
 ## Optional Extras
 
 ```bash
-pip install 'studyctl[all]'          # Everything
-pip install 'studyctl[web]'          # FastAPI web UI
-pip install 'studyctl[content]'      # PDF splitting + content pipeline
+# Install extras via uv (not PyPI — the studyctl PyPI project was yanked)
+uv sync --all-packages --extra web      # FastAPI web UI
+uv sync --all-packages --extra content  # PDF splitting + content pipeline
 
 # ttyd — web terminal (enables the terminal panel in the live dashboard)
 brew install ttyd            # macOS

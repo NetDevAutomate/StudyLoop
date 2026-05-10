@@ -62,21 +62,23 @@ tmux-resurrect and warns if the restore hook is not detected.
 
 ### User Install (recommended)
 
-For end users on macOS, prefer the Homebrew formula over the repo bootstrap script:
+Install from a source checkout with `uv`. The PyPI/Homebrew distribution
+was yanked; source install is the current supported path.
 
 ```bash
-brew install NetDevAutomate/studyctl/studyctl
+git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+cd studyloop
+uv sync --all-packages
+uv tool install ./packages/studyctl
 studyctl setup
 studyctl doctor --fix
 ```
 
-This gives you managed upgrades, uninstall, and a cleaner default install path.
-
 ### Repo Bootstrap
 
 ```bash
-git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd socratic-study-mentor
+git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+cd studyloop
 ./scripts/install.sh
 ```
 
@@ -100,8 +102,8 @@ studyctl doctor --fix
 If you are contributing to the repo or running from source, prefer `uv sync` in the checkout:
 
 ```bash
-git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd Socratic-Study-Mentor
+git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+cd studyloop
 uv sync
 ```
 
@@ -118,8 +120,8 @@ uv run studyctl doctor --fix
 ### Legacy Script Modes
 
 ```bash
-git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd Socratic-Study-Mentor
+git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+cd studyloop
 
 # Full bootstrap from a repo checkout
 ./scripts/install.sh
@@ -150,13 +152,13 @@ For **Ansible playbooks**, clone the repo then run the install script:
   tasks:
     - name: Clone repo
       git:
-        repo: https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-        dest: ~/code/personal/tools/Socratic-Study-Mentor
+        repo: https://github.com/Hookey-Street-Software/StudyLoop.git
+        dest: ~/code/personal/tools/studyloop
 
     - name: Run installer
       command: ./scripts/install.sh --non-interactive
       args:
-        chdir: ~/code/personal/tools/Socratic-Study-Mentor
+        chdir: ~/code/personal/tools/studyloop
 ```
 
 ## Configuration
