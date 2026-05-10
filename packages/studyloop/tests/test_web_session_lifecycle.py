@@ -213,6 +213,129 @@ class TestPickerHydration:
 
 
 # ---------------------------------------------------------------------------
+# Transport picker: ACP option gating (§2.2 — PR-B)
+# ---------------------------------------------------------------------------
+
+
+def _acp_options_payload() -> dict:
+    """Agents list that exposes a single ACP-capable agent (Kiro)."""
+    base = _default_options_payload()
+    base["agents"] = [
+        {
+            "label": "Claude",
+            "value": "claude",
+            "available": True,
+            "supports_acp": False,
+            "acp_ready": False,
+            "recommended_transport": "pty",
+        },
+        {
+            "label": "Kiro",
+            "value": "kiro",
+            "available": True,
+            "supports_acp": True,
+            "acp_ready": True,
+            "recommended_transport": "pty",
+        },
+    ]
+    return base
+
+
+class TestTransportAcpOption:
+    """The transport <select> must expose ``acp`` only when the chosen
+    agent supports it — tying the frontend-visible option to the
+    /session/options ``supports_acp`` flag.
+    """
+
+    def test_acp_option_hidden_when_agent_does_not_support_it(self, web_page: Page) -> None:
+        _stub_options(web_page, _acp_options_payload())
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+        _goto_picker(web_page)
+
+        # First-available agent = Claude (no ACP). The ACP option exists
+        # in the DOM but x-show hides it — `display: none` on the option.
+        web_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="sessionTimer()"]');
+              const d = window.Alpine.$data(root);
+              return d && d.agent === 'claude';
+            }""",
+            timeout=5000,
+        )
+        visible = web_page.evaluate(
+            """() => {
+              const opts = document.querySelectorAll('#transport-select option');
+              for (const o of opts) {
+                if (o.value === 'acp') {
+                  return window.getComputedStyle(o).display !== 'none';
+                }
+              }
+              return null;
+            }"""
+        )
+        assert visible is False
+
+    def test_acp_option_visible_when_agent_supports_it(self, web_page: Page) -> None:
+        _stub_options(web_page, _acp_options_payload())
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+        _goto_picker(web_page)
+
+        # Flip agent to Kiro.
+        web_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="sessionTimer()"]');
+              window.Alpine.$data(root).agent = 'kiro';
+            }"""
+        )
+        web_page.wait_for_function(
+            """() => {
+              const opts = document.querySelectorAll('#transport-select option');
+              for (const o of opts) {
+                if (o.value === 'acp') {
+                  return window.getComputedStyle(o).display !== 'none';
+                }
+              }
+              return false;
+            }""",
+            timeout=3000,
+        )
+
+    def test_acp_hint_text_mentions_kiro_and_gemini(self, web_page: Page) -> None:
+        """The hint shown under the transport <select> when ACP is selected
+        should name both supported agents so users know the scope."""
+        _stub_options(web_page, _acp_options_payload())
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+        _goto_picker(web_page)
+
+        web_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="sessionTimer()"]');
+              const d = window.Alpine.$data(root);
+              d.agent = 'kiro';
+              d.transport = 'acp';
+            }"""
+        )
+        hint_text = web_page.evaluate(
+            """() => {
+              const hints = document.querySelectorAll('.picker-hint');
+              for (const h of hints) {
+                if (window.getComputedStyle(h).display === 'none') continue;
+                const t = h.textContent || '';
+                if (t.includes('ACP') || t.includes('Kiro') || t.includes('Gemini')) {
+                  return t;
+                }
+              }
+              return '';
+            }"""
+        )
+        assert "Kiro" in hint_text
+        assert "Gemini" in hint_text
+
+
+# ---------------------------------------------------------------------------
 # target-kind switcher: topic / vendor / course / lesson
 # ---------------------------------------------------------------------------
 
