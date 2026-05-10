@@ -1255,6 +1255,27 @@
   }
 
   /* ------------------------------------------------------------------
+   * _extractChunkText — pull the assistant text out of an agent_chunk
+   * payload. The ACP normaliser (session/transports/acp_normaliser.py)
+   * passes the raw `update` subtree through (minus the sessionUpdate
+   * discriminator), so the shape is typically
+   *   { content: { type: 'text', text: '...' }, sessionId: '...' }
+   * but Kiro occasionally emits { content: [ { type: 'text', text } ] }
+   * for multi-part responses. Handle both.
+   * ------------------------------------------------------------------ */
+  function _extractChunkText(payload) {
+    if (!payload) return '';
+    const content = payload.content;
+    if (content && typeof content === 'object' && !Array.isArray(content)) {
+      return typeof content.text === 'string' ? content.text : '';
+    }
+    if (Array.isArray(content) && content.length > 0 && typeof content[0] === 'object') {
+      return typeof content[0].text === 'string' ? content[0].text : '';
+    }
+    return typeof payload.text === 'string' ? payload.text : '';
+  }
+
+  /* ------------------------------------------------------------------
    * Live agent console — xterm.js terminal for PTY transport, iframe
    * fallback for the legacy ttyd path. Wired in §1.7; contract is
    * the one documented in plan Amendment #5 (WS route) + Amendment
@@ -1459,9 +1480,21 @@
             this.statusDot = 'error';
             this.status = `Error: ${frame.message}`;
           } else if (frame.type === 'agent_message') {
-            /* Phase 2 ACP events (plan §2.2). PR-B renders via status only;
-               PR-D wires agent_chunk payloads into term.write for live
-               streaming. PTY transport never emits these. */
+            /* Phase 2 ACP events (plan §2.3 Amendment #12).
+               - agent_chunk: assistant text chunks → write into xterm
+                 so ACP sessions render alongside PTY sessions.
+               - turn_end: visible marker so the user knows a turn
+                 completed (xterm is otherwise silent during think time).
+               - other kinds (tool_call, tool_call_update, plan) stay
+                 unhandled for now — future UI can surface them in a
+                 side panel without touching xterm. */
+            if (frame.kind === 'agent_chunk' && this._term) {
+              const text = _extractChunkText(frame.payload);
+              if (text) this._term.write(text);
+            } else if (frame.kind === 'turn_end' && this._term) {
+              const reason = (frame.payload && frame.payload.reason) || 'end_turn';
+              this._term.writeln(`\r\n\x1b[2m[turn ${reason}]\x1b[0m`);
+            }
           }
         });
 

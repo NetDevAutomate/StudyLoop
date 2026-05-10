@@ -378,3 +378,125 @@ def _extract_chunk_text(payload: dict) -> str:
         return content[0].get("text", "")
     # Fallback: some normalisers may have already flattened it.
     return payload.get("text", "")
+
+
+# ---------------------------------------------------------------------------
+# PR-D smoke: agent_chunk payload text renders into xterm DOM
+# ---------------------------------------------------------------------------
+
+
+class TestAgentChunkRendersInXterm:
+    """PR-D wires ``AgentMessage(kind='agent_chunk')`` payloads into
+    ``term.write`` so ACP output shows up in the xterm panel alongside
+    PTY output. This is one Playwright roundtrip against Kiro — the
+    normaliser is agent-agnostic so testing one agent is sufficient.
+    """
+
+    def test_agent_chunk_text_appears_in_xterm(self, acp_page: Page) -> None:
+        _end_any_active_session(acp_page)
+        acp_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
+        acp_page.wait_for_load_state("domcontentloaded")
+        # Let Alpine mount liveAgentConsole().
+        acp_page.wait_for_function("() => !!window.Alpine", timeout=5000)
+
+        # Fire the start request ourselves so we control the ACP agent
+        # (the picker doesn't yet auto-select transport=acp — PR-B
+        # intentionally keeps pty the default).
+        start_body = acp_page.evaluate(
+            """async () => {
+              const res = await fetch('/api/session/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                  topic: 'PR-D smoke', energy: 5, agent: 'kiro', transport: 'acp',
+                }),
+              });
+              return {status: res.status, body: await res.json()};
+            }"""
+        )
+        assert start_body["status"] == 201, start_body
+
+        # Flip sessionTimer.sessionActive so the xterm panel actually
+        # mounts, then dispatch the event liveAgentConsole listens for.
+        # The real UI does both inside startSession(); we bypass the
+        # picker so we have to reproduce the state flip ourselves.
+        acp_page.evaluate(
+            """(data) => {
+              const timerRoot = document.querySelector('[x-data="sessionTimer()"]');
+              if (timerRoot) {
+                const d = window.Alpine.$data(timerRoot);
+                d.sessionActive = true;
+                d.topic = 'PR-D smoke';
+                d.startTime = new Date();
+              }
+              // Next tick so x-show="sessionActive" paints the terminal
+              // container before liveAgentConsole grabs $refs.xtermMount.
+              return new Promise((resolve) => setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('study-session-start', {
+                  detail: {
+                    topic: 'PR-D smoke',
+                    energy: 5,
+                    sessionType: 'study',
+                    targetKind: 'topic',
+                    targetPath: null,
+                    agent: data.agent,
+                    resolvedAgent: data.agent,
+                    studySessionId: data.study_session_id,
+                    transport: data.transport,
+                    wsUrl: data.ws_url,
+                  },
+                }));
+                resolve();
+              }, 50));
+            }""",
+            start_body["body"],
+        )
+
+        # Wait for the WS 'open' → Started → 'Connected' status to pin
+        # that xterm is truly live, then send a prompt via the xterm
+        # onData path (simulates a real keystroke).
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              const d = window.Alpine.$data(root);
+              return d && d.connected === true;
+            }""",
+            timeout=10000,
+        )
+
+        # Typing into xterm triggers term.onData which sends input over the WS.
+        acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              const d = window.Alpine.$data(root);
+              const ws = d._ws;
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: 'input', data: 'ping'}));
+              }
+            }"""
+        )
+
+        # Poll the xterm buffer for the stub's chunk text. We read the
+        # terminal's active buffer rather than the DOM — under the
+        # WebGL renderer .xterm-rows isn't populated the same way, but
+        # term.buffer.active.translateToString is authoritative for
+        # what xterm has received via write().
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              const d = window.Alpine.$data(root);
+              const term = d && d._term;
+              if (!term || !term.buffer || !term.buffer.active) return false;
+              const active = term.buffer.active;
+              let buf = '';
+              for (let i = 0; i < active.length; i++) {
+                const line = active.getLine(i);
+                if (line) buf += line.translateToString(true);
+              }
+              return buf.includes('pong-from-stub');
+            }""",
+            timeout=10000,
+        )
+        _end_any_active_session(acp_page)
