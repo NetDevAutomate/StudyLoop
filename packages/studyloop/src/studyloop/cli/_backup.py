@@ -1,7 +1,7 @@
 """Backup and restore commands for studyloop user data.
 
 Backs up sessions.db, review.db, and config.yaml to a timestamped
-directory under ~/.config/studyctl/backups/. Restore reverses the
+directory under ~/.config/studyloop/backups/. Restore reverses the
 process with a safety backup of the current state first.
 """
 
@@ -25,7 +25,7 @@ _CONFIG_PATH = get_config_path()
 
 def _active_config_path() -> Path:
     """Return active config path while preserving old test monkeypatch hooks."""
-    if os.environ.get("STUDYCTL_CONFIG"):
+    if os.environ.get("STUDYLOOP_CONFIG"):
         return get_config_path()
     return _CONFIG_PATH
 
@@ -72,7 +72,7 @@ def _create_backup(tag: str | None = None) -> Path | None:
 def backup(tag: str | None) -> None:
     """Back up sessions database, review database, and config.
 
-    Creates a timestamped snapshot under ~/.config/studyctl/backups/.
+    Creates a timestamped snapshot under ~/.config/studyloop/backups/.
     Use before upgrades or risky changes.
     """
     assets = _get_assets()

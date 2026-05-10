@@ -123,7 +123,7 @@ class TestDetectAgents:
 
         with (
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/gemini"),
-            patch.dict(os.environ, {"STUDYCTL_AGENT": "gemini"}),
+            patch.dict(os.environ, {"STUDYLOOP_AGENT": "gemini"}),
         ):
             agents = detect_agents()
             assert agents == ["gemini"]
@@ -133,7 +133,7 @@ class TestDetectAgents:
 
         with (
             patch("studyloop.agent_launcher.shutil.which", return_value=None),
-            patch.dict(os.environ, {"STUDYCTL_AGENT": "gemini"}),
+            patch.dict(os.environ, {"STUDYLOOP_AGENT": "gemini"}),
         ):
             agents = detect_agents()
             assert agents == []
@@ -353,7 +353,7 @@ class TestKiroAdapter:
 
         persona_path = _kiro_setup("# New Content", tmp_path)
         try:
-            backup = fake_kiro / f"{KIRO_AGENT_NAME}.json.studyctl-backup"
+            backup = fake_kiro / f"{KIRO_AGENT_NAME}.json.studyloop-backup"
             assert backup.exists()
             assert '"original"' in backup.read_text()
         finally:
@@ -366,7 +366,7 @@ class TestKiroAdapter:
         fake_kiro.mkdir(parents=True)
         target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
         target.write_text('{"prompt": "modified"}')
-        backup = target.with_suffix(target.suffix + ".studyctl-backup")
+        backup = target.with_suffix(target.suffix + ".studyloop-backup")
         backup.write_text('{"prompt": "original"}')
         monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
 
@@ -414,7 +414,7 @@ class TestKiroAdapter:
         # Simulate crash: backup exists but target was overwritten by studyctl
         target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
         target.write_text('{"prompt": "studyctl-modified"}')
-        backup = target.with_suffix(target.suffix + ".studyctl-backup")
+        backup = target.with_suffix(target.suffix + ".studyloop-backup")
         backup.write_text('{"prompt": "user-original"}')
 
         # Run setup — should recover the backup first, then proceed normally
@@ -448,7 +448,7 @@ class TestKiroAdapter:
             data = json.loads(target.read_text())
             assert "file://" in data["prompt"]
             # No backup should exist (no pre-existing file to back up)
-            backup = target.with_suffix(target.suffix + ".studyctl-backup")
+            backup = target.with_suffix(target.suffix + ".studyloop-backup")
             assert not backup.exists()
         finally:
             persona_path.unlink(missing_ok=True)
@@ -465,7 +465,7 @@ class TestMcpCommand:
     def test_uses_installed_binary_when_available(self):
         from studyloop.agent_launcher import _mcp_command
 
-        fake = "/usr/local/bin/studyctl-mcp"
+        fake = "/usr/local/bin/studyloop-mcp"
         with patch("studyloop.agent_launcher.shutil.which", return_value=fake):
             cmd = _mcp_command()
             assert cmd == [fake]
@@ -477,7 +477,7 @@ class TestMcpCommand:
             cmd = _mcp_command()
             assert cmd[0] == "uv"
             assert "run" in cmd
-            assert "studyctl-mcp" in cmd
+            assert "studyloop-mcp" in cmd
 
 
 # ---------------------------------------------------------------------------
@@ -499,14 +499,14 @@ class TestGeminiAdapter:
 
         from studyloop.agent_launcher import _gemini_mcp
 
-        fake = "/usr/local/bin/studyctl-mcp"
+        fake = "/usr/local/bin/studyloop-mcp"
         with patch("studyloop.agent_launcher.shutil.which", return_value=fake):
             _gemini_mcp(tmp_path)
         settings_path = tmp_path / ".gemini" / "settings.json"
         assert settings_path.exists()
         data = json.loads(settings_path.read_text())
-        server = data["mcpServers"]["studyctl-mcp"]
-        assert server["command"] == "/usr/local/bin/studyctl-mcp"
+        server = data["mcpServers"]["studyloop-mcp"]
+        assert server["command"] == "/usr/local/bin/studyloop-mcp"
         assert server["args"] == []
 
     def test_launch_new_session(self):
@@ -578,16 +578,16 @@ class TestOpenCodeAdapter:
 
         from studyloop.agent_launcher import _opencode_mcp
 
-        fake = "/usr/local/bin/studyctl-mcp"
+        fake = "/usr/local/bin/studyloop-mcp"
         with patch("studyloop.agent_launcher.shutil.which", return_value=fake):
             _opencode_mcp(tmp_path)
         config_path = tmp_path / ".opencode" / "opencode.json"
         assert config_path.exists()
         data = json.loads(config_path.read_text())
 
-        mcp = data["mcp"]["studyctl-mcp"]
+        mcp = data["mcp"]["studyloop-mcp"]
         assert isinstance(mcp["command"], list), "OpenCode command must be array"
-        assert mcp["command"] == ["/usr/local/bin/studyctl-mcp"]
+        assert mcp["command"] == ["/usr/local/bin/studyloop-mcp"]
         assert mcp["enabled"] is True
         assert mcp["type"] == "local"
         assert "environment" not in mcp  # removed unnecessary key

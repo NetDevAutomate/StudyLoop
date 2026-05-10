@@ -88,16 +88,16 @@ PERSONA_DIR = _REPO_ROOT / "agents" / "shared" / "personas"
 
 
 def _mcp_command() -> list[str]:
-    """Build the studyctl-mcp server command.
+    """Build the studyloop-mcp server command.
 
     Prefers the installed console script (pip/uv tool install).
     Falls back to uv run --project for development.
     """
-    binary = shutil.which("studyctl-mcp")
+    binary = shutil.which("studyloop-mcp")
     if binary:
         return [binary]
     project_path = str(_REPO_ROOT / "packages" / "studyloop")
-    return ["uv", "run", "--project", project_path, "studyctl-mcp"]
+    return ["uv", "run", "--project", project_path, "studyloop-mcp"]
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ def _gemini_mcp(session_dir: Path) -> None:
     cmd = _mcp_command()
     settings = {
         "mcpServers": {
-            "studyctl-mcp": {
+            "studyloop-mcp": {
                 "command": cmd[0],
                 "args": cmd[1:],
             },
@@ -134,7 +134,7 @@ def _opencode_mcp(session_dir: Path) -> None:
 
     config = {
         "mcp": {
-            "studyctl-mcp": {
+            "studyloop-mcp": {
                 "command": _mcp_command(),
                 "enabled": True,
                 "type": "local",
@@ -173,7 +173,7 @@ def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:  # type: ig
     kiro_agents_dir = _self.KIRO_AGENTS_DIR
 
     fd, persona_path = tempfile.mkstemp(
-        prefix="studyctl-kiro-persona-",
+        prefix="studyloop-kiro-persona-",
         suffix=".md",
         dir=tempfile.gettempdir(),
     )
@@ -246,11 +246,11 @@ def detect_agents() -> list[str]:
     """Return names of installed agents, in configured priority order.
 
     Priority comes from (highest to lowest):
-    1. ``STUDYCTL_AGENT`` env var (single agent, if installed)
+    1. ``STUDYLOOP_AGENT`` env var (single agent, if installed)
     2. ``agents.priority`` in config.yaml
     3. Registry insertion order (fallback)
     """
-    env_agent = os.environ.get("STUDYCTL_AGENT")
+    env_agent = os.environ.get("STUDYLOOP_AGENT")
     if env_agent and env_agent in AGENTS:
         if shutil.which(AGENTS[env_agent].binary):
             return [env_agent]
@@ -391,9 +391,9 @@ def _default_persona(mode: str) -> str:
             "reading docs, or doing exercises. Stay available but don't interrupt. "
             "When asked questions, use the Socratic method. Keep answers concise.\n\n"
             "Check the session IPC files for context:\n"
-            "- ~/.config/studyctl/session-state.json\n"
-            "- ~/.config/studyctl/session-topics.md\n"
-            "- ~/.config/studyctl/session-parking.md\n"
+            "- ~/.config/studyloop/session-state.json\n"
+            "- ~/.config/studyloop/session-topics.md\n"
+            "- ~/.config/studyloop/session-parking.md\n"
         )
     # Default: study mode
     return (
@@ -401,7 +401,7 @@ def _default_persona(mode: str) -> str:
         "probe understanding, use the 70/30 balance (70% questions, 30% strategic "
         "information). Adapt to the student's energy level.\n\n"
         "Check the session IPC files for context:\n"
-        "- ~/.config/studyctl/session-state.json\n"
-        "- ~/.config/studyctl/session-topics.md\n"
-        "- ~/.config/studyctl/session-parking.md\n"
+        "- ~/.config/studyloop/session-state.json\n"
+        "- ~/.config/studyloop/session-topics.md\n"
+        "- ~/.config/studyloop/session-parking.md\n"
     )

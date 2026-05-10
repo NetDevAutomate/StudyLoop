@@ -1,7 +1,7 @@
 """FastMCP v1 server for studyloop.
 
 Provides study tools to AI coding assistants via stdio transport.
-Register with: ``claude mcp add studyctl-mcp``
+Register with: ``claude mcp add studyloop-mcp``
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ register_tools(mcp)
 
 
 def main() -> None:
-    """Entry point for studyctl-mcp command."""
+    """Entry point for studyloop-mcp command."""
     mcp.run(transport="stdio")
 
 

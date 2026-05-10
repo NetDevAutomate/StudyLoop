@@ -190,7 +190,7 @@ class TestKiroAdapter:
         assert data["extra"] == "value"
 
     def test_kiro_setup_backs_up_existing_json(self, monkeypatch, tmp_path):
-        """If agent JSON already exists, it is copied to a .studyctl-backup file."""
+        """If agent JSON already exists, it is copied to a .studyloop-backup file."""
         kiro_agents = self._patch_kiro_dir(monkeypatch, tmp_path)
         self._patch_no_template(monkeypatch)
 
@@ -281,7 +281,7 @@ class TestKiroAdapter:
         backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
 
         # Set up: current (studyctl) JSON + backup (user's original)
-        target.write_text(json.dumps({"prompt": "file:///tmp/studyctl-persona.md"}))
+        target.write_text(json.dumps({"prompt": "file:///tmp/studyloop-persona.md"}))
         original_data = {"name": KIRO_AGENT_NAME, "prompt": "user-original"}
         backup.write_text(json.dumps(original_data))
 

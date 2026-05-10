@@ -116,7 +116,7 @@ class TestWebCommandConfig:
         config_path = tmp_path / "custom-config.yaml"
         course_dir = tmp_path / "course-a"
         config_path.write_text(f"review:\n  directories:\n    - {course_dir}\n")
-        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         captured: dict[str, object] = {}
 

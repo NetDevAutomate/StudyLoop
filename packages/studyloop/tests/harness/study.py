@@ -105,7 +105,7 @@ class StudySession:
 
         # Build and run the studyloop study command
         env = os.environ.copy()
-        env["STUDYCTL_TEST_AGENT_CMD"] = agent_cmd
+        env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
         # Remove TMUX env var so studyctl uses attach (not switch-client)
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
@@ -178,7 +178,7 @@ class StudySession:
         """Run --resume and wait for the session to be ready."""
         env = os.environ.copy()
         # Use long_running_agent for rebuilt sessions
-        env["STUDYCTL_TEST_AGENT_CMD"] = long_running_agent(self.tmp_path)
+        env["STUDYLOOP_TEST_AGENT_CMD"] = long_running_agent(self.tmp_path)
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
 

@@ -35,7 +35,7 @@ def _make_hosts_config(
                     "secondary": "10.0.0.100",
                 },
                 "user": "testuser",
-                "state_json": "~/.config/studyctl/state.json",
+                "state_json": "~/.config/studyloop/state.json",
             },
         },
     }

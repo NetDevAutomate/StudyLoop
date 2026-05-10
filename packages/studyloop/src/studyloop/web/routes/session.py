@@ -500,7 +500,7 @@ def start_session(body: StartSessionRequest) -> JSONResponse:
         adapter.mcp_setup(session_dir)
 
     # Allow test injection
-    test_agent_cmd = os.environ.get("STUDYCTL_TEST_AGENT_CMD")
+    test_agent_cmd = os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
     if test_agent_cmd:
         agent_cmd = test_agent_cmd.format(persona_file=persona_file)
     else:

@@ -207,8 +207,8 @@ def demo_session(tmp_path):
 
     env = {
         **os.environ,
-        "STUDYCTL_TEST_AGENT_CMD": agent_script,
-        "STUDYCTL_CONFIG": str(test_config),
+        "STUDYLOOP_TEST_AGENT_CMD": agent_script,
+        "STUDYLOOP_CONFIG": str(test_config),
     }
     env.pop("TMUX", None)  # Don't nest tmux
 

@@ -211,7 +211,7 @@ class TestSettingsLanPassword:
         config.write_text("lan_password: mylanpass\n")
 
         with pytest.MonkeyPatch().context() as mp:
-            mp.setenv("STUDYCTL_CONFIG", str(config))
+            mp.setenv("STUDYLOOP_CONFIG", str(config))
             # Reload the module-level _CONFIG_PATH by patching it
             import studyloop.settings as settings_mod
 

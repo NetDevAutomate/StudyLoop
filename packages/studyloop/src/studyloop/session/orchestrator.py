@@ -117,13 +117,13 @@ def build_wrapped_agent_cmd(
     python = sys.executable
     path_prefix = f"export PATH={session_dir}:$PATH; "
 
-    # Propagate STUDYCTL_* env vars so cleanup_on_exit() (which runs as
-    # a fresh Python subprocess) inherits overrides like STUDYCTL_KIRO_AGENTS_DIR.
+    # Propagate STUDYLOOP_* env vars so cleanup_on_exit() (which runs as
+    # a fresh Python subprocess) inherits overrides like STUDYLOOP_KIRO_AGENTS_DIR.
     # These must be exported in the shell command because tmux set-environment
     # only affects NEW panes, not the already-running shell.
     env_exports = ""
     for key, value in os.environ.items():
-        if key.startswith("STUDYCTL_") and key != "STUDYCTL_TEST_AGENT_CMD":
+        if key.startswith("STUDYLOOP_") and key != "STUDYLOOP_TEST_AGENT_CMD":
             env_exports += f"export {key}={shlex.quote(value)}; "
 
     return (
@@ -196,7 +196,7 @@ def create_tmux_environment(
         set_option(session_name, "status", "off")
 
     # Load user's studyctl tmux overlay if they've explicitly created one.
-    user_conf = session_state_dir / "tmux-studyctl.conf"
+    user_conf = session_state_dir / "tmux-studyloop.conf"
     if user_conf.exists():
         with contextlib.suppress(Exception):
             load_config(user_conf)

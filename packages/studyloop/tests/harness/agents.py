@@ -1,7 +1,7 @@
 """Mock agent script builders for integration tests.
 
 Each function creates a bash script in tmp_path and returns the command
-string suitable for STUDYCTL_TEST_AGENT_CMD.
+string suitable for STUDYLOOP_TEST_AGENT_CMD.
 
 All agents accept {persona_file} placeholder which gets substituted
 by the study command at launch time.
@@ -99,7 +99,7 @@ trap 'exit 0' TERM INT
 echo "Mock agent started"
 sleep 2
 # Write to IPC file directly (sidebar polls this)
-PARKING_FILE="$HOME/.config/studyctl/session-parking.md"
+PARKING_FILE="$HOME/.config/studyloop/session-parking.md"
 echo "- What about metaclasses?" >> "$PARKING_FILE"
 # Stay alive
 while true; do sleep 1; done
@@ -148,7 +148,7 @@ studyctl topic "First-Class Functions" --status learning \
 sleep 1
 
 # Park a question via IPC file (more reliable in tests than CLI)
-PARKING_FILE="$HOME/.config/studyctl/session-parking.md"
+PARKING_FILE="$HOME/.config/studyloop/session-parking.md"
 echo "- How do decorators interact with class methods?" >> "$PARKING_FILE"
 
 # Stay alive until killed

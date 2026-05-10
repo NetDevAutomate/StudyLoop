@@ -145,7 +145,7 @@ def _upgrade_database(dry_run: bool) -> bool:
     from studyloop.settings import get_db_path
 
     db_path = get_db_path()
-    backup_dir = Path("~/.config/studyctl/db-backups").expanduser()
+    backup_dir = Path("~/.config/studyloop/db-backups").expanduser()
 
     if dry_run:
         console.print(f"  [dim]Would back up {db_path} -> {backup_dir}/[/dim]")

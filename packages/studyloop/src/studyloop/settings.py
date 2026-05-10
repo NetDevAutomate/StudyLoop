@@ -1,6 +1,6 @@
-"""Centralized configuration loader for studyctl.
+"""Centralized configuration loader for studyloop.
 
-Loads from ~/.config/studyctl/config.yaml with sensible defaults.
+Loads from ~/.config/studyloop/config.yaml with sensible defaults.
 All configuration types, topic mapping, and path resolution live here.
 """
 
@@ -15,9 +15,41 @@ import click
 import yaml
 
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
+LEGACY_CONFIG_DIR = Path.home() / ".config" / "studyloop"
 DEFAULT_DB = CONFIG_DIR / "sessions.db"
 
-_CONFIG_PATH = Path(os.environ.get("STUDYCTL_CONFIG", CONFIG_DIR / "config.yaml"))
+_CONFIG_PATH = Path(os.environ.get("STUDYLOOP_CONFIG", CONFIG_DIR / "config.yaml"))
+_MIGRATION_CHECKED = False
+
+
+def _maybe_migrate_legacy_config() -> None:
+    """One-shot copy ~/.config/studyloop/ -> ~/.config/studyloop/ on first run.
+
+    Runs at most once per process. Only activates when the legacy dir exists
+    and the new dir does not — no data is overwritten. The legacy dir is
+    left in place for rollback; callers can delete it manually later.
+    """
+    global _MIGRATION_CHECKED
+    if _MIGRATION_CHECKED:
+        return
+    _MIGRATION_CHECKED = True
+
+    if os.environ.get("STUDYLOOP_SKIP_LEGACY_MIGRATION"):
+        return
+    if CONFIG_DIR.exists():
+        return
+    if not LEGACY_CONFIG_DIR.exists():
+        return
+
+    try:
+        import shutil as _shutil
+
+        _shutil.copytree(LEGACY_CONFIG_DIR, CONFIG_DIR, dirs_exist_ok=False)
+    except OSError:
+        # Migration is best-effort. If copy fails, leave both dirs alone and
+        # let the user resolve manually. Silent failure is safer than raising
+        # on every CLI invocation.
+        return
 
 
 class ConfigError(click.ClickException):
@@ -259,24 +291,25 @@ def _path(value: object) -> Path:
 
 
 def get_config_path() -> Path:
-    """Return the active studyctl config path.
+    """Return the active studyloop config path.
 
-    ``STUDYCTL_CONFIG`` is resolved lazily so tests and subprocesses can set it
+    ``STUDYLOOP_CONFIG`` is resolved lazily so tests and subprocesses can set it
     after module import. ``_CONFIG_PATH`` remains as the fallback compatibility
     hook for existing tests while callers migrate to this public helper.
     """
-    if env_path := os.environ.get("STUDYCTL_CONFIG"):
+    if env_path := os.environ.get("STUDYLOOP_CONFIG"):
         return Path(env_path).expanduser()
     return _CONFIG_PATH.expanduser()
 
 
 def get_config_dir() -> Path:
-    """Return the active studyctl config directory."""
+    """Return the active studyloop config directory."""
     return get_config_path().parent
 
 
 def load_raw_config() -> dict[str, Any]:
     """Load the raw YAML config from the active config path."""
+    _maybe_migrate_legacy_config()
     config_path = get_config_path()
     if not config_path.exists():
         return {}
@@ -476,16 +509,16 @@ def generate_default_config() -> str:
     """Generate a default config YAML with comments."""
     return """\
 # studyloop configuration
-# Location: ~/.config/studyctl/config.yaml
+# Location: ~/.config/studyloop/config.yaml
 
 # Base path to your Obsidian vault
 obsidian_base: ~/Obsidian
 
 # Path to the AI session database
-session_db: ~/.config/studyctl/sessions.db
+session_db: ~/.config/studyloop/sessions.db
 
 # State directory for sync tracking
-state_dir: ~/.local/share/studyctl
+state_dir: ~/.local/share/studyloop
 
 # Remote sync configuration (optional)
 # sync_remote: your-remote-host
@@ -518,7 +551,7 @@ topics:
 # AI agent configuration
 # Priority order for auto-detection (first installed agent wins)
 # Override per-session with: studyloop study "topic" --agent gemini
-# Override via env var: STUDYCTL_AGENT=gemini
+# Override via env var: STUDYLOOP_AGENT=gemini
 # agents:
 #   priority: [codex, claude, kiro, gemini, opencode, ollama, lmstudio]
 #   ollama:
@@ -569,7 +602,7 @@ topics:
 # lan_username: study
 # lan_password: your-password-here
 
-# Content pipeline (studyctl content commands)
+# Content pipeline (studyloop content commands)
 # content:
 #   base_path: ~/study-materials       # Where course directories are stored
 #   study_paths:
