@@ -81,7 +81,7 @@ class TestLoadConfig:
 
     def test_reads_yaml_from_studyctl_config_path(self, tmp_path, monkeypatch):
         """Test that STUDYCTL_CONFIG points load_config at a custom YAML file."""
-        config_path = tmp_path / "custom" / "studyctl.yaml"
+        config_path = tmp_path / "custom" / "studyloop.yaml"
         config_path.parent.mkdir()
         config_path.write_text(
             """

@@ -18,7 +18,7 @@ This is the zero-configuration experience. It works immediately for the primary 
 
 ## Configuring Custom Domains
 
-For other users or additional bridge domains, run `studyctl config init` (or `/socratic-mentor configure` in Claude Code) or manually edit `~/.config/studyctl/config.yaml`:
+For other users or additional bridge domains, run `studyloop config init` (or `/socratic-mentor configure` in Claude Code) or manually edit `~/.config/studyctl/config.yaml`:
 
 ```yaml
 knowledge_domains:
@@ -36,7 +36,7 @@ knowledge_domains:
         - "mise en place"
         - "flavour balancing"
         - "heat management"
-  bridges: []  # populated dynamically via studyctl bridge add
+  bridges: []  # populated dynamically via studyloop bridge add
 ```
 
 ### Interactive Configure Flow
@@ -66,7 +66,7 @@ The agent identifies structural mappings between the student's known concepts an
 The student validates, rejects, or modifies each bridge.
 
 **Step 4: Persist**
-Validated bridges are saved via `studyctl bridge add` and written to config.
+Validated bridges are saved via `studyloop bridge add` and written to config.
 
 ## Bridge Lifecycle
 
@@ -137,7 +137,7 @@ graph LR
 When the student produces a good analogy during a session:
 
 1. Acknowledge it: "That's a strong analogy — the structural mapping is [explanation]."
-2. Record it: `studyctl bridge add "source" "target" -s domain -t domain -m "why"`
+2. Record it: `studyloop bridge add "source" "target" -s domain -t domain -m "why"`
 3. Re-use it in future reviews: personalised analogies increase engagement
 4. Track effectiveness: does this student-generated bridge help in subsequent sessions?
 
@@ -145,14 +145,14 @@ When the student produces a good analogy during a session:
 
 ```bash
 # Add a bridge
-studyctl bridge add "TCP three-way handshake" "OAuth token exchange" \
+studyloop bridge add "TCP three-way handshake" "OAuth token exchange" \
     -s networking -t security -m "both establish trust through multi-step negotiation"
 
 # List bridges
-studyctl bridge list                       # all bridges
-studyctl bridge list -s networking         # from networking domain
-studyctl bridge list -t spark              # to spark domain
-studyctl bridge list -q effective          # only effective bridges
+studyloop bridge list                       # all bridges
+studyloop bridge list -s networking         # from networking domain
+studyloop bridge list -t spark              # to spark domain
+studyloop bridge list -q effective          # only effective bridges
 ```
 
 ## Warm-Up Activation

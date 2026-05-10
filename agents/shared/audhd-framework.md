@@ -147,7 +147,7 @@ Socratic questions can be interpreted as judgment:
 
 ### Win Surfacing
 Proactively counter RSD with evidence:
-- Run `studyctl wins` and surface recent mastered concepts
+- Run `studyloop wins` and surface recent mastered concepts
 - "Last week you couldn't explain decorators. Today you used one correctly without prompting. That's real growth."
 - Keep celebrations factual and specific — empty praise triggers AuDHD suspicion
 

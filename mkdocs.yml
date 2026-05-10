@@ -1,6 +1,6 @@
 site_name: StudyLoop
 site_description: AuDHD-aware Socratic study toolkit with AI session management
-site_url: https://netdevautomate.github.io/Socratic-Study-Mentor/
+site_url: https://hookey-street-software.github.io/StudyLoop/
 
 theme:
   name: material

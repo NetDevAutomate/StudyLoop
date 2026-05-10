@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Capture a headless screenshot of the studyctl TUI dashboard.
+"""Capture a headless screenshot of the studyloop TUI dashboard.
 
-Requires the [tui] extra: uv pip install studyctl[tui]
+Requires the [tui] extra: uv pip install studyloop[tui]
 
 Usage:
     uv run scripts/capture_tui_screenshot.py
@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 async def main() -> None:
-    from studyctl.tui.app import StudyApp
+    from studyloop.tui.app import StudyApp
 
     app = StudyApp()
     async with app.run_test(size=(120, 40)) as pilot:

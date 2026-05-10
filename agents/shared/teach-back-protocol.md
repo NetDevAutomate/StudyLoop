@@ -129,7 +129,7 @@ Flip the question orientation:
 After each teach-back, record the score:
 
 ```bash
-studyctl teachback "<concept>" -t <topic> --score "3,3,4,3,2" --type structured --angle "apply_network_analogy"
+studyloop teachback "<concept>" -t <topic> --score "3,3,4,3,2" --type structured --angle "apply_network_analogy"
 ```
 
 The agent should:

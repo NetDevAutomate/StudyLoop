@@ -19,8 +19,8 @@ How to set up a development environment, add features, and submit changes.
 ## Development Setup
 
 ```bash
-git clone https://github.com/NetDevAutomate/Socratic-Study-Mentor.git
-cd socratic-study-mentor
+git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+cd studyloop
 
 # Install all packages with dev dependencies
 uv sync --all-packages --extra dev --extra test
@@ -120,7 +120,7 @@ The release workflow uses the same script, so local and CI builds follow the sam
 ## Project Structure
 
 ```
-socratic-study-mentor/
+studyloop/
 ├── packages/
 │   ├── studyctl/                    # User-facing study toolkit
 │   │   ├── src/studyctl/

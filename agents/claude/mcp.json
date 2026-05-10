@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "studyctl-mcp": {
+    "studyloop-mcp": {
       "command": "uv",
-      "args": ["run", "--project", "/Users/user/code/personal/tools/socratic-study-mentor/packages/studyctl", "studyctl-mcp"]
+      "args": ["run", "--project", "/Users/user/code/personal/tools/studyloop/packages/studyloop", "studyloop-mcp"]
     },
     "speaker": {
       "command": "uvx",
-      "args": ["--from", "mcp[cli]", "mcp", "run", "/Users/user/code/personal/tools/socratic-study-mentor/agents/mcp/study-speak-server.py"]
+      "args": ["--from", "mcp[cli]", "mcp", "run", "/Users/user/code/personal/tools/studyloop/agents/mcp/study-speak-server.py"]
     },
     "cmux": {
       "command": "node",

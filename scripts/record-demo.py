@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record a Playwright demo of the studyctl study session dashboard.
+"""Record a Playwright demo of the studyloop study session dashboard.
 
 Starts a study session with --lan --web, opens the dashboard in a
 headless recorded browser, interacts with the agent via the ttyd
@@ -50,7 +50,7 @@ def _studyctl(*args: str) -> subprocess.CompletedProcess | None:
     env.pop("TMUX", None)
     try:
         return subprocess.run(
-            [sys.executable, "-m", "studyctl.cli", *args],
+            [sys.executable, "-m", "studyloop.cli", *args],
             capture_output=True,
             text=True,
             timeout=10,
@@ -58,7 +58,7 @@ def _studyctl(*args: str) -> subprocess.CompletedProcess | None:
             cwd=str(PROJECT_DIR),
         )
     except subprocess.TimeoutExpired:
-        # Expected — studyctl study calls os.execvp(tmux attach) which
+        # Expected — studyloop study calls os.execvp(tmux attach) which
         # hangs since we have no terminal. Session is already started.
         return None
 

@@ -1,0 +1,409 @@
+"""Review commands — spaced repetition, progress, struggle detection, and knowledge bridges."""
+
+from __future__ import annotations
+
+import json
+
+import click
+from rich.table import Table
+
+from studyloop.cli._shared import TOPIC_KEYWORDS, console
+from studyloop.history import (
+    get_bridges,
+    record_bridge,
+    spaced_repetition_due,
+    struggle_topics,
+)
+
+
+@click.command()
+def review() -> None:
+    """Check what's due for spaced repetition review."""
+    due = spaced_repetition_due(TOPIC_KEYWORDS)
+    if not due:
+        console.print("[green]Nothing due for review[/green]")
+        return
+
+    table = Table(title="Spaced Repetition \u2014 Due for Review")
+    table.add_column("Topic", style="bold cyan")
+    table.add_column("Last Studied")
+    table.add_column("Days Ago", justify="right")
+    table.add_column("Review Type", style="yellow")
+
+    for item in due:
+        days = str(item["days_ago"]) if item["days_ago"] is not None else "never"
+        last = item["last_studied"] or "never"
+        table.add_row(item["topic"], last, days, item["review_type"])
+
+    console.print(table)
+
+
+@click.command()
+@click.option("--days", "-d", default=30, help="Look back N days")
+def struggles(days: int) -> None:
+    """Find topics you keep asking about (potential struggle areas)."""
+    topics = struggle_topics(days=days)
+    if not topics:
+        console.print("[dim]No recurring struggle topics found[/dim]")
+        return
+
+    console.print("[bold]Topics appearing in 3+ sessions (potential struggle areas):[/bold]\n")
+    for t in topics:
+        bar = "\u2588" * min(t["mentions"], 20)
+        console.print(f"  [cyan]{t['topic']:20s}[/cyan] {bar} ({t['mentions']} mentions)")
+
+
+@click.command()
+@click.option("--days", "-d", default=30, help="Look back period in days.")
+def wins(days: int) -> None:
+    """Show your learning wins -- concepts you've mastered."""
+    from studyloop.history import get_progress_summary, get_wins
+
+    summary = get_progress_summary()
+    if not summary:
+        console.print("[dim]No progress data yet. Use your study mentor to start tracking![/dim]")
+        return
+
+    total = summary.get("total", 0)
+    mastered = summary.get("mastered", 0)
+    confident = summary.get("confident", 0)
+    learning = summary.get("learning", 0)
+    struggling = summary.get("struggling", 0)
+
+    console.print("\n[bold]\U0001f4ca Progress Overview[/bold]")
+    console.print(
+        f"  \U0001f3c6 Mastered: {mastered}  "
+        f"\u2705 Confident: {confident}  "
+        f"\U0001f4d6 Learning: {learning}  "
+        f"\U0001f527 Struggling: {struggling}  "
+        f"({total} total)"
+    )
+
+    recent = get_wins(days=days)
+    if recent:
+        console.print(f"\n[bold green]\U0001f389 Wins in the last {days} days:[/bold green]")
+        for w in recent:
+            emoji = "\U0001f3c6" if w["confidence"] == "mastered" else "\u2705"
+            console.print(
+                f"  {emoji} [bold]{w['concept']}[/bold] ({w['topic']}) "
+                f"\u2014 {w['session_count']} sessions"
+            )
+    else:
+        console.print(f"\n[dim]No new wins in the last {days} days. Keep going! \U0001f4aa[/dim]")
+
+
+@click.command()
+@click.argument("concept", required=False)
+@click.option("--topic", "-t", default=None, help="Study topic for record mode.")
+@click.option("--course", default=None, help="Show summary for one course.")
+@click.option(
+    "--confidence",
+    "-c",
+    type=click.Choice(["struggling", "learning", "confident", "mastered"]),
+    default=None,
+    help="Current confidence level.",
+)
+@click.option("--notes", "-n", default=None, help="Optional notes.")
+@click.option("--json", "json_output", is_flag=True, help="Output course summary as JSON.")
+def progress(
+    concept: str | None,
+    topic: str | None,
+    course: str | None,
+    confidence: str | None,
+    notes: str | None,
+    json_output: bool,
+) -> None:
+    """Record progress on a concept, or show course progress with no concept."""
+    if concept is None:
+        _print_course_progress(course=course, json_output=json_output)
+        return
+
+    if course:
+        raise click.ClickException("--course is only valid when showing the progress summary.")
+    if json_output:
+        raise click.ClickException("--json is only valid when showing the progress summary.")
+    if not topic:
+        raise click.ClickException("--topic is required when recording concept progress.")
+    if not confidence:
+        raise click.ClickException("--confidence is required when recording concept progress.")
+
+    from studyloop.history import record_progress
+
+    if record_progress(topic, concept, confidence, notes=notes):
+        emoji = {
+            "struggling": "\U0001f527",
+            "learning": "\U0001f4d6",
+            "confident": "\u2705",
+            "mastered": "\U0001f3c6",
+        }
+        console.print(
+            f"{emoji.get(confidence, '\U0001f4dd')} Recorded: "
+            f"[bold]{concept}[/bold] ({topic}) \u2192 {confidence}"
+        )
+    else:
+        console.print("[red]Failed to record progress. Run 'studyloop doctor' to diagnose.[/red]")
+
+
+def _print_course_progress(*, course: str | None, json_output: bool) -> None:
+    """Render local course progress summary."""
+    from studyloop.progress import summarize_course_progress
+    from studyloop.settings import get_db_path, load_settings
+
+    settings = load_settings()
+    summary = summarize_course_progress(
+        base_path=settings.content.base_path,
+        db_path=get_db_path(),
+        course=course,
+    )
+
+    if json_output:
+        click.echo(json.dumps(summary.to_json_dict(), indent=2))
+        return
+
+    if not summary.courses:
+        console.print("[dim]No local course progress found.[/dim]")
+        return
+
+    table = Table(title="Course Progress")
+    table.add_column("Course", style="bold cyan")
+    table.add_column("Sources", justify="right")
+    table.add_column("Cards", justify="right")
+    table.add_column("Due", justify="right")
+    table.add_column("Mastered", justify="right")
+    table.add_column("Sessions", justify="right")
+    table.add_column("Accuracy", justify="right")
+
+    for item in summary.courses:
+        accuracy = f"{item.review.accuracy:.1f}%" if item.review.accuracy is not None else "-"
+        table.add_row(
+            item.slug,
+            str(item.source_count),
+            str(item.review.unique_cards),
+            str(item.review.due_today),
+            str(item.review.mastered),
+            str(item.review.sessions),
+            accuracy,
+        )
+
+    console.print(table)
+
+
+@click.command()
+def resume() -> None:
+    """Show where you left off -- last session summary for quick context reload."""
+    from studyloop.history import (
+        check_medication_window,
+        get_last_session_summary,
+        get_study_streaks,
+    )
+
+    summary = get_last_session_summary()
+    if not summary:
+        console.print("[dim]No sessions found. Start a study session to begin tracking![/dim]")
+        return
+
+    console.print("[bold]Where you left off:[/bold]\n")
+
+    source = summary["source"].replace("_", " ").title()
+    updated = summary.get("updated") or summary["started"]
+    if updated:
+        updated = updated[:16].replace("T", " ")
+    console.print(f"  Last session: [cyan]{source}[/cyan] ({updated})")
+
+    if summary["topics_covered"]:
+        topics_str = ", ".join(summary["topics_covered"])
+        console.print(f"  Topics: [bold]{topics_str}[/bold]")
+
+    if summary["last_message_preview"]:
+        preview = summary["last_message_preview"]
+        if len(preview) > 150:
+            preview = preview[:150] + "..."
+        console.print(f"  Context: [dim]{preview}[/dim]")
+
+    if summary["concepts_in_progress"]:
+        console.print("\n[bold]In progress:[/bold]")
+        for c in summary["concepts_in_progress"]:
+            emoji = "\U0001f527" if c["confidence"] == "struggling" else "\U0001f4d6"
+            console.print(f"  {emoji} {c['concept']} ({c['topic']}) \u2014 {c['confidence']}")
+
+    streak_data = get_study_streaks()
+    if streak_data["current_streak"] > 0:
+        console.print(
+            f"\n  Streak: [bold green]{streak_data['current_streak']} days[/bold green]"
+            f" (best: {streak_data['longest_streak']})"
+            f" | This week: {streak_data['sessions_this_week']} sessions"
+        )
+
+    # Medication window (if configured)
+    from studyloop.settings import load_raw_config
+
+    raw_config = load_raw_config()
+    med_config = raw_config.get("medication")
+    if med_config:
+        med = check_medication_window(med_config)
+        if med:
+            phase_emoji = {
+                "onset": "\U0001f48a",
+                "peak": "\U0001f9e0",
+                "tapering": "\U0001f4c9",
+                "worn_off": "\U0001f634",
+            }
+            emoji = phase_emoji.get(med["phase"], "\U0001f48a")
+            console.print(
+                f"\n  {emoji} Meds: [bold]{med['phase']}[/bold] \u2014 {med['recommendation']}"
+            )
+
+
+@click.command()
+def streaks() -> None:
+    """Show your study streak and consistency stats."""
+    from studyloop.history import get_study_streaks
+
+    data = get_study_streaks()
+    if not data.get("last_session_date"):
+        console.print("[dim]No study sessions found yet.[/dim]")
+        return
+
+    console.print("\n[bold]Study Consistency[/bold]\n")
+
+    current = data["current_streak"]
+    longest = data["longest_streak"]
+    fire = "\U0001f525" if current >= 3 else ""
+    console.print(f"  Current streak: [bold green]{current} days[/bold green] {fire}")
+    console.print(f"  Longest streak: [bold]{longest} days[/bold]")
+    console.print(f"  Study days (last 90): [bold]{data['total_days']}[/bold]")
+    console.print(f"  Sessions this week: [bold]{data['sessions_this_week']}[/bold]")
+    console.print(f"  Last session: {data['last_session_date']}")
+
+    consistency = data["total_days"] / 90 * 100
+    bar_len = int(consistency / 5)
+    bar = "\u2588" * bar_len + "\u2591" * (20 - bar_len)
+    console.print(f"\n  Consistency: [{bar}] {consistency:.0f}%")
+
+    if current == 0:
+        console.print(
+            "\n  [dim]No session today or yesterday. Start one to keep your streak going![/dim]"
+        )
+
+    # Energy analysis (from study_sessions table)
+    from studyloop.history import get_energy_session_data
+    from studyloop.logic.streaks_logic import SessionSummary, analyze_energy_streaks
+
+    raw = get_energy_session_data(days=30)
+    if raw:
+        summaries = [
+            SessionSummary(
+                energy_level=r["energy_level"],
+                duration_minutes=r["duration_minutes"],
+                days_ago=r["days_ago"],
+            )
+            for r in raw
+        ]
+        report = analyze_energy_streaks(summaries)
+
+        console.print("\n[bold]Energy Patterns (30 days)[/bold]\n")
+
+        # Distribution
+        for level in ("high", "medium", "low"):
+            count = report.distribution.get(level, 0)
+            if count:
+                bar = "\u2588" * count
+                console.print(f"  {level:>6}: {bar} ({count})")
+
+        # Trend
+        trend_icons = {
+            "improving": "[green]\u2191 Improving[/green]",
+            "declining": "[red]\u2193 Declining[/red]",
+            "stable": "[dim]\u2192 Stable[/dim]",
+        }
+        console.print(f"\n  Trend: {trend_icons.get(report.trend, report.trend)}")
+
+        # Duration correlation
+        if report.avg_duration_by_energy:
+            parts = [
+                f"{level}: {mins:.0f}min"
+                for level, mins in sorted(report.avg_duration_by_energy.items())
+            ]
+            console.print(f"  Avg duration: {' | '.join(parts)}")
+
+        if report.correlation_note:
+            console.print(f"\n  [dim italic]{report.correlation_note}[/]")
+
+
+# --- Knowledge bridges ---
+
+
+@click.group(name="bridge")
+def bridge_group() -> None:
+    """Manage knowledge bridges between domains."""
+
+
+@bridge_group.command(name="add")
+@click.argument("source")
+@click.option("--source-domain", "-s", required=True, help="Source domain (e.g. networking).")
+@click.argument("target")
+@click.option("--target-domain", "-t", required=True, help="Target domain (e.g. python).")
+@click.option("--mapping", "-m", required=True, help="How concepts relate.")
+@click.option(
+    "--quality",
+    "-q",
+    type=click.Choice(["strong", "moderate", "weak"]),
+    default="moderate",
+    help="Bridge quality.",
+)
+def bridge_add(
+    source: str,
+    source_domain: str,
+    target: str,
+    target_domain: str,
+    mapping: str,
+    quality: str,
+) -> None:
+    """Add a knowledge bridge between two concepts.
+
+    Example::
+
+        studyloop bridge add "ECMP" -s networking \\
+            "Spark partitions" -t python -m "Both distribute"
+    """
+    if record_bridge(source, source_domain, target, target_domain, mapping, quality, "student"):
+        console.print(
+            f"[green]Bridge added:[/green] "
+            f"{source} ({source_domain}) \u2192 {target} ({target_domain})"
+        )
+    else:
+        console.print("[red]Failed to add bridge. Check your session database.[/red]")
+
+
+@bridge_group.command(name="list")
+@click.option("--source-domain", "-s", default=None, help="Filter by source domain.")
+@click.option("--target-domain", "-t", default=None, help="Filter by target domain.")
+@click.option("--quality", "-q", default=None, help="Filter by quality.")
+def bridge_list(source_domain: str | None, target_domain: str | None, quality: str | None) -> None:
+    """List knowledge bridges."""
+    bridges = get_bridges(target_domain=target_domain, source_domain=source_domain, quality=quality)
+    if not bridges:
+        console.print("[dim]No bridges found. Use 'studyloop bridge add' to create some.[/dim]")
+        return
+
+    table = Table(title="Knowledge Bridges")
+    table.add_column("Source", style="cyan")
+    table.add_column("Domain")
+    table.add_column("\u2192")
+    table.add_column("Target", style="green")
+    table.add_column("Domain")
+    table.add_column("Mapping")
+    table.add_column("Quality")
+
+    for b in bridges:
+        table.add_row(
+            b["source_concept"],
+            b["source_domain"],
+            "\u2192",
+            b["target_concept"],
+            b["target_domain"],
+            b["mapping"],
+            b["quality"],
+        )
+
+    console.print(table)

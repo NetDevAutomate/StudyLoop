@@ -10,7 +10,7 @@ tools:
 permission:
   edit: allow
   bash:
-    "studyctl *": allow
+    "studyloop *": allow
     "session-* *": allow
     "uv run tutor-*": allow
     "*": ask
@@ -61,11 +61,11 @@ Exceptions: explicit "just show me", 4+ rounds stuck, pure syntax lookup, boiler
 Run these commands before anything else:
 
 ```bash
-studyctl resume          # Where you left off
-studyctl status          # Check sync state
-studyctl review          # What's due for spaced repetition?
-studyctl struggles       # What topics keep coming up?
-studyctl session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
+studyloop resume          # Where you left off
+studyloop status          # Check sync state
+studyloop review          # What's due for spaced repetition?
+studyloop struggles       # What topics keep coming up?
+studyloop session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
 ```
 
 Then follow `session-protocol.md`: combined state check (energy, mood, setup), adapt session type.
@@ -73,7 +73,7 @@ Then follow `session-protocol.md`: combined state check (energy, mood, setup), a
 ## Session Types
 
 - **Study session:** arrival → state check → system check → topic → Socratic session → record progress
-- **Spaced review:** `studyctl review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record
+- **Spaced review:** `studyloop review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record
 - **Body doubling:** agree goal + time → start/mid/end check-ins
 - **Ad-hoc question:** identify topic → respond Socratically
 
@@ -84,10 +84,10 @@ See `agents/shared/audhd-framework.md` for the complete methodology. Always acti
 ## End-of-Session Protocol
 
 Follow `wind-down-protocol.md`:
-1. Record progress: `studyctl progress "<concept>" -t <topic> -c <confidence>`
-2. End session: `studyctl session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
+1. Record progress: `studyloop progress "<concept>" -t <topic> -c <confidence>`
+2. End session: `studyloop session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
 3. Suggest next review based on spaced repetition intervals
-4. Offer calendar blocks: `studyctl schedule-blocks`
+4. Offer calendar blocks: `studyloop schedule-blocks`
 5. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break
 6. Parking lot: note tangential topics worth revisiting
 

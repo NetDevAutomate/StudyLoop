@@ -4,10 +4,10 @@
 
 ```text
 1. Run:
-   studyctl status
-   studyctl review
-   studyctl struggles
-   studyctl wins
+   studyloop status
+   studyloop review
+   studyloop struggles
+   studyloop wins
 
 2. Ask:
    "Energy level 1-10? Tired, wired, or in-between?"
@@ -32,14 +32,14 @@
    - metacognitive checkpoints every 3-5 exchanges
 
 6. Record progress:
-   studyctl progress "<concept>" -t <topic> -c <confidence>
+   studyloop progress "<concept>" -t <topic> -c <confidence>
 ```
 
 ## Spaced Review Session
 
 ```text
 1. Check what is due:
-   studyctl review
+   studyloop review
 
 2. Pick at most 3 topics.
 
@@ -49,7 +49,7 @@
    - ask one "explain it back" question
 
 4. Record confidence:
-   studyctl progress "<concept>" -t <topic> -c <confidence>
+   studyloop progress "<concept>" -t <topic> -c <confidence>
 ```
 
 ## Body Doubling Session
@@ -69,7 +69,7 @@
 ```text
 1. Identify the topic.
 2. Check prior context if useful:
-   studyctl struggles --days 30
+   studyloop struggles --days 30
    session-query search "<topic>"
 3. Respond using Socratic methodology.
 4. Save or record a teaching moment when significant.
@@ -80,8 +80,8 @@
 Use local generation:
 
 ```bash
-studyctl content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --course <course-slug>
-studyctl web
+studyloop content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --course <course-slug>
+studyloop web
 ```
 
 Energy adaptation:
@@ -95,7 +95,7 @@ Energy adaptation:
 1. Record progress:
 
 ```bash
-studyctl progress "<concept>" -t <topic> -c <confidence>
+studyloop progress "<concept>" -t <topic> -c <confidence>
 ```
 
 2. Summarise:
