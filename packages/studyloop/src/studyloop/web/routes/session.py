@@ -342,9 +342,11 @@ class StartSessionRequest(BaseModel):
     transport: str | None = Field(
         default=None,
         description=(
-            "Session transport: 'pty' (default, new path) or 'ttyd' (legacy). "
-            "STUDYLOOP_TRANSPORT env var takes precedence over this field — "
-            "operators can force the legacy path without touching clients."
+            "Session transport: 'pty' (default), 'ttyd' (legacy fallback), or "
+            "'acp' (Agent Client Protocol, Kiro + Gemini only — §2.2). "
+            "STUDYLOOP_TRANSPORT env var forces 'pty' or 'ttyd' regardless of "
+            "this field; 'acp' is body-only to keep the kill-switch semantics "
+            "focused on the safe paths."
         ),
     )
 
@@ -359,13 +361,19 @@ _AGENT_INSTALL_HINTS: dict[str, str] = {
 
 
 def _resolve_transport(body_transport: str | None) -> str:
-    """Decide between 'pty' and 'ttyd'. Env var wins for operator kill-switch."""
+    """Decide between 'pty', 'ttyd', and 'acp'. Env var wins for operator kill-switch.
+
+    The ``STUDYLOOP_TRANSPORT`` env var only accepts ``pty`` or ``ttyd`` —
+    ACP is body-only, intentionally kept out of the operator kill-switch
+    surface because the env var is the "force the legacy / safe path"
+    lever, not a general transport selector.
+    """
     import os
 
     env_override = os.environ.get("STUDYLOOP_TRANSPORT", "").strip().lower()
     if env_override in {"pty", "ttyd"}:
         return env_override
-    if body_transport in {"pty", "ttyd"}:
+    if body_transport in {"pty", "ttyd", "acp"}:
         return body_transport
     return "pty"
 
@@ -416,6 +424,56 @@ def _build_pty_transport(config):  # type: ignore[no-untyped-def]
     )
 
 
+def _build_acp_transport(config):  # type: ignore[no-untyped-def]
+    """Return a zero-arg factory that constructs an ``ACPTransport`` for ``config``.
+
+    Mirrors ``_build_pty_transport`` but builds ACP argv instead of a
+    shell command:
+
+    - Kiro: ``["kiro-cli", "acp"]``
+    - Gemini: ``["gemini", "--acp"]``
+
+    The ``STUDYLOOP_TEST_ACP_CMD`` env var overrides the argv entirely,
+    matching the shape of ``STUDYLOOP_TEST_AGENT_CMD`` on the PTY side.
+    Splits the override with ``shlex.split`` so tests can script real
+    argv (``"python3 /path/to/stub.py"``) without shell expansion.
+    """
+    import shlex
+    import shutil as _shutil
+
+    from studyloop.agent_launcher import AGENTS
+    from studyloop.session.transports.acp import ACPTransport
+
+    adapter = AGENTS[config.agent]
+
+    def _resolve_binary(_agent_name: str) -> str | None:
+        # ACPTransport uses this to fail start() with FileNotFoundError
+        # before the handshake. We consult the adapter's declared binary
+        # since PATH lookup semantics match ``shutil.which`` in the
+        # route's pre-flight 503 guard.
+        return _shutil.which(adapter.binary)
+
+    def _build_argv(_config) -> list[str]:  # type: ignore[no-untyped-def]
+        import os as _os
+
+        test_cmd = _os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+        if test_cmd:
+            return shlex.split(test_cmd)
+        if _config.agent == "kiro":
+            return ["kiro-cli", "acp"]
+        if _config.agent == "gemini":
+            return ["gemini", "--acp"]
+        # Fall back to adapter binary + `acp` subcommand. Any future ACP
+        # agent added to AGENTS should either speak ``<bin> acp`` or
+        # register here explicitly.
+        return [adapter.binary, "acp"]
+
+    return lambda: ACPTransport(
+        resolve_binary=_resolve_binary,
+        build_argv=_build_argv,
+    )
+
+
 class SessionOption(BaseModel):
     """Selectable study target for the web start picker."""
 
@@ -448,6 +506,8 @@ async def start_session(body: StartSessionRequest) -> JSONResponse:
     transport = _resolve_transport(body.transport)
     if transport == "pty":
         return await _start_pty_session(body)
+    if transport == "acp":
+        return await _start_acp_session(body)
     return _start_ttyd_session(body)
 
 
@@ -608,6 +668,162 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
             "energy": body.energy,
             "agent": agent,
             "transport": "pty",
+            "ws_url": f"/api/session/ws?study_session_id={study_id}",
+        },
+        status_code=201,
+    )
+
+
+async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
+    """ACP-backed start path (plan §2.2 — Amendment #10).
+
+    Mirrors ``_start_pty_session`` but drops tmux and PTY-specific
+    adapter steps. Persona and MCP files are NOT written here — ACP
+    agents receive context via ``session/prompt``, not argv; a future
+    refinement may inject the persona as the first prompt, but for
+    §2.2 we let the frontend send it.
+
+    1. Reject if a session is already active (``active.current()``).
+    2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
+    3. DB + session_state writes (no tmux metadata, no persona file).
+    4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
+    5. Return 201 with ``ws_url`` for the client to open.
+    """
+    import os
+    import shutil
+
+    from studyloop.agent_launcher import AGENTS, detect_agents
+    from studyloop.session import active as session_active
+    from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
+
+    # --- Agent resolution ---
+    agent = body.agent
+    if agent and agent not in AGENTS:
+        return JSONResponse({"error": f"Unknown agent: {agent}"}, status_code=400)
+    if not agent:
+        available = detect_agents()
+        if not available:
+            return JSONResponse(
+                {"error": "No AI agent found on this machine"},
+                status_code=503,
+            )
+        agent = available[0]
+
+    adapter = AGENTS[agent]
+    if not shutil.which(adapter.binary):
+        return JSONResponse(
+            {
+                "error": f"Agent '{agent}' binary not found: {adapter.binary}",
+                "agent": agent,
+                "binary": adapter.binary,
+                "install_hint": _AGENT_INSTALL_HINTS.get(
+                    agent,
+                    f"Install the {agent!r} CLI and ensure {adapter.binary!r} is on PATH.",
+                ),
+            },
+            status_code=503,
+        )
+
+    # --- Topic resolution (optional, same as PTY) ---
+    topic_config = None
+    try:
+        from studyloop.logic.topic_resolver import resolve_topic
+        from studyloop.settings import load_settings
+
+        settings = load_settings()
+        if settings.topics:
+            result = resolve_topic(body.topic, settings.topics)
+            topic_config = result.resolved or (result.matches[0] if result.matches else None)
+    except Exception:
+        pass
+
+    # --- DB record ---
+    from studyloop.history import start_study_session
+    from studyloop.output import energy_to_label
+
+    energy_label = energy_to_label(body.energy)
+    study_id = start_study_session(
+        body.topic,
+        energy_label,
+        topic_slug=topic_config.slug if topic_config else None,
+    )
+    if not study_id:
+        return JSONResponse(
+            {"error": "Failed to create session record"},
+            status_code=500,
+        )
+
+    # --- Session dir (for cwd — no persona/MCP files) ---
+    slug = body.topic.lower().replace(" ", "-")[:20]
+    short_id = study_id[:8]
+    session_dir = SESSION_DIR / "sessions" / f"acp-{slug}-{short_id}"
+
+    from studyloop.session.orchestrator import setup_session_dir
+
+    setup_session_dir(session_dir, body.topic)
+
+    # --- Session state (no tmux, no persona_file) ---
+    _ensure_session_dir()
+    now = datetime.now(UTC).isoformat()
+    write_session_state(
+        {
+            "study_session_id": study_id,
+            "topic": body.topic,
+            "energy": body.energy,
+            "energy_label": energy_label,
+            "mode": "focus",
+            "timer_mode": "energy",
+            "started_at": now,
+            "start_time": now,
+            "paused_at": None,
+            "total_paused_seconds": 0,
+            "session_dir": str(session_dir),
+            "agent": agent,
+            "transport": "acp",
+        }
+    )
+    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+    PARKING_FILE.touch(mode=0o600, exist_ok=True)
+
+    # --- Acquire the active-session singleton ---
+    config = SessionConfig(
+        study_session_id=study_id,
+        agent=agent,
+        persona_file="",  # ACP ignores this; kept for Protocol parity.
+        cwd=str(session_dir),
+        env=dict(os.environ),
+        cols=80,
+        rows=24,
+    )
+    factory = _build_acp_transport(config)
+
+    try:
+        await session_active.acquire(config, factory)
+    except SessionAlreadyActiveError:
+        return JSONResponse(
+            {"error": "A session is already active"},
+            status_code=409,
+        )
+    except FileNotFoundError as exc:
+        logger.exception("ACP start failed: binary missing")
+        return JSONResponse(
+            {"error": f"Agent binary not found: {exc}"},
+            status_code=503,
+        )
+    except OSError:
+        logger.exception("ACP start failed: spawn error")
+        return JSONResponse(
+            {"error": "Failed to start ACP agent"},
+            status_code=500,
+        )
+
+    return JSONResponse(
+        {
+            "study_session_id": study_id,
+            "topic": body.topic,
+            "energy": body.energy,
+            "agent": agent,
+            "transport": "acp",
             "ws_url": f"/api/session/ws?study_session_id={study_id}",
         },
         status_code=201,
