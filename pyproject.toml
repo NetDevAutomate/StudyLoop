@@ -1,5 +1,5 @@
 [project]
-name = "socratic-study-mentor"
+name = "studyloop-workspace"
 version = "1.0.0"
 description = "StudyLoop: AuDHD-aware Socratic mentoring with AI session management"
 requires-python = ">=3.12"
@@ -48,28 +48,27 @@ line-length = 100
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "TCH", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["studyctl", "agent_session_tools"]
+known-first-party = ["studyloop", "agent_session_tools"]
 
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 include = [
-    "packages/studyctl/src",
-    "packages/studyctl/tests",
+    "packages/studyloop/src",
+    "packages/studyloop/tests",
     "packages/agent-session-tools/src",
     "packages/agent-session-tools/tests",
 ]
 exclude = [
-    "packages/studyctl/src/studyctl/eval/llm_client.py",
     "packages/agent-session-tools/tests/test_embeddings.py",
     "scripts/capture_tui_screenshot.py",
     "scripts/record-demo.py",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["packages/agent-session-tools/tests", "packages/studyctl/tests"]
+testpaths = ["packages/agent-session-tools/tests", "packages/studyloop/tests"]
 addopts = "--import-mode=importlib -m 'not integration and not e2e'"
-# Multi-package workspace: both packages/studyctl/tests/ and
+# Multi-package workspace: both packages/studyloop/tests/ and
 # packages/agent-session-tools/tests/ have their own conftest.py.
 # Without this, pytest's plugin manager tries to register both under
 # the same implicit name "tests.conftest" and fails with

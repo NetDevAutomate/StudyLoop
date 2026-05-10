@@ -18,7 +18,7 @@ import yaml
 from dotenv import load_dotenv
 
 # Default paths
-CONFIG_DIR = Path.home() / ".config" / "studyctl"
+CONFIG_DIR = Path.home() / ".config" / "studyloop"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 ENV_FILE = CONFIG_DIR / ".env"
 

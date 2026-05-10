@@ -52,12 +52,12 @@ repos:
     entry: bash -c 'cd packages/agent-session-tools && uv run pyright src/'
     pass_filenames: false
     files: ^packages/agent-session-tools/.*\.py$
-  - id: pyright-studyctl
-    name: pyright (studyctl)
+  - id: pyright-studyloop
+    name: pyright (studyloop)
     language: system
-    entry: bash -c 'cd packages/studyctl && uv run pyright src/'
+    entry: bash -c 'cd packages/studyloop && uv run pyright src/'
     pass_filenames: false
-    files: ^packages/studyctl/.*\.py$
+    files: ^packages/studyloop/.*\.py$
   - id: pytest
     name: pytest
     language: system
