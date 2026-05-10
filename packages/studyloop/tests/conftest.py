@@ -17,6 +17,7 @@ These env vars affect only the test process, never user runtime.
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 # These MUST be set before any `from studyloop...` import, because
 # ``studyloop.output`` (and CLI submodules) construct a module-level
@@ -27,3 +28,57 @@ import os
 # keep emitting bold/underline escape codes even under ``NO_COLOR``.
 os.environ["NO_COLOR"] = "1"
 os.environ["TERM"] = "dumb"
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Sequence
+
+    from studyloop.session.transport import SessionConfig, TransportEventT
+
+
+class StubTransport:
+    """In-memory ``AgentSessionTransport`` for unit tests.
+
+    Satisfies the Protocol without spawning a real PTY. Preloaded events
+    are yielded from ``events()``; method calls are recorded on public
+    attributes for assertions.
+
+    Usage::
+
+        stub = StubTransport(events=[Started(agent="claude")])
+        await stub.start(config)
+        async for event in stub.events(): ...
+        assert stub.start_calls == [config]
+    """
+
+    def __init__(self, events: Sequence[TransportEventT] = ()) -> None:
+        self._events: list[TransportEventT] = list(events)
+        self.start_calls: list[SessionConfig] = []
+        self.sent_input: list[bytes] = []
+        self.resize_calls: list[tuple[int, int]] = []
+        self.cancel_calls: int = 0
+        self.end_calls: int = 0
+
+    async def start(self, config: SessionConfig) -> None:
+        self.start_calls.append(config)
+
+    async def send_input(self, data: bytes) -> None:
+        self.sent_input.append(data)
+
+    async def resize(self, cols: int, rows: int) -> None:
+        self.resize_calls.append((cols, rows))
+
+    async def events(self) -> AsyncIterator[TransportEventT]:
+        for event in self._events:
+            yield event
+
+    async def cancel(self) -> None:
+        self.cancel_calls += 1
+
+    async def end(self) -> None:
+        self.end_calls += 1
+
+    async def __aenter__(self) -> StubTransport:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        await self.end()

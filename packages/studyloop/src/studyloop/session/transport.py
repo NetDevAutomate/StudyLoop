@@ -83,6 +83,10 @@ TransportEventT = OutputBytes | Started | Stopped | TransportError | AgentMessag
 class SessionConfig:
     """Collapses start() arguments into one value.
 
+    - study_session_id: caller-assigned session id. Propagated into the
+      session_state.json file by ``session/active.py`` so dashboards/TUI
+      consumers can correlate a live transport to the learner's session.
+      Transports themselves do not read it.
     - agent: adapter name from the registry (not the binary path).
     - persona_file: absolute path to the canonical persona file written
       by `adapter.setup()`. The transport does NOT re-resolve this.
@@ -93,6 +97,7 @@ class SessionConfig:
       before the child writes its first output.
     """
 
+    study_session_id: str
     agent: str
     persona_file: str
     cwd: str
