@@ -330,22 +330,28 @@ class TestStartSessionAPI:
     """
 
     def test_start_rejects_active_session(self, client: TestClient) -> None:
+        """Legacy-path 409 when a tmux+ttyd session is already live."""
         with (
             patch("studyloop.tmux.is_tmux_available", return_value=True),
             patch("studyloop.web.routes.session.is_session_active", return_value=True),
         ):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5},
+                json={"topic": "Python", "energy": 5, "transport": "ttyd"},
             )
         assert resp.status_code == 409
         assert "already active" in resp.json()["error"]
 
     def test_start_rejects_no_tmux(self, client: TestClient) -> None:
+        """transport=ttyd requires tmux — 503 when it's unavailable.
+
+        The default (pty) path no longer consults tmux, so this assertion
+        is specific to the legacy ttyd opt-in.
+        """
         with patch("studyloop.tmux.is_tmux_available", return_value=False):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5},
+                json={"topic": "Python", "energy": 5, "transport": "ttyd"},
             )
         assert resp.status_code == 503
         assert "tmux" in resp.json()["error"]
@@ -357,7 +363,7 @@ class TestStartSessionAPI:
         ):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5, "agent": "nonexistent"},
+                json={"topic": "Python", "energy": 5, "agent": "nonexistent", "transport": "ttyd"},
             )
         assert resp.status_code == 400
         assert "Unknown agent" in resp.json()["error"]
@@ -377,7 +383,7 @@ class TestStartSessionAPI:
         ):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5, "agent": "gemini"},
+                json={"topic": "Python", "energy": 5, "agent": "gemini", "transport": "ttyd"},
             )
         assert resp.status_code == 503
         error = resp.json()["error"]
