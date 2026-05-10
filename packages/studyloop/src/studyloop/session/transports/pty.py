@@ -81,7 +81,7 @@ _SIGKILL_GRACE_S = 1.5
 # Blocker B6.
 
 _pid_callbacks: dict[int, Callable[[int], None]] = {}
-_sigchld_registered = False
+_registered_loop: asyncio.AbstractEventLoop | None = None
 
 
 def _sigchld_reaper() -> None:
@@ -104,13 +104,24 @@ def _sigchld_reaper() -> None:
 
 
 def _ensure_sigchld_registered() -> None:
-    """Register the SIGCHLD handler on the running event loop, once."""
-    global _sigchld_registered
-    if _sigchld_registered:
-        return
+    """Install the SIGCHLD handler on the currently-running event loop.
+
+    The handler is installed once per event loop — safe for production
+    (single long-running loop, so this is effectively a one-time install)
+    and for tests (pytest-asyncio creates a fresh loop per test; without
+    re-registration, exits from the second test onward are silently lost).
+
+    The prior design tracked install state with a single bool, which went
+    stale as soon as the loop was replaced. We now remember the loop we
+    registered against and re-register whenever ``get_running_loop()``
+    returns a different object.
+    """
+    global _registered_loop
     loop = asyncio.get_running_loop()
+    if _registered_loop is loop:
+        return
     loop.add_signal_handler(signal.SIGCHLD, _sigchld_reaper)
-    _sigchld_registered = True
+    _registered_loop = loop
 
 
 def _register_pid(pid: int, callback: Callable[[int], None]) -> None:
@@ -210,6 +221,7 @@ class PTYTransport:
         self._build_launch_cmd = build_launch_cmd
         self._state: _Running | None = None
         self._ended = False
+        self._cancel_requested = False
 
     # ---- AgentSessionTransport ---------------------------------------------
 
@@ -266,7 +278,12 @@ class PTYTransport:
                 returncode = -os.WTERMSIG(wait_status)
             else:
                 returncode = None
-            self._put_event(Stopped(returncode=returncode, reason="exit"))
+            # cancel() sets _cancel_requested before signalling; the child's
+            # exit would otherwise be reported as a natural "exit" from the
+            # UI's point of view. Flag flip lets the single Stopped event
+            # carry the right reason without us needing to emit two.
+            reason = "cancel" if self._cancel_requested else "exit"
+            self._put_event(Stopped(returncode=returncode, reason=reason))
             self._put_event(None)  # sentinel ends events()
 
         _register_pid(pid, on_exit)
@@ -320,19 +337,21 @@ class PTYTransport:
         state = self._state
         if state is None or self._ended:
             return
+        # Flip the flag BEFORE signalling so the SIGCHLD handler's on_exit
+        # sees it and emits Stopped(reason="cancel") — not "exit". Double-
+        # emitting here races the handler and trips callers that expect
+        # exactly one Stopped before the event stream closes.
+        self._cancel_requested = True
         try:
             os.kill(state.pid, signal.SIGTERM)
         except ProcessLookupError:
             return
-        # Give the child a moment to exit cleanly. If SIGCHLD fires during
-        # the wait, the reader task will see the fd close and exit.
+        # Give the child a moment to handle SIGTERM. If it's still alive
+        # after the grace window, escalate to SIGKILL. Either way the
+        # SIGCHLD reaper emits the single Stopped event when it fires.
         await asyncio.sleep(_SIGKILL_GRACE_S)
         with contextlib.suppress(ProcessLookupError):
             os.kill(state.pid, signal.SIGKILL)
-        # Downgrade the Stopped reason emitted by on_exit from "exit" to
-        # "cancel" — but only if nothing has been emitted yet.
-        self._put_event(Stopped(returncode=None, reason="cancel"))
-        self._put_event(None)
 
     async def end(self) -> None:
         if self._ended:
