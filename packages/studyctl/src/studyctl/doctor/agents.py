@@ -18,7 +18,9 @@ from pathlib import Path
 from studyctl.doctor.models import CheckResult
 from studyctl.installers import find_repo_root
 
-MANIFEST_URL = "https://raw.githubusercontent.com/NetDevAutomate/socratic-study-mentor/main/agents/manifest.json"
+MANIFEST_URL = (
+    "https://raw.githubusercontent.com/Hookey-Street-Software/StudyLoop/main/agents/manifest.json"
+)
 
 TOOL_AGENTS: dict[str, tuple[str, str]] = {
     "claude": ("claude", "~/.claude/commands/socratic-mentor.md"),
