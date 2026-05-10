@@ -137,8 +137,11 @@ class TestXtermPickerDefaults:
         )
         assert "pty" in values
         assert "ttyd" in values
-        # Dead ACP option must be gone (wired removal in §1.7).
-        assert "acp" not in values
+        # PR-B re-enabled the ACP option gated by selectedAgentSupportsAcp();
+        # it's present in the DOM but hidden via x-show when no ACP-capable
+        # agent is selected. See test_web_session_lifecycle.py::TestTransportAcpOption
+        # for the visibility coverage.
+        assert "acp" in values
 
 
 class TestCascadePicker:

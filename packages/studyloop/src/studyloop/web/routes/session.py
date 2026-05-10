@@ -451,6 +451,18 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
         # before the handshake. We consult the adapter's declared binary
         # since PATH lookup semantics match ``shutil.which`` in the
         # route's pre-flight 503 guard.
+        #
+        # When STUDYLOOP_TEST_ACP_CMD is set, the argv is a full command
+        # (e.g. "python3 /path/to/stub.py"); return the first token
+        # resolved so ``asyncio.create_subprocess_exec`` gets a real
+        # path — ``shutil.which`` on an absolute path returns it
+        # unchanged when executable.
+        import os as _os
+
+        test_cmd = _os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+        if test_cmd:
+            first = shlex.split(test_cmd)[0] if test_cmd.strip() else ""
+            return _shutil.which(first) or first or None
         return _shutil.which(adapter.binary)
 
     def _build_argv(_config) -> list[str]:  # type: ignore[no-untyped-def]
@@ -710,7 +722,13 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
         agent = available[0]
 
     adapter = AGENTS[agent]
-    if not shutil.which(adapter.binary):
+    # STUDYLOOP_TEST_ACP_CMD bypasses the binary check entirely — the test
+    # stub (tests/_stub_acp_agent.py) is the argv we spawn, so the real
+    # Kiro / Gemini binary doesn't need to be installed. Parity with the
+    # PTY test hatch behaviour (which dodges the check by routing every
+    # launch through /bin/sh anyway).
+    test_acp_cmd = os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+    if not test_acp_cmd and not shutil.which(adapter.binary):
         return JSONResponse(
             {
                 "error": f"Agent '{agent}' binary not found: {adapter.binary}",
