@@ -206,46 +206,7 @@ class TestACPTransportSkeleton:
         # static type checkers would reject this assignment.
         _: AgentSessionTransport = transport
 
-    def test_methods_raise_not_implemented(self) -> None:
-        """Phase 2 hasn't landed yet — the skeleton must fail loudly
-        when used, not return silently wrong data."""
-        import asyncio
-        import inspect
-
-        transport = ACPTransport(
-            resolve_binary=lambda name: "/bin/true",
-            build_argv=lambda cfg: ["/bin/true"],
-        )
-
-        async def _probe() -> None:
-            # start / cancel / end / send_input / events all should raise.
-            from studyloop.session.transport import SessionConfig
-
-            cfg = SessionConfig(
-                study_session_id="x",
-                agent="kiro",
-                persona_file="",
-                cwd="/tmp",
-                env={},
-                cols=80,
-                rows=24,
-            )
-            with pytest.raises(NotImplementedError):
-                await transport.start(cfg)
-            with pytest.raises(NotImplementedError):
-                await transport.send_input(b"hi")
-            with pytest.raises(NotImplementedError):
-                await transport.cancel()
-            with pytest.raises(NotImplementedError):
-                await transport.end()
-            with pytest.raises(NotImplementedError):
-                events = transport.events()
-                # events() returns an async iterator — calling it
-                # should raise immediately because the body is the
-                # raise statement, not a yield.
-                if inspect.iscoroutine(events):
-                    await events
-            # resize is a deliberate no-op, not a stub.
-            await transport.resize(80, 24)
-
-        asyncio.run(_probe())
+    # NOTE: the former ``test_methods_raise_not_implemented`` guard was
+    # removed when ACPTransport's skeleton landed behaviour. End-to-end
+    # coverage now lives in ``test_acp_transport.py`` against the
+    # scripted StubACPAgent.
