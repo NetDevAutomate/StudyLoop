@@ -339,6 +339,70 @@ class StartSessionRequest(BaseModel):
     topic: str
     energy: int = Field(default=5, ge=1, le=10)
     agent: str | None = None
+    transport: str | None = Field(
+        default=None,
+        description=(
+            "Session transport: 'pty' (default, new path) or 'ttyd' (legacy). "
+            "STUDYLOOP_TRANSPORT env var takes precedence over this field — "
+            "operators can force the legacy path without touching clients."
+        ),
+    )
+
+
+_AGENT_INSTALL_HINTS: dict[str, str] = {
+    "claude": "Install the Claude Code CLI: https://docs.anthropic.com/en/docs/claude-code",
+    "codex": "Install codex: npm i -g @openai/codex (or see https://github.com/openai/codex).",
+    "gemini": ("Install the Gemini CLI: https://github.com/google-gemini/gemini-cli#installation"),
+    "kiro": "Install Kiro CLI: https://kiro.dev/docs/cli",
+    "opencode": "Install OpenCode: https://opencode.ai/docs/install",
+}
+
+
+def _resolve_transport(body_transport: str | None) -> str:
+    """Decide between 'pty' and 'ttyd'. Env var wins for operator kill-switch."""
+    import os
+
+    env_override = os.environ.get("STUDYLOOP_TRANSPORT", "").strip().lower()
+    if env_override in {"pty", "ttyd"}:
+        return env_override
+    if body_transport in {"pty", "ttyd"}:
+        return body_transport
+    return "pty"
+
+
+def _build_pty_transport(config):  # type: ignore[no-untyped-def]
+    """Return a zero-arg factory that constructs a ``PTYTransport`` for ``config``.
+
+    Split out from ``_start_pty_session`` so tests can monkeypatch the
+    whole factory without spawning a real PTY child. The production
+    factory wraps the adapter's shell-string ``launch_cmd`` in
+    ``/bin/sh -c``, since ``os.execvpe`` needs argv and our adapters
+    return shell strings (with pipes, ``&&``, etc).
+    """
+    import shutil as _shutil
+    from pathlib import Path
+
+    from studyloop.agent_launcher import AGENTS
+    from studyloop.session.transports.pty import PTYTransport
+
+    adapter = AGENTS[config.agent]
+
+    def _resolve_binary(_agent_name: str) -> str | None:
+        # PTYTransport uses this to set the child's argv[0]. We pass argv
+        # directly via build_launch_cmd, so the resolved binary is just
+        # the shell — it does NOT need to match the agent binary.
+        return _shutil.which("sh") or "/bin/sh"
+
+    def _build_launch_cmd(_config) -> list[str]:  # type: ignore[no-untyped-def]
+        claude_project_key = str(_config.cwd).replace("/", "-").lstrip("-")
+        is_resuming = (Path.home() / ".claude" / "projects" / claude_project_key).exists()
+        shell_cmd = adapter.launch_cmd(Path(_config.persona_file), is_resuming)
+        return ["/bin/sh", "-c", shell_cmd]
+
+    return lambda: PTYTransport(
+        resolve_binary=_resolve_binary,
+        build_launch_cmd=_build_launch_cmd,
+    )
 
 
 class SessionOption(BaseModel):
@@ -355,9 +419,191 @@ class SessionOption(BaseModel):
 def start_session(body: StartSessionRequest) -> JSONResponse:
     """Start a new study session from the web UI.
 
-    Creates the DB record, tmux environment, and ttyd process.
-    The session runs headless — the user interacts via the browser
-    (SSE activity feed + ttyd terminal iframe).
+    Two transports are supported:
+
+    - ``pty`` (default, plan §1.5b) — spawns the agent directly via
+      ``PTYTransport`` + ``active.acquire`` and returns a ``ws_url``
+      that the browser feeds to ``/api/session/ws``. No tmux, no ttyd.
+    - ``ttyd`` (legacy, plan §1.9 fallback) — runs the original
+      tmux+ttyd flow for one deprecation window. Enable explicitly via
+      ``{"transport": "ttyd"}`` in the body or by exporting
+      ``STUDYLOOP_TRANSPORT=ttyd``.
+    """
+    transport = _resolve_transport(body.transport)
+    if transport == "pty":
+        return _start_pty_session(body)
+    return _start_ttyd_session(body)
+
+
+def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
+    """PTY-backed start path — no tmux, no ttyd.
+
+    1. Reject if a session is already active (``active.current()``).
+    2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
+    3. Persona + DB + session_state writes (shared with legacy).
+    4. ``active.acquire(config, factory)`` — atomic under asyncio.Lock.
+    5. Return 201 with ``ws_url`` for the client to open.
+    """
+    import asyncio as _asyncio
+    import os
+    import shutil
+
+    from studyloop.agent_launcher import AGENTS, detect_agents
+    from studyloop.session import active as session_active
+    from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
+
+    # --- Agent resolution ---
+    agent = body.agent
+    if agent and agent not in AGENTS:
+        return JSONResponse({"error": f"Unknown agent: {agent}"}, status_code=400)
+    if not agent:
+        available = detect_agents()
+        if not available:
+            return JSONResponse(
+                {"error": "No AI agent found on this machine"},
+                status_code=503,
+            )
+        agent = available[0]
+
+    adapter = AGENTS[agent]
+    if not shutil.which(adapter.binary):
+        return JSONResponse(
+            {
+                "error": f"Agent '{agent}' binary not found: {adapter.binary}",
+                "agent": agent,
+                "binary": adapter.binary,
+                "install_hint": _AGENT_INSTALL_HINTS.get(
+                    agent,
+                    f"Install the {agent!r} CLI and ensure {adapter.binary!r} is on PATH.",
+                ),
+            },
+            status_code=503,
+        )
+
+    # --- Topic resolution (optional) ---
+    topic_config = None
+    try:
+        from studyloop.logic.topic_resolver import resolve_topic
+        from studyloop.settings import load_settings
+
+        settings = load_settings()
+        if settings.topics:
+            result = resolve_topic(body.topic, settings.topics)
+            topic_config = result.resolved or (result.matches[0] if result.matches else None)
+    except Exception:
+        pass
+
+    # --- DB record ---
+    from studyloop.history import start_study_session
+    from studyloop.output import energy_to_label
+
+    energy_label = energy_to_label(body.energy)
+    study_id = start_study_session(
+        body.topic,
+        energy_label,
+        topic_slug=topic_config.slug if topic_config else None,
+    )
+    if not study_id:
+        return JSONResponse(
+            {"error": "Failed to create session record"},
+            status_code=500,
+        )
+
+    # --- Session dir + persona (no tmux) ---
+    slug = body.topic.lower().replace(" ", "-")[:20]
+    short_id = study_id[:8]
+    session_dir = SESSION_DIR / "sessions" / f"pty-{slug}-{short_id}"
+
+    from studyloop.agent_launcher import build_canonical_persona
+    from studyloop.session.orchestrator import setup_session_dir
+
+    setup_session_dir(session_dir, body.topic)
+    canonical = build_canonical_persona("focus", body.topic, body.energy)
+    persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+
+    from studyloop.history.sessions import update_persona_hash
+
+    update_persona_hash(study_id, persona_hash)
+
+    persona_file = adapter.setup(canonical, session_dir)
+    if adapter.mcp_setup:
+        adapter.mcp_setup(session_dir)
+
+    # --- Session state (no tmux metadata) ---
+    _ensure_session_dir()
+    now = datetime.now(UTC).isoformat()
+    write_session_state(
+        {
+            "study_session_id": study_id,
+            "topic": body.topic,
+            "energy": body.energy,
+            "energy_label": energy_label,
+            "mode": "focus",
+            "timer_mode": "energy",
+            "started_at": now,
+            "start_time": now,
+            "paused_at": None,
+            "total_paused_seconds": 0,
+            "persona_file": str(persona_file),
+            "session_dir": str(session_dir),
+            "agent": agent,
+            "persona_hash": persona_hash,
+            "transport": "pty",
+        }
+    )
+    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+    PARKING_FILE.touch(mode=0o600, exist_ok=True)
+
+    # --- Acquire the active-session singleton ---
+    config = SessionConfig(
+        study_session_id=study_id,
+        agent=agent,
+        persona_file=str(persona_file),
+        cwd=str(session_dir),
+        env=dict(os.environ),
+        cols=80,
+        rows=24,
+    )
+    factory = _build_pty_transport(config)
+
+    try:
+        _asyncio.run(session_active.acquire(config, factory))
+    except SessionAlreadyActiveError:
+        return JSONResponse(
+            {"error": "A session is already active"},
+            status_code=409,
+        )
+    except FileNotFoundError as exc:
+        logger.exception("PTY start failed: binary missing")
+        return JSONResponse(
+            {"error": f"Agent binary not found: {exc}"},
+            status_code=503,
+        )
+    except OSError:
+        logger.exception("PTY start failed: fork/exec error")
+        return JSONResponse(
+            {"error": "Failed to start agent PTY"},
+            status_code=500,
+        )
+
+    return JSONResponse(
+        {
+            "study_session_id": study_id,
+            "topic": body.topic,
+            "energy": body.energy,
+            "agent": agent,
+            "transport": "pty",
+            "ws_url": f"/api/session/ws?study_session_id={study_id}",
+        },
+        status_code=201,
+    )
+
+
+def _start_ttyd_session(body: StartSessionRequest) -> JSONResponse:
+    """Legacy tmux+ttyd start path (plan §1.9 emergency fallback).
+
+    Kept as-is to guarantee a deprecation window. New development should
+    target the PTY path above.
     """
     import os
     import shutil
