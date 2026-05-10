@@ -1,0 +1,75 @@
+"""Smoke tests for the vendored xterm.js assets (§1.6).
+
+Asserts that xterm.js + fit/webgl addons + xterm.css exist on disk and
+are referenced from ``web/static/index.html``. Catches the regression
+where one of the vendor files is deleted or the index tag is dropped
+during a refactor — cheap to assert, would otherwise only surface as
+a blank terminal pane in the browser.
+
+This test does NOT exercise the terminal itself (that's §1.7 with the
+Alpine component). It's a pure file-existence + reference check.
+
+Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.6
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+STATIC_DIR = Path(__file__).resolve().parents[1] / "src" / "studyloop" / "web" / "static"
+
+VENDOR_JS = STATIC_DIR / "vendor" / "js"
+VENDOR_CSS = STATIC_DIR / "vendor" / "css"
+INDEX_HTML = STATIC_DIR / "index.html"
+
+# Keep these in sync with the versions pinned in index.html. Bumping a
+# vendored file is a two-line change: drop the new asset, update the
+# version here.
+EXPECTED_JS = {
+    "xterm-6.0.0.js",
+    "xterm-addon-fit-0.11.0.js",
+    "xterm-addon-webgl-0.19.0.js",
+}
+EXPECTED_CSS = {"xterm-6.0.0.css"}
+
+
+class TestVendorFilesExist:
+    @pytest.mark.parametrize("filename", sorted(EXPECTED_JS))
+    def test_js_file_exists(self, filename: str) -> None:
+        path = VENDOR_JS / filename
+        assert path.exists(), f"Missing vendored JS asset: {path}"
+        # UMD bundles should be non-trivial in size. If one shrinks to
+        # zero bytes it's usually a broken download that slipped through.
+        assert path.stat().st_size > 1000, f"Suspiciously small asset: {path}"
+
+    @pytest.mark.parametrize("filename", sorted(EXPECTED_CSS))
+    def test_css_file_exists(self, filename: str) -> None:
+        path = VENDOR_CSS / filename
+        assert path.exists(), f"Missing vendored CSS asset: {path}"
+        assert path.stat().st_size > 500, f"Suspiciously small asset: {path}"
+
+
+class TestIndexReferencesVendor:
+    def test_index_references_all_vendor_assets(self) -> None:
+        """Every expected vendor filename must appear verbatim in index.html."""
+        html = INDEX_HTML.read_text(encoding="utf-8")
+        for name in EXPECTED_JS | EXPECTED_CSS:
+            assert name in html, f"index.html does not reference {name}"
+
+    def test_index_has_xterm_css_link_tag(self) -> None:
+        html = INDEX_HTML.read_text(encoding="utf-8")
+        assert "/vendor/css/xterm-6.0.0.css" in html
+        assert "<link" in html.split("/vendor/css/xterm-6.0.0.css")[0].splitlines()[-1]
+
+    def test_xterm_umd_bundles_load_in_correct_order(self) -> None:
+        """fit and webgl addons must load AFTER xterm.js — they reference
+        the xterm UMD globals. A transposed order would leave FitAddon
+        unable to find the Terminal class."""
+        html = INDEX_HTML.read_text(encoding="utf-8")
+        xterm_pos = html.index("xterm-6.0.0.js")
+        fit_pos = html.index("xterm-addon-fit-0.11.0.js")
+        webgl_pos = html.index("xterm-addon-webgl-0.19.0.js")
+        assert xterm_pos < fit_pos
+        assert xterm_pos < webgl_pos

@@ -10,12 +10,20 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+  <!-- xterm.js base stylesheet (loaded but not wired until §1.7 Alpine component) -->
+  <link rel="stylesheet" href="/vendor/css/xterm-6.0.0.css">
   <style>[x-cloak] { display: none !important; }</style>
   <!-- HTMX + SSE extension (vendored for offline PWA) -->
   <script src="/vendor/js/htmx-2.0.4.min.js"></script>
   <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
   <!-- Alpine.js (vendored for offline PWA) -->
   <script defer src="/vendor/js/alpine-3.14.8.min.js"></script>
+  <!-- xterm.js + fit + webgl addons (vendored; wired in §1.7). UMD globals:
+       Terminal on window.Terminal, FitAddon on window.FitAddon, WebglAddon
+       on window.WebglAddon.addons.webgl (UMD exports are namespaced). -->
+  <script defer src="/vendor/js/xterm-6.0.0.js"></script>
+  <script defer src="/vendor/js/xterm-addon-fit-0.11.0.js"></script>
+  <script defer src="/vendor/js/xterm-addon-webgl-0.19.0.js"></script>
 </head>
 <body x-data x-init="$store.nav.init()">
   <header>
