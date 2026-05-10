@@ -101,12 +101,6 @@ echo ""
 printf "${BOLD}${GREEN}Installation complete!${NC}\n"
 echo ""
 
-if command -v brew >/dev/null 2>&1; then
-  echo "Homebrew detected. Preferred user install path:"
-  echo "  brew install NetDevAutomate/studyctl/studyctl"
-  echo ""
-fi
-
 if ! $NON_INTERACTIVE; then
   echo "Next steps:"
   echo "  1. Run 'studyctl setup' to create or update ~/.config/studyctl/config.yaml"

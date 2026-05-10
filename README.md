@@ -4,7 +4,6 @@
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![PyPI](https://img.shields.io/pypi/v/studyctl)
 ![CI](https://github.com/NetDevAutomate/socratic-study-mentor/actions/workflows/ci.yml/badge.svg)
 
 ## What Does It Do?
@@ -21,8 +20,11 @@ Built by a neurodivergent learner transitioning from networking to data engineer
 ## Quick Start
 
 ```bash
-# Install (preferred on macOS)
-brew install NetDevAutomate/studyctl/studyctl
+# Install from source (no PyPI release)
+git clone https://github.com/NetDevAutomate/socratic-study-mentor studyloop
+cd studyloop
+uv sync --all-packages
+uv tool install ./packages/studyctl
 
 # Configure
 studyctl setup              # Interactive 3-question wizard
