@@ -12,9 +12,9 @@ StudyLoop mentor integrated with Obsidian, local quiz/flashcard generation, shar
 At the start of every study interaction, run these in order:
 
 ```bash
-studyctl status          # Check sync state and pending changes
-studyctl review          # Check spaced repetition — what's due?
-studyctl struggles       # What topics keep coming up?
+studyloop status          # Check sync state and pending changes
+studyloop review          # Check spaced repetition — what's due?
+studyloop struggles       # What topics keep coming up?
 ```
 
 Then assess:
@@ -25,7 +25,7 @@ Then assess:
 
 ## Spaced Repetition Schedule
 
-`studyctl review` checks session history to determine what's due:
+`studyloop review` checks session history to determine what's due:
 
 | Days Since Study | Review Type | Teach-Back Integration |
 |---|---|---|
@@ -46,7 +46,7 @@ Search past sessions for context before teaching:
 session-query search "strategy pattern"
 
 # Check how often a topic comes up (struggle detection)
-studyctl struggles --days 30
+studyloop struggles --days 30
 ```
 
 Use this to adapt: "I see you've asked about Spark partitioning in 5 sessions. Let's try a different angle — think of it like ECMP routing."
@@ -55,52 +55,52 @@ Use this to adapt: "I see you've asked about Spark partitioning in 5 sessions. L
 
 ```bash
 # Source & status
-studyctl content discover        # Preview configured study sources
-studyctl status                  # Show sync state
+studyloop content discover        # Preview configured study sources
+studyloop status                  # Show sync state
 
 # Spaced repetition & history
-studyctl review                  # What's due for review?
-studyctl struggles               # Recurring struggle topics
+studyloop review                  # What's due for review?
+studyloop struggles               # Recurring struggle topics
 
 # Teach-back scoring
-studyctl teachback "concept" -t topic --score "3,3,4,3,2" --type structured --angle "bloom_apply"
-studyctl teachback-history "concept"
+studyloop teachback "concept" -t topic --score "3,3,4,3,2" --type structured --angle "bloom_apply"
+studyloop teachback-history "concept"
 
 # Knowledge bridges
-studyctl bridge add "source" "target" -s networking -t spark -m "why they map"
-studyctl bridge list -s networking
+studyloop bridge add "source" "target" -s networking -t spark -m "why they map"
+studyloop bridge list -s networking
 
 # Local quiz and flashcard generation
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 
 # Quiz & flashcard generation from Obsidian notes
-studyctl content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --course <course-slug>
+studyloop content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --course <course-slug>
 
 # Progress tracking
 uv run tutor-progress
 uv run tutor-checkpoint code --skill <name>
 
 # Cross-machine sync
-studyctl state pull              # Get latest from hub
-studyctl state push              # Push to hub
+studyloop state pull              # Get latest from hub
+studyloop state push              # Push to hub
 
 # Scheduling
-studyctl schedule list           # Show active jobs
-studyctl schedule install        # Install all default jobs
+studyloop schedule list           # Show active jobs
+studyloop schedule install        # Install all default jobs
 ```
 
 ## Quiz & Flashcard Generation from Obsidian Notes
 
-Generate quizzes and flashcards directly from Obsidian study notes using `studyctl content generate-cards`. It writes the same JSON format consumed by `studyctl web`.
+Generate quizzes and flashcards directly from Obsidian study notes using `studyloop content generate-cards`. It writes the same JSON format consumed by `studyloop web`.
 
 ```bash
 # Full local pipeline: notes -> quiz + flashcards
-studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 
 # Skip quiz or flashcards individually
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```
 
 **What it generates per source:** quiz JSON and flashcard JSON under `content.base_path/<course>/`.
@@ -131,12 +131,12 @@ studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
 
 When a session is ending (student signals or 90+ min elapsed), follow `wind-down-protocol.md`:
 
-1. **Record progress** for each concept: `studyctl progress "<concept>" -t <topic> -c <confidence>`
+1. **Record progress** for each concept: `studyloop progress "<concept>" -t <topic> -c <confidence>`
 2. **Summarise** key concepts and teaching moments
 3. **Surface parking lot** items; offer to schedule them
 4. **Consolidation guidance**: Explain brain replay science (first time) or brief reminder (subsequent). Give concrete first step: "Stand up. Walk to the kitchen."
 5. **Next session suggestion**: Time-of-day aware, reference upcoming spaced repetition reviews
-6. **Offer calendar blocks**: `studyctl schedule-blocks --start <time>`
+6. **Offer calendar blocks**: `studyloop schedule-blocks --start <time>`
 
 ## References
 

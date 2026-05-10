@@ -28,7 +28,7 @@ uv tool install "./packages/agent-session-tools[tts]" --force
       "mcpServers": {
         "speaker": {
           "command": "uvx",
-          "args": ["--from", "mcp[cli]", "mcp", "run", "/path/to/socratic-study-mentor/agents/mcp/study-speak-server.py"]
+          "args": ["--from", "mcp[cli]", "mcp", "run", "/path/to/studyloop/agents/mcp/study-speak-server.py"]
         }
       }
     }
@@ -119,22 +119,22 @@ npm install -g @anthropic/mcp-google-calendar
 
 Requires a Google Cloud project with Calendar API enabled. See [setup guide](https://github.com/galacoder/mcp-google-calendar#setup).
 
-## studyctl-mcp (Session DB Tools)
+## studyloop-mcp (Session DB Tools)
 
-The `studyctl-mcp` server exposes 10 MCP tools for courses, backlog, and progress tracking. It's registered as a Python entry point and runs via stdio.
+The `studyloop-mcp` server exposes 10 MCP tools for courses, backlog, and progress tracking. It's registered as a Python entry point and runs via stdio.
 
 **Start manually (for testing):**
 ```bash
-uv run --project packages/studyctl studyctl-mcp
+uv run --project packages/studyloop studyloop-mcp
 ```
 
 **Agent config** — already included in `agents/claude/mcp.json`. For other agents, add:
 ```json
 {
   "mcpServers": {
-    "studyctl-mcp": {
+    "studyloop-mcp": {
       "command": "uv",
-      "args": ["run", "--project", "/path/to/packages/studyctl", "studyctl-mcp"]
+      "args": ["run", "--project", "/path/to/packages/studyloop", "studyloop-mcp"]
     }
   }
 }
@@ -158,11 +158,11 @@ uv run --project packages/studyctl studyctl-mcp
 ## Suggested Study Workflow
 
 ```
-1. Morning: Cowork scheduled task runs `studyctl review`
+1. Morning: Cowork scheduled task runs `studyloop review`
 2. Agent creates calendar time blocks for due topics
 3. Apple Reminders fires notification: "Time to study Python decorators"
 4. You open kiro-cli or Claude Code with study-mentor agent
 5. Agent checks energy level, adapts session accordingly
-6. After session: agent records progress via `studyctl progress`
+6. After session: agent records progress via `studyloop progress`
 7. Session exported to DB automatically (via scheduled session-export)
 ```

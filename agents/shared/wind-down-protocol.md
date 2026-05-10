@@ -37,7 +37,7 @@ Standard end-of-session tasks from session-protocol.md:
 
 1. Record progress for each concept covered:
    ```bash
-   studyctl progress "<concept>" -t <topic> -c <confidence>
+   studyloop progress "<concept>" -t <topic> -c <confidence>
    ```
 
 2. Surface parking lot items:
@@ -133,7 +133,7 @@ The wind-down phase is the ideal moment to set expectations for the next review:
 
 1. Name the concepts covered and their review schedule
 2. Suggest specific times based on the schedule
-3. Offer calendar blocks: `studyctl schedule-blocks --start <time>`
+3. Offer calendar blocks: `studyloop schedule-blocks --start <time>`
 4. Frame the next session as a continuation, not a restart: *"Next time we'll build on [concept] — the hard part is done."*
 
 ## Key Research References

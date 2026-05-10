@@ -49,7 +49,7 @@ Follow the full protocol in `teach-back-protocol.md`.
    - "When would this approach fail?" (boundary knowledge)
    - "Give me an analogy from [their domain]" (structural mapping requires real understanding)
    - "Here's a slightly different problem — how does the same principle apply?" (near transfer)
-5. Record: `studyctl teachback "[concept]" -t [topic] --score "[scores]" --type [type] --angle "[angle]"`
+5. Record: `studyloop teachback "[concept]" -t [topic] --score "[scores]" --type [type] --angle "[angle]"`
 
 **Vary the angle every review.** Never ask the same question twice. Rotate through Bloom's levels, contexts, modalities, and directions. Track `angles_used` per concept.
 

@@ -1,0 +1,73 @@
+"""Optional dependency checks via importlib.util.find_spec()."""
+
+from __future__ import annotations
+
+import importlib.util
+
+from studyloop.doctor.models import CheckResult
+
+OPTIONAL_DEPS: dict[str, tuple[str, str]] = {
+    "pymupdf": ("PyMuPDF", "uv pip install pymupdf"),
+    "notebooklm": ("notebooklm-py", "uv pip install notebooklm-py"),
+    "sentence_transformers": ("sentence-transformers", "uv pip install sentence-transformers"),
+    "kokoro_onnx": ("kokoro-onnx", "uv pip install kokoro-onnx"),
+    "textual": ("Textual (TUI)", "uv pip install studyloop[tui]"),
+    "fastapi": ("FastAPI (web)", "uv pip install studyloop[web]"),
+}
+
+
+def check_system_binaries() -> list[CheckResult]:
+    """Check for optional system binaries (not Python packages)."""
+    import shutil
+
+    results: list[CheckResult] = []
+
+    ttyd_path = shutil.which("ttyd")
+    if ttyd_path:
+        results.append(
+            CheckResult(
+                "deps",
+                "bin_ttyd",
+                "pass",
+                f"ttyd installed ({ttyd_path})",
+                "",
+                False,
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "deps",
+                "bin_ttyd",
+                "info",
+                "ttyd not installed (optional — enables web terminal)",
+                "brew install ttyd",
+                False,
+            )
+        )
+
+    return results
+
+
+def check_optional_deps() -> list[CheckResult]:
+    results: list[CheckResult] = []
+    for import_name, (display_name, install_cmd) in OPTIONAL_DEPS.items():
+        spec = importlib.util.find_spec(import_name)
+        if spec is not None:
+            results.append(
+                CheckResult(
+                    "deps", f"dep_{import_name}", "pass", f"{display_name} installed", "", False
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "deps",
+                    f"dep_{import_name}",
+                    "info",
+                    f"{display_name} not installed (optional)",
+                    install_cmd,
+                    False,
+                )
+            )
+    return results
