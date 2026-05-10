@@ -141,6 +141,104 @@ class TestXtermPickerDefaults:
         assert "acp" not in values
 
 
+class TestCascadePicker:
+    """Course → lesson cascade (§1.8).
+
+    The /session/options endpoint already returns a parent-linked
+    vendor/course/lesson hierarchy. These tests lock the Alpine
+    cascade behaviour so future picker edits can't silently break it.
+    """
+
+    def test_course_dropdown_filters_by_selected_vendor(self, web_page) -> None:
+        """Pick a vendor → course dropdown shows only that vendor's courses."""
+        # Stub /session/options with a known hierarchy.
+        web_page.route(
+            "**/api/session/options",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=(
+                    '{"session_types":[],'
+                    '"topics":[],'
+                    '"vendors":['
+                    '{"label":"Udemy","value":"Udemy","kind":"vendor","path":"/u"},'
+                    '{"label":"Coursera","value":"Coursera","kind":"vendor","path":"/c"}'
+                    "],"
+                    '"courses":['
+                    '{"label":"Python","value":"Udemy/Python","kind":"course","parent":"Udemy"},'
+                    '{"label":"SQL","value":"Coursera/SQL","kind":"course","parent":"Coursera"}'
+                    "],"
+                    '"lessons":['
+                    '{"label":"S01","value":"Udemy/Python/S01","kind":"lesson","parent":"Udemy/Python"}'
+                    "],"
+                    '"agents":[{"label":"Claude","value":"claude","available":true}]'
+                    "}"
+                ),
+            ),
+        )
+        web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
+        web_page.wait_for_selector("#vendor-select option", state="attached", timeout=5000)
+
+        # Switch targetKind to 'vendor' so vendor/course picker fields are visible.
+        web_page.eval_on_selector(
+            "#target-kind-select",
+            "(el) => { el.value = 'vendor'; el.dispatchEvent(new Event('change')); }",
+        )
+        # Select Udemy.
+        web_page.eval_on_selector(
+            "#vendor-select",
+            "(el) => { el.value = 'Udemy'; el.dispatchEvent(new Event('change')); }",
+        )
+        # Poll until the course <select> has been filtered to exactly "Python".
+        web_page.wait_for_function(
+            """() => {
+              const el = document.querySelector('#course-select');
+              if (!el) return false;
+              const values = [...el.options].map(o => o.value).filter(v => v);
+              return values.length === 1 && values[0] === 'Udemy/Python';
+            }""",
+            timeout=5000,
+        )
+
+    def test_resolved_topic_uses_joined_cascade_path(self, web_page) -> None:
+        """resolvedTopic() returns the full vendor/course/lesson path,
+        not just the leaf label (plan §1.8: 'f"{vendor}/{course}/{lesson}"')."""
+        web_page.route(
+            "**/api/session/options",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=(
+                    '{"session_types":[],'
+                    '"topics":[],'
+                    '"vendors":[{"label":"Udemy","value":"Udemy","kind":"vendor","path":"/u"}],'
+                    '"courses":[{"label":"Python","value":"Udemy/Python","kind":"course","parent":"Udemy"}],'
+                    '"lessons":[{"label":"S01","value":"Udemy/Python/S01","kind":"lesson","parent":"Udemy/Python"}],'
+                    '"agents":[{"label":"Claude","value":"claude","available":true}]}'
+                ),
+            ),
+        )
+        web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
+        web_page.wait_for_selector("#lesson-select", state="attached", timeout=5000)
+
+        # Drive the cascade through the underlying Alpine data so we
+        # don't depend on x-show timing for each nested field.
+        topic = web_page.evaluate(
+            """
+            (() => {
+              const root = document.querySelector('[x-data="sessionTimer()"]');
+              const d = window.Alpine.$data(root);
+              d.targetKind = 'lesson';
+              d.selectedVendor = 'Udemy';
+              d.selectedCourse = 'Udemy/Python';
+              d.selectedLesson = 'Udemy/Python/S01';
+              return d.resolvedTopic();
+            })()
+            """
+        )
+        assert topic == "Udemy/Python/S01"
+
+
 class TestXtermMount:
     def test_xterm_bundles_expose_globals(self, web_page) -> None:
         """xterm / fit / webgl / clipboard addons register window globals."""

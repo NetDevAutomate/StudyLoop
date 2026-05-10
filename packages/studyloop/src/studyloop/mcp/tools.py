@@ -359,6 +359,67 @@ def register_tools(mcp: FastMCP) -> None:
             "wins": topic_wins,
         }
 
+    # ── §1.10 agent-native parity (web-picker equivalents) ───────
+
+    @mcp.tool()
+    def list_session_options() -> dict[str, Any]:
+        """List selectable study targets for starting a session.
+
+        Mirrors the web picker's ``GET /api/session/options`` response so
+        an agent driving studyloop has access to the same vendor /
+        course / lesson / agent surface the browser does. Use this
+        before asking the learner what to study, or to validate a
+        user-supplied target against available content.
+
+        Returns a dict with keys ``session_types``, ``topics``,
+        ``vendors``, ``courses``, ``lessons``, ``agents``. Each
+        collection is a list of dicts with ``label``/``value``/
+        ``kind``; courses and lessons carry a ``parent`` field that
+        links them back up the cascade (course.parent = vendor.value,
+        lesson.parent = course.value).
+        """
+        from studyloop.web.routes.session import (
+            _agent_options,
+            _course_options,
+            _lesson_options,
+            _topic_options,
+            _vendor_options,
+        )
+
+        return {
+            "session_types": [
+                {"label": "Study Session", "value": "study", "kind": "session_type"},
+                {"label": "Body Double", "value": "body_double", "kind": "session_type"},
+            ],
+            "topics": [option.model_dump() for option in _topic_options()],
+            "vendors": [option.model_dump() for option in _vendor_options()],
+            "courses": [option.model_dump() for option in _course_options()],
+            "lessons": [option.model_dump() for option in _lesson_options()],
+            "agents": _agent_options(),
+        }
+
+    @mcp.tool()
+    def end_session() -> dict[str, Any]:
+        """End the currently-active study session, if any.
+
+        Idempotent: calling this with no active session returns
+        ``{"ended": False, "topic": None}`` rather than raising. Agents
+        can safely call this in a cleanup path without first checking
+        state.
+
+        Returns ``{"ended": True, "topic": <resolved topic>}`` after
+        the session's tmux/ttyd/PTY resources have been torn down and
+        the IPC files cleared.
+        """
+        from studyloop.session.cleanup import end_session_common
+        from studyloop.web.routes.session import read_session_state
+
+        state = read_session_state()
+        if not state.get("study_session_id"):
+            return {"ended": False, "topic": None}
+        topic = end_session_common(state)
+        return {"ended": True, "topic": topic}
+
     @mcp.tool()
     def record_topic_progress(
         topic_id: int,

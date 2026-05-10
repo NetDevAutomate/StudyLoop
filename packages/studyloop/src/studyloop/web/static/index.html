@@ -1063,19 +1063,22 @@
       },
 
       resolvedTopic() {
-        if (this.targetKind === 'lesson') {
-          const lesson = this.studyOptions.lessons.find((item) => item.value === this.selectedLesson);
-          if (lesson) return lesson.label;
+        /* Return the joined vendor/course/lesson path (plan §1.8) so
+           the agent's DB record + persona reflects the full cascade
+           location. ``option.value`` is already constructed as a
+           slash-joined path by the /session/options endpoint — see
+           ``_course_options`` / ``_lesson_options`` in session.py.
+           Falls back to the free-text topic input for the 'topic'
+           target kind (no cascade). */
+        if (this.targetKind === 'lesson' && this.selectedLesson) {
+          return this.selectedLesson;
         }
-        if (this.targetKind === 'course') {
-          const course = this.studyOptions.courses.find((item) => item.value === this.selectedCourse);
-          if (course) return course.label;
+        if (this.targetKind === 'course' && this.selectedCourse) {
+          return this.selectedCourse;
         }
         if (this.targetKind === 'vendor') {
-          const course = this.studyOptions.courses.find((item) => item.value === this.selectedCourse);
-          if (course) return course.label;
-          const vendor = this.studyOptions.vendors.find((item) => item.value === this.selectedVendor);
-          if (vendor) return vendor.label;
+          if (this.selectedCourse) return this.selectedCourse;
+          if (this.selectedVendor) return this.selectedVendor;
         }
         return this.topicInput;
       },

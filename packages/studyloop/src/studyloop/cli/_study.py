@@ -217,6 +217,18 @@ def _agent_names() -> list[str]:
 )
 @click.option("--resume", is_flag=True, help="Resume an existing session.")
 @click.option("--end", "end_session", is_flag=True, help="End the current session.")
+@click.option(
+    "--transport",
+    type=click.Choice(["pty", "ttyd"]),
+    default="ttyd",
+    show_default=True,
+    help=(
+        "Session transport. 'ttyd' is the current CLI default (tmux+ttyd). "
+        "'pty' is parity-reserved for the web browser transport; CLI-driven "
+        "PTY sessions are deferred (§1.5d) — use 'studyloop web' for the "
+        "PTY path today."
+    ),
+)
 @click.pass_context
 def study(
     ctx: click.Context,
@@ -230,6 +242,7 @@ def study(
     password: str,
     resume: bool,
     end_session: bool,
+    transport: str,
 ) -> None:
     """Start a study session with full tmux environment.
 
@@ -245,6 +258,16 @@ def study(
     """
     if end_session:
         _handle_end(ctx)
+        return
+
+    if transport == "pty":
+        # §1.10 parity flag — CLI PTY is §1.5d follow-up.
+        console.print(
+            "[yellow]--transport pty is not yet supported from the CLI.[/yellow]\n"
+            "  Use [bold]studyloop web[/bold] for the browser xterm.js PTY flow.\n"
+            "  CLI-driven PTY sessions are tracked as §1.5d in the refactor plan."
+        )
+        ctx.exit(2)
         return
 
     if resume:
