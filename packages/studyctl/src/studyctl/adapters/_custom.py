@@ -105,7 +105,9 @@ def build_custom_adapter(name: str, config: dict) -> AgentAdapter:
             try:
                 # shell=True is intentional: teardown_cmd is a user-supplied shell string
                 # (e.g. "pkill -f my-agent") that requires shell interpretation.
-                subprocess.run(_cmd, shell=True, timeout=10, check=False)  # nosec B602
+                # 30s timeout: macOS under load (Playwright + ttyd + tmux running)
+                # can take several seconds just to spawn /bin/sh. 10s flaked under load.
+                subprocess.run(_cmd, shell=True, timeout=30, check=False)  # nosec B602
             except Exception as exc:
                 log.warning("Teardown command %r failed: %s", _cmd, exc)
 

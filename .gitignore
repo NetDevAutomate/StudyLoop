@@ -480,7 +480,7 @@ site/
 # Internal/planning docs (kept locally, not published)
 docs/internal/
 docs/local_repo_docs/
-docs/plans/
+# docs/plans/ — un-ignored 2026-05-10 so live plans ship with the repo
 docs/architecture/*
 !docs/architecture/
 !docs/architecture/adapter-pattern-notebooklm.md
@@ -502,7 +502,7 @@ uv-*.lock
 results.tsv
 .pytest-junit.xml
 docs/reports/
-docs/brainstorms/
+# docs/brainstorms/ — un-ignored 2026-05-10 so brainstorms ship with their plans
 
 # Benchmark output (large regenerable artefacts — keep local)
 benchmarks/d2-output/
