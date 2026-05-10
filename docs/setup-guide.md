@@ -17,14 +17,14 @@ Step-by-step installation and configuration for StudyLoop.
 
 ## Prerequisites
 
-- **Python 3.12+** (both studyctl and agent-session-tools require 3.12+)
+- **Python 3.12+** (both studyloop and agent-session-tools require 3.12+)
 - **[uv](https://docs.astral.sh/uv/)** — Python package manager
-- **tmux 3.1+** — required for `studyctl study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
+- **tmux 3.1+** — required for `studyloop study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
 - **Obsidian** — for study notes (any vault structure works)
 - **Optional**: `sentence-transformers` for semantic search
 - **Optional**: `ttyd` — enables web terminal access from browser or iPad (`brew install ttyd` on macOS, `apt install ttyd` on Linux)
 
-> **tmux-resurrect / tmux-continuum users**: studyctl automatically cleans up
+> **tmux-resurrect / tmux-continuum users**: studyloop automatically cleans up
 > zombie sessions on startup, so resurrect-restored sessions are handled
 > gracefully. For the best experience, add the restore hook below to prevent
 > resurrect from saving study sessions at all. See
@@ -32,11 +32,11 @@ Step-by-step installation and configuration for StudyLoop.
 
 ### tmux-resurrect Compatibility
 
-studyctl creates temporary `study-*` tmux sessions that should not persist
+studyloop creates temporary `study-*` tmux sessions that should not persist
 across tmux restarts. If you use **tmux-resurrect** or **tmux-continuum**,
 these plugins may save and restore killed study sessions as zombies.
 
-**Automatic handling (no action required):** `studyctl study` automatically
+**Automatic handling (no action required):** `studyloop study` automatically
 detects and kills zombie sessions before starting a new session. This works
 out of the box — no configuration needed.
 
@@ -45,7 +45,7 @@ study sessions at all. Add this to your `~/.tmux.conf`:
 
 ```bash
 # Kill any restored study-* sessions immediately after resurrect restore.
-# studyctl sessions are temporary and should not survive tmux restarts.
+# studyloop sessions are temporary and should not survive tmux restarts.
 set -g @resurrect-restore-hook 'for s in $(tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^study-"); do tmux kill-session -t "$s" 2>/dev/null; done'
 ```
 
@@ -55,7 +55,7 @@ After adding, reload your tmux config:
 tmux source-file ~/.tmux.conf
 ```
 
-Run `studyctl doctor` to verify the configuration — it checks for
+Run `studyloop doctor` to verify the configuration — it checks for
 tmux-resurrect and warns if the restore hook is not detected.
 
 ## Installation
@@ -69,9 +69,9 @@ was yanked; source install is the current supported path.
 git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
 cd studyloop
 uv sync --all-packages
-uv tool install ./packages/studyctl
-studyctl setup
-studyctl doctor --fix
+uv tool install ./packages/studyloop
+studyloop setup
+studyloop doctor --fix
 ```
 
 ### Repo Bootstrap
@@ -86,15 +86,15 @@ This will:
 1. Verify Python 3.12+ is installed
 2. Install `uv` if not already available
 3. Run `uv sync`
-4. Delegate to `studyctl install tools`
-5. Delegate to `studyctl install agents`
+4. Delegate to `studyloop install tools`
+5. Delegate to `studyloop install agents`
 
 The shell script is now only a bootstrap wrapper. The real install surface lives in typed CLI commands:
 
 ```bash
-studyctl install tools
-studyctl install agents
-studyctl doctor --fix
+studyloop install tools
+studyloop install agents
+studyloop doctor --fix
 ```
 
 ### Developer Install
@@ -113,8 +113,8 @@ For contributor setups, the cleanest flow is usually:
 
 ```bash
 uv sync
-uv run studyctl install agents
-uv run studyctl doctor --fix
+uv run studyloop install agents
+uv run studyloop doctor --fix
 ```
 
 ### Legacy Script Modes
@@ -136,9 +136,9 @@ cd studyloop
 ./scripts/install.sh --agents-only
 
 # Direct typed commands
-studyctl install tools
-studyctl install agents
-studyctl doctor --fix
+studyloop install tools
+studyloop install agents
+studyloop doctor --fix
 
 # Install optional semantic search support
 uv pip install agent-session-tools[semantic]
@@ -168,7 +168,7 @@ For **Ansible playbooks**, clone the repo then run the install script:
 Run the interactive wizard to configure your study environment:
 
 ```bash
-studyctl config init
+studyloop config init
 ```
 
 This walks you through three core questions:
@@ -177,17 +177,17 @@ This walks you through three core questions:
 2. **Study material location** — Where are your study sources? The default is `~/Obsidian/Personal/Study`.
 3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Personal`).
 
-The wizard creates or updates `~/.config/studyctl/config.yaml` with your choices. You can re-run it at any time to change settings.
+The wizard creates or updates `~/.config/studyloop/config.yaml` with your choices. You can re-run it at any time to change settings.
 
 ### Manual Configuration
 
-All configuration lives in a single YAML file: `~/.config/studyctl/config.yaml`. This file is shared between `studyctl` and all `session-*` tools — use the same file on every machine.
+All configuration lives in a single YAML file: `~/.config/studyloop/config.yaml`. This file is shared between `studyloop` and all `session-*` tools — use the same file on every machine.
 
-`STUDYCTL_CONFIG` can point at a different YAML file for testing, alternate profiles, or machine-specific overrides:
+`STUDYLOOP_CONFIG` can point at a different YAML file for testing, alternate profiles, or machine-specific overrides:
 
 ```bash
-export STUDYCTL_CONFIG=~/.config/studyctl/work.yaml
-studyctl config show
+export STUDYLOOP_CONFIG=~/.config/studyloop/work.yaml
+studyloop config show
 ```
 
 TOML is not currently supported. Use YAML for the production config contract; adding TOML would require a deliberate parser, migration, and compatibility test pass.
@@ -196,8 +196,8 @@ Minimal production example:
 
 ```yaml
 obsidian_base: ~/Obsidian/Personal
-session_db: ~/.config/studyctl/sessions.db
-state_dir: ~/.local/share/studyctl
+session_db: ~/.config/studyloop/sessions.db
+state_dir: ~/.local/share/studyloop
 
 content:
   base_path: ~/study-materials
@@ -222,7 +222,7 @@ Path rules:
 - Relative `topics[].obsidian_path` values are resolved under `obsidian_base`.
 - Absolute `topics[].obsidian_path` values are used as-is.
 - Relative `content.study_paths` values are resolved under `obsidian_base`.
-- `content.study_paths` augments topic paths for `studyctl content discover` and `studyctl content generate-cards` when you do not pass source directories manually.
+- `content.study_paths` augments topic paths for `studyloop content discover` and `studyloop content generate-cards` when you do not pass source directories manually.
 
 To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:
 
@@ -236,17 +236,17 @@ agents:
 The study web app requires no extra dependencies — just run:
 
 ```bash
-studyctl web
+studyloop web
 ```
 
-This starts a web server on `http://127.0.0.1:8567`. Use `studyctl web --lan` if you want to expose it to other devices on your network.
+This starts a web server on `http://127.0.0.1:8567`. Use `studyloop web --lan` if you want to expose it to other devices on your network.
 
 **Install as PWA (iOS/Android):** Open in Safari → Share → Add to Home Screen. The app then works full-screen like a native app.
 
 Configure flashcard/quiz directories:
 
 ```yaml
-# ~/.config/studyctl/config.yaml
+# ~/.config/studyloop/config.yaml
 review:
   directories:
     - ~/Desktop/ZTM-DE/downloads
@@ -270,20 +270,20 @@ Two voice modes in the PWA:
 Use `--lan` to make the web dashboard and terminal accessible from any device on your network — phone, iPad, second laptop:
 
 ```bash
-studyctl study "Python Decorators" --energy 7 --lan
+studyloop study "Python Decorators" --energy 7 --lan
 # Auto-generates password and saves LAN info to session state:
 #   Dashboard: http://192.168.1.42:8567/session
 #   Password:  <auto-generated>
 
 # Or set a known password:
-studyctl study "Python Decorators" --energy 7 --lan --password mysecret
+studyloop study "Python Decorators" --energy 7 --lan --password mysecret
 ```
 
 Access the live dashboard and embedded terminal from your iPad at `http://<mac-ip>:8567/session`. Enter any username and the displayed password when prompted. The terminal panel (ttyd iframe) is proxied through the web server on the same origin, so pop-out/return works seamlessly. ttyd must be installed for the terminal panel to work (`brew install ttyd`).
 
 **Password sources** (checked in order):
 1. `--password` CLI flag
-2. `lan_password` in `~/.config/studyctl/config.yaml`
+2. `lan_password` in `~/.config/studyloop/config.yaml`
 3. Auto-generated (displayed in terminal output, saved to session state)
 
 ### Hosts — Cross-Machine Sync
@@ -328,24 +328,24 @@ hosts:
       primary: 192.168.1.22        # wired / ethernet
       secondary: 192.168.1.12      # wifi (optional fallback)
     user: user
-    state_json: ~/.config/studyctl/state.json
-    sessions_db: ~/.config/studyctl/sessions.db
+    state_json: ~/.config/studyloop/state.json
+    sessions_db: ~/.config/studyloop/sessions.db
 
   macbookpro:
     hostname: Andys-MacBook-Pro-Max
     ip_address:
       primary: 192.168.1.21
     user: user
-    state_json: ~/.config/studyctl/state.json
-    sessions_db: ~/.config/studyctl/sessions.db
+    state_json: ~/.config/studyloop/state.json
+    sessions_db: ~/.config/studyloop/sessions.db
 
   work-macbook:
     hostname: 842f575e3614
     ip_address:
       primary: 192.168.1.20
     user: user
-    state_json: ~/.config/studyctl/state.json
-    sessions_db: ~/.config/studyctl/sessions.db
+    state_json: ~/.config/studyloop/state.json
+    sessions_db: ~/.config/studyloop/sessions.db
 ```
 
 **One config file on all machines.** Deploy the same `config.yaml` everywhere — each machine auto-detects itself by hostname and treats the rest as remotes.
@@ -356,7 +356,7 @@ hosts:
 | `ip_address.primary` | Wired/ethernet IP (tried first for rsync/SSH) |
 | `ip_address.secondary` | Wifi IP (optional fallback if primary unreachable) |
 | `user` | SSH username for this machine |
-| `state_json` | Path to studyctl state file |
+| `state_json` | Path to studyloop state file |
 | `sessions_db` | Path to the AI session SQLite database |
 
 Use `session-sync` for cross-machine database sync:
@@ -394,9 +394,9 @@ topics:
 
 ```yaml
 database:
-  path: ~/.config/studyctl/sessions.db
-  archive_path: ~/.config/studyctl/sessions_archive.db
-  backup_dir: ~/.config/studyctl/backups
+  path: ~/.config/studyloop/sessions.db
+  archive_path: ~/.config/studyloop/sessions_archive.db
+  backup_dir: ~/.config/studyloop/backups
 
 thresholds:
   warning_mb: 100
@@ -437,7 +437,7 @@ tts:
 
 ## Obsidian Vault Setup
 
-studyctl expects your study notes in directories under your Obsidian vault. The structure is flexible — just point each topic's `obsidian_path` at the right directory.
+studyloop expects your study notes in directories under your Obsidian vault. The structure is flexible — just point each topic's `obsidian_path` at the right directory.
 
 Example vault layout:
 
@@ -456,7 +456,7 @@ Example vault layout:
 │           └── Study-Plans/
 ```
 
-studyctl syncs `.md`, `.pdf`, and `.txt` files. It skips:
+studyloop syncs `.md`, `.pdf`, and `.txt` files. It skips:
 - Files under 100 bytes
 - Obsidian metadata files (`.obsidian/`, index files)
 - Common non-content directories (`node_modules`, `__pycache__`)
@@ -464,8 +464,8 @@ studyctl syncs `.md`, `.pdf`, and `.txt` files. It skips:
 
 5. Sync and generate audio:
    ```bash
-   studyctl sync python          # Upload changed notes
-   studyctl audio python         # Generate audio overview
+   studyloop sync python          # Upload changed notes
+   studyloop audio python         # Generate audio overview
    ```
 
 ## Session Database
@@ -506,7 +506,7 @@ The content pipeline converts local study sources into review artefacts that sup
 
 ```bash
 # PDF splitting and local content processing
-uv pip install studyctl[content]
+uv pip install studyloop[content]
 ```
 
 ### Configure study sources
@@ -514,7 +514,7 @@ uv pip install studyctl[content]
 The default study material source is `~/Obsidian/Personal/Study`.
 
 ```yaml
-# ~/.config/studyctl/config.yaml
+# ~/.config/studyloop/config.yaml
 content:
   base_path: ~/study-materials
   study_paths:
@@ -525,13 +525,13 @@ content:
 
 ```bash
 # 1. Preview available sources
-studyctl content discover
+studyloop content discover
 
 # 2. Generate local flashcards and quizzes
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
 
 # 3. Review
-studyctl web
+studyloop web
 ```
 
 See the [CLI Reference](cli-reference.md) for all available commands.
@@ -549,7 +549,7 @@ session-sync sync work-macbook   # Two-way sync with a host
 session-sync endpoints           # List all configured remote hosts
 ```
 
-Both commands read host definitions from `~/.config/studyctl/config.yaml` (the `hosts` section). See [Host Configuration](#host-configuration) below for the schema. Delta sync transfers only new sessions, not the entire database.
+Both commands read host definitions from `~/.config/studyloop/config.yaml` (the `hosts` section). See [Host Configuration](#host-configuration) below for the schema. Delta sync transfers only new sessions, not the entire database.
 
 ## Scheduling
 
@@ -557,16 +557,16 @@ Set up automatic sync so your notes and sessions stay current.
 
 ```bash
 # Install all default scheduled jobs
-studyctl schedule install
+studyloop schedule install
 
 # List active jobs
-studyctl schedule list
+studyloop schedule list
 
 # Remove all jobs
-studyctl schedule remove
+studyloop schedule remove
 
 # Add a custom job
-studyctl schedule add my-sync "studyctl sync --all" "daily 3am"
+studyloop schedule add my-sync "studyloop sync --all" "daily 3am"
 ```
 
 On macOS, this creates launchd plists. On Linux, it uses cron.
@@ -586,7 +586,7 @@ The toolkit runs on Windows via WSL2 (Windows Subsystem for Linux).
 
 ### What works
 
-- All CLI tools (`studyctl`, `session-export`, `session-query`, etc.)
+- All CLI tools (`studyloop`, `session-export`, `session-query`, etc.)
 - kiro-cli and Claude Code (terminal-based)
 - SQLite database, FTS5 search, session sync
 - Cron scheduling (enable with `sudo service cron start` or systemd)
@@ -620,7 +620,7 @@ Claude Desktop runs on Windows but can connect to MCP servers inside WSL2:
 
 ### Obsidian vault path
 
-If your Obsidian vault is on the Windows filesystem, configure the path in `~/.config/studyctl/config.yaml`:
+If your Obsidian vault is on the Windows filesystem, configure the path in `~/.config/studyloop/config.yaml`:
 
 ```yaml
 obsidian_base: /mnt/c/Users/YourName/Obsidian
@@ -633,7 +633,7 @@ For better performance, consider keeping the vault inside WSL2's native filesyst
 After installing and configuring, run the health check to make sure everything is working:
 
 ```bash
-studyctl doctor
+studyloop doctor
 ```
 
 This checks Python version, installed packages, config validity, databases, optional dependencies, and AI agent definitions. You'll see a colour-coded table:
@@ -646,45 +646,45 @@ This checks Python version, installed packages, config validity, databases, opti
 If issues are found:
 
 ```bash
-studyctl doctor --fix         # Apply safe auto-fixes first
-studyctl upgrade              # Apply package/database/agent upgrades
-studyctl upgrade --dry-run    # Preview changes first
+studyloop doctor --fix         # Apply safe auto-fixes first
+studyloop upgrade              # Apply package/database/agent upgrades
+studyloop upgrade --dry-run    # Preview changes first
 ```
 
 For machine-readable output (used by CI pipelines and AI agents):
 
 ```bash
-studyctl doctor --json
+studyloop doctor --json
 ```
 
 ### AI-Guided Setup
 
-If you're using an AI coding assistant, the **install-mentor agent** can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs `studyctl doctor`, and fixes issues.
+If you're using an AI coding assistant, the **install-mentor agent** can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs `studyloop doctor`, and fixes issues.
 
 The prompt lives at `agents/shared/install-mentor.md` and works with any AI tool that can run shell commands — Claude Code, Codex CLI, Kiro CLI, Gemini CLI, OpenCode, or Amp.
 
 For example, in Claude Code or Codex:
 ```
-Read agents/shared/install-mentor.md and follow its instructions to set up studyctl
+Read agents/shared/install-mentor.md and follow its instructions to set up studyloop
 ```
 
 ## Troubleshooting
 
-### First step: run `studyctl doctor`
+### First step: run `studyloop doctor`
 
 Before investigating specific issues, always start with the health check:
 
 ```bash
-studyctl doctor
+studyloop doctor
 ```
 
-This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run `studyctl upgrade` to resolve them.
-This will identify most common problems and tell you how to fix them. Start with `studyctl doctor --fix` for safe local repairs, then use `studyctl upgrade` for package-level updates.
+This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run `studyloop upgrade` to resolve them.
+This will identify most common problems and tell you how to fix them. Start with `studyloop doctor --fix` for safe local repairs, then use `studyloop upgrade` for package-level updates.
 
-### `studyctl: command not found`
+### `studyloop: command not found`
 
 The package isn't on your PATH. Either:
-- Run via `uv run studyctl` instead
+- Run via `uv run studyloop` instead
 - Or ensure `uv sync` completed successfully and your shell can find uv-installed scripts
 
 ### `session-export` finds no sessions
@@ -697,15 +697,15 @@ Check that the AI tool's data directory exists:
 - OpenCode: `~/.local/share/opencode/storage/`
 - Aider: `.aider.chat.history.md` files in project directories
 
-### `studyctl review` shows nothing
+### `studyloop review` shows nothing
 
-The session database may be empty. Run `session-export` first to populate it, then `studyctl review` can check your study history.
+The session database may be empty. Run `session-export` first to populate it, then `studyloop review` can check your study history.
 
 ### Config file not loading
 
-studyctl looks for config at `~/.config/studyctl/config.yaml`. Override with:
+studyloop looks for config at `~/.config/studyloop/config.yaml`. Override with:
 ```bash
-export STUDYCTL_CONFIG=/path/to/your/config.yaml
+export STUDYLOOP_CONFIG=/path/to/your/config.yaml
 ```
 
 ### Database too large

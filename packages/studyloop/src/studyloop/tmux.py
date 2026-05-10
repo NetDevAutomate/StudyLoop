@@ -17,7 +17,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-LOCK_FILE = Path("~/.config/studyctl/studyctl-tmux.lock").expanduser()
+LOCK_FILE = Path("~/.config/studyloop/studyctl-tmux.lock").expanduser()
 MIN_TMUX_VERSION = (3, 1)  # display-popup + pane-border-lines
 
 

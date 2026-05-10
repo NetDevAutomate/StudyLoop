@@ -233,7 +233,7 @@ def _start_session(
 ) -> dict:
     """Start a study session and wait for it to be ready. Returns session info."""
     env_overrides = {
-        "STUDYCTL_TEST_AGENT_CMD": f"bash {agent_script} {{persona_file}}",
+        "STUDYLOOP_TEST_AGENT_CMD": f"bash {agent_script} {{persona_file}}",
     }
     args = ["study", topic, "--energy", str(energy), "--agent", "claude"]
     if extra_args:
@@ -528,7 +528,7 @@ class TestResume:
         _studyctl(
             "study",
             "--resume",
-            env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
+            env_overrides={"STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
         )
 
         _wait_for(STATE_FILE.exists, desc="resumed state file")
@@ -554,7 +554,7 @@ class TestResume:
         # Resume — the persona file should contain previous session notes
         agent2 = _make_mock_agent(tmp_path, name="mock-agent-resume.sh")
         env_overrides = {
-            "STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}",
+            "STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}",
         }
         _studyctl("study", "--resume", env_overrides=env_overrides)
 
@@ -591,7 +591,7 @@ class TestResume:
             desc="original session killed",
         )
 
-        # Resume — this time DON'T use STUDYCTL_TEST_AGENT_CMD so the
+        # Resume — this time DON'T use STUDYLOOP_TEST_AGENT_CMD so the
         # real agent command is built (but it will fail to run since
         # claude isn't installed — that's fine, we just check the command)
         _studyctl("study", "--resume")
@@ -655,7 +655,7 @@ class TestErrorHandling:
             "Another Topic",
             "--agent",
             "claude",
-            env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
+            env_overrides={"STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
         )
         assert "already active" in result.stdout
 
@@ -762,7 +762,7 @@ class TestExperienceVerification:
         _studyctl(
             "study",
             "--resume",
-            env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
+            env_overrides={"STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
         )
         _wait_for(STATE_FILE.exists, desc="resumed state file")
         state = _read_state()
@@ -797,7 +797,7 @@ class TestExperienceVerification:
         _studyctl(
             "study",
             "--resume",
-            env_overrides={"STUDYCTL_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
+            env_overrides={"STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
         )
         _wait_for(STATE_FILE.exists, desc="resumed state file")
         state = _read_state()
@@ -846,7 +846,7 @@ class TestMultiAgentSessionLaunch:
     ) -> dict:
         """Start a session with a specific --agent and return session info."""
         script = _make_mock_agent(tmp_path, name=f"mock-{agent_name}.sh")
-        env = {"STUDYCTL_TEST_AGENT_CMD": f"bash {script} {{persona_file}}"}
+        env = {"STUDYLOOP_TEST_AGENT_CMD": f"bash {script} {{persona_file}}"}
         if extra_env:
             env.update(extra_env)
 
@@ -885,7 +885,7 @@ class TestMultiAgentSessionLaunch:
         settings = session_dir / ".gemini" / "settings.json"
         assert settings.exists(), "Gemini adapter should write .gemini/settings.json"
         data = json.loads(settings.read_text())
-        assert "studyctl-mcp" in data["mcpServers"]
+        assert "studyloop-mcp" in data["mcpServers"]
 
     def test_codex_session_creates_agents_md(self, tmp_path):
         """Codex adapter writes AGENTS.md to the session directory."""
@@ -909,7 +909,7 @@ class TestMultiAgentSessionLaunch:
         info = self._start_with_agent(
             tmp_path,
             "kiro",
-            extra_env={"STUDYCTL_KIRO_AGENTS_DIR": str(fake_kiro)},
+            extra_env={"STUDYLOOP_KIRO_AGENTS_DIR": str(fake_kiro)},
         )
 
         agent_json = fake_kiro / "study-mentor.json"
@@ -930,8 +930,8 @@ class TestMultiAgentSessionLaunch:
 
         script = _make_fast_agent(tmp_path)
         env = {
-            "STUDYCTL_TEST_AGENT_CMD": f"bash {script} {{persona_file}}",
-            "STUDYCTL_KIRO_AGENTS_DIR": str(fake_kiro),
+            "STUDYLOOP_TEST_AGENT_CMD": f"bash {script} {{persona_file}}",
+            "STUDYLOOP_KIRO_AGENTS_DIR": str(fake_kiro),
         }
         _studyctl("study", "Kiro Teardown Test", "--agent", "kiro", env_overrides=env)
 
@@ -967,7 +967,7 @@ class TestMultiAgentSessionLaunch:
         config = session_dir / ".opencode" / "opencode.json"
         assert config.exists(), "OpenCode adapter should write opencode.json"
         data = json.loads(config.read_text())
-        mcp = data["mcp"]["studyctl-mcp"]
+        mcp = data["mcp"]["studyloop-mcp"]
         assert isinstance(mcp["command"], list), "OpenCode command must be array"
         assert mcp["enabled"] is True
         assert mcp["type"] == "local"
@@ -980,7 +980,7 @@ class TestMultiAgentSessionLaunch:
             if agent_name == "kiro":
                 fake_kiro = tmp_path / f"kiro-{agent_name}"
                 fake_kiro.mkdir(exist_ok=True)
-                extra_env["STUDYCTL_KIRO_AGENTS_DIR"] = str(fake_kiro)
+                extra_env["STUDYLOOP_KIRO_AGENTS_DIR"] = str(fake_kiro)
 
             self._start_with_agent(tmp_path, agent_name, extra_env=extra_env)
 

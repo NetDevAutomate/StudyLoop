@@ -56,8 +56,8 @@ class TestMcpConfigWriter:
         assert config_path.exists()
         data = json.loads(config_path.read_text())
         assert "mcpServers" in data
-        assert "studyctl-mcp" in data["mcpServers"]
-        entry = data["mcpServers"]["studyctl-mcp"]
+        assert "studyloop-mcp" in data["mcpServers"]
+        entry = data["mcpServers"]["studyloop-mcp"]
         assert "command" in entry
         assert "args" in entry
 
@@ -69,7 +69,7 @@ class TestMcpConfigWriter:
         assert config_path.exists()
         data = json.loads(config_path.read_text())
         assert "mcpServers" in data
-        assert "studyctl-mcp" in data["mcpServers"]
+        assert "studyloop-mcp" in data["mcpServers"]
 
     def test_opencode_format(self, tmp_path):
         from studyloop.adapters._strategies import write_mcp_config
@@ -79,8 +79,8 @@ class TestMcpConfigWriter:
         assert config_path.exists()
         data = json.loads(config_path.read_text())
         assert "mcp" in data
-        assert "studyctl-mcp" in data["mcp"]
-        entry = data["mcp"]["studyctl-mcp"]
+        assert "studyloop-mcp" in data["mcp"]
+        entry = data["mcp"]["studyloop-mcp"]
         assert entry["enabled"] is True
         assert entry["type"] == "local"
         assert "command" in entry

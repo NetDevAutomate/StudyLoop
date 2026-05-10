@@ -21,10 +21,10 @@ from studyloop.settings import CONFIG_DIR, get_config_path
 def _setup_config_path() -> Path:
     """Return setup's target config path.
 
-    ``STUDYCTL_CONFIG`` wins for production behavior. ``CONFIG_DIR`` remains
+    ``STUDYLOOP_CONFIG`` wins for production behavior. ``CONFIG_DIR`` remains
     patchable for existing isolated setup tests.
     """
-    if "STUDYCTL_CONFIG" in __import__("os").environ:
+    if "STUDYLOOP_CONFIG" in __import__("os").environ:
         return get_config_path()
     return CONFIG_DIR / "config.yaml"
 

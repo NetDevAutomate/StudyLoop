@@ -57,7 +57,7 @@ def plan_clean(
     Args:
         tmux_running: Whether the tmux server is accessible.
         zombie_sessions: Session names confirmed as zombies (no child, aged >60s).
-        session_dirs: Info about each directory in ~/.config/studyctl/sessions/.
+        session_dirs: Info about each directory in ~/.config/studyloop/sessions/.
         live_tmux_names: Set of tmux session names that currently exist.
         state: Contents of session-state.json (empty dict if missing).
         state_file_exists: Whether session-state.json exists on disk.

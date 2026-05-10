@@ -29,7 +29,7 @@ class Topic:
 def get_topics() -> list[Topic]:
     """Load topics from settings. Returns empty list if none configured.
 
-    Topics are defined in ~/.config/studyctl/config.yaml under the 'topics'
+    Topics are defined in ~/.config/studyloop/config.yaml under the 'topics'
     key. Run 'studyloop config init' for interactive setup.
     """
     settings = load_settings()

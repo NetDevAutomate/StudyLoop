@@ -135,7 +135,7 @@ class TestNestedTmux:
         # Send the study command inside the attached session
         agent_script = long_running_agent(tmp_path)
         study_cmd = (
-            f"STUDYCTL_TEST_AGENT_CMD='{agent_script}' "
+            f"STUDYLOOP_TEST_AGENT_CMD='{agent_script}' "
             f"{sys.executable} -m studyctl.cli study 'Nested Test' "
             f"--energy 5 --agent claude"
         )

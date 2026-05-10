@@ -1,7 +1,7 @@
 """Autoresearch-style E2E test matrix for all agent adapters.
 
 Parametrized over all 7 agents.  Each test uses a mock agent script
-injected via ``STUDYCTL_TEST_AGENT_CMD``.
+injected via ``STUDYLOOP_TEST_AGENT_CMD``.
 
 Run::
 
@@ -115,7 +115,7 @@ def _agent_extra_env(agent_name: str, tmp_path: Path) -> dict[str, str]:
     if agent_name == "kiro":
         kiro_dir = tmp_path / "kiro-agents"
         kiro_dir.mkdir(exist_ok=True)
-        return {"STUDYCTL_KIRO_AGENTS_DIR": str(kiro_dir)}
+        return {"STUDYLOOP_KIRO_AGENTS_DIR": str(kiro_dir)}
     return {}
 
 
@@ -128,8 +128,8 @@ def _build_env(
     """Build the full subprocess environment."""
     env = {
         **os.environ,
-        "STUDYCTL_TEST_AGENT_CMD": agent_cmd,
-        "STUDYCTL_CONFIG": str(config_path),
+        "STUDYLOOP_TEST_AGENT_CMD": agent_cmd,
+        "STUDYLOOP_CONFIG": str(config_path),
         **_agent_extra_env(agent_name, tmp_path),
     }
     env.pop("TMUX", None)
@@ -190,7 +190,7 @@ class MatrixSession:
         if self.ended:
             return
         env = {**self.env}
-        env.pop("STUDYCTL_TEST_AGENT_CMD", None)
+        env.pop("STUDYLOOP_TEST_AGENT_CMD", None)
         subprocess.run(
             [sys.executable, "-m", "studyloop.cli", "study", "--end"],
             capture_output=True,

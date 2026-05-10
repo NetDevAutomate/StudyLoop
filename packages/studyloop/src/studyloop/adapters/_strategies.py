@@ -28,7 +28,7 @@ def cli_flag_setup(canonical_content: str, _session_dir: Path) -> Path:
     Returns:
         Path to the temporary file. Caller is responsible for cleanup.
     """
-    fd, tmp = tempfile.mkstemp(suffix=".md", prefix="studyctl-persona-")
+    fd, tmp = tempfile.mkstemp(suffix=".md", prefix="studyloop-persona-")
     try:
         os.write(fd, canonical_content.encode())
     finally:
@@ -70,7 +70,7 @@ def cwd_file_setup(
 
 
 def _mcp_command() -> list[str]:
-    """Return the command list for launching studyctl-mcp.
+    """Return the command list for launching studyloop-mcp.
 
     Checks PATH first so installed tool users get the fast path. Falls
     back to ``uv run`` against the workspace package so development
@@ -79,8 +79,8 @@ def _mcp_command() -> list[str]:
     Returns:
         A list suitable for use as ``command + args`` in an MCP config.
     """
-    if shutil.which("studyctl-mcp"):
-        return ["studyctl-mcp"]
+    if shutil.which("studyloop-mcp"):
+        return ["studyloop-mcp"]
 
     # Repo root is six levels up from this file:
     # packages/studyctl/src/studyctl/adapters/_strategies.py
@@ -96,7 +96,7 @@ def _mcp_command() -> list[str]:
         "run",
         "--project",
         str(repo_root / "packages" / "studyloop"),
-        "studyctl-mcp",
+        "studyloop-mcp",
     ]
 
 
@@ -130,7 +130,7 @@ def write_mcp_config(
         default_path = ".mcp.json"
         config = {
             "mcpServers": {
-                "studyctl-mcp": {
+                "studyloop-mcp": {
                     "command": cmd[0],
                     "args": cmd[1:],
                 }
@@ -140,7 +140,7 @@ def write_mcp_config(
         default_path = ".gemini/settings.json"
         config = {
             "mcpServers": {
-                "studyctl-mcp": {
+                "studyloop-mcp": {
                     "command": cmd[0],
                     "args": cmd[1:],
                 }
@@ -150,7 +150,7 @@ def write_mcp_config(
         default_path = ".opencode/opencode.json"
         config = {
             "mcp": {
-                "studyctl-mcp": {
+                "studyloop-mcp": {
                     "command": cmd,
                     "enabled": True,
                     "type": "local",

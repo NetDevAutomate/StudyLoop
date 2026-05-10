@@ -117,7 +117,7 @@ def detect_agents() -> list[str]:
     """Return installed agent names in priority order.
 
     Priority:
-    1. ``STUDYCTL_AGENT`` env var (if set *and* binary is on PATH)
+    1. ``STUDYLOOP_AGENT`` env var (if set *and* binary is on PATH)
     2. ``agents.priority`` list from config (each checked with ``shutil.which``)
     3. Registry insertion order as the final fallback
 
@@ -127,7 +127,7 @@ def detect_agents() -> list[str]:
 
     adapters = get_all_adapters()
 
-    env_override = os.environ.get("STUDYCTL_AGENT", "").strip()
+    env_override = os.environ.get("STUDYLOOP_AGENT", "").strip()
     if env_override:
         adapter = adapters.get(env_override)
         if adapter is not None and shutil.which(adapter.binary):

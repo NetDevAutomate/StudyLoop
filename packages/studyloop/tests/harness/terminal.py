@@ -47,7 +47,7 @@ class TerminalSession:
 
         env: dict[str, str] = dict(os.environ)
         if agent_cmd:
-            env["STUDYCTL_TEST_AGENT_CMD"] = agent_cmd
+            env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
         # Remove TMUX so studyctl uses attach mode (which fails gracefully
         # in pexpect since there's no real tmux client — the session is
         # created detached and we attach separately).

@@ -49,10 +49,10 @@ def test_get_config_path_honors_env_lazily(monkeypatch, tmp_path):
     first = tmp_path / "first.yaml"
     second = tmp_path / "second.yaml"
 
-    monkeypatch.setenv("STUDYCTL_CONFIG", str(first))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(first))
     assert get_config_path() == first
 
-    monkeypatch.setenv("STUDYCTL_CONFIG", str(second))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(second))
     assert get_config_path() == second
 
 
@@ -61,7 +61,7 @@ def test_load_raw_config_reads_env_override(monkeypatch, tmp_path):
 
     config_path = tmp_path / "custom.yaml"
     config_path.write_text("browser: firefox\n")
-    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     assert load_raw_config() == {"browser": "firefox"}
 
@@ -70,7 +70,7 @@ def test_write_raw_config_creates_parent_and_round_trips(monkeypatch, tmp_path):
     from studyloop.settings import load_raw_config, write_raw_config
 
     config_path = tmp_path / "nested" / "config.yaml"
-    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     written_path = write_raw_config({"browser": "brave", "web_port": 9000})
 
@@ -83,7 +83,7 @@ def test_load_raw_config_rejects_invalid_yaml(monkeypatch, tmp_path):
 
     config_path = tmp_path / "config.yaml"
     config_path.write_text("browser: [unterminated\n")
-    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     try:
         load_raw_config()
@@ -99,7 +99,7 @@ def test_load_raw_config_rejects_non_mapping(monkeypatch, tmp_path):
 
     config_path = tmp_path / "config.yaml"
     config_path.write_text("- not\n- a\n- mapping\n")
-    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     try:
         load_raw_config()

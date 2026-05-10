@@ -112,9 +112,9 @@ class TestSetupDefaults:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """STUDYCTL_CONFIG controls where setup writes config."""
+        """STUDYLOOP_CONFIG controls where setup writes config."""
         config_path = tmp_path / "custom" / "studyloop.yaml"
-        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         user_input = "\ny\n\nn\ny\n\nn\n"
         result = runner.invoke(cli, ["setup"], input=user_input)
@@ -273,7 +273,7 @@ class TestSetupMerge:
         """Keys in an existing config.yaml that the wizard doesn't touch are preserved."""
         config_path = _patch_config_dir / "config.yaml"
         config_path.write_text(
-            yaml.dump({"sync_remote": "my-hub", "session_db": "~/.config/studyctl/sessions.db"})
+            yaml.dump({"sync_remote": "my-hub", "session_db": "~/.config/studyloop/sessions.db"})
         )
 
         user_input = "\nn\nn\nn\nn\n"
@@ -281,7 +281,7 @@ class TestSetupMerge:
 
         config = yaml.safe_load(config_path.read_text())
         assert config["sync_remote"] == "my-hub"
-        assert config["session_db"] == "~/.config/studyctl/sessions.db"
+        assert config["session_db"] == "~/.config/studyloop/sessions.db"
 
     def test_wizard_values_overwrite_existing(
         self,

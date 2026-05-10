@@ -60,7 +60,7 @@ def md_to_pdf(md_path: Path, pdf_dir: Path, unique_name: str | None = None) -> P
 
     has_mermaid = "```mermaid" in content
 
-    with tempfile.TemporaryDirectory(prefix="studyctl-mermaid-") as mermaid_dir:
+    with tempfile.TemporaryDirectory(prefix="studyloop-mermaid-") as mermaid_dir:
         if has_mermaid:
             processed = _preprocess_mermaid(content, Path(mermaid_dir))
             # Write processed markdown to temp file

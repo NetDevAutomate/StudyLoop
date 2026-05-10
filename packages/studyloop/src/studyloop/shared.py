@@ -3,7 +3,7 @@
 Uses the existing session-sync merge logic (SQLite + rsync) rather than
 reinventing sync. The Mac Mini acts as the hub — all machines push/pull to it.
 
-Config lives at ~/.config/studyctl/config.yaml
+Config lives at ~/.config/studyloop/config.yaml
 
 Host schema:
   hosts:
@@ -13,8 +13,8 @@ Host schema:
         primary: 192.168.1.22
         secondary: 192.168.1.12   # optional, fallback for wifi
       user: user
-      state_json: ~/.config/studyctl/state.json
-      sessions_db: ~/.config/studyctl/sessions.db
+      state_json: ~/.config/studyloop/state.json
+      sessions_db: ~/.config/studyloop/sessions.db
 
 Local machine is auto-detected by matching socket.gethostname() against
 the hostname field in each host entry.
@@ -37,7 +37,7 @@ _DEFAULT_CONFIG_PATH = CONFIG_PATH
 
 def _active_config_path() -> Path:
     """Return active config path while preserving old test monkeypatch hooks."""
-    if os.environ.get("STUDYCTL_CONFIG"):
+    if os.environ.get("STUDYLOOP_CONFIG"):
         return get_config_path()
     if CONFIG_PATH != _DEFAULT_CONFIG_PATH:
         return CONFIG_PATH
@@ -136,11 +136,11 @@ def push_state(remote: str | None = None) -> list[str]:
         remotes = {remote: remotes[remote]} if remote in remotes else {}
 
     pushed = []
-    state_json = Path(local_config.get("state_json", "~/.config/studyctl/state.json")).expanduser()
+    state_json = Path(local_config.get("state_json", "~/.config/studyloop/state.json")).expanduser()
 
     for name, r in remotes.items():
         user = r.get("user", _get_default_user())
-        remote_state = r.get("state_json", "~/.config/studyctl/state.json")
+        remote_state = r.get("state_json", "~/.config/studyloop/state.json")
 
         # Push state.json via rsync (with IP fallback)
         if state_json.exists():
@@ -181,12 +181,12 @@ def pull_state(remote: str | None = None) -> list[str]:
         remotes = {remote: remotes[remote]} if remote in remotes else {}
 
     pulled = []
-    state_json = Path(local_config.get("state_json", "~/.config/studyctl/state.json")).expanduser()
+    state_json = Path(local_config.get("state_json", "~/.config/studyloop/state.json")).expanduser()
     state_json.parent.mkdir(parents=True, exist_ok=True)
 
     for name, r in remotes.items():
         user = r.get("user", _get_default_user())
-        remote_state = r.get("state_json", "~/.config/studyctl/state.json")
+        remote_state = r.get("state_json", "~/.config/studyloop/state.json")
 
         # Pull state.json (with IP fallback)
         result = _rsync_with_fallback(
@@ -436,8 +436,8 @@ def init_config() -> Path:
                     "primary": "",
                 },
                 "user": _get_default_user(),
-                "state_json": "~/.config/studyctl/state.json",
-                "sessions_db": "~/.config/studyctl/sessions.db",
+                "state_json": "~/.config/studyloop/state.json",
+                "sessions_db": "~/.config/studyloop/sessions.db",
             },
         },
     }

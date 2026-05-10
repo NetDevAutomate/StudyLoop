@@ -56,7 +56,7 @@ def make_isolated_config(tmp_path: Path, monkeypatch) -> Path:
 
     Patches ``studyloop.settings.CONFIG_DIR`` and
     ``studyloop.settings._CONFIG_PATH`` so all config-reading code
-    hits *tmp_path* instead of ``~/.config/studyctl``.
+    hits *tmp_path* instead of ``~/.config/studyloop``.
 
     Returns the temp config directory (already created).
     """

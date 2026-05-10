@@ -406,7 +406,7 @@ def start_session(
         # Allow integration tests to inject a mock agent command
         import os
 
-        test_agent_cmd = os.environ.get("STUDYCTL_TEST_AGENT_CMD")
+        test_agent_cmd = os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
         if test_agent_cmd:
             agent_cmd = test_agent_cmd.format(persona_file=persona_file)
         else:

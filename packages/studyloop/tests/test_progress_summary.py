@@ -78,7 +78,7 @@ content:
   base_path: {base_path}
 """
     )
-    monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
     save_course_metadata(base_path / "python", {"title": "Python", "sources": [{"path": "a"}]})
     record_card_review("python", "flashcard", "card-1", True, db_path=db_path)
 

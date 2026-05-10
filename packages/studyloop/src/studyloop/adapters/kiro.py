@@ -27,17 +27,19 @@ logger = logging.getLogger(__name__)
 # So repo root is six levels up.
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent
 
-KIRO_AGENTS_DIR = Path(os.environ.get("STUDYCTL_KIRO_AGENTS_DIR", Path.home() / ".kiro" / "agents"))
+KIRO_AGENTS_DIR = Path(
+    os.environ.get("STUDYLOOP_KIRO_AGENTS_DIR", Path.home() / ".kiro" / "agents")
+)
 KIRO_AGENT_NAME = "study-mentor"
 _KIRO_TEMPLATE = _REPO_ROOT / "agents" / "kiro" / "study-mentor.json"
-_KIRO_BACKUP_SUFFIX = ".studyctl-backup"
+_KIRO_BACKUP_SUFFIX = ".studyloop-backup"
 
 
 def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:
     """Write persona temp file and update Kiro agent JSON atomically."""
     # 1. Write canonical content to a temp persona file
     fd, persona_path = tempfile.mkstemp(
-        prefix="studyctl-kiro-persona-",
+        prefix="studyloop-kiro-persona-",
         suffix=".md",
         dir=tempfile.gettempdir(),
     )

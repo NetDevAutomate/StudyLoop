@@ -52,7 +52,7 @@ class TestRegistry:
         registry._registry = {"fake": fake}
         with (
             patch("shutil.which", return_value="/usr/bin/fake"),
-            patch.dict("os.environ", {"STUDYCTL_AGENT": "fake"}),
+            patch.dict("os.environ", {"STUDYLOOP_AGENT": "fake"}),
         ):
             result = detect_agents()
         assert result == ["fake"]
@@ -72,7 +72,7 @@ class TestRegistry:
         registry._registry = {"fake": fake}
         with (
             patch("shutil.which", return_value=None),
-            patch.dict("os.environ", {"STUDYCTL_AGENT": "fake"}),
+            patch.dict("os.environ", {"STUDYLOOP_AGENT": "fake"}),
         ):
             result = registry.detect_agents()
         assert result == []
@@ -223,14 +223,14 @@ class TestDetectAgentsPriority:
         registry.reset_registry()
 
     def test_env_override_unknown_agent_returns_empty(self):
-        """STUDYCTL_AGENT set to an unregistered name returns empty list."""
+        """STUDYLOOP_AGENT set to an unregistered name returns empty list."""
         from studyloop.adapters import registry
 
         registry.reset_registry()
         registry._registry = {"real": _make_fake_adapter("real", "real-bin")}
         with (
             patch("studyloop.adapters.registry.shutil.which", return_value="/usr/bin/real"),
-            patch.dict("os.environ", {"STUDYCTL_AGENT": "ghost"}),
+            patch.dict("os.environ", {"STUDYLOOP_AGENT": "ghost"}),
         ):
             result = registry.detect_agents()
         assert result == []
