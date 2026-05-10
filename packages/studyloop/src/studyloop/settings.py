@@ -15,7 +15,7 @@ import click
 import yaml
 
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
-LEGACY_CONFIG_DIR = Path.home() / ".config" / "studyloop"
+LEGACY_CONFIG_DIR = Path.home() / ".config" / "studyctl"
 DEFAULT_DB = CONFIG_DIR / "sessions.db"
 
 _CONFIG_PATH = Path(os.environ.get("STUDYLOOP_CONFIG", CONFIG_DIR / "config.yaml"))
@@ -23,7 +23,7 @@ _MIGRATION_CHECKED = False
 
 
 def _maybe_migrate_legacy_config() -> None:
-    """One-shot copy ~/.config/studyloop/ -> ~/.config/studyloop/ on first run.
+    """One-shot copy ~/.config/studyctl/ -> ~/.config/studyloop/ on first run.
 
     Runs at most once per process. Only activates when the legacy dir exists
     and the new dir does not — no data is overwritten. The legacy dir is

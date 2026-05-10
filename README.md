@@ -24,15 +24,15 @@ Built by a neurodivergent learner transitioning from networking to data engineer
 git clone https://github.com/Hookey-Street-Software/StudyLoop studyloop
 cd studyloop
 uv sync --all-packages
-uv tool install ./packages/studyctl
+uv tool install ./packages/studyloop
 
 # Configure
-studyctl setup              # Interactive 3-question wizard
-studyctl doctor --fix       # Verify and apply safe fixes
+studyloop setup              # Interactive 3-question wizard
+studyloop doctor --fix       # Verify and apply safe fixes
 
 # Use
-studyctl content generate-cards SOURCE --course python  # Local quiz + flashcard JSON
-studyctl web                      # Launch flashcard/quiz PWA
+studyloop content generate-cards SOURCE --course python  # Local quiz + flashcard JSON
+studyloop web                      # Launch flashcard/quiz PWA
 session-export                    # Export AI sessions to SQLite
 session-query search "decorators" # Search across all sessions
 ```
@@ -47,7 +47,7 @@ graph LR
     end
 
     subgraph "CLI Tools"
-        SC[studyctl]
+        SC[studyloop]
         AST[agent-session-tools]
         DB[(SQLite DB)]
     end
@@ -84,39 +84,39 @@ graph LR
 
 ## CLI Reference
 
-### studyctl
+### studyloop
 
 ```bash
 # Study sessions (tmux + AI agent + sidebar)
-studyctl study "topic" --energy 7      # Full tmux environment in one command
-studyctl study "topic" --web           # Also start web dashboard + auto-open browser
-studyctl study "topic" --lan           # LAN access with password auth (implies --web)
-studyctl study "topic" --lan --password SECRET  # Explicit LAN password
-studyctl study --resume                # Resume conversation from history
-studyctl study --end                   # End session (quit Claude also works)
-studyctl park "question"               # Park tangential topic
+studyloop study "topic" --energy 7      # Full tmux environment in one command
+studyloop study "topic" --web           # Also start web dashboard + auto-open browser
+studyloop study "topic" --lan           # LAN access with password auth (implies --web)
+studyloop study "topic" --lan --password SECRET  # Explicit LAN password
+studyloop study --resume                # Resume conversation from history
+studyloop study --end                   # End session (quit Claude also works)
+studyloop park "question"               # Park tangential topic
 
 # Content pipeline
-studyctl content split SOURCE       # Split PDF by chapters
-studyctl content generate-cards DIR --course COURSE  # Generate local quiz/flashcard JSON
-studyctl content discover           # Preview configured study sources
-studyctl content ingest --dry-run   # Plan course-material ingest
+studyloop content split SOURCE       # Split PDF by chapters
+studyloop content generate-cards DIR --course COURSE  # Generate local quiz/flashcard JSON
+studyloop content discover           # Preview configured study sources
+studyloop content ingest --dry-run   # Plan course-material ingest
 
 # Review
-studyctl review                     # Check spaced repetition due dates
-studyctl struggles --days 30        # Find recurring struggle topics
-studyctl web                        # Launch flashcard/quiz PWA
+studyloop review                     # Check spaced repetition due dates
+studyloop struggles --days 30        # Find recurring struggle topics
+studyloop web                        # Launch flashcard/quiz PWA
 
 # Status/topics
-studyctl status                     # Show sync status
-studyctl topics                     # List configured topics
+studyloop status                     # Show sync status
+studyloop topics                     # List configured topics
 
 # Health & metrics
-studyctl doctor                     # Check installation health
-studyctl doctor --fix               # Apply safe automatic fixes
-studyctl install agents             # Install AI agent definitions from source checkout
-studyctl setup                      # Interactive configuration
-studyctl session effectiveness      # Persona effectiveness over time
+studyloop doctor                     # Check installation health
+studyloop doctor --fix               # Apply safe automatic fixes
+studyloop install agents             # Install AI agent definitions from source checkout
+studyloop setup                      # Interactive configuration
+studyloop session effectiveness      # Persona effectiveness over time
 ```
 
 ### agent-session-tools
@@ -139,12 +139,12 @@ session-sync push/pull/sync HOST     # Cross-machine sync
 | Kiro CLI | `study-mentor` | `kiro-cli chat --agent study-mentor` |
 | Gemini CLI | `study-mentor` | `gemini` (auto-detected) |
 | OpenCode | `study-mentor` | Tab to switch agent |
-| Ollama | (local LLM) | `studyctl study "topic" --agent ollama` |
-| LM Studio | (local LLM) | `studyctl study "topic" --agent lmstudio` |
+| Ollama | (local LLM) | `studyloop study "topic" --agent ollama` |
+| LM Studio | (local LLM) | `studyloop study "topic" --agent lmstudio` |
 
 ## Web PWA
 
-Launch with `studyctl web`. Accessible from any device on the network.
+Launch with `studyloop web`. Accessible from any device on the network.
 
 **Flashcard review:**
 - SM-2 spaced repetition with source/chapter filter
@@ -163,7 +163,7 @@ Launch with `studyctl web`. Accessible from any device on the network.
 ## Optional Extras
 
 ```bash
-# Install extras via uv (not PyPI — the studyctl PyPI project was yanked)
+# Install extras via uv (not PyPI — the studyloop PyPI project was yanked)
 uv sync --all-packages --extra web      # FastAPI web UI
 uv sync --all-packages --extra content  # PDF splitting + content pipeline
 
@@ -212,10 +212,10 @@ brew install just
 
 | | |
 |---|---|
-| 🎧 **[Listen to the Audio Overview](https://artefacts.netdevautomate.dev/socratic-study-mentor/artefacts/)** | Two AI hosts discuss the project — great for commutes |
-| 🎬 **[Watch the Video Overview](https://artefacts.netdevautomate.dev/socratic-study-mentor/artefacts/#video)** | Visual walkthrough of architecture and concepts |
-| 🖼️ **[View the Infographic](https://artefacts.netdevautomate.dev/socratic-study-mentor/artefacts/#infographic)** | Architecture and flow at a glance |
-| 📊 **[Browse the Slide Deck](https://artefacts.netdevautomate.dev/socratic-study-mentor/artefacts/#slides)** | Presentation-ready project overview |
+| 🎧 **[Listen to the Audio Overview](https://artefacts.netdevautomate.dev/studyloop/artefacts/)** | Two AI hosts discuss the project — great for commutes |
+| 🎬 **[Watch the Video Overview](https://artefacts.netdevautomate.dev/studyloop/artefacts/#video)** | Visual walkthrough of architecture and concepts |
+| 🖼️ **[View the Infographic](https://artefacts.netdevautomate.dev/studyloop/artefacts/#infographic)** | Architecture and flow at a glance |
+| 📊 **[Browse the Slide Deck](https://artefacts.netdevautomate.dev/studyloop/artefacts/#slides)** | Presentation-ready project overview |
 
 *Historical generated artefacts. NotebookLM is not required for the core study workflow.*
 <!-- ARTEFACTS:END -->

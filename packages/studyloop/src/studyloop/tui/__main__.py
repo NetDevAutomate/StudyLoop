@@ -1,4 +1,4 @@
-"""Allow running the sidebar via ``python -m studyctl.tui``."""
+"""Allow running the sidebar via ``python -m studyloop.tui``."""
 
 from studyloop.tui.sidebar import run_sidebar
 

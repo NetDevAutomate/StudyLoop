@@ -1,4 +1,4 @@
-# studyctl
+# studyloop
 
 Study pipeline management CLI — sync Obsidian notes, spaced repetition scheduling, and cross-machine state sync.
 

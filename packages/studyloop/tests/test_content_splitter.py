@@ -1,4 +1,4 @@
-"""Unit tests for studyctl.content.splitter."""
+"""Unit tests for studyloop.content.splitter."""
 
 pymupdf = __import__("pytest").importorskip("pymupdf")
 

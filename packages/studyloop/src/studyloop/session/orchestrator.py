@@ -69,7 +69,7 @@ def setup_session_dir(
     session_dir: Path,
     topic: str,
 ) -> Path:
-    """Create session directory with CLAUDE.md and studyctl wrapper.
+    """Create session directory with CLAUDE.md and studyloop wrapper.
 
     Returns the path to the studyloop wrapper script.
     """
@@ -83,7 +83,7 @@ def setup_session_dir(
             f"# Study Session: {topic}\n\n"
             "This is a studyloop study session directory. "
             "Do not search for code or project files here.\n\n"
-            "Use `studyctl topic` to log topics and `studyctl park` to park questions.\n"
+            "Use `studyloop topic` to log topics and `studyloop park` to park questions.\n"
         )
 
     # Pre-trust the session directory for Claude Code so the workspace
@@ -94,12 +94,12 @@ def setup_session_dir(
     _ensure_claude_trust(session_dir.parent)
     _ensure_claude_trust(session_dir)
 
-    # Create a studyctl wrapper in the session directory that uses the
-    # correct Python (the one running this process). Without this, the
-    # Homebrew-installed studyctl (old version) shadows the dev version
-    # and `studyctl topic` fails with "unknown command".
+    # Create a studyloop wrapper in the session directory that uses the
+    # correct Python (the one running this process). Without this, any
+    # globally installed older studyloop may shadow the dev version and
+    # `studyloop topic` fails with "unknown command".
     wrapper = session_dir / "studyloop"
-    wrapper.write_text(f'#!/bin/sh\nexec {sys.executable} -m studyctl.cli "$@"\n')
+    wrapper.write_text(f'#!/bin/sh\nexec {sys.executable} -m studyloop.cli "$@"\n')
     wrapper.chmod(wrapper.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     return wrapper
@@ -163,7 +163,7 @@ def create_tmux_environment(
     )
 
     python = sys.executable
-    sidebar_cmd = f"{python} -m studyctl.tui.sidebar"
+    sidebar_cmd = f"{python} -m studyloop.tui.sidebar"
 
     # Create session in the session directory -- agent conversation history
     # (.claude/, .kiro/, etc.) is preserved here across sessions.
@@ -195,7 +195,7 @@ def create_tmux_environment(
         # Hide tmux chrome so the learner sees only the agent terminal.
         set_option(session_name, "status", "off")
 
-    # Load user's studyctl tmux overlay if they've explicitly created one.
+    # Load user's studyloop tmux overlay if they've explicitly created one.
     user_conf = session_state_dir / "tmux-studyloop.conf"
     if user_conf.exists():
         with contextlib.suppress(Exception):
@@ -251,10 +251,10 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
     # Kill any stale web server left over from a previous session
     _kill_port_occupant(port, expected_cmd="studyloop")
 
-    studyctl_bin = shutil.which("studyloop")
+    studyloop_bin = shutil.which("studyloop")
     cmd = (
-        [studyctl_bin, "web", "--port", str(port)]
-        if studyctl_bin
+        [studyloop_bin, "web", "--port", str(port)]
+        if studyloop_bin
         else [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
     )
     if lan:

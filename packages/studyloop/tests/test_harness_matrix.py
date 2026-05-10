@@ -97,7 +97,7 @@ def _make_test_config(tmp_path: Path) -> Path:
     """Write a minimal config with test topic and content path."""
     content_base = tmp_path / "study-materials"
     content_base.mkdir(exist_ok=True)
-    config = tmp_path / "studyctl-matrix-config.yaml"
+    config = tmp_path / "studyloop-matrix-config.yaml"
     config.write_text(
         f"topics:\n"
         f"  - name: {TOPIC}\n"

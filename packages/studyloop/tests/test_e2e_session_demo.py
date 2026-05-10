@@ -64,16 +64,16 @@ PROJECT_DIR = Path(__file__).parent.parent.parent.parent
 WEB_PORT = 18567
 TTYD_PORT = 17681
 LAN_PASSWORD = "e2e-test-pass"  # pragma: allowlist secret
-STUDYCTL = f"uv run --project {PROJECT_DIR} studyctl"
+STUDYLOOP = f"uv run --project {PROJECT_DIR} studyloop"
 TOPIC = "E2E Demo Session"
 
 
 def _make_test_config(tmp_dir: Path) -> Path:
-    """Write a minimal studyctl config with test-specific ports.
+    """Write a minimal studyloop config with test-specific ports.
 
     Returns the path to the temp config file.
     """
-    config = tmp_dir / "studyctl-test-config.yaml"
+    config = tmp_dir / "studyloop-test-config.yaml"
     config.write_text(
         f"web_port: {WEB_PORT}\nttyd_port: {TTYD_PORT}\nlan_password: {LAN_PASSWORD}\n"
     )
@@ -118,7 +118,7 @@ def _cleanup_all():
     result = _tmux("list-sessions", "-F", "#{session_name}")
     if result.returncode == 0:
         for name in result.stdout.strip().splitlines():
-            if name.startswith(("study-", "e2e-", "studyctl-test", "playwright-")):
+            if name.startswith(("study-", "e2e-", "studyloop-test", "playwright-")):
                 _tmux("kill-session", "-t", name)
     # Kill orphaned processes
     for pattern in (
@@ -152,21 +152,21 @@ def _make_demo_agent(tmp_path: Path) -> str:
         sleep 2
 
         # Simulate agent logging topics
-        {STUDYCTL} topic "What are decorators?" --status learning --note "exploring the concept"
+        {STUDYLOOP} topic "What are decorators?" --status learning --note "exploring the concept"
         sleep 2
 
-        {STUDYCTL} topic "Functions are first-class objects" \
+        {STUDYLOOP} topic "Functions are first-class objects" \
           --status win --note "functions can be passed as arguments"
         sleep 2
 
-        {STUDYCTL} topic "@property decorator" \
+        {STUDYLOOP} topic "@property decorator" \
           --status learning --note "syntactic sugar for getters/setters"
         sleep 1
 
-        {STUDYCTL} park "How do decorators interact with async/await?"
+        {STUDYLOOP} park "How do decorators interact with async/await?"
         sleep 1
 
-        {STUDYCTL} topic "Writing custom decorators" \
+        {STUDYLOOP} topic "Writing custom decorators" \
           --status win --note "closure wrapping pattern"
         sleep 1
 

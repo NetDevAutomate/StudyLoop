@@ -5,8 +5,8 @@ The content pipeline turns study sources into review artefacts that support inte
 The primary path is local:
 
 ```bash
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyctl web
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop web
 ```
 
 NotebookLM is not required for flashcards, quizzes, study sessions, review, or session history.
@@ -22,12 +22,12 @@ flowchart TB
         OBS["Obsidian<br/>~/Obsidian/Personal/Study"]
     end
 
-    Discover["studyctl content discover"]
-    Generate["studyctl content generate-cards"]
+    Discover["studyloop content discover"]
+    Generate["studyloop content generate-cards"]
     Backend["CardGenerator<br/>Ollama or Bedrock"]
     Validate["Pydantic validation<br/>FlashcardDeck / QuizDeck"]
     Artefacts["content.base_path/course<br/>flashcards + quizzes"]
-    Web["studyctl web<br/>review + progress"]
+    Web["studyloop web<br/>review + progress"]
 
     MD --> Discover
     TXT --> Discover
@@ -67,30 +67,30 @@ Recommended structure:
 ### Discover Sources
 
 ```bash
-studyctl content discover
-studyctl content discover ~/Obsidian/Personal/Study/Python
-studyctl content discover --json
+studyloop content discover
+studyloop content discover ~/Obsidian/Personal/Study/Python
+studyloop content discover --json
 ```
 
 ### Generate Flashcards And Quizzes
 
 ```bash
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 ```
 
 Generate only one artefact type:
 
 ```bash
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```
 
 ### Split PDFs
 
 ```bash
-studyctl content split "book.pdf" -o chapters/
-studyctl content split "book.pdf" --ranges "1-30,31-60,61-90"
+studyloop content split "book.pdf" -o chapters/
+studyloop content split "book.pdf" --ranges "1-30,31-60,61-90"
 ```
 
 After splitting, generate from extracted Markdown/text chunks where available. PDF parsing/chapter extraction should move behind a `ContentParser` plugin in the target architecture.
@@ -98,8 +98,8 @@ After splitting, generate from extracted Markdown/text chunks where available. P
 ### Import Existing Review JSON
 
 ```bash
-studyctl content import-review ~/Downloads/generated-review --course python --dry-run
-studyctl content import-review ~/Downloads/generated-review --course python
+studyloop content import-review ~/Downloads/generated-review --course python --dry-run
+studyloop content import-review ~/Downloads/generated-review --course python
 ```
 
 ## Output Format

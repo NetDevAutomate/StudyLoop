@@ -1,4 +1,4 @@
-"""Tests for studyctl.tmux — tmux CLI wrapper."""
+"""Tests for studyloop.tmux — tmux CLI wrapper."""
 
 from __future__ import annotations
 

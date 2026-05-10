@@ -7,7 +7,7 @@ Every study session — across all agents and platforms — follows this protoco
 
 ## tmux Session Environment
 
-Sessions run inside a tmux split-pane layout created by `studyctl study`:
+Sessions run inside a tmux split-pane layout created by `studyloop study`:
 
 - **Left pane**: AI agent (Claude Code or other) running the session protocol
 - **Right pane**: Textual sidebar showing timer, activity feed, and counters
@@ -77,9 +77,9 @@ Three quick questions. Don't skip any — they all affect session design.
 After state check, the agent runs:
 
 ```bash
-studyctl status          # Current study state
-studyctl review          # What's due for spaced repetition
-studyctl struggles       # Recurring struggle topics
+studyloop status          # Current study state
+studyloop review          # What's due for spaced repetition
+studyloop struggles       # Recurring struggle topics
 ```
 
 If spaced repetition data shows concepts moving to longer intervals, the agent surfaces one: "By the way — you mastered [concept] last week. That's real progress."
@@ -142,7 +142,7 @@ During review, the agent bridges between related topics:
 For each concept covered:
 
 ```bash
-studyctl progress "<concept>" -t <topic> -c <confidence>
+studyloop progress "<concept>" -t <topic> -c <confidence>
 ```
 
 Confidence levels: `struggling` → `learning` → `confident` → `mastered`
@@ -156,7 +156,7 @@ Confidence levels: `struggling` → `learning` → `confident` → `mastered`
 Based on spaced repetition intervals (1/3/7/14/30 days):
 
 - "You should review [concept] again in 3 days."
-- "Run `studyctl review` to see all upcoming due dates."
+- "Run `studyloop review` to see all upcoming due dates."
 
 !!! micro-celebration "Session Close"
     "You covered [N] concepts today. [Specific win]."

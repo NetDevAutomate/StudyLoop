@@ -1,4 +1,4 @@
-"""Tests for studyctl.session.cleanup — extracted helper functions.
+"""Tests for studyloop.session.cleanup — extracted helper functions.
 
 No conftest.py is used. Fixtures are inlined per project convention.
 """
@@ -31,7 +31,7 @@ class TestPersistSessionData:
     """_persist_session_data runs backlog, flashcard, and DB steps independently.
 
     All three sub-imports are local inside the function, so they must be patched
-    at their canonical module paths, not at studyctl.session.cleanup.*.
+    at their canonical module paths, not at studyloop.session.cleanup.*.
     """
 
     def _call(self, study_id, state, topic_entries, notes, auto_persist=True):

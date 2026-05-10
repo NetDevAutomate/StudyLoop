@@ -48,7 +48,7 @@ class TestListCourses:
         assert result["courses"][0]["name"] == "test-course"
         assert result["courses"][0]["flashcard_count"] == 1
 
-    def test_reads_review_dirs_from_studyctl_config_env(
+    def test_reads_review_dirs_from_studyloop_config_env(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         config_path = tmp_path / "custom-config.yaml"

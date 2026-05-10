@@ -1,1 +1,1 @@
-"""Textual TUI components for studyctl."""
+"""Textual TUI components for studyloop."""

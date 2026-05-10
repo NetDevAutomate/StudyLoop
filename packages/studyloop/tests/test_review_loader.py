@@ -1,4 +1,4 @@
-"""Tests for studyctl.review_loader — flashcard/quiz JSON loading."""
+"""Tests for studyloop.review_loader — flashcard/quiz JSON loading."""
 
 from __future__ import annotations
 

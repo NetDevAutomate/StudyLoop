@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compatibility wrapper around `studyctl install agents`.
+# Compatibility wrapper around `studyloop install agents`.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -25,7 +25,7 @@ for arg in "$@"; do
   esac
 done
 
-CMD=(uv run studyctl install agents)
+CMD=(uv run studyloop install agents)
 CMD+=("${TOOLS[@]}")
 if $UNINSTALL; then
   CMD+=("--uninstall")

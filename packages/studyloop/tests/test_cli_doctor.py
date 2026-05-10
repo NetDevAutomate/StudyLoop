@@ -16,7 +16,7 @@ HEALTHY_RESULTS = [
 ]
 WARN_AUTO_RESULTS = [
     CheckResult("core", "python_version", "pass", "Python 3.12.0", "", False),
-    CheckResult("updates", "update_studyctl", "warn", "2.0.0 -> 2.1.0", "studyloop upgrade", True),
+    CheckResult("updates", "update_studyloop", "warn", "2.0.0 -> 2.1.0", "studyloop upgrade", True),
 ]
 FAIL_RESULTS = [
     CheckResult("core", "config_file", "fail", "Config missing", "studyloop config init", True),

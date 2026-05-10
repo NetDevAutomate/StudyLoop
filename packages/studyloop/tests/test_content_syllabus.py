@@ -1,4 +1,4 @@
-"""Unit tests for studyctl.content.syllabus."""
+"""Unit tests for studyloop.content.syllabus."""
 
 import json
 

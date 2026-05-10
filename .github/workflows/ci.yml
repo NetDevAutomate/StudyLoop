@@ -27,7 +27,7 @@ jobs:
           python-version: "3.12"
       - run: uv sync --all-packages
       - run: cd packages/agent-session-tools && uv run pyright src/
-      - run: cd packages/studyctl && uv run pyright src/
+      - run: cd packages/studyloop && uv run pyright src/
 
   sast:
     runs-on: ubuntu-latest
@@ -84,9 +84,9 @@ jobs:
       - run: ./scripts/build-release.sh
       - name: Install built wheel without optional extras
         run: |
-          uv venv /tmp/studyctl-smoke
-          uv pip install --python /tmp/studyctl-smoke/bin/python dist/studyctl-*.whl
+          uv venv /tmp/studyloop-smoke
+          uv pip install --python /tmp/studyloop-smoke/bin/python dist/studyloop-*.whl
       - name: Smoke-test installed CLI entry points
         run: |
-          export PATH="/tmp/studyctl-smoke/bin:$PATH"
+          export PATH="/tmp/studyloop-smoke/bin:$PATH"
           ./scripts/smoke-installed-cli.sh

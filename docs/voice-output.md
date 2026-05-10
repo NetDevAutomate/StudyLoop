@@ -71,7 +71,7 @@ When enabled, the agent speaks core questions, answers, key principles, and teac
 
 ## Configuration
 
-`~/.config/studyctl/config.yaml`:
+`~/.config/studyloop/config.yaml`:
 
 ```yaml
 tts:
@@ -122,7 +122,7 @@ Replace the path with your actual clone location. The `scripts/install-agents.sh
 
 ## Web PWA Voice
 
-The study web app (`studyctl web`) has built-in voice support via the Web Speech API -- no extra dependencies needed. It works on any device with a browser.
+The study web app (`studyloop web`) has built-in voice support via the Web Speech API -- no extra dependencies needed. It works on any device with a browser.
 
 **Voice selector dropdown** -- choose from all English voices available on your device. The dropdown appears in the header bar and persists your selection across sessions.
 

@@ -1,4 +1,4 @@
-"""Unit tests for studyctl.content.notebooklm_client."""
+"""Unit tests for studyloop.content.notebooklm_client."""
 
 pytest = __import__("pytest")
 pytest.importorskip("notebooklm")

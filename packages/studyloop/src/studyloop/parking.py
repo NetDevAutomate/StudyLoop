@@ -1,7 +1,7 @@
 """Parking lot persistence — store and manage tangential topics for future sessions.
 
 During a study session, the AI agent parks tangential questions here.
-At session start, unresolved parked topics are surfaced via ``studyctl resume``.
+At session start, unresolved parked topics are surfaced via ``studyloop resume``.
 """
 
 from __future__ import annotations

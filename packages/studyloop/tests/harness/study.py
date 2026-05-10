@@ -24,7 +24,7 @@ from pathlib import Path
 from .agents import long_running_agent
 from .tmux import TmuxHarness
 
-# IPC file locations (mirrors studyctl.session_state)
+# IPC file locations (mirrors studyloop.session_state)
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
 STATE_FILE = CONFIG_DIR / "session-state.json"
 TOPICS_FILE = CONFIG_DIR / "session-topics.md"
@@ -106,7 +106,7 @@ class StudySession:
         # Build and run the studyloop study command
         env = os.environ.copy()
         env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
-        # Remove TMUX env var so studyctl uses attach (not switch-client)
+        # Remove TMUX env var so studyloop uses attach (not switch-client)
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
 

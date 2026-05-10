@@ -25,7 +25,7 @@ _KOKORO_VOICES = _KOKORO_DIR / "voices-v1.0.bin"
 
 
 def _get_tts_config() -> dict:
-    """Load TTS config from studyctl config.yaml."""
+    """Load TTS config from studyloop config.yaml."""
     config = load_config()
     return config.get("tts", {})
 

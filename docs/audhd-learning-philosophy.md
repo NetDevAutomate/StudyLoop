@@ -104,7 +104,7 @@ ADHD brains forget fast but respond well to structured review. The toolkit uses 
 | 14 days | Apply to new problem | 20 min | Tests transfer, not just recall |
 | 30 days | Teach-back session | 15 min | If you can teach it, you know it |
 
-`studyctl review` checks your session history and tells you what's due. The agent uses this at the start of every session to prioritise overdue topics.
+`studyloop review` checks your session history and tells you what's due. The agent uses this at the start of every session to prioritise overdue topics.
 
 Why this works for ADHD:
 - **External structure** — you don't have to remember to review, the system tells you
@@ -314,7 +314,7 @@ If 70% questions feels too intense, edit the agent persona to shift the ratio. S
 
 ### Change the concept bridges
 
-The default bridges assume a networking background. If you're coming from a different domain, run `studyctl config init` to configure your primary expertise domain. The AI agents will then use your configured domain to draw analogies during Socratic sessions.
+The default bridges assume a networking background. If you're coming from a different domain, run `studyloop config init` to configure your primary expertise domain. The AI agents will then use your configured domain to draw analogies during Socratic sessions.
 
 ### Modify session types
 
@@ -322,8 +322,8 @@ The agents support multiple session types (deep study, light review, body doubli
 
 ### Tune spaced repetition intervals
 
-The 1/3/7/14/30 day schedule is a starting point. If you find concepts fading faster, tighten the early intervals. The schedule is defined in `packages/studyctl/src/studyctl/history/progress.py`.
+The 1/3/7/14/30 day schedule is a starting point. If you find concepts fading faster, tighten the early intervals. The schedule is defined in `packages/studyloop/src/studyloop/history/progress.py`.
 
 ### Add study topics
 
-Edit `~/.config/studyctl/config.yaml` to add new topics. Each topic needs a name, slug, and Obsidian path. See the [Setup Guide](setup-guide.md) for details.
+Edit `~/.config/studyloop/config.yaml` to add new topics. Each topic needs a name, slug, and Obsidian path. See the [Setup Guide](setup-guide.md) for details.

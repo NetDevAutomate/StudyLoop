@@ -4,7 +4,7 @@
 
 ## v1.0 — Foundation
 
-- [x] Monorepo with studyctl + agent-session-tools
+- [x] Monorepo with studyloop + agent-session-tools
 - [x] Kiro CLI + Claude Code agent definitions
 - [x] Spaced repetition scheduling (1/3/7/14/30 days)
 - [x] Session export from 8+ AI tools
@@ -22,7 +22,7 @@ Features designed specifically for AuDHD brains, ranked by impact.
 #### ~~Win Tracking~~ ✅
 **Why:** AuDHD brains are terrible at recognising progress (RSD + imposter syndrome). Seeing concrete evidence of improvement is genuinely therapeutic.
 
-- [x] `studyctl wins` — show concepts that moved from "struggled" to "confident"
+- [x] `studyloop wins` — show concepts that moved from "struggled" to "confident"
 - [x] Session count trends (studying more consistently?)
 - [x] Skills where scaffolding level decreased over time
 - [x] Queryable from agents for positive reinforcement during sessions
@@ -51,7 +51,7 @@ Features designed specifically for AuDHD brains, ranked by impact.
 #### ~~"Where Was I?" Auto-Resume~~ ✅
 **Why:** AuDHD learners lose context between sessions constantly. Manual context loading is a barrier to starting.
 
-- [x] `studyctl resume` — automatic last-session summary with topics, concepts in progress
+- [x] `studyloop resume` — automatic last-session summary with topics, concepts in progress
 - [x] Built on existing session query infrastructure
 - [x] Shows: what you were learning, where you got stuck, what's next
 - [x] Integrated into session protocol — agents run it at session start
@@ -69,7 +69,7 @@ Features designed specifically for AuDHD brains, ranked by impact.
 
 - [x] Apple Calendar + Reminders MCP integration (macOS) — native notifications
 - [x] Google Calendar MCP integration (cross-platform)
-- [x] Auto-create study time blocks from `studyctl review` output
+- [x] Auto-create study time blocks from `studyloop review` output
 - [x] Daily study briefing generation
 - [x] Break reminders via native notifications
 - [x] Note: Windows/WSL2 users use Google Calendar; macOS users can use either
@@ -110,7 +110,7 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - [ ] Community-contributed study topics
 - [ ] Localisation support
 - [x] TTS voice output (kokoro-tts / ltts integration)
-- [x] MkDocs documentation site (font toggle, Nord colours, reading preferences, 7 admonition types, `studyctl docs` CLI)
+- [x] MkDocs documentation site (font toggle, Nord colours, reading preferences, 7 admonition types, `studyloop docs` CLI)
 - [x] Gemini CLI / OpenCode / Amp agents (unified shared framework)
 - [x] CI Python version matrix (3.12, 3.13)
 - [x] GitHub Pages deployment workflow
@@ -121,10 +121,10 @@ Features designed specifically for AuDHD brains, ranked by impact.
 
 Features identified through comprehensive code review:
 
-- [x] **"Where Was I?" auto-resume** — `studyctl resume` shows last session, topics, concepts in progress
+- [x] **"Where Was I?" auto-resume** — `studyloop resume` shows last session, topics, concepts in progress
 - [x] **Medication timing awareness** — optional config for cognitive windows (onset/peak/tapering/worn off)
-- [x] **Visual progress map** — `studyctl progress-map` with Mermaid diagram output
-- [x] **Routine building / streak tracking** — `studyctl streaks` with current/longest streak, consistency %
+- [x] **Visual progress map** — `studyloop progress-map` with Mermaid diagram output
+- [x] **Routine building / streak tracking** — `studyloop streaks` with current/longest streak, consistency %
 - [x] **Interleaving suppression on low-energy days** — automatic rule to disable topic mixing when energy < 4
 - [x] **Custom admonition style guide** — document the 7 custom admonition types for contributors
 
@@ -160,20 +160,20 @@ Features to deepen the mentor's teaching methodology and student wellbeing.
 - [x] Detection probes for understanding vs memorisation
 - [x] Angle rotation: Bloom's levels, contexts, modalities, directions
 - [x] Score transparency with metacognitive calibration
-- [x] `studyctl teachback` and `studyctl teachback-history` CLI commands
+- [x] `studyloop teachback` and `studyloop teachback-history` CLI commands
 - [x] Database migration v10: teach_back_scores table + study_progress extensions
 - [x] Shared framework: `agents/shared/teach-back-protocol.md`
 
 ### Dynamic Knowledge Bridging
 **Why:** The current system hardcodes networking as the bridge domain. Configurable bridges make the tool usable for anyone, and dynamic bridge tracking improves analogy quality over time.
 
-- [x] Configurable knowledge domains via `~/.config/studyctl/config.yaml`
+- [x] Configurable knowledge domains via `~/.config/studyloop/config.yaml`
 - [x] Interactive configure flow (discover student's expertise, map anchors, generate bridges)
 - [x] Bridge lifecycle: proposed → validated → effective (or misleading → rejected)
 - [x] Student-generated bridge capture and re-use
 - [x] Bridge fading (explicit at L1-L2, prompted at L3, student-generated at L4)
 - [x] Warm-up activation before new material
-- [x] `studyctl bridge add/list` CLI commands
+- [x] `studyloop bridge add/list` CLI commands
 - [x] Database migration v11: knowledge_bridges table
 - [x] Shared framework: `agents/shared/knowledge-bridging.md`
 - [x] Default: networking bridges preserved as zero-configuration experience
@@ -185,9 +185,9 @@ Bug fixes, agent framework unification, and documentation polish.
 - [x] **Bug fixes**: `record_progress()` case sensitivity, legacy DB paths removed, `init_config()` hardcoded machine names
 - [x] **Study sessions wired up**: `start_study_session()`, `end_study_session()`, `get_study_session_stats()` for the orphaned `study_sessions` table
 - [x] **Unified agent framework**: All 5 platforms (Kiro, Claude Code, Gemini, OpenCode, Amp) reference `agents/shared/` — eliminated ~700 lines of inline duplication
-- [x] **Interactive config wizard**: `studyctl config init` with knowledge bridging, NotebookLM, Obsidian vault questions
-- [x] **Config viewer**: `studyctl config show` with Rich tables
-- [x] **Docs site**: `studyctl docs serve/open/list/read` commands
+- [x] **Interactive config wizard**: `studyloop config init` with knowledge bridging, NotebookLM, Obsidian vault questions
+- [x] **Config viewer**: `studyloop config show` with Rich tables
+- [x] **Docs site**: `studyloop docs serve/open/list/read` commands
 - [x] **Agent installation integration**: `install-agents.sh` called from `config init` flow
 
 ## v2.0 — Unified Platform
@@ -195,18 +195,18 @@ Bug fixes, agent framework unification, and documentation polish.
 Monorepo restructure, content pipeline absorption, packaging, and infrastructure hardening.
 
 - [x] **Phase 0**: Config consolidation (`settings.py` single source), CLI split into `cli/` package with LazyGroup (12 modules), WAL mode on all SQLite connections, service layer (`services/review.py`, `services/content.py`), JSON contract formalised
-- [x] **Phase 1**: Content absorption — 7 modules from pdf-by-chapters (`splitter`, `notebooklm_client`, `syllabus`, `markdown_converter`, `models`, `storage`), 10 CLI commands under `studyctl content`, 76 tests
-- [x] **Phase 4**: PyPI publishing (`studyctl` on PyPI), Homebrew personal tap (`NetDevAutomate/studyctl/studyctl`), OIDC trusted publishing, `studyctl setup` wizard
+- [x] **Phase 1**: Content absorption — 7 modules from pdf-by-chapters (`splitter`, `notebooklm_client`, `syllabus`, `markdown_converter`, `models`, `storage`), 10 CLI commands under `studyloop content`, 76 tests
+- [x] **Phase 4**: PyPI publishing (`studyctl` on PyPI), Homebrew personal tap (`NetDevAutomate/studyctl/studyctl`), OIDC trusted publishing, `studyloop setup` wizard
 - [x] **327 tests**, 4 skipped (optional deps)
 
 ## v2.1 — Health & Self-Update (current)
 
 Diagnostic engine, self-update mechanism, and AI-guided setup for non-technical users.
 
-- [x] **`studyctl doctor`** — 19 health checks across 7 categories (core, database, config, agents, deps, voice, updates). Rich table output, `--json` for AI agents/CI, `--quiet` for scripts, `--category` for filtering. Exit codes: 0=healthy, 1=actionable, 2=core failure.
-- [x] **`studyctl update`** — check for available updates (always exit 0, informational)
-- [x] **`studyctl upgrade`** — apply updates with `--dry-run`, `--component`, `--force`. Package manager detection (uv/brew/pip), DB backup with 30-day pruning, agent definition updates.
-- [x] **Install-mentor agent** — tool-agnostic AI-guided setup prompt (`agents/shared/install-mentor.md`). Uses `studyctl doctor --json` as contract, fix loop capped at 3 iterations. Works with Claude Code, Kiro, Gemini CLI, OpenCode, Amp.
+- [x] **`studyloop doctor`** — 19 health checks across 7 categories (core, database, config, agents, deps, voice, updates). Rich table output, `--json` for AI agents/CI, `--quiet` for scripts, `--category` for filtering. Exit codes: 0=healthy, 1=actionable, 2=core failure.
+- [x] **`studyloop update`** — check for available updates (always exit 0, informational)
+- [x] **`studyloop upgrade`** — apply updates with `--dry-run`, `--component`, `--force`. Package manager detection (uv/brew/pip), DB backup with 30-day pruning, agent definition updates.
+- [x] **Install-mentor agent** — tool-agnostic AI-guided setup prompt (`agents/shared/install-mentor.md`). Uses `studyloop doctor --json` as contract, fix loop capped at 3 iterations. Works with Claude Code, Kiro, Gemini CLI, OpenCode, Amp.
 - [x] **Agent manifest** — `agents/manifest.json` tracks SHA-256 hashes of all agent definitions. `scripts/update-agent-manifest.py` regenerates.
 - [x] **Documentation** — README, CLI reference, setup guide, agent-install all updated for non-technical users.
 
@@ -218,7 +218,7 @@ Live study session with real-time dashboard, parking lot, and timer.
 - [x] **Phase 1.5 — cmux**: Agent protocol for cmux MCP pane control (macOS/Ghostty)
 - [x] **Phase 2 — Web Dashboard**: SSE-powered live dashboard (`/session`), HTMX + Alpine.js, energy-adaptive timer, activity feed with visual language, session summary, artefact viewer, 14 tests
 - [x] **Bugs fixed**: Parking deduplication (migration v15 + `INSERT OR IGNORE`), IPC file permissions (0700/0600), CORS wildcard removed, SSE mtime optimization, timer pause/reset controls, auto-migrate parked_topics
-- [x] **Phase 1 — Unified Session**: `studyctl study` single command, tmux session runtime (`tmux.py`), agent launcher (`agent_launcher.py`, Claude-only), Textual sidebar (`tui/sidebar.py`), `--resume`/`--end`/`--web`, agent personas (`study.md`, `co-study.md`), persistent session directories with conversation history resume (`claude -r`), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.
+- [x] **Phase 1 — Unified Session**: `studyloop study` single command, tmux session runtime (`tmux.py`), agent launcher (`agent_launcher.py`, Claude-only), Textual sidebar (`tui/sidebar.py`), `--resume`/`--end`/`--web`, agent personas (`study.md`, `co-study.md`), persistent session directories with conversation history resume (`claude -r`), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.
 
 ### v2.2.1 — CI Fixes, Test Harness & Session Bug Fixes (2026-04-02)
 
@@ -232,12 +232,12 @@ Live study session with real-time dashboard, parking lot, and timer.
 
 ### v2.2 — Polish (Phase 2) ✅
 
-- [x] `studyctl clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs
+- [x] `studyloop clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs
 - [x] tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore
 - [x] Vendor HTMX + Alpine.js + OpenDyslexic + Inter into `web/static/` (zero CDN, fully offline PWA)
 - [x] Parked topic warmup at session start (surface unresolved topics from previous sessions)
 - [x] Break suggestions at timer threshold crossings (FCIS `logic/break_logic.py`, sidebar BreakBanner)
-- [x] Energy streaks — distribution, trend detection, duration correlation in `studyctl streaks`
+- [x] Energy streaks — distribution, trend detection, duration correlation in `studyloop streaks`
 - [x] Register all 10 MCP tools in agent persona and `agents/claude/mcp.json`
 - [x] `logic/` subpackage for FCIS cores (clean, backlog, break, streaks)
 - [x] Self-healing `_connect()` for parking table schema drift
@@ -248,12 +248,12 @@ Live study session with real-time dashboard, parking lot, and timer.
 
 Nightly drift detection, pre-release gate, backup/restore.
 
-- [x] Nightly: fresh install on Ubuntu + macOS, `studyctl doctor --json` as gate (`nightly-install.yml`)
+- [x] Nightly: fresh install on Ubuntu + macOS, `studyloop doctor --json` as gate (`nightly-install.yml`)
 - [x] Nightly: UAT tmux integration tests on macOS (`nightly-uat.yml`)
 - [x] Pre-release: upgrade path N-1 → N, triggered on release tags (`pre-release.yml`)
-- [x] `studyctl backup` / `studyctl restore` — timestamped snapshots with safety backup
+- [x] `studyloop backup` / `studyloop restore` — timestamped snapshots with safety backup
 - [x] Orphaned process cleanup in test harness (`conftest.py` session-scoped fixture)
-- [ ] Docker: `studyctl-web` image with health check via doctor — deferred to Phase 3
+- [ ] Docker: `studyloop-web` image with health check via doctor — deferred to Phase 3
 - [ ] `compatibility.json` for pre-flight version checks — deferred (doctor already covers this)
 
 ### Multi-Agent Support ✅
@@ -278,7 +278,7 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 
 ### ttyd Integration + Embedded Web Pane
 
-- [x] `studyctl study --lan` starts ttyd alongside tmux session (port 7681)
+- [x] `studyloop study --lan` starts ttyd alongside tmux session (port 7681)
 - [x] Embed ttyd as iframe in existing web dashboard
 - [x] "Open Study Agent Session" button — iframe split (default) + pop-out new window
 - [x] Doctor check for ttyd binary
@@ -294,7 +294,7 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 
 ### Local LLMs via Ollama / LM Studio
 
-- [x] `studyctl study Python --agent ollama` / `--agent lmstudio` — AgentAdapter entries with tier-pinning
+- [x] `studyloop study Python --agent ollama` / `--agent lmstudio` — AgentAdapter entries with tier-pinning
 - [x] Claude Code frontend with `ANTHROPIC_BASE_URL` pointed at local backend
 - [x] LM Studio: native Anthropic API support (simplest path)
 - [x] Ollama: via LiteLLM proxy (Ollama lacks Anthropic API)
@@ -336,6 +336,6 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 - [x] SHA-256[:16] persona hash computed at session start
 - [x] Structured win/struggle counts extracted at session end
 - [x] `get_persona_effectiveness()` query — win rate per persona version
-- [x] `studyctl session effectiveness` CLI command (Rich table)
+- [x] `studyloop session effectiveness` CLI command (Rich table)
 - [ ] Tier 2: Autonomous persona optimisation against simulated student evaluations
 - Obsidian session export — future release

@@ -8,22 +8,22 @@
 
 ```bash
 # 1. Install and configure
-brew install NetDevAutomate/studyctl/studyctl
-studyctl setup
-studyctl doctor --fix
+brew install Hookey-Street-Software/studyloop/studyloop
+studyloop setup
+studyloop doctor --fix
 
 # 2. Start an interactive study session
-studyctl study
+studyloop study
 # or specify a topic directly
-studyctl study "Python" --mode co-study
+studyloop study "Python" --mode co-study
 # or launch your preferred assistant directly:
 # kiro-cli chat --agent study-mentor
 # claude      # then /agent socratic-mentor
 # codex       # in the project root with AGENTS.md present
 
 # 3. Optional: generate and review flashcards/quizzes
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyctl review
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop review
 ```
 
 !!! tip "First time?"
@@ -41,7 +41,7 @@ graph LR
     end
 
     subgraph "CLI Tools"
-        SC[studyctl]
+        SC[studyloop]
         AST[agent-session-tools]
         DB[(SQLite DB)]
     end
@@ -74,7 +74,7 @@ graph LR
 
 | Tool | Purpose |
 |------|---------|
-| **studyctl** | Interactive study sessions, local content generation, spaced repetition, struggle detection, win tracking |
+| **studyloop** | Interactive study sessions, local content generation, spaced repetition, struggle detection, win tracking |
 | **agent-session-tools** | Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, and more |
 | **AI Agents** | Socratic mentors that adapt to your energy, emotional state, and sensory environment |
 
@@ -91,7 +91,7 @@ graph LR
 - **[TUI Sidebar Guide](tui-guide.md)** — Terminal sidebar layout, timer modes, key bindings
 - **[Web UI Guide](web-ui-guide.md)** — live sessions, session dashboard, terminal fallback, review UI
 - **[Session Protocol](session-protocol.md)** — How every study session flows, from arrival to close
-- **[CLI Reference](cli-reference.md)** — Full command reference for `studyctl` and `session-query`
+- **[CLI Reference](cli-reference.md)** — Full command reference for `studyloop` and `session-query`
 - **[Repository Standards](standards/repo-standards.md)** — naming, doc, and structure standards
 - **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents
 - **[Network Bridges](network-bridges.md)** — Network→Data Engineering analogies for infrastructure people

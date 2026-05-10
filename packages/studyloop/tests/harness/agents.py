@@ -79,7 +79,7 @@ def fast_exit_agent(tmp_path: Path) -> str:
         """#!/usr/bin/env bash
 echo "Fast agent — exiting"
 sleep 1
-studyctl topic "Quick Topic" --status win --note "done"
+studyloop topic "Quick Topic" --status win --note "done"
 sleep 1
 """,
     )
@@ -138,12 +138,12 @@ echo "Matrix agent started (persona: $1)"
 sleep 2  # wait for sidebar to initialise
 
 # Win topic — note must be >= 15 chars for flashcard generation
-studyctl topic "Decorator Pattern" --status win \
+studyloop topic "Decorator Pattern" --status win \
     --note "Understanding how Python decorators wrap functions using closures"
 sleep 1
 
 # Learning topic
-studyctl topic "First-Class Functions" --status learning \
+studyloop topic "First-Class Functions" --status learning \
     --note "exploring the concept of first-class functions"
 sleep 1
 

@@ -5,7 +5,7 @@ description: Read and write to the shared tutor assessment database for cross-ag
 
 ## Shared Progress Database
 
-**Location**: Configured in `~/.config/studyctl/config.yaml`
+**Location**: Configured in `~/.config/studyloop/config.yaml`
 
 **Purpose**: Single source of truth for skill assessments across all agents and machines.
 
@@ -61,7 +61,7 @@ uv run tutor-progress history --skill oop_design --limit 10
 ## Configuration
 
 ```yaml
-# ~/.config/studyctl/config.yaml
+# ~/.config/studyloop/config.yaml
 tutor:
   db_path: ~/path/to/sessions.db
   checkpoint_cadence_days: 7
@@ -81,4 +81,4 @@ This shows:
 - Skills needing attention
 - Recommended next checkpoint
 
-Study plan path is configured in `~/.config/studyctl/config.yaml`.
+Study plan path is configured in `~/.config/studyloop/config.yaml`.

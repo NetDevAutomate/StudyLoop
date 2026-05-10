@@ -1,92 +1,92 @@
 # CLI Reference
 
-## studyctl
+## studyloop
 
 Study pipeline management — content, review, sessions, and tracking.
 
 ```bash
 # Study sessions (tmux + AI agent + Textual sidebar)
-studyctl study "topic" --energy 7        # Full tmux environment in one command
-studyctl study "topic" --mode co-study   # Co-study mode (user drives)
-studyctl study --resume                  # Reattach to existing session
-studyctl study --end                     # End session cleanly
-studyctl study "topic" --web             # Also start web dashboard
-studyctl park QUESTION [-t TOPIC]        # Park tangential topic
+studyloop study "topic" --energy 7        # Full tmux environment in one command
+studyloop study "topic" --mode co-study   # Co-study mode (user drives)
+studyloop study --resume                  # Reattach to existing session
+studyloop study --end                     # End session cleanly
+studyloop study "topic" --web             # Also start web dashboard
+studyloop park QUESTION [-t TOPIC]        # Park tangential topic
 
 # Low-level session commands (used internally by study)
-studyctl session start -t TOPIC -e 7    # Start session (DB + IPC files)
-studyctl session status                  # Timer, topics, parking lot
-studyctl session end [-n NOTES]          # End session, show summary
-studyctl session effectiveness           # Persona effectiveness metrics
+studyloop session start -t TOPIC -e 7    # Start session (DB + IPC files)
+studyloop session status                  # Timer, topics, parking lot
+studyloop session end [-n NOTES]          # End session, show summary
+studyloop session effectiveness           # Persona effectiveness metrics
 
 # Content pipeline
-studyctl content split SOURCE            # Split PDF by chapters
-studyctl content generate-cards DIR --course COURSE # Local quiz/flashcard JSON
-studyctl content discover                # Preview configured study sources
-studyctl content ingest --dry-run        # Plan source ingest
-studyctl content import-review DIR --course COURSE  # Import existing JSON artefacts
-studyctl content process SOURCE          # Legacy optional NotebookLM upload path
-studyctl content from-obsidian DIR       # Legacy optional NotebookLM path
+studyloop content split SOURCE            # Split PDF by chapters
+studyloop content generate-cards DIR --course COURSE # Local quiz/flashcard JSON
+studyloop content discover                # Preview configured study sources
+studyloop content ingest --dry-run        # Plan source ingest
+studyloop content import-review DIR --course COURSE  # Import existing JSON artefacts
+studyloop content process SOURCE          # Legacy optional NotebookLM upload path
+studyloop content from-obsidian DIR       # Legacy optional NotebookLM path
 
 # Sync & topics
-studyctl sync [TOPIC] --all --dry-run    # Legacy optional notebook sync
-studyctl status [TOPIC]                  # Show sync status
-studyctl topics                          # List configured topics
-studyctl audio TOPIC                     # Legacy optional audio overview
-studyctl dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
+studyloop sync [TOPIC] --all --dry-run    # Legacy optional notebook sync
+studyloop status [TOPIC]                  # Show sync status
+studyloop topics                          # List configured topics
+studyloop audio TOPIC                     # Legacy optional audio overview
+studyloop dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
 
 # Review
-studyctl review                          # Check spaced repetition due dates
-studyctl progress                        # Summarize local course progress
-studyctl progress --course python        # Summarize one course
-studyctl progress --json                 # Machine-readable progress summary
-studyctl progress CONCEPT -t TOPIC -c confident # Record concept confidence
-studyctl struggles --days 30             # Find recurring struggle topics
+studyloop review                          # Check spaced repetition due dates
+studyloop progress                        # Summarize local course progress
+studyloop progress --course python        # Summarize one course
+studyloop progress --json                 # Machine-readable progress summary
+studyloop progress CONCEPT -t TOPIC -c confident # Record concept confidence
+studyloop struggles --days 30             # Find recurring struggle topics
 
 # Configuration & health
-studyctl setup                           # Interactive setup wizard
-studyctl install tools                   # Install global CLI entrypoints from repo
-studyctl install agents                  # Install agent definitions for detected tools
-studyctl config init                     # Interactive config (3 questions)
-studyctl config show                     # Display current configuration
-studyctl doctor                          # Full health check
-studyctl update                          # Check for available updates
-studyctl upgrade                         # Apply all available updates
+studyloop setup                           # Interactive setup wizard
+studyloop install tools                   # Install global CLI entrypoints from repo
+studyloop install agents                  # Install agent definitions for detected tools
+studyloop config init                     # Interactive config (3 questions)
+studyloop config show                     # Display current configuration
+studyloop doctor                          # Full health check
+studyloop update                          # Check for available updates
+studyloop upgrade                         # Apply all available updates
 
 # Backup & restore
-studyctl backup [--tag NAME]             # Snapshot DB + config to backups/
-studyctl restore                         # List available backups
-studyctl restore BACKUP --confirm        # Restore from backup (safety backup first)
+studyloop backup [--tag NAME]             # Snapshot DB + config to backups/
+studyloop restore                         # List available backups
+studyloop restore BACKUP --confirm        # Restore from backup (safety backup first)
 
 # Web
-studyctl web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
+studyloop web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
 ```
 
 ### Study Sessions
 
-The primary entry point is `studyctl study`, which creates a complete tmux-based study environment:
+The primary entry point is `studyloop study`, which creates a complete tmux-based study environment:
 
 ```bash
-studyctl study "Python Decorators" --energy 7          # Socratic mentor session
-studyctl study "Spark Internals" --mode co-study       # User-driven co-study
-studyctl study "topic" --timer pomodoro                # Override default timer
-studyctl study "topic" --agent claude --web            # Explicit agent + web dashboard
-studyctl study "topic" --agent codex                  # Explicit Codex CLI session
-studyctl study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
-studyctl study "topic" --lan --password SECRET         # Explicit password for LAN auth
-studyctl study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
-studyctl study "topic" --agent lmstudio                # Local LLM via LM Studio
-studyctl study --resume                                # Resume conversation (-r)
-studyctl study --end                                   # End session cleanly
-studyctl park "How does asyncio compare?"              # Park mid-session
+studyloop study "Python Decorators" --energy 7          # Socratic mentor session
+studyloop study "Spark Internals" --mode co-study       # User-driven co-study
+studyloop study "topic" --timer pomodoro                # Override default timer
+studyloop study "topic" --agent claude --web            # Explicit agent + web dashboard
+studyloop study "topic" --agent codex                  # Explicit Codex CLI session
+studyloop study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
+studyloop study "topic" --lan --password SECRET         # Explicit password for LAN auth
+studyloop study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
+studyloop study "topic" --agent lmstudio                # Local LLM via LM Studio
+studyloop study --resume                                # Resume conversation (-r)
+studyloop study --end                                   # End session cleanly
+studyloop park "How does asyncio compare?"              # Park mid-session
 ```
 
-Run `studyctl study` without a topic to open the textual picker for body double, topic directory, course vendor, or course.
+Run `studyloop study` without a topic to open the textual picker for body double, topic directory, course vendor, or course.
 
-**What `studyctl study` creates:**
+**What `studyloop study` creates:**
 - tmux session with agent pane (left) + Textual sidebar (right)
 - AI agent launched with mode-specific persona (clean pane, no visible command)
-- Persistent session directory at `~/.config/studyctl/sessions/{name}/` — preserves AI conversation history (`.claude/`, `.kiro/`, etc.)
+- Persistent session directory at `~/.config/studyloop/sessions/{name}/` — preserves AI conversation history (`.claude/`, `.kiro/`, etc.)
 - Sidebar shows timer, activity feed, counters (keyboard: `p` pause, `r` reset, `Q` end session)
 - IPC files for dashboard viewports
 - Optional web dashboard at `/session` via `--web`
@@ -95,10 +95,10 @@ Run `studyctl study` without a topic to open the textual picker for body double,
 - `--password SECRET` sets the LAN authentication password (used with `--lan`)
 
 **Session lifecycle:**
-- **Start:** `studyctl study "topic"` — creates tmux session, agent, sidebar
+- **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar
 - **Exit:** quit Claude normally (`/exit`, Ctrl+C) — auto-cleans up tmux, IPC files, switches back to previous session. Session directory preserved.
-- **Resume:** `studyctl study --resume` — if tmux alive, reattaches. If ended, rebuilds tmux and passes `-r` to the agent to continue the conversation from history.
-- **End explicitly:** `studyctl study --end` or sidebar `Q` — same cleanup as quitting Claude
+- **Resume:** `studyloop study --resume` — if tmux alive, reattaches. If ended, rebuilds tmux and passes `-r` to the agent to continue the conversation from history.
+- **End explicitly:** `studyloop study --end` or sidebar `Q` — same cleanup as quitting Claude
 
 **Modes:**
 
@@ -107,37 +107,37 @@ Run `studyctl study` without a topic to open the textual picker for body double,
 | Study | (default) | Elapsed | Socratic mentor drives |
 | Co-study | `--mode co-study` | Pomodoro | User drives, agent available |
 
-**Low-level session commands** (used internally by `studyctl study`):
+**Low-level session commands** (used internally by `studyloop study`):
 
 ```bash
-studyctl session start -t "Decorators" -e 7    # Start session record
-studyctl session status                         # Show current state
-studyctl session end -n "Got through closures"  # End with notes
-studyctl session effectiveness                  # Win rate per persona version
-studyctl session effectiveness -p abc123...     # Filter by persona hash
+studyloop session start -t "Decorators" -e 7    # Start session record
+studyloop session status                         # Show current state
+studyloop session end -n "Got through closures"  # End with notes
+studyloop session effectiveness                  # Win rate per persona version
+studyloop session effectiveness -p abc123...     # Filter by persona hash
 ```
 
 ### Health & Updates
 
 ```bash
-studyctl doctor                          # Full health check (Rich table)
-studyctl doctor --json                   # JSON output (for AI agents and CI)
-studyctl doctor --quiet                  # One-line summary
-studyctl doctor --category core          # Check specific category only
-studyctl doctor --fix                    # Apply safe automatic fixes
-studyctl update --json                   # Machine-readable update info
-studyctl upgrade --dry-run               # Preview what would change
-studyctl upgrade --component packages    # Upgrade only packages
-studyctl upgrade --component database    # Run DB migrations only
-studyctl upgrade --component agents      # Update agent definitions only
+studyloop doctor                          # Full health check (Rich table)
+studyloop doctor --json                   # JSON output (for AI agents and CI)
+studyloop doctor --quiet                  # One-line summary
+studyloop doctor --category core          # Check specific category only
+studyloop doctor --fix                    # Apply safe automatic fixes
+studyloop update --json                   # Machine-readable update info
+studyloop upgrade --dry-run               # Preview what would change
+studyloop upgrade --component packages    # Upgrade only packages
+studyloop upgrade --component database    # Run DB migrations only
+studyloop upgrade --component agents      # Update agent definitions only
 ```
 
-**Exit codes for `studyctl doctor`:**
+**Exit codes for `studyloop doctor`:**
 
 | Code | Meaning |
 |------|---------|
 | `0` | All checks pass — installation is healthy |
-| `1` | Warnings or failures that can be fixed — run `studyctl doctor --fix` |
+| `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
 **Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `updates` (PyPI versions).
@@ -146,20 +146,20 @@ studyctl upgrade --component agents      # Update agent definitions only
 
 Review schedule: **1 → 3 → 7 → 14 → 30 days**
 
-`studyctl review` shows what's due based on when you last recorded progress.
+`studyloop review` shows what's due based on when you last recorded progress.
 
 ### Progress
 
-`studyctl progress` has two modes:
+`studyloop progress` has two modes:
 
 - With no concept argument, it summarizes local course progress from `content.base_path` and the review database.
 - With a concept argument, it records confidence for a study concept.
 
 ```bash
-studyctl progress                                  # Course summary table
-studyctl progress --course python                  # One course only
-studyctl progress --json                           # JSON for scripts/agents
-studyctl progress "list comprehensions" \
+studyloop progress                                  # Course summary table
+studyloop progress --course python                  # One course only
+studyloop progress --json                           # JSON for scripts/agents
+studyloop progress "list comprehensions" \
   --topic python \
   --confidence confident                           # Record concept confidence
 ```
@@ -168,13 +168,13 @@ The summary includes local source count, unique review cards, due cards, mastere
 
 ### Web PWA
 
-`studyctl web` launches a progressive web app for flashcard and quiz review. By default it binds to `127.0.0.1`; use `--lan` to expose it on your network with HTTP Basic Auth.
+`studyloop web` launches a progressive web app for flashcard and quiz review. By default it binds to `127.0.0.1`; use `--lan` to expose it on your network with HTTP Basic Auth.
 
 ```bash
-studyctl web                    # Serve on 127.0.0.1:8567
-studyctl web --port 9000        # Custom port
-studyctl web --lan              # Bind to 0.0.0.0 with auth
-studyctl web --lan --password SECRET
+studyloop web                    # Serve on 127.0.0.1:8567
+studyloop web --port 9000        # Custom port
+studyloop web --lan              # Bind to 0.0.0.0 with auth
+studyloop web --lan --password SECRET
 ```
 
 | Key | Action | When |
@@ -197,7 +197,7 @@ studyctl web --lan --password SECRET
 - **Read once** — speaker icon on card or `T` key
 - **Auto-voice** — header toggle or `V` key (reads everything automatically)
 
-**Web + terminal config** (`~/.config/studyctl/config.yaml`):
+**Web + terminal config** (`~/.config/studyloop/config.yaml`):
 
 ```yaml
 web_port: 8567       # web dashboard port (default 8567)
@@ -206,7 +206,7 @@ browser: ""          # auto-open browser: chrome, safari, firefox, brave, or emp
 lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
 ```
 
-**Agent priority config** (`~/.config/studyctl/config.yaml`):
+**Agent priority config** (`~/.config/studyloop/config.yaml`):
 
 ```yaml
 agents:
@@ -247,10 +247,10 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 ### Install & Export Examples
 
 ```bash
-studyctl install tools
-studyctl install agents
-studyctl install agents --tool codex
-studyctl install agents --tool claude --tool gemini
+studyloop install tools
+studyloop install agents
+studyloop install agents --tool codex
+studyloop install agents --tool claude --tool gemini
 
 session-export
 session-export --sources claude codex

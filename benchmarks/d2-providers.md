@@ -100,7 +100,7 @@ Sonnet 4.6 produced **20 cards** for Section 4 (Step Functions + Glue + Redshift
 | Card generation where card quality matters (study material, published decks) | **Bedrock Sonnet 4.6** — materially better rationales, scenario-based fronts, ~$0.07 per deck. |
 | Ollama qwen2.5:14b | **Skip.** 2× slower than 7b, 2× the memory, and produced one factual hallucination in the quiz. No measurable quality advantage over 7b in this benchmark. |
 
-**Default for studyctl D2: `ollama` with model `qwen2.5:7b`** — matches the autonomous-by-default design principle. Users who want higher-quality cards flip one config line to `backend: bedrock`. Both paths produce schema-validated JSON into the same filesystem layout.
+**Default for studyloop D2: `ollama` with model `qwen2.5:7b`** — matches the autonomous-by-default design principle. Users who want higher-quality cards flip one config line to `backend: bedrock`. Both paths produce schema-validated JSON into the same filesystem layout.
 
 ## Known qualitative issues
 

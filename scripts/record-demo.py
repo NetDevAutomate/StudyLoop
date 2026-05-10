@@ -12,7 +12,7 @@ Usage:
     uv run python scripts/record-demo.py
 
 Output:
-    demos/studyctl-session-demo.mp4
+    demos/studyloop-session-demo.mp4
 """
 
 from __future__ import annotations
@@ -44,8 +44,8 @@ DEMO_QUESTIONS = [
 RESPONSE_WAIT = [60, 60, 60]
 
 
-def _studyctl(*args: str) -> subprocess.CompletedProcess | None:
-    """Run studyctl, handling the expected timeout from tmux attach."""
+def _studyloop(*args: str) -> subprocess.CompletedProcess | None:
+    """Run studyloop, handling the expected timeout from tmux attach."""
     env = {**os.environ}
     env.pop("TMUX", None)
     try:
@@ -90,7 +90,7 @@ def main() -> None:
 
     # 1. Clean up
     print("[1/7] Cleaning up stale sessions...")
-    _studyctl("study", "--end")
+    _studyloop("study", "--end")
     time.sleep(2)
 
     # Kill any stale ttyd processes
@@ -99,7 +99,7 @@ def main() -> None:
 
     # 2. Start a fresh study session
     print("[2/7] Starting study session (Python Decorators, energy 8, --lan)...")
-    _studyctl("study", "Python Decorators for Network Engineers", "--energy", "8", "--lan")
+    _studyloop("study", "Python Decorators for Network Engineers", "--energy", "8", "--lan")
 
     # 3. Wait for services
     print(f"[3/7] Waiting for web server on :{WEB_PORT}...")
@@ -248,9 +248,9 @@ def main() -> None:
 
     # 5. Process video
     if video_path and Path(video_path).exists():
-        webm_path = DEMO_DIR / "studyctl-session-demo.webm"
+        webm_path = DEMO_DIR / "studyloop-session-demo.webm"
         # Remove old output files (not the source we're about to rename)
-        for old in DEMO_DIR.glob("studyctl-session-demo.*"):
+        for old in DEMO_DIR.glob("studyloop-session-demo.*"):
             old.unlink(missing_ok=True)
 
         Path(video_path).rename(webm_path)
@@ -261,7 +261,7 @@ def main() -> None:
         import shutil
 
         if shutil.which("ffmpeg"):
-            mp4_path = DEMO_DIR / "studyctl-session-demo.mp4"
+            mp4_path = DEMO_DIR / "studyloop-session-demo.mp4"
             print("Converting to mp4...")
             result = subprocess.run(
                 [
@@ -293,7 +293,7 @@ def main() -> None:
 
     # 6. End session
     print("\nEnding study session...")
-    _studyctl("study", "--end")
+    _studyloop("study", "--end")
     print("Done! Demo files in demos/")
 
 

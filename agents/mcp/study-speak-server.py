@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Standalone MCP server for study-speak TTS.
 
-Reads config from ~/.config/studyctl/config.yaml:
+Reads config from ~/.config/studyloop/config.yaml:
   tts:
     voice: am_michael      # kokoro voice name
     speed: 1.0             # 0.5 (slow) to 2.0 (fast)

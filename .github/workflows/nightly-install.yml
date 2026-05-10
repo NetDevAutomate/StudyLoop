@@ -23,9 +23,9 @@ jobs:
       - name: Install from source
         run: uv sync --all-packages --extra dev --extra test
 
-      - name: Run studyctl doctor
+      - name: Run studyloop doctor
         run: |
-          output=$(uv run studyctl doctor --json) || true
+          output=$(uv run studyloop doctor --json) || true
           echo "$output" | python3 -c "
           import json, sys
           checks = json.load(sys.stdin)
@@ -45,7 +45,7 @@ jobs:
           "
 
       - name: Verify CLI entry point
-        run: uv run studyctl --version
+        run: uv run studyloop --version
 
       - name: Verify agent-session-tools entry point
         run: uv run session-export --help

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin bootstrap wrapper for studyctl source installs.
+# Thin bootstrap wrapper for studyloop source installs.
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
@@ -64,7 +64,7 @@ else
 fi
 
 run_cli() {
-  (cd "$REPO_DIR" && uv run studyctl "$@")
+  (cd "$REPO_DIR" && uv run studyloop "$@")
 }
 
 if $AGENTS_ONLY; then
@@ -103,8 +103,8 @@ echo ""
 
 if ! $NON_INTERACTIVE; then
   echo "Next steps:"
-  echo "  1. Run 'studyctl setup' to create or update ~/.config/studyctl/config.yaml"
-  echo "  2. Run 'studyctl doctor --fix' to apply safe post-install fixes"
-  echo "  3. Start a study session with 'studyctl study \"Python\" --mode co-study'"
-  echo "  4. Launch the web UI with 'studyctl web'"
+  echo "  1. Run 'studyloop setup' to create or update ~/.config/studyloop/config.yaml"
+  echo "  2. Run 'studyloop doctor --fix' to apply safe post-install fixes"
+  echo "  3. Start a study session with 'studyloop study \"Python\" --mode co-study'"
+  echo "  4. Launch the web UI with 'studyloop web'"
 fi

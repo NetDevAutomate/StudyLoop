@@ -108,7 +108,7 @@ class TestCoursesAPI:
 
 
 class TestWebCommandConfig:
-    def test_web_reads_review_dirs_from_studyctl_config_env(
+    def test_web_reads_review_dirs_from_studyloop_config_env(
         self, monkeypatch: MonkeyPatch, tmp_path: Path
     ) -> None:
         from click.testing import CliRunner

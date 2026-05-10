@@ -1,4 +1,4 @@
-"""Tests for studyloop setup wizard (studyctl setup command).
+"""Tests for studyloop setup wizard (studyloop setup command).
 
 Uses Click's CliRunner with mocked input to exercise the interactive wizard.
 All tests redirect CONFIG_DIR to a tmp_path to avoid touching real user config.
@@ -106,7 +106,7 @@ class TestSetupDefaults:
         config = yaml.safe_load(config_path.read_text())
         assert config["notebooklm"]["enabled"] is False
 
-    def test_setup_honors_studyctl_config_env(
+    def test_setup_honors_studyloop_config_env(
         self,
         runner: CliRunner,
         monkeypatch: pytest.MonkeyPatch,

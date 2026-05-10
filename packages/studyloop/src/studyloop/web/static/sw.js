@@ -12,7 +12,7 @@ self.addEventListener("activate", (e) => {
 });
 return;
 
-const CACHE = "studyctl-v10";
+const CACHE = "studyloop-v11";
 const ASSETS = [
   "/", "/style.css", "/components.js", "/manifest.json",
   "/vendor/js/htmx-2.0.4.min.js", "/vendor/js/htmx-ext-sse-2.2.2.js",

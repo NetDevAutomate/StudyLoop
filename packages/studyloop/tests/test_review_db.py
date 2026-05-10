@@ -1,4 +1,4 @@
-"""Tests for studyctl.review_db — spaced repetition tracking."""
+"""Tests for studyloop.review_db — spaced repetition tracking."""
 
 from __future__ import annotations
 

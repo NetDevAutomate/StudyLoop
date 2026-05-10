@@ -83,12 +83,12 @@ def _mcp_command() -> list[str]:
         return ["studyloop-mcp"]
 
     # Repo root is six levels up from this file:
-    # packages/studyctl/src/studyctl/adapters/_strategies.py
-    #                                          ^adapters
-    #                                 ^studyctl
-    #                        ^src
-    #               ^studyctl  (package)
-    #      ^packages
+    # packages/studyloop/src/studyloop/adapters/_strategies.py
+    #                                            ^adapters
+    #                                  ^studyloop
+    #                         ^src
+    #                ^studyloop  (package)
+    #       ^packages
     # ^repo_root
     repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
     return [

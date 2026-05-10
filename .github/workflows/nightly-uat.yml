@@ -30,12 +30,12 @@ jobs:
 
       - name: Run UAT terminal tests
         if: always()
-        run: uv run pytest packages/studyctl/tests/test_uat_terminal.py -m integration --tb=short -v
+        run: uv run pytest packages/studyloop/tests/test_uat_terminal.py -m integration --tb=short -v
 
       - name: Run study lifecycle tests
         if: always()
-        run: uv run pytest packages/studyctl/tests/test_study_lifecycle.py -m integration --tb=short -v
+        run: uv run pytest packages/studyloop/tests/test_study_lifecycle.py -m integration --tb=short -v
 
       - name: Run sidebar pilot tests
         if: always()
-        run: uv run pytest packages/studyctl/tests/test_sidebar_pilot.py --tb=short -v
+        run: uv run pytest packages/studyloop/tests/test_sidebar_pilot.py --tb=short -v

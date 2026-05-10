@@ -48,7 +48,7 @@ class TestVersion:
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
 
-    def test_version_contains_studyctl(self, runner: CliRunner) -> None:
+    def test_version_contains_studyloop(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["--version"])
         assert "version" in result.output.lower()
 

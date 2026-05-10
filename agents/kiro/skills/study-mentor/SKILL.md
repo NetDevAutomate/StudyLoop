@@ -123,9 +123,9 @@ studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course pytho
 ## Integration
 
 - Uses `audhd-socratic-mentor` skill for teaching methodology
-- Study plan path: configured in `~/.config/studyctl/config.yaml`
-- Session DB path: configured in `~/.config/studyctl/config.yaml`
-- Teaching moments path: configured in `~/.config/studyctl/config.yaml`
+- Study plan path: configured in `~/.config/studyloop/config.yaml`
+- Session DB path: configured in `~/.config/studyloop/config.yaml`
+- Teaching moments path: configured in `~/.config/studyloop/config.yaml`
 
 ## End-of-Session Wind-Down
 

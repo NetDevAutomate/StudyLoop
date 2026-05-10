@@ -18,7 +18,7 @@ import pexpect
 class TerminalSession:
     """Drive a real terminal session for UAT testing.
 
-    Spawns studyctl commands via pexpect, attaches to tmux sessions,
+    Spawns studyloop commands via pexpect, attaches to tmux sessions,
     and sends keystrokes exactly as a user would.
     """
 
@@ -43,12 +43,12 @@ class TerminalSession:
         This creates the tmux session in detached mode (pexpect doesn't
         have a terminal for tmux to attach to), then we attach separately.
         """
-        cmd = f"{sys.executable} -m studyctl.cli study '{topic}' --energy {energy} --agent claude"
+        cmd = f"{sys.executable} -m studyloop.cli study '{topic}' --energy {energy} --agent claude"
 
         env: dict[str, str] = dict(os.environ)
         if agent_cmd:
             env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
-        # Remove TMUX so studyctl uses attach mode (which fails gracefully
+        # Remove TMUX so studyloop uses attach mode (which fails gracefully
         # in pexpect since there's no real tmux client — the session is
         # created detached and we attach separately).
         env.pop("TMUX", None)
