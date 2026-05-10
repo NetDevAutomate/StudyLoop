@@ -710,11 +710,15 @@
             <label for="transport-select">Transport</label>
             <select id="transport-select" x-model="transport" class="picker-select">
               <option value="pty">Browser terminal (xterm.js)</option>
+              <option value="acp" x-show="selectedAgentSupportsAcp()">ACP (Agent Client Protocol)</option>
               <option value="ttyd">Legacy terminal (ttyd iframe)</option>
             </select>
           </div>
           <p class="picker-hint" x-show="transport === 'pty'">
             Native browser terminal via xterm.js — the default. Works with Claude Code, Codex, Gemini, Kiro, and OpenCode.
+          </p>
+          <p class="picker-hint" x-show="transport === 'acp'">
+            Structured ACP events (no raw terminal). Works with Kiro and Gemini. Assumes <code>gemini</code> auth is already completed; run <code>gemini</code> interactively once before enabling this transport.
           </p>
           <p class="picker-hint" x-show="transport === 'ttyd'">
             Legacy tmux+ttyd fallback. Use only if the xterm.js terminal misbehaves; we plan to remove this after one deprecation window.
@@ -1283,7 +1287,13 @@
 
       start(detail) {
         this.stop();
-        if ((detail.transport || 'pty') === 'pty' && detail.wsUrl) {
+        const transport = detail.transport || 'pty';
+        /* Both pty and acp render into xterm: pty streams raw bytes,
+           acp streams structured AgentMessage frames which PR-D will
+           wire into term.write. Until then, the xterm still shows
+           the Started/Stopped/TransportError frames so the user sees
+           the session is live. */
+        if ((transport === 'pty' || transport === 'acp') && detail.wsUrl) {
           this._mountXterm(detail);
         } else {
           this._mountLegacyIframe(detail);
@@ -1449,7 +1459,9 @@
             this.statusDot = 'error';
             this.status = `Error: ${frame.message}`;
           } else if (frame.type === 'agent_message') {
-            /* Phase 2 ACP events. PTY transport never emits these; no-op. */
+            /* Phase 2 ACP events (plan §2.2). PR-B renders via status only;
+               PR-D wires agent_chunk payloads into term.write for live
+               streaming. PTY transport never emits these. */
           }
         });
 
