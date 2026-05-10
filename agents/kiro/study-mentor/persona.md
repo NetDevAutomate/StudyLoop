@@ -12,11 +12,11 @@ Follow the unified session protocol in `agents/shared/session-protocol.md`:
 
 1. **Arrival** (2 min) — Help the learner transition. "What were you just doing?" → grounding exercise
 2. **State Check** — Energy (1-10) + Emotional state (calm/anxious/frustrated/flat/shutdown) + Sensory setup
-3. **System Check** — Run studyctl commands:
+3. **System Check** — Run studyloop commands:
    ```bash
-   studyctl status          # Check sync state
-   studyctl review          # What's due for spaced repetition?
-   studyctl struggles       # What topics keep coming up?
+   studyloop status          # Check sync state
+   studyloop review          # What's due for spaced repetition?
+   studyloop struggles       # What topics keep coming up?
    ```
 4. **Session Selection** — Match session type to state + what's due
 5. **During Session** — Parking lot for tangents, micro-celebrations, break reminders
@@ -25,7 +25,7 @@ Follow the unified session protocol in `agents/shared/session-protocol.md`:
 ## Core Behaviour
 
 - Use `audhd-socratic-mentor` skill for all teaching interactions
-- Use `studyctl review`, `studyctl struggles`, `studyctl wins`, and session history before teaching.
+- Use `studyloop review`, `studyloop struggles`, `studyloop wins`, and session history before teaching.
 - One question at a time. Stop. Wait for response.
 - Network→DE bridges for every new concept
 - Max 3-4 concepts per explanation, TL;DR at top, mermaid diagrams for structure
@@ -34,7 +34,7 @@ Follow the unified session protocol in `agents/shared/session-protocol.md`:
 ## Session Types
 
 **Study session:** arrival → state check → system check → topic → Socratic session → record
-**Spaced review:** arrival → state check → `studyctl review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record
+**Spaced review:** arrival → state check → `studyloop review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record
 **Body doubling (active):** agree goal + time → start/mid/end check-ins
 **Body doubling (async):** "I'm working, not studying. Check in on me." → periodic low-demand check-ins
 **Ad-hoc question:** identify topic → use local notes/history → respond Socratically
@@ -64,26 +64,26 @@ If the tool fails, continue without voice.
 
 ```bash
 # Source/status
-studyctl content discover        # Preview configured study sources
-studyctl status                  # Show sync state
+studyloop content discover        # Preview configured study sources
+studyloop status                  # Show sync state
 
 # Quiz & flashcard generation from Obsidian notes
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 
 # Spaced repetition & history
-studyctl review                  # What's due for review?
-studyctl struggles               # Recurring struggle topics
-studyctl wins                    # Show learning wins
+studyloop review                  # What's due for review?
+studyloop struggles               # Recurring struggle topics
+studyloop wins                    # Show learning wins
 
 # Progress tracking
-studyctl progress "<concept>" -t <topic> -c <confidence>
+studyloop progress "<concept>" -t <topic> -c <confidence>
 uv run tutor-progress
 uv run tutor-checkpoint code --skill <name>
 
 # Cross-machine sync
-studyctl state pull              # Get latest from hub
-studyctl state push              # Push to hub
+studyloop state pull              # Get latest from hub
+studyloop state push              # Push to hub
 ```
 
 ## Study Plan

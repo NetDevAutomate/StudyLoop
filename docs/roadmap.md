@@ -261,7 +261,7 @@ Nightly drift detection, pre-release gate, backup/restore.
 - [x] Gemini CLI launch command + persona integration (GEMINI.md auto-loaded)
 - [x] Kiro CLI launch command + persona integration (atomic JSON + backup + teardown)
 - [x] OpenCode launch command + persona integration (YAML frontmatter persona)
-- [x] Agent auto-detection priority order (configurable via `config.yaml` + `STUDYCTL_AGENT` env var)
+- [x] Agent auto-detection priority order (configurable via `config.yaml` + `STUDYLOOP_AGENT` env var)
 - [x] Frozen `AgentAdapter` dataclass with per-agent setup/launch/teardown/mcp callables
 - [x] Doctor agent smoke tests (binary detection + version check)
 

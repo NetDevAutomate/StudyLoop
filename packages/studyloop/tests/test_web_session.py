@@ -1,0 +1,399 @@
+"""Tests for live session dashboard — API + SSE endpoints."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+pytest = __import__("pytest")
+pytest.importorskip("fastapi")
+
+from unittest.mock import patch  # noqa: E402
+
+from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
+
+from studyloop.session_state import TopicEntry  # noqa: E402
+from studyloop.web.app import create_app  # noqa: E402
+
+
+@pytest.fixture
+def client() -> TestClient:
+    """TestClient for session endpoint testing."""
+    app = create_app(study_dirs=[])
+    return TestClient(app)
+
+
+class TestSessionPage:
+    def test_session_url_redirects_to_hash(self, client: TestClient) -> None:
+        resp = client.get("/session", follow_redirects=False)
+        assert resp.status_code == 307
+        assert resp.headers["location"] == "/#study-session"
+
+    def test_session_redirect_lands_on_index(self, client: TestClient) -> None:
+        resp = client.get("/session")  # follows redirect by default
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+        assert "session-dashboard" in resp.text
+
+
+class TestSessionStateAPI:
+    def test_no_active_session(self, client: TestClient) -> None:
+        with (
+            patch("studyloop.web.routes.session.read_session_state", return_value={}),
+            patch("studyloop.web.routes.session.parse_topics_file", return_value=[]),
+            patch("studyloop.web.routes.session.parse_parking_file", return_value=[]),
+        ):
+            resp = client.get("/api/session/state")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["topics"] == []
+            assert data["parking"] == []
+
+    def test_active_session_returns_full_state(self, client: TestClient) -> None:
+        mock_state = {
+            "study_session_id": "abc123",
+            "topic": "Spark Internals",
+            "energy": 7,
+            "start_time": "2026-03-28T10:00:00",
+        }
+        mock_topics = [
+            TopicEntry(
+                time="10:05",
+                topic="Spark partitioning",
+                status="win",
+                note="Basic concepts clicked",
+            ),
+            TopicEntry(
+                time="10:15",
+                topic="SQL windows",
+                status="struggling",
+                note="Re-explained twice",
+            ),
+        ]
+        with (
+            patch(
+                "studyloop.web.routes.session.read_session_state",
+                return_value=mock_state,
+            ),
+            patch(
+                "studyloop.web.routes.session.parse_topics_file",
+                return_value=mock_topics,
+            ),
+            patch("studyloop.web.routes.session.parse_parking_file", return_value=[]),
+        ):
+            resp = client.get("/api/session/state")
+            data = resp.json()
+            assert data["study_session_id"] == "abc123"
+            assert data["topic"] == "Spark Internals"
+            assert len(data["topics"]) == 2
+            assert data["topics"][0]["status"] == "win"
+            assert data["topics"][1]["status"] == "struggling"
+
+
+class TestSessionSSE:
+    """SSE format tests.
+
+    The SSE generator runs in an infinite async loop, which makes it
+    difficult to test via TestClient.stream() without hanging. Instead
+    we test the rendering pipeline directly — the SSE endpoint is a thin
+    wrapper that polls files and yields render output.
+    """
+
+    def test_sse_render_produces_valid_sse_format(self) -> None:
+        """Verify the render pipeline produces valid SSE event format."""
+        from studyloop.web.routes.session import _render_update
+
+        state = {
+            "mode": "active",
+            "topic": "Test Topic",
+            "energy": 7,
+            "topics": [{"time": "10:00", "topic": "Spark", "status": "win", "note": "OK"}],
+            "parking": [],
+        }
+        html = _render_update(state)
+        # SSE data lines cannot contain raw newlines
+        escaped = html.replace("\n", "")
+        sse_line = f"event: session-update\ndata: {escaped}\n\n"
+        assert sse_line.count("\n\n") == 1  # Exactly one blank line delimiter
+        # The activity feed content is the inner HTML for the SSE swap target
+        # (no wrapper div — the swap target element already has id="activity-feed")
+        assert "activity-item" in sse_line
+        assert "counter-wins" in sse_line
+        assert "session-meta" in sse_line
+
+
+class TestRenderFunctions:
+    """Test the HTML rendering helper functions directly."""
+
+    def test_render_activity_feed_empty(self) -> None:
+        from studyloop.web.routes.session import _render_activity_feed
+
+        html = _render_activity_feed({"topics": [], "parking": []})
+        assert "activity-empty" in html
+        assert "Waiting for session activity" in html
+
+    def test_render_activity_feed_with_topics(self) -> None:
+        from studyloop.web.routes.session import _render_activity_feed
+
+        state = {
+            "topics": [
+                {
+                    "time": "10:05",
+                    "topic": "Spark",
+                    "status": "win",
+                    "note": "Got it",
+                },
+                {
+                    "time": "10:15",
+                    "topic": "SQL",
+                    "status": "struggling",
+                    "note": "",
+                },
+            ],
+            "parking": [{"question": "How does GIL work?"}],
+        }
+        html = _render_activity_feed(state)
+        assert "status-win" in html
+        assert "status-struggling" in html
+        assert "\u2713" in html  # ✓ shape
+        assert "\u25b2" in html  # ▲ shape
+        assert "Spark" in html
+        assert "SQL" in html
+
+    def test_render_activity_feed_parking(self) -> None:
+        from studyloop.web.routes.session import _render_activity_feed
+
+        html = _render_activity_feed({"topics": [], "parking": [{"question": "GIL question"}]})
+        assert "status-parked" in html
+        assert "GIL question" in html
+        assert "\u25cb" in html  # ○ shape
+
+    def test_render_counters(self) -> None:
+        from studyloop.web.routes.session import _render_counters
+
+        state = {
+            "topics": [
+                {"status": "win"},
+                {"status": "insight"},
+                {"status": "struggling"},
+                {"status": "learning"},
+            ],
+            "parking": [{"question": "q1"}, {"question": "q2"}],
+        }
+        html = _render_counters(state)
+        assert "WINS: 2" in html
+        assert "PARKED: 2" in html
+        assert "REVIEW: 1" in html
+        assert 'hx-swap-oob="true"' in html
+
+    def test_render_summary(self) -> None:
+        from studyloop.web.routes.session import _render_summary
+
+        state = {
+            "topic": "Spark Internals",
+            "topics": [
+                {"status": "win", "topic": "Partitioning", "note": "Got it"},
+                {"status": "struggling", "topic": "SQL windows", "note": ""},
+            ],
+            "parking": [{"question": "GIL vs multiprocessing"}],
+        }
+        html = _render_summary(state)
+        assert "Session Complete" in html
+        assert "Spark Internals" in html
+        assert "Partitioning" in html
+        assert "SQL windows" in html
+        assert "GIL vs multiprocessing" in html
+        assert "session-summary" in html
+
+    def test_render_update_active_session(self) -> None:
+        from studyloop.web.routes.session import _render_update
+
+        state = {
+            "mode": "active",
+            "topic": "Test",
+            "energy": 5,
+            "topics": [],
+            "parking": [],
+        }
+        html = _render_update(state)
+        # The activity feed content is the inner HTML for the SSE swap target
+        # (no wrapper div — the swap target element already has id="activity-feed")
+        assert "activity-empty" in html
+        assert "counter-wins" in html
+        assert "session-meta" in html
+
+    def test_render_update_ended_session(self) -> None:
+        from studyloop.web.routes.session import _render_update
+
+        state = {
+            "mode": "ended",
+            "topic": "Test",
+            "topics": [{"status": "win", "topic": "A", "note": ""}],
+            "parking": [],
+        }
+        html = _render_update(state)
+        assert "session-summary" in html
+        assert "Session Complete" in html
+
+    def test_html_escaping(self) -> None:
+        from studyloop.web.routes.session import _render_activity_feed
+
+        state = {
+            "topics": [
+                {
+                    "time": "10:00",
+                    "topic": "<script>alert('xss')</script>",
+                    "status": "learning",
+                    "note": "",
+                }
+            ],
+            "parking": [],
+        }
+        html = _render_activity_feed(state)
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+
+class TestTopicsAPI:
+    """Tests for GET /api/session/topics."""
+
+    def test_returns_topics_from_settings(self, client: TestClient) -> None:
+        from unittest.mock import MagicMock
+
+        from studyloop.settings import TopicConfig
+
+        mock_topics = [
+            TopicConfig(name="Python", slug="python", obsidian_path=Path(""), tags=["python"]),
+            TopicConfig(name="Spark", slug="spark", obsidian_path=Path(""), tags=["data"]),
+        ]
+        settings = MagicMock()
+        settings.topics = mock_topics
+        with patch("studyloop.settings.load_settings", return_value=settings):
+            resp = client.get("/api/session/topics")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["name"] == "Python"
+        assert data[0]["slug"] == "python"
+        assert data[1]["name"] == "Spark"
+
+    def test_returns_empty_on_no_settings(self, client: TestClient) -> None:
+        with patch(
+            "studyloop.settings.load_settings",
+            side_effect=FileNotFoundError,
+        ):
+            resp = client.get("/api/session/topics")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
+class TestEndSessionAPI:
+    """Tests for POST /api/session/end."""
+
+    def test_end_returns_404_when_no_session(self, client: TestClient) -> None:
+        with patch("studyloop.web.routes.session.read_session_state", return_value={}):
+            resp = client.post("/api/session/end")
+        assert resp.status_code == 404
+        assert "No active session" in resp.json()["error"]
+
+    def test_end_calls_cleanup_and_returns_topic(self, client: TestClient) -> None:
+        mock_state = {
+            "study_session_id": "test-123",
+            "topic": "Python Decorators",
+            "tmux_session": "study-python-test",
+        }
+        with (
+            patch(
+                "studyloop.web.routes.session.read_session_state",
+                return_value=mock_state,
+            ),
+            patch(
+                "studyloop.session.cleanup.end_session_common",
+                return_value="Python Decorators",
+            ) as mock_end,
+        ):
+            resp = client.post("/api/session/end")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ended"] is True
+        assert data["topic"] == "Python Decorators"
+        mock_end.assert_called_once_with(mock_state)
+
+
+class TestStartSessionAPI:
+    """Tests for POST /api/session/start — validation and error paths.
+
+    The happy path requires tmux, an agent binary, and a database, so it
+    is tested via E2E in test_web_sidebar.py. These tests cover the guard
+    clauses and error responses.
+    """
+
+    def test_start_rejects_active_session(self, client: TestClient) -> None:
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.web.routes.session.is_session_active", return_value=True),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5},
+            )
+        assert resp.status_code == 409
+        assert "already active" in resp.json()["error"]
+
+    def test_start_rejects_no_tmux(self, client: TestClient) -> None:
+        with patch("studyloop.tmux.is_tmux_available", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5},
+            )
+        assert resp.status_code == 503
+        assert "tmux" in resp.json()["error"]
+
+    def test_start_rejects_unknown_agent(self, client: TestClient) -> None:
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.web.routes.session.is_session_active", return_value=False),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "nonexistent"},
+            )
+        assert resp.status_code == 400
+        assert "Unknown agent" in resp.json()["error"]
+
+    def test_start_rejects_agent_when_binary_missing(self, client: TestClient) -> None:
+        """User picks gemini but only claude is on PATH → 503, not a silent Claude session.
+
+        Locks in the Phase 0 decision that agent selection is always respected:
+        no `null`-fallback substitution, no silent routing to the first detected
+        binary. Matches docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+        Phase 0 acceptance criteria.
+        """
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.web.routes.session.is_session_active", return_value=False),
+            patch("shutil.which", return_value=None),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "gemini"},
+            )
+        assert resp.status_code == 503
+        error = resp.json()["error"]
+        assert "gemini" in error
+        assert "not found" in error
+
+    def test_start_validates_energy_range(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Python", "energy": 15},
+        )
+        assert resp.status_code == 422  # Pydantic validation
+
+    def test_start_requires_topic(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/session/start",
+            json={"energy": 5},
+        )
+        assert resp.status_code == 422  # Pydantic validation

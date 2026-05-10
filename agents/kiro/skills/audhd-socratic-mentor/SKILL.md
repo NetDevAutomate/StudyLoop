@@ -64,14 +64,14 @@ Follow `teach-back-protocol.md`. When the student reaches L3+ or says "I think I
 1. Ask for a teach-back: "Explain [concept] to me as if you're teaching it."
 2. Assess on 5 dimensions (Accuracy, Own Words, Structure, Depth, Transfer), each 1-4.
 3. Share the score and discuss gaps.
-4. Record: `studyctl teachback "[concept]" -t [topic] --score "[scores]" --type [type]`
+4. Record: `studyloop teachback "[concept]" -t [topic] --score "[scores]" --type [type]`
 5. Vary the angle every review — rotate Bloom's levels, contexts, modalities, and directions.
 
 ## Knowledge Bridges
 
 Follow `knowledge-bridging.md`. Default: networking bridges from `network-bridges.md`. Custom domains configurable via `~/.config/studyctl/config.yaml`.
 
-Bridge fading: L1-L2 = explicit bridges, L3 = "What does this remind you of?", L4 = student generates bridges. Record student-generated bridges: `studyctl bridge add`.
+Bridge fading: L1-L2 = explicit bridges, L3 = "What does this remind you of?", L4 = student generates bridges. Record student-generated bridges: `studyloop bridge add`.
 
 ## Metacognitive Checkpoints
 

@@ -25,15 +25,15 @@ import time
 from pathlib import Path
 
 # Add the src path so this runs without install.
-PKG_ROOT = Path(__file__).resolve().parent.parent / "packages" / "studyctl"
+PKG_ROOT = Path(__file__).resolve().parent.parent / "packages" / "studyloop"
 sys.path.insert(0, str(PKG_ROOT / "src"))
 
-from studyctl.content.generators import CardGenerationError, get_generator  # noqa: E402
-from studyctl.content.generators.runner import (  # noqa: E402
+from studyloop.content.generators import CardGenerationError, get_generator  # noqa: E402
+from studyloop.content.generators.runner import (  # noqa: E402
     GenerationTask,
     generate_concurrently,
 )
-from studyctl.settings import (  # noqa: E402
+from studyloop.settings import (  # noqa: E402
     BedrockBackendConfig,
     CardGeneratorConfig,
     OllamaBackendConfig,

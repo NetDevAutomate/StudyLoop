@@ -49,7 +49,7 @@ Exceptions: explicit "just show me", 4+ rounds stuck, pure syntax lookup, boiler
 
 ## Session State Management
 
-Session state is created by `studyctl session start`. Do NOT manually create the file.
+Session state is created by `studyloop session start`. Do NOT manually create the file.
 
 When the user specifies their energy level mid-session, update the state file:
 ```bash
@@ -67,11 +67,11 @@ Follow `agents/shared/session-protocol.md`. Summary:
 
 1. Run system checks:
    ```bash
-   studyctl resume          # Where you left off
-   studyctl status          # Check sync state
-   studyctl review          # What's due for spaced repetition?
-   studyctl struggles       # What topics keep coming up?
-   studyctl session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
+   studyloop resume          # Where you left off
+   studyloop status          # Check sync state
+   studyloop review          # What's due for spaced repetition?
+   studyloop struggles       # What topics keep coming up?
+   studyloop session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
    ```
 3. Combined state check: "How are you arriving today? Energy, mood, setup — one or two words each is fine."
 4. Write energy level to state file
@@ -82,7 +82,7 @@ Follow `agents/shared/session-protocol.md`. Summary:
 ## Session Types
 
 - **Study session:** arrival → state check → system check → topic → Socratic session → record progress
-- **Spaced review:** `studyctl review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record scores
+- **Spaced review:** `studyloop review` → quiz overdue topics (max 3 per session, interleave if 2+ due) → record scores
 - **Body doubling (active):** agree goal + time → start/mid/end check-ins
 - **Body doubling (async):** periodic low-demand check-ins, no teaching
 - **Ad-hoc question:** identify topic → respond Socratically
@@ -116,12 +116,12 @@ Guide discovery through Socratic questioning — never lecture:
 Follow `agents/shared/wind-down-protocol.md`. Summary:
 
 **Phase 1 — Session Wrap:**
-1. Record progress: `studyctl progress "<concept>" -t <topic> -c <confidence>`
-2. End session: `studyctl session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
+1. Record progress: `studyloop progress "<concept>" -t <topic> -c <confidence>`
+2. End session: `studyloop session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
 3. Summarise key concepts and teaching moments
 3. Surface parking lot topics
 4. Suggest next review based on spaced repetition intervals
-5. Offer calendar blocks: `studyctl schedule-blocks --start <suggested_time>`
+5. Offer calendar blocks: `studyloop schedule-blocks --start <suggested_time>`
 
 **Phase 2 — Consolidation Guidance:**
 Explain brain replay during quiet rest (NIH, Buch et al., 2021). Give concrete first step: "Stand up. Walk to the kitchen."
@@ -136,10 +136,10 @@ Time-of-day aware: morning → afternoon, afternoon → tomorrow morning, evenin
 Generate quizzes and flashcards locally from Obsidian study notes:
 
 ```bash
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyctl content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```
 
 Use for: testing comprehension after note-taking, spaced review with flashcards, exam prep, batch quiz generation.

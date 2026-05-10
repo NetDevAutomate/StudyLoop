@@ -56,23 +56,23 @@ Adapt based on what the learner shared in step 1. If they already told you, don'
 | Noisy / no headphones | Shorter exchanges, less complex diagrams, more verbal/text-based |
 | Couch / low-stim | Lighter review, conversational tone, body doubling mode |
 
-## 3. System Check — Run studyctl Commands
+## 3. System Check — Run studyloop Commands
 
 After state check, run these to see what's due and what needs attention:
 
 ```bash
-studyctl resume          # Where you left off — auto-context reload
-studyctl status          # Current study state
-studyctl review          # What's due for spaced repetition
-studyctl struggles       # Recurring struggle topics
-studyctl session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
+studyloop resume          # Where you left off — auto-context reload
+studyloop status          # Current study state
+studyloop review          # What's due for spaced repetition
+studyloop struggles       # Recurring struggle topics
+studyloop session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
 ```
 
-**Auto-resume** (reduces task initiation friction): Surface the `studyctl resume` output naturally: "Last time you were working on [topic] and got to [concept]. [N] concepts in progress. Want to pick up where you left off?"
+**Auto-resume** (reduces task initiation friction): Surface the `studyloop resume` output naturally: "Last time you were working on [topic] and got to [concept]. [N] concepts in progress. Want to pick up where you left off?"
 
-If `studyctl wins` has recent entries, surface one: "By the way — you mastered [concept] last week. That's real progress."
+If `studyloop wins` has recent entries, surface one: "By the way — you mastered [concept] last week. That's real progress."
 
-If `studyctl streaks` shows a current streak, mention it: "Day [N] of your study streak."
+If `studyloop streaks` shows a current streak, mention it: "Day [N] of your study streak."
 
 ## 4. Session Selection
 
@@ -174,15 +174,15 @@ During a study session, maintain these files for the live dashboard:
   `- [HH:MM] <topic> | status:<status> | <note>`
 - Status values: `learning` (normal progression), `struggling` (re-explanations needed), `insight` (aha moment or bridge connection), `win` (concept mastered or clicked), `parked` (deferred tangent)
 - Any topic reaching `struggling` status → also run:
-  `studyctl progress "<concept>" -t <topic> -c struggling`
+  `studyloop progress "<concept>" -t <topic> -c struggling`
 
 **Parking lot file** (`~/.config/studyctl/session-parking.md`):
 - When deferring a tangential topic, run:
-  `studyctl park "<question>" --topic "<tag>" --context "<what was being discussed>"`
+  `studyloop park "<question>" --topic "<tag>" --context "<what was being discussed>"`
 - This writes to both the DB (crash-resilient) and the parking file (viewport display)
 
 **Session state** (`~/.config/studyctl/session-state.json`):
-- Created by `studyctl session start` at session beginning
+- Created by `studyloop session start` at session beginning
 - Update energy level mid-session if you detect a shift:
   Update the file directly: `python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyctl/session-state.json'; d=json.loads(p.read_text()); d['energy']=NEW_LEVEL; p.write_text(json.dumps(d))"`
 
@@ -192,7 +192,7 @@ Never overwrite session-topics.md or session-parking.md — always append.
 
 If cmux MCP tools are available (check for `mcp__cmux__list_surfaces` or equivalent), use them to create a live visual dashboard alongside the study session. **Always write to file-IPC regardless** — cmux is additive, not a replacement.
 
-#### At session start (after `studyctl session start`)
+#### At session start (after `studyloop session start`)
 
 1. Rename the current tab:
    - `rename_tab(surface=current, title="Study: {topic}")`
@@ -270,7 +270,7 @@ send_input(surface=dashboard, text="\n🧠 Stand up. Walk to the kitchen. Put th
 2. Mark progress complete:
    - `set_progress(value=1.0, label="Session complete")`
 
-3. Run `studyctl session end` (DB writes, file cleanup)
+3. Run `studyloop session end` (DB writes, file cleanup)
 
 #### Fallback
 
@@ -287,8 +287,8 @@ Follow the full wind-down protocol in `wind-down-protocol.md`. Summary of the th
 
 **Record Progress** — for each concept covered:
 ```bash
-studyctl progress "<concept>" -t <topic> -c <confidence>
-studyctl session end --notes "<summary>"  # Flush parking lot to DB, export to Obsidian
+studyloop progress "<concept>" -t <topic> -c <confidence>
+studyloop session end --notes "<summary>"  # Flush parking lot to DB, export to Obsidian
 ```
 Confidence levels: `struggling`, `learning`, `confident`, `mastered`
 
@@ -305,7 +305,7 @@ Ask the learner: "How confident do you feel about [concept]? (struggling/learnin
 
 **Suggest Next Review** — based on spaced repetition intervals (1/3/7/14/30 days):
 - "You should review [concept] again in 3 days."
-- Offer calendar block: `studyctl schedule-blocks --start <time>`
+- Offer calendar block: `studyloop schedule-blocks --start <time>`
 
 ### Phase 2: Consolidation Guidance
 

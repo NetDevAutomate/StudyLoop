@@ -6,12 +6,12 @@
 header = """
 # Changelog
 
-All notable changes to the Socratic Study Mentor will be documented in this file.
+All notable changes to StudyLoop will be documented in this file.
 
 """
 body = """
 {%- macro remote_url() -%}
-  https://github.com/NetDevAutomate/Socratic-Study-Mentor
+  https://github.com/Hookey-Street-Software/StudyLoop
 {%- endmacro -%}
 
 {% if version -%}
