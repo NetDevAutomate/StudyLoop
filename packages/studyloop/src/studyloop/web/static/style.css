@@ -1786,3 +1786,67 @@ main:has(.split-container) .session-dashboard {
   white-space: nowrap;
 }
 .session-status-bar { position: relative; }
+
+/* ------------------------------------------------------------------
+ * xterm.js terminal panel (§1.7)
+ * ------------------------------------------------------------------ */
+.xterm-panel .embedded-terminal-content.xterm-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.xterm-mount {
+  flex: 1;
+  min-height: 0;
+  background: var(--bg);
+  padding: 6px 8px 8px;
+  outline: none;
+}
+
+.xterm-mount:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Jump-to-bottom pill — shown when scrolled away from newest output. */
+.xterm-jump-to-bottom {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.xterm-jump-to-bottom:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Agent status dot: idle (grey), live (green), error (red). */
+.agent-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  background: var(--text-muted);
+  vertical-align: middle;
+}
+
+.agent-status-dot-live {
+  background: #4cd37a;
+  box-shadow: 0 0 6px rgba(76, 211, 122, 0.6);
+}
+
+.agent-status-dot-error {
+  background: #f06c6c;
+  box-shadow: 0 0 6px rgba(240, 108, 108, 0.6);
+}

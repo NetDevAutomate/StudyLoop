@@ -18,12 +18,13 @@
   <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
   <!-- Alpine.js (vendored for offline PWA) -->
   <script defer src="/vendor/js/alpine-3.14.8.min.js"></script>
-  <!-- xterm.js + fit + webgl addons (vendored; wired in §1.7). UMD globals:
-       Terminal on window.Terminal, FitAddon on window.FitAddon, WebglAddon
-       on window.WebglAddon.addons.webgl (UMD exports are namespaced). -->
+  <!-- xterm.js + addons (vendored). UMD globals:
+       window.Terminal, window.FitAddon, window.WebglAddon, window.ClipboardAddon.
+       Addon scripts depend on xterm.js being loaded first. -->
   <script defer src="/vendor/js/xterm-6.0.0.js"></script>
   <script defer src="/vendor/js/xterm-addon-fit-0.11.0.js"></script>
   <script defer src="/vendor/js/xterm-addon-webgl-0.19.0.js"></script>
+  <script defer src="/vendor/js/xterm-addon-clipboard-0.2.0.js"></script>
 </head>
 <body x-data x-init="$store.nav.init()">
   <header>
@@ -708,19 +709,15 @@
             </select>
             <label for="transport-select">Transport</label>
             <select id="transport-select" x-model="transport" class="picker-select">
-              <option value="ttyd">Browser terminal</option>
-              <option value="pty">PTY text diagnostics</option>
-              <option value="acp" disabled>ACP experimental (not ready)</option>
+              <option value="pty">Browser terminal (xterm.js)</option>
+              <option value="ttyd">Legacy terminal (ttyd iframe)</option>
             </select>
           </div>
-          <p class="picker-hint" x-show="transport === 'ttyd'">
-            Recommended for Codex, Claude Code, Gemini, Kiro and OpenCode because they use full-screen terminal interfaces.
-          </p>
           <p class="picker-hint" x-show="transport === 'pty'">
-            Diagnostic text stream only. Use the message box to answer prompts, for example type 1 then Send.
+            Native browser terminal via xterm.js — the default. Works with Claude Code, Codex, Gemini, Kiro, and OpenCode.
           </p>
-          <p class="picker-error" x-show="transport === 'acp'">
-            ACP is scaffolded but disabled until Kiro and Gemini pass a real protocol handshake test.
+          <p class="picker-hint" x-show="transport === 'ttyd'">
+            Legacy tmux+ttyd fallback. Use only if the xterm.js terminal misbehaves; we plan to remove this after one deprecation window.
           </p>
 
           <div class="picker-field" x-show="agentOptions().length > 0">
@@ -772,52 +769,51 @@
         <!-- ── Active Session: terminal + status bar ── -->
         <div x-show="sessionActive" x-transition class="session-active-layout">
 
-          <!-- Live mentor surface: browser terminal for CLI agents, native console for protocol transports -->
+          <!-- Live mentor surface: xterm.js for PTY, legacy iframe for ttyd fallback, message log for protocol transports (unused in Phase 1) -->
           <div class="session-terminal-area agent-console" x-data="liveAgentConsole()" x-init="init()">
-            <template x-if="terminalMode">
-              <div class="embedded-terminal-panel" x-data="terminalPanel()" x-init="init()">
-                <div class="agent-console-toolbar">
-                  <span class="agent-console-title">Agent Terminal</span>
-                  <span class="agent-console-state"
-                        x-text="connected ? 'Connected' : (unavailableMessage || 'Starting')"></span>
-                  <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
-                  <button class="agent-console-tool" @click="popOut()" title="Open in separate window">&#x29c9;</button>
-                </div>
-                <div class="embedded-terminal-content">
-                  <iframe x-show="connected" :src="activeTtydUrl" class="terminal-iframe"
-                          allow="clipboard-read; clipboard-write"></iframe>
-                  <div x-show="!connected && unavailableMessage" class="terminal-unavailable">
-                    <div x-text="unavailableMessage"></div>
-                  </div>
-                </div>
-              </div>
-            </template>
 
-            <template x-if="!terminalMode">
-              <div class="agent-console-surface">
-                <div class="agent-console-toolbar">
-                  <span class="agent-console-title">Live Mentor</span>
-                  <span class="agent-console-state" x-text="status"></span>
-                  <button class="agent-console-tool" @click="$store.settings.speakNow(lastText())" title="Speak latest output">&#9654;</button>
-                  <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
-                </div>
-                <div class="agent-console-log" x-ref="log">
-                  <template x-for="item in messages" :key="item.id">
-                    <div class="agent-message" :class="'agent-message-' + item.role">
-                      <span class="agent-message-role" x-text="item.role"></span>
-                      <pre x-text="item.text"></pre>
-                    </div>
-                  </template>
-                </div>
-                <form class="agent-console-input" @submit.prevent="send()">
-                  <textarea x-model="draft" rows="2"
-                            placeholder="Ask the mentor a question, or say what you are stuck on..."
-                            @keydown.meta.enter.prevent="send()"
-                            @keydown.ctrl.enter.prevent="send()"></textarea>
-                  <button type="submit" :disabled="!connected || !draft.trim()">Send</button>
-                </form>
+            <!-- xterm.js terminal (PTY transport — plan §1.7) -->
+            <div class="embedded-terminal-panel xterm-panel"
+                 x-show="terminalMode === 'xterm'" x-cloak>
+              <div class="agent-console-toolbar">
+                <span class="agent-console-title">Agent Terminal</span>
+                <span class="agent-console-state">
+                  <span class="agent-status-dot"
+                        :class="'agent-status-dot-' + statusDot"></span>
+                  <span x-text="status"></span>
+                </span>
+                <button class="agent-console-tool" @click="copySelection()"
+                        title="Copy selection (⌘/Ctrl-C)">&#x2398;</button>
+                <button class="agent-console-tool" @click="$store.settings.stopSpeaking()"
+                        title="Stop speaking">&#9632;</button>
               </div>
-            </template>
+              <div class="embedded-terminal-content xterm-content">
+                <div x-ref="xtermMount" class="xterm-mount"
+                     tabindex="0"
+                     @keydown.ctrl.period.prevent="blurTerminal()"></div>
+                <button x-show="showJumpToBottom" x-cloak
+                        class="xterm-jump-to-bottom"
+                        @click="scrollToBottom()"
+                        title="Jump to latest output">&#8681;</button>
+              </div>
+            </div>
+
+            <!-- ttyd iframe (legacy fallback, when transport=ttyd) -->
+            <div class="embedded-terminal-panel"
+                 x-show="terminalMode === 'ttyd-iframe'" x-cloak>
+              <div class="agent-console-toolbar">
+                <span class="agent-console-title">Agent Terminal (legacy)</span>
+                <span class="agent-console-state" x-text="status"></span>
+                <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
+              </div>
+              <div class="embedded-terminal-content">
+                <iframe x-show="connected" :src="legacyTtydUrl" class="terminal-iframe"
+                        allow="clipboard-read; clipboard-write"></iframe>
+                <div x-show="!connected && statusMessage" class="terminal-unavailable">
+                  <div x-text="statusMessage"></div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Bottom status bar: timer + controls + topic + energy + counters -->
@@ -918,7 +914,7 @@
       sessionType: 'study',
       targetKind: 'topic',
       agent: '',
-      transport: 'ttyd',
+      transport: 'pty',
       studyOptions: { topics: [], vendors: [], courses: [], lessons: [] },
       starting: false,
       startError: '',
@@ -976,25 +972,31 @@
         this.starting = true;
         this.startError = '';
         let startedSession = null;
-        if (this.transport === 'ttyd') {
-          try {
-            const res = await fetch('/api/session/start', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ topic, energy: this.energy, agent: this.agent }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-              this.startError = data.error || 'Failed to start terminal session';
-              this.starting = false;
-              return;
-            }
-            startedSession = data;
-          } catch {
-            this.startError = 'Network error — could not start terminal session';
+        try {
+          const res = await fetch('/api/session/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topic,
+              energy: this.energy,
+              agent: this.agent,
+              transport: this.transport,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            /* §1.5b returns structured 503 with install_hint; surface it verbatim. */
+            this.startError = data.install_hint
+              ? `${data.error} · ${data.install_hint}`
+              : (data.error || 'Failed to start session');
             this.starting = false;
             return;
           }
+          startedSession = data;
+        } catch {
+          this.startError = 'Network error — could not start session';
+          this.starting = false;
+          return;
         }
         this.topic = topic;
         this.startTime = new Date();
@@ -1012,10 +1014,10 @@
               targetKind: this.targetKind,
               targetPath: this.selectedOption?.path || null,
               agent: this.agent || null,
-              resolvedAgent: startedSession?.agent || this.agent || null,
-              studySessionId: startedSession?.study_session_id || null,
-              transport: this.transport === 'ttyd' ? 'pty' : this.transport,
-              terminalFallback: this.transport === 'ttyd',
+              resolvedAgent: startedSession.agent || this.agent || null,
+              studySessionId: startedSession.study_session_id || null,
+              transport: startedSession.transport || this.transport,
+              wsUrl: startedSession.ws_url || null,
             }
           }));
         });
@@ -1245,16 +1247,31 @@
     };
   }
 
+  /* ------------------------------------------------------------------
+   * Live agent console — xterm.js terminal for PTY transport, iframe
+   * fallback for the legacy ttyd path. Wired in §1.7; contract is
+   * the one documented in plan Amendment #5 (WS route) + Amendment
+   * #6 (REST /session/start returns ws_url).
+   * ------------------------------------------------------------------ */
   function liveAgentConsole() {
     return {
-      socket: null,
+      /* ---- reactive state (bound to template) --------------------- */
+      terminalMode: null,        /* 'xterm' | 'ttyd-iframe' | null (idle) */
       connected: false,
-      terminalMode: false,
       status: 'Waiting',
-      terminalKey: '',
-      draft: '',
-      messages: [],
-      _id: 0,
+      statusDot: 'idle',         /* 'idle' | 'live' | 'error' */
+      statusMessage: '',
+      legacyTtydUrl: '',
+      showJumpToBottom: false,
+
+      /* ---- non-reactive internals (intentionally plain properties) */
+      _term: null,
+      _fitAddon: null,
+      _webglAddon: null,
+      _clipboardAddon: null,
+      _ws: null,
+      _resizeObserver: null,
+      _scrollHandler: null,
 
       init() {
         window.addEventListener('study-session-start', (event) => this.start(event.detail));
@@ -1263,101 +1280,255 @@
 
       start(detail) {
         this.stop();
-        this.messages = [];
-        this.terminalMode = !!detail.terminalFallback;
-        if (detail.terminalFallback) {
-          const key = detail.studySessionId || `${Date.now()}`;
-          this.terminalKey = key;
-          const params = new URLSearchParams({
-            session: key,
-            agent: detail.resolvedAgent || detail.agent || 'auto',
-            t: `${Date.now()}`,
-          });
-          window.__studyLoopTerminalUrl = `/terminal/?${params.toString()}`;
-          this.terminalMode = false;
-          this.$nextTick(() => {
-            this.terminalMode = true;
-            this.status = `Browser terminal · ${detail.resolvedAgent || detail.agent || 'Auto'}`;
-          });
-          return;
+        if ((detail.transport || 'pty') === 'pty' && detail.wsUrl) {
+          this._mountXterm(detail);
+        } else {
+          this._mountLegacyIframe(detail);
         }
-        this.status = 'Connecting';
-        const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        this.socket = new WebSocket(`${scheme}://${window.location.host}/api/session/ws`);
-
-        this.socket.addEventListener('open', () => {
-          this.connected = true;
-          this.status = `${detail.transport.toUpperCase()} · ${detail.agent || 'Auto'}`;
-          this.socket.send(JSON.stringify({
-            type: 'start',
-            topic: detail.topic,
-            energy: detail.energy,
-            agent: detail.agent,
-            transport: detail.transport,
-          }));
-          this.addMessage('system', `${detail.sessionType === 'body_double' ? 'Body double' : 'Study'} session started for ${detail.topic}.`);
-        });
-
-        this.socket.addEventListener('message', (event) => {
-          const payload = JSON.parse(event.data);
-          if (payload.type === 'output') {
-            this.addMessage('agent', payload.data.text || '');
-            if (Alpine.store('settings').voiceOn) Alpine.store('settings').speak(payload.data.text || '');
-          } else if (payload.type === 'started') {
-            this.status = `${payload.data.transport.toUpperCase()} · ${payload.data.agent}`;
-          } else if (payload.type === 'ended') {
-            this.connected = false;
-            this.status = 'Ended';
-          } else if (payload.type === 'error') {
-            this.addMessage('system', payload.data.message || 'Session error');
-          } else if (payload.type === 'acp') {
-            this.addMessage('agent', payload.data.text || JSON.stringify(payload.data.json || {}));
-          }
-        });
-
-        this.socket.addEventListener('close', () => {
-          this.connected = false;
-          if (this.status !== 'Ended') this.status = 'Disconnected';
-        });
-
-        this.socket.addEventListener('error', () => {
-          this.connected = false;
-          this.status = 'Connection error';
-        });
-      },
-
-      send() {
-        const text = this.draft.trim();
-        if (!text || !this.socket || !this.connected) return;
-        this.addMessage('learner', text);
-        this.socket.send(JSON.stringify({ type: 'input', text }));
-        this.draft = '';
       },
 
       stop() {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-          this.socket.send(JSON.stringify({ type: 'stop' }));
+        try {
+          if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+            this._ws.send(JSON.stringify({ type: 'stop' }));
+          }
+        } catch { /* ignore */ }
+        if (this._ws) { try { this._ws.close(); } catch { /* ignore */ } this._ws = null; }
+        if (this._resizeObserver) {
+          try { this._resizeObserver.disconnect(); } catch { /* ignore */ }
+          this._resizeObserver = null;
         }
-        if (this.socket) this.socket.close();
-        this.socket = null;
+        if (this._term) {
+          if (this._scrollHandler) {
+            try { this._term.onScroll && this._term.onScroll(null); } catch { /* ignore */ }
+            this._scrollHandler = null;
+          }
+          try { this._term.dispose(); } catch { /* ignore */ }
+          this._term = null;
+          this._fitAddon = null;
+          this._webglAddon = null;
+          this._clipboardAddon = null;
+        }
         this.connected = false;
+        this.statusDot = 'idle';
+        this.showJumpToBottom = false;
       },
 
-      addMessage(role, text) {
-        if (!text) return;
-        this.messages.push({ id: ++this._id, role, text });
+      /* ------------------------------------------------------------
+       * xterm.js path (PTY transport — plan §1.7)
+       * ------------------------------------------------------------ */
+      _mountXterm(detail) {
+        this.terminalMode = 'xterm';
+        this.status = `Starting · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
+        this.statusDot = 'idle';
         this.$nextTick(() => {
-          if (this.$refs.log) this.$refs.log.scrollTop = this.$refs.log.scrollHeight;
+          if (!this.$refs.xtermMount || !window.Terminal) {
+            this.status = 'xterm.js not loaded';
+            this.statusDot = 'error';
+            return;
+          }
+          const isMac = /mac/i.test(navigator.platform);
+          const term = new window.Terminal({
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            fontSize: 13,
+            cursorBlink: true,
+            cursorStyle: 'bar',
+            scrollback: 5000,
+            macOptionIsMeta: isMac,                 /* plan §UX: Meta keys via Opt */
+            rightClickSelectsWord: false,           /* let native context menu show */
+            convertEol: false,                      /* agent emits CRLF already */
+            allowProposedApi: true,                 /* webgl addon needs this */
+            theme: this._computeTheme(),
+          });
+
+          const fit = new window.FitAddon.FitAddon();
+          term.loadAddon(fit);
+
+          /* Clipboard addon — OSC 52 read/write so agent "copy to
+             clipboard" emits reach the host without user clicks. */
+          if (window.ClipboardAddon) {
+            try {
+              const clip = new window.ClipboardAddon.ClipboardAddon();
+              term.loadAddon(clip);
+              this._clipboardAddon = clip;
+            } catch { /* clipboard addon optional */ }
+          }
+
+          term.open(this.$refs.xtermMount);
+
+          /* WebGL renderer with canvas fallback (plan §renderer choice). */
+          if (window.WebglAddon) {
+            try {
+              const webgl = new window.WebglAddon.WebglAddon();
+              webgl.onContextLoss(() => {
+                try { webgl.dispose(); } catch { /* ignore */ }
+                this._webglAddon = null;
+              });
+              term.loadAddon(webgl);
+              this._webglAddon = webgl;
+            } catch { /* some browsers reject WebGL; canvas is fine */ }
+          }
+
+          try { fit.fit(); } catch { /* container may be hidden; retry on show */ }
+          term.writeln('\x1b[2mConnecting to agent...\x1b[0m');
+
+          /* ResizeObserver → TIOCSWINSZ. `onResize` fires when fit()
+             changes dims; the outbound resize frame is sent from there. */
+          this._resizeObserver = new ResizeObserver(() => {
+            try { fit.fit(); } catch { /* container hidden — no-op */ }
+          });
+          this._resizeObserver.observe(this.$refs.xtermMount);
+
+          /* Jump-to-bottom pill — xterm fires onScroll with the top line. */
+          term.onScroll(() => {
+            const buf = term.buffer.active;
+            const atBottom = buf.viewportY + term.rows >= buf.length - 1;
+            this.showJumpToBottom = !atBottom;
+          });
+
+          /* Ctrl-\ escapes focus: let the native event propagate so
+             the document can move focus to the sidebar. */
+          term.attachCustomKeyEventHandler((ev) => {
+            if (ev.type === 'keydown' && ev.ctrlKey && ev.key === '\\') {
+              this.blurTerminal();
+              return false;  /* don't feed to PTY */
+            }
+            return true;
+          });
+
+          this._term = term;
+          this._fitAddon = fit;
+
+          this._openWebSocket(detail);
         });
       },
 
-      lastText() {
-        const item = [...this.messages].reverse().find((message) => message.role === 'agent');
-        return item ? item.text : '';
+      _openWebSocket(detail) {
+        const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = `${scheme}://${window.location.host}${detail.wsUrl}`;
+        const ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+        this._ws = ws;
+
+        ws.addEventListener('open', () => {
+          this.connected = true;
+          this.statusDot = 'live';
+          this.status = `Connected · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
+          /* Send initial resize so the child sees the real terminal size. */
+          if (this._term) {
+            ws.send(JSON.stringify({
+              type: 'resize',
+              cols: this._term.cols,
+              rows: this._term.rows,
+            }));
+          }
+        });
+
+        ws.addEventListener('message', (event) => {
+          if (event.data instanceof ArrayBuffer) {
+            /* Raw PTY bytes → terminal.write(Uint8Array). */
+            if (this._term) this._term.write(new Uint8Array(event.data));
+            return;
+          }
+          let frame;
+          try { frame = JSON.parse(event.data); } catch { return; }
+          if (frame.type === 'started') {
+            this.statusDot = 'live';
+            this.status = `Connected · ${frame.agent}`;
+          } else if (frame.type === 'stopped') {
+            this.connected = false;
+            this.statusDot = 'idle';
+            this.status = `Session ended (${frame.reason}, rc=${frame.returncode ?? 'n/a'})`;
+            if (this._term) {
+              this._term.writeln(`\r\n\x1b[2m[session ended: ${frame.reason}]\x1b[0m`);
+            }
+          } else if (frame.type === 'transport_error') {
+            this.statusDot = 'error';
+            this.status = `Error: ${frame.message}`;
+          } else if (frame.type === 'agent_message') {
+            /* Phase 2 ACP events. PTY transport never emits these; no-op. */
+          }
+        });
+
+        ws.addEventListener('close', () => {
+          this.connected = false;
+          if (this.statusDot !== 'error') this.statusDot = 'idle';
+          if (!/ended/i.test(this.status)) this.status = 'Disconnected';
+        });
+        ws.addEventListener('error', () => {
+          this.statusDot = 'error';
+          this.status = 'Connection error';
+        });
+
+        /* Bind terminal input only after the WS is wired, not inside
+           _mountXterm — otherwise keystrokes typed during the connecting
+           window land on a dead socket and silently drop. */
+        if (this._term) {
+          this._term.onData((data) => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ type: 'input', data }));
+          });
+          this._term.onResize(({ cols, rows }) => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+          });
+        }
       },
 
-      openTerminalFallback() {
-        window.open('/terminal/', 'studyloop-terminal', 'width=900,height=600,menubar=no,toolbar=no');
+      /* Rough theme map — pulls from CSS vars so xterm blends in. */
+      _computeTheme() {
+        const css = getComputedStyle(document.documentElement);
+        const get = (name, fallback) => (css.getPropertyValue(name).trim() || fallback);
+        return {
+          background: get('--bg', '#1a1b26'),
+          foreground: get('--text', '#c0caf5'),
+          cursor: get('--accent', '#7aa2f7'),
+          selectionBackground: get('--accent', '#7aa2f7') + '66',
+        };
+      },
+
+      /* ------------------------------------------------------------
+       * Legacy ttyd iframe path (transport=ttyd emergency fallback)
+       * ------------------------------------------------------------ */
+      _mountLegacyIframe(detail) {
+        this.terminalMode = 'ttyd-iframe';
+        const key = detail.studySessionId || `${Date.now()}`;
+        const params = new URLSearchParams({
+          session: key,
+          agent: detail.resolvedAgent || detail.agent || 'auto',
+          t: `${Date.now()}`,
+        });
+        this.legacyTtydUrl = `/terminal/?${params.toString()}`;
+        this.$nextTick(() => {
+          this.connected = true;
+          this.status = `Legacy terminal · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
+          this.statusDot = 'live';
+        });
+      },
+
+      /* ------------------------------------------------------------
+       * UX helpers
+       * ------------------------------------------------------------ */
+      scrollToBottom() {
+        if (this._term) this._term.scrollToBottom();
+        this.showJumpToBottom = false;
+      },
+
+      blurTerminal() {
+        /* Move focus out of xterm so keyboard nav can reach the sidebar.
+           xterm captures all keydowns while its textarea has focus. */
+        if (this._term) this._term.blur();
+        const nav = document.querySelector('.sidebar-nav .nav-btn');
+        if (nav) nav.focus();
+      },
+
+      async copySelection() {
+        if (!this._term) return;
+        const text = this._term.getSelection();
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch { /* clipboard permission denied; silent */ }
       },
     };
   }
