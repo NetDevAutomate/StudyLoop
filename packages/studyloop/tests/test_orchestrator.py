@@ -1,4 +1,4 @@
-"""Tests for studyctl.session.orchestrator — ttyd background process."""
+"""Tests for studyloop.session.orchestrator — ttyd background process."""
 
 from __future__ import annotations
 

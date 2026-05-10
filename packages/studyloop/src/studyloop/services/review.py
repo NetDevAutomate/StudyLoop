@@ -1,7 +1,7 @@
 """Service layer for review operations.
 
-Thin wrapper functions that delegate to :mod:`studyctl.review_db` and
-:mod:`studyctl.review_loader`.  This module is the bridge between
+Thin wrapper functions that delegate to :mod:`studyloop.review_db` and
+:mod:`studyloop.review_loader`.  This module is the bridge between
 consumer interfaces (CLI, web, MCP) and the data layer.
 
 Rules enforced by design:
@@ -138,7 +138,7 @@ def get_due(course: str) -> list[CardProgress]:
         course: Course identifier.
 
     Returns:
-        List of :class:`~studyctl.review_db.CardProgress` entries
+        List of :class:`~studyloop.review_db.CardProgress` entries
         whose ``next_review`` date is today or earlier, ordered by
         earliest due first.
     """

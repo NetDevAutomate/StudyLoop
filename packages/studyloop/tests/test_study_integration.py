@@ -62,7 +62,7 @@ def _tmux(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _studyctl(*args: str, env_overrides: dict | None = None, timeout: int = 10):
+def _studyloop(*args: str, env_overrides: dict | None = None, timeout: int = 10):
     """Run a studyloop CLI command."""
     env = {**os.environ, **(env_overrides or {})}
     env.pop("TMUX", None)
@@ -144,7 +144,7 @@ def _cleanup_all():
 # Mock agent scripts
 # ---------------------------------------------------------------------------
 
-STUDYCTL = f"uv run --project {PROJECT_DIR} studyctl"
+STUDYLOOP = f"uv run --project {PROJECT_DIR} studyloop"
 
 
 def _make_mock_agent(tmp_path: Path, *, name: str = "mock-agent.sh") -> str:
@@ -155,11 +155,11 @@ def _make_mock_agent(tmp_path: Path, *, name: str = "mock-agent.sh") -> str:
         #!/bin/bash
         # Mock agent: logs topics, parks a question, waits for exit
         sleep 2
-        {STUDYCTL} topic "Closures" --status learning --note "exploring basics"
+        {STUDYLOOP} topic "Closures" --status learning --note "exploring basics"
         sleep 1
-        {STUDYCTL} topic "First-class functions" --status win --note "understood"
+        {STUDYLOOP} topic "First-class functions" --status win --note "understood"
         sleep 1
-        {STUDYCTL} park "How do generators relate to closures?"
+        {STUDYLOOP} park "How do generators relate to closures?"
         # Wait for C-c / kill
         trap 'exit 0' INT TERM
         while true; do sleep 1; done
@@ -170,10 +170,10 @@ def _make_mock_agent(tmp_path: Path, *, name: str = "mock-agent.sh") -> str:
 
 
 def _make_wrapper_agent(tmp_path: Path) -> str:
-    """Create a mock agent that uses the session dir's studyctl wrapper.
+    """Create a mock agent that uses the session dir's studyloop wrapper.
 
-    This is the realistic test — Claude Code calls ``studyctl topic``
-    which resolves to the wrapper script at ``$SESSION_DIR/studyctl``.
+    This is the realistic test — Claude Code calls ``studyloop topic``
+    which resolves to the wrapper script at ``$SESSION_DIR/studyloop``.
     If the wrapper is broken (e.g. missing __main__.py), this fails.
     """
     script = tmp_path / "wrapper-agent.sh"
@@ -203,7 +203,7 @@ def _make_fast_agent(tmp_path: Path) -> str:
         #!/bin/bash
         # Fast agent: log one topic, then exit immediately
         sleep 1
-        {STUDYCTL} topic "Quick Topic" --status learning --note "fast test"
+        {STUDYLOOP} topic "Quick Topic" --status learning --note "fast test"
         sleep 1
         echo "Agent exiting"
     """)
@@ -239,7 +239,7 @@ def _start_session(
     if extra_args:
         args.extend(extra_args)
 
-    result = _studyctl(*args, env_overrides=env_overrides)
+    result = _studyloop(*args, env_overrides=env_overrides)
 
     _wait_for(
         STATE_FILE.exists,
@@ -476,7 +476,7 @@ class TestCleanup:
         session_name = info["session_name"]
 
         # End via CLI
-        _studyctl("study", "--end")
+        _studyloop("study", "--end")
 
         # Session should be cleaned up
         assert not _session_exists(session_name) or _read_state().get("mode") == "ended"
@@ -487,7 +487,7 @@ class TestCleanup:
         info = _start_session(agent)
         session_dir = Path(info["session_dir"])
 
-        _studyctl("study", "--end")
+        _studyloop("study", "--end")
 
         # Dir should still exist (conversation history preserved)
         assert session_dir.exists()
@@ -516,7 +516,7 @@ class TestResume:
         )
 
         # End the session (preserves session dir + saves notes to DB)
-        _studyctl("study", "--end")
+        _studyloop("study", "--end")
         _wait_for(
             lambda: not _session_exists(original_name),
             timeout=10,
@@ -525,7 +525,7 @@ class TestResume:
 
         # Resume via --resume (should detect ended state + existing dir)
         agent2 = _make_mock_agent(tmp_path, name="mock-agent-resume.sh")
-        _studyctl(
+        _studyloop(
             "study",
             "--resume",
             env_overrides={"STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
@@ -549,14 +549,14 @@ class TestResume:
         )
 
         # End the session (saves notes to DB)
-        _studyctl("study", "--end")
+        _studyloop("study", "--end")
 
         # Resume — the persona file should contain previous session notes
         agent2 = _make_mock_agent(tmp_path, name="mock-agent-resume.sh")
         env_overrides = {
             "STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}",
         }
-        _studyctl("study", "--resume", env_overrides=env_overrides)
+        _studyloop("study", "--resume", env_overrides=env_overrides)
 
         # Read the new state to find the persona file
         _wait_for(STATE_FILE.exists, desc="resumed state file")
@@ -584,7 +584,7 @@ class TestResume:
             lambda: TOPICS_FILE.exists() and "Closures" in TOPICS_FILE.read_text(),
             desc="topics logged before end",
         )
-        _studyctl("study", "--end")
+        _studyloop("study", "--end")
         _wait_for(
             lambda: not _session_exists(original_name),
             timeout=10,
@@ -594,7 +594,7 @@ class TestResume:
         # Resume — this time DON'T use STUDYLOOP_TEST_AGENT_CMD so the
         # real agent command is built (but it will fail to run since
         # claude isn't installed — that's fine, we just check the command)
-        _studyctl("study", "--resume")
+        _studyloop("study", "--resume")
 
         _wait_for(STATE_FILE.exists, desc="resumed state file")
 
@@ -619,7 +619,7 @@ class TestResume:
         assert _session_exists(session_name)
 
         # Running resume should not error
-        _studyctl("study", "--resume")
+        _studyloop("study", "--resume")
         # The session should still be the same one
         assert _session_exists(session_name)
 
@@ -633,15 +633,15 @@ class TestErrorHandling:
     """Verify graceful handling of error conditions."""
 
     def test_no_topic_shows_error(self):
-        result = _studyctl("study")
+        result = _studyloop("study")
         assert result.returncode != 0 or "Topic is required" in result.stdout
 
     def test_resume_with_no_session(self):
-        result = _studyctl("study", "--resume")
+        result = _studyloop("study", "--resume")
         assert "No active session" in result.stdout
 
     def test_end_with_no_session(self):
-        result = _studyctl("study", "--end")
+        result = _studyloop("study", "--end")
         assert "No active session" in result.stdout
 
     def test_double_start_blocked(self, tmp_path):
@@ -650,7 +650,7 @@ class TestErrorHandling:
 
         # Second start should be blocked
         agent2 = _make_mock_agent(tmp_path, name="mock-agent-2.sh")
-        result = _studyctl(
+        result = _studyloop(
             "study",
             "Another Topic",
             "--agent",
@@ -669,13 +669,13 @@ class TestWrapperScript:
     """Verify the studyloop wrapper in the session directory works.
 
     This is the most realistic test — the mock agent calls ``studyloop``
-    which resolves to the wrapper script at ``$SESSION_DIR/studyctl``,
+    which resolves to the wrapper script at ``$SESSION_DIR/studyloop``,
     exactly as Claude Code does in a real study session. If the wrapper
     is broken (missing __main__.py, wrong Python path, etc.), these fail.
     """
 
     def test_wrapper_agent_can_log_topics(self, tmp_path):
-        """Agent using session dir wrapper can call studyctl topic."""
+        """Agent using session dir wrapper can call studyloop topic."""
         agent = _make_wrapper_agent(tmp_path)
         _start_session(agent)
 
@@ -687,7 +687,7 @@ class TestWrapperScript:
         assert "status:learning" in TOPICS_FILE.read_text()
 
     def test_wrapper_agent_can_park_topics(self, tmp_path):
-        """Agent using session dir wrapper can call studyctl park."""
+        """Agent using session dir wrapper can call studyloop park."""
         agent = _make_wrapper_agent(tmp_path)
         _start_session(agent)
 
@@ -699,7 +699,7 @@ class TestWrapperScript:
         assert "wrapper" in PARKING_FILE.read_text().lower()
 
     def test_wrapper_script_exists_and_executable(self, tmp_path):
-        """The studyctl wrapper is created in the session dir."""
+        """The studyloop wrapper is created in the session dir."""
         agent = _make_wrapper_agent(tmp_path)
         info = _start_session(agent)
 
@@ -710,7 +710,7 @@ class TestWrapperScript:
         # Wrapper should point to a valid Python
         content = wrapper.read_text()
         assert "python" in content.lower()
-        assert "-m studyctl.cli" in content
+        assert "-m studyloop.cli" in content
 
 
 # ---------------------------------------------------------------------------
@@ -751,7 +751,7 @@ class TestExperienceVerification:
             lambda: TOPICS_FILE.exists() and "First-class" in TOPICS_FILE.read_text(),
             desc="topics logged before end",
         )
-        _studyctl("study", "--end")
+        _studyloop("study", "--end")
         _wait_for(
             lambda: not _session_exists(original_name),
             timeout=10,
@@ -759,7 +759,7 @@ class TestExperienceVerification:
         )
 
         agent2 = _make_mock_agent(tmp_path, name="mock-agent-chain.sh")
-        _studyctl(
+        _studyloop(
             "study",
             "--resume",
             env_overrides={"STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
@@ -794,7 +794,7 @@ class TestExperienceVerification:
         )
 
         agent2 = _make_mock_agent(tmp_path, name="mock-resume-strict.sh")
-        _studyctl(
+        _studyloop(
             "study",
             "--resume",
             env_overrides={"STUDYLOOP_TEST_AGENT_CMD": f"bash {agent2} {{persona_file}}"},
@@ -851,7 +851,7 @@ class TestMultiAgentSessionLaunch:
             env.update(extra_env)
 
         args = ["study", "Integration Test", "--energy", "5", "--agent", agent_name]
-        _studyctl(*args, env_overrides=env)
+        _studyloop(*args, env_overrides=env)
 
         _wait_for(STATE_FILE.exists, desc="session-state.json created")
         state = _read_state()
@@ -933,7 +933,7 @@ class TestMultiAgentSessionLaunch:
             "STUDYLOOP_TEST_AGENT_CMD": f"bash {script} {{persona_file}}",
             "STUDYLOOP_KIRO_AGENTS_DIR": str(fake_kiro),
         }
-        _studyctl("study", "Kiro Teardown Test", "--agent", "kiro", env_overrides=env)
+        _studyloop("study", "Kiro Teardown Test", "--agent", "kiro", env_overrides=env)
 
         # Wait for the fast agent to finish and cleanup to run
         _wait_for(

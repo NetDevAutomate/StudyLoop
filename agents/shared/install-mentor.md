@@ -28,7 +28,7 @@ which kiro 2>/dev/null      # Kiro IDE CLI
 which gemini 2>/dev/null    # Gemini CLI
 which opencode 2>/dev/null  # OpenCode CLI
 which amp 2>/dev/null       # Amp CLI
-ls ~/.config/studyctl/config.yaml 2>/dev/null && echo "config exists" || echo "config missing"
+ls ~/.config/studyloop/config.yaml 2>/dev/null && echo "config exists" || echo "config missing"
 ```
 
 **Why this matters**: `studyloop` uses `uv` for package management when available (faster, isolated environments). The AI tool detection determines which agents directory is relevant. Config detection tells us whether to run `config init` or skip it.
@@ -84,7 +84,7 @@ pip3 install "studyloop[all]"
 After installation, check whether config already exists:
 
 ```bash
-ls ~/.config/studyctl/config.yaml
+ls ~/.config/studyloop/config.yaml
 ```
 
 **If config is missing** (fresh install), run:

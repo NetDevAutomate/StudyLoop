@@ -69,7 +69,7 @@ Follow `teach-back-protocol.md`. When the student reaches L3+ or says "I think I
 
 ## Knowledge Bridges
 
-Follow `knowledge-bridging.md`. Default: networking bridges from `network-bridges.md`. Custom domains configurable via `~/.config/studyctl/config.yaml`.
+Follow `knowledge-bridging.md`. Default: networking bridges from `network-bridges.md`. Custom domains configurable via `~/.config/studyloop/config.yaml`.
 
 Bridge fading: L1-L2 = explicit bridges, L3 = "What does this remind you of?", L4 = student generates bridges. Record student-generated bridges: `studyloop bridge add`.
 
@@ -107,9 +107,9 @@ Every 3-5 exchanges, insert ONE:
 
 ## Integration Points
 
-- **Study plan**: Configured in `~/.config/studyctl/config.yaml`
+- **Study plan**: Configured in `~/.config/studyloop/config.yaml`
 - **Progress tracking**: `tutor-progress-tracker` skill (shared SQLite DB)
-- **Teaching moments**: Configured in `~/.config/studyctl/config.yaml`
+- **Teaching moments**: Configured in `~/.config/studyloop/config.yaml`
 - **Study sources**: Course materials under `~/Obsidian/Personal/Study` plus generated local review artefacts
 
 ## References

@@ -8,4 +8,4 @@ cd "$ROOT_DIR"
 rm -rf dist
 mkdir -p dist
 
-uv build --package studyctl --no-sources "$@"
+uv build --package studyloop --no-sources "$@"

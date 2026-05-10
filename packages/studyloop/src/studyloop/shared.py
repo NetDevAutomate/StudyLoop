@@ -120,7 +120,7 @@ def _rsync_with_fallback(
 
 
 def push_state(remote: str | None = None) -> list[str]:
-    """Push studyctl state + sessions DB to remote machine(s).
+    """Push studyloop state + sessions DB to remote machine(s).
 
     Uses rsync for state.json and session-sync for the sessions DB
     (which handles intelligent merging, FTS rebuild, etc.)
@@ -286,7 +286,7 @@ def init_interactive_config(console: object) -> Path:
             "[bold]StudyLoop — Interactive Setup[/bold]\n\n"
             "This will configure your study environment.\n"
             "Press Enter to accept defaults shown in [dim]brackets[/dim].",
-            title="🧠 studyctl config init",
+            title="🧠 studyloop config init",
             border_style="cyan",
         )
     )
@@ -319,7 +319,7 @@ def init_interactive_config(console: object) -> Path:
             " to teach new concepts.[/dim]"
         )
         console.print(
-            "  [dim]You can add specific anchor concepts later with: studyctl bridge add[/dim]\n"
+            "  [dim]You can add specific anchor concepts later with: studyloop bridge add[/dim]\n"
         )
     else:
         knowledge_domains = {}
@@ -343,9 +343,9 @@ def init_interactive_config(console: object) -> Path:
         notebooklm_config["enabled"] = True
         console.print("\n  [dim]NotebookLM enabled. Map notebooks to topics via:[/dim]")
         console.print(
-            "  [dim]  studyctl sync <topic>  — syncs Obsidian notes to a NotebookLM notebook[/dim]"
+            "  [dim]  studyloop sync <topic>  — syncs Obsidian notes to a NotebookLM notebook[/dim]"
         )
-        console.print("  [dim]  Requires: uv pip install 'studyctl[notebooklm]'[/dim]\n")
+        console.print("  [dim]  Requires: uv pip install 'studyloop[notebooklm]'[/dim]\n")
     else:
         notebooklm_config["enabled"] = False
         console.print("  [dim]Skipped — NotebookLM integration disabled.[/dim]\n")

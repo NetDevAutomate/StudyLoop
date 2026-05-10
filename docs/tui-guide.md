@@ -6,7 +6,7 @@
 
 ## Layout
 
-When you start a study session with `studyctl study "topic"`, a tmux session is created with two panes:
+When you start a study session with `studyloop study "topic"`, a tmux session is created with two panes:
 
 ```
 +------------------------------------------+------------------+
@@ -43,7 +43,7 @@ The sidebar reads from IPC files that the agent writes to during the session:
 graph LR
     subgraph "Agent Pane"
         AGENT["AI Agent"]
-        CLI["studyctl topic<br/>(CLI command)"]
+        CLI["studyloop topic<br/>(CLI command)"]
     end
 
     subgraph "IPC Files"
@@ -59,7 +59,7 @@ graph LR
         BREAK["Break Banner"]
     end
 
-    AGENT -->|"studyctl topic 'X' --status win"| CLI
+    AGENT -->|"studyloop topic 'X' --status win"| CLI
     CLI --> TOPICS
     CLI --> PARKING
     TOPICS -->|polls| FEED
@@ -69,7 +69,7 @@ graph LR
     TIMER -->|"time thresholds"| BREAK
 ```
 
-The sidebar polls these files every second. When the agent logs a topic via `studyctl topic`, the sidebar updates within 1-2 seconds.
+The sidebar polls these files every second. When the agent logs a topic via `studyloop topic`, the sidebar updates within 1-2 seconds.
 
 ---
 
@@ -96,8 +96,8 @@ Alternates between 25-minute work periods and 5-minute breaks, with a 15-minute 
 Switch modes explicitly:
 
 ```bash
-studyctl study "Python" --timer pomodoro    # Force Pomodoro in study mode
-studyctl study "Python" --timer elapsed     # Force elapsed in co-study mode
+studyloop study "Python" --timer pomodoro    # Force Pomodoro in study mode
+studyloop study "Python" --timer elapsed     # Force elapsed in co-study mode
 ```
 
 ### Activity Feed
@@ -159,16 +159,16 @@ Press these keys while the sidebar pane is focused (click the sidebar or use `Ct
 
 ```bash
 # Basic session
-studyctl study "Python Decorators" --energy 7
+studyloop study "Python Decorators" --energy 7
 
 # With web dashboard alongside the TUI
-studyctl study "Python Decorators" --energy 7 --web
+studyloop study "Python Decorators" --energy 7 --web
 
 # Co-study mode (Pomodoro timer, agent is passive)
-studyctl study "Python Decorators" --mode co-study
+studyloop study "Python Decorators" --mode co-study
 
 # Choose a specific AI agent
-studyctl study "Python Decorators" --agent gemini
+studyloop study "Python Decorators" --agent gemini
 ```
 
 You'll be dropped into the tmux session automatically. The agent starts in the left pane, the sidebar in the right.
@@ -178,7 +178,7 @@ You'll be dropped into the tmux session automatically. The agent starts in the l
 Three ways to end:
 
 1. **Press `Q` in the sidebar** — cleanest method, runs full cleanup
-2. **Type `studyctl study --end`** in a separate terminal
+2. **Type `studyloop study --end`** in a separate terminal
 3. **Quit the agent** (e.g. type `/exit` in Claude Code) — the wrapper script triggers cleanup automatically
 
 All three paths run the same cleanup: flashcard generation from session wins, DB session end, tmux session kill, IPC file removal.
@@ -190,7 +190,7 @@ All three paths run the same cleanup: flashcard generation from session wins, DB
 If your terminal disconnects or you close the window:
 
 ```bash
-studyctl study --resume
+studyloop study --resume
 ```
 
 This reattaches to the existing tmux session with your agent conversation and sidebar state intact.

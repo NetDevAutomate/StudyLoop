@@ -53,7 +53,7 @@ Session state is created by `studyloop session start`. Do NOT manually create th
 
 When the user specifies their energy level mid-session, update the state file:
 ```bash
-python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyctl/session-state.json'; d=json.loads(p.read_text()); d['energy']='LEVEL'; p.write_text(json.dumps(d))"
+python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyloop/session-state.json'; d=json.loads(p.read_text()); d['energy']='LEVEL'; p.write_text(json.dumps(d))"
 ```
 (Replace `LEVEL` with `low`, `medium`, or `high`)
 

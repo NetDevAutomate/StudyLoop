@@ -22,7 +22,7 @@ class TestDoctorIntegration:
     def _isolate(self, tmp_path: Path, monkeypatch):
         """Isolate from real config/DB and block all network access.
 
-        Patches the module-level _CONFIG_PATH in studyctl.settings so that
+        Patches the module-level _CONFIG_PATH in studyloop.settings so that
         load_settings(), get_db_path(), and check_config_file() all read from
         the temp YAML rather than the real user config.
         """

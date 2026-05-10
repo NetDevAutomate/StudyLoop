@@ -1,6 +1,6 @@
-"""Shared test helpers for studyctl.
+"""Shared test helpers for studyloop.
 
-This module exists because studyctl tests CANNOT use conftest.py — a pluggy
+This module exists because studyloop tests CANNOT use conftest.py — a pluggy
 namespace conflict occurs when both workspace packages are collected from
 the root.  See docs/TESTING.md for the full explanation.
 
@@ -43,7 +43,7 @@ def make_review_db(tmp_path: Path) -> Path:
     conn.execute("PRAGMA busy_timeout=5000")
     conn.close()
 
-    # Import lazily so the module can be loaded even if studyctl
+    # Import lazily so the module can be loaded even if studyloop
     # isn't fully installed (e.g. during collection).
     from studyloop.review_db import ensure_tables
 
@@ -52,7 +52,7 @@ def make_review_db(tmp_path: Path) -> Path:
 
 
 def make_isolated_config(tmp_path: Path, monkeypatch) -> Path:
-    """Redirect studyctl's central config paths to a temp directory.
+    """Redirect studyloop's central config paths to a temp directory.
 
     Patches ``studyloop.settings.CONFIG_DIR`` and
     ``studyloop.settings._CONFIG_PATH`` so all config-reading code

@@ -19,18 +19,18 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini 
 
 ## AI-Guided Setup (Recommended for New Users)
 
-The **install-mentor agent** can guide you through the entire setup process conversationally. It detects your environment, installs packages, configures studyctl, and verifies everything works using `studyctl doctor`.
+The **install-mentor agent** can guide you through the entire setup process conversationally. It detects your environment, installs packages, configures studyloop, and verifies everything works using `studyloop doctor`.
 
 The prompt lives at `agents/shared/install-mentor.md` in the repo and works with any AI coding tool. To use it:
 
 ```bash
 # In Claude Code — just ask:
-# "Read agents/shared/install-mentor.md and follow it to set up studyctl"
+# "Read agents/shared/install-mentor.md and follow it to set up studyloop"
 
 # Or in any AI tool that can run shell commands, paste the prompt contents
 ```
 
-The install-mentor uses `studyctl doctor --json` as its contract — it parses the health check output and fixes issues automatically (up to 3 iterations).
+The install-mentor uses `studyloop doctor --json` as its contract — it parses the health check output and fixes issues automatically (up to 3 iterations).
 
 ## What are AI Agents?
 
@@ -49,7 +49,7 @@ This project ships agents for six platforms:
 The preferred interface is the typed CLI command:
 
 ```bash
-studyctl install agents
+studyloop install agents
 ```
 
 The compatibility wrapper still exists if you are working from a repo checkout:
@@ -63,13 +63,13 @@ It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `openc
 Options:
 
 ```bash
-studyctl install agents --tool kiro
-studyctl install agents --tool claude
-studyctl install agents --tool codex
-studyctl install agents --tool gemini
-studyctl install agents --tool opencode
-studyctl install agents --tool amp
-studyctl install agents --uninstall
+studyloop install agents --tool kiro
+studyloop install agents --tool claude
+studyloop install agents --tool codex
+studyloop install agents --tool gemini
+studyloop install agents --tool opencode
+studyloop install agents --tool amp
+studyloop install agents --uninstall
 ```
 
 ## Kiro CLI Setup
@@ -98,9 +98,9 @@ kiro-cli chat --agent study-mentor
 ```
 
 The agent will automatically:
-1. Run `studyctl status` to check sync state
-2. Run `studyctl review` to find what's due for spaced repetition
-3. Run `studyctl struggles` to identify recurring struggle areas
+1. Run `studyloop status` to check sync state
+2. Run `studyloop review` to find what's due for spaced repetition
+3. Run `studyloop struggles` to identify recurring struggle areas
 4. Ask your energy level to match session type
 
 ### Customizing
@@ -157,7 +157,7 @@ Codex auto-loads `AGENTS.md` from the current working directory, so the installe
 ### Auto-install
 
 ```bash
-studyctl install agents --tool codex
+studyloop install agents --tool codex
 ```
 
 ### Manual install
@@ -177,8 +177,8 @@ ln -s "$(pwd)/agents/shared" ~/.agents/shared
 codex
 # AGENTS.md is loaded automatically
 
-# Or let studyctl launch Codex directly
-studyctl study "Python" --agent codex
+# Or let studyloop launch Codex directly
+studyloop study "Python" --agent codex
 ```
 
 ## Gemini CLI Setup
@@ -201,7 +201,7 @@ The installer also creates `~/.gemini/settings.json` with `experimental.enableAg
 ### Auto-install
 
 ```bash
-studyctl install agents --tool gemini
+studyloop install agents --tool gemini
 ```
 
 ### Manual install
@@ -254,7 +254,7 @@ OpenCode discovers agents from `.opencode/agents/*.md` (project-level) or `~/.co
 ### Auto-install
 
 ```bash
-studyctl install agents --tool opencode
+studyloop install agents --tool opencode
 ```
 
 ### Manual install
@@ -291,12 +291,12 @@ opencode
 |--------|--------|---------|
 | `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
 
-Amp currently has no dedicated project-level agent file in this repo. `studyctl install agents --tool amp` installs the shared framework only; if you want project-level instructions, create or link `AGENTS.md` in the repo root yourself.
+Amp currently has no dedicated project-level agent file in this repo. `studyloop install agents --tool amp` installs the shared framework only; if you want project-level instructions, create or link `AGENTS.md` in the repo root yourself.
 
 ### Auto-install
 
 ```bash
-studyctl install agents --tool amp
+studyloop install agents --tool amp
 ```
 
 ### Manual install
@@ -319,7 +319,7 @@ amp
 
 ## Local LLMs
 
-studyctl can use local LLMs as the study mentor backend instead of cloud Claude. This uses Claude Code as the frontend but points it at a local model server via environment variables.
+studyloop can use local LLMs as the study mentor backend instead of cloud Claude. This uses Claude Code as the frontend but points it at a local model server via environment variables.
 
 ### Honest expectations
 
@@ -337,14 +337,14 @@ Claude Code requires the **Anthropic Messages API format** (`/v1/messages`). Not
 
 | Backend | Anthropic API? | Notes |
 |---------|---------------|-------|
-| **LM Studio 0.4.1+** | Native | Simplest path. Just load a model and point studyctl at it. |
+| **LM Studio 0.4.1+** | Native | Simplest path. Just load a model and point studyloop at it. |
 | **llama.cpp server** | Native (since Nov 2025) | Low-level, good for headless servers. |
 | **LiteLLM proxy** | Translates | Bridges Ollama's OpenAI API to Anthropic format. |
 | **Ollama (direct)** | No | Only speaks OpenAI format. Needs LiteLLM as a proxy. |
 
 ### Recommended models
 
-Models ranked by suitability for studyctl's agentic, multi-turn workflow:
+Models ranked by suitability for studyloop's agentic, multi-turn workflow:
 
 | Model | VRAM/RAM | Context | Best for |
 |-------|----------|---------|----------|
@@ -361,13 +361,13 @@ Models ranked by suitability for studyctl's agentic, multi-turn workflow:
 1. Install [LM Studio](https://lmstudio.ai) (0.4.1+)
 2. Download and load a model (e.g., Qwen3-Coder 30B)
 3. Start the local server (LM Studio > Developer tab > Start Server)
-4. Run studyctl:
+4. Run studyloop:
 
 ```bash
-studyctl study "Python decorators" --agent lmstudio
+studyloop study "Python decorators" --agent lmstudio
 ```
 
-Config (`~/.config/studyctl/config.yaml`):
+Config (`~/.config/studyloop/config.yaml`):
 ```yaml
 agents:
   priority: [lmstudio, claude]  # prefer local, fall back to cloud
@@ -404,9 +404,9 @@ model_list:
 litellm --config litellm-config.yaml --port 4000
 ```
 
-4. Run studyctl:
+4. Run studyloop:
 ```bash
-studyctl study "SQL window functions" --agent ollama
+studyloop study "SQL window functions" --agent ollama
 ```
 
 Config:
@@ -439,12 +439,12 @@ agents:
 - **Malformed tool calls**: Local models emit invalid tool-use JSON more often than cloud Claude. Claude Code may crash with `Cannot read properties of undefined`. Workaround: `export CLAUDE_CODE_USE_POWERSHELL_TOOL=0`
 - **No prompt caching**: Every turn processes the full context from scratch. Sessions feel slower as context grows.
 - **No extended thinking**: The effort slider and thinking modes are Claude-specific features.
-- **Background tasks use local model**: Claude Code routes statusline updates and codebase searches through the "haiku" model tier. With tier-pinning (which studyctl sets automatically), all of these hit your local GPU.
+- **Background tasks use local model**: Claude Code routes statusline updates and codebase searches through the "haiku" model tier. With tier-pinning (which studyloop sets automatically), all of these hit your local GPU.
 
 ### Verifying your setup
 
 ```bash
-studyctl doctor
+studyloop doctor
 ```
 
 The doctor checks will report:
@@ -456,7 +456,7 @@ The doctor checks will report:
 
 ### study-mentor (kiro-cli)
 
-The primary study agent. Integrates with the full studyctl pipeline:
+The primary study agent. Integrates with the full studyloop pipeline:
 
 - Checks spaced repetition schedule before each session
 - Detects struggle topics from your session history
@@ -480,8 +480,8 @@ A focused Socratic teaching agent with AuDHD-aware pedagogy:
 Codex uses the repository-root `AGENTS.md` as its project contract:
 
 - Auto-loads study mentor guidance when you start `codex` in the repo
-- Keeps the session aligned with the studyctl workflow and session-state tooling
-- Works well with `studyctl study ...` when studyctl launches Codex inside tmux
+- Keeps the session aligned with the studyloop workflow and session-state tooling
+- Works well with `studyloop study ...` when studyloop launches Codex inside tmux
 - Can also be used manually for ad-hoc study, review, and note-refinement sessions
 
 ## Skills Reference
@@ -517,7 +517,7 @@ Cross-agent progress tracking. Provides:
 Remove all symlinks created by the installer:
 
 ```bash
-studyctl install agents --uninstall
+studyloop install agents --uninstall
 ```
 
 This only removes symlinks that point into this repo. It won't touch agent files you've created manually or from other sources. Any existing files that were backed up during installation (with `.bak` suffix) remain untouched.

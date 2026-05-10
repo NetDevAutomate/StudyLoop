@@ -7,10 +7,10 @@
 ## Starting the Web UI
 
 ```bash
-studyctl web                        # localhost:8567
-studyctl web --lan                  # LAN-accessible with auto-generated password
-studyctl web --lan --password SECRET  # LAN with explicit password
-studyctl web -p 9000                # custom port
+studyloop web                        # localhost:8567
+studyloop web --lan                  # LAN-accessible with auto-generated password
+studyloop web --lan --password SECRET  # LAN with explicit password
+studyloop web -p 9000                # custom port
 ```
 
 Open your browser to `http://localhost:8567`. The PWA is installable; add it to your home screen on mobile for review and session visibility.
@@ -114,7 +114,7 @@ graph TB
 When you start a study session with `--web`, the dashboard provides a real-time view of your session from any device:
 
 ```bash
-studyctl study "Python Decorators" --energy 7 --web
+studyloop study "Python Decorators" --energy 7 --web
 ```
 
 ### Accessing the Dashboard
@@ -254,7 +254,7 @@ The terminal stays connected during pop-out/return — your tmux session is not 
 With `--lan`, the terminal is accessible from other devices on your network:
 
 ```bash
-studyctl study "topic" --web --lan --password mypassword
+studyloop study "topic" --web --lan --password mypassword
 ```
 
 Access from a tablet or phone at `http://<host-ip>:8567/session`. HTTP Basic Auth protects the connection.
@@ -310,17 +310,17 @@ The service worker caches all vendored assets (HTMX, Alpine.js, fonts) for offli
 
 ```bash
 # Start flashcard/quiz review
-studyctl web
+studyloop web
 
 # Start a study session with web dashboard
-studyctl study "topic" --web
+studyloop study "topic" --web
 
 # LAN access (tablet/phone)
-studyctl study "topic" --web --lan
+studyloop study "topic" --web --lan
 
 # Check what's due for review
-studyctl review
+studyloop review
 
 # View study streaks and patterns
-studyctl streaks
+studyloop streaks
 ```

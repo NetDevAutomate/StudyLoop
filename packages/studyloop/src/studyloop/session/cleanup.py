@@ -127,7 +127,7 @@ def _kill_background_processes(state: dict) -> None:
     import subprocess as _sp
 
     # PID-based kill — verify command matches to guard against PID recycling.
-    # "studyloop" matches both the binary and "python -m studyctl.cli".
+    # "studyloop" matches both the binary and "python -m studyloop.cli".
     pid_checks = {"web_pid": "studyloop", "ttyd_pid": "ttyd"}
     for pid_key, expected in pid_checks.items():
         pid = state.get(pid_key)

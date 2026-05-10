@@ -34,7 +34,7 @@ uv tool install "./packages/agent-session-tools[tts]" --force
     }
     ```
 
-**Configuration** — `~/.config/studyctl/config.yaml`:
+**Configuration** — `~/.config/studyloop/config.yaml`:
 
 ```yaml
 tts:

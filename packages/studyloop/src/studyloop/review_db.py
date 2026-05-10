@@ -20,7 +20,7 @@ DEFAULT_EASE = 2.5
 
 
 def _get_db() -> Path:
-    """Get sessions.db path from studyctl config."""
+    """Get sessions.db path from studyloop config."""
     try:
         return get_db_path()
     except Exception:

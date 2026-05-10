@@ -1,6 +1,6 @@
 # Network → Data Engineering Bridges
 
-Default bridge domain for the StudyLoop mentor. These are the zero-configuration bridges that work immediately for students with networking backgrounds. For other domains, see `knowledge-bridging.md` and configure via `studyctl bridge add` or `~/.config/studyctl/config.yaml`.
+Default bridge domain for the StudyLoop mentor. These are the zero-configuration bridges that work immediately for students with networking backgrounds. For other domains, see `knowledge-bridging.md` and configure via `studyloop bridge add` or `~/.config/studyloop/config.yaml`.
 
 Always use these analogies when explaining new concepts to leverage 30 years of infrastructure experience.
 

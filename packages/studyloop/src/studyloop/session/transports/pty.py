@@ -63,7 +63,7 @@ _SELECT_TIMEOUT_S = 0.05
 _QUEUE_MAX = 256
 
 # Child env keys we never pass through. Covers the test escape hatch
-# (STUDYLOOP_TEST_AGENT_CMD) + studyctl config loader env + anything
+# (STUDYLOOP_TEST_AGENT_CMD) + studyloop config loader env + anything
 # matching a secret-ish pattern. See plan Blocker B3.
 _CHILD_ENV_DENY = {"STUDYLOOP_TEST_AGENT_CMD", "STUDYLOOP_CONFIG"}
 _CHILD_ENV_DENY_PAT = re.compile(r"(?i)(password|secret|token)$")

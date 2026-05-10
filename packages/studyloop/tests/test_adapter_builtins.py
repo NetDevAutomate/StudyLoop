@@ -280,7 +280,7 @@ class TestKiroAdapter:
         target = kiro_agents / f"{KIRO_AGENT_NAME}.json"
         backup = target.with_suffix(target.suffix + _KIRO_BACKUP_SUFFIX)
 
-        # Set up: current (studyctl) JSON + backup (user's original)
+        # Set up: current (studyloop) JSON + backup (user's original)
         target.write_text(json.dumps({"prompt": "file:///tmp/studyloop-persona.md"}))
         original_data = {"name": KIRO_AGENT_NAME, "prompt": "user-original"}
         backup.write_text(json.dumps(original_data))

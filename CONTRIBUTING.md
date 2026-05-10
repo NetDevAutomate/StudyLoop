@@ -65,7 +65,7 @@ brew install just
 - **Linter/formatter**: [ruff](https://docs.astral.sh/ruff/) (configured in each `pyproject.toml`)
 - **Type checker**: [pyright](https://github.com/microsoft/pyright) in basic mode
 - **Line length**: 100 characters
-- **Target**: Python 3.12+ (both studyctl and agent-session-tools)
+- **Target**: Python 3.12+ (both studyloop and agent-session-tools)
 
 Run checks manually:
 
@@ -100,7 +100,7 @@ uv run pytest -k "test_search"
 ```
 
 Tests live in:
-- `packages/studyctl/tests/` — studyctl CLI and review tests
+- `packages/studyloop/tests/` — studyloop CLI and review tests
 - `packages/agent-session-tools/tests/` — session tools tests
 
 ## Release Build
@@ -113,7 +113,7 @@ just build-release
 
 This recipe calls `./scripts/build-release.sh`, which:
 - deletes old contents from `dist/`
-- builds the `studyctl` sdist and wheel with `uv build --package studyctl --no-sources`
+- builds the `studyloop` sdist and wheel with `uv build --package studyloop --no-sources`
 
 The release workflow uses the same script, so local and CI builds follow the same path.
 
@@ -122,15 +122,15 @@ The release workflow uses the same script, so local and CI builds follow the sam
 ```
 studyloop/
 ├── packages/
-│   ├── studyctl/                    # User-facing study toolkit
-│   │   ├── src/studyctl/
+│   ├── studyloop/                    # User-facing study toolkit
+│   │   ├── src/studyloop/
 │   │   │   ├── adapters/           # Claude, Codex, Gemini, Kiro, OpenCode, local-LLM adapters
 │   │   │   ├── cli/                # Click command surface
 │   │   │   ├── content/            # NotebookLM and PDF processing
 │   │   │   ├── doctor/             # Diagnostics and auto-fix checks
 │   │   │   ├── history/            # Study session persistence helpers
 │   │   │   ├── logic/              # Functional-core orchestration helpers
-│   │   │   ├── mcp/                # studyctl MCP server/tooling
+│   │   │   ├── mcp/                # studyloop MCP server/tooling
 │   │   │   ├── services/           # Review/content service wrappers
 │   │   │   ├── session/            # tmux startup, rollback, resume, cleanup
 │   │   │   ├── tui/                # Textual sidebar
@@ -166,7 +166,7 @@ studyloop/
 │   ├── install.sh                   # Thin source-install bootstrap wrapper
 │   └── install-agents.sh            # Thin compatibility wrapper
 ├── Justfile                         # Contributor task runner
-├── Formula/studyctl.rb              # Homebrew formula
+├── Formula/studyloop.rb              # Homebrew formula
 ├── docs/                            # Documentation
 ├── pyproject.toml                   # Workspace root
 └── CONTRIBUTING.md
@@ -229,7 +229,7 @@ Each exporter must implement the `SessionExporter` protocol: `source_name`, `is_
 
 ## How to Add a New Study Topic
 
-Edit `~/.config/studyctl/config.yaml`:
+Edit `~/.config/studyloop/config.yaml`:
 
 ```yaml
 topics:
@@ -239,9 +239,9 @@ topics:
     tags: [kubernetes, k8s, containers, orchestration]
 ```
 
-The `tags` list is used by `studyctl struggles` and `studyctl review` to match session content to topics.
+The `tags` list is used by `studyloop struggles` and `studyloop review` to match session content to topics.
 
-If you want to add default topics that ship with the project, edit `packages/studyctl/src/studyctl/topics.py` and update the `get_topics()` function.
+If you want to add default topics that ship with the project, edit `packages/studyloop/src/studyloop/topics.py` and update the `get_topics()` function.
 
 ## How to Modify Agent Behaviour
 

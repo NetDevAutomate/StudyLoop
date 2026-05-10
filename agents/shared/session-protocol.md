@@ -169,22 +169,22 @@ Interleaving strengthens retrieval paths and fights the AuDHD tendency to silo k
 
 During a study session, maintain these files for the live dashboard:
 
-**Topics file** (`~/.config/studyctl/session-topics.md`):
+**Topics file** (`~/.config/studyloop/session-topics.md`):
 - After each topic exchange, append a status line:
   `- [HH:MM] <topic> | status:<status> | <note>`
 - Status values: `learning` (normal progression), `struggling` (re-explanations needed), `insight` (aha moment or bridge connection), `win` (concept mastered or clicked), `parked` (deferred tangent)
 - Any topic reaching `struggling` status → also run:
   `studyloop progress "<concept>" -t <topic> -c struggling`
 
-**Parking lot file** (`~/.config/studyctl/session-parking.md`):
+**Parking lot file** (`~/.config/studyloop/session-parking.md`):
 - When deferring a tangential topic, run:
   `studyloop park "<question>" --topic "<tag>" --context "<what was being discussed>"`
 - This writes to both the DB (crash-resilient) and the parking file (viewport display)
 
-**Session state** (`~/.config/studyctl/session-state.json`):
+**Session state** (`~/.config/studyloop/session-state.json`):
 - Created by `studyloop session start` at session beginning
 - Update energy level mid-session if you detect a shift:
-  Update the file directly: `python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyctl/session-state.json'; d=json.loads(p.read_text()); d['energy']=NEW_LEVEL; p.write_text(json.dumps(d))"`
+  Update the file directly: `python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyloop/session-state.json'; d=json.loads(p.read_text()); d['energy']=NEW_LEVEL; p.write_text(json.dumps(d))"`
 
 Never overwrite session-topics.md or session-parking.md — always append.
 
@@ -333,5 +333,5 @@ If concepts are due for review, name them specifically.
 
 ### State File Update (Claude Code)
 ```bash
-python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyctl/session-state.json'; d=json.loads(p.read_text()); d['energy']='LEVEL'; d['topic']='TOPIC'; p.write_text(json.dumps(d))"
+python3 -c "import json; from pathlib import Path; p=Path.home()/'.config/studyloop/session-state.json'; d=json.loads(p.read_text()); d['energy']='LEVEL'; d['topic']='TOPIC'; p.write_text(json.dumps(d))"
 ```

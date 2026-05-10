@@ -1,4 +1,4 @@
-"""Unit tests for studyctl.content.storage."""
+"""Unit tests for studyloop.content.storage."""
 
 import json
 from unittest.mock import patch

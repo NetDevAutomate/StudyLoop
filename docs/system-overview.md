@@ -20,13 +20,13 @@ flowchart TB
     end
 
     subgraph "Core Tools"
-        Studyctl["studyctl"]
+        Studyctl["studyloop"]
         AST["agent-session-tools"]
         DB[("SQLite<br/>sessions + review")]
     end
 
     subgraph "Interactive Study"
-        Picker["studyctl study<br/>session picker"]
+        Picker["studyloop study<br/>session picker"]
         Agent["Selected assistant<br/>Claude/Codex/Gemini/Kiro/OpenCode"]
         Tmux["tmux/Textual<br/>current runtime"]
         Web["Web/PWA<br/>dashboard + review"]
@@ -69,7 +69,7 @@ sequenceDiagram
     participant Agent as Assistant
     participant UI as Web/tmux UI
 
-    User->>Studyctl: studyctl study
+    User->>Studyctl: studyloop study
     Studyctl-->>User: picker: body double/topic/vendor/course
     User->>Studyctl: select session type
     Studyctl->>DB: create session
@@ -96,14 +96,14 @@ The shared DB matters because it lets the agent adapt using evidence:
 Flashcards and quizzes support study, but they are not the product centre.
 
 ```bash
-studyctl content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyctl web
+studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop web
 ```
 
 ```mermaid
 flowchart LR
     Source["Markdown/text source"]
-    Generate["studyctl content generate-cards"]
+    Generate["studyloop content generate-cards"]
     Backend["CardGenerator<br/>Ollama or Bedrock"]
     Schema["Pydantic validation"]
     Artefacts["course/flashcards<br/>course/quizzes"]

@@ -28,8 +28,8 @@ class TestPythonVersionCheck:
         assert "3.12" in results[0].fix_hint
 
 
-class TestStudyctlInstalledCheck:
-    def test_studyctl_installed(self):
+class TestStudyloopInstalledCheck:
+    def test_studyloop_installed(self):
         from studyloop.doctor.core import check_studyloop_installed
 
         results = check_studyloop_installed()

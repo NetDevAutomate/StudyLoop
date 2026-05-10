@@ -88,11 +88,11 @@ studyloop state push              # Push to hub
 
 ## Study Plan
 
-Configured in `~/.config/studyctl/config.yaml`
+Configured in `~/.config/studyloop/config.yaml`
 
 ## Progress DB
 
-Configured in `~/.config/studyctl/config.yaml`
+Configured in `~/.config/studyloop/config.yaml`
 
 ## References
 

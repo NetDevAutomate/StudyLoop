@@ -79,8 +79,8 @@ class TestLoadConfig:
         config = load_config()
         assert config["logging"]["level"] == "DEBUG"
 
-    def test_reads_yaml_from_studyctl_config_path(self, tmp_path, monkeypatch):
-        """Test that STUDYCTL_CONFIG points load_config at a custom YAML file."""
+    def test_reads_yaml_from_studyloop_config_path(self, tmp_path, monkeypatch):
+        """Test that STUDYLOOP_CONFIG points load_config at a custom YAML file."""
         config_path = tmp_path / "custom" / "studyloop.yaml"
         config_path.parent.mkdir()
         config_path.write_text(
@@ -94,7 +94,7 @@ thresholds:
 """,
             encoding="utf-8",
         )
-        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
         monkeypatch.delenv("DATABASE_PATH", raising=False)
         monkeypatch.delenv("LOG_LEVEL", raising=False)
         monkeypatch.delenv("WARNING_THRESHOLD_MB", raising=False)
@@ -109,13 +109,13 @@ thresholds:
 class TestEnsureConfigDir:
     """Tests for ensure_config_dir function."""
 
-    def test_creates_config_and_env_at_studyctl_config_path(
+    def test_creates_config_and_env_at_studyloop_config_path(
         self, tmp_path, monkeypatch
     ):
-        """Test that STUDYCTL_CONFIG controls created config and .env paths."""
+        """Test that STUDYLOOP_CONFIG controls created config and .env paths."""
         config_path = tmp_path / "profile" / "config.yaml"
         env_path = config_path.parent / ".env"
-        monkeypatch.setenv("STUDYCTL_CONFIG", str(config_path))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         ensure_config_dir()
 

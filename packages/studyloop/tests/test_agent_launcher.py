@@ -1,4 +1,4 @@
-"""Tests for studyctl.agent_launcher — agent detection and launch."""
+"""Tests for studyloop.agent_launcher — agent detection and launch."""
 
 from __future__ import annotations
 
@@ -411,9 +411,9 @@ class TestKiroAdapter:
         fake_kiro.mkdir(parents=True)
         monkeypatch.setattr("studyloop.agent_launcher.KIRO_AGENTS_DIR", fake_kiro)
 
-        # Simulate crash: backup exists but target was overwritten by studyctl
+        # Simulate crash: backup exists but target was overwritten by studyloop
         target = fake_kiro / f"{KIRO_AGENT_NAME}.json"
-        target.write_text('{"prompt": "studyctl-modified"}')
+        target.write_text('{"prompt": "studyloop-modified"}')
         backup = target.with_suffix(target.suffix + ".studyloop-backup")
         backup.write_text('{"prompt": "user-original"}')
 
@@ -424,7 +424,7 @@ class TestKiroAdapter:
             data = json.loads(target.read_text())
             assert "file://" in data["prompt"]
 
-            # A NEW backup should exist — of the RESTORED original, not the stale studyctl one
+            # A NEW backup should exist — of the RESTORED original, not the stale studyloop one
             assert backup.exists()
             restored = json.loads(backup.read_text())
             assert restored["prompt"] == "user-original"

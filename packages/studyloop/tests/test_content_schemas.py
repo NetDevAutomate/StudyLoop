@@ -182,7 +182,7 @@ def test_flashcard_write_json_glob_friendly(tmp_path: Path, valid_flashcard_payl
     assert written.name == "python-collections-flashcards.json"
     assert written.exists()
 
-    # Matches both the reference repo's strict glob and studyctl's looser glob
+    # Matches both the reference repo's strict glob and studyloop's looser glob
     matches_strict = list(tmp_path.glob("*-flashcards.json"))
     matches_loose = list(tmp_path.glob("*flashcards.json"))
     assert [p.name for p in matches_strict] == ["python-collections-flashcards.json"]

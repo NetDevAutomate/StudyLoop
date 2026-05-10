@@ -319,7 +319,7 @@ def tmux_session():
     if not shutil.which("tmux"):
         pytest.skip("tmux not installed")
 
-    session_name = "studyctl-test-ttyd"
+    session_name = "studyloop-test-ttyd"
     # Kill any stale session
     subprocess.run(
         ["tmux", "kill-session", "-t", session_name],

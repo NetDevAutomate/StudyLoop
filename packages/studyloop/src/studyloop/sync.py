@@ -158,7 +158,7 @@ def sync_topic(topic: Topic, state: SyncState, dry_run: bool = False, as_pdf: bo
     # Build unique names for files with duplicate stems
     name_map = _build_unique_names(changed)
 
-    with tempfile.TemporaryDirectory(prefix="studyctl-pdf-") as pdf_dir:
+    with tempfile.TemporaryDirectory(prefix="studyloop-pdf-") as pdf_dir:
         pdf_path = Path(pdf_dir) if as_pdf else None
         for path in changed:
             unique = name_map.get(str(path))

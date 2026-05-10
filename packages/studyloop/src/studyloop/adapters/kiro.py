@@ -23,7 +23,7 @@ from studyloop.adapters._protocol import AgentAdapter
 logger = logging.getLogger(__name__)
 
 # Repo root: adapters/kiro.py is at
-#   packages/studyctl/src/studyctl/adapters/kiro.py
+#   packages/studyloop/src/studyloop/adapters/kiro.py
 # So repo root is six levels up.
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent
 

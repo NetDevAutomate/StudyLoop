@@ -100,7 +100,7 @@ class TestResumeViaTerminal:
 class TestNestedTmux:
     """Task 5: Verify studyloop study works when called from inside tmux.
 
-    When TMUX env var is set, studyctl should use switch_client instead
+    When TMUX env var is set, studyloop should use switch_client instead
     of attach, and Q-quit should return the client to the host session.
 
     Key: a pexpect client must be attached to the host session so that
@@ -136,7 +136,7 @@ class TestNestedTmux:
         agent_script = long_running_agent(tmp_path)
         study_cmd = (
             f"STUDYLOOP_TEST_AGENT_CMD='{agent_script}' "
-            f"{sys.executable} -m studyctl.cli study 'Nested Test' "
+            f"{sys.executable} -m studyloop.cli study 'Nested Test' "
             f"--energy 5 --agent claude"
         )
         child.sendline(study_cmd)

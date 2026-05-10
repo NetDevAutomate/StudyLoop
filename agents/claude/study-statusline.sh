@@ -41,7 +41,7 @@ DURATION_MS=${DURATION_MS:-0}
 MODEL=${MODEL:-unknown}
 
 # Read study session state file
-STATE_FILE="${HOME}/.config/studyctl/session-state.json"
+STATE_FILE="${HOME}/.config/studyloop/session-state.json"
 ENERGY="-"
 POMO_PHASE="-"
 POMO_REMAINING=""

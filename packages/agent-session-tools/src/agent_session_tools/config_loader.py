@@ -1,9 +1,9 @@
 """Centralized configuration loader for agent-session-tools.
 
-Loads configuration from ~/.config/studyctl/config.yaml and .env.
+Loads configuration from ~/.config/studyloop/config.yaml and .env.
 
-Note: Both studyctl and agent-session-tools read the SAME config.yaml file.
-Each package reads only the sections it needs — studyctl reads topics/content/
+Note: Both studyloop and agent-session-tools read the SAME config.yaml file.
+Each package reads only the sections it needs — studyloop reads topics/content/
 knowledge_domains; this package reads database/sync/semantic_search. This is
 intentional: the packages are independently publishable, so they must not
 import each other's config loaders.
@@ -80,23 +80,23 @@ def expand_path(path_str: str) -> Path:
 
 
 def get_config_file() -> Path:
-    """Get the shared studyctl config file path.
+    """Get the shared studyloop config file path.
 
-    STUDYCTL_CONFIG is resolved at call time so tests and long-running processes can
+    STUDYLOOP_CONFIG is resolved at call time so tests and long-running processes can
     change the active config without re-importing this module.
     """
-    if config_path := os.getenv("STUDYCTL_CONFIG"):
+    if config_path := os.getenv("STUDYLOOP_CONFIG"):
         return expand_path(config_path)
     return CONFIG_FILE
 
 
 def get_config_dir() -> Path:
-    """Get the directory containing the shared studyctl config file."""
+    """Get the directory containing the shared studyloop config file."""
     return get_config_file().parent
 
 
 def get_env_file() -> Path:
-    """Get the .env file stored beside the shared studyctl config file."""
+    """Get the .env file stored beside the shared studyloop config file."""
     return get_config_dir() / ".env"
 
 
@@ -149,7 +149,7 @@ def load_config() -> dict[str, Any]:
 
     Priority order:
     1. Environment variables
-    2. ~/.config/studyctl/config.yaml
+    2. ~/.config/studyloop/config.yaml
     3. Local config.json (backwards compatibility)
     4. Built-in defaults
     """
@@ -164,7 +164,7 @@ def load_config() -> dict[str, Any]:
     config_file = get_config_file()
     legacy_config = Path.home() / ".config" / "agent_session" / "config.yaml"
     if (
-        not os.getenv("STUDYCTL_CONFIG")
+        not os.getenv("STUDYLOOP_CONFIG")
         and not config_file.exists()
         and legacy_config.exists()
     ):

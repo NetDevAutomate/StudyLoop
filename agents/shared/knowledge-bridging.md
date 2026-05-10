@@ -18,7 +18,7 @@ This is the zero-configuration experience. It works immediately for the primary 
 
 ## Configuring Custom Domains
 
-For other users or additional bridge domains, run `studyloop config init` (or `/socratic-mentor configure` in Claude Code) or manually edit `~/.config/studyctl/config.yaml`:
+For other users or additional bridge domains, run `studyloop config init` (or `/socratic-mentor configure` in Claude Code) or manually edit `~/.config/studyloop/config.yaml`:
 
 ```yaml
 knowledge_domains:
