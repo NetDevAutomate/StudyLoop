@@ -394,9 +394,20 @@ def _build_pty_transport(config):  # type: ignore[no-untyped-def]
         return _shutil.which("sh") or "/bin/sh"
 
     def _build_launch_cmd(_config) -> list[str]:  # type: ignore[no-untyped-def]
-        claude_project_key = str(_config.cwd).replace("/", "-").lstrip("-")
-        is_resuming = (Path.home() / ".claude" / "projects" / claude_project_key).exists()
-        shell_cmd = adapter.launch_cmd(Path(_config.persona_file), is_resuming)
+        # Test hatch: STUDYLOOP_TEST_AGENT_CMD lets CI / Playwright force a
+        # known-good shell command (e.g. `/bin/sh -c 'echo ready; cat'`)
+        # without needing the real agent binary installed. The hatch is
+        # stripped from the child env by _build_child_env() so the child
+        # cannot observe its own override key.
+        import os as _os
+
+        test_cmd = _os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
+        if test_cmd:
+            shell_cmd = test_cmd.format(persona_file=_config.persona_file)
+        else:
+            claude_project_key = str(_config.cwd).replace("/", "-").lstrip("-")
+            is_resuming = (Path.home() / ".claude" / "projects" / claude_project_key).exists()
+            shell_cmd = adapter.launch_cmd(Path(_config.persona_file), is_resuming)
         return ["/bin/sh", "-c", shell_cmd]
 
     return lambda: PTYTransport(
