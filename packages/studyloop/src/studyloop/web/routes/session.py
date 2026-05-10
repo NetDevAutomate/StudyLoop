@@ -427,7 +427,7 @@ class SessionOption(BaseModel):
 
 
 @router.post("/session/start")
-def start_session(body: StartSessionRequest) -> JSONResponse:
+async def start_session(body: StartSessionRequest) -> JSONResponse:
     """Start a new study session from the web UI.
 
     Two transports are supported:
@@ -439,23 +439,27 @@ def start_session(body: StartSessionRequest) -> JSONResponse:
       tmux+ttyd flow for one deprecation window. Enable explicitly via
       ``{"transport": "ttyd"}`` in the body or by exporting
       ``STUDYLOOP_TRANSPORT=ttyd``.
+
+    Declared ``async`` so the PTY path's ``active.acquire`` runs on the
+    FastAPI event loop — installing the SIGCHLD signal handler requires
+    a loop owned by the main thread, which ``asyncio.run`` in a worker
+    thread cannot provide.
     """
     transport = _resolve_transport(body.transport)
     if transport == "pty":
-        return _start_pty_session(body)
+        return await _start_pty_session(body)
     return _start_ttyd_session(body)
 
 
-def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
+async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
     """PTY-backed start path — no tmux, no ttyd.
 
     1. Reject if a session is already active (``active.current()``).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
     3. Persona + DB + session_state writes (shared with legacy).
-    4. ``active.acquire(config, factory)`` — atomic under asyncio.Lock.
+    4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
     5. Return 201 with ``ws_url`` for the client to open.
     """
-    import asyncio as _asyncio
     import os
     import shutil
 
@@ -578,7 +582,7 @@ def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
     factory = _build_pty_transport(config)
 
     try:
-        _asyncio.run(session_active.acquire(config, factory))
+        await session_active.acquire(config, factory)
     except SessionAlreadyActiveError:
         return JSONResponse(
             {"error": "A session is already active"},
@@ -1000,9 +1004,21 @@ async def live_session_socket(websocket: WebSocket) -> None:
 
 
 @router.post("/session/end")
-def end_session() -> JSONResponse:
-    """End the current study session from the web UI."""
+async def end_session() -> JSONResponse:
+    """End the current study session from the web UI.
+
+    Declared async so the PTY path can ``await active.release()`` to
+    tear down the active-session singleton + transport. Without this,
+    a follow-up ``/session/start`` would 409 even though the tmux/DB
+    side is cleaned up.
+    """
+    from studyloop.session import active as session_active
+
     state = read_session_state()
+
+    # Release the PTY singleton first — idempotent, safe when the session
+    # was a legacy ttyd flow that never touched active.py.
+    await session_active.release()
 
     if not state.get("study_session_id"):
         return JSONResponse(

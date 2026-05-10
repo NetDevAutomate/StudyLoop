@@ -79,4 +79,16 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
     console.print(f"[bold]Study PWA at http://{host}:{port}[/bold]")
     if not lan:
         console.print("[dim]Use --lan to expose to network[/dim]")
-    uvicorn.run(app, host=host, port=port, workers=1, log_level="warning")
+    # loop="asyncio" is required for PTYTransport: uvloop reserves SIGCHLD
+    # for its own subprocess tracking and refuses to install a user handler,
+    # which our PTY child-exit detection depends on. The standard asyncio
+    # loop allows add_signal_handler(SIGCHLD, ...) to coexist with subprocess
+    # watching. See plan Blocker B6 + Amendment #7.
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        workers=1,
+        log_level="warning",
+        loop="asyncio",
+    )
