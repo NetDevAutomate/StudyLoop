@@ -31,6 +31,7 @@ EXPECTED_JS = {
     "xterm-6.0.0.js",
     "xterm-addon-fit-0.11.0.js",
     "xterm-addon-webgl-0.19.0.js",
+    "xterm-addon-clipboard-0.2.0.js",
 }
 EXPECTED_CSS = {"xterm-6.0.0.css"}
 
@@ -64,12 +65,14 @@ class TestIndexReferencesVendor:
         assert "<link" in html.split("/vendor/css/xterm-6.0.0.css")[0].splitlines()[-1]
 
     def test_xterm_umd_bundles_load_in_correct_order(self) -> None:
-        """fit and webgl addons must load AFTER xterm.js — they reference
-        the xterm UMD globals. A transposed order would leave FitAddon
-        unable to find the Terminal class."""
+        """Every addon must load AFTER xterm.js — addons reference the xterm
+        UMD globals. A transposed order would leave FitAddon/WebglAddon/
+        ClipboardAddon unable to find the Terminal class."""
         html = INDEX_HTML.read_text(encoding="utf-8")
         xterm_pos = html.index("xterm-6.0.0.js")
-        fit_pos = html.index("xterm-addon-fit-0.11.0.js")
-        webgl_pos = html.index("xterm-addon-webgl-0.19.0.js")
-        assert xterm_pos < fit_pos
-        assert xterm_pos < webgl_pos
+        for addon in (
+            "xterm-addon-fit-0.11.0.js",
+            "xterm-addon-webgl-0.19.0.js",
+            "xterm-addon-clipboard-0.2.0.js",
+        ):
+            assert xterm_pos < html.index(addon), f"{addon} must load after xterm.js"
