@@ -20,6 +20,7 @@ dependencies = [
     "click>=8.1",
     "rich>=13.0",
     "pyyaml>=6.0",
+    "pexpect>=4.9",
 ]
 
 [project.optional-dependencies]
@@ -63,7 +64,6 @@ extraPaths = ["../agent-session-tools/src"]  # workspace sibling for cross-packa
 
 [dependency-groups]
 dev = [
-    "pexpect>=4.9",
     "pytest-asyncio>=1.3.0",
     "pytest-playwright>=0.7.2",
 ]
