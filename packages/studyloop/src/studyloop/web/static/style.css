@@ -1850,3 +1850,60 @@ main:has(.split-container) .session-dashboard {
   background: #f06c6c;
   box-shadow: 0 0 6px rgba(240, 108, 108, 0.6);
 }
+
+/* ------------------------------------------------------------------
+ * ACP turn-based input row (Phase 2 PR-E)
+ * Sits below the xterm display when transport === 'acp'. xterm stays
+ * read-only for ACP because each send_input becomes a full
+ * session/prompt turn on the agent side.
+ * ------------------------------------------------------------------ */
+.acp-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.acp-input-field {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.acp-input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.25);
+}
+
+.acp-input-field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.acp-input-send {
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.acp-input-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.acp-input-send:not(:disabled):hover {
+  filter: brightness(1.1);
+}

@@ -774,7 +774,7 @@
         <div x-show="sessionActive" x-transition class="session-active-layout">
 
           <!-- Live mentor surface: xterm.js for PTY, legacy iframe for ttyd fallback, message log for protocol transports (unused in Phase 1) -->
-          <div class="session-terminal-area agent-console" x-data="liveAgentConsole()" x-init="init()">
+          <div class="session-terminal-area agent-console" x-data="liveAgentConsole()">
 
             <!-- xterm.js terminal (PTY transport — plan §1.7) -->
             <div class="embedded-terminal-panel xterm-panel"
@@ -800,6 +800,23 @@
                         @click="scrollToBottom()"
                         title="Jump to latest output">&#8681;</button>
               </div>
+              <!-- ACP turn-based input row. PTY uses xterm.onData; ACP needs
+                   line-buffered submit because each send_input becomes a full
+                   session/prompt turn, not a keystroke. -->
+              <form class="acp-input-row" x-show="transport === 'acp'"
+                    x-cloak @submit.prevent="_sendAcpInput()">
+                <input type="text" class="acp-input-field"
+                       x-ref="acpInputField"
+                       x-model="acpInput"
+                       :disabled="!connected || acpSending"
+                       :placeholder="connected ? 'Type your message — press Enter to send' : 'Connecting…'"
+                       autocomplete="off"
+                       spellcheck="false">
+                <button type="submit" class="acp-input-send"
+                        :disabled="!connected || acpSending || !acpInput.trim()">
+                  Send
+                </button>
+              </form>
             </div>
 
             <!-- ttyd iframe (legacy fallback, when transport=ttyd) -->
@@ -1285,12 +1302,15 @@
     return {
       /* ---- reactive state (bound to template) --------------------- */
       terminalMode: null,        /* 'xterm' | 'ttyd-iframe' | null (idle) */
+      transport: null,           /* 'pty' | 'acp' | 'ttyd' | null (idle) */
       connected: false,
       status: 'Waiting',
       statusDot: 'idle',         /* 'idle' | 'live' | 'error' */
       statusMessage: '',
       legacyTtydUrl: '',
       showJumpToBottom: false,
+      acpInput: '',              /* bound to ACP input field */
+      acpSending: false,         /* disables submit while a turn is in flight */
 
       /* ---- non-reactive internals (intentionally plain properties) */
       _term: null,
@@ -1309,11 +1329,11 @@
       start(detail) {
         this.stop();
         const transport = detail.transport || 'pty';
+        this.transport = transport;
         /* Both pty and acp render into xterm: pty streams raw bytes,
-           acp streams structured AgentMessage frames which PR-D will
-           wire into term.write. Until then, the xterm still shows
-           the Started/Stopped/TransportError frames so the user sees
-           the session is live. */
+           acp streams structured AgentMessage frames which PR-D writes
+           via term.write. ACP also gets a separate input row (turn-based,
+           cannot use per-keystroke onData). */
         if ((transport === 'pty' || transport === 'acp') && detail.wsUrl) {
           this._mountXterm(detail);
         } else {
@@ -1346,6 +1366,9 @@
         this.connected = false;
         this.statusDot = 'idle';
         this.showJumpToBottom = false;
+        this.transport = null;
+        this.acpInput = '';
+        this.acpSending = false;
       },
 
       /* ------------------------------------------------------------
@@ -1479,6 +1502,7 @@
           } else if (frame.type === 'transport_error') {
             this.statusDot = 'error';
             this.status = `Error: ${frame.message}`;
+            this.acpSending = false;
           } else if (frame.type === 'agent_message') {
             /* Phase 2 ACP events (plan §2.3 Amendment #12).
                - agent_chunk: assistant text chunks → write into xterm
@@ -1494,6 +1518,10 @@
             } else if (frame.kind === 'turn_end' && this._term) {
               const reason = (frame.payload && frame.payload.reason) || 'end_turn';
               this._term.writeln(`\r\n\x1b[2m[turn ${reason}]\x1b[0m`);
+              this.acpSending = false;
+              this.$nextTick(() => {
+                if (this.$refs.acpInputField) this.$refs.acpInputField.focus();
+              });
             }
           }
         });
@@ -1510,17 +1538,37 @@
 
         /* Bind terminal input only after the WS is wired, not inside
            _mountXterm — otherwise keystrokes typed during the connecting
-           window land on a dead socket and silently drop. */
+           window land on a dead socket and silently drop.
+           ACP is turn-based (each send_input → full session/prompt turn)
+           so xterm.onData would fire one turn per keystroke. ACP uses
+           the dedicated input row + _sendAcpInput() instead. */
         if (this._term) {
-          this._term.onData((data) => {
-            if (ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({ type: 'input', data }));
-          });
+          if (this.transport === 'pty') {
+            this._term.onData((data) => {
+              if (ws.readyState !== WebSocket.OPEN) return;
+              ws.send(JSON.stringify({ type: 'input', data }));
+            });
+          }
           this._term.onResize(({ cols, rows }) => {
             if (ws.readyState !== WebSocket.OPEN) return;
             ws.send(JSON.stringify({ type: 'resize', cols, rows }));
           });
         }
+      },
+
+      /* ACP turn-based input: echo to xterm, send as one frame, lock
+         field until turn_end arrives so users don't fire concurrent
+         turns (which Kiro rejects mid-flight). */
+      _sendAcpInput() {
+        const text = (this.acpInput || '').trim();
+        if (!text || !this._ws || this._ws.readyState !== WebSocket.OPEN) return;
+        if (this.acpSending) return;
+        if (this._term) {
+          this._term.writeln(`\r\n\x1b[1;36m> ${text}\x1b[0m`);
+        }
+        this._ws.send(JSON.stringify({ type: 'input', data: text }));
+        this.acpInput = '';
+        this.acpSending = true;
       },
 
       /* Rough theme map — pulls from CSS vars so xterm blends in. */
