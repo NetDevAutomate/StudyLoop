@@ -500,3 +500,224 @@ class TestAgentChunkRendersInXterm:
             timeout=10000,
         )
         _end_any_active_session(acp_page)
+
+
+# ---------------------------------------------------------------------------
+# PR-E: ACP turn-based input row drives session/prompt and locks during turn
+# ---------------------------------------------------------------------------
+
+
+class TestAcpInputRow:
+    """ACP transport renders a dedicated input row beneath the xterm.
+    Submitting it sends a single ``{type: 'input'}`` frame (one ACP turn)
+    rather than per-keystroke frames, echoes the message into xterm, and
+    locks the field until ``turn_end`` arrives.
+    """
+
+    def _start_acp_session_in_dom(self, page: Page) -> None:
+        """Drive the page into an active ACP session against the stub.
+
+        Same flow as ``TestAgentChunkRendersInXterm`` but factored out so
+        each test in this class starts from a wired-up session without
+        copy-pasting the bypass-the-picker dance.
+        """
+        _end_any_active_session(page)
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_function("() => !!window.Alpine", timeout=5000)
+        start_body = page.evaluate(
+            """async () => {
+              const res = await fetch('/api/session/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                  topic: 'PR-E input row', energy: 5,
+                  agent: 'kiro', transport: 'acp',
+                }),
+              });
+              return {status: res.status, body: await res.json()};
+            }"""
+        )
+        assert start_body["status"] == 201, start_body
+        page.evaluate(
+            """(data) => {
+              const timerRoot = document.querySelector('[x-data="sessionTimer()"]');
+              if (timerRoot) {
+                const d = window.Alpine.$data(timerRoot);
+                d.sessionActive = true;
+                d.topic = 'PR-E input row';
+                d.startTime = new Date();
+              }
+              return new Promise((resolve) => setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('study-session-start', {
+                  detail: {
+                    topic: 'PR-E input row', energy: 5,
+                    sessionType: 'study', targetKind: 'topic',
+                    targetPath: null,
+                    agent: data.agent, resolvedAgent: data.agent,
+                    studySessionId: data.study_session_id,
+                    transport: data.transport, wsUrl: data.ws_url,
+                  },
+                }));
+                resolve();
+              }, 50));
+            }""",
+            start_body["body"],
+        )
+        page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              const d = window.Alpine.$data(root);
+              return d && d.connected === true && d.transport === 'acp';
+            }""",
+            timeout=10000,
+        )
+
+    def test_input_row_visible_for_acp(self, acp_page: Page) -> None:
+        """ACP session shows the .acp-input-row when transport === 'acp'."""
+        self._start_acp_session_in_dom(acp_page)
+        # Assert the form's own x-show evaluates true — i.e. the form has
+        # NOT been collapsed by Alpine's display:none. Ancestor view
+        # containers (e.g. nav routing) may stay hidden in the test
+        # harness because we bypass the picker; the contract this test
+        # protects is just "form gets revealed when transport='acp'".
+        result = acp_page.evaluate(
+            """() => {
+              const form = document.querySelector('.acp-input-row');
+              if (!form) return {error: 'no .acp-input-row'};
+              return {
+                inlineDisplay: form.style.display || '',
+                hasHiddenStyle: form.style.display === 'none',
+              };
+            }"""
+        )
+        assert result.get("error") is None, result
+        assert not result["hasHiddenStyle"], (
+            f"acp-input-row collapsed by x-show: inlineDisplay={result['inlineDisplay']!r}"
+        )
+        _end_any_active_session(acp_page)
+
+    def test_submit_renders_response_and_unlocks(self, acp_page: Page) -> None:
+        """Type into the input row, press Enter, verify:
+        - one ``input`` frame goes out (not per-keystroke)
+        - stub's chunk text reaches xterm
+        - input field re-enables after ``turn_end``"""
+        self._start_acp_session_in_dom(acp_page)
+        # Hook the WS so we can count outbound 'input' frames.
+        acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              const d = window.Alpine.$data(root);
+              const ws = d._ws;
+              window.__sentInputs = [];
+              const origSend = ws.send.bind(ws);
+              ws.send = (payload) => {
+                try {
+                  const parsed = JSON.parse(payload);
+                  if (parsed && parsed.type === 'input') {
+                    window.__sentInputs.push(parsed.data);
+                  }
+                } catch {}
+                return origSend(payload);
+              };
+            }"""
+        )
+
+        # Drive the submit path via the Alpine component directly. The
+        # bypass-the-picker flow leaves the outer #study-session view
+        # hidden (nav.current defaults to 'flashcards'), so Playwright's
+        # visibility-aware fill()/press() can't see the input. Calling
+        # _sendAcpInput exercises the same code path the form's submit
+        # handler invokes — including the WS frame and acpSending lock.
+        acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              const d = window.Alpine.$data(root);
+              d.acpInput = 'hello-acp';
+              d._sendAcpInput();
+            }"""
+        )
+
+        # Stub responds with 'pong-from-stub' chunk + end_turn.
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              const d = window.Alpine.$data(root);
+              const term = d && d._term;
+              if (!term || !term.buffer || !term.buffer.active) return false;
+              const active = term.buffer.active;
+              let buf = '';
+              for (let i = 0; i < active.length; i++) {
+                const line = active.getLine(i);
+                if (line) buf += line.translateToString(true);
+              }
+              return buf.includes('hello-acp') && buf.includes('pong-from-stub');
+            }""",
+            timeout=10000,
+        )
+
+        # Exactly one outbound input frame for one Enter press.
+        sent = acp_page.evaluate("() => window.__sentInputs")
+        assert sent == ["hello-acp"], f"expected one input frame, got {sent!r}"
+
+        # Field unlocked after turn_end and ready for next turn.
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              const d = window.Alpine.$data(root);
+              return d.acpSending === false;
+            }""",
+            timeout=5000,
+        )
+        # Input field should be enabled now (not :disabled). Read the
+        # property via the DOM rather than is_enabled() because the
+        # outer view container is hidden in this test harness.
+        assert acp_page.evaluate(
+            "() => !document.querySelector('.acp-input-field').disabled"
+        ), "input still disabled after turn_end"
+        _end_any_active_session(acp_page)
+
+    def test_submit_blocks_concurrent_turns(self, acp_page: Page) -> None:
+        """While a turn is in flight, the field is disabled — second
+        Enter must not fire a second ACP turn (Kiro rejects mid-flight
+        prompts which surfaced as 'Internal error' in S689)."""
+        self._start_acp_session_in_dom(acp_page)
+        acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              const d = window.Alpine.$data(root);
+              const ws = d._ws;
+              window.__sentInputs = [];
+              const origSend = ws.send.bind(ws);
+              ws.send = (payload) => {
+                try {
+                  const parsed = JSON.parse(payload);
+                  if (parsed && parsed.type === 'input') {
+                    window.__sentInputs.push(parsed.data);
+                  }
+                } catch {}
+                return origSend(payload);
+              };
+              // Hold acpSending true so the second submit attempt is blocked
+              // by both the form's disabled state AND _sendAcpInput's guard.
+              d.acpSending = true;
+            }"""
+        )
+
+        # Trying to type into a disabled input throws in Playwright; use
+        # the underlying _sendAcpInput method directly to exercise the
+        # in-method guard, then assert nothing went out.
+        acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              const d = window.Alpine.$data(root);
+              d.acpInput = 'should-not-send';
+              d._sendAcpInput();
+            }"""
+        )
+        sent = acp_page.evaluate("() => window.__sentInputs")
+        assert sent == [], f"expected zero input frames during locked turn, got {sent!r}"
+        _end_any_active_session(acp_page)
