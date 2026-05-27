@@ -84,7 +84,43 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
     # which our PTY child-exit detection depends on. The standard asyncio
     # loop allows add_signal_handler(SIGCHLD, ...) to coexist with subprocess
     # watching. See plan Blocker B6 + Amendment #7.
-    uvicorn.run(
+    #
+    # Ctrl-C hardening: uvicorn's graceful shutdown can hang when a PTY/ACP
+    # subprocess is wedged (e.g. Kiro MCP bootstrap stuck, child not reaping).
+    # uvicorn's own handler escalates to ``force_exit=True`` only on a *second*
+    # SIGINT — and even ``force_exit`` waits on hung tasks. We subclass
+    # ``Server`` so the first SIGINT also kicks off a watchdog thread that
+    # ``os._exit()``s after a grace window. Result: one Ctrl-C is enough,
+    # operator never has to hunt PIDs.
+    import os as _os
+    import threading as _threading
+    import time as _time
+    from types import FrameType as _FrameType
+
+    class _StudyLoopServer(uvicorn.Server):
+        _watchdog_started: bool = False
+
+        def handle_exit(self, sig: int, frame: _FrameType | None) -> None:
+            if not self._watchdog_started:
+                self._watchdog_started = True
+                console.print(
+                    "\n[yellow]Shutting down… (Ctrl-C again to force)[/yellow]"
+                )
+                _threading.Thread(
+                    target=_force_exit_watchdog,
+                    args=(5.0,),
+                    daemon=True,
+                ).start()
+            super().handle_exit(sig, frame)
+
+    def _force_exit_watchdog(grace: float) -> None:
+        _time.sleep(grace)
+        console.print(
+            "\n[red]Force-exiting after %.0fs (uvicorn shutdown hung).[/red]" % grace
+        )
+        _os._exit(130)
+
+    config = uvicorn.Config(
         app,
         host=host,
         port=port,
@@ -92,3 +128,4 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
         log_level="warning",
         loop="asyncio",
     )
+    _StudyLoopServer(config).run()
