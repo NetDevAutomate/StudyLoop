@@ -310,3 +310,75 @@ class TestAcpEnvOverride:
         assert resp.json()["transport"] == "pty"
         assert len(_stub_pty_factory) == 1
         assert len(_stub_acp_factory) == 0
+
+
+# ---------------------------------------------------------------------------
+# Persona is built and returned inline so the browser can ship it as the
+# first invisible session/prompt frame after WS open. ACP agents have no
+# argv/env hook for system context — this is the only injection point.
+# ---------------------------------------------------------------------------
+
+
+class TestAcpStartPersonaInjection:
+    def test_response_includes_persona_text_and_hash(
+        self,
+        client: TestClient,
+        _stub_acp_factory,
+        _mock_kiro_available,
+        _stub_db,
+    ) -> None:
+        with patch(
+            "studyloop.web.routes.session.is_session_active", return_value=False
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "SQL", "energy": 5, "agent": "kiro", "transport": "acp"},
+            )
+
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+
+        assert "persona_text" in body, "persona_text must be inline in /start response"
+        persona = body["persona_text"]
+        assert isinstance(persona, str) and persona.strip(), (
+            "persona_text must be a non-empty string"
+        )
+        # Sanity: persona_text must reflect the topic the user picked, otherwise
+        # the wrong persona was assembled.
+        assert "SQL" in persona, "persona_text should mention the chosen topic"
+
+        assert "persona_hash" in body
+        assert isinstance(body["persona_hash"], str)
+        assert len(body["persona_hash"]) == 16, (
+            "persona_hash should be the 16-char sha256 prefix used by PTY parity"
+        )
+
+        # Hash must actually match the persona_text shipped (no drift).
+        import hashlib
+
+        recomputed = hashlib.sha256(persona.encode()).hexdigest()[:16]
+        assert recomputed == body["persona_hash"]
+
+    def test_session_state_records_persona_hash(
+        self,
+        client: TestClient,
+        _stub_acp_factory,
+        _mock_kiro_available,
+        _stub_db,
+    ) -> None:
+        with patch(
+            "studyloop.web.routes.session.is_session_active", return_value=False
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "SQL", "energy": 5, "agent": "kiro", "transport": "acp"},
+            )
+
+        assert resp.status_code == 201, resp.text
+
+        from studyloop.session_state import read_session_state
+
+        state = read_session_state()
+        assert state.get("persona_hash") == resp.json()["persona_hash"]
+        # Path field stays absent — nothing is written to disk on the ACP path.
+        assert "persona_file" not in state

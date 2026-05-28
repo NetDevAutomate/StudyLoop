@@ -1956,10 +1956,15 @@ main:has(.split-container) .session-dashboard {
 .acp-message-body {
   min-width: 0;          /* allow code blocks to wrap inside grid */
   color: var(--text);
-  line-height: 1.5;
+  font-size: 15px;       /* readability over compactness */
+  line-height: 1.65;     /* prose breathes, especially helpful for AuDHD */
 }
 
-.acp-message-streaming {
+.acp-message-user-text {
+  /* User messages render plain text. Monospace because user prompts are
+     often code/SQL/commands and the original feature shipped them this
+     way; the bug was applying it to ASSISTANT streaming, which leaked
+     markdown source. */
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   white-space: pre-wrap;
@@ -1969,10 +1974,78 @@ main:has(.split-container) .session-dashboard {
   color: inherit;
 }
 
-.acp-message-final {
-  /* marked output styling */
+.acp-message-typing {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px 0;
+  align-items: center;
 }
-.acp-message-final p { margin: 0 0 8px 0; }
+.acp-message-typing span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.4;
+  animation: acp-typing-pulse 1.2s infinite ease-in-out;
+}
+.acp-message-typing span:nth-child(2) { animation-delay: 0.2s; }
+.acp-message-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes acp-typing-pulse {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+  40%           { opacity: 1;    transform: scale(1); }
+}
+
+/* Persona-injection setup banner — shown while the invisible first turn
+   is in flight so the user knows why the input is briefly locked. */
+.acp-persona-setup {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  margin: 8px 0 16px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+.acp-persona-setup-icon {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.acp-persona-setup-icon span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.4;
+  animation: acp-typing-pulse 1.2s infinite ease-in-out;
+}
+.acp-persona-setup-icon span:nth-child(2) { animation-delay: 0.2s; }
+.acp-persona-setup-icon span:nth-child(3) { animation-delay: 0.4s; }
+.acp-persona-setup-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.acp-persona-setup-text strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.acp-persona-setup-text small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.acp-message-final {
+  /* marked output styling — proportional prose, monospace only inside
+     <code>/<pre>. Inherits font-size 15px + line-height 1.65 from
+     .acp-message-body for readability. */
+  font-family: var(--font);
+}
+.acp-message-final p { margin: 0 0 12px 0; }
 .acp-message-final p:last-child { margin-bottom: 0; }
 .acp-message-final pre {
   background: var(--bg-card);
@@ -1993,13 +2066,33 @@ main:has(.split-container) .session-dashboard {
   font-size: 0.9em;
 }
 .acp-message-final a { color: var(--accent); }
-.acp-message-final ul, .acp-message-final ol { margin: 4px 0 8px 20px; }
+.acp-message-final ul, .acp-message-final ol { margin: 4px 0 12px 24px; }
+.acp-message-final li { margin: 2px 0; }
 .acp-message-final blockquote {
   border-left: 3px solid var(--accent);
   margin: 8px 0;
   padding-left: 10px;
   color: var(--text-muted);
 }
+.acp-message-final h1,
+.acp-message-final h2,
+.acp-message-final h3,
+.acp-message-final h4 {
+  /* Headings inside a chat bubble shouldn't dwarf the surrounding prose
+     — keep them only modestly larger than body text. */
+  font-weight: 650;
+  line-height: 1.3;
+  margin: 14px 0 6px 0;
+  color: var(--text);
+}
+.acp-message-final h1 { font-size: 1.25em; }
+.acp-message-final h2 { font-size: 1.15em; }
+.acp-message-final h3 { font-size: 1.05em; }
+.acp-message-final h4 { font-size: 1em; font-weight: 700; }
+.acp-message-final h1:first-child,
+.acp-message-final h2:first-child,
+.acp-message-final h3:first-child { margin-top: 0; }
+.acp-message-final strong { font-weight: 650; color: var(--text); }
 
 /* ------------------------------------------------------------------
  * ACP tool-call cards (U4)
@@ -2235,3 +2328,70 @@ main:has(.split-container) .session-dashboard {
   background: color-mix(in srgb, var(--error, #f44336) 18%, var(--bg-alt, #1e1f2e));
   border-color: var(--error, #f44336);
 }
+
+/* ------------------------------------------------------------------
+ * Theme palettes (U9)
+ * Default (no data-palette) is Tokyo Night, defined in :root.
+ * Each palette overrides the same set of tokens so the rest of the
+ * stylesheet doesn't need to know which palette is active.
+ * ------------------------------------------------------------------ */
+
+/* Dracula — https://draculatheme.com/contribute */
+body[data-palette="dracula"] {
+  --bg:        #282a36;
+  --bg-card:   #21222c;
+  --bg-hover:  #44475a;
+  --text:      #f8f8f2;
+  --text-muted:#6272a4;
+  --accent:    #bd93f9;
+  --green:     #50fa7b;
+  --red:       #ff5555;
+  --yellow:    #f1fa8c;
+  --orange:    #ffb86c;
+  --border:    #44475a;
+}
+
+/* Catppuccin Mocha — https://github.com/catppuccin/catppuccin */
+body[data-palette="catppuccin-mocha"] {
+  --bg:        #1e1e2e;
+  --bg-card:   #181825;
+  --bg-hover:  #313244;
+  --text:      #cdd6f4;
+  --text-muted:#a6adc8;
+  --accent:    #cba6f7;  /* mauve */
+  --green:     #a6e3a1;
+  --red:       #f38ba8;
+  --yellow:    #f9e2af;
+  --orange:    #fab387;
+  --border:    #313244;
+}
+
+/* Catppuccin Latte (light) */
+body[data-palette="catppuccin-latte"] {
+  --bg:        #eff1f5;
+  --bg-card:   #e6e9ef;
+  --bg-hover:  #dce0e8;
+  --text:      #4c4f69;
+  --text-muted:#6c6f85;
+  --accent:    #8839ef;  /* mauve */
+  --green:     #40a02b;
+  --red:       #d20f39;
+  --yellow:    #df8e1d;
+  --orange:    #fe640b;
+  --border:    #ccd0da;
+}
+
+/* Palette dropdown styling — match the existing toggle-btn aesthetic. */
+.palette-select {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  height: 32px;
+}
+.palette-select:hover { border-color: var(--accent); }
+.palette-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }

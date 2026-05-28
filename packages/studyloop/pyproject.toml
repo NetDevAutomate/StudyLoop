@@ -51,10 +51,11 @@ packages = ["src/studyloop"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short -m 'not integration and not e2e'"
+addopts = "--tb=short -m 'not integration and not e2e and not live_kiro'"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "e2e: end-to-end browser tests requiring Playwright + web server",
+    "live_kiro: dogfood tests that spawn a real kiro-cli acp child (requires Kiro auth + network; opt in with -m live_kiro)",
 ]
 
 [tool.pyright]
