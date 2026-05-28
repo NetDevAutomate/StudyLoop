@@ -2433,6 +2433,18 @@ wheels = [
 ]
 
 [[package]]
+name = "respx"
+version = "0.23.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/43/98/4e55c9c486404ec12373708d015ebce157966965a5ebe7f28ff2c784d41b/respx-0.23.1.tar.gz", hash = "sha256:242dcc6ce6b5b9bf621f5870c82a63997e8e82bc7c947f9ffe272b8f3dd5a780", size = 29243, upload-time = "2026-04-08T14:37:16.008Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1d/4a/221da6ca167db45693d8d26c7dc79ccfc978a440251bf6721c9aaf251ac0/respx-0.23.1-py2.py3-none-any.whl", hash = "sha256:b18004b029935384bccfa6d7d9d74b4ec9af73a081cc28600fffc0447f4b8c1a", size = 25557, upload-time = "2026-04-08T14:37:14.613Z" },
+]
+
+[[package]]
 name = "rfc3986"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2854,6 +2866,7 @@ source = { editable = "packages/studyloop" }
 dependencies = [
     { name = "click" },
     { name = "pexpect" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "rich" },
 ]
@@ -2902,6 +2915,7 @@ web = [
 dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-playwright" },
+    { name = "respx" },
 ]
 
 [package.metadata]
@@ -2916,6 +2930,7 @@ requires-dist = [
     { name = "pexpect", specifier = ">=4.9" },
     { name = "pydantic", marker = "extra == 'content'", specifier = ">=2" },
     { name = "pymupdf", marker = "extra == 'content'", specifier = ">=1.25" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0" },
     { name = "studyloop", extras = ["content"], marker = "extra == 'bedrock'" },
@@ -2930,6 +2945,7 @@ provides-extras = ["content", "bedrock", "notebooklm", "tui", "web", "mcp", "all
 dev = [
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
+    { name = "respx", specifier = ">=0.23.1" },
 ]
 
 [[package]]

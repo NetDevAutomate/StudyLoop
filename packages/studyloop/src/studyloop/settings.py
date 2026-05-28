@@ -209,8 +209,17 @@ class CardGeneratorConfig:
 
     # Default to Ollama -- fully offline, zero-cost, no credential setup.
     # Set ``backend: bedrock`` in config.yaml for higher-quality cards
-    # via Claude on AWS Bedrock (requires AWS credentials).
+    # via Claude on AWS Bedrock (requires AWS credentials). Or use
+    # ``openai_compat`` / ``anthropic_compat`` with a ``provider`` slug
+    # from content/generators/provider_profiles.py for OpenAI,
+    # OpenRouter, Gemini, MiniMax, or Anthropic.
     backend: str = "ollama"
+    # Registry slug for ``*_compat`` backends. Empty for legacy backends
+    # (ollama, bedrock, stub) -- they ignore this field.
+    provider: str = ""
+    # Curated model id within the chosen provider's profile. Empty
+    # defaults to the profile's first cheap-tier entry.
+    model: str = ""
     # Low temperature -- flashcards want deterministic factual output,
     # not creative variance. Applies to every backend.
     temperature: float = 0.1
@@ -228,6 +237,15 @@ class CardGeneratorConfig:
     # at runtime, but all are loaded so switching backends is config-only.
     ollama: OllamaBackendConfig = field(default_factory=OllamaBackendConfig)
     bedrock: BedrockBackendConfig = field(default_factory=BedrockBackendConfig)
+
+    # ---- Stub backend knobs (test/dogfood only) ---------------------------
+    # These are intentionally NOT loaded from config.yaml -- they're set in
+    # tests via direct construction or env-var hatch. Defaults make the stub
+    # behave like a happy backend. See content/generators/stub.py.
+    stub_card_count: int = 10
+    stub_latency_s: float = 0.0
+    stub_failure_mode: str = "none"  # "none" | "always" | "fail_titles"
+    stub_failure_titles: tuple[str, ...] = ()
 
 
 @dataclass
@@ -447,6 +465,8 @@ def load_settings() -> Settings:
         bedrock_raw = cg.get("bedrock", {})
         settings.card_generator = CardGeneratorConfig(
             backend=str(cg.get("backend", defaults.backend)),
+            provider=str(cg.get("provider", defaults.provider)),
+            model=str(cg.get("model", defaults.model)),
             temperature=float(cg.get("temperature", defaults.temperature)),
             max_retries=int(cg.get("max_retries", defaults.max_retries)),
             request_timeout=float(cg.get("request_timeout", defaults.request_timeout)),

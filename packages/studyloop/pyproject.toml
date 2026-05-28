@@ -21,6 +21,7 @@ dependencies = [
     "rich>=13.0",
     "pyyaml>=6.0",
     "pexpect>=4.9",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]
@@ -51,11 +52,12 @@ packages = ["src/studyloop"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short -m 'not integration and not e2e and not live_kiro'"
+addopts = "--tb=short -m 'not integration and not e2e and not live_kiro and not live_provider'"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "e2e: end-to-end browser tests requiring Playwright + web server",
     "live_kiro: dogfood tests that spawn a real kiro-cli acp child (requires Kiro auth + network; opt in with -m live_kiro)",
+    "live_provider: tests that call a real LLM provider (OpenAI/OpenRouter/Gemini/MiniMax/Anthropic). Burns API quota; opt in with -m live_provider",
 ]
 
 [tool.pyright]
@@ -67,4 +69,5 @@ extraPaths = ["../agent-session-tools/src"]  # workspace sibling for cross-packa
 dev = [
     "pytest-asyncio>=1.3.0",
     "pytest-playwright>=0.7.2",
+    "respx>=0.23.1",
 ]
