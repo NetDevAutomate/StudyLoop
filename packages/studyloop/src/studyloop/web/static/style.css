@@ -1907,3 +1907,23 @@ main:has(.split-container) .session-dashboard {
 .acp-input-send:not(:disabled):hover {
   filter: brightness(1.1);
 }
+
+/* ------------------------------------------------------------------
+ * ACP chat surface (U2 scaffolding — U3+ adds bubble + tool-call CSS).
+ * Mirrors .xterm-panel layout: flex column with the input row pinned
+ * to the bottom and the log scrolling above it.
+ * ------------------------------------------------------------------ */
+.acp-chat-panel {
+  /* .embedded-terminal-panel already handles flex-direction: column. */
+}
+
+.acp-chat-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg);
+}

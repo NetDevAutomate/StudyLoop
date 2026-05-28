@@ -808,11 +808,27 @@
                         @click="scrollToBottom()"
                         title="Jump to latest output">&#8681;</button>
               </div>
-              <!-- ACP turn-based input row. PTY uses xterm.onData; ACP needs
-                   line-buffered submit because each send_input becomes a full
-                   session/prompt turn, not a keystroke. -->
-              <form class="acp-input-row" x-show="transport === 'acp'"
-                    x-cloak @submit.prevent="_sendAcpInput()">
+            </div>
+
+            <!-- ACP chat surface (U2 scaffolding — message bubbles added in U3+) -->
+            <div class="embedded-terminal-panel acp-chat-panel"
+                 x-show="terminalMode === 'acp-chat'" x-cloak>
+              <div class="agent-console-toolbar">
+                <span class="agent-console-title">Agent Chat</span>
+                <span class="agent-console-state">
+                  <span class="agent-status-dot"
+                        :class="'agent-status-dot-' + statusDot"></span>
+                  <span x-text="status"></span>
+                </span>
+                <button class="agent-console-tool" @click="$store.settings.stopSpeaking()"
+                        title="Stop speaking">&#9632;</button>
+              </div>
+              <!-- Message log: U3+ populates this with chat bubbles -->
+              <div class="agent-console-log acp-chat-log" x-ref="acpChatLog"></div>
+              <!-- ACP turn-based input row (relocated from .xterm-panel).
+                   Entire panel is already gated by terminalMode === 'acp-chat'
+                   so no extra x-show needed on the form itself. -->
+              <form class="acp-input-row" @submit.prevent="_sendAcpInput()">
                 <input type="text" class="acp-input-field"
                        x-ref="acpInputField"
                        x-model="acpInput"
@@ -1309,7 +1325,7 @@
   function liveAgentConsole() {
     return {
       /* ---- reactive state (bound to template) --------------------- */
-      terminalMode: null,        /* 'xterm' | 'ttyd-iframe' | null (idle) */
+      terminalMode: null,        /* 'xterm' | 'ttyd-iframe' | 'acp-chat' | null (idle) */
       transport: null,           /* 'pty' | 'acp' | 'ttyd' | null (idle) */
       connected: false,
       status: 'Waiting',
@@ -1319,6 +1335,13 @@
       showJumpToBottom: false,
       acpInput: '',              /* bound to ACP input field */
       acpSending: false,         /* disables submit while a turn is in flight */
+
+      /* ACP chat surface state (U2 — populated by U3+) */
+      acpMessages: [],            /* {role: 'user'|'assistant'|'system', text, id?} */
+      toolCallsById: new Map(),   /* keyed by toolCallId — U4 fills */
+      streamingMessageId: null,   /* id of bubble currently being streamed — U3 */
+      plan: null,                 /* {steps: [{title, status}]} | null — U5 */
+      pendingPermission: null,    /* {toolCallId, options} | null — U6 */
 
       /* ---- non-reactive internals (intentionally plain properties) */
       _term: null,
@@ -1338,11 +1361,9 @@
         this.stop();
         const transport = detail.transport || 'pty';
         this.transport = transport;
-        /* Both pty and acp render into xterm: pty streams raw bytes,
-           acp streams structured AgentMessage frames which PR-D writes
-           via term.write. ACP also gets a separate input row (turn-based,
-           cannot use per-keystroke onData). */
-        if ((transport === 'pty' || transport === 'acp') && detail.wsUrl) {
+        if (transport === 'acp' && detail.wsUrl) {
+          this._mountAcpChat(detail);
+        } else if (transport === 'pty' && detail.wsUrl) {
           this._mountXterm(detail);
         } else {
           this._mountLegacyIframe(detail);
@@ -1377,6 +1398,12 @@
         this.transport = null;
         this.acpInput = '';
         this.acpSending = false;
+        this.acpMessages = [];
+        this.toolCallsById = new Map();
+        this.streamingMessageId = null;
+        this.plan = null;
+        this.pendingPermission = null;
+        this.terminalMode = null;
       },
 
       /* ------------------------------------------------------------
@@ -1468,6 +1495,25 @@
         });
       },
 
+      /* ------------------------------------------------------------
+       * ACP chat surface path (U2 scaffolding — U3+ adds rendering)
+       * ------------------------------------------------------------ */
+      _mountAcpChat(detail) {
+        this.terminalMode = 'acp-chat';
+        this.status = `Starting · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
+        this.statusDot = 'idle';
+        /* Initialise chat-surface state. _openWebSocket runs after $nextTick
+           so the panel is already mounted in the DOM by the time the WS opens. */
+        this.acpMessages = [];
+        this.toolCallsById = new Map();
+        this.streamingMessageId = null;
+        this.plan = null;
+        this.pendingPermission = null;
+        this.$nextTick(() => {
+          this._openWebSocket(detail);
+        });
+      },
+
       _openWebSocket(detail) {
         const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const wsUrl = `${scheme}://${window.location.host}${detail.wsUrl}`;
@@ -1523,9 +1569,11 @@
             if (frame.kind === 'agent_chunk' && this._term) {
               const text = _extractChunkText(frame.payload);
               if (text) this._term.write(text);
-            } else if (frame.kind === 'turn_end' && this._term) {
+            } else if (frame.kind === 'turn_end') {
               const reason = (frame.payload && frame.payload.reason) || 'end_turn';
-              this._term.writeln(`\r\n\x1b[2m[turn ${reason}]\x1b[0m`);
+              if (this._term) {
+                this._term.writeln(`\r\n\x1b[2m[turn ${reason}]\x1b[0m`);
+              }
               this.acpSending = false;
               this.$nextTick(() => {
                 if (this.$refs.acpInputField) this.$refs.acpInputField.focus();
@@ -1564,15 +1612,17 @@
         }
       },
 
-      /* ACP turn-based input: echo to xterm, send as one frame, lock
-         field until turn_end arrives so users don't fire concurrent
-         turns (which Kiro rejects mid-flight). */
+      /* ACP turn-based input: echo to xterm (PTY) or push to acpMessages
+         (chat mode), send as one frame, lock field until turn_end arrives
+         so users don't fire concurrent turns (which Kiro rejects mid-flight). */
       _sendAcpInput() {
         const text = (this.acpInput || '').trim();
         if (!text || !this._ws || this._ws.readyState !== WebSocket.OPEN) return;
         if (this.acpSending) return;
         if (this._term) {
           this._term.writeln(`\r\n\x1b[1;36m> ${text}\x1b[0m`);
+        } else {
+          this.acpMessages.push({ role: 'user', text });
         }
         this._ws.send(JSON.stringify({ type: 'input', data: text }));
         this.acpInput = '';

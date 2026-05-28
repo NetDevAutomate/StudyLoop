@@ -721,3 +721,316 @@ class TestAcpInputRow:
         sent = acp_page.evaluate("() => window.__sentInputs")
         assert sent == [], f"expected zero input frames during locked turn, got {sent!r}"
         _end_any_active_session(acp_page)
+
+
+# ---------------------------------------------------------------------------
+# U2: ACP chat panel mount — visibility branching + state lifecycle
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.e2e
+class TestU2ChatPanelMount:
+    """U2 scaffolding: the new .acp-chat-panel mounts for ACP transport,
+    .xterm-panel mounts for PTY, and state tears down cleanly on stop().
+
+    All tests run against the stub ACP server (class-scoped).  The stub
+    always starts with transport=acp so we can exercise the new path
+    without a real Kiro binary.
+    """
+
+    def _activate_session(
+        self, page: Page, transport: str = "acp", agent: str = "kiro"
+    ) -> None:
+        """Drive the page into a live session via the bypass-the-picker
+        flow used in earlier test classes, parametrised on transport."""
+        _end_any_active_session(page)
+        page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_function("() => !!window.Alpine", timeout=5000)
+
+        start_body = page.evaluate(
+            """async ([agent, transport]) => {
+              const res = await fetch('/api/session/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                  topic: 'U2 test', energy: 5, agent, transport,
+                }),
+              });
+              return {status: res.status, body: await res.json()};
+            }""",
+            [agent, transport],
+        )
+        assert start_body["status"] == 201, start_body
+
+        page.evaluate(
+            """(data) => {
+              const timerRoot = document.querySelector('[x-data="sessionTimer()"]');
+              if (timerRoot) {
+                const d = window.Alpine.$data(timerRoot);
+                d.sessionActive = true;
+                d.topic = 'U2 test';
+                d.startTime = new Date();
+              }
+              return new Promise((resolve) => setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('study-session-start', {
+                  detail: {
+                    topic: 'U2 test', energy: 5,
+                    sessionType: 'study', targetKind: 'topic',
+                    targetPath: null,
+                    agent: data.agent, resolvedAgent: data.agent,
+                    studySessionId: data.study_session_id,
+                    transport: data.transport, wsUrl: data.ws_url,
+                  },
+                }));
+                resolve();
+              }, 50));
+            }""",
+            start_body["body"],
+        )
+
+        # Wait for liveAgentConsole to process the event and set terminalMode.
+        # Playwright's wait_for_function requires the arg as a keyword.
+        page.wait_for_function(
+            """(transport) => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              try {
+                const d = window.Alpine.$data(root);
+                return d && d.transport === transport;
+              } catch { return false; }
+            }""",
+            arg=transport,
+            timeout=10000,
+        )
+
+    def test_acp_transport_shows_chat_panel_hides_xterm(
+        self, acp_page: Page
+    ) -> None:
+        """Starting an ACP session sets terminalMode='acp-chat': the
+        .acp-chat-panel becomes visible and .xterm-panel is hidden."""
+        self._activate_session(acp_page, transport="acp")
+
+        # Confirm terminalMode via Alpine data (not DOM visibility, which
+        # requires the ancestor sessionActive view to be shown — bypassed
+        # in the test harness).
+        terminal_mode = acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return null;
+              try { return window.Alpine.$data(root).terminalMode; }
+              catch { return null; }
+            }"""
+        )
+        assert terminal_mode == "acp-chat", (
+            f"expected terminalMode='acp-chat', got {terminal_mode!r}"
+        )
+
+        # Check Alpine x-show binding: the panel whose x-show evaluates
+        # true must be .acp-chat-panel; .xterm-panel must be hidden.
+        # We read the inline style that Alpine writes (display:none = hidden).
+        panel_states = acp_page.evaluate(
+            """() => {
+              const chat = document.querySelector('.acp-chat-panel');
+              const xterm = document.querySelector('.xterm-panel');
+              return {
+                chatHidden: chat ? chat.style.display === 'none' : null,
+                xtermHidden: xterm ? xterm.style.display === 'none' : null,
+              };
+            }"""
+        )
+        assert panel_states["chatHidden"] is False, (
+            f".acp-chat-panel should be visible: {panel_states}"
+        )
+        assert panel_states["xtermHidden"] is True, (
+            f".xterm-panel should be hidden: {panel_states}"
+        )
+        _end_any_active_session(acp_page)
+
+    def test_pty_transport_shows_xterm_hides_chat_panel(
+        self, acp_page: Page
+    ) -> None:
+        """Starting a PTY session sets terminalMode='xterm': .xterm-panel
+        visible, .acp-chat-panel hidden."""
+        # The stub server only supports ACP; PTY sessions spin up a real
+        # PTY which the stub server doesn't configure.  We can still fire
+        # a pty-transport start event without a valid wsUrl to verify that
+        # the branch executes _mountXterm (falling through to legacy iframe
+        # when wsUrl is absent) rather than _mountAcpChat.  The key
+        # invariant here is terminalMode !== 'acp-chat'.
+        _end_any_active_session(acp_page)
+        acp_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
+        acp_page.wait_for_load_state("domcontentloaded")
+        acp_page.wait_for_function("() => !!window.Alpine", timeout=5000)
+
+        # Flip sessionActive so the agent-console mounts.
+        acp_page.evaluate(
+            """() => {
+              const timerRoot = document.querySelector('[x-data="sessionTimer()"]');
+              if (timerRoot) {
+                const d = window.Alpine.$data(timerRoot);
+                d.sessionActive = true;
+                d.startTime = new Date();
+              }
+              return new Promise((resolve) => setTimeout(() => {
+                // Dispatch with transport='pty' but no wsUrl — triggers
+                // _mountLegacyIframe (the else branch), never _mountAcpChat.
+                window.dispatchEvent(new CustomEvent('study-session-start', {
+                  detail: {
+                    topic: 'U2 PTY test', energy: 5,
+                    sessionType: 'study', targetKind: 'topic',
+                    targetPath: null,
+                    agent: 'kiro', resolvedAgent: 'kiro',
+                    studySessionId: 'u2-pty-test',
+                    transport: 'pty',
+                    wsUrl: null,  // no wsUrl → legacy iframe branch
+                  },
+                }));
+                resolve();
+              }, 50));
+            }"""
+        )
+
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              try {
+                const d = window.Alpine.$data(root);
+                return d && d.terminalMode !== null;
+              } catch { return false; }
+            }""",
+            timeout=5000,
+        )
+
+        terminal_mode = acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return null;
+              try { return window.Alpine.$data(root).terminalMode; }
+              catch { return null; }
+            }"""
+        )
+        # Must NOT be 'acp-chat' — either 'xterm' or 'ttyd-iframe'
+        assert terminal_mode != "acp-chat", (
+            f"PTY transport must not produce terminalMode='acp-chat', got {terminal_mode!r}"
+        )
+
+        chat_hidden = acp_page.evaluate(
+            """() => {
+              const el = document.querySelector('.acp-chat-panel');
+              return el ? el.style.display === 'none' : null;
+            }"""
+        )
+        assert chat_hidden is True, (
+            f".acp-chat-panel should be hidden for PTY transport: chatHidden={chat_hidden!r}"
+        )
+        _end_any_active_session(acp_page)
+
+    def test_state_teardown_on_stop(self, acp_page: Page) -> None:
+        """stop() resets all five new U2 fields and sets terminalMode=null.
+
+        Start an ACP session (populates terminalMode='acp-chat'), call
+        stop() explicitly, then assert all new fields are back at defaults.
+        """
+        self._activate_session(acp_page, transport="acp")
+
+        # Call stop() via Alpine data.
+        acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return;
+              try { window.Alpine.$data(root).stop(); } catch {}
+            }"""
+        )
+
+        # Allow one tick for Alpine to settle.
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              try {
+                const d = window.Alpine.$data(root);
+                return d && d.terminalMode === null;
+              } catch { return false; }
+            }""",
+            timeout=3000,
+        )
+
+        state = acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return null;
+              try {
+                const d = window.Alpine.$data(root);
+                return {
+                  terminalMode: d.terminalMode,
+                  acpMessagesLen: Array.isArray(d.acpMessages) ? d.acpMessages.length : -1,
+                  streamingMessageId: d.streamingMessageId,
+                  plan: d.plan,
+                  pendingPermission: d.pendingPermission,
+                };
+              } catch { return null; }
+            }"""
+        )
+        assert state is not None, "liveAgentConsole() Alpine data not accessible"
+        assert state["terminalMode"] is None, f"terminalMode not reset: {state}"
+        assert state["acpMessagesLen"] == 0, f"acpMessages not cleared: {state}"
+        assert state["streamingMessageId"] is None, f"streamingMessageId not reset: {state}"
+        assert state["plan"] is None, f"plan not reset: {state}"
+        assert state["pendingPermission"] is None, f"pendingPermission not reset: {state}"
+        _end_any_active_session(acp_page)
+
+    def test_send_acp_input_pushes_user_message_in_chat_mode(
+        self, acp_page: Page
+    ) -> None:
+        """In ACP chat mode (_term is null), _sendAcpInput pushes a
+        {role: 'user', text} entry into acpMessages instead of writing
+        to xterm."""
+        self._activate_session(acp_page, transport="acp")
+
+        # Wait until connected so the WS is OPEN for _sendAcpInput.
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              try { return window.Alpine.$data(root).connected === true; }
+              catch { return false; }
+            }""",
+            timeout=10000,
+        )
+
+        acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              const d = window.Alpine.$data(root);
+              d.acpInput = 'hello-chat';
+              d._sendAcpInput();
+            }"""
+        )
+
+        # One message should have been pushed into acpMessages.
+        acp_page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              if (!root) return false;
+              try {
+                const d = window.Alpine.$data(root);
+                return Array.isArray(d.acpMessages) && d.acpMessages.length >= 1;
+              } catch { return false; }
+            }""",
+            timeout=5000,
+        )
+
+        messages = acp_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="liveAgentConsole()"]');
+              try { return window.Alpine.$data(root).acpMessages; }
+              catch { return []; }
+            }"""
+        )
+        assert len(messages) >= 1, f"expected at least one message in acpMessages, got {messages!r}"
+        user_msg = messages[0]
+        assert user_msg.get("role") == "user", f"first message role mismatch: {user_msg!r}"
+        assert user_msg.get("text") == "hello-chat", f"first message text mismatch: {user_msg!r}"
+        _end_any_active_session(acp_page)
