@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- StudyLoop mark, theme-aware variant. Loop and centre spark inherit
+       the host element's text colour (via currentColor). Pulses keep their
+       pink/orange brand colours — saturated enough to read on light and
+       dark backgrounds alike. Use this in the web UI; use the canonical
+       icons/studyloop-mark.svg (white loop) on dark gradient backgrounds
+       like the README banner. -->
+  <defs>
+    <radialGradient id="dotA" cx="0.4" cy="0.4" r="0.7">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </radialGradient>
+    <radialGradient id="dotB" cx="0.4" cy="0.4" r="0.7">
+      <stop offset="0%" stop-color="#FBCFE8"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(256 256)">
+    <path d="
+      M -130 0
+      C -130 -80, -45 -80, 0 0
+      C 45 80, 130 80, 130 0
+      C 130 -80, 45 -80, 0 0
+      C -45 80, -130 80, -130 0 Z"
+      fill="none" stroke="currentColor" stroke-width="38"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="-130" cy="0" r="18" fill="url(#dotB)"/>
+    <circle cx="130" cy="0" r="18" fill="url(#dotA)"/>
+    <circle cx="0" cy="0" r="9" fill="currentColor" opacity="0.9"/>
+  </g>
+</svg>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/studyloop-banner.png" alt="StudyLoop — an agentic study platform for AuDHD minds" width="100%">
+</p>
+
 # StudyLoop
 
 > An AuDHD-aware study toolkit for live Socratic mentoring, body-doubling, local study artefacts, and cross-assistant session memory.

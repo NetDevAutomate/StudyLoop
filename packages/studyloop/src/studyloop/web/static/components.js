@@ -16,7 +16,7 @@ const POMO_CIRCUMFERENCE = 2 * Math.PI * 18;
 
 function _pomoNotify(title, body) {
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(title, { body, icon: "/icon-192.svg" });
+    new Notification(title, { body, icon: "/icons/studyloop-180.png" });
   }
   try {
     const ctx = new AudioContext();
