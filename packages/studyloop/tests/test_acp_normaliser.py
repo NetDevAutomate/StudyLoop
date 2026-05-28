@@ -62,6 +62,7 @@ class TestUpdateKindMap:
             ("tool_call_update", "tool_call_update"),
             ("turn_end", "turn_end"),
             ("plan", "plan"),
+            ("plan_update", "plan_update"),
             ("available_commands_update", "available_commands"),
         ],
     )
@@ -148,6 +149,53 @@ class TestNormaliseSessionUpdate:
     def test_missing_discriminator_returns_none(self) -> None:
         params = {"sessionId": "s", "update": {"content": {}}}
         assert normalise_session_update(params) is None
+
+
+class TestPlanAndPlanUpdateNormalisation:
+    """U5 — plan and plan_update wire strings map to the expected kinds."""
+
+    def test_plan_maps_to_plan(self) -> None:
+        params = {
+            "sessionId": "sess-1",
+            "update": {
+                "sessionUpdate": "plan",
+                "steps": [
+                    {"title": "a", "status": "pending"},
+                    {"title": "b", "status": "pending"},
+                ],
+            },
+        }
+        result = normalise_session_update(params)
+        assert result is not None
+        assert result["kind"] == "plan"
+        assert result["payload"]["steps"][0]["title"] == "a"
+        assert "sessionUpdate" not in result["payload"]
+
+    def test_plan_update_maps_to_plan_update(self) -> None:
+        params = {
+            "sessionId": "sess-1",
+            "update": {
+                "sessionUpdate": "plan_update",
+                "steps": [
+                    {"title": "a", "status": "completed"},
+                    {"title": "b", "status": "pending"},
+                ],
+            },
+        }
+        result = normalise_session_update(params)
+        assert result is not None
+        assert result["kind"] == "plan_update"
+        assert result["payload"]["steps"][0]["status"] == "completed"
+
+    def test_plan_explicit_in_map(self) -> None:
+        """Explicit map entry — not just passthrough. Forward-compat guard."""
+        assert "plan" in UPDATE_KIND_MAP
+        assert UPDATE_KIND_MAP["plan"] == "plan"
+
+    def test_plan_update_explicit_in_map(self) -> None:
+        """Explicit map entry — not just passthrough. Forward-compat guard."""
+        assert "plan_update" in UPDATE_KIND_MAP
+        assert UPDATE_KIND_MAP["plan_update"] == "plan_update"
 
 
 class TestKiroExtensionDetection:
