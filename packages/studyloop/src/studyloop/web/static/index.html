@@ -9,7 +9,12 @@
   <title>StudyLoop</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+  <!-- Real brand icons (replaces the legacy "S"-letter placeholder).
+       SVG primary; ICO + PNG fallbacks for browsers that don't render
+       SVG favicons (older Safari, some embedded webviews). -->
+  <link rel="icon" href="/icons/studyloop.svg" type="image/svg+xml">
+  <link rel="icon" href="/icons/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/icons/studyloop-180.png">
   <!-- xterm.js base stylesheet (loaded but not wired until §1.7 Alpine component) -->
   <link rel="stylesheet" href="/vendor/css/xterm-6.0.0.css">
   <style>[x-cloak] { display: none !important; }</style>
@@ -36,7 +41,36 @@
 </head>
 <body x-data x-init="$store.nav.init()">
   <header>
-    <h1>StudyLoop</h1>
+    <a class="brand" href="#flashcards" @click.prevent="$store.nav.go('flashcards')"
+       title="StudyLoop — home">
+      <!-- Inline so the loop + centre spark can pick up `currentColor` and
+           re-theme automatically across all four palettes. The pulses keep
+           their saturated pink/orange brand tones. The /icons/studyloop.svg
+           and -mark.svg files are the canonical brand assets used elsewhere
+           (favicon, README banner, social card). -->
+      <svg class="brand-mark" viewBox="0 0 512 512" width="32" height="32"
+           aria-hidden="true" focusable="false">
+        <defs>
+          <radialGradient id="brand-dotA" cx="0.4" cy="0.4" r="0.7">
+            <stop offset="0%" stop-color="#FDE68A"/>
+            <stop offset="100%" stop-color="#F59E0B"/>
+          </radialGradient>
+          <radialGradient id="brand-dotB" cx="0.4" cy="0.4" r="0.7">
+            <stop offset="0%" stop-color="#FBCFE8"/>
+            <stop offset="100%" stop-color="#EC4899"/>
+          </radialGradient>
+        </defs>
+        <g transform="translate(256 256)">
+          <path d="M -130 0 C -130 -80, -45 -80, 0 0 C 45 80, 130 80, 130 0 C 130 -80, 45 -80, 0 0 C -45 80, -130 80, -130 0 Z"
+                fill="none" stroke="currentColor" stroke-width="38"
+                stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="-130" cy="0" r="18" fill="url(#brand-dotB)"/>
+          <circle cx="130" cy="0" r="18" fill="url(#brand-dotA)"/>
+          <circle cx="0" cy="0" r="9" fill="currentColor" opacity="0.9"/>
+        </g>
+      </svg>
+      <span class="brand-wordmark">StudyLoop</span>
+    </a>
     <div class="header-controls">
       <button class="toggle-btn" :class="{ active: $store.pomodoro.running }"
               @click="$store.pomodoro.toggle()" title="Pomodoro timer (25min study / 5min break)">
@@ -105,6 +139,16 @@
 
     <!-- Sidebar navigation + session activity feed -->
     <nav class="sidebar">
+      <!-- Sidebar brand: full-fat logo with gradient background. The header
+           uses a lightweight currentColor-themed mark; the sidebar gets the
+           proper "app icon" treatment so it stands out as a brand element.
+           Same SVG that ships as the favicon / app icon / 256/512 PNGs. -->
+      <a class="sidebar-brand" href="#flashcards"
+         @click.prevent="$store.nav.go('flashcards')"
+         title="StudyLoop — home">
+        <img src="/icons/studyloop.svg" alt="StudyLoop" width="64" height="64">
+      </a>
+      <hr class="sidebar-divider" aria-hidden="true">
       <button class="sidebar-btn"
               :class="{ active: $store.nav.is('flashcards') }"
               @click="$store.nav.go('flashcards')">
