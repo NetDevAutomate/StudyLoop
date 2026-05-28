@@ -484,6 +484,10 @@ docs/local_repo_docs/
 docs/architecture/*
 !docs/architecture/
 !docs/architecture/adapter-pattern-notebooklm.md
+# Un-ignored 2026-05-28 — these are linked from docs/architecture.md and ship
+# with the repo (C4 diagrams of the live system + target direction).
+!docs/architecture/current.md
+!docs/architecture/target.md
 
 # Demo recordings (large, local-only)
 demos/
