@@ -232,10 +232,135 @@ All four are gated on a single non-reactive flag `this._suppressStreamingBubble`
 
 ---
 
+## C4 Level 3 — Component (zoomed into the Generate panel)
+
+Sister surface to the chat surface. The Generate panel reuses the existing `content/generators/` package as its producer; the new layer is the orchestrator + the active-generation singleton + the REST + WS endpoints (U5/U7, planned for Session 2). Everything at and below the orchestrator is shipped today.
+
+```mermaid
+flowchart TB
+    subgraph Browser["Browser — Generate sidebar tab (U8)"]
+      direction TB
+      Form["Form view<br/>──────────<br/>Course / Scope / Section /<br/>Topic / Window / Kinds /<br/>Count / Provider / Model /<br/>On-existing"]
+      RestCall["POST /api/content/generate<br/>(202 -> job_id)"]
+      WsOpen["WS /api/content/generate/ws<br/>?job_id=..."]
+      ProgressUI["Progress renderer<br/>──────────<br/>started / task_complete /<br/>all_done frames"]
+    end
+
+    subgraph Backend["Server — FastAPI"]
+      direction TB
+      Routes["content_gen router<br/>(U5/U7, planned)"]
+      Discover["Course / Section /<br/>Provider lookups<br/>(U9 / U10 / U10.5)"]
+      Single["active_gen singleton<br/>(content/active_gen.py)"]
+      Job["run_job orchestrator<br/>(content/job.py)"]
+      Scope["resolve_scope<br/>(content/scope.py)"]
+      Runner["generate_concurrently<br/>(generators/runner.py)"]
+      Factory["get_generator<br/>(generators/__init__.py)"]
+      Adapters["StubGenerator<br/>OllamaGenerator<br/>BedrockGenerator<br/>OpenAICompatGenerator<br/>AnthropicCompatGenerator"]
+      Helpers["on-existing helpers<br/>(storage.next_unique_path,<br/>FlashcardDeck.merge_dedupe,<br/>QuizDeck.merge_dedupe)"]
+    end
+
+    Disk[("content.base_path/<br/>course/flashcards/<br/>course/quizzes/")]
+    Reviewer["/api/cards, /api/quizzes<br/>(existing reviewer)"]
+
+    Form --> RestCall --> Routes
+    Form --> WsOpen
+    Routes -->|acquire| Single
+    Routes -->|"asyncio.create_task"| Job
+    Routes -->|on_event queue| WsOpen
+    WsOpen --> ProgressUI
+
+    Form -.populate.- Discover
+
+    Job --> Scope
+    Job --> Factory
+    Factory --> Adapters
+    Job --> Runner
+    Runner -->|"on_complete callback"| Job
+    Job --> Helpers
+    Helpers --> Disk
+    Job -->|release| Single
+
+    Disk -->|already read by| Reviewer
+```
+
+**Job lifecycle (one click of Generate)**:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant PWA as Browser (Generate tab)
+    participant REST as POST /api/content/generate
+    participant Single as active_gen singleton
+    participant Job as run_job (asyncio task)
+    participant Scope as resolve_scope
+    participant Runner as generate_concurrently
+    participant Gen as Generator (OpenAI / Anthropic / Stub / ...)
+    participant FS as content.base_path
+    participant WS as WS /content/generate/ws
+
+    User->>PWA: pick course/scope/kinds, click Generate
+    PWA->>REST: POST {course, scope, kinds, provider, model, on_existing}
+    REST->>Single: acquire(job_id, request)
+    alt slot busy
+      Single-->>REST: GenerationAlreadyActiveError
+      REST-->>PWA: 409 Conflict
+    else slot free
+      Single-->>REST: ActiveGeneration
+      REST->>Job: asyncio.create_task(run_job(...))
+      REST-->>PWA: 202 {job_id, plan}
+
+      PWA->>WS: open ?job_id=...
+      WS-->>PWA: started {task_count, sources}
+
+      Job->>Scope: resolve_scope(request, settings)
+      Scope-->>Job: list[ResolvedSource]
+      Job->>Gen: get_generator(config)
+
+      loop one task per source × kind
+        Job->>Runner: generate_concurrently
+        Runner->>Gen: generate_flashcards / generate_quiz
+        Gen-->>Runner: deck or CardGenerationError
+        Runner->>Job: on_complete(result)
+        Job->>FS: write_json (apply on_existing policy)
+        Job-->>WS: task_complete {ok, path / error}
+        WS-->>PWA: task_complete frame
+      end
+
+      Job-->>WS: all_done {written, failed}
+      WS-->>PWA: all_done frame
+      Job->>Single: release()
+    end
+```
+
+**Why a singleton + queue, not direct streaming**: a single Ollama process (or a single MiniMax token plan) doesn't tolerate two concurrent jobs. The singleton is the simplest possible coordinator -- one process, one heavy LLM job at a time. The per-job WS queue lets clients reconnect / resubscribe without losing events that fire during the gap.
+
+---
+
+## Component → file map (for the generation surface)
+
+| Component | File | Notable lines |
+|---|---|---|
+| Active-generation singleton | `packages/studyloop/src/studyloop/content/active_gen.py` | full file |
+| Job orchestrator (`run_job`) | `packages/studyloop/src/studyloop/content/job.py` | full file |
+| Scope resolver (`resolve_scope`) | `packages/studyloop/src/studyloop/content/scope.py` | full file |
+| Generator factory + Protocol | `packages/studyloop/src/studyloop/content/generators/__init__.py` | full file |
+| Provider profile registry | `packages/studyloop/src/studyloop/content/generators/provider_profiles.py` | full file |
+| Stub generator | `packages/studyloop/src/studyloop/content/generators/stub.py` | full file |
+| OpenAI Chat Completions adapter | `packages/studyloop/src/studyloop/content/generators/openai_compat.py` | full file |
+| Anthropic Messages adapter | `packages/studyloop/src/studyloop/content/generators/anthropic_compat.py` | full file |
+| Shared retry-with-correction helper | `packages/studyloop/src/studyloop/content/generators/_retry.py` | full file |
+| On-existing helpers (merge / unique-path) | `packages/studyloop/src/studyloop/content/{schemas,storage}.py` | `merge_dedupe`, `next_unique_path` |
+| `.env` autoload | `packages/studyloop/src/studyloop/__init__.py` | full file |
+| `live_provider` pytest marker | `packages/studyloop/pyproject.toml` | `[tool.pytest.ini_options]` |
+| Live MVD smoke (parametrised over registry) | `packages/studyloop/tests/test_live_provider_smoke.py` | full file |
+| MVD source fixture (photosynthesis) | `packages/studyloop/tests/fixtures/mvd_source.md` | full file |
+
+---
+
 ## What's NOT in this diagram
 
 - **The Pomodoro overlay**, voice output, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline.
 - **The flashcard / quiz review path** — separate from interactive sessions; covered in [Web UI Guide](../web-ui-guide.md).
-- **The content-generation pipeline** (Ollama/Bedrock card generation) — see [Content Pipeline](../content-pipeline.md).
+- **The Generate panel UI surface** — see U8 in the [Generation Panel Plan](../plans/2026-05-29-001-feat-content-generation-panel-plan.md). Backend is shipped as of 2026-05-28; UI is Session-2 work.
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
 - **Legacy tmux + ttyd** — kept as fallback; documented in [Web UI Guide § Terminal Fallback (ttyd)](../web-ui-guide.md#terminal-fallback-ttyd). Will be retired once ACP + PTY web sessions cover all agents.
