@@ -224,6 +224,26 @@ brew install just
 *Historical generated artefacts. NotebookLM is not required for the core study workflow.*
 <!-- ARTEFACTS:END -->
 
+## Maintainer Notes
+
+### Set the GitHub social preview image
+
+The OpenGraph card shown when this repo is shared on Slack / X / LinkedIn / etc. is **not** picked up automatically — GitHub requires a one-time upload via the web UI:
+
+1. Go to **Settings → General** (top of the repo).
+2. Scroll to **Social preview**.
+3. Click **Edit** → **Upload an image…**
+4. Pick `icons/studyloop-social.png` (1280×640, generated from `icons/studyloop-banner.svg`).
+5. Save.
+
+After this, link previews use the proper StudyLoop card. If the banner ever changes, regenerate the social PNG with:
+
+```bash
+rsvg-convert -w 1280 -h 640 icons/studyloop-banner.svg -o icons/studyloop-social.png
+```
+
+…then re-upload via the same Settings page. The repo can't trigger this from CI.
+
 ## License
 
 MIT
