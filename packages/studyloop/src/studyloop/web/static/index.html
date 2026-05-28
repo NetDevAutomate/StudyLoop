@@ -901,7 +901,7 @@
                       <button type="button"
                               class="acp-permission-option"
                               :class="opt.kind === 'allow' ? 'acp-permission-allow' : (opt.kind === 'deny' ? 'acp-permission-deny' : '')"
-                              @click="$event.preventDefault(); _resolvePermission(opt.optionId)"
+                              @click="$event.preventDefault(); _selectPermissionOption(opt.optionId)"
                               x-text="opt.name || opt.kind"></button>
                     </template>
                   </div>
@@ -1962,11 +1962,15 @@
         this.plan = { steps };
       },
 
-      /* U6: request_permission handler. Stores on pendingPermission (not in
+      /* U6.5: request_permission handler. Stores on pendingPermission (not in
          acpMessages) to sidestep the Alpine 3.14.8 null.type race — same
          trick as U5 this.plan. Sets acpSending = true to lock the input row
          for the duration. Defensive: missing / empty options → no-op rather
-         than crash. */
+         than crash.
+
+         _request_id is the JSON-RPC request id from the inbound
+         session/request_permission frame. The route needs it to send the
+         correctly-correlated JSON-RPC response back to the agent. */
       _handleRequestPermission(payload) {
         if (!payload || typeof payload !== 'object') return;
         const options = Array.isArray(payload.options) ? payload.options : [];
@@ -1974,21 +1978,42 @@
         this.acpSending = true;
         this.pendingPermission = {
           toolCallId: payload.toolCallId || '',
+          requestId: payload._request_id != null ? payload._request_id : '',
           options,
         };
         this._scrollChatToBottom();
       },
 
-      /* U6: Send permission response WS frame, clear the prompt, and release
-         acpSending so the input row restores. */
-      _resolvePermission(optionId) {
+      /* U6.5: User selected an option. Sends a permission_response WS frame
+         with requestId + outcome {outcome:"selected", optionId}, clears the
+         prompt, and releases acpSending so the input row restores. */
+      _selectPermissionOption(optionId) {
         const perm = this.pendingPermission;
         if (!perm) return;
         if (this._ws && this._ws.readyState === WebSocket.OPEN) {
           this._ws.send(JSON.stringify({
             type: 'permission_response',
-            toolCallId: perm.toolCallId,
-            optionId,
+            requestId: perm.requestId,
+            outcome: { outcome: 'selected', optionId },
+          }));
+        }
+        this.pendingPermission = null;
+        this.acpSending = false;
+        this.$nextTick(() => {
+          if (this.$refs.acpInputField) this.$refs.acpInputField.focus();
+        });
+      },
+
+      /* U6.5: User cancelled (prompt turn cancelled). Sends outcome:cancelled.
+         Not auto-wired to session/cancel; exposed for completeness. */
+      _cancelPermission() {
+        const perm = this.pendingPermission;
+        if (!perm) return;
+        if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+          this._ws.send(JSON.stringify({
+            type: 'permission_response',
+            requestId: perm.requestId,
+            outcome: { outcome: 'cancelled' },
           }));
         }
         this.pendingPermission = null;

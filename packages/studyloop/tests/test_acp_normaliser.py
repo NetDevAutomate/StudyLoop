@@ -63,12 +63,17 @@ class TestUpdateKindMap:
             ("turn_end", "turn_end"),
             ("plan", "plan"),
             ("plan_update", "plan_update"),
-            ("request_permission", "request_permission"),
             ("available_commands_update", "available_commands"),
         ],
     )
     def test_known_kinds_mapped(self, acp_kind: str, our_kind: str) -> None:
         assert UPDATE_KIND_MAP[acp_kind] == our_kind
+
+    def test_request_permission_not_in_update_kind_map(self) -> None:
+        """U6.5: request_permission arrives as a JSON-RPC *request*
+        (session/request_permission with an id), NOT as a session/update
+        notification. It must NOT be in UPDATE_KIND_MAP — that path is dead."""
+        assert "request_permission" not in UPDATE_KIND_MAP
 
     def test_chrome_drops_documented(self) -> None:
         """DROPPED_UPDATE_KINDS must be a subset of the map's keys
@@ -261,48 +266,42 @@ class TestACPTransportSkeleton:
     # scripted StubACPAgent.
 
 
-class TestRequestPermissionNormalisation:
-    """U6 — request_permission wire string maps to the expected kind."""
+class TestInboundRequestDispatch:
+    """U6.5 — session/request_permission arrives as a JSON-RPC request (not a
+    session/update notification), so it bypasses the normaliser entirely.
 
-    def test_request_permission_maps_to_request_permission(self) -> None:
+    The dispatch path is tested in test_acp_transport.py via
+    TestSendPermissionResponse (live subprocess integration).
+
+    Here we only test what the normaliser correctly does NOT do:
+    - request_permission is absent from UPDATE_KIND_MAP (tested above in
+      TestUpdateKindMap.test_request_permission_not_in_update_kind_map)
+    - Passing a session/update with sessionUpdate='request_permission' falls
+      through the normaliser with passthrough behaviour (unknown kind → raw name)
+      rather than being in a curated map entry. This documents the NEW dead path
+      so future readers understand why the map entry was removed.
+    """
+
+    def test_request_permission_as_session_update_passes_through_verbatim(self) -> None:
+        """If (hypothetically) a request_permission arrived via session/update,
+        the normaliser would pass it through verbatim with kind='request_permission'
+        (unknown-kind passthrough). But the real agent will never send it that way.
+        This test documents the passthrough behaviour, not correct usage."""
         params = {
             "sessionId": "sess-1",
             "update": {
                 "sessionUpdate": "request_permission",
                 "toolCallId": "tc-99",
-                "options": [
-                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
-                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
-                ],
             },
         }
         result = normalise_session_update(params)
+        # Passthrough: normaliser doesn't know this kind, so raw name is used.
         assert result is not None
         assert result["kind"] == "request_permission"
-        assert result["payload"]["toolCallId"] == "tc-99"
-        assert len(result["payload"]["options"]) == 2
-        assert "sessionUpdate" not in result["payload"]
+        # But this path will never be reached in production — the real wire
+        # sends session/request_permission as a JSON-RPC request, not update.
 
-    def test_request_permission_explicit_in_map(self) -> None:
-        """Explicit map entry — not passthrough. Forward-compat guard."""
-        assert "request_permission" in UPDATE_KIND_MAP
-        assert UPDATE_KIND_MAP["request_permission"] == "request_permission"
-
-    def test_request_permission_not_dropped(self) -> None:
-        """request_permission must NOT be in DROPPED_UPDATE_KINDS — it's learner-visible."""
+    def test_request_permission_not_in_dropped_kinds(self) -> None:
+        """Even if it somehow appeared as a session/update, it wouldn't be
+        silently dropped (DROPPED_UPDATE_KINDS only contains chrome)."""
         assert "request_permission" not in DROPPED_UPDATE_KINDS
-
-    def test_request_permission_single_option(self) -> None:
-        """One-option payload normalises correctly (edge case from plan §U6)."""
-        params = {
-            "sessionId": "sess-1",
-            "update": {
-                "sessionUpdate": "request_permission",
-                "toolCallId": "tc-1",
-                "options": [{"kind": "allow", "name": "Allow", "optionId": "opt-1"}],
-            },
-        }
-        result = normalise_session_update(params)
-        assert result is not None
-        assert result["kind"] == "request_permission"
-        assert len(result["payload"]["options"]) == 1

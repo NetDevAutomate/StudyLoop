@@ -1865,39 +1865,32 @@ class TestPlanEdgeCases:
 
 
 # ---------------------------------------------------------------------------
-# U6: request_permission inline prompt — 7 scenarios
+# U6 / U6.5: request_permission inline prompt — 7 scenarios
 # ---------------------------------------------------------------------------
+#
+# U6.5 wire change: request_permission now arrives as a JSON-RPC *request*
+# (session/request_permission with an id), not as a session/update notification.
+# The payload injected by _inject_permission now includes _request_id so the
+# UI can embed it in the outbound WS frame.
+# The outbound WS frame shape is now: {type, requestId, outcome}
+# where outcome = {"outcome":"selected","optionId":"..."} | {"outcome":"cancelled"}
 
 
-def _permission_notif(
-    tool_call_id: str,
-    options: list[dict],
-    session_id: str = "stub-session-1",
-) -> dict:
-    """Build a request_permission session/update notification."""
-    return {
-        "jsonrpc": "2.0",
-        "method": "session/update",
-        "params": {
-            "sessionId": session_id,
-            "update": {
-                "sessionUpdate": "request_permission",
-                "toolCallId": tool_call_id,
-                "options": options,
-            },
-        },
-    }
+def _inject_permission(
+    page, tool_call_id: str, options: list[dict], request_id: str = "rq-test-1"
+) -> None:
+    """Inject a request_permission payload directly into the Alpine component.
 
-
-def _inject_permission(page, tool_call_id: str, options: list[dict]) -> None:
-    """Inject a request_permission payload directly into the Alpine component."""
+    Includes _request_id so the component stores it on pendingPermission
+    and includes it in the outbound WS frame (U6.5 shape).
+    """
     page.evaluate(
-        """([toolCallId, options]) => {
+        """([toolCallId, options, requestId]) => {
           const root = document.querySelector('[x-data="liveAgentConsole()"]');
           const d = window.Alpine.$data(root);
-          d._handleRequestPermission({toolCallId, options});
+          d._handleRequestPermission({toolCallId, options, _request_id: requestId});
         }""",
-        [tool_call_id, options],
+        [tool_call_id, options, request_id],
     )
 
 
@@ -1941,21 +1934,46 @@ def _get_ws_sent(page) -> list[dict]:
     return page.evaluate("() => window.__wsSent || []")
 
 
+def _start_web_server_with_permission_stub() -> subprocess.Popen:
+    """Start a studyloop web server where the stub emits session/request_permission
+    as a JSON-RPC *request* (U6.5 correct wire protocol) on each prompt turn.
+
+    Uses STUB_ACP_EMIT_PERMISSION_REQUEST=1 — the stub sends the request and
+    awaits the client's JSON-RPC response before answering session/prompt.
+    """
+    env = {
+        **os.environ,
+        "STUDYLOOP_TEST_ACP_CMD": _stub_acp_cmd(),
+        "STUB_ACP_PROMPT_STOP_REASON": "end_turn",
+        "STUB_ACP_EMIT_PERMISSION_REQUEST": "1",
+    }
+    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
+    proc = subprocess.Popen(
+        cmd,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+    for _ in range(40):
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
+            return proc
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                return proc
+            time.sleep(0.3)
+        except Exception:
+            time.sleep(0.3)
+    proc.kill()
+    raise RuntimeError(f"Test web server failed to start on port {WEB_PORT}")
+
+
 @pytest.fixture(scope="class")
 def _server_permission_allow_deny() -> "Generator[subprocess.Popen, None, None]":
-    """Server emits request_permission with allow+deny options on each prompt turn."""
+    """Server where stub emits session/request_permission as a JSON-RPC request
+    (U6.5 correct ACP wire protocol) on each prompt turn."""
     clean_ipc()
-    proc = _start_web_server_with_stub(
-        prompt_updates=[
-            _permission_notif(
-                "tc-99",
-                [
-                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
-                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
-                ],
-            )
-        ]
-    )
+    proc = _start_web_server_with_permission_stub()
     try:
         yield proc
     finally:
@@ -2028,8 +2046,8 @@ class TestPermissionPrompt:
         _acp_auth_context: "BrowserContext",
         agent: str,
     ) -> None:
-        """Happy: click Allow → permission_response WS frame with correct
-        toolCallId/optionId; prompt disappears; input row restores."""
+        """U6.5: click Allow → permission_response WS frame with correct
+        requestId + outcome shape; prompt disappears; input row restores."""
         _ = _server_permission_allow_deny
         page = _acp_auth_context.new_page()
         app_errors: list[str] = []
@@ -2043,6 +2061,7 @@ class TestPermissionPrompt:
                     {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
                     {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
                 ],
+                request_id="rq-click",
             )
             _wait_for_permission_prompt(page)
             _hook_ws_sends(page)
@@ -2061,17 +2080,21 @@ class TestPermissionPrompt:
                 ".acp-permission-prompt", state="detached", timeout=5000
             )
 
-            # WS frame must carry the right shape.
+            # WS frame must carry the U6.5 shape: {type, requestId, outcome}.
             sent = _get_ws_sent(page)
             perm_frames = [f for f in sent if f.get("type") == "permission_response"]
             assert len(perm_frames) == 1, (
                 f"Expected 1 permission_response frame, got: {sent}"
             )
-            assert perm_frames[0]["toolCallId"] == "tc-click", (
-                f"Wrong toolCallId: {perm_frames[0]}"
+            assert perm_frames[0]["requestId"] == "rq-click", (
+                f"Wrong requestId: {perm_frames[0]}"
             )
-            assert perm_frames[0]["optionId"] == "opt-allow", (
-                f"Wrong optionId: {perm_frames[0]}"
+            outcome = perm_frames[0].get("outcome", {})
+            assert outcome.get("outcome") == "selected", (
+                f"Expected outcome.outcome='selected': {outcome}"
+            )
+            assert outcome.get("optionId") == "opt-allow", (
+                f"Expected outcome.optionId='opt-allow': {outcome}"
             )
 
             # Input row must be visible again.
@@ -2315,9 +2338,10 @@ class TestPermissionPrompt:
         _acp_auth_context: "BrowserContext",
         agent: str,
     ) -> None:
-        """Integration (server): after clicking Allow, the permission_response
-        WS frame reaches the route and is forwarded to transport.send_permission.
-        Confirmed by the stub echoing a result for session/respond (no -32601).
+        """U6.5 Integration (server): after clicking Allow, the permission_response
+        WS frame (with requestId + outcome shape) reaches the route and is
+        forwarded to transport.send_permission_response. The stub accepts the
+        JSON-RPC response (reply to the inbound request), then returns turn_end.
         No TransportError must appear in acpMessages."""
         _ = _server_permission_allow_deny
         page = _acp_auth_context.new_page()
@@ -2326,7 +2350,8 @@ class TestPermissionPrompt:
         try:
             _activate_acp_session(page, agent=agent)
 
-            # Drive a real turn — stub emits request_permission then stopReason=end_turn.
+            # Drive a real turn — stub emits session/request_permission as a
+            # JSON-RPC request, waits for our response, then returns stopReason.
             page.evaluate(
                 """() => {
                   const root = document.querySelector('[x-data="liveAgentConsole()"]');
@@ -2336,8 +2361,10 @@ class TestPermissionPrompt:
                 }"""
             )
 
-            # Wait for the permission prompt to appear (stub emitted it over WS).
-            _wait_for_permission_prompt(page, timeout=8000)
+            # Wait for the permission prompt to appear (stub emitted it over WS
+            # as an AgentMessage(kind=request_permission) which the route
+            # translated from the inbound JSON-RPC request).
+            _wait_for_permission_prompt(page, timeout=10000)
 
             # Hook WS to capture outbound frames before clicking.
             _hook_ws_sends(page)
@@ -2356,17 +2383,28 @@ class TestPermissionPrompt:
                 ".acp-permission-prompt", state="detached", timeout=5000
             )
 
-            # The permission_response WS frame must have been sent.
+            # The permission_response WS frame must carry the U6.5 shape.
             sent = _get_ws_sent(page)
             perm_frames = [f for f in sent if f.get("type") == "permission_response"]
             assert len(perm_frames) >= 1, (
                 f"Expected permission_response frame to be sent, got: {sent}"
             )
-            assert perm_frames[0]["toolCallId"] == "tc-99", (
-                f"toolCallId mismatch: {perm_frames[0]}"
+            frame = perm_frames[0]
+            assert "requestId" in frame, (
+                f"Frame missing 'requestId' (U6.5 shape): {frame}"
+            )
+            assert frame["requestId"], (
+                f"requestId must be non-empty: {frame}"
+            )
+            outcome = frame.get("outcome", {})
+            assert outcome.get("outcome") == "selected", (
+                f"Expected outcome.outcome='selected': {outcome}"
+            )
+            assert outcome.get("optionId") == "opt-allow", (
+                f"Expected outcome.optionId='opt-allow': {outcome}"
             )
 
-            # No TransportError bubbles should appear (stub responded, not -32601).
+            # No TransportError bubbles should appear.
             error_msgs = page.evaluate(
                 """() => {
                   const root = document.querySelector('[x-data="liveAgentConsole()"]');

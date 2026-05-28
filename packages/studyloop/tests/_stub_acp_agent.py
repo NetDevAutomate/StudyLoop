@@ -37,10 +37,20 @@ through env vars:
   emitting the initialize response. Models a crash during the handshake.
 - ``STUB_ACP_EXIT_ON_CANCEL`` — if ``"1"``, exit cleanly after
   receiving ``session/cancel``. Models an agent that closes the pipe.
+- ``STUB_ACP_EMIT_PERMISSION_REQUEST`` — if ``"1"``, emit a
+  ``session/request_permission`` JSON-RPC **request** (with a unique id)
+  as part of the prompt notification sequence, then await the matching
+  JSON-RPC response on stdin. On receipt, validates the response shape
+  and records the outcome in ``permission_responses``.
 
 All timing defaults to "as fast as possible" — the agent responds
 immediately. For scheduled-delay behaviour, use ``STUB_ACP_DELAY_MS``
 (applied before each frame emission).
+
+U6.5 NOTE: The correct ACP wire protocol for permission requests is:
+  - Agent → client: JSON-RPC *request* ``session/request_permission`` (has id)
+  - Client → agent: JSON-RPC *response* (matching id, result.outcome, no method)
+There is no ``session/respond`` method on the agent side.
 """
 
 from __future__ import annotations
@@ -61,6 +71,13 @@ def _env_json(key: str, default):
 # Per-process counter — incremented before each session/prompt response so
 # that STUB_ACP_PROMPT_UPDATES_SEQ can address turns by index.
 _prompt_count: int = 0
+
+# Monotonic counter for outbound request ids (session/request_permission).
+_request_id_counter: int = 0
+
+# Recorded responses to session/request_permission (U6.5).
+# Each entry is the full ``result`` dict from the client's JSON-RPC response.
+permission_responses: list = []
 
 
 def _prompt_updates_for_turn(turn_index: int) -> list:
@@ -97,6 +114,71 @@ def _read_frame():
     if not line:
         return None
     return json.loads(line)
+
+
+def _emit_permission_request_and_await_response(session_id: str) -> None:
+    """Emit ``session/request_permission`` as a JSON-RPC request, then read
+    the client's JSON-RPC response from stdin.
+
+    U6.5: Agents send permission requests as JSON-RPC *requests* (with id).
+    The client (ACPTransport) must reply with a JSON-RPC *response* carrying
+    the matching id and ``result.outcome``.
+
+    On receipt the response is validated (jsonrpc 2.0, id matches, result.outcome
+    present) and stored in ``permission_responses``.
+    """
+    global _request_id_counter
+    _request_id_counter += 1
+    req_id = _request_id_counter
+
+    _emit(
+        {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "method": "session/request_permission",
+            "params": {
+                "sessionId": session_id,
+                "toolCallId": "tc-99",
+                "options": [
+                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            },
+        }
+    )
+
+    # Drain stdin frames until we find the response for this request id.
+    # We may receive unrelated frames (e.g. a session/cancel) before our
+    # response arrives; buffer those for the main loop to handle.
+    # For test purposes we only handle the simple case where the response
+    # arrives promptly.
+    for _ in range(20):
+        resp = _read_frame()
+        if resp is None:
+            return  # stdin closed
+        resp_id = resp.get("id")
+        if resp_id == req_id and "result" in resp and "method" not in resp:
+            # This is our response.
+            result = resp.get("result") or {}
+            outcome = result.get("outcome")
+            assert isinstance(outcome, dict), (
+                f"permission response result.outcome must be a dict, got {outcome!r}"
+            )
+            assert "outcome" in outcome, (
+                f"outcome dict must have 'outcome' key, got {outcome!r}"
+            )
+            permission_responses.append(result)
+            return
+        # Not our response — push back into the dispatch queue.
+        # For the stub's simple read-one-frame-at-a-time model, we just
+        # process unrelated frames here and continue draining.
+        method = resp.get("method")
+        if method == "session/cancel":
+            cancel_req_id = resp.get("id")
+            if cancel_req_id is not None:
+                _emit({"jsonrpc": "2.0", "id": cancel_req_id, "result": None})
+            if os.environ.get("STUB_ACP_EXIT_ON_CANCEL") == "1":
+                return
 
 
 def main() -> int:
@@ -164,6 +246,11 @@ def main() -> int:
             for notif in _prompt_updates_for_turn(turn_index):
                 _emit(notif)
 
+            # U6.5: if scripted, emit a session/request_permission request and
+            # await the client's JSON-RPC response before finishing the turn.
+            if os.environ.get("STUB_ACP_EMIT_PERMISSION_REQUEST") == "1":
+                _emit_permission_request_and_await_response(session_id)
+
             error = _env_json("STUB_ACP_PROMPT_ERROR", None)
             if error is not None:
                 _emit({"jsonrpc": "2.0", "id": req_id, "error": error})
@@ -184,22 +271,6 @@ def main() -> int:
                 _emit({"jsonrpc": "2.0", "id": req_id, "result": None})
             if os.environ.get("STUB_ACP_EXIT_ON_CANCEL") == "1":
                 return 0
-
-        elif method == "session/respond":
-            # ACP permission-response (U6). Echo toolCallId + optionId back
-            # so e2e tests can verify the round-trip without -32601.
-            params = frame.get("params") or {}
-            if req_id is not None:
-                _emit(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": req_id,
-                        "result": {
-                            "toolCallId": params.get("toolCallId"),
-                            "optionId": params.get("optionId"),
-                        },
-                    }
-                )
 
         else:
             # Unknown methods → -32601.

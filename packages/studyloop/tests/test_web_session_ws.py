@@ -248,11 +248,40 @@ class TestTransportPump:
 
 
 class TestPermissionResponseForwarding:
-    def test_permission_response_forwarded_when_transport_has_send_permission(
+    def test_permission_response_forwarded_when_transport_has_send_permission_response(
         self, client: TestClient, config: SessionConfig
     ) -> None:
-        """When the transport has send_permission (ACP path), a
-        permission_response WS frame must call it with the right args."""
+        """U6.5: When the transport has send_permission_response (ACP path), a
+        permission_response WS frame with {requestId, outcome} must call it
+        with the correct (requestId, outcome_dict) args."""
+        stub = StubTransport(events=[Started(agent="kiro")])
+        _install_active(stub, config)
+
+        outcome = {"outcome": "selected", "optionId": "opt-allow"}
+
+        with client.websocket_connect(
+            "/api/session/ws?study_session_id=study-1",
+            headers={"Origin": "http://127.0.0.1:8788"},
+        ) as ws:
+            ws.receive_json()  # drain Started
+            ws.send_json(
+                {
+                    "type": "permission_response",
+                    "requestId": "rq-42",
+                    "outcome": outcome,
+                }
+            )
+            # Allow the server's ws_to_pty task to consume the frame.
+            time.sleep(0.1)
+            ws.close()
+
+        assert stub.permission_calls == [("rq-42", outcome)]
+
+    def test_permission_response_missing_request_id_is_silently_dropped(
+        self, client: TestClient, config: SessionConfig
+    ) -> None:
+        """A permission_response frame without requestId must be silently
+        dropped — we cannot correlate the response without the id."""
         stub = StubTransport(events=[Started(agent="kiro")])
         _install_active(stub, config)
 
@@ -264,28 +293,26 @@ class TestPermissionResponseForwarding:
             ws.send_json(
                 {
                     "type": "permission_response",
-                    "toolCallId": "tc-99",
-                    "optionId": "opt-allow",
+                    # No requestId field
+                    "outcome": {"outcome": "selected", "optionId": "opt-allow"},
                 }
             )
-            # Allow the server's ws_to_pty task to consume the frame.
             time.sleep(0.1)
             ws.close()
 
-        assert stub.permission_calls == [("tc-99", "opt-allow")]
+        # Dropped silently — no calls recorded.
+        assert stub.permission_calls == []
 
-    def test_permission_response_is_silent_noop_when_transport_lacks_send_permission(
+    def test_permission_response_is_silent_noop_when_transport_lacks_send_permission_response(
         self, client: TestClient, config: SessionConfig
     ) -> None:
-        """PTYTransport has no send_permission — frame must be silently
-        dropped without any error or exception."""
-        import types
-
-        # Build a stub that deliberately does NOT have send_permission.
+        """PTYTransport has no send_permission_response — frame must be
+        silently dropped without any error or exception."""
+        # Build a stub that deliberately does NOT have send_permission_response.
         stub = StubTransport(events=[Started(agent="claude")])
 
         class _NoPerm:
-            """Mirrors StubTransport but omits send_permission — models PTYTransport."""
+            """Mirrors StubTransport but omits send_permission_response — models PTYTransport."""
 
             def __init__(self) -> None:
                 self._inner = stub
@@ -328,15 +355,15 @@ class TestPermissionResponseForwarding:
             ws.send_json(
                 {
                     "type": "permission_response",
-                    "toolCallId": "tc-1",
-                    "optionId": "opt-deny",
+                    "requestId": "rq-1",
+                    "outcome": {"outcome": "cancelled"},
                 }
             )
             time.sleep(0.1)
             ws.close()
 
         # No exception → test passes. The hasattr guard silently dropped the frame.
-        assert not hasattr(pty_like, "send_permission")
+        assert not hasattr(pty_like, "send_permission_response")
 
 
 # ---------------------------------------------------------------------------

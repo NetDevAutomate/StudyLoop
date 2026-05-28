@@ -54,7 +54,10 @@ UPDATE_KIND_MAP: dict[str, str] = {
     "turn_end": "turn_end",
     "plan": "plan",
     "plan_update": "plan_update",
-    "request_permission": "request_permission",
+    # NOTE: request_permission is NOT here. It arrives as a JSON-RPC *request*
+    # (session/request_permission with an id), not as a session/update
+    # notification. _dispatch_frame handles it via the inbound-request branch
+    # and embeds _request_id in the payload. See acp.py and U6.5 notes.
     "available_commands_update": "available_commands",
 }
 
