@@ -823,17 +823,52 @@
                 <button class="agent-console-tool" @click="$store.settings.stopSpeaking()"
                         title="Stop speaking">&#9632;</button>
               </div>
-              <!-- Message log: U3 chat bubbles -->
+              <!-- Message log: U3 chat bubbles + U4 tool-call cards -->
               <div class="agent-console-log acp-chat-log" x-ref="acpChatLog">
                 <template x-for="msg in acpMessages" :key="msg.id || msg.text">
-                  <div class="acp-message" :class="'acp-message-' + msg.role">
-                    <div class="acp-message-role" x-text="msg.role"></div>
-                    <div class="acp-message-body">
-                      <!-- Streaming or user → plain text in a <pre> for fast paint, no markdown re-render per chunk -->
-                      <pre x-show="msg.status === 'streaming' || msg.role === 'user'" x-text="msg.text" class="acp-message-streaming"></pre>
-                      <!-- Final assistant bubble → trusted-sanitised HTML from marked → DOMPurify → highlight.js -->
-                      <div x-show="msg.status === 'final' && msg.role !== 'user'" x-html="msg.html" class="acp-message-final"></div>
-                    </div>
+                  <div>
+                    <!-- Chat bubble (user / assistant streaming + final) -->
+                    <template x-if="msg.kind !== 'tool_call'">
+                      <div class="acp-message" :class="'acp-message-' + msg.role">
+                        <div class="acp-message-role" x-text="msg.role"></div>
+                        <div class="acp-message-body">
+                          <!-- Streaming or user → plain text in a <pre> for fast paint, no markdown re-render per chunk -->
+                          <pre x-show="msg.status === 'streaming' || msg.role === 'user'" x-text="msg.text" class="acp-message-streaming"></pre>
+                          <!-- Final assistant bubble → trusted-sanitised HTML from marked → DOMPurify → highlight.js -->
+                          <div x-show="msg.status === 'final' && msg.role !== 'user'" x-html="msg.html" class="acp-message-final"></div>
+                        </div>
+                      </div>
+                    </template>
+                    <!-- Tool-call card (U4) -->
+                    <template x-if="msg.kind === 'tool_call'">
+                      <div class="acp-tool-call"
+                           :class="['acp-tool-call-status-' + msg.status,
+                                    (msg.expanded || msg.status === 'failed') ? 'acp-tool-call-expanded' : '']">
+                        <div class="acp-tool-call-header"
+                             @click="_toggleToolCall(msg)">
+                          <span class="acp-tool-call-chevron"
+                                x-text="(msg.expanded || msg.status === 'failed') ? '▼' : '▶'"></span>
+                          <span class="acp-tool-call-name" x-text="msg.name"></span>
+                          <span class="acp-tool-call-status acp-tool-call-status-badge"
+                                :class="'acp-tool-call-status-' + msg.status"
+                                x-text="msg.status"></span>
+                        </div>
+                        <div class="acp-tool-call-body"
+                             x-show="msg.expanded || msg.status === 'failed'">
+                          <!-- Args: pretty-printed JSON via _renderMarkdown code fence -->
+                          <div class="acp-tool-call-args"
+                               x-html="_renderMarkdown('```json\n' + JSON.stringify(msg.args, null, 2) + '\n```')"></div>
+                          <!-- Output: shell tools → raw exec pane; others → markdown -->
+                          <template x-if="_isShellTool(msg.name) && msg.output">
+                            <pre class="acp-tool-exec-pane" x-text="msg.output"></pre>
+                          </template>
+                          <template x-if="!_isShellTool(msg.name) && msg.output">
+                            <div class="acp-tool-call-output"
+                                 x-html="_renderMarkdown(msg.output)"></div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
                   </div>
                 </template>
               </div>
@@ -1597,6 +1632,14 @@
               this.$nextTick(() => {
                 if (this.$refs.acpInputField) this.$refs.acpInputField.focus();
               });
+            } else if (frame.kind === 'tool_call') {
+              if (this.terminalMode === 'acp-chat') {
+                this._handleToolCall(frame.payload);
+              }
+            } else if (frame.kind === 'tool_call_update') {
+              if (this.terminalMode === 'acp-chat') {
+                this._handleToolCallUpdate(frame.payload);
+              }
             }
           }
         });
@@ -1745,6 +1788,117 @@
             this.$refs.acpChatLog.scrollTop = this.$refs.acpChatLog.scrollHeight;
           }
         });
+      },
+
+      /* ----------------------------------------------------------
+       * Tool-call card helpers (U4)
+       * ---------------------------------------------------------- */
+
+      _isShellTool(name) {
+        return /^(bash|shell|exec|run)/i.test(name || '');
+      },
+
+      _handleToolCall(payload) {
+        /* Accept either 'arguments' or 'args' field name (spec + convenience). */
+        const toolCallId = payload && (payload.toolCallId || payload.id);
+        const name = (payload && payload.name) || '?';
+        const args = (payload && (payload.arguments || payload.args)) || {};
+        if (!toolCallId) return;
+
+        if (this.toolCallsById.has(toolCallId)) {
+          /* Out-of-order safety: tool_call_update arrived first — fill in missing fields.
+             Splice a new copy so Alpine's reactivity picks up the change. */
+          const existing = this.toolCallsById.get(toolCallId);
+          if (existing.name === '?') existing.name = name;
+          if (!existing.args || Object.keys(existing.args).length === 0) existing.args = args;
+          const idx = this.acpMessages.indexOf(existing);
+          if (idx !== -1) {
+            const updated = { ...existing };
+            this.toolCallsById.set(toolCallId, updated);
+            this.acpMessages.splice(idx, 1, updated);
+          }
+          return;
+        }
+
+        const msg = {
+          kind: 'tool_call',
+          id: toolCallId,
+          name,
+          args,
+          status: 'pending',
+          output: '',
+          expanded: false,
+        };
+        this.acpMessages.push(msg);
+        this.toolCallsById.set(toolCallId, msg);
+        this._scrollChatToBottom();
+      },
+
+      _handleToolCallUpdate(payload) {
+        const toolCallId = payload && (payload.toolCallId || payload.id);
+        if (!toolCallId) return;
+
+        let msg = this.toolCallsById.get(toolCallId);
+        let isNew = false;
+        if (!msg) {
+          /* Defensive: create a placeholder card when update arrives before tool_call. */
+          console.warn(`[U4] tool_call_update for unknown toolCallId="${toolCallId}" — creating placeholder`);
+          msg = {
+            kind: 'tool_call',
+            id: toolCallId,
+            name: '?',
+            args: {},
+            status: 'pending',
+            output: '',
+            expanded: false,
+          };
+          isNew = true;
+        }
+
+        /* Build the updated object as a new reference for Alpine reactivity. */
+        const newStatus = payload.status || msg.status;
+        let newOutput = msg.output || '';
+        if (payload.output !== undefined && payload.output !== null) {
+          const chunk = typeof payload.output === 'string'
+            ? payload.output
+            : JSON.stringify(payload.output);
+          newOutput = newOutput + chunk;
+        }
+        const newExpanded = (newStatus === 'failed') ? true : msg.expanded;
+
+        const updated = {
+          ...msg,
+          status: newStatus,
+          output: newOutput,
+          expanded: newExpanded,
+        };
+
+        this.toolCallsById.set(toolCallId, updated);
+
+        if (isNew) {
+          /* First time we see this id — push the placeholder card. */
+          this.acpMessages.push(updated);
+        } else {
+          /* Existing card — splice-replace to trigger Alpine reactivity. */
+          const idx = this.acpMessages.findIndex((m) => m.id === toolCallId);
+          if (idx !== -1) {
+            this.acpMessages.splice(idx, 1, updated);
+          }
+        }
+
+        this._scrollChatToBottom();
+      },
+
+      _toggleToolCall(msg) {
+        /* failed cards are always expanded; toggling is a no-op so they stay visible. */
+        if (msg.status === 'failed') return;
+        msg.expanded = !msg.expanded;
+        const idx = this.acpMessages.indexOf(msg);
+        if (idx !== -1) {
+          const updated = { ...msg };
+          this.toolCallsById.set(updated.id, updated);
+          this.acpMessages.splice(idx, 1, updated);
+        }
       },
 
       /* Rough theme map — pulls from CSS vars so xterm blends in. */
