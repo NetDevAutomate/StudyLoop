@@ -57,6 +57,7 @@ class StubTransport:
         self.resize_calls: list[tuple[int, int]] = []
         self.cancel_calls: int = 0
         self.end_calls: int = 0
+        self.permission_calls: list[tuple[str, str]] = []
 
     async def start(self, config: SessionConfig) -> None:
         self.start_calls.append(config)
@@ -70,6 +71,9 @@ class StubTransport:
     async def events(self) -> AsyncIterator[TransportEventT]:
         for event in self._events:
             yield event
+
+    async def send_permission(self, tool_call_id: str, option_id: str) -> None:
+        self.permission_calls.append((tool_call_id, option_id))
 
     async def cancel(self) -> None:
         self.cancel_calls += 1

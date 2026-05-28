@@ -416,3 +416,65 @@ class TestEnd:
         assert found_stopped.returncode == 17
 
         await transport.end()
+
+
+# ---------------------------------------------------------------------------
+# PR-A.7 (U6): send_permission → session/respond round-trip
+# ---------------------------------------------------------------------------
+
+
+class TestSendPermission:
+    @pytest.mark.asyncio
+    async def test_send_permission_completes_without_error(
+        self, tmp_path, monkeypatch, _reset_env
+    ):
+        """send_permission issues session/respond; stub echoes a result so the
+        RPC future resolves cleanly — no exception, no TransportError emitted."""
+        transport = ACPTransport(
+            resolve_binary=_stub_resolve_binary,
+            build_argv=_stub_build_argv(),
+        )
+        await transport.start(_make_config(tmp_path))
+
+        event_iter = transport.events()
+        await asyncio.wait_for(event_iter.__anext__(), timeout=2.0)  # Started
+
+        # Should not raise and should not enqueue TransportError.
+        await transport.send_permission("tc-99", "opt-allow")
+
+        # Drain any queued events — must not include a TransportError.
+        errors = []
+        for _ in range(5):
+            try:
+                evt = await asyncio.wait_for(event_iter.__anext__(), timeout=0.3)
+                from studyloop.session.transport import TransportError
+
+                if isinstance(evt, TransportError):
+                    errors.append(evt)
+            except (TimeoutError, StopAsyncIteration):
+                break
+        assert not errors, f"Unexpected TransportError after send_permission: {errors}"
+
+        await transport.end()
+
+    @pytest.mark.asyncio
+    async def test_send_permission_noop_when_not_started(self, tmp_path, _reset_env):
+        """send_permission before start() is a silent no-op — no exception."""
+        transport = ACPTransport(
+            resolve_binary=_stub_resolve_binary,
+            build_argv=_stub_build_argv(),
+        )
+        # Should not raise.
+        await transport.send_permission("tc-1", "opt-allow")
+
+    @pytest.mark.asyncio
+    async def test_send_permission_noop_after_end(self, tmp_path, _reset_env):
+        """send_permission after end() is a silent no-op — no exception."""
+        transport = ACPTransport(
+            resolve_binary=_stub_resolve_binary,
+            build_argv=_stub_build_argv(),
+        )
+        await transport.start(_make_config(tmp_path))
+        await transport.end()
+        # Should not raise.
+        await transport.send_permission("tc-1", "opt-allow")

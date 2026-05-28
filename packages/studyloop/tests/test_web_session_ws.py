@@ -243,6 +243,103 @@ class TestTransportPump:
 
 
 # ---------------------------------------------------------------------------
+# permission_response frame — U6 duck-typed forwarding
+# ---------------------------------------------------------------------------
+
+
+class TestPermissionResponseForwarding:
+    def test_permission_response_forwarded_when_transport_has_send_permission(
+        self, client: TestClient, config: SessionConfig
+    ) -> None:
+        """When the transport has send_permission (ACP path), a
+        permission_response WS frame must call it with the right args."""
+        stub = StubTransport(events=[Started(agent="kiro")])
+        _install_active(stub, config)
+
+        with client.websocket_connect(
+            "/api/session/ws?study_session_id=study-1",
+            headers={"Origin": "http://127.0.0.1:8788"},
+        ) as ws:
+            ws.receive_json()  # drain Started
+            ws.send_json(
+                {
+                    "type": "permission_response",
+                    "toolCallId": "tc-99",
+                    "optionId": "opt-allow",
+                }
+            )
+            # Allow the server's ws_to_pty task to consume the frame.
+            time.sleep(0.1)
+            ws.close()
+
+        assert stub.permission_calls == [("tc-99", "opt-allow")]
+
+    def test_permission_response_is_silent_noop_when_transport_lacks_send_permission(
+        self, client: TestClient, config: SessionConfig
+    ) -> None:
+        """PTYTransport has no send_permission — frame must be silently
+        dropped without any error or exception."""
+        import types
+
+        # Build a stub that deliberately does NOT have send_permission.
+        stub = StubTransport(events=[Started(agent="claude")])
+
+        class _NoPerm:
+            """Mirrors StubTransport but omits send_permission — models PTYTransport."""
+
+            def __init__(self) -> None:
+                self._inner = stub
+
+            async def start(self, config):  # type: ignore[override]
+                return await self._inner.start(config)
+
+            async def send_input(self, data: bytes) -> None:
+                return await self._inner.send_input(data)
+
+            async def resize(self, cols: int, rows: int) -> None:
+                return await self._inner.resize(cols, rows)
+
+            async def events(self):  # type: ignore[override]
+                async for ev in self._inner.events():
+                    yield ev
+
+            async def cancel(self) -> None:
+                return await self._inner.cancel()
+
+            async def end(self) -> None:
+                return await self._inner.end()
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc_info: object) -> None:
+                await self.end()
+
+        pty_like = _NoPerm()
+        asyncio.run(active.release())
+        asyncio.run(active.acquire(config, lambda: pty_like))
+
+        with client.websocket_connect(
+            "/api/session/ws?study_session_id=study-1",
+            headers={"Origin": "http://127.0.0.1:8788"},
+        ) as ws:
+            ws.receive_json()  # drain Started
+            # Should not raise or produce any error frame.
+            ws.send_json(
+                {
+                    "type": "permission_response",
+                    "toolCallId": "tc-1",
+                    "optionId": "opt-deny",
+                }
+            )
+            time.sleep(0.1)
+            ws.close()
+
+        # No exception → test passes. The hasattr guard silently dropped the frame.
+        assert not hasattr(pty_like, "send_permission")
+
+
+# ---------------------------------------------------------------------------
 # Cleanup — WS disconnect releases the active session
 # ---------------------------------------------------------------------------
 
