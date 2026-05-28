@@ -223,3 +223,52 @@ For U4, focus on `tool_call` and `tool_call_update`. Live ACP CLIs may emit addi
 - **Do not** push `main` to origin — stay local.
 - **Do not** modify `_stub_acp_agent.py` further — U9 is done; use existing env vars.
 - **Do not** add a new vendored JS lib for tool-call UI — use existing CSS-only patterns; if a tree-view library is genuinely needed, pause and ask.
+
+---
+
+## Addendum — 2026-05-28 07:44 BST (post-U4)
+
+### U4 landed: `48b1811 feat(web): U4 — tool_call collapsible cards + bash exec pane`
+
+Subagent run on `main` (no worktree, no parallel — single dispatch, mirror of U2/U3 pattern). Outcomes:
+
+| Suite | Result |
+|-------|--------|
+| `test_web_acp_chat_ui.py` | 36/36 (18 U3 + 18 U4) |
+| vendor + stub seq | 23/23 |
+| `test_web_agent_matrix.py` (PTY) | 15/15 |
+| `test_web_acp_agent_matrix.py` | 12 pass / 2 expected fail (xterm-buffer, U7/U8 owned) |
+
+`acpMessages` + `toolCallsById` Map share entry refs by design — Alpine reactivity picks up mutations through the Map handle without splice/replace.
+
+### Surprises from U4 (carry into U5/U6)
+
+1. **Alpine 3.14.8 nested `x-if` race**: rapid `acpMessages.push` triggers a benign internal `null (reading 'type')` console error during DOM mutation when nested `<template x-if>` blocks are present. Cards still render correctly. Two options for U8 cleanup: (a) bump Alpine to 3.15+, (b) flatten the per-`kind` branch into a single template with conditional CSS classes. U7 test "no-throw" assertion filters this specific message via `pageerror` listener — keep that filter pattern when writing future tests.
+2. **Playwright click on `overflow:auto` containers**: Playwright treats elements inside scrollable containers as "not visible" even when in-viewport. Use `page.evaluate("el => el.click()", element)` instead of `element.click()`. Already applied throughout U4 tests — copy that pattern.
+3. **Pure-Python regex tests**: U4's shell-heuristic name matrix doesn't need a browser. Class-scoped fixtures bind to one port; running 2 unrelated browser tests on the same fixture led to flakiness. Pull regex-only tests out of the Playwright fixture entirely.
+
+### Lesson: hand subagents shorter briefs
+
+The U4 brief was ~400 lines (full HTML/CSS pasted, multi-step approach, 7 test scenarios in prose). It worked but cost ~480k tokens / 56 tool uses on the subagent. **For U5+, use this shape instead:**
+
+```
+Goal: <1-line>
+Plan section: docs/plans/2026-05-27-001-feat-acp-chat-ui-plan.md §U5 (lines 374–404)
+Pattern reference: <commit SHA of the closest precedent — e.g. 48b1811 for card-style render, 0bf6752 for streaming bubble>
+Files to modify: <bullet list, no inline code>
+Constraints (the must-nots): <link to handoff §"What NOT to do">
+Reporting shape: summary, files+LOC, test counts, commit SHA, surprises, what's next
+```
+
+The subagent reads the plan section and the precedent commit. **Do not paste HTML, CSS, or test scaffolding into the brief** — the existing patterns in the repo are richer than what fits in a prompt, and re-pasting risks divergence between the brief's stale snippet and the actual current code.
+
+When the brief still feels long, ask: "what's the single tightest existing example of this pattern in the repo?" — point to that SHA + file:line. The plan + precedent gives the agent enough to act; over-specification is what burns the token budget.
+
+### Carry forward to U5 dispatch
+
+- Brief shape per the lesson above. Target < 80 lines of brief.
+- Precedent for "kind-based render" branch: U4's commit `48b1811` (`packages/studyloop/src/studyloop/web/static/index.html` and `style.css` U4 hunks).
+- Precedent for normaliser map entries: existing `UPDATE_KIND_MAP` in `acp_normaliser.py` — U5 adds `plan` + `plan_update` (verify wire strings against live ACP CLI before relying on passthrough; plan §U5 explicitly flags this).
+- Stub scripting for plan/plan_update tests: `STUB_ACP_PROMPT_UPDATES_SEQ` (U9). One JSON sequence per turn, append `{"kind":"plan",...}` and `{"kind":"plan_update",...}` notifications.
+- Plan §U5 also touches `test_acp_normaliser.py` (unit tests for new map entries) — that's a new file path the subagent must include in scope.
+
