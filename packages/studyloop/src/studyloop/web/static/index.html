@@ -54,6 +54,14 @@
       </button>
       <button class="toggle-btn" :class="{ active: $store.settings.dyslexic }"
               @click="$store.settings.toggleDyslexic()" title="Toggle OpenDyslexic font">Aa</button>
+      <select class="palette-select" title="Theme palette"
+              :value="$store.settings.palette"
+              @change="$store.settings.setPalette($event.target.value)">
+        <option value="tokyo-night">Tokyo Night</option>
+        <option value="dracula">Dracula</option>
+        <option value="catppuccin-mocha">Catppuccin Mocha</option>
+        <option value="catppuccin-latte">Catppuccin Latte</option>
+      </select>
     </div>
   </header>
 
@@ -825,6 +833,18 @@
               </div>
               <!-- Message log: U3 chat bubbles + U4 tool-call cards -->
               <div class="agent-console-log acp-chat-log" x-ref="acpChatLog">
+                <!-- Persona-injection setup banner: visible only during the
+                     invisible first turn so the user understands why the
+                     input is briefly disabled. -->
+                <div x-show="personaSetupInFlight" x-cloak class="acp-persona-setup">
+                  <div class="acp-persona-setup-icon">
+                    <span></span><span></span><span></span>
+                  </div>
+                  <div class="acp-persona-setup-text">
+                    <strong>Setting up your mentor…</strong>
+                    <small>Loading session context. This takes a few seconds.</small>
+                  </div>
+                </div>
                 <template x-for="msg in acpMessages" :key="msg.id || msg.text">
                   <div>
                     <!-- Chat bubble (user / assistant streaming + final) -->
@@ -832,8 +852,18 @@
                       <div class="acp-message" :class="'acp-message-' + msg.role">
                         <div class="acp-message-role" x-text="msg.role"></div>
                         <div class="acp-message-body">
-                          <!-- Streaming or user → plain text in a <pre> for fast paint, no markdown re-render per chunk -->
-                          <pre x-show="msg.status === 'streaming' || msg.role === 'user'" x-text="msg.text" class="acp-message-streaming"></pre>
+                          <!-- User bubble → always plain text, no markdown render path -->
+                          <pre x-show="msg.role === 'user'" x-text="msg.text" class="acp-message-user-text"></pre>
+                          <!-- Assistant streaming → typing indicator only. Showing the raw chunk
+                               text under monospace+pre-wrap (the previous approach) leaks markdown
+                               source ('##', '**', '```') and produces a staircase-cascade indent.
+                               The full message renders once on turn_end via the markdown path below. -->
+                          <div x-show="msg.status === 'streaming' && msg.role !== 'user'"
+                               class="acp-message-typing"
+                               aria-live="polite"
+                               aria-label="Assistant is typing">
+                            <span></span><span></span><span></span>
+                          </div>
                           <!-- Final assistant bubble → trusted-sanitised HTML from marked → DOMPurify → highlight.js -->
                           <div x-show="msg.status === 'final' && msg.role !== 'user'" x-html="msg.html" class="acp-message-final"></div>
                         </div>
@@ -1147,6 +1177,7 @@
               studySessionId: startedSession.study_session_id || null,
               transport: startedSession.transport || this.transport,
               wsUrl: startedSession.ws_url || null,
+              personaText: startedSession.persona_text || null,
             }
           }));
         });
@@ -1426,6 +1457,8 @@
       streamingMessageId: null,   /* id of bubble currently being streamed — U3 */
       plan: null,                 /* {steps: [{title, status}]} | null — U5 */
       pendingPermission: null,    /* {toolCallId, options} | null — U6 */
+      personaSetupInFlight: false, /* true during the invisible persona turn —
+                                       drives the "Setting up your mentor…" status */
 
       /* ---- non-reactive internals (intentionally plain properties) */
       _term: null,
@@ -1435,6 +1468,8 @@
       _ws: null,
       _resizeObserver: null,
       _scrollHandler: null,
+      _suppressStreamingBubble: false,  /* true while the invisible persona-injection
+                                            turn is in flight; cleared on first turn_end */
 
       init() {
         window.addEventListener('study-session-start', (event) => this.start(event.detail));
@@ -1617,6 +1652,19 @@
               rows: this._term.rows,
             }));
           }
+          /* ACP-only: ship the persona as the first invisible session/prompt
+             so the agent has system context before the user speaks. We bypass
+             _sendAcpInput on purpose — that helper pushes a user bubble into
+             acpMessages, which would render the persona text as if the user
+             typed it. Suppressing the streaming bubble for this turn (see
+             _appendAgentChunk + _finaliseStreamingBubble) keeps the agent's
+             ack response out of the visible chat too. */
+          if (this.transport === 'acp' && detail.personaText) {
+            this._suppressStreamingBubble = true;
+            this.personaSetupInFlight = true;
+            this.acpSending = true;
+            ws.send(JSON.stringify({ type: 'input', data: detail.personaText }));
+          }
         });
 
         ws.addEventListener('message', (event) => {
@@ -1662,20 +1710,41 @@
                 if (this.$refs.acpInputField) this.$refs.acpInputField.focus();
               });
             } else if (frame.kind === 'tool_call') {
-              if (this.terminalMode === 'acp-chat') {
+              if (this.terminalMode === 'acp-chat' && !this._suppressStreamingBubble) {
                 this._handleToolCall(frame.payload);
               }
             } else if (frame.kind === 'tool_call_update') {
-              if (this.terminalMode === 'acp-chat') {
+              if (this.terminalMode === 'acp-chat' && !this._suppressStreamingBubble) {
                 this._handleToolCallUpdate(frame.payload);
               }
             } else if (frame.kind === 'plan' || frame.kind === 'plan_update') {
-              if (this.terminalMode === 'acp-chat') {
+              if (this.terminalMode === 'acp-chat' && !this._suppressStreamingBubble) {
                 this._handlePlan(frame.payload);
               }
             } else if (frame.kind === 'request_permission') {
               if (this.terminalMode === 'acp-chat') {
-                this._handleRequestPermission(frame.payload);
+                if (this._suppressStreamingBubble) {
+                  /* Auto-allow during the persona-injection turn. The user
+                     hasn't typed anything yet — surfacing a permission
+                     prompt for tool calls the persona triggered would be
+                     confusing UX. Pick allow_once if available, else the
+                     first option. */
+                  const opts = (frame.payload && frame.payload.options) || [];
+                  const chosen =
+                    opts.find((o) => o && o.kind === 'allow_once') ||
+                    opts.find((o) => o && o.kind === 'allow_always') ||
+                    opts[0];
+                  const rid = frame.payload && frame.payload._request_id;
+                  if (rid && chosen && this._ws) {
+                    this._ws.send(JSON.stringify({
+                      type: 'permission_response',
+                      requestId: rid,
+                      outcome: { outcome: 'selected', optionId: chosen.optionId },
+                    }));
+                  }
+                } else {
+                  this._handleRequestPermission(frame.payload);
+                }
               }
             }
           }
@@ -1736,6 +1805,9 @@
 
       _appendAgentChunk(text) {
         if (!text) return;
+        /* Persona-injection turn: drop the agent's ack chunks on the floor.
+           Cleared in _finaliseStreamingBubble on the matching turn_end. */
+        if (this._suppressStreamingBubble) return;
         if (this.streamingMessageId === null) {
           /* Start a new streaming bubble. */
           const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -1758,6 +1830,16 @@
       },
 
       _finaliseStreamingBubble(reason) {
+        /* Persona-injection turn: clear suppression and release the input
+           lock. Nothing was ever pushed to acpMessages on this turn, so no
+           bubble to finalise — just hand control back to the user. */
+        if (this._suppressStreamingBubble) {
+          this._suppressStreamingBubble = false;
+          this.personaSetupInFlight = false;
+          this.acpSending = false;
+          this.streamingMessageId = null;
+          return;
+        }
         if (this.streamingMessageId === null) return;
         const msg = this.acpMessages.find((m) => m.id === this.streamingMessageId);
         if (msg) {

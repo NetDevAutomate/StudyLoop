@@ -44,12 +44,17 @@ document.addEventListener("alpine:init", () => {
     voiceOn: localStorage.getItem("voice") === "true",
     dyslexic: localStorage.getItem("dyslexic") === "true",
     light: localStorage.getItem("theme") === "light",
+    /* Palette selector: tokyo-night (default), dracula, catppuccin-mocha,
+       catppuccin-latte. The legacy `light` toggle stays for backward
+       compatibility but the palette is the canonical readability lever. */
+    palette: localStorage.getItem("palette") || "tokyo-night",
     _preferredVoice: null,
     _voicesLoaded: false,
 
     init() {
       if (this.dyslexic) document.body.classList.add("dyslexic");
       if (this.light) document.body.classList.add("light");
+      this._applyPalette();
       this.loadVoices();
       if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
@@ -66,6 +71,28 @@ document.addEventListener("alpine:init", () => {
       this.light = !this.light;
       document.body.classList.toggle("light", this.light);
       localStorage.setItem("theme", this.light ? "light" : "dark");
+    },
+
+    setPalette(name) {
+      const allowed = [
+        "tokyo-night",
+        "dracula",
+        "catppuccin-mocha",
+        "catppuccin-latte",
+      ];
+      if (!allowed.includes(name)) return;
+      this.palette = name;
+      localStorage.setItem("palette", name);
+      this._applyPalette();
+    },
+
+    _applyPalette() {
+      /* `tokyo-night` is the bare :root state — drop the data attribute. */
+      if (this.palette === "tokyo-night") {
+        document.body.removeAttribute("data-palette");
+      } else {
+        document.body.setAttribute("data-palette", this.palette);
+      }
     },
 
     toggleVoice() {

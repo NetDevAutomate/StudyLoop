@@ -320,8 +320,11 @@ class TestSimpleMarkdownRendersAfterTurnEnd:
                 }"""
             )
 
-            # During streaming, the <pre class="acp-message-streaming"> should
-            # contain raw text. We check *after* streaming starts (streamingMessageId set).
+            # During streaming the visible UI is a typing indicator only —
+            # NOT raw markdown text. The previous design rendered chunk text
+            # in a <pre> that leaked '##'/'**'/'```' source and produced a
+            # cascade-staircase indent. The fix hides chunk text entirely
+            # until turn_end, then renders the full markdown bubble once.
             page.wait_for_function(
                 """() => {
                   const root = document.querySelector('[x-data="liveAgentConsole()"]');
@@ -333,14 +336,24 @@ class TestSimpleMarkdownRendersAfterTurnEnd:
                 }""",
                 timeout=8000,
             )
-            streaming_text = page.evaluate(
-                """() => {
-                  const pre = document.querySelector('.acp-message-assistant .acp-message-streaming');
-                  return pre ? pre.textContent : null;
-                }"""
+            # The typing-indicator container must be present in the DOM (it
+            # may already be hidden if turn_end raced ahead — the stub bursts
+            # everything in one shot — but the markup must exist).
+            typing_indicator_in_dom = page.evaluate(
+                """() => !!document.querySelector('.acp-message-assistant .acp-message-typing')"""
             )
-            assert streaming_text is not None, "Streaming <pre> not found during streaming"
-            assert "Hello" in streaming_text, f"Raw text not in streaming pre: {streaming_text!r}"
+            assert typing_indicator_in_dom, (
+                ".acp-message-typing markup missing from assistant bubble"
+            )
+            # The OLD bug: raw chunk text rendered in a <pre>. Confirm we
+            # are not regressing — the streaming-class element must NOT
+            # exist in the DOM at all (the class was removed in U4).
+            old_streaming_pre = page.evaluate(
+                """() => !!document.querySelector('.acp-message-streaming')"""
+            )
+            assert not old_streaming_pre, (
+                "Old .acp-message-streaming <pre> reappeared — regression!"
+            )
 
             # Wait for turn_end to finalise the bubble.
             page.wait_for_function(
@@ -817,11 +830,13 @@ class TestUserMessageAppearsAfterSend:
 
             user_text = page.evaluate(
                 """() => {
-                  const el = document.querySelector('.acp-message-user .acp-message-streaming');
+                  const el = document.querySelector('.acp-message-user .acp-message-user-text');
                   return el ? el.textContent : null;
                 }"""
             )
-            assert user_text is not None, ".acp-message-user .acp-message-streaming not found"
+            assert user_text is not None, (
+                ".acp-message-user .acp-message-user-text not found"
+            )
             assert "hello-user-bubble" in user_text, (
                 f"User text not in bubble: {user_text!r}"
             )

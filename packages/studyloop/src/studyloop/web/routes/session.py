@@ -771,16 +771,28 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
             status_code=500,
         )
 
-    # --- Session dir (for cwd — no persona/MCP files) ---
+    # --- Session dir (for cwd — no persona/MCP file written) ---
     slug = body.topic.lower().replace(" ", "-")[:20]
     short_id = study_id[:8]
     session_dir = SESSION_DIR / "sessions" / f"acp-{slug}-{short_id}"
 
+    from studyloop.agent_launcher import build_canonical_persona
     from studyloop.session.orchestrator import setup_session_dir
 
     setup_session_dir(session_dir, body.topic)
 
-    # --- Session state (no tmux, no persona_file) ---
+    # Persona is built here and returned inline in the response so the
+    # browser can ship it as the first invisible session/prompt on WS open.
+    # No persona file is written to disk: ACP agents receive context via
+    # session/prompt, not via argv/env, so a file would just be dead weight.
+    persona_text = build_canonical_persona("focus", body.topic, body.energy)
+    persona_hash = hashlib.sha256(persona_text.encode()).hexdigest()[:16]
+
+    from studyloop.history.sessions import update_persona_hash
+
+    update_persona_hash(study_id, persona_hash)
+
+    # --- Session state (no tmux, no persona_file path; hash only) ---
     _ensure_session_dir()
     now = datetime.now(UTC).isoformat()
     write_session_state(
@@ -798,6 +810,7 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
             "session_dir": str(session_dir),
             "agent": agent,
             "transport": "acp",
+            "persona_hash": persona_hash,
         }
     )
     TOPICS_FILE.touch(mode=0o600, exist_ok=True)
@@ -843,6 +856,12 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
             "agent": agent,
             "transport": "acp",
             "ws_url": f"/api/session/ws?study_session_id={study_id}",
+            # persona_text is shipped inline so the browser can send it as
+            # the first invisible session/prompt frame after WS open. ACP
+            # agents have no argv/env hook for context; the prompt channel
+            # is the only injection point.
+            "persona_text": persona_text,
+            "persona_hash": persona_hash,
         },
         status_code=201,
     )
