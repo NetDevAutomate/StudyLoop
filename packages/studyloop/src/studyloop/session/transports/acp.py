@@ -56,12 +56,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# JSON-RPC method the ACP spec uses for the client's permission-response.
-# No live trace was available at plan time; "session/respond" mirrors the
-# session/* prefix pattern used by session/prompt and session/cancel.
-# If a real Kiro/Gemini trace shows a different name, update only this constant.
-_PERMISSION_RESPONSE_METHOD = "session/respond"
-
 _INITIALIZE_TIMEOUT_S = 15.0
 _SESSION_NEW_TIMEOUT_S = 60.0  # Kiro's MCP-server bootstrap takes ~13s; gemini varies. Generous margin.
 _EVENT_QUEUE_MAX = 256
@@ -242,35 +236,45 @@ class ACPTransport:
         # freely.
         return
 
-    async def send_permission(self, tool_call_id: str, option_id: str) -> None:
-        """Send the ACP permission-response for a pending ``request_permission``.
+    async def send_permission_response(self, request_id: int | str, outcome: dict) -> None:
+        """Reply to an inbound ``session/request_permission`` JSON-RPC request.
 
-        Issues ``session/respond`` (``_PERMISSION_RESPONSE_METHOD``) with the
-        session-id, toolCallId, and optionId chosen by the user.  This is
-        **not** added to the ``AgentSessionTransport`` Protocol — PTYTransport
-        has no concept of permissions and would fail structural checks if the
-        method were Protocol-declared.  The route uses ``hasattr`` to call this
-        only on transport instances that implement it.
+        ACP wire protocol: the agent sends ``session/request_permission`` as a
+        JSON-RPC **request** (with an ``id``).  The client (us) MUST reply via
+        a JSON-RPC **response** — a frame with the matching ``id``, a
+        ``result`` field, and **no** ``method`` key.
+
+        Shape per ``zRequestPermissionResponse`` in the Gemini CLI source::
+
+            {"jsonrpc": "2.0", "id": <request_id>,
+             "result": {"outcome": {"outcome": "selected", "optionId": "..."}}}
+
+        or for cancel::
+
+            {"result": {"outcome": {"outcome": "cancelled"}}}
+
+        This method is **not** added to the ``AgentSessionTransport`` Protocol
+        — PTYTransport has no concept of permissions.  The route uses
+        ``hasattr`` to call this only on transport instances that implement it.
 
         No-ops silently when the session is not started or already ended.
         """
         if self._state is None or self._ended:
             return
-        if self._session_id is None:
+        state = self._state
+        if state.proc.stdin is None or state.proc.stdin.is_closing():
             return
+        frame = {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": {"outcome": outcome},
+        }
+        line = (json.dumps(frame) + "\n").encode("utf-8")
         try:
-            await self._rpc(
-                _PERMISSION_RESPONSE_METHOD,
-                {
-                    "sessionId": self._session_id,
-                    "toolCallId": tool_call_id,
-                    "optionId": option_id,
-                },
-            )
-        except _RpcError as exc:
-            logger.warning("send_permission RPC error: %s", exc.message)
+            state.proc.stdin.write(line)
+            await state.proc.stdin.drain()
         except Exception:
-            logger.exception("send_permission unexpected error")
+            logger.exception("send_permission_response write error")
 
     async def events(self) -> AsyncGenerator[TransportEventT, None]:
         state = self._state
@@ -400,7 +404,46 @@ class ACPTransport:
         frame: dict,
         queue: asyncio.Queue[TransportEventT | None],
     ) -> None:
-        """Route one JSON-RPC frame: response → future, notification → queue."""
+        """Route one JSON-RPC frame: response → future, notification → queue.
+
+        Frame classification (JSON-RPC 2.0):
+        - Inbound request:  has ``id`` + ``method``, no ``result``/``error``
+        - Outbound response: has ``id`` + (``result`` or ``error``), no ``method``
+        - Notification:     has ``method``, no ``id``
+
+        The inbound-request branch MUST come before the response branch so that
+        ``session/request_permission`` (which carries an ``id``) is not
+        mis-classified as an unknown-id response and silently dropped.
+        """
+        # -- Inbound request from agent (e.g. session/request_permission) ----
+        # id present + method present + no result/error → it's a request.
+        if (
+            "id" in frame
+            and "method" in frame
+            and "result" not in frame
+            and "error" not in frame
+        ):
+            method = frame.get("method")
+            params = frame.get("params") or {}
+            req_id = frame["id"]
+            if method == "session/request_permission":
+                # Embed the request id so the route/UI can correlate the reply.
+                payload = {**params, "_request_id": req_id}
+                msg = AgentMessage(kind="request_permission", payload=payload)
+                try:
+                    queue.put_nowait(msg)
+                except asyncio.QueueFull:
+                    logger.warning("ACP event queue full; dropping oldest")
+                    with contextlib.suppress(asyncio.QueueEmpty):
+                        queue.get_nowait()
+                    queue.put_nowait(msg)
+            else:
+                logger.debug(
+                    "ACP: unhandled inbound request method=%r id=%r", method, req_id
+                )
+            return
+
+        # -- Response to one of our outbound requests -------------------------
         if "id" in frame and ("result" in frame or "error" in frame):
             fut = self._pending.get(frame["id"])
             if fut is None:
