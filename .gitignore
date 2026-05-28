@@ -509,3 +509,9 @@ benchmarks/d2-output/
 
 # Stray mock path artefacts from tests that stringify MagicMock path objects
 <MagicMock id='*'>
+
+# Playwright MCP browser cache
+.playwright-mcp/
+
+# Local debug screenshots at repo root (don't commit; allow under packages/ and docs/)
+/*.png
