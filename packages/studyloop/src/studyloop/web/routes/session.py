@@ -1214,6 +1214,15 @@ async def live_session_socket(websocket: WebSocket) -> None:
             elif ftype == "stop":
                 await transport.cancel()
                 return
+            elif ftype == "permission_response":
+                # ACP permission response (U6). Duck-typed guard: PTYTransport
+                # has no send_permission and must NOT get one added to the
+                # Protocol (would fail structural checks). Only ACPTransport
+                # implements the method; future transports opt-in by name.
+                tool_call_id = frame.get("toolCallId", "")
+                option_id = frame.get("optionId", "")
+                if hasattr(transport, "send_permission"):
+                    await transport.send_permission(tool_call_id, option_id)
             # Silently drop unknown frame types — no error channel needed.
 
     # --- Pump with TaskGroup (plan Blocker B5) ---------------------------

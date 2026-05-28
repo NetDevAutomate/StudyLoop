@@ -63,6 +63,7 @@ class TestUpdateKindMap:
             ("turn_end", "turn_end"),
             ("plan", "plan"),
             ("plan_update", "plan_update"),
+            ("request_permission", "request_permission"),
             ("available_commands_update", "available_commands"),
         ],
     )
@@ -258,3 +259,50 @@ class TestACPTransportSkeleton:
     # removed when ACPTransport's skeleton landed behaviour. End-to-end
     # coverage now lives in ``test_acp_transport.py`` against the
     # scripted StubACPAgent.
+
+
+class TestRequestPermissionNormalisation:
+    """U6 — request_permission wire string maps to the expected kind."""
+
+    def test_request_permission_maps_to_request_permission(self) -> None:
+        params = {
+            "sessionId": "sess-1",
+            "update": {
+                "sessionUpdate": "request_permission",
+                "toolCallId": "tc-99",
+                "options": [
+                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            },
+        }
+        result = normalise_session_update(params)
+        assert result is not None
+        assert result["kind"] == "request_permission"
+        assert result["payload"]["toolCallId"] == "tc-99"
+        assert len(result["payload"]["options"]) == 2
+        assert "sessionUpdate" not in result["payload"]
+
+    def test_request_permission_explicit_in_map(self) -> None:
+        """Explicit map entry — not passthrough. Forward-compat guard."""
+        assert "request_permission" in UPDATE_KIND_MAP
+        assert UPDATE_KIND_MAP["request_permission"] == "request_permission"
+
+    def test_request_permission_not_dropped(self) -> None:
+        """request_permission must NOT be in DROPPED_UPDATE_KINDS — it's learner-visible."""
+        assert "request_permission" not in DROPPED_UPDATE_KINDS
+
+    def test_request_permission_single_option(self) -> None:
+        """One-option payload normalises correctly (edge case from plan §U6)."""
+        params = {
+            "sessionId": "sess-1",
+            "update": {
+                "sessionUpdate": "request_permission",
+                "toolCallId": "tc-1",
+                "options": [{"kind": "allow", "name": "Allow", "optionId": "opt-1"}],
+            },
+        }
+        result = normalise_session_update(params)
+        assert result is not None
+        assert result["kind"] == "request_permission"
+        assert len(result["payload"]["options"]) == 1

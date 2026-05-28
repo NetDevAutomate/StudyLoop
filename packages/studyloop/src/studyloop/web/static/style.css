@@ -2166,3 +2166,72 @@ main:has(.split-container) .session-dashboard {
 .acp-plan-step-in_progress .acp-plan-step-icon { color: var(--warning, #f5a623); }
 .acp-plan-step-completed .acp-plan-step-icon   { color: var(--success, #4caf50); }
 .acp-plan-step-failed .acp-plan-step-icon      { color: var(--error, #f44336); }
+
+/* U6: permission prompt --------------------------------------------------- */
+
+.acp-permission-prompt {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border-left: 3px solid var(--warning, #f5a623);
+  background: color-mix(in srgb, var(--warning, #f5a623) 12%, var(--bg-alt, #1e1f2e));
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.acp-permission-prompt-header {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--warning, #f5a623);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.acp-permission-prompt-tool {
+  font-size: 0.85rem;
+  color: var(--text-muted, #888);
+  font-style: italic;
+}
+
+.acp-permission-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.acp-permission-option {
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid var(--border, #333);
+  background: var(--bg-alt, #1e1f2e);
+  color: var(--text, #c0caf5);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.acp-permission-option:hover {
+  background: color-mix(in srgb, var(--accent, #7aa2f7) 18%, var(--bg-alt, #1e1f2e));
+  border-color: var(--accent, #7aa2f7);
+}
+
+.acp-permission-allow {
+  border-color: var(--success, #4caf50);
+  color: var(--success, #4caf50);
+}
+
+.acp-permission-allow:hover {
+  background: color-mix(in srgb, var(--success, #4caf50) 18%, var(--bg-alt, #1e1f2e));
+  border-color: var(--success, #4caf50);
+}
+
+.acp-permission-deny {
+  border-color: var(--error, #f44336);
+  color: var(--error, #f44336);
+}
+
+.acp-permission-deny:hover {
+  background: color-mix(in srgb, var(--error, #f44336) 18%, var(--bg-alt, #1e1f2e));
+  border-color: var(--error, #f44336);
+}

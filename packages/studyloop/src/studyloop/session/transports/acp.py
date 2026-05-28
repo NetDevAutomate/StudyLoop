@@ -56,6 +56,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# JSON-RPC method the ACP spec uses for the client's permission-response.
+# No live trace was available at plan time; "session/respond" mirrors the
+# session/* prefix pattern used by session/prompt and session/cancel.
+# If a real Kiro/Gemini trace shows a different name, update only this constant.
+_PERMISSION_RESPONSE_METHOD = "session/respond"
+
 _INITIALIZE_TIMEOUT_S = 15.0
 _SESSION_NEW_TIMEOUT_S = 60.0  # Kiro's MCP-server bootstrap takes ~13s; gemini varies. Generous margin.
 _EVENT_QUEUE_MAX = 256
@@ -235,6 +241,36 @@ class ACPTransport:
         # parity with PTYTransport so the WS route can call this
         # freely.
         return
+
+    async def send_permission(self, tool_call_id: str, option_id: str) -> None:
+        """Send the ACP permission-response for a pending ``request_permission``.
+
+        Issues ``session/respond`` (``_PERMISSION_RESPONSE_METHOD``) with the
+        session-id, toolCallId, and optionId chosen by the user.  This is
+        **not** added to the ``AgentSessionTransport`` Protocol — PTYTransport
+        has no concept of permissions and would fail structural checks if the
+        method were Protocol-declared.  The route uses ``hasattr`` to call this
+        only on transport instances that implement it.
+
+        No-ops silently when the session is not started or already ended.
+        """
+        if self._state is None or self._ended:
+            return
+        if self._session_id is None:
+            return
+        try:
+            await self._rpc(
+                _PERMISSION_RESPONSE_METHOD,
+                {
+                    "sessionId": self._session_id,
+                    "toolCallId": tool_call_id,
+                    "optionId": option_id,
+                },
+            )
+        except _RpcError as exc:
+            logger.warning("send_permission RPC error: %s", exc.message)
+        except Exception:
+            logger.exception("send_permission unexpected error")
 
     async def events(self) -> AsyncGenerator[TransportEventT, None]:
         state = self._state

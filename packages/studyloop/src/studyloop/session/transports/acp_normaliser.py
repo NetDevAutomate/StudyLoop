@@ -54,6 +54,7 @@ UPDATE_KIND_MAP: dict[str, str] = {
     "turn_end": "turn_end",
     "plan": "plan",
     "plan_update": "plan_update",
+    "request_permission": "request_permission",
     "available_commands_update": "available_commands",
 }
 

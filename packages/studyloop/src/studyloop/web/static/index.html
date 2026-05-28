@@ -885,10 +885,34 @@
                   </template>
                 </div>
               </template>
+              <!-- U6: Permission prompt — shown inline when pendingPermission !== null.
+                   While pending: input row hidden, acpSending locked.
+                   Stored on pendingPermission (not in acpMessages) to avoid the
+                   Alpine 3.14.8 null.type race on x-for over acpMessages. -->
+              <template x-if="pendingPermission">
+                <div class="acp-permission-prompt">
+                  <div class="acp-permission-prompt-header">&#9888; Permission required</div>
+                  <template x-if="pendingPermission && toolCallsById.get(pendingPermission.toolCallId)">
+                    <div class="acp-permission-prompt-tool"
+                         x-text="'Tool: ' + (toolCallsById.get(pendingPermission.toolCallId) || {}).name"></div>
+                  </template>
+                  <div class="acp-permission-buttons">
+                    <template x-for="opt in (pendingPermission ? pendingPermission.options : [])" :key="opt.optionId">
+                      <button type="button"
+                              class="acp-permission-option"
+                              :class="opt.kind === 'allow' ? 'acp-permission-allow' : (opt.kind === 'deny' ? 'acp-permission-deny' : '')"
+                              @click="$event.preventDefault(); _resolvePermission(opt.optionId)"
+                              x-text="opt.name || opt.kind"></button>
+                    </template>
+                  </div>
+                </div>
+              </template>
               <!-- ACP turn-based input row (relocated from .xterm-panel).
+                   Hidden while a permission prompt is unresolved.
                    Entire panel is already gated by terminalMode === 'acp-chat'
                    so no extra x-show needed on the form itself. -->
-              <form class="acp-input-row" @submit.prevent="_sendAcpInput()">
+              <form class="acp-input-row" @submit.prevent="_sendAcpInput()"
+                    x-show="!pendingPermission">
                 <input type="text" class="acp-input-field"
                        x-ref="acpInputField"
                        x-model="acpInput"
@@ -1657,6 +1681,10 @@
               if (this.terminalMode === 'acp-chat') {
                 this._handlePlan(frame.payload);
               }
+            } else if (frame.kind === 'request_permission') {
+              if (this.terminalMode === 'acp-chat') {
+                this._handleRequestPermission(frame.payload);
+              }
             }
           }
         });
@@ -1932,6 +1960,42 @@
           status: (s.status || 'pending').toLowerCase(),
         }));
         this.plan = { steps };
+      },
+
+      /* U6: request_permission handler. Stores on pendingPermission (not in
+         acpMessages) to sidestep the Alpine 3.14.8 null.type race — same
+         trick as U5 this.plan. Sets acpSending = true to lock the input row
+         for the duration. Defensive: missing / empty options → no-op rather
+         than crash. */
+      _handleRequestPermission(payload) {
+        if (!payload || typeof payload !== 'object') return;
+        const options = Array.isArray(payload.options) ? payload.options : [];
+        if (options.length === 0) return;
+        this.acpSending = true;
+        this.pendingPermission = {
+          toolCallId: payload.toolCallId || '',
+          options,
+        };
+        this._scrollChatToBottom();
+      },
+
+      /* U6: Send permission response WS frame, clear the prompt, and release
+         acpSending so the input row restores. */
+      _resolvePermission(optionId) {
+        const perm = this.pendingPermission;
+        if (!perm) return;
+        if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+          this._ws.send(JSON.stringify({
+            type: 'permission_response',
+            toolCallId: perm.toolCallId,
+            optionId,
+          }));
+        }
+        this.pendingPermission = null;
+        this.acpSending = false;
+        this.$nextTick(() => {
+          if (this.$refs.acpInputField) this.$refs.acpInputField.focus();
+        });
       },
 
       _toggleToolCall(msg) {

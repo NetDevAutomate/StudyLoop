@@ -185,6 +185,22 @@ def main() -> int:
             if os.environ.get("STUB_ACP_EXIT_ON_CANCEL") == "1":
                 return 0
 
+        elif method == "session/respond":
+            # ACP permission-response (U6). Echo toolCallId + optionId back
+            # so e2e tests can verify the round-trip without -32601.
+            params = frame.get("params") or {}
+            if req_id is not None:
+                _emit(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {
+                            "toolCallId": params.get("toolCallId"),
+                            "optionId": params.get("optionId"),
+                        },
+                    }
+                )
+
         else:
             # Unknown methods → -32601.
             if req_id is not None:

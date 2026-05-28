@@ -1862,3 +1862,526 @@ class TestPlanEdgeCases:
             _end_any_active_session(page)
         finally:
             page.close()
+
+
+# ---------------------------------------------------------------------------
+# U6: request_permission inline prompt — 7 scenarios
+# ---------------------------------------------------------------------------
+
+
+def _permission_notif(
+    tool_call_id: str,
+    options: list[dict],
+    session_id: str = "stub-session-1",
+) -> dict:
+    """Build a request_permission session/update notification."""
+    return {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+            "sessionId": session_id,
+            "update": {
+                "sessionUpdate": "request_permission",
+                "toolCallId": tool_call_id,
+                "options": options,
+            },
+        },
+    }
+
+
+def _inject_permission(page, tool_call_id: str, options: list[dict]) -> None:
+    """Inject a request_permission payload directly into the Alpine component."""
+    page.evaluate(
+        """([toolCallId, options]) => {
+          const root = document.querySelector('[x-data="liveAgentConsole()"]');
+          const d = window.Alpine.$data(root);
+          d._handleRequestPermission({toolCallId, options});
+        }""",
+        [tool_call_id, options],
+    )
+
+
+def _wait_for_permission_prompt(page, timeout: int = 5000) -> None:
+    """Wait until .acp-permission-prompt is present in the DOM."""
+    page.wait_for_selector(".acp-permission-prompt", state="attached", timeout=timeout)
+
+
+def _get_permission_buttons(page) -> list[dict]:
+    """Return list of {text, classes} for each visible permission button."""
+    return page.evaluate(
+        """() => {
+          const btns = document.querySelectorAll('.acp-permission-option');
+          return Array.from(btns).map(b => ({
+            text: b.textContent.trim(),
+            classes: b.className,
+          }));
+        }"""
+    )
+
+
+def _hook_ws_sends(page) -> None:
+    """Monkey-patch d._ws.send so outbound frames are captured in window.__wsSent."""
+    page.evaluate(
+        """() => {
+          const root = document.querySelector('[x-data="liveAgentConsole()"]');
+          const d = window.Alpine.$data(root);
+          const ws = d._ws;
+          if (!ws) return;
+          window.__wsSent = [];
+          const orig = ws.send.bind(ws);
+          ws.send = (payload) => {
+            try { window.__wsSent.push(JSON.parse(payload)); } catch {}
+            return orig(payload);
+          };
+        }"""
+    )
+
+
+def _get_ws_sent(page) -> list[dict]:
+    return page.evaluate("() => window.__wsSent || []")
+
+
+@pytest.fixture(scope="class")
+def _server_permission_allow_deny() -> "Generator[subprocess.Popen, None, None]":
+    """Server emits request_permission with allow+deny options on each prompt turn."""
+    clean_ipc()
+    proc = _start_web_server_with_stub(
+        prompt_updates=[
+            _permission_notif(
+                "tc-99",
+                [
+                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            )
+        ]
+    )
+    try:
+        yield proc
+    finally:
+        _teardown_server(proc)
+
+
+@pytest.mark.parametrize("agent", ACP_AGENTS)
+class TestPermissionPrompt:
+    """U6 — request_permission inline prompt (7 scenarios from plan §U6)."""
+
+    # ------------------------------------------------------------------
+    # Scenario 1: allow+deny → both buttons render; input row hidden
+    # ------------------------------------------------------------------
+
+    def test_allow_deny_buttons_render_and_input_row_hidden(
+        self,
+        _server_permission_allow_deny: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Happy: request_permission with [allow, deny] → both buttons render;
+        input row hidden while prompt is unresolved."""
+        _ = _server_permission_allow_deny
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _inject_permission(
+                page,
+                "tc-1",
+                [
+                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            )
+            _wait_for_permission_prompt(page)
+
+            btns = _get_permission_buttons(page)
+            assert len(btns) == 2, f"Expected 2 buttons, got: {btns}"
+            names = [b["text"] for b in btns]
+            assert "Allow" in names and "Deny" in names, (
+                f"Expected Allow+Deny buttons, got: {names}"
+            )
+            # Input row must be hidden while prompt is pending.
+            input_row_visible = page.evaluate(
+                """() => {
+                  const r = document.querySelector('.acp-input-row');
+                  if (!r) return false;
+                  return getComputedStyle(r).display !== 'none';
+                }"""
+            )
+            assert not input_row_visible, (
+                "Input row should be hidden while permission prompt is pending"
+            )
+
+            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            assert not filtered_errors, f"JS errors during permission render: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+    # ------------------------------------------------------------------
+    # Scenario 2: click allow → WS frame sent; prompt clears; input restored
+    # ------------------------------------------------------------------
+
+    def test_click_allow_sends_ws_frame_and_clears_prompt(
+        self,
+        _server_permission_allow_deny: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Happy: click Allow → permission_response WS frame with correct
+        toolCallId/optionId; prompt disappears; input row restores."""
+        _ = _server_permission_allow_deny
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _inject_permission(
+                page,
+                "tc-click",
+                [
+                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            )
+            _wait_for_permission_prompt(page)
+            _hook_ws_sends(page)
+
+            # Click Allow via JS (overflow:auto container may need it).
+            page.evaluate(
+                """() => {
+                  const btns = document.querySelectorAll('.acp-permission-option');
+                  const allow = Array.from(btns).find(b => b.textContent.trim() === 'Allow');
+                  if (allow) allow.click();
+                }"""
+            )
+
+            # Prompt must disappear.
+            page.wait_for_selector(
+                ".acp-permission-prompt", state="detached", timeout=5000
+            )
+
+            # WS frame must carry the right shape.
+            sent = _get_ws_sent(page)
+            perm_frames = [f for f in sent if f.get("type") == "permission_response"]
+            assert len(perm_frames) == 1, (
+                f"Expected 1 permission_response frame, got: {sent}"
+            )
+            assert perm_frames[0]["toolCallId"] == "tc-click", (
+                f"Wrong toolCallId: {perm_frames[0]}"
+            )
+            assert perm_frames[0]["optionId"] == "opt-allow", (
+                f"Wrong optionId: {perm_frames[0]}"
+            )
+
+            # Input row must be visible again.
+            page.wait_for_function(
+                """() => {
+                  const r = document.querySelector('.acp-input-row');
+                  return r && getComputedStyle(r).display !== 'none';
+                }""",
+                timeout=3000,
+            )
+
+            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            assert not filtered_errors, f"JS errors after Allow click: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+    # ------------------------------------------------------------------
+    # Scenario 3: single option → exactly one button
+    # ------------------------------------------------------------------
+
+    def test_single_option_renders_one_button(
+        self,
+        _server_permission_allow_deny: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Edge: only one option provided → exactly one button in the prompt."""
+        _ = _server_permission_allow_deny
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _inject_permission(
+                page,
+                "tc-single",
+                [{"kind": "allow", "name": "Proceed", "optionId": "opt-1"}],
+            )
+            _wait_for_permission_prompt(page)
+
+            btns = _get_permission_buttons(page)
+            assert len(btns) == 1, f"Expected 1 button for single option, got: {btns}"
+            assert btns[0]["text"] == "Proceed", (
+                f"Button should show option name, got: {btns[0]['text']!r}"
+            )
+
+            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            assert not filtered_errors, f"JS errors during single-option render: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+    # ------------------------------------------------------------------
+    # Scenario 4: three+ options → all render with .name labels
+    # ------------------------------------------------------------------
+
+    def test_three_options_all_render_with_name_labels(
+        self,
+        _server_permission_allow_deny: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Edge: three options with distinct names → three buttons, each
+        showing its option.name."""
+        _ = _server_permission_allow_deny
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _inject_permission(
+                page,
+                "tc-three",
+                [
+                    {"kind": "allow", "name": "Allow once", "optionId": "opt-once"},
+                    {"kind": "allow", "name": "Allow always", "optionId": "opt-always"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            )
+            _wait_for_permission_prompt(page)
+
+            btns = _get_permission_buttons(page)
+            assert len(btns) == 3, f"Expected 3 buttons, got: {btns}"
+            names = [b["text"] for b in btns]
+            assert "Allow once" in names, f"'Allow once' missing from: {names}"
+            assert "Allow always" in names, f"'Allow always' missing from: {names}"
+            assert "Deny" in names, f"'Deny' missing from: {names}"
+
+            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            assert not filtered_errors, f"JS errors during three-option render: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+    # ------------------------------------------------------------------
+    # Scenario 5: acpSending locked before permission → permission takes precedence
+    # ------------------------------------------------------------------
+
+    def test_permission_prompt_overlays_when_acp_sending_already_true(
+        self,
+        _server_permission_allow_deny: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Error: input row is already locked (acpSending=true from a normal
+        turn) when request_permission arrives — prompt still renders, no
+        concurrent duplicate prompt."""
+        _ = _server_permission_allow_deny
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+
+            # Simulate a turn already in-flight: acpSending = true, no pending perm.
+            page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+                  const d = window.Alpine.$data(root);
+                  d.acpSending = true;
+                  d.pendingPermission = null;
+                }"""
+            )
+
+            # Now inject a permission request (as would happen mid-turn).
+            _inject_permission(
+                page,
+                "tc-overlap",
+                [
+                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            )
+            _wait_for_permission_prompt(page)
+
+            # Exactly one prompt, no duplicate.
+            prompt_count = page.evaluate(
+                "() => document.querySelectorAll('.acp-permission-prompt').length"
+            )
+            assert prompt_count == 1, (
+                f"Expected exactly 1 permission prompt, got {prompt_count}"
+            )
+            # acpSending must still be true (locked for permission).
+            acp_sending = page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+                  return window.Alpine.$data(root).acpSending;
+                }"""
+            )
+            assert acp_sending is True, (
+                "acpSending should remain true while permission prompt is unresolved"
+            )
+
+            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            assert not filtered_errors, f"JS errors during overlap test: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+    # ------------------------------------------------------------------
+    # Scenario 6: request_permission mid-turn → input already locked;
+    #             resolution clears both prompt and acpSending
+    # ------------------------------------------------------------------
+
+    def test_mid_turn_permission_clears_both_locks_on_resolve(
+        self,
+        _server_permission_allow_deny: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Integration: mid-turn permission — both acpSending and
+        pendingPermission are set; clicking deny clears both."""
+        _ = _server_permission_allow_deny
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+
+            # Simulate mid-turn: acpSending already true.
+            page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+                  window.Alpine.$data(root).acpSending = true;
+                }"""
+            )
+            _inject_permission(
+                page,
+                "tc-mid",
+                [
+                    {"kind": "allow", "name": "Allow", "optionId": "opt-allow"},
+                    {"kind": "deny", "name": "Deny", "optionId": "opt-deny"},
+                ],
+            )
+            _wait_for_permission_prompt(page)
+
+            # Click Deny to resolve.
+            page.evaluate(
+                """() => {
+                  const btns = document.querySelectorAll('.acp-permission-option');
+                  const deny = Array.from(btns).find(b => b.textContent.trim() === 'Deny');
+                  if (deny) deny.click();
+                }"""
+            )
+
+            # Prompt must disappear.
+            page.wait_for_selector(
+                ".acp-permission-prompt", state="detached", timeout=5000
+            )
+
+            # Both locks must be released.
+            state = page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+                  const d = window.Alpine.$data(root);
+                  return {acpSending: d.acpSending, pendingPermission: d.pendingPermission};
+                }"""
+            )
+            assert state["acpSending"] is False, (
+                f"acpSending not cleared after resolve: {state}"
+            )
+            assert state["pendingPermission"] is None, (
+                f"pendingPermission not cleared after resolve: {state}"
+            )
+
+            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            assert not filtered_errors, f"JS errors during mid-turn resolve: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+    # ------------------------------------------------------------------
+    # Scenario 7 (integration/server): permission_response WS frame
+    # reaches ACPTransport.send_permission via the route
+    # ------------------------------------------------------------------
+
+    def test_permission_response_ws_frame_reaches_server_route(
+        self,
+        _server_permission_allow_deny: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Integration (server): after clicking Allow, the permission_response
+        WS frame reaches the route and is forwarded to transport.send_permission.
+        Confirmed by the stub echoing a result for session/respond (no -32601).
+        No TransportError must appear in acpMessages."""
+        _ = _server_permission_allow_deny
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+
+            # Drive a real turn — stub emits request_permission then stopReason=end_turn.
+            page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+                  const d = window.Alpine.$data(root);
+                  d.acpInput = 'ping';
+                  d._sendAcpInput();
+                }"""
+            )
+
+            # Wait for the permission prompt to appear (stub emitted it over WS).
+            _wait_for_permission_prompt(page, timeout=8000)
+
+            # Hook WS to capture outbound frames before clicking.
+            _hook_ws_sends(page)
+
+            # Click Allow.
+            page.evaluate(
+                """() => {
+                  const btns = document.querySelectorAll('.acp-permission-option');
+                  const allow = Array.from(btns).find(b => b.textContent.trim() === 'Allow');
+                  if (allow) allow.click();
+                }"""
+            )
+
+            # Prompt must clear.
+            page.wait_for_selector(
+                ".acp-permission-prompt", state="detached", timeout=5000
+            )
+
+            # The permission_response WS frame must have been sent.
+            sent = _get_ws_sent(page)
+            perm_frames = [f for f in sent if f.get("type") == "permission_response"]
+            assert len(perm_frames) >= 1, (
+                f"Expected permission_response frame to be sent, got: {sent}"
+            )
+            assert perm_frames[0]["toolCallId"] == "tc-99", (
+                f"toolCallId mismatch: {perm_frames[0]}"
+            )
+
+            # No TransportError bubbles should appear (stub responded, not -32601).
+            error_msgs = page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+                  const d = window.Alpine.$data(root);
+                  return (d.acpMessages || [])
+                    .filter(m => m.role === 'error')
+                    .map(m => m.text);
+                }"""
+            )
+            assert not error_msgs, (
+                f"TransportError appeared after permission resolve: {error_msgs}"
+            )
+
+            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            assert not filtered_errors, f"JS errors during server integration test: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
