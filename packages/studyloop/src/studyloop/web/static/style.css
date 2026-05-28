@@ -2000,3 +2000,122 @@ main:has(.split-container) .session-dashboard {
   padding-left: 10px;
   color: var(--text-muted);
 }
+
+/* ------------------------------------------------------------------
+ * ACP tool-call cards (U4)
+ * Collapsible cards keyed by toolCallId. Bash-class tools render
+ * output in an exec pane (dark monospace terminal look). Status badges
+ * use the tokyo-night palette variables defined in :root.
+ * ------------------------------------------------------------------ */
+.acp-tool-call {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 8px 0;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.acp-tool-call-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-hover);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+}
+
+.acp-tool-call-header:hover {
+  background: var(--bg-card);
+  filter: brightness(1.1);
+}
+
+.acp-tool-call-chevron {
+  width: 1ch;
+  text-align: center;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.acp-tool-call-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status badge sits inside the header */
+.acp-tool-call-status-badge {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.acp-tool-call-status-pending .acp-tool-call-status-badge,
+.acp-tool-call-status-badge.acp-tool-call-status-pending {
+  background: rgba(224, 175, 104, 0.15);
+  color: var(--yellow);
+}
+
+.acp-tool-call-status-running .acp-tool-call-status-badge,
+.acp-tool-call-status-badge.acp-tool-call-status-running {
+  background: rgba(122, 162, 247, 0.15);
+  color: var(--accent);
+  animation: acp-tool-pulse 1.4s ease-in-out infinite;
+}
+
+.acp-tool-call-status-done .acp-tool-call-status-badge,
+.acp-tool-call-status-badge.acp-tool-call-status-done {
+  background: rgba(158, 206, 106, 0.15);
+  color: var(--green);
+}
+
+.acp-tool-call-status-failed .acp-tool-call-status-badge,
+.acp-tool-call-status-badge.acp-tool-call-status-failed {
+  background: rgba(247, 118, 142, 0.18);
+  color: var(--red);
+}
+
+@keyframes acp-tool-pulse {
+  0%, 100% { opacity: 0.9; }
+  50%       { opacity: 0.5; }
+}
+
+.acp-tool-call-body {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.acp-tool-call-args {
+  margin-bottom: 8px;
+}
+
+/* Exec pane: dark terminal look for bash/shell/exec/run tools */
+.acp-tool-exec-pane {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #0c0c0c;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.acp-tool-call-output {
+  margin-top: 4px;
+  color: var(--text);
+}
