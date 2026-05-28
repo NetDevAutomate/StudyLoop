@@ -120,6 +120,37 @@ class FlashcardDeck(BaseModel):
         )
         return path
 
+    def merge_dedupe(self, other: FlashcardDeck) -> FlashcardDeck:
+        """Return a new deck combining ``self`` + ``other`` minus duplicates.
+
+        Used by the content-generation panel's ``on_existing="merge"``
+        policy. Dedup key is the normalised ``front`` string -- two
+        cards with the same prompt but different answers are treated
+        as duplicates (the first one wins) because flashcard tracking
+        hashes ``front`` (see ``review_loader.Flashcard.card_hash``)
+        and a duplicate ``front`` would collide on review.
+
+        ``self``'s cards take precedence over ``other``'s on collision.
+        Both inputs are left untouched.
+
+        The result is a fresh :class:`FlashcardDeck` validated by
+        ``model_validate`` so a malformed merge fails loud rather than
+        producing a half-broken deck.
+        """
+        seen: set[str] = set()
+        kept: list[FlashcardItem] = []
+        for card in [*self.cards, *other.cards]:
+            key = card.front.strip().lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            kept.append(card)
+        merged_data = {
+            "title": self.title or other.title,
+            "cards": [c.model_dump(mode="python") for c in kept],
+        }
+        return FlashcardDeck.model_validate(merged_data)
+
 
 # ---------------------------------------------------------------------------
 # Quiz schemas
@@ -204,6 +235,33 @@ class QuizDeck(BaseModel):
             encoding="utf-8",
         )
         return path
+
+    def merge_dedupe(self, other: QuizDeck) -> QuizDeck:
+        """Return a new deck combining ``self`` + ``other`` minus duplicates.
+
+        Dedup key is the normalised ``question`` string. ``self``'s
+        questions win on collision. Both inputs are left untouched.
+
+        Result is re-validated via ``model_validate`` -- the
+        exactly-one-correct-answer invariant on each kept question
+        survives the merge because we copy whole question objects, not
+        cherry-pick options.
+        """
+        seen: set[str] = set()
+        kept: list[QuizQuestion] = []
+        for q in [*self.questions, *other.questions]:
+            key = q.question.strip().lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            kept.append(q)
+        merged_data = {
+            "title": self.title or other.title,
+            "questions": [
+                q.model_dump(mode="python", by_alias=True) for q in kept
+            ],
+        }
+        return QuizDeck.model_validate(merged_data)
 
 
 # ---------------------------------------------------------------------------
