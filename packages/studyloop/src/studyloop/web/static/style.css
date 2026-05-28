@@ -1927,3 +1927,76 @@ main:has(.split-container) .session-dashboard {
   gap: 12px;
   background: var(--bg);
 }
+
+/* ------------------------------------------------------------------
+ * ACP chat message bubbles (U3)
+ * ------------------------------------------------------------------ */
+.acp-message {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.acp-message-role {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  align-self: start;
+  padding-top: 4px;
+}
+
+.acp-message-user .acp-message-role { color: var(--accent); }
+.acp-message-assistant .acp-message-role { color: var(--success, #9ece6a); }
+.acp-message-system .acp-message-role { color: var(--warning, #e0af68); }
+
+.acp-message-body {
+  min-width: 0;          /* allow code blocks to wrap inside grid */
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.acp-message-streaming {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.acp-message-final {
+  /* marked output styling */
+}
+.acp-message-final p { margin: 0 0 8px 0; }
+.acp-message-final p:last-child { margin-bottom: 0; }
+.acp-message-final pre {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+.acp-message-final pre code.hljs {
+  background: transparent;
+  padding: 0;
+}
+.acp-message-final code:not(pre code) {
+  background: var(--bg-card);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.acp-message-final a { color: var(--accent); }
+.acp-message-final ul, .acp-message-final ol { margin: 4px 0 8px 20px; }
+.acp-message-final blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 8px 0;
+  padding-left: 10px;
+  color: var(--text-muted);
+}
