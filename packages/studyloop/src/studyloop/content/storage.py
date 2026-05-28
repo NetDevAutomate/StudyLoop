@@ -90,6 +90,45 @@ def save_course_metadata(course_dir: Path, metadata: dict) -> None:
         os.close(fd)
 
 
+def next_unique_path(directory: Path, stem: str, suffix: str) -> Path:
+    """Return the first non-existing path in the form ``directory/<stem>[-N]<suffix>``.
+
+    Used by the content-generation panel's ``on_existing="suffix"``
+    policy: when a deck file already exists, append the smallest
+    integer that makes the filename unique rather than overwriting.
+
+    The bare ``<stem><suffix>`` is checked first; if free, returned
+    as-is. Otherwise tries ``-1``, ``-2``, ... up to ``9999`` (after
+    which something has gone very wrong and we raise rather than
+    spin forever).
+
+    Args:
+        directory: Where the file will be written. Not created here --
+            the caller's ``write_json`` does that.
+        stem: Filename stem WITHOUT the suffix (e.g. ``"advanced-pandas-flashcards"``).
+        suffix: Filename suffix INCLUDING the dot (e.g. ``".json"``).
+
+    Returns:
+        A ``Path`` that does not currently exist.
+
+    Raises:
+        RuntimeError: After 9999 attempts -- a sanity ceiling, never
+            expected to trip in real use.
+    """
+    if not suffix.startswith("."):
+        suffix = "." + suffix
+    base = directory / f"{stem}{suffix}"
+    if not base.exists():
+        return base
+    for n in range(1, 10000):
+        candidate = directory / f"{stem}-{n}{suffix}"
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError(
+        f"next_unique_path exhausted 9999 attempts for {directory}/{stem}{suffix}"
+    )
+
+
 def check_content_dependencies() -> list[str]:
     """Check pandoc, mmdc, typst availability.
 

@@ -1,0 +1,443 @@
+"""Content-generation job orchestrator (U4).
+
+The orchestrator glues together the singleton (U2), scope resolver
+(U3), generator factory (U1/U1.5), concurrent runner, and
+existing-file policy helpers (U6). It exposes one public function:
+
+    run_job(job_id, request, settings, on_event) -> JobResult
+
+The HTTP layer (U5/U7) calls this from a background asyncio task and
+forwards ``on_event`` callbacks to the per-job WS queue. The
+orchestrator itself is sync at heart -- httpx + boto3 + the runner
+are all sync -- so it runs in a thread executor.
+
+Failure model
+-------------
+
+- Per-task failures (one source / one kind raises CardGenerationError)
+  do NOT abort the run. The runner already gives us per-task results;
+  the orchestrator emits a ``task_complete`` with ``ok=False`` and
+  carries on.
+- Whole-job failures (scope resolution miss, singleton ill-acquired,
+  on-existing policy collision) raise out of ``run_job``. The
+  caller turns that into a ``transport_error`` frame and a 4xx if
+  it happens before the 202 was returned.
+- The singleton is ALWAYS released, even on raise. ``finally`` clause.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Literal
+
+from studyloop.content import active_gen
+from studyloop.content.generators import get_generator
+from studyloop.content.generators.runner import (
+    GenerationResult,
+    GenerationTask,
+    generate_concurrently,
+)
+from studyloop.content.schemas import FlashcardDeck, QuizDeck
+from studyloop.content.scope import ResolvedSource, ScopeRequest, resolve_scope
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from studyloop.settings import Settings
+
+
+logger = logging.getLogger(__name__)
+
+
+OnExisting = Literal["overwrite", "merge", "suffix"]
+DeckKind = Literal["flashcards", "quizzes"]
+
+
+@dataclass(frozen=True, slots=True)
+class JobRequest:
+    """Validated inputs the orchestrator needs.
+
+    The HTTP layer (U5) builds this from its pydantic ``GenerateRequest``
+    -- keeping the orchestrator's request type framework-free means
+    the same orchestrator is reusable from a future CLI command.
+    """
+
+    course: str
+    scope: ScopeRequest
+    kinds: tuple[DeckKind, ...]
+    on_existing: OnExisting = "suffix"
+    backend: str = ""  # empty = use settings.card_generator.backend
+    provider: str = ""
+    model: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class TaskOutcome:
+    """One source × one deck-kind result."""
+
+    identifier: str
+    kind: DeckKind
+    ok: bool
+    elapsed_s: float
+    path: str | None = None  # set when ok=True
+    error: str | None = None  # set when ok=False
+
+
+@dataclass(frozen=True, slots=True)
+class JobResult:
+    """Aggregate result returned from ``run_job``."""
+
+    job_id: str
+    written: int
+    failed: int
+    outcomes: list[TaskOutcome]
+
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
+
+
+def run_job(
+    job_id: str,
+    request: JobRequest,
+    settings: Settings,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+) -> JobResult:
+    """Execute one generation job synchronously.
+
+    Args:
+        job_id: Caller-assigned job id, echoed in events.
+        request: Validated job inputs.
+        settings: Loaded studyloop settings.
+        on_event: Optional callback invoked once per event:
+            ``{"type": "started", ...}``, ``{"type": "task_complete", ...}``,
+            ``{"type": "all_done", ...}``. Exceptions raised by this
+            callback are caught and logged so a noisy WS consumer
+            can't break the job.
+
+    Returns:
+        Aggregate :class:`JobResult` once all tasks complete.
+
+    Raises:
+        ScopeResolutionError: scope didn't resolve to ≥1 source.
+        ValueError: invalid backend / provider / model selection.
+        CardGenerationError: generator construction failed (e.g.
+            missing API key) before any task ran.
+
+    Note: the singleton is acquired by the *caller* (REST handler in
+    U5) so a 409 can be returned synchronously before the job task
+    spawns. ``run_job`` only releases it.
+    """
+
+    def emit(event: dict[str, Any]) -> None:
+        if on_event is None:
+            return
+        try:
+            on_event(event)
+        except Exception:  # noqa: BLE001 -- consumer error must not stop job
+            logger.exception("on_event callback raised; continuing")
+
+    try:
+        # Resolve sources up-front so the user sees "0 sources"
+        # before any generator API key cost.
+        sources = resolve_scope(request.scope, settings)
+        tasks = _build_tasks(sources, request.kinds)
+        emit(
+            {
+                "type": "started",
+                "job_id": job_id,
+                "task_count": len(tasks),
+                "sources": [
+                    {"identifier": s.identifier, "title": s.title} for s in sources
+                ],
+            }
+        )
+
+        gen_config = _resolve_generator_config(settings, request)
+        course_dir = _course_output_dir(settings, request.course)
+
+        outcomes: list[TaskOutcome] = []
+
+        def on_complete(result: GenerationResult) -> None:
+            outcome = _handle_result(
+                result=result,
+                course_dir=course_dir,
+                on_existing=request.on_existing,
+            )
+            outcomes.append(outcome)
+            emit(
+                {
+                    "type": "task_complete",
+                    "identifier": outcome.identifier,
+                    "kind": outcome.kind,
+                    "ok": outcome.ok,
+                    "elapsed_s": outcome.elapsed_s,
+                    "path": outcome.path,
+                    "error": outcome.error,
+                }
+            )
+
+        generator = get_generator(gen_config)
+        try:
+            generate_concurrently(
+                generator,
+                tasks,
+                max_workers=gen_config.max_workers,
+                on_complete=on_complete,
+            )
+        finally:
+            close = getattr(generator, "close", None)
+            if close is not None:
+                close()
+
+        # Stable ordering for downstream consumers (tests, audit logs).
+        outcomes.sort(key=lambda o: (o.identifier, o.kind))
+        written = sum(1 for o in outcomes if o.ok)
+        failed = len(outcomes) - written
+        emit({"type": "all_done", "job_id": job_id, "written": written, "failed": failed})
+        return JobResult(job_id=job_id, written=written, failed=failed, outcomes=outcomes)
+    finally:
+        # Singleton released even on raise. Async-safe pattern: the
+        # caller is in an event loop; we use the running loop to
+        # schedule the release. If we're not in a loop (synchronous
+        # test path), use asyncio.run() defensively.
+        _release_active_gen_safely()
+
+
+# ---------------------------------------------------------------------------
+# Internals
+# ---------------------------------------------------------------------------
+
+
+def _build_tasks(
+    sources: list[ResolvedSource], kinds: tuple[DeckKind, ...]
+) -> list[GenerationTask]:
+    """Cross-product sources × kinds into runner tasks."""
+    tasks: list[GenerationTask] = []
+    for src in sources:
+        if "flashcards" in kinds:
+            tasks.append(
+                GenerationTask(
+                    identifier=src.identifier,
+                    kind="flashcards",
+                    source=src.markdown_text,
+                    title=src.title,
+                )
+            )
+        if "quizzes" in kinds:
+            tasks.append(
+                GenerationTask(
+                    identifier=src.identifier,
+                    kind="quiz",
+                    source=src.markdown_text,
+                    title=src.title,
+                )
+            )
+    if not tasks:
+        raise ValueError(
+            "kinds must include at least one of 'flashcards' or 'quizzes'."
+        )
+    return tasks
+
+
+def _resolve_generator_config(settings: Settings, request: JobRequest):
+    """Apply per-request overrides on top of settings.card_generator.
+
+    The request can override backend / provider / model independently.
+    Returns a fresh ``CardGeneratorConfig`` so we don't mutate the
+    user's settings.
+    """
+    from dataclasses import replace
+
+    cfg = settings.card_generator
+    overrides: dict[str, Any] = {}
+    if request.backend:
+        overrides["backend"] = request.backend
+    if request.provider:
+        overrides["provider"] = request.provider
+    if request.model:
+        overrides["model"] = request.model
+    return replace(cfg, **overrides) if overrides else cfg
+
+
+def _course_output_dir(settings: Settings, course: str) -> Path:
+    """Resolve the on-disk output dir for ``course``.
+
+    Different from the CLI at ``cli/_content.py:284-285``: we DO NOT
+    re-slugify the course name. The course value comes from
+    ``Study/*`` directory listing (auto-discovered, see U10.5), so it
+    is already a valid filesystem name -- slugifying would lowercase
+    "DataCamp" to "datacamp" and create a parallel directory tree on
+    case-sensitive filesystems.
+    """
+    from studyloop.content.storage import get_course_dir
+
+    return get_course_dir(settings.content.base_path, course)
+
+
+def _handle_result(
+    *,
+    result: GenerationResult,
+    course_dir: Path,
+    on_existing: OnExisting,
+) -> TaskOutcome:
+    """Translate one runner result into a written file + outcome record."""
+    task = result.task
+    if not result.ok or result.deck is None:
+        err = str(result.error) if result.error else "no deck returned"
+        return TaskOutcome(
+            identifier=task.identifier,
+            kind=_normalise_kind(task.kind),
+            ok=False,
+            elapsed_s=result.elapsed_s,
+            error=err,
+        )
+
+    target_dir = course_dir / ("flashcards" if task.kind == "flashcards" else "quizzes")
+    # ``write_json`` itself appends the kind-specific tail
+    # (-flashcards.json / -quiz.json), so we only manage the IDENTIFIER
+    # part here. The ``stem_suffix`` carries the kind tail for
+    # next_unique_path's collision check.
+    stem_suffix = "-flashcards.json" if task.kind == "flashcards" else "-quiz.json"
+    stem = task.identifier
+    base_path = target_dir / f"{stem}{stem_suffix}"
+
+    try:
+        write_path = _write_with_policy(
+            deck=result.deck,
+            base_path=base_path,
+            target_dir=target_dir,
+            stem=stem,
+            stem_suffix=stem_suffix,
+            on_existing=on_existing,
+        )
+    except Exception as exc:  # noqa: BLE001 -- aggregate any write-time failure
+        return TaskOutcome(
+            identifier=task.identifier,
+            kind=_normalise_kind(task.kind),
+            ok=False,
+            elapsed_s=result.elapsed_s,
+            error=f"write failed: {exc!r}",
+        )
+
+    return TaskOutcome(
+        identifier=task.identifier,
+        kind=_normalise_kind(task.kind),
+        ok=True,
+        elapsed_s=result.elapsed_s,
+        path=str(write_path),
+    )
+
+
+def _write_with_policy(
+    *,
+    deck: FlashcardDeck | QuizDeck,
+    base_path: Path,
+    target_dir: Path,
+    stem: str,
+    stem_suffix: str,
+    on_existing: OnExisting,
+) -> Path:
+    """Apply on_existing policy and write the deck to disk.
+
+    ``base_path`` = ``target_dir/<stem><stem_suffix>``; we either
+    overwrite that, merge with it, or pick the next free path with an
+    incremented integer between stem and stem_suffix.
+    """
+    if on_existing == "overwrite" or not base_path.exists():
+        return deck.write_json(target_dir, stem)
+
+    if on_existing == "suffix":
+        # Find the next free <stem>-N<stem_suffix>. write_json's tail
+        # is fixed, so we can't reuse next_unique_path -- the increment
+        # has to land between stem and the kind tail.
+        new_stem = _next_unique_stem(target_dir, stem, stem_suffix)
+        return deck.write_json(target_dir, new_stem)
+
+    if on_existing == "merge":
+        return _merge_into_existing(deck, base_path, target_dir, stem)
+
+    raise ValueError(f"Unknown on_existing policy: {on_existing!r}")
+
+
+def _next_unique_stem(target_dir: Path, stem: str, stem_suffix: str) -> str:
+    """Return ``<stem>-N`` such that ``<stem>-N<stem_suffix>`` is free.
+
+    Used by the suffix on-existing policy. Caller passes the kind tail
+    as ``stem_suffix`` (e.g. ``"-flashcards.json"``); we try
+    ``stem-1``, ``stem-2``, ... until ``target_dir / f"{candidate}{stem_suffix}"``
+    doesn't exist. 9999 ceiling matches ``next_unique_path`` for
+    consistency.
+    """
+    for n in range(1, 10000):
+        candidate = f"{stem}-{n}"
+        if not (target_dir / f"{candidate}{stem_suffix}").exists():
+            return candidate
+    raise RuntimeError(
+        f"_next_unique_stem exhausted 9999 attempts for {target_dir}/{stem}"
+    )
+
+
+def _merge_into_existing(
+    deck: FlashcardDeck | QuizDeck, base_path: Path, target_dir: Path, stem: str
+) -> Path:
+    """Load the existing deck file, merge_dedupe with ``deck``, write back."""
+    raw = json.loads(base_path.read_text(encoding="utf-8"))
+    if isinstance(deck, FlashcardDeck):
+        existing = FlashcardDeck.model_validate(raw)
+        merged = deck.merge_dedupe(existing)
+    else:
+        existing = QuizDeck.model_validate(raw)
+        merged = deck.merge_dedupe(existing)
+    return merged.write_json(target_dir, stem)
+
+
+def _normalise_kind(runner_kind: str) -> DeckKind:
+    """Map runner's ``"quiz"`` to the panel's ``"quizzes"``.
+
+    The runner uses singular ``"quiz"`` (matches its ``GenerationTask``
+    Literal) but the panel API uses plural ``"quizzes"`` for parity
+    with the sidebar tab name. The mapping is one-line and lives here
+    rather than spreading the inconsistency across the orchestrator.
+    """
+    if runner_kind == "quiz":
+        return "quizzes"
+    return "flashcards"
+
+
+def _release_active_gen_safely() -> None:
+    """Release the singleton from sync code.
+
+    The orchestrator runs sync (in a thread executor); the singleton
+    lock is asyncio. We schedule release on whichever loop is
+    available. In tests, ``asyncio.run`` works because no loop is
+    running on the calling thread.
+    """
+    import asyncio
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No loop in this thread; create one for the release call.
+        try:
+            asyncio.run(active_gen.release())
+        except Exception:
+            logger.exception("active_gen.release failed; slot may be wedged")
+        return
+
+    # We're in an event loop already (production HTTP path); schedule
+    # the release as a task that will run after the current callback.
+    asyncio.run_coroutine_threadsafe(active_gen.release(), loop)
+
+
+__all__ = [
+    "DeckKind",
+    "JobRequest",
+    "JobResult",
+    "OnExisting",
+    "TaskOutcome",
+    "run_job",
+]
