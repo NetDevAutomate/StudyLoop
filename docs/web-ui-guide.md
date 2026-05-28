@@ -323,6 +323,81 @@ apt install ttyd       # Debian/Ubuntu
 
 ---
 
+## Generate Panel
+
+> **Status (2026-05-28):** Backend shipped (registry, two HTTP adapters, scope resolver, job orchestrator). The sidebar UI lands in Session 2 of the [generation panel plan](plans/2026-05-29-001-feat-content-generation-panel-plan.md). What you'll see described below is what the panel will look like once U5/U7/U8/U9/U10/U10.5 land — code paths and provider plumbing already work end-to-end.
+
+The Generate tab in the sidebar (between **Quizzes** and **Body Double**) lets you produce flashcard and quiz decks from any course/section in your `~/Obsidian/Personal/Study/` tree, or from topics you've struggled with recently, without dropping to the CLI.
+
+### Form fields
+
+| Field | Source | Default |
+|---|---|---|
+| **Course** | Auto-discovered subdirs under `content.base_path` | first alphabetical |
+| **Scope** | Course / Section / Topic struggles | Section |
+| **Section** | Auto-discovered subdirs under the chosen course (Section scope only) | first alphabetical |
+| **Topic** | `study_progress.confidence='struggling'` distinct topics in window (Topic scope only) | first by name |
+| **Window days** | numeric, 1-90 (Topic scope only) | 14 |
+| **Kinds** | Flashcards / Quizzes (multi-select, ≥1 required) | both |
+| **Count** | 5 / 10 / 15 / 20 / 25 / 50 cards-per-source | 10 |
+| **Provider** | populated from `GET /api/content/providers`; providers without an env var are shown but disabled | first available |
+| **Model** | curated list per provider, with cost-tier + thinking-model badges | provider's first cheap-tier model |
+| **On existing** | Overwrite / Merge / New suffix | Merge |
+
+### What happens when you click Generate
+
+```mermaid
+flowchart TD
+    Click["Click Generate"]
+    Validate["Client-side validation"]
+    Post["POST /api/content/generate"]
+    Conflict{"Singleton<br/>busy?"}
+    Banner["Banner:<br/>'Another generation<br/>is already running'"]
+    Open["Open WS<br/>?job_id=..."]
+    Started["Frame: started<br/>(N tasks)"]
+    Loop["For each task:<br/>frame: task_complete<br/>(ok/fail + path or error)"]
+    Done["Frame: all_done<br/>(written, failed)"]
+    Reenable["Re-enable form;<br/>existing reviewer (/cards,<br/>/quizzes) auto-picks up<br/>new files."]
+
+    Click --> Validate --> Post --> Conflict
+    Conflict -- "409" --> Banner
+    Conflict -- "202" --> Open
+    Open --> Started
+    Started --> Loop
+    Loop --> Done
+    Done --> Reenable
+```
+
+While the job is in flight, the Generate button is disabled. The progress area shows one row per task with a status icon, the source title, the deck kind, and the elapsed time.
+
+### `on_existing` policies
+
+- **Overwrite** — replaces the existing file at `course/flashcards/<slug>-flashcards.json`. Destructive.
+- **Suffix** (default for repeat runs) — keeps the existing file, writes the new one as `<slug>-1-flashcards.json`, `<slug>-2-flashcards.json`, …
+- **Merge** — loads the existing deck, deduplicates by normalised `front` (flashcards) or `question` (quizzes), and writes the merged result back. The original card content wins on collision; new cards are appended. Result is re-validated by pydantic so the exactly-one-correct-answer invariant survives.
+
+### Provider plumbing under the hood
+
+The form's **Provider** dropdown is populated from a curated [provider registry](content-pipeline.md#pluggable-provider-abstraction). Five providers ship today: OpenAI, OpenRouter, Gemini, MiniMax (via its Anthropic-compat shim), and Anthropic. Each provider's available models are tagged with cost-tier (cheap / balanced / premium) and a thinking-model flag.
+
+API keys live in a project-root `.env`:
+
+```bash
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+GEMINI_API_KEY=
+MINIMAX_API_KEY=
+ANTHROPIC_API_KEY=
+```
+
+`.env` is auto-loaded on package import (see `studyloop/__init__.py`). Providers without a configured env var appear in the dropdown but are disabled with a tooltip telling you which env var to set.
+
+### CLI parity
+
+Everything the panel does is also available as the existing `studyloop content generate-cards` command. The panel is a UI over the same producer pipeline, not a separate code path.
+
+---
+
 ## Accessibility
 
 ### OpenDyslexic Font

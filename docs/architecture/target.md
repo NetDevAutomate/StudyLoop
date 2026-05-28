@@ -110,6 +110,7 @@ flowchart TB
 | Plugins are sub-commands in the CLI | Plugin host process boundary defined; first plugin (NotebookLM) extracted | Plugins are isolated subprocesses with declared capabilities; opt-in install |
 | `/api/session/*` is internal | Same routes, same shape, but documented as a stable contract | Native clients consume it directly (same auth model: localhost or LAN with HTTP Basic) |
 | Persona delivery is transport-specific (file for PTY, prompt for ACP) | Same | Persona becomes a first-class capability of the transport — adapter declares which delivery mode it supports, runtime decides |
+| Card / quiz generation is CLI-only (`studyloop content generate-cards`) | Generate panel exposes the existing pipeline over HTTP+WS with a sidebar UI; provider abstraction supports OpenAI/OpenRouter/Gemini/MiniMax/Anthropic via two adapter classes (shipped 2026-05-28) | Mid-session "mark this concept for review" → instant deck targeted at the marked concepts (v2 of the generation panel; needs new MCP tool calls from the agent) |
 
 ---
 
@@ -120,6 +121,7 @@ flowchart TB
 - **Multi-session support**: today is strictly single-session. Multi-session would require redesigning the singleton in `session/active.py` and the WS routing key.
 - **Resume on the ACP path**: the PTY path passes `previous_notes` into `build_canonical_persona`. The ACP path doesn't yet — a resumed ACP session gets a bare persona. Need a decision on whether to pull recent struggles/wins from `sessions.db` and embed them in the persona text.
 - **Theme persistence across devices**: today the palette selector is `localStorage`-only. If the PWA is installed on multiple devices the user re-picks every time. Sync would require a server-side preferences store.
+- **Mid-session deck generation (v2 of the Generate panel)**: today the Generate panel's `topic_struggles` scope queries `study_progress.confidence='struggling'` over a date window. v2 would let the agent mark *specific concepts* mid-session via an MCP tool call ("the user is stuck on outer joins -- queue a deck"), bypassing the date-window query for an immediately-targeted deck. Needs a new agent-side tool surface; tracked separately, not blocking v1.
 
 ---
 
