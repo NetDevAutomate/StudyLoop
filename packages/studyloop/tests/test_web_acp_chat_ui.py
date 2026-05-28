@@ -1488,3 +1488,377 @@ class TestToolCallUpdateUnknownIdDoesNotThrow:
             _end_any_active_session(page)
         finally:
             page.close()
+
+
+# ---------------------------------------------------------------------------
+# U5: Plan / plan_update tree render helpers
+# ---------------------------------------------------------------------------
+
+
+def _plan_notif(
+    steps: list[dict],
+    session_id: str = "stub-session-1",
+) -> dict:
+    """Build a plan session/update notification."""
+    return {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+            "sessionId": session_id,
+            "update": {
+                "sessionUpdate": "plan",
+                "steps": steps,
+            },
+        },
+    }
+
+
+def _plan_update_notif(
+    steps: list[dict],
+    session_id: str = "stub-session-1",
+) -> dict:
+    """Build a plan_update session/update notification."""
+    return {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+            "sessionId": session_id,
+            "update": {
+                "sessionUpdate": "plan_update",
+                "steps": steps,
+            },
+        },
+    }
+
+
+def _wait_for_plan(page, timeout: int = 8000) -> None:
+    """Wait until the .acp-plan element appears in the DOM."""
+    page.wait_for_selector(".acp-plan", state="attached", timeout=timeout)
+
+
+def _get_plan_steps(page) -> list[dict]:
+    """Return list of {title, completed} for each visible plan step."""
+    return page.evaluate(
+        """() => {
+          const steps = document.querySelectorAll('.acp-plan-step');
+          return Array.from(steps).map(el => ({
+            title: el.querySelector('.acp-plan-step-title')?.textContent ?? '',
+            completed: el.classList.contains('acp-plan-step-completed'),
+          }));
+        }"""
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario 1: plan with three pending steps → three items
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="class")
+def _server_plan_three_steps() -> "Generator[subprocess.Popen, None, None]":
+    clean_ipc()
+    proc = _start_web_server_with_stub(
+        prompt_updates_seq=[
+            [
+                _plan_notif([
+                    {"title": "a", "status": "pending"},
+                    {"title": "b", "status": "pending"},
+                    {"title": "c", "status": "pending"},
+                ]),
+            ]
+        ]
+    )
+    try:
+        yield proc
+    finally:
+        _teardown_server(proc)
+
+
+@pytest.mark.parametrize("agent", ACP_AGENTS)
+class TestPlanThreeStepsRender:
+    """plan event with three pending steps → three .acp-plan-step items."""
+
+    def test_plan_three_steps_render(
+        self,
+        _server_plan_three_steps: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        _ = _server_plan_three_steps
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _send_and_wait_for_turn_end(page)
+            _wait_for_plan(page)
+
+            steps = _get_plan_steps(page)
+            assert len(steps) == 3, f"Expected 3 steps, got {len(steps)}: {steps}"
+            titles = [s["title"] for s in steps]
+            assert titles == ["a", "b", "c"], f"Unexpected titles: {titles}"
+            assert not any(s["completed"] for s in steps), (
+                f"No steps should be completed: {steps}"
+            )
+
+            filtered_errors = [
+                e for e in app_errors
+                if "Cannot read properties of null (reading 'type')" not in e
+            ]
+            assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+
+# ---------------------------------------------------------------------------
+# Scenario 2: plan_update with first step completed → struck through
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="class")
+def _server_plan_update_first_completed() -> "Generator[subprocess.Popen, None, None]":
+    clean_ipc()
+    proc = _start_web_server_with_stub(
+        prompt_updates_seq=[
+            [
+                _plan_notif([
+                    {"title": "a", "status": "pending"},
+                    {"title": "b", "status": "pending"},
+                    {"title": "c", "status": "pending"},
+                ]),
+                _plan_update_notif([
+                    {"title": "a", "status": "completed"},
+                    {"title": "b", "status": "pending"},
+                    {"title": "c", "status": "pending"},
+                ]),
+            ]
+        ]
+    )
+    try:
+        yield proc
+    finally:
+        _teardown_server(proc)
+
+
+@pytest.mark.parametrize("agent", ACP_AGENTS)
+class TestPlanUpdateFirstStepCompleted:
+    """plan_update with first step completed → first item struck through, others normal."""
+
+    def test_plan_update_first_step_completed(
+        self,
+        _server_plan_update_first_completed: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        _ = _server_plan_update_first_completed
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _send_and_wait_for_turn_end(page)
+            _wait_for_plan(page)
+
+            # Wait for the plan_update to settle
+            page.wait_for_function(
+                """() => {
+                  const steps = document.querySelectorAll('.acp-plan-step');
+                  return steps.length > 0 && steps[0].classList.contains('acp-plan-step-completed');
+                }""",
+                timeout=5000,
+            )
+
+            steps = _get_plan_steps(page)
+            assert len(steps) == 3, f"Expected 3 steps, got {len(steps)}"
+            assert steps[0]["completed"] is True, (
+                f"Step 0 should be completed (struck through): {steps[0]}"
+            )
+            assert steps[1]["completed"] is False, (
+                f"Step 1 should not be completed: {steps[1]}"
+            )
+            assert steps[2]["completed"] is False, (
+                f"Step 2 should not be completed: {steps[2]}"
+            )
+
+            filtered_errors = [
+                e for e in app_errors
+                if "Cannot read properties of null (reading 'type')" not in e
+            ]
+            assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+
+# ---------------------------------------------------------------------------
+# Scenario 3: empty plan.steps → panel renders, no error
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="class")
+def _server_plan_empty_steps() -> "Generator[subprocess.Popen, None, None]":
+    clean_ipc()
+    proc = _start_web_server_with_stub(
+        prompt_updates_seq=[
+            [_plan_notif([])]
+        ]
+    )
+    try:
+        yield proc
+    finally:
+        _teardown_server(proc)
+
+
+@pytest.mark.parametrize("agent", ACP_AGENTS)
+class TestPlanEmptySteps:
+    """plan with empty steps array → panel renders with zero items, no error."""
+
+    def test_plan_empty_steps(
+        self,
+        _server_plan_empty_steps: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        _ = _server_plan_empty_steps
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _send_and_wait_for_turn_end(page)
+            _wait_for_plan(page)
+
+            steps = _get_plan_steps(page)
+            assert steps == [], f"Expected no steps for empty plan: {steps}"
+
+            filtered_errors = [
+                e for e in app_errors
+                if "Cannot read properties of null (reading 'type')" not in e
+            ]
+            assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+
+# ---------------------------------------------------------------------------
+# Scenario 4 & 5: plan with no payload / new plan replaces old
+# (single server, two test methods, no parametrize — pure-state)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="class")
+def _server_plan_replace_and_empty_payload() -> "Generator[subprocess.Popen, None, None]":
+    clean_ipc()
+    # Turn 1: send an empty-payload plan (scenario 4)
+    # Turn 2: send first plan with [x,y], then plan_update with [p,q] (scenario 5)
+    proc = _start_web_server_with_stub(
+        prompt_updates_seq=[
+            # Turn 1 — empty payload plan
+            [_plan_notif([])],
+            # Turn 2 — original plan then replacement
+            [
+                _plan_notif([
+                    {"title": "x", "status": "pending"},
+                    {"title": "y", "status": "pending"},
+                ]),
+                _plan_update_notif([
+                    {"title": "p", "status": "pending"},
+                    {"title": "q", "status": "pending"},
+                ]),
+            ],
+        ]
+    )
+    try:
+        yield proc
+    finally:
+        _teardown_server(proc)
+
+
+@pytest.mark.parametrize("agent", ACP_AGENTS)
+class TestPlanEdgeCases:
+    """Scenario 4 (no payload) and Scenario 5 (replace, not append)."""
+
+    def test_plan_no_payload_no_crash(
+        self,
+        _server_plan_replace_and_empty_payload: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Scenario 4: plan event with {} payload → no JS crash, graceful no-op."""
+        _ = _server_plan_replace_and_empty_payload
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            # Inject the empty-payload plan directly via Alpine (payload={})
+            page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="liveAgentConsole()"]');
+                  const d = window.Alpine.$data(root);
+                  d._handlePlan({});
+                }"""
+            )
+            page.wait_for_timeout(400)
+
+            filtered_errors = [
+                e for e in app_errors
+                if "Cannot read properties of null (reading 'type')" not in e
+            ]
+            assert not filtered_errors, (
+                f"Empty payload plan caused JS errors: {filtered_errors}"
+            )
+            _end_any_active_session(page)
+        finally:
+            page.close()
+
+    def test_new_plan_replaces_old(
+        self,
+        _server_plan_replace_and_empty_payload: "subprocess.Popen",
+        _acp_auth_context: "BrowserContext",
+        agent: str,
+    ) -> None:
+        """Scenario 5: second plan replaces first — only latest titles visible."""
+        _ = _server_plan_replace_and_empty_payload
+        page = _acp_auth_context.new_page()
+        app_errors: list[str] = []
+        page.on("pageerror", lambda exc: app_errors.append(str(exc)))
+        try:
+            _activate_acp_session(page, agent=agent)
+            _send_and_wait_for_turn_end(page)  # turn 1 (empty steps)
+
+            # Turn 2 — send second prompt, which emits plan [x,y] then plan_update [p,q]
+            _send_and_wait_for_turn_end(page, text="second")
+            _wait_for_plan(page)
+
+            # Wait for the replacement to settle (titles should be p,q)
+            page.wait_for_function(
+                """() => {
+                  const titles = Array.from(
+                    document.querySelectorAll('.acp-plan-step-title')
+                  ).map(el => el.textContent);
+                  return titles.includes('p') && titles.includes('q');
+                }""",
+                timeout=5000,
+            )
+
+            steps = _get_plan_steps(page)
+            titles = [s["title"] for s in steps]
+            assert "x" not in titles, f"Old step 'x' still present: {titles}"
+            assert "y" not in titles, f"Old step 'y' still present: {titles}"
+            assert "p" in titles and "q" in titles, (
+                f"New steps p,q not found: {titles}"
+            )
+            # Only 2 steps (not 4) — replace, not append
+            assert len(steps) == 2, f"Expected 2 steps (replace), got {len(steps)}: {steps}"
+
+            filtered_errors = [
+                e for e in app_errors
+                if "Cannot read properties of null (reading 'type')" not in e
+            ]
+            assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
+            _end_any_active_session(page)
+        finally:
+            page.close()

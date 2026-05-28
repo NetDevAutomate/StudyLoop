@@ -872,6 +872,19 @@
                   </div>
                 </template>
               </div>
+              <!-- U5: Plan tree — inline in chat scroll, latest replaces previous -->
+              <template x-if="plan">
+                <div class="acp-plan">
+                  <div class="acp-plan-header">Plan</div>
+                  <template x-for="(step, idx) in plan.steps" :key="idx">
+                    <div class="acp-plan-step"
+                         :class="'acp-plan-step-' + step.status + (step.status === 'completed' ? ' acp-plan-step-completed' : '')">
+                      <span class="acp-plan-step-icon" x-text="_planStepIcon(step.status)"></span>
+                      <span class="acp-plan-step-title" x-text="step.title"></span>
+                    </div>
+                  </template>
+                </div>
+              </template>
               <!-- ACP turn-based input row (relocated from .xterm-panel).
                    Entire panel is already gated by terminalMode === 'acp-chat'
                    so no extra x-show needed on the form itself. -->
@@ -1640,6 +1653,10 @@
               if (this.terminalMode === 'acp-chat') {
                 this._handleToolCallUpdate(frame.payload);
               }
+            } else if (frame.kind === 'plan' || frame.kind === 'plan_update') {
+              if (this.terminalMode === 'acp-chat') {
+                this._handlePlan(frame.payload);
+              }
             }
           }
         });
@@ -1798,6 +1815,17 @@
         return /^(bash|shell|exec|run)/i.test(name || '');
       },
 
+      /* U5: status icon for plan step (matches CSS class precedent). */
+      _planStepIcon(status) {
+        const icons = {
+          completed: '✓',
+          in_progress: '⟳',
+          failed: '✗',
+          pending: '○',
+        };
+        return icons[status] || '○';
+      },
+
       _handleToolCall(payload) {
         /* Accept either 'arguments' or 'args' field name (spec + convenience). */
         const toolCallId = payload && (payload.toolCallId || payload.id);
@@ -1887,6 +1915,23 @@
         }
 
         this._scrollChatToBottom();
+      },
+
+      /* U5: plan / plan_update handler. Both events replace this.plan in
+         place — no history. Defensively ensures steps is always an array
+         so x-for never sees null. Status strings are used as CSS class
+         suffixes; normalise to lowercase to be safe. */
+      _handlePlan(payload) {
+        if (!payload || typeof payload !== 'object') {
+          /* Graceful: empty or missing payload → no-op (don't crash). */
+          return;
+        }
+        const rawSteps = Array.isArray(payload.steps) ? payload.steps : [];
+        const steps = rawSteps.map((s) => ({
+          title: s.title || '',
+          status: (s.status || 'pending').toLowerCase(),
+        }));
+        this.plan = { steps };
       },
 
       _toggleToolCall(msg) {
