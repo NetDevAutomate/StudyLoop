@@ -19,7 +19,14 @@ through env vars:
   notifications to emit immediately after answering ``session/new``.
 - ``STUB_ACP_PROMPT_UPDATES`` — JSON array of notifications to emit
   when a ``session/prompt`` arrives, interleaved with the prompt
-  response.
+  response.  Every prompt turn emits the same sequence (back-compat
+  fallback).  If ``STUB_ACP_PROMPT_UPDATES_SEQ`` is also set, the SEQ
+  variable takes priority.
+- ``STUB_ACP_PROMPT_UPDATES_SEQ`` — JSON **array-of-arrays**.  Each
+  inner array is the notification sequence emitted for the *nth*
+  ``session/prompt`` (0-indexed).  When prompts exceed the array
+  length the **last entry repeats**.  Takes priority over
+  ``STUB_ACP_PROMPT_UPDATES`` when both are set.
 - ``STUB_ACP_PROMPT_STOP_REASON`` — string placed in the ``session/prompt``
   result. Default ``"end_turn"``.
 - ``STUB_ACP_PROMPT_ERROR`` — JSON-RPC error object (``{"code", "message"}``).
@@ -49,6 +56,31 @@ def _env_json(key: str, default):
     if not raw:
         return default
     return json.loads(raw)
+
+
+# Per-process counter — incremented before each session/prompt response so
+# that STUB_ACP_PROMPT_UPDATES_SEQ can address turns by index.
+_prompt_count: int = 0
+
+
+def _prompt_updates_for_turn(turn_index: int) -> list:
+    """Return the notification sequence for the given (0-based) prompt turn.
+
+    Priority:
+    1. ``STUB_ACP_PROMPT_UPDATES_SEQ`` (array-of-arrays) — indexed by
+       *turn_index*; last entry repeats when the array is exhausted.
+    2. ``STUB_ACP_PROMPT_UPDATES`` (flat array) — same sequence every turn.
+    3. Empty list — no notifications emitted.
+    """
+    seq_raw = os.environ.get("STUB_ACP_PROMPT_UPDATES_SEQ")
+    if seq_raw:
+        seq: list[list] = json.loads(seq_raw)
+        if seq:
+            idx = min(turn_index, len(seq) - 1)
+            return seq[idx]
+        return []
+    # Back-compat: flat STUB_ACP_PROMPT_UPDATES applies to every turn.
+    return _env_json("STUB_ACP_PROMPT_UPDATES", [])
 
 
 def _emit(frame: dict) -> None:
@@ -125,8 +157,11 @@ def main() -> int:
                 _emit(notif)
 
         elif method == "session/prompt":
+            global _prompt_count
+            turn_index = _prompt_count
+            _prompt_count += 1
             # Emit any scripted updates first, then the result.
-            for notif in _env_json("STUB_ACP_PROMPT_UPDATES", []):
+            for notif in _prompt_updates_for_turn(turn_index):
                 _emit(notif)
 
             error = _env_json("STUB_ACP_PROMPT_ERROR", None)
