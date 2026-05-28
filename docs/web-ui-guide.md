@@ -263,6 +263,57 @@ Access from a tablet or phone at `http://<host-ip>:8567/session`. HTTP Basic Aut
 
 If ttyd is not installed, the current dashboard works without the terminal panel. The activity feed, timer, and counters still function, but browser-based live agent interaction is degraded until the target ACP/PTY session transport exists.
 
+---
+
+## ACP Chat Mode (Kiro / Gemini)
+
+When you start a session with **ACP** as the transport (Kiro or Gemini today), the dashboard renders a structured chat surface instead of a terminal. This is the preferred experience — markdown, syntax-highlighted code, proper headings, and no escape-sequence quirks.
+
+```mermaid
+sequenceDiagram
+    actor You
+    participant PWA as Browser
+    participant Agent as Kiro / Gemini
+
+    You->>PWA: pick topic + energy + ACP transport
+    PWA->>PWA: "Setting up your mentor…" banner
+    Note over PWA,Agent: Persona injected invisibly<br/>(you don't see it scroll past)
+    Agent-->>PWA: persona-turn ack (suppressed)
+    PWA->>PWA: input enabled, banner hidden
+    You->>PWA: type your question
+    PWA->>Agent: session/prompt
+    Agent-->>PWA: agent_chunk* (typing indicator)
+    Agent-->>PWA: turn_end
+    PWA->>PWA: render markdown bubble<br/>(headings, code, lists, tables)
+```
+
+### What to expect
+
+**On session start.** A "Setting up your mentor…" banner appears in the chat area for a few seconds. The agent receives the StudyLoop persona — your topic, energy level, mode, and the AuDHD-aware Socratic mentoring instructions — as an invisible first prompt. You don't see it scroll past, and the agent's acknowledgement is hidden too. The input box stays disabled until the persona turn settles.
+
+**During the persona turn.** The agent may make a few file-read tool calls to look at session IPC files for context. These tool-call cards are intentionally hidden during this turn and any permission prompts are auto-allowed — they're protocol noise, not something you triggered.
+
+**While the agent is typing.** A subtle three-dot animation appears in the assistant bubble. Markdown is *not* rendered progressively — the previous design did that and it produced raw `##` and `**` source plus a cascade-staircase indent on Kiro's natural output. The fix is to render the full bubble once at `turn_end` instead of token-by-token.
+
+**On `turn_end`.** The full response renders: headings, paragraphs, bullet lists, syntax-highlighted code fences, tables, links with `target="_blank" rel="noopener noreferrer"`. Inline content is sanitised through DOMPurify before insertion.
+
+### Tool calls and permissions (after the persona turn)
+
+Once you've started typing, tool-call cards DO appear — collapsed by default with a status badge (`◷ pending`, `◔ in_progress`, `✓ completed`, `✗ failed`). Click the chevron to expand. Bash-class tools render their output in a dark exec pane.
+
+If the agent needs to do something that requires permission (e.g. write outside `/tmp`, run a destructive command), an inline allow/deny prompt appears in the chat with the available options. The exact prompts come from the agent — StudyLoop doesn't decide what's permissioned, just renders what the agent asks for.
+
+### Live regression test
+
+A real-browser test (`packages/studyloop/tests/test_web_acp_dogfood_kiro.py`, marked `@pytest.mark.live_kiro`) drives a real `kiro-cli acp` session via Playwright, asks "When should I use a SUM function in a SQL statement?", and asserts:
+
+- The response is rendered as proper markdown HTML (no raw `##` or `**`).
+- The persona text was actually transmitted on the wire.
+- The response carries Socratic-mentor markers (Socratic dialogue patterns, mentor structural conventions).
+- The persona-injection turn left zero artefacts in the chat.
+
+Run it locally with `uv run pytest -m live_kiro` (requires `kiro-cli` authenticated).
+
 Install ttyd with:
 
 ```bash
@@ -278,9 +329,20 @@ apt install ttyd       # Debian/Ubuntu
 
 Toggle the OpenDyslexic font via the **Aa** button in the header. The preference is saved in localStorage and persists across sessions.
 
-### Dark / Light Theme
+### Theme Palettes
 
-Toggle via the theme button in the header. Also persisted in localStorage.
+The header has a **theme dropdown** with four palettes:
+
+| Palette | Variant | Notes |
+|---|---|---|
+| Tokyo Night | dark (default) | Original StudyLoop palette. |
+| Dracula | dark | High-contrast purple accent. |
+| Catppuccin Mocha | dark | Pastel dark — eye-friendly for long sessions. |
+| Catppuccin Latte | light | Light-mode partner to Mocha. |
+
+Selection persists to `localStorage` under `palette`. Each palette overrides a small set of CSS custom properties (`--bg`, `--bg-card`, `--text`, `--accent`, etc.); every component re-themes automatically.
+
+The original light/dark **toggle button** is still present and orthogonal to the palette picker — it adjusts a body-level `light` class for backward compatibility. Most users will pick a palette and leave the legacy toggle alone.
 
 ### Voice Output
 

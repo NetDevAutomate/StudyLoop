@@ -133,20 +133,26 @@ Target:
 
 ```mermaid
 flowchart TD
-    Web["Web/PWA"]
-    API["Study Session API"]
-    Runtime["Agent Runtime"]
-    ACP["ACP<br/>JSON-RPC"]
-    PTY["PTY<br/>terminal fallback"]
-    DB["Shared DB"]
+    Web["Web/PWA<br/>chat surface + dashboard"]
+    API["Study Session API<br/>(/api/session/*)"]
+    Runtime["Agent Runtime<br/>(active-session singleton)"]
+    ACP["ACPTransport<br/>JSON-RPC over stdio"]
+    PTY["PTYTransport<br/>raw bytes / WINSZ"]
+    Persona["build_canonical_persona<br/>(per topic + energy)"]
+    DB["sessions.db<br/>(study state, progress)"]
 
-    Web -->|"message/control"| API
+    Web -->|"POST /session/start"| API
+    Web <-->|"WebSocket /session/ws"| API
+    API -->|"persona_text returned<br/>inline in /start response"| Persona
     API --> Runtime
     Runtime --> ACP
     Runtime --> PTY
+    ACP -->|"first session/prompt =<br/>invisible persona"| Web
     Runtime --> DB
     API -->|"stream events"| Web
 ```
+
+**Persona delivery — different per transport.** On the PTY path the persona is written to a temp file and embedded in the agent's launch command. On the ACP path (added 2026-05-28) the persona text is returned inline in the `/api/session/start` response and the browser ships it as the first invisible `session/prompt` after the WebSocket opens — ACP agents have no argv/env hook for system context, the prompt channel is the only injection point. The browser hides it from the chat (no user bubble, no assistant ack scrolls past) and shows a brief "Setting up your mentor…" banner instead.
 
 ## Data Stores
 
