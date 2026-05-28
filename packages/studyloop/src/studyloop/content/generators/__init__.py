@@ -109,9 +109,49 @@ def get_generator(config: CardGeneratorConfig) -> CardGenerator:
         from studyloop.content.generators.bedrock import BedrockGenerator
 
         return BedrockGenerator(config)
+    if backend == "stub":
+        # Test/dogfood-only backend: deterministic, offline, free.
+        # Wired in U1 ahead of the real `*_compat` adapters in U1.5.
+        from studyloop.content.generators.stub import StubGenerator
+
+        return StubGenerator(config)
+    if backend in ("openai_compat", "anthropic_compat"):
+        # Pluggable adapter path: registry profile + curated model entry
+        # drive a generic adapter. New providers = registry rows, no
+        # new code. See content/generators/provider_profiles.py.
+        from studyloop.content.generators.provider_profiles import (
+            default_model,
+            get_model,
+            get_profile,
+        )
+
+        if not config.provider:
+            raise ValueError(
+                f"backend={backend!r} requires card_generator.provider "
+                "to be set (e.g. 'openrouter', 'gemini', 'anthropic', 'minimax', 'openai')."
+            )
+        profile = get_profile(config.provider)
+        if profile.adapter != backend:
+            raise ValueError(
+                f"Provider {profile.slug!r} uses adapter {profile.adapter!r}, "
+                f"but config has backend={backend!r}. Change one to match."
+            )
+        model_entry = (
+            get_model(profile, config.model) if config.model else default_model(profile)
+        )
+        if backend == "openai_compat":
+            from studyloop.content.generators.openai_compat import OpenAICompatGenerator
+
+            return OpenAICompatGenerator(config, profile, model_entry)
+        from studyloop.content.generators.anthropic_compat import (
+            AnthropicCompatGenerator,
+        )
+
+        return AnthropicCompatGenerator(config, profile, model_entry)
     raise ValueError(
         f"Unknown card_generator.backend: {config.backend!r}. "
-        "Supported backends: 'ollama', 'bedrock'."
+        "Supported backends: 'ollama', 'bedrock', 'stub', "
+        "'openai_compat', 'anthropic_compat'."
     )
 
 

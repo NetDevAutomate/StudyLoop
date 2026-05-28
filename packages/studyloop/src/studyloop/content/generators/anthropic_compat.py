@@ -1,0 +1,315 @@
+"""Anthropic Messages API-compatible :class:`CardGenerator`.
+
+Covers Anthropic itself plus shims that speak the Messages protocol --
+notably MiniMax's ``/anthropic`` endpoint at ``api.minimax.io/anthropic``.
+The adapter shape is identical to :class:`OpenAICompatGenerator`; only
+the wire format differs:
+
+- POST ``/v1/messages`` (not ``/chat/completions``)
+- ``x-api-key: ${env[auth_env]}`` header (not ``Authorization: Bearer``)
+- Tool definition shape: ``{name, description, input_schema}`` (vs
+  OpenAI's ``{type:"function", function:{name, parameters}}``)
+- Forced tool choice: ``tool_choice={"type":"tool","name":...}`` (vs
+  OpenAI's ``{type:"function","function":{"name":...}}``)
+- Tool result is a ``tool_use`` content block (vs OpenAI's ``tool_calls``
+  on the message)
+
+Bedrock vs Anthropic-direct
+---------------------------
+
+:class:`BedrockGenerator` calls Bedrock's Converse API which is *similar*
+to Messages but uses boto3, profile-based auth, and the Converse-shaped
+tool config. We deliberately keep that as a separate path -- collapsing
+the two would mean an httpx adapter for Bedrock (drops profile fallback,
+requires SigV4 signing) or a boto3 adapter for Anthropic (heavyweight
+import for HTTP-only providers). The line between adapter classes is
+**SDK choice and auth model**, not just wire format.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from typing import TYPE_CHECKING, Any
+
+import httpx
+
+from studyloop.content.generators import CardGenerationError
+from studyloop.content.generators._retry import CallContext, call_with_correction
+from studyloop.content.generators.prompts import (
+    FLASHCARD_SYSTEM_PROMPT,
+    FLASHCARD_USER_PROMPT_TEMPLATE,
+    QUIZ_SYSTEM_PROMPT,
+    QUIZ_USER_PROMPT_TEMPLATE,
+)
+from studyloop.content.schemas import (
+    FlashcardDeck,
+    QuizDeck,
+    flashcard_deck_json_schema,
+    quiz_deck_json_schema,
+)
+
+if TYPE_CHECKING:
+    from studyloop.content.generators.provider_profiles import (
+        ModelEntry,
+        ProviderProfile,
+    )
+    from studyloop.settings import CardGeneratorConfig
+
+
+_FLASHCARD_TOOL_NAME = "emit_flashcard_deck"
+_QUIZ_TOOL_NAME = "emit_quiz_deck"
+
+# Anthropic's API requires an api-version header; this is the stable
+# value at the time of writing. Update only if the user sees breaking
+# behaviour after a vendor announcement.
+_ANTHROPIC_API_VERSION = "2023-06-01"
+
+# Reasoning models get a 3x request_timeout multiplier. For Anthropic
+# that's `claude-*-thinking` variants and any future thinking flag.
+_THINKING_TIMEOUT_MULT = 3.0
+# Default thinking budget for thinking-flagged models (Claude only;
+# MiniMax ignores this field at time of writing).
+_THINKING_BUDGET_TOKENS = 2000
+
+# Default max_tokens for the response. Big enough for a 12-card deck
+# with rationales; small enough to bound cost on a runaway model.
+_DEFAULT_MAX_TOKENS = 4096
+
+
+class AnthropicCompatGenerator:
+    """Card generator backed by any Anthropic Messages-compatible API.
+
+    Configured via a :class:`ProviderProfile` (base URL, auth env var,
+    model list) plus the selected :class:`ModelEntry`.
+    """
+
+    def __init__(
+        self,
+        config: CardGeneratorConfig,
+        profile: ProviderProfile,
+        model: ModelEntry,
+    ) -> None:
+        self._config = config
+        self._profile = profile
+        self._model = model
+        self._api_key = self._read_api_key()
+        timeout = self._effective_timeout()
+        self._client = httpx.Client(
+            base_url=profile.base_url.rstrip("/"),
+            timeout=timeout,
+            headers={
+                "x-api-key": self._api_key,
+                "anthropic-version": _ANTHROPIC_API_VERSION,
+                "Content-Type": "application/json",
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def close(self) -> None:
+        self._client.close()
+
+    def __enter__(self) -> AnthropicCompatGenerator:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
+
+    # ------------------------------------------------------------------
+    # CardGenerator Protocol
+    # ------------------------------------------------------------------
+
+    def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
+        deck = self._generate(
+            system_prompt=FLASHCARD_SYSTEM_PROMPT,
+            user_prompt=FLASHCARD_USER_PROMPT_TEMPLATE.format(title=title, source=source),
+            tool_name=_FLASHCARD_TOOL_NAME,
+            tool_description="Emit a flashcard deck matching the provided JSON schema.",
+            schema=flashcard_deck_json_schema(),
+            model_cls=FlashcardDeck,
+        )
+        if deck.title != title:
+            deck = deck.model_copy(update={"title": title})
+        return deck
+
+    def generate_quiz(self, source: str, title: str) -> QuizDeck:
+        deck = self._generate(
+            system_prompt=QUIZ_SYSTEM_PROMPT,
+            user_prompt=QUIZ_USER_PROMPT_TEMPLATE.format(title=title, source=source),
+            tool_name=_QUIZ_TOOL_NAME,
+            tool_description="Emit a multiple-choice quiz deck matching the provided JSON schema.",
+            schema=quiz_deck_json_schema(),
+            model_cls=QuizDeck,
+        )
+        if deck.title != title:
+            deck = deck.model_copy(update={"title": title})
+        return deck
+
+    # ------------------------------------------------------------------
+    # Internals
+    # ------------------------------------------------------------------
+
+    def _read_api_key(self) -> str:
+        key = os.environ.get(self._profile.auth_env, "").strip()
+        if not key:
+            raise CardGenerationError(
+                f"{self._profile.label} requires {self._profile.auth_env} to be set "
+                f"(in shell env or in the project-root .env file)."
+            )
+        return key
+
+    def _effective_timeout(self) -> float:
+        base = self._config.request_timeout
+        return base * _THINKING_TIMEOUT_MULT if self._model.thinking else base
+
+    def _generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        tool_name: str,
+        tool_description: str,
+        schema: dict[str, Any],
+        model_cls: type[FlashcardDeck] | type[QuizDeck],
+    ) -> Any:
+        # Anthropic puts system prompt in a top-level field, not in the
+        # messages array. Different from OpenAI -- this is one of the
+        # genuine wire-shape divergences between specs.
+        base_messages: list[dict[str, Any]] = [
+            {"role": "user", "content": user_prompt},
+        ]
+        tools = [
+            {
+                "name": tool_name,
+                "description": tool_description,
+                "input_schema": schema,
+            }
+        ]
+        tool_choice = {"type": "tool", "name": tool_name}
+
+        def call(ctx: CallContext) -> tuple[Any, list[dict[str, Any]]]:
+            messages = list(base_messages) + list(ctx.history_extension)
+            if ctx.last_error is not None:
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"The previous tool call did not validate against the schema: "
+                            f"{ctx.last_error}. Re-emit a corrected payload that conforms."
+                        ),
+                    }
+                )
+
+            payload: dict[str, Any] = {
+                "model": self._model.id,
+                "system": system_prompt,
+                "messages": messages,
+                "tools": tools,
+                "tool_choice": tool_choice,
+                "temperature": self._config.temperature,
+                "max_tokens": _DEFAULT_MAX_TOKENS,
+            }
+            if self._model.thinking:
+                payload["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": _THINKING_BUDGET_TOKENS,
+                }
+
+            resp = self._post_messages(payload)
+            tool_payload, assistant_turn = self._extract_tool_payload(resp, tool_name)
+            new_history = list(ctx.history_extension) + [assistant_turn]
+            if ctx.last_error is not None:
+                new_history.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"The previous tool call did not validate against the schema: "
+                            f"{ctx.last_error}. Re-emit a corrected payload that conforms."
+                        ),
+                    }
+                )
+            return tool_payload, new_history
+
+        return call_with_correction(
+            model_cls=model_cls,
+            max_retries=self._config.max_retries,
+            call_fn=call,
+        )
+
+    def _post_messages(self, payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            r = self._client.post("/v1/messages", json=payload)
+        except httpx.HTTPError as exc:
+            raise CardGenerationError(
+                f"{self._profile.label} request failed: {exc!r}"
+            ) from exc
+
+        if r.status_code >= 400:
+            body = r.text[:500]
+            raise CardGenerationError(
+                f"{self._profile.label} returned HTTP {r.status_code}: {body}"
+            )
+        try:
+            return r.json()
+        except ValueError as exc:
+            raise CardGenerationError(
+                f"{self._profile.label} returned non-JSON body: {r.text[:200]!r}"
+            ) from exc
+
+    def _extract_tool_payload(
+        self, resp: dict[str, Any], expected_tool_name: str
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Pull the ``tool_use`` block out of an Anthropic Messages response.
+
+        Anthropic returns ``content`` as a list of typed blocks. With
+        forced tool_choice, exactly one of those blocks should be a
+        ``{type:"tool_use", name, input}`` block. We assemble the
+        assistant turn from the full content list so the correction-turn
+        history sees what the model actually said.
+        """
+        content = resp.get("content")
+        if not isinstance(content, list) or not content:
+            raise CardGenerationError(
+                f"{self._profile.label} response missing content blocks: "
+                f"{json.dumps(resp)[:300]}"
+            )
+
+        tool_use_block = None
+        for block in content:
+            if block.get("type") == "tool_use":
+                tool_use_block = block
+                break
+
+        if tool_use_block is None:
+            text_blocks = [b for b in content if b.get("type") == "text"]
+            text = (text_blocks[0].get("text", "") if text_blocks else "")[:200]
+            raise CardGenerationError(
+                f"{self._profile.label} response missing tool_use block "
+                f"(expected {expected_tool_name!r}). Text content was: {text!r}"
+            )
+
+        if tool_use_block.get("name") != expected_tool_name:
+            raise CardGenerationError(
+                f"{self._profile.label} called wrong tool: "
+                f"got {tool_use_block.get('name')!r}, expected {expected_tool_name!r}"
+            )
+
+        args = tool_use_block.get("input")
+        if args is None:
+            raise CardGenerationError(
+                f"{self._profile.label} tool_use missing input field"
+            )
+        if not isinstance(args, dict):
+            raise CardGenerationError(
+                f"{self._profile.label} tool_use input is not an object: "
+                f"{type(args).__name__}"
+            )
+
+        assistant_turn = {"role": "assistant", "content": content}
+        return args, assistant_turn
+
+
+__all__ = ["AnthropicCompatGenerator"]
