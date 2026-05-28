@@ -1643,26 +1643,18 @@
             this.acpSending = false;
           } else if (frame.type === 'agent_message') {
             /* Phase 2 ACP events (plan §2.3 Amendment #12).
-               - agent_chunk: assistant text chunks → xterm (PTY path)
-                 or streaming bubble (acp-chat path, U3).
-               - turn_end: finalise bubble (acp-chat) or write visible
-                 marker into xterm (PTY).
-               - other kinds (tool_call, tool_call_update, plan) stay
-                 unhandled for now — future UI can surface them in a
-                 side panel without touching xterm. */
+               - agent_chunk: assistant text chunks → streaming bubble (U3).
+               - turn_end: finalise bubble (acp-chat path).
+               - tool_call, tool_call_update, plan, request_permission:
+                 handled by dedicated methods (U4–U6). */
             if (frame.kind === 'agent_chunk') {
               const text = _extractChunkText(frame.payload);
-              if (this._term) {
-                /* PTY/legacy path — kept for now; U8 removes for ACP. */
-                if (text) this._term.write(text);
-              } else if (this.terminalMode === 'acp-chat' && text) {
+              if (this.terminalMode === 'acp-chat' && text) {
                 this._appendAgentChunk(text);
               }
             } else if (frame.kind === 'turn_end') {
               const reason = (frame.payload && frame.payload.reason) || 'end_turn';
-              if (this._term) {
-                this._term.writeln(`\r\n\x1b[2m[turn ${reason}]\x1b[0m`);
-              } else if (this.terminalMode === 'acp-chat') {
+              if (this.terminalMode === 'acp-chat') {
                 this._finaliseStreamingBubble(reason);
               }
               this.acpSending = false;
@@ -1719,24 +1711,20 @@
         }
       },
 
-      /* ACP turn-based input: echo to xterm (PTY) or push to acpMessages
-         (chat mode), send as one frame, lock field until turn_end arrives
-         so users don't fire concurrent turns (which Kiro rejects mid-flight). */
+      /* ACP turn-based input: push user message to acpMessages, send as one
+         frame, lock field until turn_end arrives so users don't fire
+         concurrent turns (which Kiro rejects mid-flight). */
       _sendAcpInput() {
         const text = (this.acpInput || '').trim();
         if (!text || !this._ws || this._ws.readyState !== WebSocket.OPEN) return;
         if (this.acpSending) return;
-        if (this._term) {
-          this._term.writeln(`\r\n\x1b[1;36m> ${text}\x1b[0m`);
-        } else {
-          this.acpMessages.push({
-            id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-            role: 'user',
-            text,
-            html: null,
-            status: 'final',
-          });
-        }
+        this.acpMessages.push({
+          id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          role: 'user',
+          text,
+          html: null,
+          status: 'final',
+        });
         this._ws.send(JSON.stringify({ type: 'input', data: text }));
         this.acpInput = '';
         this.acpSending = true;
@@ -1959,7 +1947,12 @@
           title: s.title || '',
           status: (s.status || 'pending').toLowerCase(),
         }));
-        this.plan = { steps };
+        /* Defer the plan reactive write to the next tick so it runs in a
+           separate Alpine flush from any concurrent acpMessages.push calls.
+           This prevents the "null (reading 'type')" race where Alpine's Kn
+           directive-sort comparator reads .type on an uninitialised x-if
+           template node while the x-for list is still mid-flush. */
+        this.$nextTick(() => { this.plan = { steps }; });
       },
 
       /* U6.5: request_permission handler. Stores on pendingPermission (not in
@@ -1975,13 +1968,19 @@
         if (!payload || typeof payload !== 'object') return;
         const options = Array.isArray(payload.options) ? payload.options : [];
         if (options.length === 0) return;
-        this.acpSending = true;
-        this.pendingPermission = {
+        /* Defer the pendingPermission write to the next tick — same pattern as
+           _handlePlan — so it runs in a separate Alpine flush from concurrent
+           acpMessages mutations, preventing the null.type race. */
+        const perm = {
           toolCallId: payload.toolCallId || '',
           requestId: payload._request_id != null ? payload._request_id : '',
           options,
         };
-        this._scrollChatToBottom();
+        this.acpSending = true;
+        this.$nextTick(() => {
+          this.pendingPermission = perm;
+          this._scrollChatToBottom();
+        });
       },
 
       /* U6.5: User selected an option. Sends a permission_response WS frame
