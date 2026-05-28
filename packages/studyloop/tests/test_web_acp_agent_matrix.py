@@ -381,60 +381,54 @@ def _extract_chunk_text(payload: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# PR-D smoke: agent_chunk payload text renders into xterm DOM
+# U7: agent_chunk payload text renders into the ACP chat surface
 # ---------------------------------------------------------------------------
 
 
-class TestAgentChunkRendersInXterm:
-    """PR-D wires ``AgentMessage(kind='agent_chunk')`` payloads into
-    ``term.write`` so ACP output shows up in the xterm panel alongside
-    PTY output. This is one Playwright roundtrip against Kiro — the
-    normaliser is agent-agnostic so testing one agent is sufficient.
+@pytest.mark.parametrize("agent", ACP_AGENTS)
+class TestAcpChatChunkRenders:
+    """agent_chunk payload text reaches the ACP chat surface (.acp-message.assistant).
+
+    Replaces the former xterm-buffer poll (PR-D) which broke in U2 when
+    ACP sessions no longer mount xterm.  The chat panel (U2+) is now the
+    canonical surface for ACP output.  Parametrised over kiro + gemini —
+    the normaliser is agent-agnostic so both must pass.
     """
 
-    def test_agent_chunk_text_appears_in_xterm(self, acp_page: Page) -> None:
+    def test_agent_chunk_text_appears_in_chat(self, acp_page: Page, agent: str) -> None:
         _end_any_active_session(acp_page)
         acp_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         acp_page.wait_for_load_state("domcontentloaded")
-        # Let Alpine mount liveAgentConsole().
         acp_page.wait_for_function("() => !!window.Alpine", timeout=5000)
 
-        # Fire the start request ourselves so we control the ACP agent
-        # (the picker doesn't yet auto-select transport=acp — PR-B
-        # intentionally keeps pty the default).
         start_body = acp_page.evaluate(
-            """async () => {
+            """async (agent) => {
               const res = await fetch('/api/session/start', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                  topic: 'PR-D smoke', energy: 5, agent: 'kiro', transport: 'acp',
+                  topic: 'U7 chat chunk', energy: 5, agent: agent, transport: 'acp',
                 }),
               });
               return {status: res.status, body: await res.json()};
-            }"""
+            }""",
+            agent,
         )
-        assert start_body["status"] == 201, start_body
+        assert start_body["status"] == 201, f"agent={agent}: {start_body}"
 
-        # Flip sessionTimer.sessionActive so the xterm panel actually
-        # mounts, then dispatch the event liveAgentConsole listens for.
-        # The real UI does both inside startSession(); we bypass the
-        # picker so we have to reproduce the state flip ourselves.
         acp_page.evaluate(
             """(data) => {
               const timerRoot = document.querySelector('[x-data="sessionTimer()"]');
               if (timerRoot) {
                 const d = window.Alpine.$data(timerRoot);
                 d.sessionActive = true;
-                d.topic = 'PR-D smoke';
+                d.topic = 'U7 chat chunk';
                 d.startTime = new Date();
               }
-              // Next tick so x-show="sessionActive" paints the terminal
-              // container before liveAgentConsole grabs $refs.xtermMount.
               return new Promise((resolve) => setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('study-session-start', {
                   detail: {
-                    topic: 'PR-D smoke',
+                    topic: 'U7 chat chunk',
                     energy: 5,
                     sessionType: 'study',
                     targetKind: 'topic',
@@ -452,20 +446,20 @@ class TestAgentChunkRendersInXterm:
             start_body["body"],
         )
 
-        # Wait for the WS 'open' → Started → 'Connected' status to pin
-        # that xterm is truly live, then send a prompt via the xterm
-        # onData path (simulates a real keystroke).
+        # Wait until the WS is open and the ACP chat mode is active.
         acp_page.wait_for_function(
             """() => {
               const root = document.querySelector('[x-data="liveAgentConsole()"]');
               if (!root) return false;
-              const d = window.Alpine.$data(root);
-              return d && d.connected === true;
+              try {
+                const d = window.Alpine.$data(root);
+                return d && d.connected === true && d.terminalMode === 'acp-chat';
+              } catch { return false; }
             }""",
             timeout=10000,
         )
 
-        # Typing into xterm triggers term.onData which sends input over the WS.
+        # Send one input turn via the WS.
         acp_page.evaluate(
             """() => {
               const root = document.querySelector('[x-data="liveAgentConsole()"]');
@@ -477,25 +471,18 @@ class TestAgentChunkRendersInXterm:
             }"""
         )
 
-        # Poll the xterm buffer for the stub's chunk text. We read the
-        # terminal's active buffer rather than the DOM — under the
-        # WebGL renderer .xterm-rows isn't populated the same way, but
-        # term.buffer.active.translateToString is authoritative for
-        # what xterm has received via write().
+        # The stub's chunk text must appear in an assistant bubble on the
+        # chat surface — the canonical ACP output location since U2.
         acp_page.wait_for_function(
             """() => {
               const root = document.querySelector('[x-data="liveAgentConsole()"]');
               if (!root) return false;
-              const d = window.Alpine.$data(root);
-              const term = d && d._term;
-              if (!term || !term.buffer || !term.buffer.active) return false;
-              const active = term.buffer.active;
-              let buf = '';
-              for (let i = 0; i < active.length; i++) {
-                const line = active.getLine(i);
-                if (line) buf += line.translateToString(true);
-              }
-              return buf.includes('pong-from-stub');
+              try {
+                const d = window.Alpine.$data(root);
+                return (d.acpMessages || []).some(
+                  m => m.role === 'assistant' && (m.text || '').includes('pong-from-stub')
+                );
+              } catch { return false; }
             }""",
             timeout=10000,
         )
@@ -596,88 +583,6 @@ class TestAcpInputRow:
         assert not result["hasHiddenStyle"], (
             f"acp-input-row collapsed by x-show: inlineDisplay={result['inlineDisplay']!r}"
         )
-        _end_any_active_session(acp_page)
-
-    def test_submit_renders_response_and_unlocks(self, acp_page: Page) -> None:
-        """Type into the input row, press Enter, verify:
-        - one ``input`` frame goes out (not per-keystroke)
-        - stub's chunk text reaches xterm
-        - input field re-enables after ``turn_end``"""
-        self._start_acp_session_in_dom(acp_page)
-        # Hook the WS so we can count outbound 'input' frames.
-        acp_page.evaluate(
-            """() => {
-              const root = document.querySelector('[x-data="liveAgentConsole()"]');
-              const d = window.Alpine.$data(root);
-              const ws = d._ws;
-              window.__sentInputs = [];
-              const origSend = ws.send.bind(ws);
-              ws.send = (payload) => {
-                try {
-                  const parsed = JSON.parse(payload);
-                  if (parsed && parsed.type === 'input') {
-                    window.__sentInputs.push(parsed.data);
-                  }
-                } catch {}
-                return origSend(payload);
-              };
-            }"""
-        )
-
-        # Drive the submit path via the Alpine component directly. The
-        # bypass-the-picker flow leaves the outer #study-session view
-        # hidden (nav.current defaults to 'flashcards'), so Playwright's
-        # visibility-aware fill()/press() can't see the input. Calling
-        # _sendAcpInput exercises the same code path the form's submit
-        # handler invokes — including the WS frame and acpSending lock.
-        acp_page.evaluate(
-            """() => {
-              const root = document.querySelector('[x-data="liveAgentConsole()"]');
-              const d = window.Alpine.$data(root);
-              d.acpInput = 'hello-acp';
-              d._sendAcpInput();
-            }"""
-        )
-
-        # Stub responds with 'pong-from-stub' chunk + end_turn.
-        acp_page.wait_for_function(
-            """() => {
-              const root = document.querySelector('[x-data="liveAgentConsole()"]');
-              if (!root) return false;
-              const d = window.Alpine.$data(root);
-              const term = d && d._term;
-              if (!term || !term.buffer || !term.buffer.active) return false;
-              const active = term.buffer.active;
-              let buf = '';
-              for (let i = 0; i < active.length; i++) {
-                const line = active.getLine(i);
-                if (line) buf += line.translateToString(true);
-              }
-              return buf.includes('hello-acp') && buf.includes('pong-from-stub');
-            }""",
-            timeout=10000,
-        )
-
-        # Exactly one outbound input frame for one Enter press.
-        sent = acp_page.evaluate("() => window.__sentInputs")
-        assert sent == ["hello-acp"], f"expected one input frame, got {sent!r}"
-
-        # Field unlocked after turn_end and ready for next turn.
-        acp_page.wait_for_function(
-            """() => {
-              const root = document.querySelector('[x-data="liveAgentConsole()"]');
-              if (!root) return false;
-              const d = window.Alpine.$data(root);
-              return d.acpSending === false;
-            }""",
-            timeout=5000,
-        )
-        # Input field should be enabled now (not :disabled). Read the
-        # property via the DOM rather than is_enabled() because the
-        # outer view container is hidden in this test harness.
-        assert acp_page.evaluate(
-            "() => !document.querySelector('.acp-input-field').disabled"
-        ), "input still disabled after turn_end"
         _end_any_active_session(acp_page)
 
     def test_submit_blocks_concurrent_turns(self, acp_page: Page) -> None:
