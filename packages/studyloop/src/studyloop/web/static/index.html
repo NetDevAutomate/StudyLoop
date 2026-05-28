@@ -18,6 +18,14 @@
   <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
   <!-- Alpine.js (vendored for offline PWA) -->
   <script defer src="/vendor/js/alpine-3.14.8.min.js"></script>
+  <!-- Chat rendering libs (vendored for offline PWA). UMD globals:
+       window.DOMPurify, window.marked, window.hljs.
+       Load order: DOMPurify first (marked + hljs may call it internally),
+       then marked, then hljs, then the highlight theme CSS. -->
+  <script src="/vendor/js/purify-3.1.0.min.js"></script>
+  <script src="/vendor/js/marked-12.0.0.min.js"></script>
+  <script src="/vendor/js/highlight-11.9.0.min.js"></script>
+  <link rel="stylesheet" href="/vendor/css/highlight-tokyo-night-dark.css">
   <!-- xterm.js + addons (vendored). UMD globals:
        window.Terminal, window.FitAddon, window.WebglAddon, window.ClipboardAddon.
        Addon scripts depend on xterm.js being loaded first. -->
