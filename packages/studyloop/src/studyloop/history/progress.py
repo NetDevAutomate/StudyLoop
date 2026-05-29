@@ -132,6 +132,50 @@ def get_wins(days: int = 30) -> list[dict]:
         conn.close()
 
 
+def get_struggling_topics(days: int = 14) -> list[dict]:
+    """Return distinct topics flagged 'struggling' within the last ``days``.
+
+    Drives the WebUI's topic-from-struggles dropdown (U10) and is also
+    consumed by the scope resolver when ``scope.kind='topic_struggles'``.
+
+    Args:
+        days: Lookback window. Bounded 1..90 by the caller; this helper
+            does not validate so it can be reused from other contexts
+            (e.g. a future "topics struggled this year" report).
+
+    Returns:
+        List of ``{"topic", "concept_count", "session_count", "last_seen"}``
+        sorted by ``last_seen`` descending. The ``concept_count`` is the
+        number of *distinct concepts* that share that topic and are
+        struggling -- useful UI signal for "lots of struggle in pandas
+        vs one tiny gap in joins".
+    """
+    conn = _connection._connect()
+    if not conn:
+        return []
+    try:
+        rows = conn.execute(
+            """
+            SELECT
+                topic,
+                COUNT(DISTINCT concept) AS concept_count,
+                SUM(session_count)      AS session_count,
+                MAX(last_seen)          AS last_seen
+            FROM study_progress
+            WHERE confidence = 'struggling'
+              AND last_seen > datetime('now', ?)
+            GROUP BY topic
+            ORDER BY last_seen DESC
+            """,
+            (f"-{days} days",),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
+    finally:
+        conn.close()
+
+
 def get_progress_for_map() -> list[dict]:
     """Get all study progress entries for rendering a progress map.
 

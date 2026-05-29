@@ -71,12 +71,20 @@ def create_app(
     app.add_middleware(SecurityHeadersMiddleware)
 
     # Register API routes
-    from studyloop.web.routes import artefacts, cards, courses, history, session
+    from studyloop.web.routes import (
+        artefacts,
+        cards,
+        content_gen,
+        courses,
+        history,
+        session,
+    )
 
     app.include_router(courses.router, prefix="/api")
     app.include_router(cards.router, prefix="/api")
     app.include_router(history.router, prefix="/api")
     app.include_router(session.router, prefix="/api")
+    app.include_router(content_gen.router, prefix="/api")
     app.include_router(artefacts.router)
 
     # Pomodoro config endpoint — serves configured durations for the slider
