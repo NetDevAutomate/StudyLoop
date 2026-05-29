@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
+from studyloop.history.progress import get_struggling_topics
 from studyloop.review_db import ensure_tables, record_session
 from studyloop.settings import get_db_path
 
@@ -67,3 +68,15 @@ def post_session(body: SessionRequest) -> dict:
         duration_seconds=body.duration_seconds,
     )
     return {"ok": True}
+
+
+@router.get("/history/struggling-topics")
+def struggling_topics(days: int = Query(14, ge=1, le=90)) -> list[dict]:
+    """Return distinct topics flagged 'struggling' in the lookback window.
+
+    Drives the WebUI's topic-from-struggles dropdown when scope
+    selection is "topic_struggles". Bounded 1..90 days at validation
+    time so a stray ``?days=0`` or ``?days=99999`` is rejected with
+    422 before the helper runs.
+    """
+    return get_struggling_topics(days=days)
