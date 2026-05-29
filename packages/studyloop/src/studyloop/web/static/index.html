@@ -162,6 +162,12 @@
         <span>Quizzes</span>
       </button>
       <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('generate') }"
+              @click="$store.nav.go('generate')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Generate</span>
+      </button>
+      <button class="sidebar-btn"
               :class="{ active: $store.nav.is('body-double') }"
               @click="$store.nav.go('body-double')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -675,6 +681,163 @@
       </div>
 
       <!-- ============================================================ -->
+      <!-- GENERATE VIEW — kick a content-generation job and stream     -->
+      <!-- progress over a WebSocket. Backed by U5/U7/U9/U10/U10.5      -->
+      <!-- routes; backend ships decks the reviewer (Flashcards /       -->
+      <!-- Quizzes views) reads from disk automatically — no coupling.  -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('generate')" x-cloak
+           x-data="generatePanel()" x-init="init()">
+        <div class="generate-panel">
+          <header class="body-double-header">
+            <h2>Generate</h2>
+            <p class="text-muted">
+              Build flashcards or quizzes from your study notes.
+              Pick a course and scope; the generator writes JSON the
+              <a href="#flashcards" @click.prevent="$store.nav.go('flashcards')">Flashcards</a> and
+              <a href="#quizzes" @click.prevent="$store.nav.go('quizzes')">Quizzes</a> views read directly.
+            </p>
+          </header>
+
+          <!-- Conflict banner (shown on 409) -->
+          <div x-show="conflictBanner" x-cloak class="generate-banner generate-banner-warn">
+            <span x-text="conflictBanner"></span>
+            <button class="link-btn" @click="conflictBanner = ''" type="button">dismiss</button>
+          </div>
+
+          <!-- Form -->
+          <form class="generate-form" @submit.prevent="submit()" x-show="!running">
+            <label class="form-row">
+              <span>Course</span>
+              <select x-model="form.course" @change="onCourseChange()" required>
+                <option value="">— pick a course —</option>
+                <template x-for="c in courses" :key="c.name">
+                  <option :value="c.name" x-text="c.name"></option>
+                </template>
+              </select>
+            </label>
+
+            <fieldset class="form-row">
+              <legend>Scope</legend>
+              <label><input type="radio" value="course" x-model="form.scope_kind"> Whole course</label>
+              <label><input type="radio" value="section" x-model="form.scope_kind"> One section</label>
+              <label><input type="radio" value="topic_struggles" x-model="form.scope_kind"> Topic I'm struggling on</label>
+            </fieldset>
+
+            <label class="form-row" x-show="form.scope_kind === 'section'">
+              <span>Section</span>
+              <select x-model="form.section" :required="form.scope_kind === 'section'">
+                <option value="">— pick a section —</option>
+                <template x-for="s in sections" :key="s.slug">
+                  <option :value="s.slug">
+                    <span x-text="s.name"></span>
+                    (<span x-text="s.file_count"></span> file<span x-show="s.file_count !== 1">s</span>)
+                  </option>
+                </template>
+              </select>
+            </label>
+
+            <label class="form-row" x-show="form.scope_kind === 'topic_struggles'">
+              <span>Window (days)</span>
+              <input type="number" x-model.number="form.window_days" min="1" max="90">
+            </label>
+
+            <label class="form-row" x-show="form.scope_kind === 'topic_struggles'">
+              <span>Topic</span>
+              <select x-model="form.topic_slug">
+                <option value="">all struggling topics in window</option>
+                <template x-for="t in strugglingTopics" :key="t.topic">
+                  <option :value="t.topic">
+                    <span x-text="t.topic"></span>
+                    (<span x-text="t.concept_count"></span> concepts)
+                  </option>
+                </template>
+              </select>
+            </label>
+
+            <fieldset class="form-row">
+              <legend>Kinds</legend>
+              <label><input type="checkbox" value="flashcards" x-model="form.kinds"> Flashcards</label>
+              <label><input type="checkbox" value="quizzes" x-model="form.kinds"> Quizzes</label>
+            </fieldset>
+
+            <label class="form-row">
+              <span>Cards / questions per source</span>
+              <select x-model.number="form.count_per_source">
+                <template x-for="n in [5, 10, 15, 20, 25, 50]" :key="n">
+                  <option :value="n" x-text="n"></option>
+                </template>
+              </select>
+            </label>
+
+            <label class="form-row">
+              <span>Provider</span>
+              <select x-model="form.provider" @change="onProviderChange()">
+                <option value="">stub (offline, free)</option>
+                <template x-for="p in providers" :key="p.slug">
+                  <option :value="p.slug" :disabled="!p.available">
+                    <span x-text="p.label"></span>
+                    <span x-show="!p.available"> — set <span x-text="p.auth_env"></span> to enable</span>
+                  </option>
+                </template>
+              </select>
+            </label>
+
+            <label class="form-row" x-show="form.provider">
+              <span>Model</span>
+              <select x-model="form.model">
+                <template x-for="m in modelsForProvider" :key="m.id">
+                  <option :value="m.id">
+                    <span x-text="m.label"></span>
+                    [<span x-text="m.cost_tier"></span>]<span x-show="m.thinking">🧠</span>
+                  </option>
+                </template>
+              </select>
+            </label>
+
+            <label class="form-row">
+              <span>If a deck already exists</span>
+              <select x-model="form.on_existing">
+                <option value="merge">Merge (de-dupe by front/question — least destructive)</option>
+                <option value="suffix">Save with -1, -2, -N suffix</option>
+                <option value="overwrite">Overwrite</option>
+              </select>
+            </label>
+
+            <button class="toggle-btn" type="submit"
+                    :disabled="!canSubmit()">Generate</button>
+            <span class="form-error" x-show="formError" x-text="formError"></span>
+          </form>
+
+          <!-- Progress -->
+          <section class="generate-progress" x-show="running || finishedSummary" x-cloak>
+            <h3>Job <code x-text="jobId || '—'"></code></h3>
+            <div class="generate-plan" x-show="plan">
+              <span x-text="(plan?.task_count ?? 0)"></span> task<span x-show="(plan?.task_count ?? 0) !== 1">s</span>
+              across <span x-text="(plan?.sources?.length ?? 0)"></span> source<span x-show="(plan?.sources?.length ?? 0) !== 1">s</span>
+              · backend <code x-text="plan?.backend"></code>
+            </div>
+            <div class="generate-progress-bar" x-show="plan">
+              <div class="generate-progress-fill" :style="`width: ${progressPct()}%`"></div>
+            </div>
+            <ol class="generate-tasks">
+              <template x-for="t in tasks" :key="`${t.identifier}-${t.kind}`">
+                <li>
+                  <code x-text="t.identifier"></code>
+                  · <span x-text="t.kind"></span>
+                  · <span x-text="t.ok ? '✓' : '✗'"></span>
+                  · <span x-text="`${t.elapsed_s.toFixed(1)}s`"></span>
+                  <span class="form-error" x-show="t.error" x-text="t.error"></span>
+                </li>
+              </template>
+            </ol>
+            <p x-show="finishedSummary" x-text="finishedSummary" class="generate-summary"></p>
+            <button class="link-btn" @click="reset()" x-show="finishedSummary" type="button">Run another</button>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
       <!-- STUDY SESSION VIEW — start picker or live dashboard          -->
       <!-- ============================================================ -->
       <div x-show="$store.nav.is('study-session')" x-cloak
@@ -1059,7 +1222,7 @@
 
       init() {
         const hash = window.location.hash.slice(1);
-        const valid = ['flashcards', 'quizzes', 'body-double', 'study-session'];
+        const valid = ['flashcards', 'quizzes', 'generate', 'body-double', 'study-session'];
         if (hash && valid.includes(hash)) this.current = hash;
       },
 
@@ -1087,6 +1250,215 @@
     if (energy >= 7) return 'high';
     if (energy >= 4) return 'medium';
     return 'low';
+  }
+
+  /* ------------------------------------------------------------------
+   * Generate panel — drives content generation jobs (U8).
+   *
+   * Lifecycle:
+   *   load() → POST /api/content/generate → 202 { job_id, plan }
+   *          → open WS /api/content/generate/ws?job_id=...
+   *          → render started / task_complete frames
+   *          → close on all_done | transport_error
+   *
+   * The form state is the source of truth; `running` flips the UI
+   * between form and progress views. 409 conflicts surface as a
+   * non-modal banner that includes the other job's id.
+   * ------------------------------------------------------------------ */
+  function generatePanel() {
+    return {
+      // Lookup data populated on init().
+      courses: [],
+      sections: [],
+      strugglingTopics: [],
+      providers: [],
+
+      // Form state. Defaults match the plan: kinds=[flashcards],
+      // count_per_source=10, on_existing=merge (least destructive).
+      form: {
+        course: '',
+        scope_kind: 'course',
+        section: '',
+        topic_slug: '',
+        window_days: 14,
+        kinds: ['flashcards'],
+        count_per_source: 10,
+        provider: '',
+        model: '',
+        on_existing: 'merge',
+        backend: '',
+      },
+      formError: '',
+      conflictBanner: '',
+
+      // Job state. `running` gates the form vs progress UI.
+      running: false,
+      jobId: '',
+      plan: null,
+      tasks: [],
+      finishedSummary: '',
+      _ws: null,
+
+      get modelsForProvider() {
+        const p = this.providers.find((p) => p.slug === this.form.provider);
+        return p ? p.models : [];
+      },
+
+      async init() {
+        // The Generate panel lists *source* courses (subdirs of
+        // content.base_path), NOT the reviewer's already-decked
+        // courses — fresh courses with no flashcards yet are
+        // legitimate targets here.
+        try {
+          const [courses, providers] = await Promise.all([
+            fetch('/api/content/courses').then((r) => r.ok ? r.json() : []),
+            fetch('/api/content/providers').then((r) => r.ok ? r.json() : []),
+          ]);
+          this.courses = courses;
+          this.providers = providers;
+        } catch {
+          /* lookups remain empty; the form still validates client-side */
+        }
+      },
+
+      async onCourseChange() {
+        this.sections = [];
+        this.strugglingTopics = [];
+        if (!this.form.course) return;
+        try {
+          const r = await fetch(`/api/courses/${encodeURIComponent(this.form.course)}/sections`);
+          if (r.ok) this.sections = await r.json();
+        } catch { /* leave empty */ }
+        try {
+          const r = await fetch(`/api/history/struggling-topics?days=${this.form.window_days}`);
+          if (r.ok) this.strugglingTopics = await r.json();
+        } catch { /* leave empty */ }
+      },
+
+      onProviderChange() {
+        // Reset model when provider changes; default-pick happens
+        // server-side in get_generator() if blank.
+        this.form.model = '';
+        // Pick the matching backend automatically — the user shouldn't
+        // care about the openai_compat / anthropic_compat distinction.
+        const p = this.providers.find((x) => x.slug === this.form.provider);
+        this.form.backend = p ? p.adapter : '';
+      },
+
+      canSubmit() {
+        if (this.running) return false;
+        if (!this.form.course) return false;
+        if (this.form.kinds.length === 0) return false;
+        if (this.form.scope_kind === 'section' && !this.form.section) return false;
+        return true;
+      },
+
+      progressPct() {
+        const total = this.plan?.task_count ?? 0;
+        if (!total) return 0;
+        return Math.min(100, Math.round((this.tasks.length / total) * 100));
+      },
+
+      async submit() {
+        this.formError = '';
+        this.conflictBanner = '';
+        const body = {
+          course: this.form.course,
+          scope: {
+            kind: this.form.scope_kind,
+            course: this.form.course,
+            section: this.form.section,
+            topic_slug: this.form.topic_slug,
+            window_days: this.form.window_days,
+          },
+          kinds: this.form.kinds,
+          count_per_source: this.form.count_per_source,
+          on_existing: this.form.on_existing,
+        };
+        if (this.form.backend) body.backend = this.form.backend;
+        if (this.form.provider) body.provider = this.form.provider;
+        if (this.form.model) body.model = this.form.model;
+
+        let resp;
+        try {
+          resp = await fetch('/api/content/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+        } catch (e) {
+          this.formError = `Network error: ${e.message ?? e}`;
+          return;
+        }
+
+        if (resp.status === 409) {
+          const detail = (await resp.json()).detail ?? 'another job is already running';
+          this.conflictBanner = detail;
+          return;
+        }
+        if (!resp.ok) {
+          const detail = (await resp.json().catch(() => ({}))).detail ?? `${resp.status} ${resp.statusText}`;
+          this.formError = detail;
+          return;
+        }
+        const data = await resp.json();
+        this.jobId = data.job_id;
+        this.plan = data.plan;
+        this.tasks = [];
+        this.finishedSummary = '';
+        this.running = true;
+        this._openWS();
+      },
+
+      _openWS() {
+        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const url = `${proto}//${window.location.host}/api/content/generate/ws?job_id=${encodeURIComponent(this.jobId)}`;
+        const ws = new WebSocket(url);
+        this._ws = ws;
+        ws.onmessage = (ev) => {
+          let frame;
+          try {
+            frame = JSON.parse(ev.data);
+          } catch {
+            return;
+          }
+          if (frame.type === 'started') {
+            // Server's started frame has an authoritative task_count;
+            // our 202 plan was an estimate. Reconcile.
+            if (this.plan) this.plan.task_count = frame.task_count;
+          } else if (frame.type === 'task_complete') {
+            this.tasks.push(frame);
+          } else if (frame.type === 'all_done') {
+            this.finishedSummary = `Done — ${frame.written} written, ${frame.failed} failed.`;
+            this.running = false;
+            ws.close();
+          } else if (frame.type === 'transport_error') {
+            this.finishedSummary = `Job error: ${frame.message}`;
+            this.running = false;
+            ws.close();
+          }
+        };
+        ws.onerror = () => {
+          this.formError = 'WebSocket connection lost.';
+        };
+        ws.onclose = () => {
+          this.running = false;
+        };
+      },
+
+      reset() {
+        this.jobId = '';
+        this.plan = null;
+        this.tasks = [];
+        this.finishedSummary = '';
+        this.formError = '';
+        this.conflictBanner = '';
+        if (this._ws) {
+          try { this._ws.close(); } catch {}
+          this._ws = null;
+        }
+      },
+    };
   }
 
   /* ------------------------------------------------------------------

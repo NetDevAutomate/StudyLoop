@@ -286,6 +286,49 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
 
 
 # ---------------------------------------------------------------------------
+# Course discovery endpoint (drives the Generate panel's course dropdown)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/content/courses")
+async def list_content_courses() -> list[dict[str, Any]]:
+    """Return courses discovered under ``content.base_path``.
+
+    Distinct from ``/api/courses`` (which lists courses that already
+    have flashcards/quizzes JSON files for the reviewer): this route
+    lists *source* courses on disk so the Generate panel can offer
+    them as targets even when no decks exist yet. Without this, a
+    fresh course can never appear in the form -- a real bug surfaced
+    by the U8 e2e tests.
+
+    Output subdirs (``flashcards``, ``quizzes``) and dot-dirs are
+    skipped at the course level too, in case the user has accidentally
+    pointed ``content.base_path`` at a course root.
+    """
+    from studyloop.settings import load_settings
+
+    settings = load_settings()
+    base = settings.content.base_path
+    try:
+        base = base.expanduser()
+    except AttributeError:
+        from pathlib import Path
+
+        base = Path(str(base)).expanduser()
+    if not base.is_dir():
+        return []
+
+    out: list[dict[str, Any]] = []
+    for child in sorted(base.iterdir()):
+        if not child.is_dir():
+            continue
+        if child.name.startswith(".") or child.name in {"flashcards", "quizzes"}:
+            continue
+        out.append({"name": child.name})
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Provider list endpoint (U10.5)
 # ---------------------------------------------------------------------------
 

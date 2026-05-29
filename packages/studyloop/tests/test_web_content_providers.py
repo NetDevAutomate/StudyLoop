@@ -75,3 +75,45 @@ class TestProvidersRoute:
         assert availability["openrouter"] is True
         assert availability["openai"] is False
         assert availability["anthropic"] is False
+
+
+class TestContentCoursesRoute:
+    """``/api/content/courses`` — distinct from ``/api/courses``.
+
+    Lists *source* courses on disk so the Generate panel can target
+    fresh courses before any decks exist. A bug surfaced by U8 e2e:
+    ``/api/courses`` only enumerates courses that already have JSON
+    decks for the reviewer.
+    """
+
+    def test_returns_course_subdirs_under_base_path(
+        self, tmp_path, monkeypatch: MonkeyPatch
+    ) -> None:
+        from studyloop.settings import ContentConfig, Settings
+
+        study = tmp_path / "Study"
+        (study / "DataCamp").mkdir(parents=True)
+        (study / "PythonForDataScience").mkdir()
+        (study / ".obsidian").mkdir()  # dot dir — must be skipped
+        (study / "flashcards").mkdir()  # output dir — must be skipped
+
+        s = Settings()
+        s.content = ContentConfig(base_path=study)
+        monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+
+        client = TestClient(create_app(study_dirs=[]))
+        data = client.get("/api/content/courses").json()
+        names = {entry["name"] for entry in data}
+        assert names == {"DataCamp", "PythonForDataScience"}
+
+    def test_returns_empty_when_base_path_missing(
+        self, tmp_path, monkeypatch: MonkeyPatch
+    ) -> None:
+        from studyloop.settings import ContentConfig, Settings
+
+        s = Settings()
+        s.content = ContentConfig(base_path=tmp_path / "does-not-exist")
+        monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+
+        client = TestClient(create_app(study_dirs=[]))
+        assert client.get("/api/content/courses").json() == []
