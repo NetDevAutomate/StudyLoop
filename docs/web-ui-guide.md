@@ -325,7 +325,7 @@ apt install ttyd       # Debian/Ubuntu
 
 ## Generate Panel
 
-> **Status (2026-05-28):** Backend shipped (registry, two HTTP adapters, scope resolver, job orchestrator). The sidebar UI lands in Session 2 of the [generation panel plan](plans/2026-05-29-001-feat-content-generation-panel-plan.md). What you'll see described below is what the panel will look like once U5/U7/U8/U9/U10/U10.5 land — code paths and provider plumbing already work end-to-end.
+> **Status (2026-05-29):** Shipped end-to-end. Backend (registry, two HTTP adapters, scope resolver, job orchestrator), HTTP surface (REST + WS + 4 supporting routes), and the sidebar UI all live on `main`. The Generate tab is now first-class alongside Flashcards / Quizzes / Body Double / Study Session.
 
 The Generate tab in the sidebar (between **Quizzes** and **Body Double**) lets you produce flashcard and quiz decks from any course/section in your `~/Obsidian/Personal/Study/` tree, or from topics you've struggled with recently, without dropping to the CLI.
 
@@ -333,16 +333,18 @@ The Generate tab in the sidebar (between **Quizzes** and **Body Double**) lets y
 
 | Field | Source | Default |
 |---|---|---|
-| **Course** | Auto-discovered subdirs under `content.base_path` | first alphabetical |
-| **Scope** | Course / Section / Topic struggles | Section |
-| **Section** | Auto-discovered subdirs under the chosen course (Section scope only) | first alphabetical |
-| **Topic** | `study_progress.confidence='struggling'` distinct topics in window (Topic scope only) | first by name |
+| **Course** | Auto-discovered via `GET /api/content/courses` (subdirs of `content.base_path`) | empty — pick one |
+| **Scope** | Whole course / One section / Topic I'm struggling on | Whole course |
+| **Section** | `GET /api/courses/<course>/sections` (subdirs of the chosen course; output dirs skipped) | empty — pick one when scope=section |
+| **Topic** | `GET /api/history/struggling-topics?days=N` — distinct topics with `confidence='struggling'` in the window | "all struggling topics in window" |
 | **Window days** | numeric, 1-90 (Topic scope only) | 14 |
-| **Kinds** | Flashcards / Quizzes (multi-select, ≥1 required) | both |
+| **Kinds** | Flashcards / Quizzes (multi-select, ≥1 required) | Flashcards |
 | **Count** | 5 / 10 / 15 / 20 / 25 / 50 cards-per-source | 10 |
-| **Provider** | populated from `GET /api/content/providers`; providers without an env var are shown but disabled | first available |
+| **Provider** | `GET /api/content/providers`; providers without an env var are visible but disabled, with tooltip | "stub (offline, free)" |
 | **Model** | curated list per provider, with cost-tier + thinking-model badges | provider's first cheap-tier model |
-| **On existing** | Overwrite / Merge / New suffix | Merge |
+| **On existing** | Overwrite / Merge / New suffix | Merge (least destructive) |
+
+> **Why two course endpoints?** `GET /api/courses` lists courses that already have flashcards/quizzes JSON for the reviewer to render. The Generate panel uses `GET /api/content/courses` instead so a *fresh* course (markdown notes, no decks yet) is still a legitimate target.
 
 ### What happens when you click Generate
 
@@ -372,9 +374,9 @@ While the job is in flight, the Generate button is disabled. The progress area s
 
 ### `on_existing` policies
 
+- **Merge** (default) — loads the existing deck, deduplicates by normalised `front` (flashcards) or `question` (quizzes), and writes the merged result back. The original card content wins on collision; new cards are appended. Result is re-validated by pydantic so the exactly-one-correct-answer invariant survives. **Picked as default because it's the least destructive sensible behaviour** — no work is ever lost, and a re-run that produces overlapping content silently consolidates.
+- **Suffix** — keeps the existing file, writes the new one as `<slug>-1-flashcards.json`, `<slug>-2-flashcards.json`, …
 - **Overwrite** — replaces the existing file at `course/flashcards/<slug>-flashcards.json`. Destructive.
-- **Suffix** (default for repeat runs) — keeps the existing file, writes the new one as `<slug>-1-flashcards.json`, `<slug>-2-flashcards.json`, …
-- **Merge** — loads the existing deck, deduplicates by normalised `front` (flashcards) or `question` (quizzes), and writes the merged result back. The original card content wins on collision; new cards are appended. Result is re-validated by pydantic so the exactly-one-correct-answer invariant survives.
 
 ### Provider plumbing under the hood
 

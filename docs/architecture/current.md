@@ -234,7 +234,7 @@ All four are gated on a single non-reactive flag `this._suppressStreamingBubble`
 
 ## C4 Level 3 — Component (zoomed into the Generate panel)
 
-Sister surface to the chat surface. The Generate panel reuses the existing `content/generators/` package as its producer; the new layer is the orchestrator + the active-generation singleton + the REST + WS endpoints (U5/U7, planned for Session 2). Everything at and below the orchestrator is shipped today.
+Sister surface to the chat surface. The Generate panel reuses the existing `content/generators/` package as its producer; the new layer is the orchestrator + the active-generation singleton + the REST + WS endpoints + the sidebar UI. **All shipped on `main` as of 2026-05-29** — backend, HTTP surface, and browser side.
 
 ```mermaid
 flowchart TB
@@ -248,8 +248,8 @@ flowchart TB
 
     subgraph Backend["Server — FastAPI"]
       direction TB
-      Routes["content_gen router<br/>(U5/U7, planned)"]
-      Discover["Course / Section /<br/>Provider lookups<br/>(U9 / U10 / U10.5)"]
+      Routes["content_gen router<br/>(U5 REST + U7 WS)"]
+      Discover["Course / Section /<br/>Topic / Provider lookups<br/>(U9 / U10 / U10.5 +<br/>/api/content/courses)"]
       Single["active_gen singleton<br/>(content/active_gen.py)"]
       Job["run_job orchestrator<br/>(content/job.py)"]
       Scope["resolve_scope<br/>(content/scope.py)"]
