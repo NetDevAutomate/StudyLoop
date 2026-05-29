@@ -2456,3 +2456,116 @@ body[data-palette="catppuccin-latte"] {
 }
 .palette-select:hover { border-color: var(--accent); }
 .palette-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ------------------------------------------------------------------
+ * Generate panel (U8)
+ *
+ * Reuses .toggle-btn / .body-double-header / .form-error from the
+ * existing styles. Adds a flat form layout (.form-row), a banner
+ * style for 409 conflicts, and the progress bar / task list shape.
+ * ------------------------------------------------------------------ */
+.generate-panel {
+  max-width: 720px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.generate-form { display: flex; flex-direction: column; gap: 12px; }
+.generate-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.generate-form .form-row > span,
+.generate-form .form-row > legend {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.generate-form fieldset {
+  border: 0;
+  padding: 0;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.generate-form fieldset label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.generate-form select,
+.generate-form input[type="number"] {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.9rem;
+}
+.generate-form select:focus,
+.generate-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.generate-banner {
+  border-left: 3px solid var(--accent);
+  background: var(--bg-hover);
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.generate-banner-warn { border-left-color: #d68a00; }
+
+.generate-progress { display: flex; flex-direction: column; gap: 12px; }
+.generate-progress h3 { margin: 0; font-size: 1rem; }
+.generate-plan {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.generate-progress-bar {
+  height: 8px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.generate-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.generate-tasks {
+  font-size: 0.85rem;
+  list-style: decimal inside;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.generate-tasks li {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.generate-summary {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--bg-hover);
+  border-radius: 6px;
+  font-weight: 500;
+}
+.link-btn {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+.form-error { color: #c14b4b; font-size: 0.85rem; }
