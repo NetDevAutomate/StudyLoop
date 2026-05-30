@@ -111,6 +111,7 @@ class TestWebCommandConfig:
     def test_web_reads_review_dirs_from_studyloop_config_env(
         self, monkeypatch: MonkeyPatch, tmp_path: Path
     ) -> None:
+        import uvicorn
         from click.testing import CliRunner
 
         config_path = tmp_path / "custom-config.yaml"
@@ -124,8 +125,11 @@ class TestWebCommandConfig:
             captured.update(kwargs)
             return object()
 
+        # _web.py calls _StudyLoopServer(config).run() (subclass of uvicorn.Server),
+        # not uvicorn.run(), so patch the bound method to keep the test from binding
+        # a real port.
         monkeypatch.setattr("studyloop.web.app.create_app", fake_create_app)
-        monkeypatch.setattr("uvicorn.run", lambda *args, **kwargs: None)
+        monkeypatch.setattr(uvicorn.Server, "run", lambda *args, **kwargs: None)
 
         result = CliRunner().invoke(cli, ["web"])
 

@@ -50,7 +50,7 @@ from studyloop.session.transports.acp_normaliser import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
+    from collections.abc import Callable
 
     from studyloop.session.transport import SessionConfig, TransportEventT
 
@@ -66,6 +66,54 @@ class _Running:
     proc: asyncio.subprocess.Process
     reader_task: asyncio.Task[None]
     queue: asyncio.Queue[TransportEventT | None]
+
+
+class _EventStream:
+    """Cancellation-safe async iterator over the transport event queue.
+
+    Python async generators are permanently closed when a ``CancelledError``
+    propagates into their frame (PEP 525 / Python 3.10+ behaviour). Callers
+    that use ``asyncio.wait_for(gen.__anext__(), timeout=N)`` trigger exactly
+    this: the timeout cancels the ``__anext__`` coroutine, which injects
+    ``CancelledError`` into the generator, which closes it. Subsequent calls
+    raise ``StopAsyncIteration`` even though the session is still live.
+
+    A class-based iterator avoids this entirely: ``__anext__`` is a fresh
+    coroutine on every call. Cancelling one call leaves the iterator state
+    (``_started_yielded``, ``_done``) intact so the next call picks up cleanly.
+
+    Ordering guarantee: ``Started`` is synthesised as the very first item
+    regardless of what is already in the queue. This eliminates the race
+    where the reader pre-fills the queue with post-handshake notifications
+    before ``start()`` would have enqueued ``Started`` (StreamReader.readline
+    returns without yielding when stdout data is buffered, so the reader
+    can drain a whole flush in one event-loop turn).
+    """
+
+    def __init__(
+        self,
+        queue: asyncio.Queue[TransportEventT | None],
+        started_event: Started,
+    ) -> None:
+        self._queue = queue
+        self._started_event = started_event
+        self._started_yielded = False
+        self._done = False
+
+    def __aiter__(self) -> _EventStream:
+        return self
+
+    async def __anext__(self) -> TransportEventT:
+        if self._done:
+            raise StopAsyncIteration
+        if not self._started_yielded:
+            self._started_yielded = True
+            return self._started_event
+        event = await self._queue.get()
+        if event is None:
+            self._done = True
+            raise StopAsyncIteration
+        return event
 
 
 class ACPTransport:
@@ -102,6 +150,7 @@ class ACPTransport:
         self._next_id = 1
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._prompt_tasks: set[asyncio.Task[None]] = set()
+        self._handshake_complete = False
 
     # ---- AgentSessionTransport ------------------------------------------
 
@@ -170,8 +219,12 @@ class ACPTransport:
             await self._tear_down()
             raise
 
-        # Emit Started after successful handshake.
-        await queue.put(Started(agent=self._agent_name))
+        # Mark handshake complete. Started is synthesised by events() as the
+        # first yield — keeping it out of the queue eliminates the race between
+        # the reader draining post-session/new notifications and start() putting
+        # Started. The queue only ever holds post-handshake events so no
+        # ordering guarantee is required of the reader.
+        self._handshake_complete = True
         logger.info(
             "ACP session started agent=%s sessionId=%s pid=%s",
             self._agent_name,
@@ -276,15 +329,31 @@ class ACPTransport:
         except Exception:
             logger.exception("send_permission_response write error")
 
-    async def events(self) -> AsyncGenerator[TransportEventT, None]:
+    def events(self) -> _EventStream:
+        """Return a cancellation-safe async iterator over session events.
+
+        The first item is always ``Started`` regardless of queue state — this
+        eliminates the race between the reader pre-filling the queue with
+        post-handshake notifications and ``start()`` enqueuing ``Started``.
+
+        Returns an ``_EventStream`` (class-based iterator) rather than an
+        async generator so that ``asyncio.wait_for(stream.__anext__(), N)``
+        timeouts do not permanently close the iterator. Each ``__anext__``
+        call is a fresh coroutine; cancelling one leaves the stream alive
+        for the next call. This is the failure mode that broke real-Kiro
+        chat after the first attempted flake fix — Kiro's first chunk took
+        longer than the route's wait_for timeout, the generator closed,
+        and the UI froze on "Setting up your mentor…".
+        """
         state = self._state
-        if state is None:
-            return
-        while True:
-            event = await state.queue.get()
-            if event is None:
-                return
-            yield event
+        if state is None or not self._handshake_complete:
+            # Return a stream that immediately raises StopAsyncIteration.
+            empty: asyncio.Queue[TransportEventT | None] = asyncio.Queue()
+            empty.put_nowait(None)
+            stream = _EventStream(empty, Started(agent=self._agent_name))
+            stream._started_yielded = True  # skip the Started yield too
+            return stream
+        return _EventStream(state.queue, Started(agent=self._agent_name))
 
     async def cancel(self) -> None:
         state = self._state
@@ -386,6 +455,21 @@ class ACPTransport:
                 if not fut.done():
                     fut.set_exception(_RpcError("subprocess exited before responding"))
             self._pending.clear()
+
+            # Drain in-flight prompt tasks before posting the sentinel.
+            # set_exception() above schedules any _prompt_turn coroutines to
+            # run, but they haven't had an event-loop turn yet. If we enqueue
+            # None immediately, events() terminates before _prompt_turn gets to
+            # put its TransportError or turn_end on the queue — those events
+            # are silently lost. Waiting here (with a short timeout) lets
+            # _prompt_turn finish first so the queue ordering is:
+            # [chunks…, turn_end|error, Stopped, None].
+            if self._prompt_tasks:
+                with contextlib.suppress(Exception):
+                    await asyncio.wait_for(
+                        asyncio.gather(*self._prompt_tasks, return_exceptions=True),
+                        timeout=2.0,
+                    )
 
             # Reason flip: if cancel() set the flag before the child
             # exited, surface the exit as a clean cancel rather than
