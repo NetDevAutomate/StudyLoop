@@ -83,42 +83,40 @@ def wrong_cards(course: str) -> list[str]:
 
 
 @router.get("/courses/{course}/sections")
-def list_course_sections(course: str) -> list[dict]:
-    """Return source sections (subdirs of ``Study/<course>/``).
+def list_course_sections(course: str, publisher: str = "") -> list[dict]:
+    """Return source sections (individual lesson **files**) for a course.
 
-    Drives the WebUI's Section dropdown when scope=section. Reads
-    directly from the configured ``content.base_path`` rather than the
-    ``app.state.study_dirs`` review roots, because section listing is
-    about *source* material, not the rendered output dirs the reviewer
-    walks.
+    A "section" is one lesson markdown file under
+    ``Study/<publisher>/<course>/`` (typically inside ``study-notes/`` or
+    ``lessons/``, sometimes flat). Drives the WebUI's Section dropdown when
+    scope=section. Reads from ``content.base_path`` (source material), not
+    the ``app.state.study_dirs`` review roots.
 
-    Returns one entry per readable subdir, with a ``file_count`` count
-    of source markdown / text files. Output subdirs (``flashcards/``,
-    ``quizzes/``) and dot-dirs are skipped.
+    ``publisher`` is optional for the legacy flat layout. The ``slug`` is the
+    file's path relative to the course dir (suffix stripped) so the scope
+    resolver can match it back to the exact file; ``name`` is a humanised
+    title. Output subdirs and dot-dirs are skipped.
     """
     from studyloop.settings import load_settings
 
     settings = load_settings()
-    course_dir = Path(settings.content.base_path).expanduser() / course
+    base = Path(settings.content.base_path).expanduser()
+    course_dir = (base / publisher / course) if publisher else (base / course)
     if not course_dir.is_dir():
         raise HTTPException(status_code=404, detail=f"Course not found: {course}")
 
     entries: list[dict] = []
-    for child in sorted(course_dir.iterdir()):
-        if not child.is_dir():
+    for path in sorted(course_dir.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in _SOURCE_SUFFIXES:
             continue
-        if child.name.startswith(".") or child.name in _OUTPUT_SUBDIRS:
+        rel = path.relative_to(course_dir)
+        if any(part in _OUTPUT_SUBDIRS or part.startswith(".") for part in rel.parts):
             continue
-        file_count = sum(
-            1
-            for p in child.rglob("*")
-            if p.is_file() and p.suffix.lower() in _SOURCE_SUFFIXES
-        )
+        slug = str(rel.with_suffix(""))
         entries.append(
             {
-                "slug": child.name,
-                "name": child.name.replace("-", " ").replace("_", " ").title(),
-                "file_count": file_count,
+                "slug": slug,
+                "name": path.stem.replace("-", " ").replace("_", " ").title(),
             }
         )
     return entries

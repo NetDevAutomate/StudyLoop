@@ -67,6 +67,7 @@ class JobRequest:
     course: str
     scope: ScopeRequest
     kinds: tuple[DeckKind, ...]
+    publisher: str = ""  # study-tree top level; empty = legacy flat layout
     on_existing: OnExisting = "suffix"
     backend: str = ""  # empty = use settings.card_generator.backend
     provider: str = ""
@@ -157,7 +158,7 @@ def run_job(
         )
 
         gen_config = _resolve_generator_config(settings, request)
-        course_dir = _course_output_dir(settings, request.course)
+        course_dir = _course_output_dir(settings, request.publisher, request.course)
 
         outcomes: list[TaskOutcome] = []
 
@@ -263,19 +264,27 @@ def _resolve_generator_config(settings: Settings, request: JobRequest):
     return replace(cfg, **overrides) if overrides else cfg
 
 
-def _course_output_dir(settings: Settings, course: str) -> Path:
-    """Resolve the on-disk output dir for ``course``.
+def _course_output_dir(settings: Settings, publisher: str, course: str) -> Path:
+    """Resolve the on-disk output dir for ``publisher``/``course``.
 
-    Different from the CLI at ``cli/_content.py:284-285``: we DO NOT
-    re-slugify the course name. The course value comes from
-    ``Study/*`` directory listing (auto-discovered, see U10.5), so it
-    is already a valid filesystem name -- slugifying would lowercase
-    "DataCamp" to "datacamp" and create a parallel directory tree on
-    case-sensitive filesystems.
+    The tree is 3-level (``base/<publisher>/<course>/``), so decks must land
+    under the course dir — NOT ``base/<publisher>/`` (the prior bug, which
+    wrote every publisher's decks into one shared flashcards/ dir). When
+    ``publisher`` is empty (legacy flat layout) the output dir is
+    ``base/<course>/`` as before.
+
+    We DO NOT re-slugify the names: they come from the on-disk directory
+    listing (auto-discovered), so they are already valid filesystem names —
+    slugifying would lowercase "DataCamp" to "datacamp" and create a
+    parallel tree on case-sensitive filesystems.
     """
+    from pathlib import Path
+
     from studyloop.content.storage import get_course_dir
 
-    return get_course_dir(settings.content.base_path, course)
+    base = Path(settings.content.base_path)
+    parent = base / publisher if publisher else base
+    return get_course_dir(parent, course)
 
 
 def _handle_result(

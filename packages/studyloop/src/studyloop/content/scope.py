@@ -80,13 +80,24 @@ class ResolvedSource:
 class ScopeRequest:
     """Validated scope spec consumed by :func:`resolve_scope`.
 
+    The on-disk tree is three levels: ``base/<publisher>/<course>/`` with
+    markdown lesson files beneath the course (typically in a ``study-notes/``
+    or ``lessons/`` subdir, sometimes flat). The unit of generation is the
+    individual lesson **file** -- what the UI calls a "section".
+
     ``kind`` selects which fields are required:
 
-    - ``course``: ``course`` only.
-    - ``section``: ``course`` + ``section``.
-    - ``topic_struggles``: ``course`` (where decks land) + ``window_days``;
-      ``topic_slug`` optional (when set, narrows to one topic; when
-      None, returns all struggling topics in window).
+    - ``course``: ``publisher`` + ``course`` -- generates one deck per
+      lesson file found under the course.
+    - ``section``: ``publisher`` + ``course`` + ``section`` -- the section
+      is the relative path (from the course dir) of a single lesson file.
+    - ``topic_struggles``: ``publisher`` + ``course`` (where decks land) +
+      ``window_days``; ``topic_slug`` optional (when set, narrows to one
+      topic; when None, returns all struggling topics in window).
+
+    ``publisher`` defaults to empty for backwards compatibility with the
+    legacy flat layout (courses directly under ``base``); when empty the
+    course dir resolves to ``base/<course>`` as before.
 
     Validation lives in U5's pydantic layer; this dataclass is the
     post-validation shape so the resolver can stay framework-free.
@@ -94,6 +105,7 @@ class ScopeRequest:
 
     kind: Literal["course", "section", "topic_struggles"]
     course: str
+    publisher: str = ""
     section: str = ""
     topic_slug: str = ""
     window_days: int = 14
@@ -122,19 +134,24 @@ def resolve_scope(
             section, empty matching set, etc.
     """
     base = Path(settings.content.base_path).expanduser()
-    course_dir = base / request.course
+    # 3-level tree: base/<publisher>/<course>/. publisher is optional for
+    # backwards compatibility with the legacy flat layout (base/<course>).
+    course_dir = (base / request.publisher / request.course) if request.publisher else (base / request.course)
     if not course_dir.is_dir():
         raise ScopeResolutionError(
             f"Course directory not found: {course_dir} "
-            f"(content.base_path={base}, course={request.course!r})"
+            f"(content.base_path={base}, publisher={request.publisher!r}, "
+            f"course={request.course!r})"
         )
 
     if request.kind == "course":
         return _resolve_course(course_dir)
     if request.kind == "section":
         if not request.section:
+            # Phrased WITHOUT "not found" so the HTTP layer maps this to a
+            # 400 (ill-formed request) rather than a 404 (no such section).
             raise ScopeResolutionError(
-                "scope.kind='section' requires a non-empty section name."
+                "scope.kind='section' requires a non-empty section (lesson file)."
             )
         return _resolve_section(course_dir, request.section)
     if request.kind == "topic_struggles":
@@ -152,59 +169,104 @@ def resolve_scope(
 # ---------------------------------------------------------------------------
 
 
-def _resolve_course(course_dir: Path) -> list[ResolvedSource]:
-    """One source per top-level subdir under the course (treat each as a section).
+def _iter_source_files(course_dir: Path) -> list[Path]:
+    """Return every markdown lesson file under ``course_dir``, sorted.
 
-    A subdir with no markdown files is skipped silently rather than
-    raising -- the user might genuinely have a structural folder
-    (assets/, images/) that doesn't have direct sources. We raise only
-    if no subdir under the course produced any source.
+    A "section" is an individual lesson file. Files inside reserved output
+    subdirs (``flashcards/``, ``quizzes/``) and dot-dirs are excluded so a
+    course scope never re-feeds generated decks back into the generator.
     """
+    files: list[Path] = []
+    for path in sorted(course_dir.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in _SOURCE_SUFFIXES:
+            continue
+        rel = path.relative_to(course_dir)
+        if any(part in _OUTPUT_SUBDIRS or part.startswith(".") for part in rel.parts):
+            continue
+        files.append(path)
+    return files
+
+
+def _file_source(course_dir: Path, path: Path, seen: set[str]) -> ResolvedSource | None:
+    """Build one :class:`ResolvedSource` from a single lesson file.
+
+    Identifier is the slugified file stem (clean deck filenames for the
+    common flat ``study-notes/*.md`` layout); on a stem collision across
+    subdirs we fall back to the slug of the file's relative path so the
+    output names stay unique within a job. Returns None for empty files.
+    """
+    text = ""
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not text:
+        return None
+    identifier = _slugify(path.stem)
+    if not identifier or identifier in seen:
+        rel = path.relative_to(course_dir).with_suffix("")
+        identifier = _slugify("-".join(rel.parts))
+    seen.add(identifier)
+    return ResolvedSource(
+        identifier=identifier,
+        title=_humanise(path.stem),
+        markdown_text=text,
+    )
+
+
+def _resolve_course(course_dir: Path) -> list[ResolvedSource]:
+    """One source per lesson **file** under the course.
+
+    Each markdown file becomes its own deck. Raises only if the course
+    contains no readable source files at all.
+    """
+    seen: set[str] = set()
     sources: list[ResolvedSource] = []
-    for child in sorted(course_dir.iterdir()):
-        if not child.is_dir() or child.name in _OUTPUT_SUBDIRS or child.name.startswith("."):
-            continue
-        markdown_text = _concatenate_markdown(child)
-        if not markdown_text:
-            continue
-        sources.append(
-            ResolvedSource(
-                identifier=_slugify(child.name),
-                title=_humanise(child.name),
-                markdown_text=markdown_text,
-            )
-        )
+    for path in _iter_source_files(course_dir):
+        src = _file_source(course_dir, path, seen)
+        if src is not None:
+            sources.append(src)
     if not sources:
         raise ScopeResolutionError(
-            f"Course {course_dir.name!r} has no readable section markdown."
+            f"Course {course_dir.name!r} has no readable lesson markdown."
         )
     return sources
 
 
 def _resolve_section(course_dir: Path, section_name: str) -> list[ResolvedSource]:
-    """One source for the named section subdir."""
-    section_dir = course_dir / section_name
-    if not section_dir.is_dir():
+    """One source for the named lesson file.
+
+    ``section_name`` is the lesson file's path relative to the course dir
+    (e.g. ``study-notes/getting-started.md``). For convenience the suffix
+    may be omitted and a bare stem is matched against the course's files.
+    """
+    candidate = course_dir / section_name
+    path: Path | None = None
+    if candidate.is_file():
+        path = candidate
+    else:
+        # Match by relative path (suffix-optional) or by bare stem.
+        section_noext = str(Path(section_name).with_suffix(""))
+        wanted_rel = _slugify(section_noext.replace("/", "-"))
+        wanted_stem = _slugify(Path(section_name).stem)
+        for f in _iter_source_files(course_dir):
+            rel_noext = "-".join(f.relative_to(course_dir).with_suffix("").parts)
+            if _slugify(rel_noext) == wanted_rel or _slugify(f.stem) == wanted_stem:
+                path = f
+                break
+    if path is None or not path.is_file():
         raise ScopeResolutionError(
-            f"Section not found: {section_dir} "
-            f"(course={course_dir.name!r}, section={section_name!r})"
+            f"Section (lesson file) not found: {section_name!r} "
+            f"under course {course_dir.name!r}"
         )
-    if section_name in _OUTPUT_SUBDIRS:
+    if any(part in _OUTPUT_SUBDIRS for part in path.relative_to(course_dir).parts):
         raise ScopeResolutionError(
-            f"Section name {section_name!r} is reserved for generated output."
+            f"Section {section_name!r} is inside a reserved output dir."
         )
-    markdown_text = _concatenate_markdown(section_dir)
-    if not markdown_text:
-        raise ScopeResolutionError(
-            f"Section {section_dir} has no readable markdown."
-        )
-    return [
-        ResolvedSource(
-            identifier=_slugify(section_name),
-            title=_humanise(section_name),
-            markdown_text=markdown_text,
-        )
-    ]
+    src = _file_source(course_dir, path, set())
+    if src is None:
+        raise ScopeResolutionError(f"Section file {path} has no readable markdown.")
+    return [src]
 
 
 def _resolve_topic_struggles(

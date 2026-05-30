@@ -174,24 +174,24 @@ def db_with_progress(tmp_path: Path) -> Path:
 
 
 class TestCourseScope:
-    def test_resolves_each_section_subdir_into_one_source(
+    def test_resolves_each_lesson_file_into_one_source(
         self, settings: Settings
     ) -> None:
+        # A "section" is now an individual lesson file: course scope yields
+        # one source per .md file. assets/diagram.png skipped (not source),
+        # flashcards/old-deck.json skipped (output dir).
         req = ScopeRequest(kind="course", course="DataCamp")
         sources = resolve_scope(req, settings)
-        # Two real sections -- assets/ skipped (no md), flashcards/ skipped
-        # (output dir reserved).
         identifiers = sorted(s.identifier for s in sources)
-        assert identifiers == ["advanced-pandas", "joins"]
+        assert identifiers == ["chapter-1", "chapter-2", "joins-intro"]
 
-    def test_concatenates_chapter_files_within_a_section(
-        self, settings: Settings
-    ) -> None:
+    def test_each_lesson_file_carries_its_own_text(self, settings: Settings) -> None:
         req = ScopeRequest(kind="course", course="DataCamp")
         sources = resolve_scope(req, settings)
-        adv = next(s for s in sources if s.identifier == "advanced-pandas")
-        assert "Chapter 1" in adv.markdown_text
-        assert "Chapter 2" in adv.markdown_text
+        ch1 = next(s for s in sources if s.identifier == "chapter-1")
+        assert "Chapter 1" in ch1.markdown_text
+        # Per-file now — chapter-2 is a SEPARATE source, not concatenated in.
+        assert "Chapter 2" not in ch1.markdown_text
 
     def test_missing_course_dir_raises(self, settings: Settings) -> None:
         req = ScopeRequest(kind="course", course="DoesNotExist")
@@ -200,35 +200,53 @@ class TestCourseScope:
 
     def test_course_with_only_empty_subdirs_raises(self, settings: Settings) -> None:
         req = ScopeRequest(kind="course", course="ZTM")
-        with pytest.raises(ScopeResolutionError, match="no readable section markdown"):
+        with pytest.raises(ScopeResolutionError, match="no readable lesson markdown"):
             resolve_scope(req, settings)
+
+    def test_three_level_publisher_course_resolves(
+        self, settings: Settings
+    ) -> None:
+        # Real 3-level tree: base/<publisher>/<course>/study-notes/*.md
+        base = Path(settings.content.base_path)
+        notes = base / "CodeWithMosh" / "Complete_SQL_Mastery" / "study-notes"
+        notes.mkdir(parents=True)
+        (notes / "joins-0102.md").write_text("# Joins\n\nINNER vs OUTER.", encoding="utf-8")
+        (notes / "views-0018.md").write_text("# Views\n\nCreating views.", encoding="utf-8")
+        req = ScopeRequest(
+            kind="course", publisher="CodeWithMosh", course="Complete_SQL_Mastery"
+        )
+        sources = resolve_scope(req, settings)
+        assert sorted(s.identifier for s in sources) == ["joins-0102", "views-0018"]
 
 
 # ---------------------------------------------------------------------------
-# section scope
+# section scope (a section is a single lesson file)
 # ---------------------------------------------------------------------------
 
 
 class TestSectionScope:
-    def test_resolves_named_section(self, settings: Settings) -> None:
-        req = ScopeRequest(kind="section", course="DataCamp", section="joins")
+    def test_resolves_named_lesson_file(self, settings: Settings) -> None:
+        # section = relative path of the lesson file under the course dir.
+        req = ScopeRequest(
+            kind="section", course="DataCamp", section="joins/joins-intro"
+        )
         sources = resolve_scope(req, settings)
         assert len(sources) == 1
-        assert sources[0].identifier == "joins"
+        assert sources[0].identifier == "joins-intro"
         assert "INNER" in sources[0].markdown_text
+
+    def test_resolves_section_by_bare_stem(self, settings: Settings) -> None:
+        # Suffix-optional, path-optional: a bare stem matches the file.
+        req = ScopeRequest(kind="section", course="DataCamp", section="chapter-1")
+        sources = resolve_scope(req, settings)
+        assert len(sources) == 1
+        assert sources[0].identifier == "chapter-1"
 
     def test_missing_section_raises(self, settings: Settings) -> None:
         req = ScopeRequest(
             kind="section", course="DataCamp", section="not-a-real-section"
         )
-        with pytest.raises(ScopeResolutionError, match="Section not found"):
-            resolve_scope(req, settings)
-
-    def test_reserved_output_section_name_rejected(
-        self, settings: Settings
-    ) -> None:
-        req = ScopeRequest(kind="section", course="DataCamp", section="flashcards")
-        with pytest.raises(ScopeResolutionError, match="reserved for generated"):
+        with pytest.raises(ScopeResolutionError, match="not found"):
             resolve_scope(req, settings)
 
 

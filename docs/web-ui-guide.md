@@ -331,11 +331,14 @@ The Generate tab in the sidebar (between **Quizzes** and **Body Double**) lets y
 
 ### Form fields
 
+The content tree is three levels — `content.base_path/<publisher>/<course>/<lesson>.md` (lesson files typically live in a `study-notes/` subdir). The form cascades to match:
+
 | Field | Source | Default |
 |---|---|---|
-| **Course** | Auto-discovered via `GET /api/content/courses` (subdirs of `content.base_path`) | empty — pick one |
+| **Publisher** | Auto-discovered via `GET /api/content/publishers` (top-level dirs under `content.base_path`, e.g. ArjanCodes, CodeWithMosh) | empty — pick one |
+| **Course** | `GET /api/content/courses?publisher=<P>` (courses under the chosen publisher) | empty — enabled after a publisher is picked |
 | **Scope** | Whole course / One section / Topic I'm struggling on | Whole course |
-| **Section** | `GET /api/courses/<course>/sections` (subdirs of the chosen course; output dirs skipped) | empty — pick one when scope=section |
+| **Section** | `GET /api/courses/<course>/sections?publisher=<P>` — one entry per **lesson file** (a "section" is a single `.md`); output dirs skipped | empty — pick one when scope=section |
 | **Topic** | `GET /api/history/struggling-topics?days=N` — distinct topics with `confidence='struggling'` in the window | "all struggling topics in window" |
 | **Window days** | numeric, 1-90 (Topic scope only) | 14 |
 | **Kinds** | Flashcards / Quizzes (multi-select, ≥1 required) | Flashcards |

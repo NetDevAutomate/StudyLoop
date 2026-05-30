@@ -35,14 +35,15 @@ def _release_singleton():
 
 @pytest.fixture
 def vault(tmp_path: Path) -> Path:
+    # 3-level tree: base/<publisher>/<course>/study-notes/<lesson>.md.
+    # A "section" is one lesson file; course scope = one source per file.
     study = tmp_path / "Study"
-    course = study / "DataCamp"
-    (course / "advanced-pandas").mkdir(parents=True)
-    (course / "advanced-pandas" / "ch1.md").write_text(
+    notes = study / "DataCamp" / "Intro_To_Pandas" / "study-notes"
+    notes.mkdir(parents=True)
+    (notes / "advanced-pandas.md").write_text(
         "# Pandas\n\nGroupby and pivot tables.", encoding="utf-8"
     )
-    (course / "joins").mkdir()
-    (course / "joins" / "intro.md").write_text(
+    (notes / "joins.md").write_text(
         "# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8"
     )
     return study
@@ -60,15 +61,21 @@ def settings(vault: Path) -> Settings:
     return s
 
 
+_PUBLISHER = "DataCamp"
+_COURSE = "Intro_To_Pandas"
+
+
 def _request(scope_kind: str = "section", **scope_kw) -> JobRequest:
-    """Build a JobRequest with a default flashcards-only scope."""
+    """Build a JobRequest with a default flashcards-only scope (section=joins file)."""
     scope = ScopeRequest(
         kind=scope_kind,  # type: ignore[arg-type]
-        course=scope_kw.pop("course", "DataCamp"),
+        publisher=scope_kw.pop("publisher", _PUBLISHER),
+        course=scope_kw.pop("course", _COURSE),
         section=scope_kw.pop("section", "joins"),
     )
     return JobRequest(
-        course="DataCamp",
+        publisher=_PUBLISHER,
+        course=_COURSE,
         scope=scope,
         kinds=("flashcards",),
         on_existing=scope_kw.pop("on_existing", "suffix"),
@@ -88,8 +95,9 @@ class TestHappyPath:
         result = run_job(
             "gen-1",
             JobRequest(
-                course="DataCamp",
-                scope=ScopeRequest(kind="course", course="DataCamp"),
+                publisher=_PUBLISHER,
+                course=_COURSE,
+                scope=ScopeRequest(kind="course", publisher=_PUBLISHER, course=_COURSE),
                 kinds=("flashcards",),
             ),
             settings,
@@ -113,8 +121,11 @@ class TestHappyPath:
         self, settings: Settings, vault: Path
     ) -> None:
         request = JobRequest(
-            course="DataCamp",
-            scope=ScopeRequest(kind="section", course="DataCamp", section="joins"),
+            publisher=_PUBLISHER,
+            course=_COURSE,
+            scope=ScopeRequest(
+                kind="section", publisher=_PUBLISHER, course=_COURSE, section="joins"
+            ),
             kinds=("flashcards", "quizzes"),
         )
         result = run_job("gen-2", request, settings)
@@ -138,8 +149,9 @@ class TestPartialFailure:
         result = run_job(
             "gen-3",
             JobRequest(
-                course="DataCamp",
-                scope=ScopeRequest(kind="course", course="DataCamp"),
+                publisher=_PUBLISHER,
+                course=_COURSE,
+                scope=ScopeRequest(kind="course", publisher=_PUBLISHER, course=_COURSE),
                 kinds=("flashcards",),
             ),
             settings,
@@ -158,7 +170,11 @@ class TestOnExistingPolicy:
         self, settings: Settings, vault: Path
     ) -> None:
         target_file = (
-            settings.content.base_path / "DataCamp" / "flashcards" / "joins-flashcards.json"
+            settings.content.base_path
+            / "DataCamp"
+            / "Intro_To_Pandas"
+            / "flashcards"
+            / "joins-flashcards.json"
         )
         target_file.parent.mkdir(parents=True, exist_ok=True)
         target_file.write_text("OLD")
@@ -174,7 +190,9 @@ class TestOnExistingPolicy:
     def test_suffix_writes_to_new_path_when_base_exists(
         self, settings: Settings, vault: Path
     ) -> None:
-        target_dir = settings.content.base_path / "DataCamp" / "flashcards"
+        target_dir = (
+            settings.content.base_path / "DataCamp" / "Intro_To_Pandas" / "flashcards"
+        )
         target_dir.mkdir(parents=True, exist_ok=True)
         (target_dir / "joins-flashcards.json").write_text("OLD")
         result = run_job("gen-5", _request(on_existing="suffix"), settings)
@@ -187,7 +205,9 @@ class TestOnExistingPolicy:
         self, settings: Settings, vault: Path
     ) -> None:
         # Pre-seed an existing deck at the target path.
-        target_dir = settings.content.base_path / "DataCamp" / "flashcards"
+        target_dir = (
+            settings.content.base_path / "DataCamp" / "Intro_To_Pandas" / "flashcards"
+        )
         target_dir.mkdir(parents=True, exist_ok=True)
         existing = FlashcardDeck(
             title="Joins",
@@ -216,8 +236,11 @@ class TestErrorPropagation:
         from studyloop.content.scope import ScopeResolutionError
 
         request = JobRequest(
-            course="DataCamp",
-            scope=ScopeRequest(kind="section", course="DataCamp", section="missing"),
+            publisher=_PUBLISHER,
+            course=_COURSE,
+            scope=ScopeRequest(
+                kind="section", publisher=_PUBLISHER, course=_COURSE, section="missing"
+            ),
             kinds=("flashcards",),
         )
         with pytest.raises(ScopeResolutionError):
@@ -234,10 +257,12 @@ class TestErrorPropagation:
                 run_job(
                     "gen-8",
                     JobRequest(
-                        course="DataCamp",
+                        publisher=_PUBLISHER,
+                        course=_COURSE,
                         scope=ScopeRequest(
                             kind="section",
-                            course="DataCamp",
+                            publisher=_PUBLISHER,
+                            course=_COURSE,
                             section="missing",
                         ),
                         kinds=("flashcards",),
