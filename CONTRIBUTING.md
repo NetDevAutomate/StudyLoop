@@ -103,6 +103,51 @@ Tests live in:
 - `packages/studyloop/tests/` — studyloop CLI and review tests
 - `packages/agent-session-tools/tests/` — session tools tests
 
+### Playwright e2e and layout tests
+
+Browser tests are marked `@pytest.mark.e2e` and **excluded from the default run**
+(`pytest` addopts deselect them). Run them explicitly:
+
+```bash
+uv run pytest packages/studyloop/tests/ -m e2e
+```
+
+The e2e suites spawn a real `studyloop web` subprocess via
+`sys.executable -m studyloop.cli`. **They serve the editable install's static
+assets, so a stale install serves stale HTML/CSS/JS.** Before running e2e tests
+(or verifying any UI change by hand), reinstall:
+
+```bash
+uv tool install --reinstall './packages/studyloop[web,content,bedrock]'
+```
+
+A red e2e test whose actions pass when reproduced manually against a fresh
+server is almost always a stale install — reinstall before suspecting the code.
+
+### UI verification protocol (visibility ≠ layout)
+
+DOM-presence assertions (`is_visible()`, `text_content()`) are **blind to visual
+layout**: two elements can both be "visible" with correct text while overlapping,
+clipped, or wrapped. Functional e2e tests will pass on a visibly-broken page.
+
+When changing any UI surface (CSS, templates, view structure), add or update a
+**geometry** assertion in `packages/studyloop/tests/test_web_layout_regression.py`
+using the helpers in `tests/_layout_assertions.py`:
+
+- `assert_stacked_no_overlap(upper, lower)` — title above description, no overlap
+- `assert_within_viewport(selector)` — not clipped past the fold / right edge
+- `assert_scroll_reachable(selector, container)` — tall content scrolls, not clipped
+- `assert_hidden_when_class_present(selector)` — toggle-class actually hides
+- `assert_centered_in(child, container)` — flex spacers balance the row
+- `assert_single_line(container, child)` — no unintended wrapping
+- `assert_nonzero_size(selector)` — controls aren't collapsed
+
+Each helper documents the real bug class it catches. **Prove a new layout
+assertion is real**: temporarily revert the fix and confirm the test goes red
+(an assertion that can't fail guards nothing). Helpers select the first *visible*
+match because views are kept in the DOM and toggled via `x-show` (shared classes
+like `.nav-bar` appear in multiple hidden view subtrees).
+
 ## Release Build
 
 Use the shared release-build script for local package verification:
