@@ -133,47 +133,116 @@ def get_wins(days: int = 30) -> list[dict]:
 
 
 def get_struggling_topics(days: int = 14) -> list[dict]:
-    """Return distinct topics flagged 'struggling' within the last ``days``.
+    """Return distinct struggling topics within the last ``days``.
 
-    Drives the WebUI's topic-from-struggles dropdown (U10) and is also
-    consumed by the scope resolver when ``scope.kind='topic_struggles'``.
+    The session DB is the single source of truth, but struggle signal lands
+    in three places, so this unions all of them by topic:
 
-    Args:
-        days: Lookback window. Bounded 1..90 by the caller; this helper
-            does not validate so it can be reused from other contexts
-            (e.g. a future "topics struggled this year" report).
+    1. ``study_progress`` (confidence='struggling') — the authoritative,
+       per-concept store written at session end and by ``studyloop review``.
+    2. ``study_sessions`` with ``struggle_count > 0`` — a session the user
+       flagged as a struggle even if no per-concept row was written.
+    3. ``parked_topics`` with ``source='struggled'`` — topics auto-parked
+       from a struggle.
+
+    Unioning means the dropdown is useful from existing data (1,900+ study
+    sessions) even before per-concept rows accumulate. Each source is
+    optional/guarded so a missing table never breaks the others.
+
+    Drives the WebUI's topic-from-struggles dropdown (U10) and the scope
+    resolver when ``scope.kind='topic_struggles'``.
 
     Returns:
         List of ``{"topic", "concept_count", "session_count", "last_seen"}``
-        sorted by ``last_seen`` descending. The ``concept_count`` is the
-        number of *distinct concepts* that share that topic and are
-        struggling -- useful UI signal for "lots of struggle in pandas
-        vs one tiny gap in joins".
+        sorted by ``last_seen`` descending.
     """
     conn = _connection._connect()
     if not conn:
         return []
+    cutoff = (f"-{days} days",)
+    # topic -> aggregated dict, merged across sources (case-insensitive key).
+    merged: dict[str, dict] = {}
+
+    def _merge(topic: str, concept_count: int, session_count: int, last_seen: str) -> None:
+        if not topic or not topic.strip():
+            return
+        key = topic.strip().lower()
+        cur = merged.get(key)
+        if cur is None:
+            merged[key] = {
+                "topic": topic.strip(),
+                "concept_count": concept_count,
+                "session_count": session_count,
+                "last_seen": last_seen,
+            }
+            return
+        cur["concept_count"] += concept_count
+        cur["session_count"] += session_count
+        if last_seen and last_seen > (cur["last_seen"] or ""):
+            cur["last_seen"] = last_seen
+
     try:
-        rows = conn.execute(
-            """
-            SELECT
-                topic,
-                COUNT(DISTINCT concept) AS concept_count,
-                SUM(session_count)      AS session_count,
-                MAX(last_seen)          AS last_seen
-            FROM study_progress
-            WHERE confidence = 'struggling'
-              AND last_seen > datetime('now', ?)
-            GROUP BY topic
-            ORDER BY last_seen DESC
-            """,
-            (f"-{days} days",),
-        ).fetchall()
-        return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
-        return []
+        # Source 1: study_progress (authoritative).
+        try:
+            for r in conn.execute(
+                """
+                SELECT topic,
+                       COUNT(DISTINCT concept) AS concept_count,
+                       SUM(session_count)      AS session_count,
+                       MAX(last_seen)          AS last_seen
+                FROM study_progress
+                WHERE confidence = 'struggling' AND last_seen > datetime('now', ?)
+                GROUP BY topic
+                """,
+                cutoff,
+            ).fetchall():
+                _merge(r["topic"], r["concept_count"] or 0, r["session_count"] or 0, r["last_seen"])
+        except sqlite3.OperationalError:
+            pass
+
+        # Source 2: study_sessions flagged as a struggle.
+        try:
+            for r in conn.execute(
+                """
+                SELECT topic,
+                       COUNT(*)         AS session_count,
+                       MAX(started_at)  AS last_seen
+                FROM study_sessions
+                WHERE struggle_count > 0
+                  AND topic IS NOT NULL
+                  AND started_at > datetime('now', ?)
+                GROUP BY topic
+                """,
+                cutoff,
+            ).fetchall():
+                _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
+        except sqlite3.OperationalError:
+            pass
+
+        # Source 3: parked topics whose source is a struggle.
+        try:
+            for r in conn.execute(
+                """
+                SELECT topic_tag      AS topic,
+                       COUNT(*)       AS session_count,
+                       MAX(parked_at) AS last_seen
+                FROM parked_topics
+                WHERE source = 'struggled'
+                  AND topic_tag IS NOT NULL
+                  AND parked_at > datetime('now', ?)
+                GROUP BY topic_tag
+                """,
+                cutoff,
+            ).fetchall():
+                _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
+        except sqlite3.OperationalError:
+            pass
     finally:
         conn.close()
+
+    return sorted(
+        merged.values(), key=lambda d: d["last_seen"] or "", reverse=True
+    )
 
 
 def get_progress_for_map() -> list[dict]:

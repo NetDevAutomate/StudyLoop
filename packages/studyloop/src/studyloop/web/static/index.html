@@ -753,14 +753,11 @@
             </fieldset>
 
             <label class="form-row" x-show="form.scope_kind === 'section'">
-              <span>Section</span>
+              <span>Section (lesson)</span>
               <select x-model="form.section" :required="form.scope_kind === 'section'">
-                <option value="">— pick a section —</option>
+                <option value="">— pick a lesson —</option>
                 <template x-for="s in sections" :key="s.slug">
-                  <option :value="s.slug">
-                    <span x-text="s.name"></span>
-                    (<span x-text="s.file_count"></span> file<span x-show="s.file_count !== 1">s</span>)
-                  </option>
+                  <option :value="s.slug" x-text="s.name"></option>
                 </template>
               </select>
             </label>
@@ -775,12 +772,14 @@
               <select x-model="form.topic_slug">
                 <option value="">all struggling topics in window</option>
                 <template x-for="t in strugglingTopics" :key="t.topic">
-                  <option :value="t.topic">
-                    <span x-text="t.topic"></span>
-                    (<span x-text="t.concept_count"></span> concepts)
-                  </option>
+                  <option :value="t.topic" x-text="t.topic"></option>
                 </template>
               </select>
+              <small class="form-hint text-muted" x-show="strugglingTopics.length === 0">
+                No struggling topics recorded in the last
+                <span x-text="form.window_days"></span> days — study sessions and
+                coding sessions log struggles into the session DB as you work.
+              </small>
             </label>
 
             <fieldset class="form-row">
