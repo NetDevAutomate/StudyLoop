@@ -131,6 +131,18 @@ class TestRenderFunctions:
         assert "activity-empty" in html
         assert "Waiting for session activity" in html
 
+    def test_render_activity_feed_empty_live_session(self) -> None:
+        """A live session shows an honest 'what populates this' message rather
+        than the misleading 'Waiting for session activity...'."""
+        from studyloop.web.routes.session import _render_activity_feed
+
+        html = _render_activity_feed(
+            {"topics": [], "parking": [], "study_session_id": "abc", "mode": "focus"}
+        )
+        assert "activity-empty" in html
+        assert "Session live" in html
+        assert "Waiting for session activity" not in html
+
     def test_render_activity_feed_with_topics(self) -> None:
         from studyloop.web.routes.session import _render_activity_feed
 

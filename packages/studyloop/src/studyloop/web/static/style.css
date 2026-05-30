@@ -1,5 +1,7 @@
 @import url("/vendor/css/inter.css");
 @import url("/vendor/css/opendyslexic-400.css");
+@import url("/vendor/css/lexend.css");
+@import url("/vendor/css/atkinson-hyperlegible.css");
 
 :root {
   --bg: #1a1b26;
@@ -58,6 +60,14 @@ body.dyslexic {
   word-spacing: 0.1em;
   line-height: 1.8;
 }
+
+/* Reading-font picker — swaps the base --font. Default (no data-font) is
+   Inter, defined in :root. The OpenDyslexic toggle (body.dyslexic) still
+   overrides everything when active, since it sets font-family directly. */
+body[data-font="lexend"]   { --font: "Lexend", system-ui, sans-serif; }
+body[data-font="atkinson"] { --font: "Atkinson Hyperlegible", system-ui, sans-serif; }
+body[data-font="system"]   { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body[data-font="serif"]    { --font: Georgia, "Times New Roman", serif; }
 
 /* --- Header --- */
 header {
@@ -2469,6 +2479,126 @@ body[data-palette="catppuccin-latte"] {
   --yellow:    #df8e1d;
   --orange:    #fe640b;
   --border:    #ccd0da;
+}
+
+/* Nord — https://www.nordtheme.com */
+body[data-palette="nord"] {
+  --bg:        #2e3440;
+  --bg-card:   #3b4252;
+  --bg-hover:  #434c5e;
+  --text:      #eceff4;
+  --text-muted:#9099ab;
+  --accent:    #88c0d0;
+  --green:     #a3be8c;
+  --red:       #bf616a;
+  --yellow:    #ebcb8b;
+  --orange:    #d08770;
+  --border:    #434c5e;
+}
+
+/* Gruvbox Dark — https://github.com/morhetz/gruvbox */
+body[data-palette="gruvbox-dark"] {
+  --bg:        #282828;
+  --bg-card:   #3c3836;
+  --bg-hover:  #504945;
+  --text:      #ebdbb2;
+  --text-muted:#a89984;
+  --accent:    #83a598;
+  --green:     #b8bb26;
+  --red:       #fb4934;
+  --yellow:    #fabd2f;
+  --orange:    #fe8019;
+  --border:    #504945;
+}
+
+/* Gruvbox Light */
+body[data-palette="gruvbox-light"] {
+  --bg:        #fbf1c7;
+  --bg-card:   #f2e5bc;
+  --bg-hover:  #ebdbb2;
+  --text:      #3c3836;
+  --text-muted:#7c6f64;
+  --accent:    #076678;
+  --green:     #79740e;
+  --red:       #9d0006;
+  --yellow:    #b57614;
+  --orange:    #af3a03;
+  --border:    #d5c4a1;
+}
+
+/* Solarized Dark — https://ethanschoonover.com/solarized */
+body[data-palette="solarized-dark"] {
+  --bg:        #002b36;
+  --bg-card:   #073642;
+  --bg-hover:  #094f5e;
+  --text:      #93a1a1;
+  --text-muted:#586e75;
+  --accent:    #268bd2;
+  --green:     #859900;
+  --red:       #dc322f;
+  --yellow:    #b58900;
+  --orange:    #cb4b16;
+  --border:    #0a4b5a;
+}
+
+/* Solarized Light */
+body[data-palette="solarized-light"] {
+  --bg:        #fdf6e3;
+  --bg-card:   #eee8d5;
+  --bg-hover:  #e6dfc6;
+  --text:      #586e75;
+  --text-muted:#93a1a1;
+  --accent:    #268bd2;
+  --green:     #859900;
+  --red:       #dc322f;
+  --yellow:    #b58900;
+  --orange:    #cb4b16;
+  --border:    #ddd6c1;
+}
+
+/* One Dark — Atom */
+body[data-palette="one-dark"] {
+  --bg:        #282c34;
+  --bg-card:   #21252b;
+  --bg-hover:  #2c313a;
+  --text:      #abb2bf;
+  --text-muted:#5c6370;
+  --accent:    #61afef;
+  --green:     #98c379;
+  --red:       #e06c75;
+  --yellow:    #e5c07b;
+  --orange:    #d19a66;
+  --border:    #3e4451;
+}
+
+/* Rosé Pine — https://rosepinetheme.com */
+body[data-palette="rose-pine"] {
+  --bg:        #191724;
+  --bg-card:   #1f1d2e;
+  --bg-hover:  #26233a;
+  --text:      #e0def4;
+  --text-muted:#908caa;
+  --accent:    #c4a7e7;  /* iris */
+  --green:     #9ccfd8;  /* foam */
+  --red:       #eb6f92;  /* love */
+  --yellow:    #f6c177;  /* gold */
+  --orange:    #ebbcba;  /* rose */
+  --border:    #26233a;
+}
+
+/* Everforest Dark — https://github.com/sainnhe/everforest */
+body[data-palette="everforest"] {
+  --bg:        #2d353b;
+  --bg-card:   #343f44;
+  --bg-hover:  #3d484d;
+  --text:      #d3c6aa;
+  --text-muted:#859289;
+  --accent:    #83c092;  /* aqua */
+  --green:     #a7c080;
+  --red:       #e67e80;
+  --yellow:    #dbbc7f;
+  --orange:    #e69875;
+  --border:    #475258;
 }
 
 /* Palette dropdown styling — match the existing toggle-btn aesthetic. */

@@ -121,6 +121,15 @@ def _render_activity_feed(state: dict) -> str:
     parking = state.get("parking", [])
 
     if not topics and not parking:
+        # The feed reflects recorded progress (wins/insights/struggles) and
+        # parked questions — not raw chat turns. When a session is live, say
+        # so honestly rather than implying the feed is stuck "waiting".
+        active = bool(state.get("study_session_id")) and state.get("mode") != "ended"
+        if active:
+            return (
+                '<p class="activity-empty">Session live — wins and parked '
+                "questions appear here as you record them.</p>"
+            )
         return '<p class="activity-empty">Waiting for session activity...</p>'
 
     items: list[str] = []

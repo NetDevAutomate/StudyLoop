@@ -48,6 +48,9 @@ document.addEventListener("alpine:init", () => {
        catppuccin-latte. The legacy `light` toggle stays for backward
        compatibility but the palette is the canonical readability lever. */
     palette: localStorage.getItem("palette") || "tokyo-night",
+    /* Reading-font picker: inter (default), lexend, atkinson, system, serif.
+       Independent of the OpenDyslexic toggle, which overrides when active. */
+    font: localStorage.getItem("font") || "inter",
     _preferredVoice: null,
     _voicesLoaded: false,
 
@@ -55,6 +58,7 @@ document.addEventListener("alpine:init", () => {
       if (this.dyslexic) document.body.classList.add("dyslexic");
       if (this.light) document.body.classList.add("light");
       this._applyPalette();
+      this._applyFont();
       this.loadVoices();
       if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
@@ -79,6 +83,14 @@ document.addEventListener("alpine:init", () => {
         "dracula",
         "catppuccin-mocha",
         "catppuccin-latte",
+        "nord",
+        "gruvbox-dark",
+        "gruvbox-light",
+        "solarized-dark",
+        "solarized-light",
+        "one-dark",
+        "rose-pine",
+        "everforest",
       ];
       if (!allowed.includes(name)) return;
       this.palette = name;
@@ -92,6 +104,23 @@ document.addEventListener("alpine:init", () => {
         document.body.removeAttribute("data-palette");
       } else {
         document.body.setAttribute("data-palette", this.palette);
+      }
+    },
+
+    setFont(name) {
+      const allowed = ["inter", "lexend", "atkinson", "system", "serif"];
+      if (!allowed.includes(name)) return;
+      this.font = name;
+      localStorage.setItem("font", name);
+      this._applyFont();
+    },
+
+    _applyFont() {
+      /* `inter` is the bare :root state — drop the data attribute. */
+      if (this.font === "inter") {
+        document.body.removeAttribute("data-font");
+      } else {
+        document.body.setAttribute("data-font", this.font);
       }
     },
 
