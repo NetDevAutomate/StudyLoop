@@ -39,6 +39,13 @@ body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
+  /* height (not just min-height) bounds the flex column to the viewport so
+     .app-layout { flex:1; min-height:0 } shrinks to exactly viewport − header
+     instead of taking a full 100dvh and pushing its own bottom past the fold
+     (where .app-layout's overflow:hidden silently clipped it). Tall content
+     scrolls inside .content-area (overflow-y:auto), which is the intended
+     scroll container. */
+  height: 100dvh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -125,6 +132,10 @@ header {
   max-width: 140px;
   cursor: pointer;
 }
+/* Alpine toggles .hidden on this select when voice output is off; without
+   this rule the dropdown stays visible in the header at all times (the
+   .hidden class was unbacked, unlike .pomodoro.hidden below). */
+.voice-select.hidden { display: none; }
 .voice-select:focus { border-color: var(--accent); outline: none; }
 
 /* --- Nav bar (in study view) --- */
@@ -156,6 +167,10 @@ header {
 }
 
 .nav-btn:hover { border-color: var(--accent); color: var(--text); }
+/* Balances the 3-child space-between nav-bar in config views where the
+   third slot has no real button — matches .nav-btn width so the title
+   stays centred (was an unsized empty span, shifting the title ~18px). */
+.nav-spacer { width: 36px; flex: none; }
 
 /* --- App layout: sidebar + content --- */
 .app-layout {
@@ -266,6 +281,11 @@ main {
   padding: 2rem;
 }
 .body-double-header {
+  /* Reset the global `header { display: flex }` rule (meant for the app
+     top-bar). This is a nested content header — its h2 and description
+     paragraph must stack as normal block flow, not lay out as a flex row
+     (which made "Generate" overlap its description text). */
+  display: block;
   margin-bottom: 2rem;
 }
 .body-double-header h2 {
@@ -663,6 +683,15 @@ body.dyslexic .card-content {
   gap: 8px;
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+/* The hint pairs live in a single inner <div>; keep them on one line as a
+   nowrap flex row so "Esc Home" doesn't drop to a second line at narrower
+   widths (the bar is centred + fixed, and hidden entirely below 600px). */
+.shortcuts > div {
+  display: flex;
+  gap: 12px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .shortcuts kbd {
