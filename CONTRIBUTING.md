@@ -217,6 +217,30 @@ studyloop/
 └── CONTRIBUTING.md
 ```
 
+## Cross-harness session export (session DB as single source of truth)
+
+The session DB (`~/.config/studyloop/sessions.db`) is the single source of
+truth for what the user is learning and struggling with, across every coding
+harness (Claude Code, Kiro, Gemini, OpenCode) and StudyLoop's own study
+sessions. For it to stay populated, each harness must run `session-export` at
+session end. `studyloop install agents` now wires this automatically:
+
+- **Steering mandate** — `agents/shared/session-db-mandate.md` is rendered per
+  harness (substituting the right `session-export --<flag>`) into that
+  harness's steering file (`~/.claude/rules/session-db.md`,
+  `~/.kiro/steering/session-db.md`, etc.). Idempotent via the
+  `studyloop:session-export-mandate` sentinel.
+- **Claude Stop hook** — `install_claude_stop_hook()` merges a
+  `session-export --claude-only` entry into the `Stop` array of
+  `~/.claude/settings.json` (preserving existing hooks; idempotent).
+- **Doctor check** — `studyloop doctor --category harness` warns when a
+  harness is unwired; `studyloop doctor --fix` deploys the mandate + hook.
+
+Codex is intentionally excluded (no codex source in `SOURCE_CHOICES` yet).
+The wiring lives in `installers.py` (`_HARNESS_EXPORT`,
+`install_session_db_mandate`, `install_claude_stop_hook`) and the doctor check
+in `doctor/harness.py`.
+
 ## How to Add a New Session Exporter
 
 Session exporters live in `packages/agent-session-tools/src/agent_session_tools/exporters/`.
