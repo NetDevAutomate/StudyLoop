@@ -354,6 +354,14 @@ function reviewApp(defaultMode) {
     async init() {
       await this._loadCourses();
       await this._loadLiveSession();
+      // The reviewApp factory is mounted with x-data and stays alive while
+      // hidden by x-show — it is never re-init()'d on tab nav. So when the
+      // user stops a session from the Study Session view, _loadLiveSession()
+      // doesn't get called again and the stale banner sticks. Listen for the
+      // stop event globally and clear the banner state at source.
+      window.addEventListener('study-session-stop', () => {
+        this.liveSession = null;
+      });
     },
 
     async _loadCourses() {
