@@ -12,13 +12,18 @@ self.addEventListener("activate", (e) => {
 });
 return;
 
-const CACHE = "studyloop-v11";
+const CACHE = "studyloop-v12";
 const ASSETS = [
   "/", "/style.css", "/components.js", "/manifest.json",
   "/vendor/js/htmx-2.0.4.min.js", "/vendor/js/htmx-ext-sse-2.2.2.js",
   "/vendor/js/alpine-3.14.8.min.js", "/vendor/css/opendyslexic-400.css",
   "/vendor/css/inter.css", "/vendor/css/files/inter-latin.woff2",
   "/vendor/css/files/inter-latin-ext.woff2",
+  "/vendor/css/lexend.css", "/vendor/css/files/lexend-latin-400.woff2",
+  "/vendor/css/files/lexend-latin-700.woff2",
+  "/vendor/css/atkinson-hyperlegible.css",
+  "/vendor/css/files/atkinson-hyperlegible-latin-400.woff2",
+  "/vendor/css/files/atkinson-hyperlegible-latin-700.woff2",
 ];
 
 self.addEventListener("install", (e) => {

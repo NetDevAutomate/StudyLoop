@@ -33,6 +33,16 @@ class TestVendorFilesExist:
     def test_inter_woff2_latin_ext_exists(self):
         assert (VENDOR_DIR / "css" / "files" / "inter-latin-ext.woff2").exists()
 
+    def test_lexend_css_and_woff2_exist(self):
+        assert (VENDOR_DIR / "css" / "lexend.css").exists()
+        assert (VENDOR_DIR / "css" / "files" / "lexend-latin-400.woff2").exists()
+        assert (VENDOR_DIR / "css" / "files" / "lexend-latin-700.woff2").exists()
+
+    def test_atkinson_css_and_woff2_exist(self):
+        assert (VENDOR_DIR / "css" / "atkinson-hyperlegible.css").exists()
+        assert (VENDOR_DIR / "css" / "files" / "atkinson-hyperlegible-latin-400.woff2").exists()
+        assert (VENDOR_DIR / "css" / "files" / "atkinson-hyperlegible-latin-700.woff2").exists()
+
     def test_vendor_js_files_not_empty(self):
         for f in (VENDOR_DIR / "js").iterdir():
             assert f.stat().st_size > 1000, f"{f.name} seems too small"
@@ -56,6 +66,17 @@ class TestNoCdnReferences:
         content = (STATIC_DIR / "style.css").read_text()
         assert "fonts.googleapis.com" not in content
         assert "/vendor/css/inter.css" in content
+
+    def test_style_css_imports_picker_fonts_locally(self):
+        content = (STATIC_DIR / "style.css").read_text()
+        assert "/vendor/css/lexend.css" in content
+        assert "/vendor/css/atkinson-hyperlegible.css" in content
+
+    def test_vendored_font_css_is_offline(self):
+        for name in ("lexend.css", "atkinson-hyperlegible.css"):
+            content = (VENDOR_DIR / "css" / name).read_text()
+            assert "https://" not in content
+            assert "./files/" in content
 
 
 class TestServiceWorkerCache:
