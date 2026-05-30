@@ -55,6 +55,54 @@ class TestPersistSessionData:
 
         mock_end.assert_called_once_with("sess-1", notes="notes", win_count=2, struggle_count=1)
 
+    def test_records_topic_progress_with_confidence_mapping(self):
+        """Each topic entry is forwarded to study_progress via record_progress.
+
+        win/insight → confident, struggling → struggling, learning → learning.
+        This is what populates the session DB's single source of truth for
+        struggles (and the Generate Topic dropdown).
+        """
+        topics = [
+            _make_topic("Closures", "win"),
+            _make_topic("Decorators", "insight"),
+            _make_topic("GIL", "struggling"),
+            _make_topic("Async", "learning"),
+            _make_topic("Parked", "parked"),  # no mapping → skipped
+        ]
+        mock_record = MagicMock(return_value=True)
+        with (
+            patch("studyloop.history.end_study_session"),
+            patch("studyloop.services.backlog.auto_persist_struggled"),
+            patch("studyloop.history.record_progress", mock_record),
+        ):
+            self._call("sess-rp", {}, topics, "notes")
+
+        calls = {
+            c.kwargs["topic"]: c.kwargs["confidence"]
+            for c in mock_record.call_args_list
+        }
+        assert calls == {
+            "Closures": "confident",
+            "Decorators": "confident",
+            "GIL": "struggling",
+            "Async": "learning",
+        }  # "Parked" excluded — unmapped status
+
+    def test_record_progress_failure_does_not_abort_session_end(self):
+        """A crash recording progress must not prevent session teardown."""
+        mock_end = MagicMock()
+        with (
+            patch("studyloop.history.end_study_session", mock_end),
+            patch("studyloop.services.backlog.auto_persist_struggled"),
+            patch(
+                "studyloop.history.record_progress",
+                side_effect=RuntimeError("boom"),
+            ),
+        ):
+            self._call("sess-rp2", {}, [_make_topic("GIL", "struggling")], "notes")
+
+        mock_end.assert_called_once()
+
     def test_auto_persist_skipped_when_disabled(self):
         """auto_persist=False must not call auto_persist_struggled."""
         mock_backlog = MagicMock()

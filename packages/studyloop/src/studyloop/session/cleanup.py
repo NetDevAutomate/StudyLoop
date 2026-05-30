@@ -89,6 +89,37 @@ def _persist_session_data(
     except Exception:
         logger.exception("Failed to end study session in DB")
 
+    # Forward per-topic confidence into study_progress — the session DB's
+    # single source of truth for "what am I struggling with". This is what
+    # populates the Generate panel's Topic dropdown and the topic_struggles
+    # scope; without it study_progress stays empty (only the `studyloop
+    # review` CLI wrote to it before). Topic-level granularity: the session
+    # captures a topic + status, not a sub-concept, so topic doubles as the
+    # concept key. Win/insight → 'confident'; struggling → 'struggling';
+    # learning → 'learning'. Each call is guarded so one bad row never
+    # aborts session teardown.
+    try:
+        from studyloop.history import record_progress
+
+        _CONFIDENCE = {
+            "win": "confident",
+            "insight": "confident",
+            "struggling": "struggling",
+            "learning": "learning",
+        }
+        for entry in topic_entries:
+            confidence = _CONFIDENCE.get(entry.status)
+            if confidence is None or not entry.topic.strip():
+                continue
+            record_progress(
+                topic=entry.topic,
+                concept=entry.topic,
+                confidence=confidence,
+                notes=entry.note or None,
+            )
+    except Exception:
+        logger.exception("Failed to record topic progress to study_progress")
+
 
 def _signal_dashboard_ended() -> None:
     """Write mode=ended to session state so the dashboard shows a summary."""
