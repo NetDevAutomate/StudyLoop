@@ -42,6 +42,7 @@ def _get_registry():
     )
     from studyloop.doctor.database import check_review_db, check_sessions_db
     from studyloop.doctor.deps import check_optional_deps, check_system_binaries
+    from studyloop.doctor.harness import check_harness_export
     from studyloop.doctor.updates import check_pypi_versions
 
     registry = CheckerRegistry()
@@ -61,6 +62,7 @@ def _get_registry():
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
     registry.register("agents")(check_local_llm_servers)
+    registry.register("harness")(check_harness_export)
     registry.register("updates")(check_pypi_versions)
     return registry
 
@@ -148,6 +150,19 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
         summary = install_agent_definitions(repo_root)
         changed = sum(summary.values())
         actions.append(f"refreshed agent definitions ({changed} changes)")
+
+    if needs("harness"):
+        # The session-export steering mandate + Claude Stop hook are deployed
+        # by install_agent_definitions (mandate + hook merge). Run it directly
+        # so the harness fix works even when the agents category is clean.
+        from studyloop.installers import install_claude_stop_hook, install_session_db_mandate
+
+        repo_root = require_repo_root()
+        mandate = sum(install_session_db_mandate(repo_root).values())
+        hook = install_claude_stop_hook()
+        actions.append(
+            f"wired session-export ({mandate} steering mandate(s), {hook} Claude hook)"
+        )
 
     if any(
         r.category == "updates" and r.status in ("warn", "fail") and r.fix_auto for r in results

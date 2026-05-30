@@ -69,6 +69,126 @@ _SHARED_LINKS: tuple[LinkSpec, ...] = (LinkSpec("agents/shared", str(_HOME / ".a
 
 _AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "amp")
 
+# ---------------------------------------------------------------------------
+# Cross-harness session-export wiring (W4)
+# ---------------------------------------------------------------------------
+#
+# The session DB is the single source of truth for cross-harness struggle
+# tracking. Each harness needs a steering-file mandate telling its agent to
+# run `session-export` at session end; Claude Code additionally gets a Stop
+# hook so export happens automatically. ``codex`` is intentionally absent —
+# session-export has no codex source in SOURCE_CHOICES yet.
+
+
+@dataclass(frozen=True, slots=True)
+class _HarnessExport:
+    """Where a harness's steering file lives + the session-export flag to use."""
+
+    steering_path: Path
+    export_flag: str  # the `session-export --<flag>` argument
+
+
+_HARNESS_EXPORT: dict[str, _HarnessExport] = {
+    "claude": _HarnessExport(_HOME / ".claude/rules/session-db.md", "claude-only"),
+    "kiro": _HarnessExport(_HOME / ".kiro/steering/session-db.md", "kiro-only"),
+    "gemini": _HarnessExport(_HOME / ".gemini/session-db.md", "gemini-only"),
+    "opencode": _HarnessExport(
+        _HOME / ".config/opencode/session-db.md", "sources opencode"
+    ),
+}
+
+# Sentinel marking a steering file as carrying the export mandate (idempotency
+# + the doctor harness check both key on this).
+_MANDATE_SENTINEL = "studyloop:session-export-mandate"
+# Sentinel inside the Claude Stop hook command (idempotent merge + doctor check).
+_HOOK_SENTINEL = "session-export --claude-only"
+
+
+def _render_mandate(repo_root: Path, export_flag: str) -> str:
+    """Load the shared mandate template and substitute the harness flag."""
+    template = (repo_root / "agents/shared/session-db-mandate.md").read_text(
+        encoding="utf-8"
+    )
+    return template.replace("SESSION_EXPORT_FLAG", export_flag)
+
+
+def install_session_db_mandate(
+    repo_root: Path, tools: list[str] | None = None
+) -> dict[str, int]:
+    """Write the session-export steering mandate into each harness's file.
+
+    Idempotent: a file already containing the sentinel is left untouched.
+    A file without it is overwritten with the rendered mandate (these
+    session-db.md files are StudyLoop-managed, single-purpose). Returns a
+    per-tool count of files written.
+    """
+    selected = tools or detect_available_agent_tools()
+    written: dict[str, int] = {}
+    for tool in selected:
+        spec = _HARNESS_EXPORT.get(tool)
+        if spec is None:
+            continue
+        if spec.steering_path.exists() and _MANDATE_SENTINEL in spec.steering_path.read_text(
+            encoding="utf-8"
+        ):
+            written[tool] = 0
+            continue
+        spec.steering_path.parent.mkdir(parents=True, exist_ok=True)
+        spec.steering_path.write_text(
+            _render_mandate(repo_root, spec.export_flag), encoding="utf-8"
+        )
+        written[tool] = 1
+    return written
+
+
+def install_claude_stop_hook() -> int:
+    """Merge the session-export Stop hook into ~/.claude/settings.json.
+
+    Read-modify-write that preserves existing hooks; idempotent (a hook
+    already containing the sentinel is not duplicated). Returns 1 if a hook
+    was added, else 0.
+    """
+    import json
+
+    settings_path = _HOME / ".claude/settings.json"
+    if not settings_path.exists():
+        return 0  # no Claude settings to merge into; nothing to do
+    try:
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0
+    if not isinstance(data, dict):
+        return 0
+
+    hooks = data.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        return 0
+    stop = hooks.setdefault("Stop", [])
+    if not isinstance(stop, list):
+        return 0
+
+    # Idempotency: bail if any existing Stop hook already runs session-export.
+    for group in stop:
+        for h in (group or {}).get("hooks", []) if isinstance(group, dict) else []:
+            if _HOOK_SENTINEL in str(h.get("command", "")):
+                return 0
+
+    stop.append(
+        {
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": f"{_HOOK_SENTINEL} >/dev/null 2>&1 || true",
+                    "timeout": 30,
+                    "async": True,
+                }
+            ],
+        }
+    )
+    settings_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return 1
+
 
 def find_repo_root(start: Path | None = None) -> Path | None:
     """Locate the repository root when running from a source checkout."""
@@ -256,6 +376,14 @@ def install_agent_definitions(
             summary[tool] += _configure_claude(repo_root, uninstall=uninstall)
         elif tool == "gemini":
             summary[tool] += _configure_gemini(uninstall=uninstall)
+
+    # Cross-harness session-export wiring: steering mandate for every detected
+    # harness + a Stop hook for Claude. Skipped on uninstall.
+    if not uninstall:
+        for tool, count in install_session_db_mandate(repo_root, tools=selected).items():
+            summary[tool] = summary.get(tool, 0) + count
+        if "claude" in selected:
+            summary["claude"] = summary.get("claude", 0) + install_claude_stop_hook()
 
     return summary
 
