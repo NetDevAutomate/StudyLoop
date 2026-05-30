@@ -69,10 +69,17 @@ was yanked; source install is the current supported path.
 git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
 cd studyloop
 uv sync --all-packages
-uv tool install ./packages/studyloop
+# The [sessions] extra pulls in agent-session-tools (the cross-harness
+# session DB) so `studyloop doctor` can see it. Without it, doctor reports
+# "agent-session-tools not installed" and the sessions DB is unavailable.
+uv tool install './packages/studyloop[sessions]'
 studyloop setup
 studyloop doctor --fix
 ```
+
+> If `studyloop doctor` reports `agent-session-tools not installed`, run
+> `studyloop install tools` — it reinstalls the workspace tools with
+> agent-session-tools wired into the studyloop tool venv.
 
 ### Repo Bootstrap
 
