@@ -96,7 +96,7 @@ def check_sessions_db() -> list[CheckResult]:
                 "sessions_db",
                 "info",
                 "agent-session-tools not installed — sessions DB not checked",
-                "uv pip install agent-session-tools",
+                "studyloop install tools",
                 fix_auto=False,
             )
         ]

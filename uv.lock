@@ -2873,6 +2873,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "agent-session-tools" },
     { name = "boto3" },
     { name = "cryptography" },
     { name = "fastapi" },
@@ -2902,6 +2903,9 @@ mcp = [
 notebooklm = [
     { name = "notebooklm-py" },
 ]
+sessions = [
+    { name = "agent-session-tools" },
+]
 tui = [
     { name = "textual" },
 ]
@@ -2922,6 +2926,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-session-tools", marker = "extra == 'sessions'", editable = "packages/agent-session-tools" },
     { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.40" },
     { name = "click", specifier = ">=8.1" },
     { name = "cryptography", marker = "extra == 'web'", specifier = ">=42.0" },
@@ -2937,12 +2942,12 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0" },
     { name = "studyloop", extras = ["content"], marker = "extra == 'bedrock'" },
-    { name = "studyloop", extras = ["content", "bedrock", "web", "notebooklm", "tui", "mcp"], marker = "extra == 'all'" },
+    { name = "studyloop", extras = ["content", "bedrock", "web", "notebooklm", "tui", "mcp", "sessions"], marker = "extra == 'all'" },
     { name = "textual", marker = "extra == 'tui'", specifier = ">=0.80" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'", specifier = ">=0.34" },
     { name = "websockets", marker = "extra == 'web'", specifier = ">=12.0" },
 ]
-provides-extras = ["content", "bedrock", "notebooklm", "tui", "web", "mcp", "all"]
+provides-extras = ["content", "bedrock", "notebooklm", "tui", "web", "mcp", "sessions", "all"]
 
 [package.metadata.requires-dev]
 dev = [
