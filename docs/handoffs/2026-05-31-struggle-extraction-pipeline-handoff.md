@@ -146,7 +146,19 @@ HONEST BOTTOM LINE: the user's goal of 'remove the human from the loop' is achie
 
 ## In-flight state (read before doing anything)
 
-COMMITTED ON MAIN (8 commits, current HEAD 81b32a9):
+> **Update (end of session, HEAD now `a0edadc`, working tree CLEAN):** three
+> more commits landed after this section was first written:
+> - `e48dec7` fix(doctor): make agent-session-tools installable + fix misleading hint (W-C)
+> - `c70e35b` docs(handoff): this document
+> - `a0edadc` feat(web): reading-font picker + activity-feed empty state — this
+>   is the "external work" referenced below; it is now committed, so the
+>   working tree is clean and there is nothing to avoid staging.
+>
+> The two locked worktrees below are STILL un-integrated — **P0 stands.**
+> `studyloop doctor` passes on this machine; a fresh install now needs
+> `uv tool install './packages/studyloop[sessions]'` (per W-C).
+
+COMMITTED ON MAIN (original 8 commits, were HEAD 81b32a9):
 - 81b32a9: feat(harness): wire cross-harness session-export to the session DB
 - 0a05603: fix(history): record struggles into study_progress + union the topic sources
 - 7f7b164: fix(content): model the real 3-level Publisher/Course/Section tree
