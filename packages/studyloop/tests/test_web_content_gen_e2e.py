@@ -43,16 +43,20 @@ WEB_PORT = 18580  # unique port to avoid clashes with sister e2e suites
 # ---------------------------------------------------------------------------
 
 
+# The 3-level tree the panel now models: publisher / course / lesson files.
+_PUBLISHER = "DataCamp"
+_COURSE = "Intro_To_Pandas"
+
+
 @pytest.fixture
 def vault(tmp_path: Path) -> Path:
     study = tmp_path / "Study"
-    course = study / "DataCamp"
-    (course / "advanced-pandas").mkdir(parents=True)
-    (course / "advanced-pandas" / "ch1.md").write_text(
+    notes = study / _PUBLISHER / _COURSE / "study-notes"
+    notes.mkdir(parents=True)
+    (notes / "advanced-pandas.md").write_text(
         "# Pandas\n\nGroupby and pivot tables.", encoding="utf-8"
     )
-    (course / "joins").mkdir()
-    (course / "joins" / "intro.md").write_text(
+    (notes / "joins.md").write_text(
         "# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8"
     )
     return study
@@ -62,13 +66,14 @@ def vault(tmp_path: Path) -> Path:
 def stub_config(tmp_path: Path, vault: Path) -> Path:
     """Tmp config that pins backend=stub and points review + content at the vault.
 
-    Both ``review.directories`` (drives ``/api/courses``) and
+    ``review.directories`` (drives ``/api/courses``) points at the course
+    dir so generated decks are discoverable by the reviewer;
     ``content.base_path`` (drives the scope resolver + sections route)
-    must point at the vault — they are read by different code paths.
+    points at the study root. They are read by different code paths.
     """
     cfg = tmp_path / "studyloop-stub.yaml"
     sessions_db = tmp_path / "sessions.db"
-    course_dir = vault / "DataCamp"
+    course_dir = vault / _PUBLISHER / _COURSE
     cfg.write_text(
         f"""
 session_db: {sessions_db}
@@ -215,21 +220,16 @@ class TestSidebarTab:
 
 class TestFormHappyPath:
     def test_full_form_submit_streams_progress_and_finishes(self, page: Page) -> None:
-        """Pick course → submit → progress arrives → finished summary."""
+        """Pick publisher → course → submit → progress arrives → finished summary."""
         _goto_generate(page)
-        # Wait for the courses fetch to populate the dropdown.
-        page.wait_for_function(
-            "() => document.querySelectorAll('.generate-form select option').length > 1",
-            timeout=5000,
-        )
-        page.select_option('.generate-form select >> nth=0', value="DataCamp")
+        _select_publisher_course(page)
         # Default scope is 'course' — no further input needed.
         page.click('.toggle-btn:has-text("Generate")')
         # Progress region appears; wait for the summary.
         page.wait_for_selector(".generate-summary", timeout=10000)
         summary = page.text_content(".generate-summary") or ""
         assert "Done" in summary
-        # 2 sources × 1 kind (flashcards default) = 2 tasks done.
+        # 2 lesson files × 1 kind (flashcards default) = 2 tasks done.
         assert "2 written" in summary or "1 written" in summary or "written" in summary
 
 
@@ -246,8 +246,9 @@ class TestConflictBanner:
                   method: 'POST',
                   headers: {'Content-Type': 'application/json'},
                   body: JSON.stringify({
-                    course: 'DataCamp',
-                    scope: {kind: 'course', course: 'DataCamp'},
+                    publisher: 'DataCamp',
+                    course: 'Intro_To_Pandas',
+                    scope: {kind: 'course', publisher: 'DataCamp', course: 'Intro_To_Pandas'},
                     kinds: ['flashcards'],
                     count_per_source: 5,
                     on_existing: 'suffix',
@@ -257,11 +258,7 @@ class TestConflictBanner:
             }"""
         )
         # Now submit via the form — second concurrent call → 409.
-        page.wait_for_function(
-            "() => document.querySelectorAll('.generate-form select option').length > 1",
-            timeout=5000,
-        )
-        page.select_option('.generate-form select >> nth=0', value="DataCamp")
+        _select_publisher_course(page)
         page.click('.toggle-btn:has-text("Generate")')
         # Banner shows. NOTE: the first job may complete fast (stub), so
         # this is timing-sensitive. Either we see the banner or we see
@@ -283,11 +280,7 @@ class TestProgressBarRenders:
     def test_progress_bar_appears_and_advances(self, page: Page) -> None:
         """The .generate-progress-fill element is in the DOM and gets non-zero width."""
         _goto_generate(page)
-        page.wait_for_function(
-            "() => document.querySelectorAll('.generate-form select option').length > 1",
-            timeout=5000,
-        )
-        page.select_option('.generate-form select >> nth=0', value="DataCamp")
+        _select_publisher_course(page)
         page.click('.toggle-btn:has-text("Generate")')
         page.wait_for_selector(".generate-progress-fill", timeout=5000)
         # By the time the summary lands, the bar must be at 100%.
@@ -309,15 +302,30 @@ class TestProgressBarRenders:
 # ---------------------------------------------------------------------------
 
 
-def _wait_courses_loaded(page: Page) -> None:
-    """Block until the Course dropdown has been populated from /api/content/courses."""
+def _wait_publishers_loaded(page: Page) -> None:
+    """Block until the Publisher dropdown is populated from /api/content/publishers."""
     page.wait_for_function(
-        "() => document.querySelectorAll('.generate-form select option').length > 1",
+        """() => {
+            const sel = document.querySelector('select[x-model="form.publisher"]');
+            return sel && sel.querySelectorAll('option').length > 1;
+        }""",
         timeout=5000,
     )
 
 
-def _select_course(page: Page, course: str) -> None:
+def _select_publisher_course(
+    page: Page, publisher: str = _PUBLISHER, course: str = _COURSE
+) -> None:
+    """Drive the full cascade: pick publisher, wait for courses, pick course."""
+    _wait_publishers_loaded(page)
+    page.select_option('select[x-model="form.publisher"]', value=publisher)
+    page.wait_for_function(
+        """() => {
+            const sel = document.querySelector('select[x-model="form.course"]');
+            return sel && !sel.disabled && sel.querySelectorAll('option').length > 1;
+        }""",
+        timeout=5000,
+    )
     page.select_option('select[x-model="form.course"]', value=course)
 
 
@@ -351,8 +359,7 @@ class TestQuizzesGeneration:
     def test_quizzes_only_generation_completes(self, page: Page) -> None:
         """Uncheck flashcards, check quizzes, submit → finished summary."""
         _goto_generate(page)
-        _wait_courses_loaded(page)
-        _select_course(page, "DataCamp")
+        _select_publisher_course(page)
         _check_only_kind(page, "quizzes")
         # Sanity: exactly quizzes is selected in Alpine state.
         kinds = page.evaluate(
@@ -375,14 +382,12 @@ class TestSectionScopeGeneration:
     """Section scope limits generation to one source — proves the scope resolver."""
 
     def test_section_dropdown_populates_after_course_pick(self, page: Page) -> None:
-        """Choosing 'One section' + a course populates the section dropdown."""
+        """Choosing 'One section' + publisher/course populates the section dropdown."""
         _goto_generate(page)
-        _wait_courses_loaded(page)
-        _select_course(page, "DataCamp")
+        _select_publisher_course(page)
         # Switch to section scope.
         page.click('.generate-form input[type=radio][value="section"]')
-        # The section <select> appears and is populated from
-        # /api/courses/DataCamp/sections.
+        # The section <select> appears and is populated with lesson FILES.
         page.wait_for_function(
             """() => {
                 const sel = document.querySelector('select[x-model="form.section"]');
@@ -395,15 +400,14 @@ class TestSectionScopeGeneration:
             """() => [...document.querySelectorAll('select[x-model="form.section"] option')]
                        .map(o => o.value).filter(Boolean)"""
         )
-        # Vault has advanced-pandas and joins as section subdirs.
-        assert "advanced-pandas" in section_values
-        assert "joins" in section_values
+        # Sections are lesson files: study-notes/advanced-pandas, study-notes/joins.
+        assert "study-notes/advanced-pandas" in section_values
+        assert "study-notes/joins" in section_values
 
     def test_section_scoped_generation_writes_one_source(self, page: Page) -> None:
-        """Section scope → only the chosen section's deck is written (1, not 2)."""
+        """Section scope → only the chosen lesson file's deck is written (1, not 2)."""
         _goto_generate(page)
-        _wait_courses_loaded(page)
-        _select_course(page, "DataCamp")
+        _select_publisher_course(page)
         page.click('.generate-form input[type=radio][value="section"]')
         page.wait_for_function(
             """() => {
@@ -412,12 +416,14 @@ class TestSectionScopeGeneration:
             }""",
             timeout=5000,
         )
-        page.select_option('select[x-model="form.section"]', value="advanced-pandas")
+        page.select_option(
+            'select[x-model="form.section"]', value="study-notes/advanced-pandas"
+        )
         _check_only_kind(page, "flashcards")
         _submit(page)
         summary = _read_summary(page)
         assert "Done" in summary
-        # Exactly one source in scope → 1 written (NOT 2).
+        # Exactly one lesson file in scope → 1 written (NOT 2).
         assert "1 written" in summary, f"expected 1 written for section scope, got {summary!r}"
 
 
@@ -432,21 +438,22 @@ class TestGeneratedArtifactsUsable:
 
     def test_generated_flashcards_loadable_in_review_api(self, page: Page) -> None:
         _goto_generate(page)
-        _wait_courses_loaded(page)
-        _select_course(page, "DataCamp")
+        _select_publisher_course(page)
         _check_only_kind(page, "flashcards")
         _submit(page)
         assert "Done" in _read_summary(page)
-        # The reviewer side must now see the course with flashcards.
+        # The reviewer side must now see the course with flashcards. The
+        # reviewer keys on the course dir name (Intro_To_Pandas), not the
+        # publisher.
         courses = page.evaluate(
             "async () => (await fetch('/api/courses')).json()"
         )
-        dc = next((c for c in courses if c["name"] == "DataCamp"), None)
-        assert dc is not None, f"DataCamp missing from /api/courses: {courses!r}"
+        dc = next((c for c in courses if c["name"] == _COURSE), None)
+        assert dc is not None, f"{_COURSE} missing from /api/courses: {courses!r}"
         assert dc["flashcard_count"] > 0, f"no flashcards counted: {dc!r}"
         # And the cards load in the shape the Flashcards view reads.
         cards = page.evaluate(
-            "async () => (await fetch('/api/cards/DataCamp?mode=flashcards')).json()"
+            f"async () => (await fetch('/api/cards/{_COURSE}?mode=flashcards')).json()"
         )
         assert isinstance(cards, list) and len(cards) > 0
         first = cards[0]
@@ -455,13 +462,12 @@ class TestGeneratedArtifactsUsable:
 
     def test_generated_quizzes_loadable_with_is_correct(self, page: Page) -> None:
         _goto_generate(page)
-        _wait_courses_loaded(page)
-        _select_course(page, "DataCamp")
+        _select_publisher_course(page)
         _check_only_kind(page, "quizzes")
         _submit(page)
         assert "Done" in _read_summary(page)
         quizzes = page.evaluate(
-            "async () => (await fetch('/api/cards/DataCamp?mode=quiz')).json()"
+            f"async () => (await fetch('/api/cards/{_COURSE}?mode=quiz')).json()"
         )
         assert isinstance(quizzes, list) and len(quizzes) > 0
         q = quizzes[0]

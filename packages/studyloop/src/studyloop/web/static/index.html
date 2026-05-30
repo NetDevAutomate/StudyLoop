@@ -95,6 +95,23 @@
         <option value="dracula">Dracula</option>
         <option value="catppuccin-mocha">Catppuccin Mocha</option>
         <option value="catppuccin-latte">Catppuccin Latte</option>
+        <option value="nord">Nord</option>
+        <option value="gruvbox-dark">Gruvbox Dark</option>
+        <option value="gruvbox-light">Gruvbox Light</option>
+        <option value="solarized-dark">Solarized Dark</option>
+        <option value="solarized-light">Solarized Light</option>
+        <option value="one-dark">One Dark</option>
+        <option value="rose-pine">Rosé Pine</option>
+        <option value="everforest">Everforest</option>
+      </select>
+      <select class="palette-select" title="Reading font"
+              :value="$store.settings.font"
+              @change="$store.settings.setFont($event.target.value)">
+        <option value="inter">Inter</option>
+        <option value="lexend">Lexend</option>
+        <option value="atkinson">Atkinson Hyperlegible</option>
+        <option value="system">System</option>
+        <option value="serif">Serif</option>
       </select>
     </div>
   </header>
@@ -708,9 +725,20 @@
           <!-- Form -->
           <form class="generate-form" @submit.prevent="submit()" x-show="!running">
             <label class="form-row">
+              <span>Publisher</span>
+              <select x-model="form.publisher" @change="onPublisherChange()" required>
+                <option value="">— pick a publisher —</option>
+                <template x-for="p in publishers" :key="p.name">
+                  <option :value="p.name" x-text="p.name"></option>
+                </template>
+              </select>
+            </label>
+
+            <label class="form-row">
               <span>Course</span>
-              <select x-model="form.course" @change="onCourseChange()" required>
-                <option value="">— pick a course —</option>
+              <select x-model="form.course" @change="onCourseChange()"
+                      :disabled="!form.publisher" required>
+                <option value="" x-text="form.publisher ? '— pick a course —' : '— pick a publisher first —'"></option>
                 <template x-for="c in courses" :key="c.name">
                   <option :value="c.name" x-text="c.name"></option>
                 </template>
@@ -1268,6 +1296,7 @@
   function generatePanel() {
     return {
       // Lookup data populated on init().
+      publishers: [],
       courses: [],
       sections: [],
       strugglingTopics: [],
@@ -1275,7 +1304,10 @@
 
       // Form state. Defaults match the plan: kinds=[flashcards],
       // count_per_source=10, on_existing=merge (least destructive).
+      // `publisher` is the study-tree top level (ArjanCodes, CodeWithMosh…);
+      // `course` the level below it; `section` an individual lesson file.
       form: {
+        publisher: '',
         course: '',
         scope_kind: 'course',
         section: '',
@@ -1305,28 +1337,48 @@
       },
 
       async init() {
-        // The Generate panel lists *source* courses (subdirs of
-        // content.base_path), NOT the reviewer's already-decked
-        // courses — fresh courses with no flashcards yet are
-        // legitimate targets here.
+        // The tree is 3-level: publisher → course → lesson file. Load the
+        // publishers (study-tree top level) and the LLM providers up front;
+        // courses load per-publisher, sections per-course.
         try {
-          const [courses, providers] = await Promise.all([
-            fetch('/api/content/courses').then((r) => r.ok ? r.json() : []),
+          const [publishers, providers] = await Promise.all([
+            fetch('/api/content/publishers').then((r) => r.ok ? r.json() : []),
             fetch('/api/content/providers').then((r) => r.ok ? r.json() : []),
           ]);
-          this.courses = courses;
+          this.publishers = publishers;
           this.providers = providers;
         } catch {
           /* lookups remain empty; the form still validates client-side */
         }
       },
 
+      async onPublisherChange() {
+        // Publisher changed → reset downstream selections and load its courses.
+        this.form.course = '';
+        this.form.section = '';
+        this.courses = [];
+        this.sections = [];
+        if (!this.form.publisher) return;
+        try {
+          const r = await fetch(
+            `/api/content/courses?publisher=${encodeURIComponent(this.form.publisher)}`
+          );
+          if (r.ok) this.courses = await r.json();
+        } catch { /* leave empty */ }
+      },
+
       async onCourseChange() {
         this.sections = [];
         this.strugglingTopics = [];
+        this.form.section = '';
         if (!this.form.course) return;
+        const pub = this.form.publisher
+          ? `?publisher=${encodeURIComponent(this.form.publisher)}`
+          : '';
         try {
-          const r = await fetch(`/api/courses/${encodeURIComponent(this.form.course)}/sections`);
+          const r = await fetch(
+            `/api/courses/${encodeURIComponent(this.form.course)}/sections${pub}`
+          );
           if (r.ok) this.sections = await r.json();
         } catch { /* leave empty */ }
         try {
@@ -1347,6 +1399,7 @@
 
       canSubmit() {
         if (this.running) return false;
+        if (!this.form.publisher) return false;
         if (!this.form.course) return false;
         if (this.form.kinds.length === 0) return false;
         if (this.form.scope_kind === 'section' && !this.form.section) return false;
@@ -1363,9 +1416,11 @@
         this.formError = '';
         this.conflictBanner = '';
         const body = {
+          publisher: this.form.publisher,
           course: this.form.course,
           scope: {
             kind: this.form.scope_kind,
+            publisher: this.form.publisher,
             course: this.form.course,
             section: this.form.section,
             topic_slug: this.form.topic_slug,

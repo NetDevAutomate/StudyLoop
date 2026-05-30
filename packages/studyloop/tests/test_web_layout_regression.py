@@ -139,10 +139,17 @@ class TestGenerateLayout:
             ".generate-panel .body-double-header p",
         )
 
-    def test_generate_button_within_viewport(self, web_page: Page) -> None:
+    def test_generate_button_reachable(self, web_page: Page) -> None:
+        # The form is taller than the viewport (publisher→course→scope→…→
+        # submit), so the button legitimately sits below the fold. What
+        # matters is that it is SCROLL-reachable inside .content-area, not
+        # clipped by an overflow:hidden ancestor.
         self._goto_generate(web_page)
-        # The submit button must be reachable, not clipped past the fold.
-        assert_within_viewport(web_page, '.generate-form .toggle-btn, .generate-panel .toggle-btn')
+        assert_scroll_reachable(
+            web_page,
+            '.generate-form .toggle-btn, .generate-panel .toggle-btn',
+            ".content-area",
+        )
 
 
 # ---------------------------------------------------------------------------

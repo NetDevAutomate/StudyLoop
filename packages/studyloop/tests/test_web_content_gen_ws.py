@@ -49,12 +49,11 @@ def _clean_module_state():
 
 @pytest.fixture
 def vault(tmp_path: Path) -> Path:
+    # 3-level: Study/<publisher>/<course>/study-notes/<lesson>.md.
     study = tmp_path / "Study"
-    course = study / "DataCamp"
-    (course / "joins").mkdir(parents=True)
-    (course / "joins" / "intro.md").write_text(
-        "# Joins\n\nINNER, LEFT.", encoding="utf-8"
-    )
+    notes = study / "DataCamp" / "Intro_To_Pandas" / "study-notes"
+    notes.mkdir(parents=True)
+    (notes / "joins.md").write_text("# Joins\n\nINNER, LEFT.", encoding="utf-8")
     return study
 
 
@@ -78,8 +77,14 @@ def client(stub_settings) -> TestClient:
 
 def _valid_body() -> dict:
     return {
-        "course": "DataCamp",
-        "scope": {"kind": "section", "course": "DataCamp", "section": "joins"},
+        "publisher": "DataCamp",
+        "course": "Intro_To_Pandas",
+        "scope": {
+            "kind": "section",
+            "publisher": "DataCamp",
+            "course": "Intro_To_Pandas",
+            "section": "joins",
+        },
         "kinds": ["flashcards"],
         "count_per_source": 5,
         "on_existing": "suffix",

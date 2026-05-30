@@ -90,9 +90,16 @@ def _drop_queue(job_id: str) -> None:
 
 
 class _ScopeBody(BaseModel):
-    """Inbound ``scope`` sub-object on the generate request."""
+    """Inbound ``scope`` sub-object on the generate request.
+
+    ``publisher`` is the study-tree top level (e.g. "CodeWithMosh"); ``course``
+    the level below it (e.g. "Complete_SQL_Mastery"); ``section`` an individual
+    lesson file within the course. ``publisher`` is optional for the legacy
+    flat layout (courses directly under ``content.base_path``).
+    """
 
     kind: Literal["course", "section", "topic_struggles"]
+    publisher: str = ""
     course: str
     section: str = ""
     topic_slug: str = ""
@@ -107,6 +114,7 @@ class GenerateRequest(BaseModel):
     checks happen in the scope resolver, where the disk is the truth.
     """
 
+    publisher: str = ""
     course: str
     scope: _ScopeBody
     kinds: list[Literal["flashcards", "quizzes"]] = Field(min_length=1)
@@ -148,10 +156,15 @@ def _new_job_id() -> str:
 
 def _build_job_request(req: GenerateRequest) -> JobRequest:
     """Translate the wire-shape pydantic model to the orchestrator's dataclass."""
+    # publisher may arrive at the top level or on the scope object; prefer
+    # the scope's value, falling back to the request-level one.
+    publisher = req.scope.publisher or req.publisher
     return JobRequest(
+        publisher=publisher,
         course=req.course,
         scope=ScopeRequest(
             kind=req.scope.kind,
+            publisher=publisher,
             course=req.scope.course,
             section=req.scope.section,
             topic_slug=req.scope.topic_slug,
@@ -290,42 +303,62 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/content/courses")
-async def list_content_courses() -> list[dict[str, Any]]:
-    """Return courses discovered under ``content.base_path``.
+def _content_base():
+    """Return the expanded content.base_path, or None if it isn't a dir."""
+    from pathlib import Path
 
-    Distinct from ``/api/courses`` (which lists courses that already
-    have flashcards/quizzes JSON files for the reviewer): this route
-    lists *source* courses on disk so the Generate panel can offer
-    them as targets even when no decks exist yet. Without this, a
-    fresh course can never appear in the form -- a real bug surfaced
-    by the U8 e2e tests.
-
-    Output subdirs (``flashcards``, ``quizzes``) and dot-dirs are
-    skipped at the course level too, in case the user has accidentally
-    pointed ``content.base_path`` at a course root.
-    """
     from studyloop.settings import load_settings
 
-    settings = load_settings()
-    base = settings.content.base_path
+    base = load_settings().content.base_path
     try:
         base = base.expanduser()
     except AttributeError:
-        from pathlib import Path
-
         base = Path(str(base)).expanduser()
-    if not base.is_dir():
-        return []
+    return base if base.is_dir() else None
 
-    out: list[dict[str, Any]] = []
-    for child in sorted(base.iterdir()):
-        if not child.is_dir():
-            continue
-        if child.name.startswith(".") or child.name in {"flashcards", "quizzes"}:
-            continue
-        out.append({"name": child.name})
-    return out
+
+def _listable_subdirs(parent) -> list[str]:
+    """Names of real, non-output, non-dot subdirs under ``parent``, sorted."""
+    return [
+        c.name
+        for c in sorted(parent.iterdir())
+        if c.is_dir() and not c.name.startswith(".") and c.name not in {"flashcards", "quizzes"}
+    ]
+
+
+@router.get("/content/publishers")
+async def list_content_publishers() -> list[dict[str, Any]]:
+    """Return the study-tree top level (publishers) under ``content.base_path``.
+
+    The tree is ``base/<publisher>/<course>/<lesson>.md``. This drives the
+    Generate panel's Publisher dropdown (e.g. ArjanCodes, CodeWithMosh,
+    Udemy). Courses are fetched per-publisher via ``/content/courses?publisher=``.
+    """
+    base = _content_base()
+    if base is None:
+        return []
+    return [{"name": name} for name in _listable_subdirs(base)]
+
+
+@router.get("/content/courses")
+async def list_content_courses(publisher: str = "") -> list[dict[str, Any]]:
+    """Return source courses for the Generate panel's Course dropdown.
+
+    With ``?publisher=X`` (the normal 3-level case) returns the courses
+    under ``base/<publisher>/``. Without it (legacy flat layout) returns
+    the top-level dirs under ``base`` directly.
+
+    Distinct from ``/api/courses`` (which lists courses that already have
+    flashcards/quizzes JSON for the reviewer): this lists *source* courses
+    on disk so a fresh course can appear in the form before any decks exist.
+    """
+    base = _content_base()
+    if base is None:
+        return []
+    parent = base / publisher if publisher else base
+    if not parent.is_dir():
+        return []
+    return [{"name": name} for name in _listable_subdirs(parent)]
 
 
 # ---------------------------------------------------------------------------

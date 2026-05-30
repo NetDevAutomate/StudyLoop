@@ -52,15 +52,14 @@ def _release_singleton_and_queues():
 
 @pytest.fixture
 def vault(tmp_path: Path) -> Path:
-    """Tiny on-disk Study/<course>/<section>/<file.md> tree."""
+    """On-disk 3-level tree: Study/<publisher>/<course>/study-notes/<lesson>.md."""
     study = tmp_path / "Study"
-    course = study / "DataCamp"
-    (course / "advanced-pandas").mkdir(parents=True)
-    (course / "advanced-pandas" / "ch1.md").write_text(
+    notes = study / "DataCamp" / "Intro_To_Pandas" / "study-notes"
+    notes.mkdir(parents=True)
+    (notes / "advanced-pandas.md").write_text(
         "# Pandas\n\nGroupby.", encoding="utf-8"
     )
-    (course / "joins").mkdir()
-    (course / "joins" / "intro.md").write_text(
+    (notes / "joins.md").write_text(
         "# Joins\n\nINNER, LEFT.", encoding="utf-8"
     )
     return study
@@ -103,10 +102,18 @@ def _wait_for_job_done(timeout: float = 5.0) -> None:
     raise TimeoutError("job did not release singleton within deadline")
 
 
-def _valid_body(course: str = "DataCamp", section: str = "joins") -> dict:
+def _valid_body(
+    publisher: str = "DataCamp", course: str = "Intro_To_Pandas", section: str = "joins"
+) -> dict:
     return {
+        "publisher": publisher,
         "course": course,
-        "scope": {"kind": "section", "course": course, "section": section},
+        "scope": {
+            "kind": "section",
+            "publisher": publisher,
+            "course": course,
+            "section": section,
+        },
         "kinds": ["flashcards"],
         "count_per_source": 5,
         "on_existing": "suffix",
@@ -132,12 +139,19 @@ class TestHappyPath:
         assert data["plan"]["sources"][0]["identifier"] == "joins"
         _wait_for_job_done()
 
-    def test_course_scope_includes_all_sections_in_plan(self, client: TestClient) -> None:
+    def test_course_scope_includes_all_lesson_files_in_plan(
+        self, client: TestClient
+    ) -> None:
         body = _valid_body()
-        body["scope"] = {"kind": "course", "course": "DataCamp"}
+        body["scope"] = {
+            "kind": "course",
+            "publisher": "DataCamp",
+            "course": "Intro_To_Pandas",
+        }
         resp = client.post("/api/content/generate", json=body)
         assert resp.status_code == 202, resp.text
         identifiers = {s["identifier"] for s in resp.json()["plan"]["sources"]}
+        # One source per lesson FILE now.
         assert identifiers == {"advanced-pandas", "joins"}
         _wait_for_job_done()
 
