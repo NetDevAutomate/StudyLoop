@@ -445,6 +445,37 @@ The service worker caches all vendored assets (HTMX, Alpine.js, fonts) for offli
 
 ---
 
+## Developer Experiment Flags
+
+### `--dev` — wterm terminal renderer
+
+```bash
+studyloop web --dev
+```
+
+Swaps the xterm.js terminal renderer (used in all study-session and ACP terminal panels) for [wterm](https://github.com/vercel-labs/wterm) — a Vercel Labs project that uses a Zig/WASM VT parser and a DOM renderer.
+
+**What changes in dev mode:**
+- The server injects a `<meta name="studyloop-dev-mode" content="wterm">` tag into the HTML.
+- Two extra vendor scripts are loaded: `wterm-0.3.0.js` (60 KB IIFE bundle) and `wterm-adapter-0.3.0.js` (adapter shim).
+- `window.Terminal` is patched to `WTermAdapter`, which maps the xterm.js API surface onto wterm — the rest of the JavaScript is unchanged.
+
+**Advantages over xterm.js:**
+- Native DOM rendering — browser selection, copy/paste, find, and screen readers work without a canvas overlay.
+- ~10x smaller bundle (70 KB total vs. 720 KB xterm + WebGL).
+
+**Known limitations in dev mode (wterm 0.3.0):**
+- No WebGL renderer — DOM painting only.
+- OSC 52 clipboard writes (agent "copy to clipboard") are silently dropped.
+- The jump-to-bottom pill is disabled (`onScroll` is a no-op).
+- **The Agent Terminal disconnects mid-session.** The wterm adapter doesn't yet mirror xterm.js's WebSocket lifecycle and ANSI write semantics; agent output stops streaming after the WS reconnect window. This is the active investigation thread for `--dev` — the flag is **not production-ready**, treat it as a sandbox for evaluating the swap.
+
+**Default mode is unchanged.** `studyloop web` (no `--dev`) continues to load xterm.js exactly as before — no performance or behaviour difference.
+
+See the full evaluation write-up at `docs/explorations/wterm-evaluation.md`.
+
+---
+
 ## Quick Reference
 
 ```bash

@@ -7,18 +7,14 @@ Serves JSON API endpoints and static PWA files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from studyloop.session_runtime import AgentSessionManager
-
-if TYPE_CHECKING:
-    from starlette.responses import Response
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -40,6 +36,7 @@ def create_app(
     ttyd_port: int = 7681,
     username: str = "study",
     password: str = "",
+    dev_mode: bool = False,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -49,6 +46,8 @@ def create_app(
         username: Username for HTTP Basic Auth (LAN protection). Default: "study".
         password: Optional password for HTTP Basic Auth (LAN protection).
                   If empty, no authentication is applied.
+        dev_mode: When True, the UI loads wterm instead of xterm.js. Default
+                  (False) preserves existing behaviour exactly.
     """
     app = FastAPI(
         title="StudyLoop",
@@ -59,6 +58,7 @@ def create_app(
     # Store config on app state for route access
     app.state.study_dirs = study_dirs or []
     app.state.ttyd_port = ttyd_port
+    app.state.dev_mode = dev_mode
     app.state.agent_session_manager = AgentSessionManager()
 
     # Optional password protection (LAN mode)
@@ -116,13 +116,33 @@ def create_app(
     except ImportError:
         pass  # httpx/websockets not installed — proxy unavailable
 
-    # Serve index.html at root (no-cache to prevent stale SW/browser cache)
-    @app.get("/")
-    async def index() -> FileResponse:
-        return FileResponse(
-            STATIC_DIR / "index.html",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    # Serve index.html at root (no-cache to prevent stale SW/browser cache).
+    # In dev_mode=True the HTML is read and a <meta> tag plus the wterm vendor
+    # bundle + adapter are injected so the client-side JS swaps Terminal at runtime.
+    @app.get("/", response_model=None)
+    async def index() -> Response:
+        no_cache = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+        if not dev_mode:
+            return FileResponse(STATIC_DIR / "index.html", headers=no_cache)
+        html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        dev_injection = (
+            '\n  <meta name="studyloop-dev-mode" content="wterm">'
+            '\n  <link rel="stylesheet" href="/vendor/css/wterm-0.3.0.css">'
         )
+        html = html.replace("<head>", "<head>" + dev_injection, 1)
+        # Both scripts are `defer` — they execute in document order AFTER the
+        # `defer` xterm-6.0.0 scripts above, so the adapter's
+        # `window.Terminal = WTermAdapter` is the last writer and wins. Without
+        # `defer`, the adapter runs synchronously *before* xterm, which then
+        # overwrites the patch.
+        wterm_scripts = (
+            '\n  <!-- wterm dev-mode: defer so it runs after the xterm defer'
+            " scripts; the adapter patches window.Terminal last -->"
+            '\n  <script defer src="/vendor/js/wterm-0.3.0.js"></script>'
+            '\n  <script defer src="/vendor/js/wterm-adapter-0.3.0.js"></script>'
+        )
+        html = html.replace("</head>", wterm_scripts + "\n</head>", 1)
+        return HTMLResponse(content=html, headers=no_cache)
 
     # Redirect /session to hash-routed study-session tab
     @app.get("/session")
