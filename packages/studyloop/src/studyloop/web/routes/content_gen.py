@@ -557,4 +557,131 @@ async def _drain_queue_quietly(queue: asyncio.Queue[dict[str, Any]]) -> None:
 
 
 
+# ---------------------------------------------------------------------------
+# Secrets management — encrypted local store for provider API keys
+# ---------------------------------------------------------------------------
+#
+# Endpoints:
+#   GET    /api/content/secrets               → which providers are configured
+#   POST   /api/content/secrets               → test + persist a provider key
+#   DELETE /api/content/secrets/{provider}    → remove a stored key
+#
+# Security invariants:
+#   - Raw key values are NEVER returned in any response.
+#   - Raw key values are NEVER logged. Diagnostics use ``key[:6] + "…"``.
+#   - On auth-test failure the key is NOT persisted.
+
+# The complete set of providers StudyLoop knows about for secrets.
+# ``bedrock`` uses AWS SDK auth, not API keys — excluded from the secrets store.
+_SECRETS_PROVIDERS: tuple[str, ...] = (
+    "openai",
+    "anthropic",
+    "openrouter",
+    "gemini",
+    "minimax",
+)
+
+
+class StoreKeyRequest(BaseModel):
+    """Body for POST /api/content/secrets."""
+
+    provider: str = Field(..., min_length=1, max_length=64)
+    key: str = Field(..., min_length=1, max_length=512)
+
+
+class StoreKeyResponse(BaseModel):
+    ok: bool
+    error: str = ""
+
+
+class SecretsStatusResponse(BaseModel):
+    configured: list[str]
+    missing_for_providers: list[str]
+
+
+@router.get("/content/secrets", response_model=SecretsStatusResponse)
+def list_secrets() -> SecretsStatusResponse:
+    """Return which providers have a stored key. Names only — never values."""
+    from studyloop.secrets import get_secret
+
+    configured: list[str] = []
+    missing: list[str] = []
+    for provider in _SECRETS_PROVIDERS:
+        if get_secret(provider):
+            configured.append(provider)
+        else:
+            missing.append(provider)
+    return SecretsStatusResponse(configured=configured, missing_for_providers=missing)
+
+
+@router.post("/content/secrets", response_model=StoreKeyResponse)
+def store_key(body: StoreKeyRequest) -> StoreKeyResponse:
+    """Test a provider key and persist it on success.
+
+    The key is tested against the provider's auth endpoint before being
+    stored. If the test fails, the key is NOT stored and the error message
+    is returned. The raw key value is never logged or returned.
+
+    Status codes:
+    - 422: unknown provider OR keyless provider (Bedrock).
+    - 400: key is structurally valid but rejected by the provider.
+    - 200: tested + persisted.
+    """
+    from studyloop.secrets import KEYLESS_PROVIDERS, set_secret, test_provider_auth
+
+    provider = body.provider.lower().strip()
+    if provider in KEYLESS_PROVIDERS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Provider {provider!r} uses AWS SDK credentials, not API keys. "
+                "Configure AWS profiles instead."
+            ),
+        )
+    if provider not in _SECRETS_PROVIDERS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Unknown provider {provider!r}. "
+                f"Supported: {', '.join(_SECRETS_PROVIDERS)}"
+            ),
+        )
+
+    key = body.key
+    key_hint = key[:6] + "…"
+    logger.info("Testing API key for provider %r (key=%s)", provider, key_hint)
+    ok, message = test_provider_auth(provider, key)
+    if not ok:
+        logger.warning(
+            "API key test failed for provider %r (key=%s): %s",
+            provider,
+            key_hint,
+            message,
+        )
+        raise HTTPException(status_code=400, detail=message)
+
+    set_secret(provider, key)
+    logger.info("API key stored for provider %r", provider)
+    return StoreKeyResponse(ok=True)
+
+
+@router.delete("/content/secrets/{provider}", response_model=StoreKeyResponse)
+def delete_key(provider: str) -> StoreKeyResponse:
+    """Delete the stored key for a provider. No-op if no key was stored."""
+    from studyloop.secrets import delete_secret
+
+    provider = provider.lower().strip()
+    if provider not in _SECRETS_PROVIDERS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Unknown provider {provider!r}. "
+                f"Supported: {', '.join(_SECRETS_PROVIDERS)}"
+            ),
+        )
+    delete_secret(provider)
+    logger.info("Secret deleted for provider %r", provider)
+    return StoreKeyResponse(ok=True)
+
+
 __all__ = ["router", "GenerateRequest", "GenerateResponse"]
