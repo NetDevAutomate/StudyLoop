@@ -2,11 +2,16 @@
 
 Returns the curated registry augmented with per-provider availability
 (based on env-var presence). Drives the WebUI dropdown's enabled state.
+
+Bug-fix coverage:
+- Bug A: ``stub`` must NOT appear in the provider list (test/CI backend only).
+- Bug D: ``bedrock`` MUST appear (uses boto3, not an API-key env var).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
@@ -36,7 +41,13 @@ _PROVIDER_ENV_VARS = (
 def client(monkeypatch: MonkeyPatch) -> TestClient:
     for var in _PROVIDER_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
-    return TestClient(create_app(study_dirs=[]))
+    # Pin the bedrock credential helper to False so tests are deterministic
+    # on machines where the developer has AWS credentials configured.
+    with patch(
+        "studyloop.web.routes.content_gen._bedrock_credentials_available",
+        return_value=False,
+    ):
+        yield TestClient(create_app(study_dirs=[]))
 
 
 class TestProvidersRoute:
@@ -45,6 +56,52 @@ class TestProvidersRoute:
         assert resp.status_code == 200
         slugs = {entry["slug"] for entry in resp.json()}
         assert {"openai", "openrouter", "gemini", "minimax", "anthropic"} <= slugs
+
+    def test_stub_not_in_provider_list(self, client: TestClient) -> None:
+        """Bug A: stub is a test/CI backend — never user-facing."""
+        data = client.get("/api/content/providers").json()
+        slugs = {entry["slug"] for entry in data}
+        assert "stub" not in slugs, (
+            f"'stub' appeared in /api/content/providers: {slugs!r}. "
+            "stub is a CI-only backend and must be hidden from the user-facing dropdown."
+        )
+
+    def test_bedrock_in_provider_list(self, monkeypatch: MonkeyPatch) -> None:
+        """Bug D: Bedrock (boto3 path) must appear as a selectable provider."""
+        for var in _PROVIDER_ENV_VARS:
+            monkeypatch.delenv(var, raising=False)
+        with patch(
+            "studyloop.web.routes.content_gen._bedrock_credentials_available",
+            return_value=True,
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            data = cl.get("/api/content/providers").json()
+        slugs = {entry["slug"] for entry in data}
+        assert "bedrock" in slugs, (
+            f"'bedrock' missing from /api/content/providers: {slugs!r}"
+        )
+        bedrock = next(e for e in data if e["slug"] == "bedrock")
+        assert bedrock["available"] is True
+        assert bedrock["label"] == "AWS Bedrock"
+        assert len(bedrock["models"]) >= 1
+        first = bedrock["models"][0]
+        assert {"id", "label", "cost_tier", "thinking", "notes"} <= first.keys()
+
+    def test_bedrock_unavailable_when_no_credentials(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        """Bedrock entry shows available=False when boto3 cannot find creds."""
+        for var in _PROVIDER_ENV_VARS:
+            monkeypatch.delenv(var, raising=False)
+        with patch(
+            "studyloop.web.routes.content_gen._bedrock_credentials_available",
+            return_value=False,
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            data = cl.get("/api/content/providers").json()
+        bedrock = next((e for e in data if e["slug"] == "bedrock"), None)
+        assert bedrock is not None, "Bedrock entry should always be present"
+        assert bedrock["available"] is False
 
     def test_each_entry_has_models_with_metadata(self, client: TestClient) -> None:
         data = client.get("/api/content/providers").json()

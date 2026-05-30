@@ -342,6 +342,12 @@ async def list_providers() -> list[dict[str, Any]]:
     flag to grey out unconfigured providers in the dropdown and show
     "set ``OPENROUTER_API_KEY`` to enable" tooltips.
 
+    Bedrock is a special case: it uses boto3 + AWS credential profiles
+    rather than an API-key env var. Its availability is determined by
+    whether boto3 can resolve credentials. It is appended after the
+    registry entries so the dropdown order is: registry providers first,
+    then Bedrock.
+
     Each entry is a flat object the front-end can render directly --
     no nested adapter detail (the front-end doesn't care which adapter
     handles the wire spec, only which models it can pick).
@@ -371,7 +377,75 @@ async def list_providers() -> list[dict[str, Any]]:
                 ],
             }
         )
+
+    # Bedrock uses boto3 + AWS credential profiles, not an env-var API key.
+    # Availability: boto3 importable AND at least one credential signal present.
+    # Model IDs are cross-region inference profiles — verify in the live
+    # Bedrock console before relying on these in production (model availability
+    # and inference-profile naming evolves).
+    out.append(
+        {
+            "slug": "bedrock",
+            "label": "AWS Bedrock",
+            "adapter": "bedrock",
+            "auth_env": "AWS_PROFILE",  # tooltip hint; bedrock has no single env var
+            "available": _bedrock_credentials_available(),
+            "models": [
+                {
+                    "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "label": "Claude Haiku 4.5 (Bedrock)",
+                    "cost_tier": "cheap",
+                    "thinking": False,
+                    "notes": "Cross-region inference profile",
+                },
+                {
+                    "id": "us.anthropic.claude-sonnet-4-6-20251101-v1:0",
+                    "label": "Claude Sonnet 4.6 (Bedrock)",
+                    "cost_tier": "balanced",
+                    "thinking": False,
+                    "notes": "Cross-region inference profile",
+                },
+            ],
+        }
+    )
     return out
+
+
+def _bedrock_credentials_available() -> bool:
+    """Return True if boto3 is importable and AWS credentials are likely present.
+
+    Checks the three most common signals in order of cheapness: env vars
+    (no I/O), then a boto3 session resolve attempt. Does not make any
+    network call (Session() is offline; instance metadata is not contacted).
+    """
+    import os
+
+    if (
+        os.environ.get("AWS_ACCESS_KEY_ID", "").strip()
+        or os.environ.get("AWS_PROFILE", "").strip()
+        or os.environ.get("AWS_DEFAULT_PROFILE", "").strip()
+    ):
+        try:
+            import boto3  # noqa: F401  # pyright: ignore[reportMissingImports]
+
+            return True
+        except ImportError:
+            return False
+
+    try:
+        import boto3  # pyright: ignore[reportMissingImports]
+        from botocore.exceptions import (  # pyright: ignore[reportMissingImports]
+            NoCredentialsError,
+        )
+
+        session = boto3.Session()
+        creds = session.get_credentials()
+        if creds is None:
+            return False
+        resolved = creds.resolve()
+        return resolved is not None
+    except (ImportError, NoCredentialsError, Exception):  # noqa: BLE001
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -480,6 +554,7 @@ async def _drain_queue_quietly(queue: asyncio.Queue[dict[str, Any]]) -> None:
             return
         if frame.get("type") in _TERMINAL_FRAMES:
             return
+
 
 
 __all__ = ["router", "GenerateRequest", "GenerateResponse"]
