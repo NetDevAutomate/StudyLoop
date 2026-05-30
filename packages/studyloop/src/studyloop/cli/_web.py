@@ -14,7 +14,13 @@ from studyloop.cli._shared import console
 @click.option("--lan", is_flag=True, help="Expose to LAN (default: localhost only)")
 @click.option("--password", default="", help="Password for HTTP Basic Auth (LAN protection)")
 @click.option("--ttyd-port", default=0, help="Port where ttyd is running (0 = read from config)")
-def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
+@click.option(
+    "--dev",
+    is_flag=True,
+    default=False,
+    help="Developer experiment mode: swap xterm.js for wterm (DOM renderer).",
+)
+def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
     """Launch the study PWA in your browser.
 
     Serves flashcard and quiz review as a web app accessible from any
@@ -72,9 +78,18 @@ def web(port: int, lan: bool, password: str, ttyd_port: int) -> None:
 
     from studyloop.web.app import create_app
 
+    if dev:
+        console.print(
+            "[yellow]--dev mode:[/yellow] xterm.js swapped for wterm (experimental DOM renderer)"
+        )
+
     host = "0.0.0.0" if lan else "127.0.0.1"
     app = create_app(
-        study_dirs=study_dirs, ttyd_port=ttyd_port, username=username, password=password
+        study_dirs=study_dirs,
+        ttyd_port=ttyd_port,
+        username=username,
+        password=password,
+        dev_mode=dev,
     )
     console.print(f"[bold]Study PWA at http://{host}:{port}[/bold]")
     if not lan:
