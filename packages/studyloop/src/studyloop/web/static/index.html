@@ -277,7 +277,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                   </button>
                   <span class="nav-course" x-text="course + ' \u2014 ' + mode"></span>
-                  <span></span>
+                  <span class="nav-spacer"></span>
                 </div>
                 <div class="card" style="cursor:default">
                   <div class="card-label">Session Setup</div>
@@ -486,7 +486,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                   </button>
                   <span class="nav-course" x-text="course + ' \u2014 ' + mode"></span>
-                  <span></span>
+                  <span class="nav-spacer"></span>
                 </div>
                 <div class="card" style="cursor:default">
                   <div class="card-label">Session Setup</div>
@@ -773,7 +773,7 @@
             <label class="form-row">
               <span>Provider</span>
               <select x-model="form.provider" @change="onProviderChange()">
-                <option value="">stub (offline, free)</option>
+                <option value="">— pick a provider —</option>
                 <template x-for="p in providers" :key="p.slug">
                   <option :value="p.slug" :disabled="!p.available">
                     <span x-text="p.label"></span>
