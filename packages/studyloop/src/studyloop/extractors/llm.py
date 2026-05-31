@@ -122,7 +122,10 @@ If the transcript contains no genuine struggles, return an empty struggles list.
 def _build_system_prompt(prompt_template: str = INITIAL_PROMPT) -> str:
     vocab = _load_vocab()
     vocab_lines = "\n".join(f"- {k}: {', '.join(v)}" for k, v in vocab.items())
-    return prompt_template.format(vocab=vocab_lines)
+    # .replace (not .format): the P6 hill-climber rewrites this template and may
+    # introduce literal braces (JSON examples etc.). .format() would KeyError on
+    # those mid-loop; .replace substitutes only the {vocab} sentinel.
+    return prompt_template.replace("{vocab}", vocab_lines)
 
 
 def _build_client(
