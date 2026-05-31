@@ -180,15 +180,19 @@ class TestProviderRowControls:
         _goto_settings(page)
         _wait_rows(page)
         row = _row(page, "OpenAI")
-        assert row.locator("input[type='password']").is_visible()
-        assert row.locator("button:has-text('Test & save')").is_visible()
+        # Every provider row renders all three auth-kind control divs (x-show
+        # hides the inactive ones but they stay in the DOM), so an unscoped
+        # input[type=password] matches the api_key AND the hidden bedrock_bearer
+        # input. Scope to the visible control to avoid the strict-mode collision.
+        assert row.locator("input[type='password']:visible").is_visible()
+        assert row.locator("button:visible:has-text('Test & save')").is_visible()
 
     def test_bedrock_row_shows_bearer_input_and_hint(self, page: Page) -> None:
         _route_providers(page)
         _goto_settings(page)
         _wait_rows(page)
         row = _row(page, "AWS Bedrock")
-        assert row.locator("input[type='password']").is_visible()
+        assert row.locator("input[type='password']:visible").is_visible()
         assert "AWS_BEARER_TOKEN_BEDROCK" in row.inner_text()
 
     def test_ollama_row_shows_url_input_not_password(self, page: Page) -> None:
@@ -196,9 +200,11 @@ class TestProviderRowControls:
         _goto_settings(page)
         _wait_rows(page)
         row = _row(page, "Ollama (local)")
-        assert row.locator("input[type='text']").is_visible()
-        assert row.locator("input[type='password']").count() == 0
-        assert row.locator("button:has-text('Test connection')").is_visible()
+        assert row.locator("input[type='text']:visible").is_visible()
+        # Hidden api_key/bedrock password inputs still exist in the DOM (x-show);
+        # assert no VISIBLE password input rather than none in the DOM.
+        assert row.locator("input[type='password']:visible").count() == 0
+        assert row.locator("button:visible:has-text('Test connection')").is_visible()
 
 
 class TestSaveKeyFlow:
@@ -216,11 +222,11 @@ class TestSaveKeyFlow:
         _goto_settings(page)
         _wait_rows(page)
         row = _row(page, "OpenAI")
-        row.locator("input[type='password']").fill("sk-test-123")
-        row.locator("button:has-text('Test & save')").click()
-        page.wait_for_function(
-            "() => !!document.querySelector('.provider-row .key-ok')", timeout=3000
-        )
+        row.locator("input[type='password']:visible").fill("sk-test-123")
+        row.locator("button:visible:has-text('Test & save')").click()
+        # Wait for THIS row's success marker to become visible (every row has a
+        # .key-ok element; only the acted-on row's is shown via x-show).
+        row.locator(".key-ok").wait_for(state="visible", timeout=3000)
         assert posted["body"] == {"provider": "openai", "key": "sk-test-123"}
 
 
@@ -238,8 +244,8 @@ class TestTestButtonStates:
         _goto_settings(page)
         _wait_rows(page)
         row = _row(page, "Ollama (local)")
-        row.locator("button:has-text('Test connection')").click()
-        page.wait_for_selector(".provider-row .key-ok", state="visible", timeout=3000)
+        row.locator("button:visible:has-text('Test connection')").click()
+        row.locator(".key-ok").wait_for(state="visible", timeout=5000)
         assert "3 cards" in row.inner_text()
 
     def test_ollama_test_failure_shows_error(self, page: Page) -> None:
@@ -255,6 +261,6 @@ class TestTestButtonStates:
         _goto_settings(page)
         _wait_rows(page)
         row = _row(page, "Ollama (local)")
-        row.locator("button:has-text('Test connection')").click()
-        page.wait_for_selector(".provider-row .key-error", state="visible", timeout=3000)
+        row.locator("button:visible:has-text('Test connection')").click()
+        row.locator(".key-error").wait_for(state="visible", timeout=5000)
         assert "unreachable" in row.inner_text()
