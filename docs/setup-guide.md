@@ -495,7 +495,7 @@ session-export --kiro-only
 session-export --gemini-only
 ```
 
-Supported sources: `claude`, `codex`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`
+Supported sources: `claude`, `codex`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`, `pi`, `omp`
 
 ### Verify it's working
 
@@ -703,6 +703,10 @@ Check that the AI tool's data directory exists:
 - Codex CLI: exported from Codex transcript storage if present on this machine
 - OpenCode: `~/.local/share/opencode/storage/`
 - Aider: `.aider.chat.history.md` files in project directories
+- pi: `~/.pi/agent/sessions/`
+- omp: `~/.omp/agent/sessions/`
+
+For pi and omp specifically, see [Troubleshooting: pi / omp](troubleshooting/pi-omp.md).
 
 ### `studyloop review` shows nothing
 

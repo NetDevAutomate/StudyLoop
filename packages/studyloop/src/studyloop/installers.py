@@ -63,11 +63,13 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
     ),
     "codex": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
     "amp": (),
+    "pi": (LinkSpec("agents/pi/AGENTS.md", str(_HOME / ".pi/agent/AGENTS.md")),),
+    "omp": (LinkSpec("agents/omp/AGENTS.md", str(_HOME / ".omp/agent/AGENTS.md")),),
 }
 
 _SHARED_LINKS: tuple[LinkSpec, ...] = (LinkSpec("agents/shared", str(_HOME / ".agents/shared")),)
 
-_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "amp")
+_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "amp", "pi", "omp")
 
 # ---------------------------------------------------------------------------
 # Cross-harness session-export wiring (W4)
@@ -95,6 +97,8 @@ _HARNESS_EXPORT: dict[str, _HarnessExport] = {
     "opencode": _HarnessExport(
         _HOME / ".config/opencode/session-db.md", "sources opencode"
     ),
+    "pi": _HarnessExport(_HOME / ".pi/agent/session-db.md", "pi-only"),
+    "omp": _HarnessExport(_HOME / ".omp/agent/session-db.md", "omp-only"),
 }
 
 # Sentinel marking a steering file as carrying the export mandate (idempotency
@@ -308,6 +312,10 @@ def detect_available_agent_tools() -> list[str]:
         available.append("codex")
     if shutil.which("amp"):
         available.append("amp")
+    if (_HOME / ".pi").is_dir():
+        available.append("pi")
+    if (_HOME / ".omp").is_dir():
+        available.append("omp")
     return available
 
 
