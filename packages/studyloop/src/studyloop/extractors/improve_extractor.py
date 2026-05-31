@@ -177,17 +177,25 @@ def hill_climb(
         )
         cumulative_cost += eval_cost
         f1 = metrics["f1"]
-        # keep iff F1 improved, or equal F1 with a shorter prompt
-        improved = f1 > best_f1 or (
+        recall = metrics["recall"]
+        best_recall = best_metrics["recall"]
+        # Anti-Goodhart recall floor: never accept a prompt that improves F1 by
+        # SUPPRESSING output (the failure mode of the first run — precision
+        # climbed to 1.0 while recall stayed pinned). A candidate must not drop
+        # recall by more than a small tolerance vs the current best.
+        recall_ok = recall >= best_recall - 0.02
+        f1_better = f1 > best_f1 or (
             abs(f1 - best_f1) < 1e-9 and len(new_prompt) < len(best_prompt)
         )
+        improved = f1_better and recall_ok
         status = "keep" if improved else "discard"
         append_results_row(
             prompt_template=new_prompt, metrics=metrics,
             cost_usd=mut_cost + eval_cost, status=status,
             mutation_description=f"iter {i}: F1 {best_f1:.3f}->{f1:.3f}",
         )
-        print(f"[iter {i}] F1={f1:.3f} ({status}) prec={metrics['precision']:.3f} "
+        floor_note = "" if recall_ok else " [recall-floor blocked]"
+        print(f"[iter {i}] F1={f1:.3f} ({status}{floor_note}) prec={metrics['precision']:.3f} "
               f"rec={metrics['recall']:.3f} fp_neg={metrics['false_positive_rate_on_negatives']} "
               f"cum=${cumulative_cost:.4f}")
         if improved:
