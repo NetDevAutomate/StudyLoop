@@ -29,6 +29,7 @@ import for HTTP-only providers). The line between adapter classes is
 from __future__ import annotations
 
 import json
+import re
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -74,6 +75,48 @@ _THINKING_BUDGET_TOKENS = 2000
 # Default max_tokens for the response. Big enough for a 12-card deck
 # with rationales; small enough to bound cost on a runaway model.
 _DEFAULT_MAX_TOKENS = 4096
+
+
+# MiniMax M2.7 sometimes emits the forced tool call as inline XML markup inside
+# a text block rather than a native Anthropic tool_use block, e.g.:
+#   <minimax:tool_call>
+#   <invoke name="emit_quiz_deck">
+#   <parameter name="title">"DT"</parameter>
+#   <parameter name="questions">[ ... JSON ... ]</parameter>
+#   </invoke>
+#   </minimax:tool_call>
+# Each <parameter> value is the JSON encoding of that key's value. We reassemble
+# them into the tool-input dict the schema expects.
+_INVOKE_RE = re.compile(r'<invoke\s+name="(?P<name>[^"]+)"\s*>(?P<body>.*?)</invoke>', re.DOTALL)
+_PARAM_RE = re.compile(
+    r'<parameter\s+name="(?P<key>[^"]+)"\s*>(?P<val>.*?)</parameter>', re.DOTALL
+)
+
+
+def _parse_inline_tool_call(text: str, expected_tool_name: str) -> dict[str, Any] | None:
+    """Parse MiniMax's inline ``<invoke>`` markup into a tool-input dict.
+
+    Returns the assembled tool input, or ``None`` if the text contains no
+    matching ``<invoke name="<expected_tool_name>">`` block (so a genuine
+    text-only refusal still surfaces as an error upstream).
+    """
+    for m in _INVOKE_RE.finditer(text):
+        if m.group("name") != expected_tool_name:
+            continue
+        body = m.group("body")
+        params: dict[str, Any] = {}
+        for pm in _PARAM_RE.finditer(body):
+            key = pm.group("key")
+            raw = pm.group("val").strip()
+            try:
+                params[key] = json.loads(raw)
+            except (ValueError, json.JSONDecodeError):
+                # Fall back to the raw string when a value isn't JSON-encoded
+                # (e.g. a bare title); the schema validator catches real misses.
+                params[key] = raw
+        if params:
+            return params
+    return None
 
 
 class AnthropicCompatGenerator:
@@ -314,11 +357,20 @@ class AnthropicCompatGenerator:
                 break
 
         if tool_use_block is None:
+            # MiniMax M2.7 intermittently narrates the tool call as inline XML
+            # markup inside a text block instead of emitting a native tool_use
+            # block (a reasoning-model quirk). Parse that fallback before giving
+            # up, so generation doesn't fail ~half the time on this provider.
             text_blocks = [b for b in content if b.get("type") == "text"]
-            text = (text_blocks[0].get("text", "") if text_blocks else "")[:200]
+            full_text = "".join(b.get("text", "") for b in text_blocks)
+            inline = _parse_inline_tool_call(full_text, expected_tool_name)
+            if inline is not None:
+                assistant_turn = {"role": "assistant", "content": content}
+                return inline, assistant_turn, "toolu_inline"
+            preview = full_text[:200]
             raise CardGenerationError(
                 f"{self._profile.label} response missing tool_use block "
-                f"(expected {expected_tool_name!r}). Text content was: {text!r}"
+                f"(expected {expected_tool_name!r}). Text content was: {preview!r}"
             )
 
         if tool_use_block.get("name") != expected_tool_name:
