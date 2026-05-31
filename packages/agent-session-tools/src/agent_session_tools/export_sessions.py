@@ -120,6 +120,7 @@ SOURCE_CHOICES = [
     "aider",
     "bedrock",
     "claude",
+    "codex",
     "gemini",
     "kilocode",
     "kiro",
@@ -217,6 +218,9 @@ def main(
     claude_only: Annotated[
         bool, typer.Option("--claude-only", help="Only export Claude Code")
     ] = False,
+    codex_only: Annotated[
+        bool, typer.Option("--codex-only", help="Only export OpenAI Codex CLI")
+    ] = False,
     kiro_only: Annotated[
         bool, typer.Option("--kiro-only", help="Only export Kiro CLI")
     ] = False,
@@ -286,6 +290,7 @@ def main(
     # Determine which sources to export
     only_flags = {
         "claude": claude_only,
+        "codex": codex_only,
         "kiro": kiro_only,
         "gemini": gemini_only,
         "kilocode": kilocode_only,
