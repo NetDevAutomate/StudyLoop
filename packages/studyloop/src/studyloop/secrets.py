@@ -43,14 +43,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-import stat
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Literal
 
 import httpx
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +56,47 @@ logger = logging.getLogger(__name__)
 
 _CONFIG_DIR_ENV = "STUDYLOOP_CONFIG"
 
-# Providers that do NOT use API keys (use SDK auth instead).
-KEYLESS_PROVIDERS: frozenset[str] = frozenset({"bedrock"})
+# Providers selected by SLUG that must NOT be stored under that slug via the
+# secrets routes. ``bedrock`` uses AWS SDK / bearer-token auth (the bearer token
+# is stored under the distinct key ``bedrock_bearer_token``, not ``bedrock``);
+# ``ollama`` is local and keyless (its endpoint is stored under
+# ``ollama_base_url``).
+KEYLESS_PROVIDERS: frozenset[str] = frozenset({"bedrock", "ollama"})
 
-# Mapping from provider name → OS env variable name.
+# Auth kind drives what the admin UI renders and how a credential is tested.
+#   api_key        — a typed key, checked with a cheap HTTP auth call
+#   bedrock_bearer — optional AWS bearer token (else falls back to AWS profile)
+#   local_keyless  — no credential; local endpoint (Ollama)
+AuthKind = Literal["api_key", "bedrock_bearer", "local_keyless"]
+
+_AUTH_KIND_MAP: dict[str, AuthKind] = {
+    "openai": "api_key",
+    "anthropic": "api_key",
+    "openrouter": "api_key",
+    "gemini": "api_key",
+    "minimax": "api_key",
+    "bedrock": "bedrock_bearer",
+    "ollama": "local_keyless",
+}
+
+# Mapping from secret name → OS env variable name. The bedrock bearer token and
+# ollama base-url are stored under their own names (not the provider slug) so
+# the slug-level KEYLESS guard still holds. ``ollama_base_url`` has no env
+# fallback (store-only).
 _ENV_VAR_MAP: dict[str, str] = {
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "minimax": "MINIMAX_API_KEY",
+    "bedrock_bearer_token": "AWS_BEARER_TOKEN_BEDROCK",
+    "ollama_base_url": "",
 }
+
+
+def get_auth_kind(provider: str) -> AuthKind | None:
+    """Return the auth kind for a provider slug, or ``None`` if unknown."""
+    return _AUTH_KIND_MAP.get(provider.lower().strip())
 
 
 def _config_dir() -> Path:
@@ -362,26 +388,51 @@ _AUTH_TEST_PROVIDERS: dict[str, dict[str, object]] = {
 _AUTH_TIMEOUT = httpx.Timeout(10.0)
 
 
-def test_provider_auth(provider: str, key: str) -> tuple[bool, str]:
-    """Test a provider API key against its auth endpoint.
+def test_provider_auth(provider: str, key: str = "", base_url: str = "") -> tuple[bool, str]:
+    """Test a provider credential.
 
-    Performs an inexpensive HTTP call (``GET /v1/models`` or equivalent).
-    Does NOT generate content — no tokens are consumed for generation.
+    For API-key providers this performs an inexpensive HTTP call
+    (``GET /v1/models`` or equivalent) — no generation tokens are consumed.
 
-    Bedrock is not supported here (uses AWS SDK credentials, not API keys).
-    Calling with ``provider="bedrock"`` returns ``(True, "bedrock uses AWS
-    credentials, not API keys")`` immediately.
+    Special dispatch:
+
+    - ``bedrock`` / ``bedrock_bearer_token`` with a non-empty ``key`` →
+      a minimal Bedrock Converse call to verify the bearer token
+      (delegates to :func:`studyloop.provider_auth.test_bedrock_bearer`).
+    - ``bedrock`` with no ``key`` → the AWS SDK / profile path is used at
+      generation time; returns an informational ``(True, …)``.
+    - ``ollama`` → a real local generation validated against the quality bar
+      (delegates to :func:`studyloop.provider_auth.test_ollama_generate`).
+
+    The heavy delegations import their deps locally so this module stays
+    importable on a minimal install.
 
     Args:
-        provider: Provider name (``"openai"``, ``"anthropic"``, etc.)
-        key: Raw API key to test.
+        provider: Provider name (``"openai"``, ``"bedrock"``, ``"ollama"``, …).
+        key: Raw credential to test (API key or Bedrock bearer token).
+        base_url: Ollama endpoint override (ignored for other providers).
 
     Returns:
-        ``(True, success_message)`` on valid credentials.
-        ``(False, error_message)`` on invalid credentials or network error.
+        ``(True, success_message)`` or ``(False, error_message)``.
     """
+    provider = provider.lower().strip()
+
+    # The bearer token is stored under its own name; normalise to the slug
+    # so the dispatch below is single-pathed.
+    if provider == "bedrock_bearer_token":
+        provider = "bedrock"
+
     if provider == "bedrock":
+        if key.strip():
+            from studyloop.provider_auth import test_bedrock_bearer
+
+            return test_bedrock_bearer(key)
         return True, "Bedrock uses AWS SDK credentials, not API keys — no key needed"
+
+    if provider == "ollama":
+        from studyloop.provider_auth import test_ollama_generate
+
+        return test_ollama_generate(base_url=base_url or "http://localhost:11434")
 
     spec = _AUTH_TEST_PROVIDERS.get(provider)
     if spec is None:
@@ -450,7 +501,9 @@ def _run_auth_test(provider: str, key: str, spec: dict[str, object]) -> tuple[bo
 
 __all__ = [
     "KEYLESS_PROVIDERS",
+    "AuthKind",
     "delete_secret",
+    "get_auth_kind",
     "get_secret",
     "list_secret_names",
     "set_secret",
