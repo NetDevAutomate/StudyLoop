@@ -1477,6 +1477,10 @@
 
       canSubmit() {
         if (this.running) return false;
+        // A keyed provider with no key yet shows the inline key form; block
+        // submission until the key is entered, else the job fails async on the
+        // backend (CardGenerationError) instead of a clean disabled button.
+        if (this.needsKey) return false;
         if (!this.form.publisher) return false;
         if (!this.form.course) return false;
         if (this.form.kinds.length === 0) return false;

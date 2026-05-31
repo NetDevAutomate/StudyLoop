@@ -32,8 +32,7 @@ WEB_PORT = 18582
 def stub_config(tmp_path: Path) -> Path:
     cfg = tmp_path / "studyloop-keyentry.yaml"
     cfg.write_text(
-        f"session_db: {tmp_path / 'sessions.db'}\n"
-        "card_generator:\n  backend: stub\n",
+        f"session_db: {tmp_path / 'sessions.db'}\ncard_generator:\n  backend: stub\n",
         encoding="utf-8",
     )
     return cfg
@@ -79,7 +78,15 @@ _PROVIDERS = [
         "adapter": "anthropic_compat",
         "auth_env": "ANTHROPIC_API_KEY",
         "available": False,
-        "models": [{"id": "claude-haiku-4-5", "label": "Haiku", "cost_tier": "cheap", "thinking": False, "notes": ""}],
+        "models": [
+            {
+                "id": "claude-haiku-4-5",
+                "label": "Haiku",
+                "cost_tier": "cheap",
+                "thinking": False,
+                "notes": "",
+            }
+        ],
     },
     {
         "slug": "openai",
@@ -87,7 +94,15 @@ _PROVIDERS = [
         "adapter": "openai_compat",
         "auth_env": "OPENAI_API_KEY",
         "available": True,  # already has a key — form must NOT show
-        "models": [{"id": "gpt-x", "label": "GPT-X", "cost_tier": "balanced", "thinking": False, "notes": ""}],
+        "models": [
+            {
+                "id": "gpt-x",
+                "label": "GPT-X",
+                "cost_tier": "balanced",
+                "thinking": False,
+                "notes": "",
+            }
+        ],
     },
 ]
 
@@ -107,9 +122,7 @@ def _goto_generate(page: Page) -> None:
     page.goto(f"http://127.0.0.1:{WEB_PORT}/#generate")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_function("() => !!window.Alpine", timeout=5000)
-    page.wait_for_function(
-        "() => window.Alpine.store('nav').current === 'generate'", timeout=3000
-    )
+    page.wait_for_function("() => window.Alpine.store('nav').current === 'generate'", timeout=3000)
 
 
 @pytest.fixture
@@ -133,7 +146,9 @@ class TestKeyEntryUI:
         )
         # Select anthropic (no key) → the inline key form must appear.
         page.select_option('select[x-model="form.provider"]', "anthropic")
-        page.wait_for_selector(".api-key-entry input[type='password']", state="visible", timeout=3000)
+        page.wait_for_selector(
+            ".api-key-entry input[type='password']", state="visible", timeout=3000
+        )
         assert page.is_visible(".api-key-entry input[type='password']")
 
     def test_key_form_hidden_for_available_provider(self, page: Page) -> None:
@@ -159,7 +174,9 @@ class TestKeyEntryUI:
             # After a successful save the UI re-fetches providers; flip anthropic
             # to available so the success path is realistic.
             _route_providers(page, anthropic_available=True)
-            route.fulfill(status=200, content_type="application/json", body=json.dumps({"ok": True}))
+            route.fulfill(
+                status=200, content_type="application/json", body=json.dumps({"ok": True})
+            )
 
         page.route("**/api/content/secrets", handle_post)
 
@@ -169,7 +186,9 @@ class TestKeyEntryUI:
             timeout=3000,
         )
         page.select_option('select[x-model="form.provider"]', "anthropic")
-        page.wait_for_selector(".api-key-entry input[type='password']", state="visible", timeout=3000)
+        page.wait_for_selector(
+            ".api-key-entry input[type='password']", state="visible", timeout=3000
+        )
         page.fill(".api-key-entry input[type='password']", "sk-test-12345")
         page.click(".api-key-entry button")
 
@@ -178,6 +197,46 @@ class TestKeyEntryUI:
         assert page.is_visible(".api-key-entry .key-ok")
         # The POST carried the right provider + key.
         assert posted["body"] == {"provider": "anthropic", "key": "sk-test-12345"}
+
+    def test_generate_button_disabled_while_key_missing(self, page: Page) -> None:
+        """Generate must be disabled when the key-entry form is showing.
+
+        Otherwise a user can click Generate with no key; the job reaches the
+        backend, the generator raises CardGenerationError, and the failure
+        arrives as an async WebSocket error frame instead of a clean
+        disabled-button pre-flight signal. The form says 'you need a key' —
+        the button must agree.
+        """
+        _route_providers(page, anthropic_available=False)
+        _goto_generate(page)
+        page.wait_for_function(
+            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).providers.length > 0",
+            timeout=3000,
+        )
+        # Satisfy every OTHER submit precondition so needsKey is the only thing
+        # that could block submission (publisher+course set; kinds/scope default ok).
+        page.evaluate(
+            "() => { const d = window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]'));"
+            " d.form.publisher = 'p'; d.form.course = 'c'; }"
+        )
+        # Select the keyless provider → key form shows, needsKey === true.
+        page.select_option('select[x-model="form.provider"]', "anthropic")
+        page.wait_for_selector(
+            ".api-key-entry input[type='password']", state="visible", timeout=3000
+        )
+
+        # Sanity: needsKey is genuinely true (otherwise the test proves nothing).
+        needs_key = page.evaluate(
+            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).needsKey"
+        )
+        assert needs_key is True, (
+            "precondition: needsKey must be true for this test to be meaningful"
+        )
+
+        # The Generate button must be disabled while the key is missing.
+        assert page.is_disabled('button[type="submit"]'), (
+            "Generate button is enabled despite needsKey=true — canSubmit() lacks a needsKey guard"
+        )
 
     def test_save_key_shows_error_on_rejection(self, page: Page) -> None:
         _route_providers(page, anthropic_available=False)
@@ -195,7 +254,9 @@ class TestKeyEntryUI:
             timeout=3000,
         )
         page.select_option('select[x-model="form.provider"]', "anthropic")
-        page.wait_for_selector(".api-key-entry input[type='password']", state="visible", timeout=3000)
+        page.wait_for_selector(
+            ".api-key-entry input[type='password']", state="visible", timeout=3000
+        )
         page.fill(".api-key-entry input[type='password']", "bad-key")
         page.click(".api-key-entry button")
         page.wait_for_selector(".api-key-entry .key-error", state="visible", timeout=3000)
