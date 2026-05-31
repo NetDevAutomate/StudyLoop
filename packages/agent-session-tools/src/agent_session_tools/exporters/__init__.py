@@ -4,6 +4,7 @@ from .aider import AiderExporter
 from .base import ExportStats, SessionExporter, commit_batch
 from .bedrock import BedrockProxyExporter
 from .claude import ClaudeCodeExporter
+from .codex import CodexExporter
 from .gemini import GeminiCliExporter
 from .kiro import KiroCliExporter
 from .litellm import LitellmExporter
@@ -15,6 +16,7 @@ __all__ = [
     "SessionExporter",
     "commit_batch",
     "ClaudeCodeExporter",
+    "CodexExporter",
     "KiroCliExporter",
     "GeminiCliExporter",
     "AiderExporter",
@@ -27,6 +29,7 @@ __all__ = [
 # Registry of available exporters
 EXPORTERS = {
     "claude": ClaudeCodeExporter(),
+    "codex": CodexExporter(),
     "kiro": KiroCliExporter(),
     "gemini": GeminiCliExporter(),
     "opencode": OpenCodeExporter(),
