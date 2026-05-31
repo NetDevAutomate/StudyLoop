@@ -11,6 +11,7 @@ permission:
   edit: allow
   bash:
     "studyloop *": allow
+    "studyloop extract-struggles *": allow
     "session-* *": allow
     "uv run tutor-*": allow
     "*": ask
@@ -90,6 +91,7 @@ Follow `wind-down-protocol.md`:
 4. Offer calendar blocks: `studyloop schedule-blocks`
 5. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break
 6. Parking lot: note tangential topics worth revisiting
+7. Extract struggle signals: `studyloop extract-struggles --incremental` — keeps Generate panel topic dropdown fresh; best-effort, non-blocking
 
 ## Break Reminders
 
