@@ -348,3 +348,30 @@ class TestProviderTestEndpoint:
     def test_unknown_slug_returns_404(self, client: TestClient) -> None:
         resp = client.post("/api/content/providers/nope/test", json={})
         assert resp.status_code == 404
+
+    def test_empty_key_falls_back_to_stored_key(self, client: TestClient) -> None:
+        """The 'Test' button sends key='' — the server must test the STORED key.
+
+        Regression: previously an empty key was sent straight to the provider,
+        building an invalid 'Bearer ' header (minimax) or a 403 (gemini).
+        """
+        from studyloop import secrets as secrets_mod
+
+        with patch.object(secrets_mod, "get_secret", return_value="sk-stored"), \
+                patch.object(secrets_mod, "test_provider_auth") as mock_test:
+            mock_test.return_value = (True, "ok")
+            resp = client.post("/api/content/providers/openai/test", json={"key": ""})
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+        # The STORED key was tested, not the empty one.
+        mock_test.assert_called_once_with("openai", "sk-stored")
+
+    def test_no_stored_key_returns_actionable_message(self, client: TestClient) -> None:
+        from studyloop import secrets as secrets_mod
+
+        with patch.object(secrets_mod, "get_secret", return_value=None):
+            resp = client.post("/api/content/providers/openai/test", json={"key": ""})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert "no stored key" in body["message"].lower()

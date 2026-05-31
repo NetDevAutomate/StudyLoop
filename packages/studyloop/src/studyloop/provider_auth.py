@@ -136,6 +136,49 @@ def test_bedrock_bearer(token: str, region: str = "us-east-1") -> tuple[bool, st
     return True, "Bearer token verified against Bedrock."
 
 
+def list_ollama_models(base_url: str = "http://localhost:11434") -> list[str]:
+    """Return the model names actually installed on the Ollama server.
+
+    Queries ``GET /api/tags``. Returns ``[]`` if the server is unreachable or
+    returns no models. Names include the tag (e.g. ``gemma3:4b``,
+    ``gemma4:latest``).
+    """
+    import httpx
+
+    try:
+        resp = httpx.get(f"{base_url.rstrip('/')}/api/tags", timeout=2.0)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+    except Exception:
+        return []
+
+    models = data.get("models", []) if isinstance(data, dict) else []
+    names = [m.get("name", "") for m in models if isinstance(m, dict)]
+    return [n for n in names if n]
+
+
+def _ollama_test_candidates(base_url: str, model: str) -> list[str]:
+    """Pick which models the test should try, preferring what's installed.
+
+    - explicit ``model`` → just that one.
+    - otherwise: installed models, recommended ones first (so a known-good
+      small model is tried before a random embedding model), then any other
+      installed model. Falls back to the recommended list if discovery fails
+      (so the error message still names sensible models).
+    """
+    if model:
+        return [model]
+    installed = list_ollama_models(base_url)
+    if not installed:
+        return list(OLLAMA_RECOMMENDED_MODELS)
+    # Embedding models can't generate chat/tool-use output — skip them.
+    installed = [m for m in installed if "embed" not in m.lower()]
+    preferred = [m for m in installed if m in OLLAMA_RECOMMENDED_MODELS]
+    rest = [m for m in installed if m not in OLLAMA_RECOMMENDED_MODELS]
+    return preferred + rest
+
+
 def test_ollama_generate(
     base_url: str = "http://localhost:11434", model: str = ""
 ) -> tuple[bool, str]:
@@ -146,14 +189,20 @@ def test_ollama_generate(
     can produce StudyLoop's structured tool-use output — the thing small models
     most often fail — without a second judge LLM.
 
-    When ``model`` is empty, tries :data:`OLLAMA_RECOMMENDED_MODELS` in order
-    and returns on the first success. Returns ``(True, msg)`` / ``(False, msg)``.
+    When ``model`` is empty, discovers installed models (via ``/api/tags``)
+    and tries them — recommended ones first — so the test uses a model the
+    user actually has. Returns ``(True, msg)`` / ``(False, msg)``.
     """
     from studyloop.content.generators import CardGenerationError
     from studyloop.content.generators.ollama import OllamaGenerator
     from studyloop.settings import CardGeneratorConfig, OllamaBackendConfig
 
-    candidates = [model] if model else list(OLLAMA_RECOMMENDED_MODELS)
+    candidates = _ollama_test_candidates(base_url, model)
+    if not candidates:
+        return False, (
+            f"No Ollama models installed at {base_url}. "
+            "Pull one first, e.g. `ollama pull qwen2.5:7b`."
+        )
     failures: list[str] = []
 
     for candidate in candidates:
@@ -185,6 +234,7 @@ def test_ollama_generate(
 __all__ = [
     "BEDROCK_TEST_MODEL",
     "OLLAMA_RECOMMENDED_MODELS",
+    "list_ollama_models",
     "test_bedrock_bearer",
     "test_ollama_generate",
 ]

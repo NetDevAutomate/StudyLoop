@@ -205,6 +205,15 @@
           </div>
         </div>
       </div>
+
+      <!-- Spacer pushes Settings to the bottom of the sidebar (gear convention) -->
+      <div class="sidebar-spacer" aria-hidden="true"></div>
+      <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('settings') }"
+              @click="$store.nav.go('settings')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button>
     </nav>
 
     <!-- Content area -->
@@ -1279,6 +1288,87 @@
         </div>
       </div>
 
+      <!-- ============================================================ -->
+      <!-- SETTINGS VIEW — LLM Providers admin                          -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('settings')" x-cloak
+           x-data="settingsPanel()" x-init="init()">
+        <div class="settings-panel">
+          <h2>Settings</h2>
+          <section class="settings-section">
+            <h3>LLM Providers</h3>
+            <p class="settings-blurb">
+              Manage credentials for content generation. Keys are encrypted at
+              rest in <code>~/.config/studyloop/</code> and never leave this machine.
+            </p>
+
+            <template x-for="p in providers" :key="p.slug">
+              <div class="provider-row">
+                <div class="provider-row-header">
+                  <span class="provider-label" x-text="p.label"></span>
+                  <span class="provider-status"
+                        :class="p.available ? 'status-ok' : 'status-missing'"
+                        x-text="p.available ? 'configured' : 'not configured'"></span>
+                </div>
+
+                <!-- API-key providers -->
+                <div x-show="p.auth_kind === 'api_key'" class="provider-controls">
+                  <input type="password" x-model="inputs[p.slug]"
+                         :placeholder="p.available ? '••••••••• (stored — type to replace)' : 'Paste API key'"
+                         autocomplete="off" spellcheck="false" />
+                  <button type="button" @click="saveKey(p.slug)"
+                          :disabled="busy === p.slug || !inputs[p.slug]?.trim()"
+                          x-text="busy === p.slug ? 'Testing…' : 'Test & save'"></button>
+                  <button type="button" class="danger-btn" x-show="p.available"
+                          @click="deleteKey(p.slug)">Delete</button>
+                  <button type="button" @click="testOnly(p.slug)"
+                          :disabled="busy === p.slug || !p.available">Test</button>
+                </div>
+
+                <!-- Bedrock bearer token -->
+                <div x-show="p.auth_kind === 'bedrock_bearer'" class="provider-controls">
+                  <input type="password" x-model="inputs['bedrock']"
+                         placeholder="Paste AWS bearer token (optional)"
+                         autocomplete="off" spellcheck="false" />
+                  <button type="button" @click="saveBearer()"
+                          :disabled="busy === 'bedrock' || !inputs['bedrock']?.trim()"
+                          x-text="busy === 'bedrock' ? 'Testing…' : 'Test & save'"></button>
+                  <button type="button" class="danger-btn" x-show="p.available"
+                          @click="deleteBearer()">Delete token</button>
+                  <button type="button" @click="testOnly('bedrock')"
+                          :disabled="busy === 'bedrock'">Test AWS creds</button>
+                  <small class="settings-hint">
+                    Bearer token (<code>AWS_BEARER_TOKEN_BEDROCK</code>) for accounts that
+                    use token auth. Leave empty to use your AWS profile / IAM role instead.
+                  </small>
+                </div>
+
+                <!-- Ollama (local, keyless) -->
+                <div x-show="p.auth_kind === 'local_keyless'" class="provider-controls">
+                  <input type="text" x-model="inputs['ollama']"
+                         :placeholder="p.base_url || 'http://localhost:11434'"
+                         autocomplete="off" spellcheck="false" />
+                  <button type="button" @click="saveOllamaUrl()"
+                          :disabled="busy === 'ollama' || !inputs['ollama']?.trim()">Save URL</button>
+                  <button type="button" @click="testOnly('ollama')"
+                          :disabled="busy === 'ollama'"
+                          x-text="busy === 'ollama' ? 'Testing…' : 'Test connection'"></button>
+                  <small class="settings-hint">
+                    Local &amp; keyless. Test runs a real generation against a recommended
+                    model — may take 10–30s on first call while the model loads.
+                  </small>
+                </div>
+
+                <small x-show="status[p.slug]?.error" class="key-error"
+                       x-text="status[p.slug]?.error"></small>
+                <small x-show="status[p.slug]?.ok" class="key-ok"
+                       x-text="status[p.slug]?.ok"></small>
+              </div>
+            </template>
+          </section>
+        </div>
+      </div>
+
     </div><!-- .content-area -->
   </div><!-- .app-layout -->
 
@@ -1293,7 +1383,7 @@
 
       init() {
         const hash = window.location.hash.slice(1);
-        const valid = ['flashcards', 'quizzes', 'generate', 'body-double', 'study-session'];
+        const valid = ['flashcards', 'quizzes', 'generate', 'body-double', 'study-session', 'settings'];
         if (hash && valid.includes(hash)) this.current = hash;
       },
 
@@ -1636,6 +1726,112 @@
           try { this._ws.close(); } catch {}
           this._ws = null;
         }
+      },
+    };
+  }
+
+  /* ------------------------------------------------------------------
+   * Settings panel — LLM Providers admin (add/change/delete/test keys)
+   * ------------------------------------------------------------------ */
+  function settingsPanel() {
+    return {
+      providers: [],
+      inputs: {},          // { slug: string } live input values
+      status: {},          // { slug: { ok: string, error: string } }
+      busy: '',            // slug whose request is in flight
+
+      async init() {
+        await this.refreshProviders();
+      },
+
+      async refreshProviders() {
+        try {
+          const r = await fetch('/api/content/providers');
+          if (r.ok) this.providers = await r.json();
+        } catch { /* leave list as-is */ }
+      },
+
+      _ok(slug, msg) { this.status = { ...this.status, [slug]: { ok: msg, error: '' } }; },
+      _err(slug, msg) { this.status = { ...this.status, [slug]: { ok: '', error: msg } }; },
+      _clear(slug) { this.status = { ...this.status, [slug]: { ok: '', error: '' } }; },
+
+      async _postSecret(storeName, value, uiSlug) {
+        // Test + store via the secrets route; refresh on success.
+        this._clear(uiSlug);
+        try {
+          const r = await fetch('/api/content/secrets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: storeName, key: value }),
+          });
+          if (r.ok) {
+            this.inputs[uiSlug] = '';
+            this._ok(uiSlug, 'Verified and saved.');
+            await this.refreshProviders();
+          } else {
+            let detail = 'Could not verify the value.';
+            try { detail = (await r.json()).detail || detail; } catch {}
+            this._err(uiSlug, detail);
+          }
+        } catch { this._err(uiSlug, 'Network error.'); }
+      },
+
+      async _deleteSecret(storeName, uiSlug, okMsg) {
+        this._clear(uiSlug);
+        try {
+          const r = await fetch(`/api/content/secrets/${storeName}`, { method: 'DELETE' });
+          if (r.ok) { this._ok(uiSlug, okMsg); await this.refreshProviders(); }
+          else { this._err(uiSlug, 'Delete failed.'); }
+        } catch { this._err(uiSlug, 'Network error.'); }
+      },
+
+      async saveKey(slug) {
+        const v = this.inputs[slug]?.trim();
+        if (!v || this.busy) return;
+        this.busy = slug;
+        await this._postSecret(slug, v, slug);
+        this.busy = '';
+      },
+
+      async deleteKey(slug) { await this._deleteSecret(slug, slug, 'Key deleted.'); },
+
+      async saveBearer() {
+        const v = this.inputs['bedrock']?.trim();
+        if (!v || this.busy) return;
+        this.busy = 'bedrock';
+        await this._postSecret('bedrock_bearer_token', v, 'bedrock');
+        this.busy = '';
+      },
+
+      async deleteBearer() {
+        await this._deleteSecret('bedrock_bearer_token', 'bedrock', 'Bearer token deleted.');
+      },
+
+      async saveOllamaUrl() {
+        const v = this.inputs['ollama']?.trim();
+        if (!v || this.busy) return;
+        this.busy = 'ollama';
+        // ollama_base_url is a config value — stored without an auth-test.
+        await this._postSecret('ollama_base_url', v, 'ollama');
+        this.busy = '';
+      },
+
+      async testOnly(slug) {
+        if (this.busy) return;
+        this.busy = slug;
+        this._clear(slug);
+        try {
+          const key = slug === 'bedrock' ? (this.inputs['bedrock']?.trim() || '') : '';
+          const r = await fetch(`/api/content/providers/${slug}/test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key }),
+          });
+          const data = await r.json();
+          if (data.ok) this._ok(slug, data.message || 'Credentials valid.');
+          else this._err(slug, data.message || 'Test failed.');
+        } catch { this._err(slug, 'Network error.'); }
+        this.busy = '';
       },
     };
   }

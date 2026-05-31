@@ -438,6 +438,11 @@ def test_provider_auth(provider: str, key: str = "", base_url: str = "") -> tupl
     if spec is None:
         return False, f"Unknown provider {provider!r}. Known: {', '.join(_AUTH_TEST_PROVIDERS)}"
 
+    # An empty key would build an invalid auth header (e.g. "Bearer ") that
+    # httpx rejects with "Illegal header value" — guard with a clear message.
+    if not key.strip():
+        return False, f"No API key provided for {provider}."
+
     try:
         ok, msg = _run_auth_test(provider, key, spec)
         return ok, msg
