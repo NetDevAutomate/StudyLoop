@@ -1,0 +1,20 @@
+{
+  "_comment": "Frozen train/held-out split for the struggle-extractor quality eval. The hill-climber (P6) optimises ONLY on train; held-out drives final reporting and the overfitting gate, never keep/discard. Do not modify once the loop has run. 5 train + 3 held-out study sessions, with negatives split across both halves. Domains spread so neither half is dominated by one topic.",
+  "train": [
+    "kiro_7fa14057-6d91-40e7-b3d5-2e53a343c113",
+    "kiro_c88f4eef-81bc-4bf3-b583-c1632f8c9e79",
+    "kiro_53f8d4bb-da28-4b8c-ad56-396c132323e7",
+    "kiro_33b5a7ed-dce9-463d-8e25-ee8de07fa3d9",
+    "kiro_0b7a9687-2735-48f7-b287-31a0085dfd93",
+    "agent-a7ccf07",
+    "agent-adb2db81040728397",
+    "agent-a86e019"
+  ],
+  "held_out": [
+    "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0",
+    "kiro_52edd73b-3b51-4513-80bc-fc3559ecc7c9",
+    "kiro_34d44273-90bd-4c7e-8df5-7462b8db8784",
+    "agent-aa1015b3cd2de6078",
+    "agent-a539efd"
+  ]
+}

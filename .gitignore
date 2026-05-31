@@ -526,3 +526,6 @@ benchmarks/d2-output/
 
 # Local debug screenshots at repo root (don't commit; allow under packages/ and docs/)
 /*.png
+
+# P6 hill-climber generated artifact (regenerated each run)
+extractor_candidate.py

@@ -138,6 +138,16 @@ When a session is ending (student signals or 90+ min elapsed), follow `wind-down
 5. **Next session suggestion**: Time-of-day aware, reference upcoming spaced repetition reviews
 6. **Offer calendar blocks**: `studyloop schedule-blocks --start <time>`
 
+## Session End: Struggle Extraction
+
+After completing the wind-down protocol, run the struggle extractor to keep the Generate panel's topic dropdown fresh:
+
+```bash
+studyloop extract-struggles --incremental  # Extract struggle signals from this session
+```
+
+This is best-effort and non-blocking — it silently skips if no new sessions are found. It targets the most-recent session automatically; no session ID is required.
+
 ## References
 
 - `references/session-workflows.md` — Detailed session type workflows
