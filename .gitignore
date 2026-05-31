@@ -452,6 +452,10 @@ AGENTS.md
 GEMINI.md
 !/AGENTS.md
 !/GEMINI.md
+# pi/omp harness steering files — shipped with the repo, installed into
+# ~/.pi/agent/ and ~/.omp/agent/ by `studyloop install agents --tool pi|omp`.
+!agents/pi/AGENTS.md
+!agents/omp/AGENTS.md
 agents/cowork/
 .kiro/
 .crush/
@@ -488,6 +492,9 @@ docs/architecture/*
 # with the repo (C4 diagrams of the live system + target direction).
 !docs/architecture/current.md
 !docs/architecture/target.md
+# Un-ignored 2026-05-31 — pi/omp harness integration doc (C4 diagrams), linked
+# from docs/architecture.md and the agent-install / troubleshooting guides.
+!docs/architecture/pi-omp-harness-integration.md
 
 # Demo recordings (large, local-only)
 demos/
