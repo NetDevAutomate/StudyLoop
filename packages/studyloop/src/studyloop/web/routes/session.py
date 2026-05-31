@@ -1256,9 +1256,10 @@ async def live_session_socket(websocket: WebSocket) -> None:
                 if not request_id:
                     # Missing requestId — silently drop, can't correlate.
                     pass
-                elif hasattr(transport, "send_permission_response"):
-                    if isinstance(outcome, dict):
-                        await transport.send_permission_response(request_id, outcome)
+                elif hasattr(transport, "send_permission_response") and isinstance(
+                    outcome, dict
+                ):
+                    await transport.send_permission_response(request_id, outcome)
             # Silently drop unknown frame types — no error channel needed.
 
     # --- Pump with TaskGroup (plan Blocker B5) ---------------------------
@@ -1418,7 +1419,22 @@ def _lesson_options() -> list[SessionOption]:
 
 
 def _courses_roots() -> list[Path]:
-    candidates = [root / "Courses" for root in _study_roots()]
+    # Course vendors (ArjanCodes, CodeWithMosh, …) live directly under each
+    # study root — the same level "Topic" targets scan. Requiring an
+    # intermediate ``Courses/`` directory left the vendor picker empty
+    # because the real vault has no such level.
+    #
+    # A ``Courses/`` subdirectory is still honoured when one exists, so a
+    # vault that nests courses under it keeps working. To avoid surfacing
+    # ``Courses`` itself as a bogus vendor in that case, a study root is
+    # only used directly when it has no ``Courses/`` child.
+    candidates: list[Path] = []
+    for root in _study_roots():
+        nested = root / "Courses"
+        if nested.is_dir():
+            candidates.append(nested)
+        else:
+            candidates.append(root)
     candidates.extend(
         [
             Path("~/Obsidian/Personal/Study/Courses").expanduser(),
