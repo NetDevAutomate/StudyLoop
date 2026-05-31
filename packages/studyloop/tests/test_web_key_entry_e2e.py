@@ -104,6 +104,24 @@ _PROVIDERS = [
             }
         ],
     },
+    {
+        # Bedrock uses AWS SigV4 creds, not a typed key. Unavailable → it must
+        # show the AWS-creds hint (not the key box) and block Generate.
+        "slug": "bedrock",
+        "label": "AWS Bedrock",
+        "adapter": "bedrock",
+        "auth_env": "AWS_PROFILE",
+        "available": False,
+        "models": [
+            {
+                "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                "label": "Claude Haiku 4.5 (Bedrock)",
+                "cost_tier": "cheap",
+                "thinking": False,
+                "notes": "",
+            }
+        ],
+    },
 ]
 
 
@@ -261,3 +279,89 @@ class TestKeyEntryUI:
         page.click(".api-key-entry button")
         page.wait_for_selector(".api-key-entry .key-error", state="visible", timeout=3000)
         assert "rejected" in page.inner_text(".api-key-entry .key-error").lower()
+
+
+class TestBedrockCredsHint:
+    """Bedrock authenticates with AWS creds, not a typed key.
+
+    When Bedrock is selected but unavailable it must NOT show the API-key
+    box (you can't type a SigV4 credential), must show the AWS-creds hint
+    instead, and must block Generate so the job never reaches the backend
+    only to die with a CardGenerationError.
+    """
+
+    def test_bedrock_shows_aws_hint_not_key_box(self, page: Page) -> None:
+        _route_providers(page, anthropic_available=False)
+        _goto_generate(page)
+        page.wait_for_function(
+            "() => window.Alpine.$data("
+            "document.querySelector('[x-data=\"generatePanel()\"]')"
+            ").providers.length > 0",
+            timeout=3000,
+        )
+        page.select_option('select[x-model="form.provider"]', "bedrock")
+
+        # AWS-creds hint visible; API-key input NOT present.
+        page.wait_for_selector(".bedrock-creds-hint", state="visible", timeout=3000)
+        assert page.is_visible(".bedrock-creds-hint")
+        assert not page.is_visible(".api-key-entry input[type='password']")
+
+        # needsBedrockCreds true, needsKey false.
+        state = page.evaluate(
+            "() => { const d = window.Alpine.$data("
+            "document.querySelector('[x-data=\"generatePanel()\"]'));"
+            " return { bedrock: d.needsBedrockCreds, key: d.needsKey }; }"
+        )
+        assert state["bedrock"] is True
+        assert state["key"] is False
+
+        # The rendered <option>.label must say AWS credentials, NOT "API key".
+        # x-show on a nested <span> is silently ignored inside <option> (the
+        # browser flattens option text), so the suffix is built in
+        # providerOptionLabel() and asserted here on the real .label property.
+        label = page.eval_on_selector(
+            "select[x-model='form.provider'] option[value='bedrock']",
+            "el => el.label",
+        )
+        assert "needs AWS credentials" in label, label
+        assert "API key" not in label, label
+
+    def test_available_provider_option_has_no_suffix(self, page: Page) -> None:
+        # Regression: the suffix must NOT appear on available providers. The
+        # original nested-span x-show rendered it on every option regardless.
+        _route_providers(page, anthropic_available=True)
+        _goto_generate(page)
+        page.wait_for_function(
+            "() => window.Alpine.$data("
+            "document.querySelector('[x-data=\"generatePanel()\"]')"
+            ").providers.length > 0",
+            timeout=3000,
+        )
+        label = page.eval_on_selector(
+            "select[x-model='form.provider'] option[value='anthropic']",
+            "el => el.label",
+        )
+        assert label == "Anthropic", f"available provider should have no suffix, got: {label!r}"
+
+    def test_bedrock_unavailable_blocks_generate(self, page: Page) -> None:
+        _route_providers(page, anthropic_available=False)
+        _goto_generate(page)
+        page.wait_for_function(
+            "() => window.Alpine.$data("
+            "document.querySelector('[x-data=\"generatePanel()\"]')"
+            ").providers.length > 0",
+            timeout=3000,
+        )
+        # Satisfy every OTHER submit precondition so the bedrock-creds guard is
+        # the only thing that could block submission.
+        page.evaluate(
+            "() => { const d = window.Alpine.$data("
+            "document.querySelector('[x-data=\"generatePanel()\"]'));"
+            " d.form.publisher = 'p'; d.form.course = 'c'; }"
+        )
+        page.select_option('select[x-model="form.provider"]', "bedrock")
+        page.wait_for_selector(".bedrock-creds-hint", state="visible", timeout=3000)
+
+        assert page.is_disabled('button[type="submit"]'), (
+            "Generate enabled despite needsBedrockCreds=true — canSubmit() lacks the guard"
+        )

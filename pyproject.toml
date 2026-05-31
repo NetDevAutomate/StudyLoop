@@ -30,6 +30,12 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "mcp[cli]>=1.0.0",
     "bandit>=1.8",
+    # boto3 powers the Bedrock content generator (studyloop[bedrock]). It is
+    # in the dev group so a plain `uv sync` gives `uv run studyloop web` a
+    # working Bedrock backend — otherwise generation dies with
+    # "No module named 'boto3'" because workspace members are synced without
+    # their optional-dependencies.
+    "boto3>=1.40",
 ]
 
 [build-system]
