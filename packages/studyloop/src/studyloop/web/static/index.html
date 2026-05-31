@@ -802,13 +802,36 @@
               <select x-model="form.provider" @change="onProviderChange()">
                 <option value="">— pick a provider —</option>
                 <template x-for="p in providers" :key="p.slug">
-                  <option :value="p.slug" :disabled="!p.available">
+                  <option :value="p.slug">
                     <span x-text="p.label"></span>
-                    <span x-show="!p.available"> — set <span x-text="p.auth_env"></span> to enable</span>
+                    <span x-show="!p.available"> — needs API key</span>
                   </option>
                 </template>
               </select>
             </label>
+
+            <!-- Inline key-entry: shown when the chosen provider has no key and
+                 uses an API key (bedrock is AWS-SDK auth, never keyed here). -->
+            <div class="form-row api-key-entry"
+                 x-show="needsKey"
+                 x-transition>
+              <span>API key</span>
+              <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                <div style="display:flex; gap:0.4rem;">
+                  <input type="password" x-model="keyEntry.value"
+                         :placeholder="'Paste your ' + (selectedProvider?.label || '') + ' API key'"
+                         autocomplete="off" spellcheck="false"
+                         style="flex:1;"
+                         @keydown.enter.prevent="saveKey()" />
+                  <button type="button" @click="saveKey()"
+                          :disabled="keyEntry.saving || !keyEntry.value.trim()"
+                          x-text="keyEntry.saving ? 'Testing…' : 'Test & save'"></button>
+                </div>
+                <small x-show="keyEntry.error" class="key-error" x-text="keyEntry.error"></small>
+                <small x-show="keyEntry.saved" class="key-ok">✓ Key verified and stored encrypted in ~/.config/studyloop/</small>
+                <small class="key-hint">Tested against the provider before saving. Stored encrypted; never leaves this machine.</small>
+              </div>
+            </div>
 
             <label class="form-row" x-show="form.provider">
               <span>Model</span>
@@ -1322,6 +1345,9 @@
       formError: '',
       conflictBanner: '',
 
+      // Inline API-key entry (shown when the chosen provider has no stored key).
+      keyEntry: { value: '', saving: false, error: '', saved: false },
+
       // Job state. `running` gates the form vs progress UI.
       running: false,
       jobId: '',
@@ -1333,6 +1359,18 @@
       get modelsForProvider() {
         const p = this.providers.find((p) => p.slug === this.form.provider);
         return p ? p.models : [];
+      },
+
+      get selectedProvider() {
+        return this.providers.find((p) => p.slug === this.form.provider) || null;
+      },
+
+      get needsKey() {
+        // Show the key-entry form only for a chosen, keyed provider that is
+        // not yet available. Bedrock uses AWS-SDK auth (adapter === 'bedrock')
+        // and is never keyed here.
+        const p = this.selectedProvider;
+        return !!p && !p.available && p.adapter !== 'bedrock';
       },
 
       async init() {
@@ -1394,10 +1432,55 @@
         // care about the openai_compat / anthropic_compat distinction.
         const p = this.providers.find((x) => x.slug === this.form.provider);
         this.form.backend = p ? p.adapter : '';
+        // Reset the key-entry form for the newly-selected provider.
+        this.keyEntry = { value: '', saving: false, error: '', saved: false };
+      },
+
+      async refreshProviders() {
+        // Re-fetch the provider list so `available` reflects a just-saved key.
+        try {
+          const r = await fetch('/api/content/providers');
+          if (r.ok) this.providers = await r.json();
+        } catch { /* keep the existing list */ }
+      },
+
+      async saveKey() {
+        const value = this.keyEntry.value.trim();
+        if (!value || this.keyEntry.saving) return;
+        this.keyEntry.saving = true;
+        this.keyEntry.error = '';
+        this.keyEntry.saved = false;
+        try {
+          const r = await fetch('/api/content/secrets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: this.form.provider, key: value }),
+          });
+          if (r.ok) {
+            // Tested + stored. Refresh providers so the option is enabled,
+            // clear the raw key from memory, and confirm.
+            this.keyEntry.value = '';
+            this.keyEntry.saved = true;
+            await this.refreshProviders();
+          } else {
+            // 400 = provider rejected the key; 422 = unknown/keyless provider.
+            let detail = 'Could not verify the key.';
+            try { detail = (await r.json()).detail || detail; } catch { /* keep default */ }
+            this.keyEntry.error = detail;
+          }
+        } catch (e) {
+          this.keyEntry.error = 'Network error testing the key. Is the server reachable?';
+        } finally {
+          this.keyEntry.saving = false;
+        }
       },
 
       canSubmit() {
         if (this.running) return false;
+        // A keyed provider with no key yet shows the inline key form; block
+        // submission until the key is entered, else the job fails async on the
+        // backend (CardGenerationError) instead of a clean disabled button.
+        if (this.needsKey) return false;
         if (!this.form.publisher) return false;
         if (!this.form.course) return false;
         if (this.form.kinds.length === 0) return false;

@@ -35,7 +35,6 @@ in a correction turn (see :mod:`._retry`).
 from __future__ import annotations
 
 import json
-import os
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -146,11 +145,17 @@ class OpenAICompatGenerator:
     # ------------------------------------------------------------------
 
     def _read_api_key(self) -> str:
-        key = os.environ.get(self._profile.auth_env, "").strip()
+        # Resolution order (encrypted store -> env var -> None) lives in
+        # secrets.get_secret; call it so a key added via the Generate panel
+        # (encrypted store) is honoured, not just one exported in the shell.
+        from studyloop.secrets import get_secret
+
+        key = (get_secret(self._profile.slug) or "").strip()
         if not key:
             raise CardGenerationError(
-                f"{self._profile.label} requires {self._profile.auth_env} to be set "
-                f"(in shell env or in the project-root .env file)."
+                f"{self._profile.label} requires an API key. Add it in the web "
+                f"Generate panel (stored encrypted), or set {self._profile.auth_env} "
+                f"in your shell env / project-root .env file."
             )
         return key
 

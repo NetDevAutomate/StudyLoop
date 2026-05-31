@@ -2666,6 +2666,21 @@ body[data-palette="everforest"] {
 }
 .generate-form select:focus,
 .generate-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.generate-form input[type="password"],
+.generate-form input[type="text"] {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+/* Inline API-key entry (shown when a chosen provider has no stored key). */
+.generate-form .api-key-entry .key-error { color: var(--danger, #e5534b); }
+.generate-form .api-key-entry .key-ok { color: var(--success, #3fb950); }
+.generate-form .api-key-entry .key-hint { color: var(--text-muted); opacity: 0.8; }
 
 .generate-banner {
   border-left: 3px solid var(--accent);

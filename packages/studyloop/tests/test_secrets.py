@@ -409,6 +409,26 @@ class TestProviderAuthMocked:
         ok, msg = test_provider_auth("gemini", "AIzaBad")
         assert ok is False
 
+    def test_gemini_key_travels_in_header_not_url(self, mock_gemini_success: object) -> None:
+        """The Gemini key must NOT appear in the request URL.
+
+        Google accepts the key via the ``x-goog-api-key`` header. Passing it as
+        a ``?key=`` query param embeds the secret in the URL, which httpx echoes
+        verbatim in ``HTTPStatusError`` messages — one ``raise_for_status()``
+        away from leaking the key into a client-visible 400 response. Keep it in
+        the header so the whole class of leak is impossible.
+        """
+        from studyloop.secrets import test_provider_auth
+
+        ok, _ = test_provider_auth("gemini", "AIzaSecretValue")
+        assert ok is True
+
+        request = mock_gemini_success.calls.last.request
+        assert "AIzaSecretValue" not in str(request.url), (
+            f"Gemini key leaked into URL: {request.url}"
+        )
+        assert request.headers.get("x-goog-api-key") == "AIzaSecretValue"
+
     # --- MiniMax ---
     def test_minimax_success(self, mock_minimax_success: object) -> None:
         from studyloop.secrets import test_provider_auth
