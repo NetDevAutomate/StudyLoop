@@ -25,7 +25,7 @@ import hashlib
 import json
 import sqlite3
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +61,13 @@ class SessionScore:
     fp: int  # predicted struggling not in human struggling pairs
     fn: int  # human struggling pairs not predicted
     fp_on_negative: int  # any row produced for a negative session
+    # Concrete failure pairs so the hill-climber can show the meta-agent its
+    # specific mistakes. Each is a list of (topic, concept) tuples.
+    fn_pairs: list[tuple[str, str]] = field(default_factory=list)
+    fp_pairs: list[tuple[str, str]] = field(default_factory=list)
+    # Non-None when extraction raised — the session scored zero but did not
+    # kill the run (critical for an unattended loop).
+    error: str | None = None
 
 
 def _load(path: Path) -> Any:
@@ -138,6 +145,10 @@ def score_session(
         fp=fp,
         fn=fn,
         fp_on_negative=0,
+        # Concrete pairs the hill-climber feeds the meta-agent as labelled
+        # failure examples ("you missed these" / "you hallucinated these").
+        fn_pairs=sorted(exp_str - pred_str),
+        fp_pairs=sorted(pred_str - exp_str),
     )
 
 
@@ -192,15 +203,23 @@ def run_eval(
             # skip the API call (a cost saving), so the eval measures the
             # SYSTEM that ships, not the raw prompt on inputs it never sees.
             if pre_filter(sid, source, messages):
-                results = extract_struggles(
-                    messages, sid, client=client, model=model, prompt_template=prompt_template
-                )
-                usage = getattr(extract_struggles, "last_usage", {}) or {}
-                cost += usage.get("inputTokens", 0) * _PRICE_IN
-                cost += usage.get("outputTokens", 0) * _PRICE_OUT
+                # Per-session error isolation: a single crashed extraction
+                # (e.g. a model emitting an invalid ToolUse sequence) scores
+                # zero for that session but MUST NOT kill an unattended loop.
+                try:
+                    results = extract_struggles(
+                        messages, sid, client=client, model=model, prompt_template=prompt_template
+                    )
+                    usage = getattr(extract_struggles, "last_usage", {}) or {}
+                    cost += usage.get("inputTokens", 0) * _PRICE_IN
+                    cost += usage.get("outputTokens", 0) * _PRICE_OUT
+                    scores.append(score_session(entry, results))
+                except Exception as exc:  # noqa: BLE001 — loop resilience over strictness
+                    s = score_session(entry, [])
+                    s.error = f"{type(exc).__name__}: {str(exc)[:200]}"
+                    scores.append(s)
             else:
-                results = []
-            scores.append(score_session(entry, results))
+                scores.append(score_session(entry, []))
     finally:
         conn.close()
 
