@@ -66,6 +66,34 @@ class TestProvidersRoute:
             "stub is a CI-only backend and must be hidden from the user-facing dropdown."
         )
 
+    def test_provider_available_from_encrypted_store(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        """A key in the encrypted store (no env var) makes the provider available.
+
+        Regression for the audit gap: the availability flag checked os.environ
+        only, so a key added via the Generate panel still showed the provider
+        as disabled in the dropdown.
+        """
+        for var in _PROVIDER_ENV_VARS:
+            monkeypatch.delenv(var, raising=False)
+        # openai has a stored key; everything else has nothing.
+        with (
+            patch(
+                "studyloop.web.routes.content_gen._bedrock_credentials_available",
+                return_value=False,
+            ),
+            patch(
+                "studyloop.web.routes.content_gen.get_secret",
+                side_effect=lambda name: "stored" if name == "openai" else None,
+            ),
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            data = cl.get("/api/content/providers").json()
+        by_slug = {e["slug"]: e for e in data}
+        assert by_slug["openai"]["available"] is True, "stored key should enable openai"
+        assert by_slug["anthropic"]["available"] is False, "no key -> still disabled"
+
     def test_bedrock_in_provider_list(self, monkeypatch: MonkeyPatch) -> None:
         """Bug D: Bedrock (boto3 path) must appear as a selectable provider."""
         for var in _PROVIDER_ENV_VARS:

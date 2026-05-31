@@ -73,11 +73,47 @@ class TestAuth:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        # Ensure the encrypted store also has nothing (else the store would
+        # satisfy the key and no error would be raised).
+        monkeypatch.setattr("studyloop.secrets.get_secret", lambda name: None)
         with pytest.raises(CardGenerationError) as exc:
             _make_generator("anthropic", "claude-haiku-4-5")
         msg = str(exc.value)
         assert "ANTHROPIC_API_KEY" in msg
-        assert ".env" in msg
+
+    def test_reads_key_from_encrypted_store_when_env_unset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A key in the encrypted store must be consumed even with no env var.
+
+        Regression for the audit gap: adapters read os.environ only and ignored
+        the encrypted store, so a key added via the Generate panel had zero
+        effect on generation.
+        """
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        # Simulate a key present in the encrypted store (get_secret resolves
+        # store -> env -> None; here the store wins).
+        monkeypatch.setattr(
+            "studyloop.secrets.get_secret",
+            lambda name: "stored-key-xyz" if name == "anthropic" else None,
+        )
+        gen = _make_generator("anthropic", "claude-haiku-4-5")
+        try:
+            assert gen._client.headers["x-api-key"] == "stored-key-xyz"
+        finally:
+            gen.close()
+
+    def test_missing_everywhere_raises_actionable_message(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No env var AND no stored key -> actionable error naming both paths."""
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.setattr("studyloop.secrets.get_secret", lambda name: None)
+        with pytest.raises(CardGenerationError) as exc:
+            _make_generator("anthropic", "claude-haiku-4-5")
+        msg = str(exc.value)
+        assert "ANTHROPIC_API_KEY" in msg  # names the env var
+        assert "Generate panel" in msg  # points at the new UI affordance
 
     @pytest.mark.usefixtures("anthropic_key")
     def test_x_api_key_header_set(self) -> None:
