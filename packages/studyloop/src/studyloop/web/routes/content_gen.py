@@ -468,7 +468,7 @@ async def test_provider(slug: str, body: TestProviderRequest) -> TestProviderRes
     Unknown slug → 404. The raw key is never logged or echoed.
     """
     from studyloop.content.generators.provider_profiles import PROFILES
-    from studyloop.secrets import test_provider_auth
+    from studyloop.secrets import get_secret, test_provider_auth
 
     slug = slug.lower().strip()
     if slug not in PROFILES:
@@ -478,13 +478,25 @@ async def test_provider(slug: str, body: TestProviderRequest) -> TestProviderRes
         ok, message = await asyncio.to_thread(
             test_provider_auth, "ollama", "", _ollama_base_url()
         )
-    elif slug == "bedrock" and body.key.strip():
-        # Real bearer-token Converse probe — off-thread (network + boto3).
-        ok, message = await asyncio.to_thread(test_provider_auth, "bedrock", body.key)
-    else:
-        # Cheap HTTP auth check (api-key providers) or bedrock no-key fast-path.
-        ok, message = test_provider_auth(slug, body.key)
+        return TestProviderResponse(ok=ok, message=message)
 
+    if slug == "bedrock":
+        # Prefer the typed token; else the stored one. With neither, fall to the
+        # AWS-SDK/profile path (test_provider_auth returns the informational msg).
+        token = body.key.strip() or (get_secret("bedrock_bearer_token") or "")
+        ok, message = await asyncio.to_thread(test_provider_auth, "bedrock", token)
+        return TestProviderResponse(ok=ok, message=message)
+
+    # API-key providers. The "Test" button sends an empty key (the browser
+    # never holds the stored secret), so fall back to the stored key. With no
+    # key anywhere there is nothing to test — say so rather than make an
+    # empty-credential HTTP call.
+    key = body.key.strip() or (get_secret(slug) or "")
+    if not key:
+        return TestProviderResponse(
+            ok=False, message=f"No stored key for {slug}. Enter a key and Test & save."
+        )
+    ok, message = test_provider_auth(slug, key)
     return TestProviderResponse(ok=ok, message=message)
 
 

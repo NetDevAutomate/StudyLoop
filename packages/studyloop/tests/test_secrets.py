@@ -565,3 +565,22 @@ class TestBedrockBearerToken:
             ok, _ = secrets.test_provider_auth("ollama", base_url="http://x:1")
         assert ok is True
         mock_test.assert_called_once_with(base_url="http://x:1")
+
+
+class TestEmptyKeyGuard:
+    """An empty key must never reach the HTTP layer (would build 'Bearer ')."""
+
+    def test_empty_key_returns_false_no_http(self) -> None:
+        from studyloop.secrets import test_provider_auth
+
+        # No respx mock set up — if it tried HTTP this would error; instead it
+        # must short-circuit on the empty key.
+        ok, msg = test_provider_auth("minimax", "")
+        assert ok is False
+        assert "no api key" in msg.lower()
+
+    def test_whitespace_key_returns_false(self) -> None:
+        from studyloop.secrets import test_provider_auth
+
+        ok, msg = test_provider_auth("openai", "   ")
+        assert ok is False

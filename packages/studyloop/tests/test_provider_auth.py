@@ -190,27 +190,93 @@ class TestOllamaGenerate:
         assert ok is False
         assert "failed" in msg.lower()
 
-    def test_tries_recommended_models_in_order(self) -> None:
-        """Empty model → first recommended fails, second succeeds."""
+    def test_tries_discovered_models_in_order(self) -> None:
+        """Empty model → discovered models tried in order; first fails, second wins."""
         from studyloop import provider_auth
         from studyloop.content.generators import CardGenerationError
 
+        discovered = ["model-a:7b", "model-b:7b"]
         attempts: list[str] = []
 
         def make_gen(config):
             attempts.append(config.ollama.model)
             gen = MagicMock()
-            if config.ollama.model == provider_auth.OLLAMA_RECOMMENDED_MODELS[0]:
+            if config.ollama.model == discovered[0]:
                 gen.generate_flashcards.side_effect = CardGenerationError("not pulled")
             else:
                 gen.generate_flashcards.return_value = self._deck(2)
             return gen
 
-        with patch(
+        with patch.object(
+            provider_auth, "list_ollama_models", return_value=discovered
+        ), patch(
             "studyloop.content.generators.ollama.OllamaGenerator",
             side_effect=make_gen,
         ):
             ok, _ = provider_auth.test_ollama_generate()
         assert ok is True
-        assert attempts[0] == provider_auth.OLLAMA_RECOMMENDED_MODELS[0]
-        assert attempts[1] == provider_auth.OLLAMA_RECOMMENDED_MODELS[1]
+        assert attempts == discovered
+
+
+class TestOllamaDiscovery:
+    """test_ollama_generate discovers installed models via /api/tags."""
+
+    def test_list_ollama_models_parses_tags(self) -> None:
+        import httpx
+
+        from studyloop import provider_auth
+
+        payload = {"models": [{"name": "gemma4:latest"}, {"name": "qwen3-embedding:0.6b"}]}
+        with patch.object(
+            httpx, "get",
+            return_value=httpx.Response(200, json=payload, request=httpx.Request("GET", "x")),
+        ):
+            names = provider_auth.list_ollama_models("http://localhost:11434")
+        assert names == ["gemma4:latest", "qwen3-embedding:0.6b"]
+
+    def test_list_ollama_models_empty_on_error(self) -> None:
+        import httpx
+
+        from studyloop import provider_auth
+
+        with patch.object(httpx, "get", side_effect=httpx.ConnectError("refused")):
+            assert provider_auth.list_ollama_models("http://localhost:11434") == []
+
+    def test_generate_uses_discovered_model_skips_embeddings(self) -> None:
+        """When no model given, discovers installed models, skips embeddings."""
+        from studyloop import provider_auth
+
+        used: list[str] = []
+
+        def make_gen(config):  # noqa: ANN001
+            used.append(config.ollama.model)
+            gen = MagicMock()
+            gen.generate_flashcards.return_value = self._deck(2)
+            return gen
+
+        with patch.object(
+            provider_auth, "list_ollama_models",
+            return_value=["qwen3-embedding:0.6b", "gemma4:latest"],
+        ), patch(
+            "studyloop.content.generators.ollama.OllamaGenerator", side_effect=make_gen
+        ):
+            ok, msg = provider_auth.test_ollama_generate()
+        assert ok is True
+        # Embedding model skipped; the real model was used.
+        assert used == ["gemma4:latest"]
+
+    def _deck(self, n: int):
+        from studyloop.content.schemas import FlashcardDeck, FlashcardItem
+
+        return FlashcardDeck(
+            title="Test", cards=[FlashcardItem(front=f"Q{i}", back=f"A{i}") for i in range(n)]
+        )
+
+    def test_generate_no_models_installed_message(self) -> None:
+        from studyloop import provider_auth
+
+        with patch.object(provider_auth, "list_ollama_models", return_value=[]), \
+                patch.object(provider_auth, "OLLAMA_RECOMMENDED_MODELS", ()):
+            ok, msg = provider_auth.test_ollama_generate()
+        assert ok is False
+        assert "no ollama models installed" in msg.lower()
