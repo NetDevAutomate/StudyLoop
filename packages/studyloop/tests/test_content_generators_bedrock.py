@@ -615,3 +615,62 @@ class TestLiveBedrock:
         assert isinstance(deck, FlashcardDeck)
         assert deck.title == "Python Counter basics"
         assert len(deck.cards) >= 3
+
+
+class TestBearerTokenAuth:
+    """AWS_BEARER_TOKEN_BEDROCK takes a profile-less, STS-free fast-path."""
+
+    def test_build_client_uses_bearer_token_when_env_set(
+        self, config: CardGeneratorConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "tok-123")
+
+        gen = BedrockGenerator.__new__(BedrockGenerator)
+        gen._config = config
+        gen._bedrock = config.bedrock
+
+        sentinel_client = MagicMock(name="bedrock-runtime")
+
+        def fake_boto_client(service: str, **kwargs: object) -> object:
+            assert service == "bedrock-runtime"  # never 'sts' on this path
+            return sentinel_client
+
+        with patch("boto3.client", side_effect=fake_boto_client) as mock_client, \
+                patch("boto3.Session") as mock_session:
+            client, model = gen._build_client(
+                region="us-east-1", model="us.anthropic.claude-sonnet-4-6"
+            )
+
+        assert client is sentinel_client
+        assert model == "us.anthropic.claude-sonnet-4-6"
+        # Profile-less: no Session(profile_name=...) and no STS precheck.
+        mock_session.assert_not_called()
+        assert mock_client.call_count == 1
+
+    def test_build_client_without_bearer_uses_profile_path(
+        self, config: CardGeneratorConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No bearer token → the existing profile/Session path runs (Session used)."""
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
+
+        gen = BedrockGenerator.__new__(BedrockGenerator)
+        gen._config = config
+        gen._bedrock = config.bedrock
+
+        mock_session = MagicMock()
+        mock_session.client.return_value = MagicMock()
+        with patch("boto3.Session", return_value=mock_session) as session_cls:
+            gen._build_client(
+                region="us-east-1", model="us.anthropic.claude-sonnet-4-6"
+            )
+
+        # Profile path: a named Session was created and STS was queried
+        # (bedrock-runtime client + sts get_caller_identity precheck).
+        session_cls.assert_called_once_with(profile_name="bedrock-prod")
+        client_services = [c.args[0] for c in mock_session.client.call_args_list]
+        assert "bedrock-runtime" in client_services
+        assert "sts" in client_services

@@ -27,8 +27,10 @@ Failure model
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
@@ -43,6 +45,7 @@ from studyloop.content.schemas import FlashcardDeck, QuizDeck
 from studyloop.content.scope import ResolvedSource, ScopeRequest, resolve_scope
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from studyloop.settings import Settings
@@ -181,18 +184,19 @@ def run_job(
                 }
             )
 
-        generator = get_generator(gen_config)
-        try:
-            generate_concurrently(
-                generator,
-                tasks,
-                max_workers=gen_config.max_workers,
-                on_complete=on_complete,
-            )
-        finally:
-            close = getattr(generator, "close", None)
-            if close is not None:
-                close()
+        with _maybe_inject_bearer(gen_config):
+            generator = get_generator(gen_config)
+            try:
+                generate_concurrently(
+                    generator,
+                    tasks,
+                    max_workers=gen_config.max_workers,
+                    on_complete=on_complete,
+                )
+            finally:
+                close = getattr(generator, "close", None)
+                if close is not None:
+                    close()
 
         # Stable ordering for downstream consumers (tests, audit logs).
         outcomes.sort(key=lambda o: (o.identifier, o.kind))
@@ -262,6 +266,41 @@ def _resolve_generator_config(settings: Settings, request: JobRequest):
     if request.model:
         overrides["model"] = request.model
     return replace(cfg, **overrides) if overrides else cfg
+
+
+@contextlib.contextmanager
+def _maybe_inject_bearer(config: Any) -> Iterator[None]:
+    """Inject a stored Bedrock bearer token into the env for one generation.
+
+    If the backend is Bedrock and a ``bedrock_bearer_token`` secret exists,
+    set ``AWS_BEARER_TOKEN_BEDROCK`` for the duration of the generation so
+    ``BedrockGenerator`` takes the profile-less bearer path; restore the prior
+    value afterwards. No-op for other backends or when no token is stored.
+
+    Mutates process-global ``os.environ`` — safe here because StudyLoop runs
+    one active generation at a time (the active_gen singleton).
+    """
+    if getattr(config, "backend", "") != "bedrock":
+        yield
+        return
+
+    from studyloop.secrets import get_secret
+
+    token = get_secret("bedrock_bearer_token")
+    if not token:
+        yield
+        return
+
+    key = "AWS_BEARER_TOKEN_BEDROCK"
+    previous = os.environ.get(key)
+    os.environ[key] = token
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = previous
 
 
 def _course_output_dir(settings: Settings, publisher: str, course: str) -> Path:

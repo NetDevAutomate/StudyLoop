@@ -118,12 +118,16 @@ class TestProvidersRoute:
     def test_bedrock_unavailable_when_no_credentials(
         self, monkeypatch: MonkeyPatch
     ) -> None:
-        """Bedrock entry shows available=False when boto3 cannot find creds."""
+        """Bedrock entry shows available=False when no creds AND no bearer token."""
         for var in _PROVIDER_ENV_VARS:
             monkeypatch.delenv(var, raising=False)
+        monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
         with patch(
             "studyloop.web.routes.content_gen._bedrock_credentials_available",
             return_value=False,
+        ), patch(
+            "studyloop.web.routes.content_gen.get_secret",
+            return_value=None,
         ):
             cl = TestClient(create_app(study_dirs=[]))
             data = cl.get("/api/content/providers").json()
@@ -141,9 +145,27 @@ class TestProvidersRoute:
         first = anthropic["models"][0]
         assert {"id", "label", "cost_tier", "thinking", "notes"} <= first.keys()
 
-    def test_available_flag_false_when_env_var_unset(self, client: TestClient) -> None:
-        data = client.get("/api/content/providers").json()
-        # Fixture cleared all keys, so every provider is unavailable.
+    def test_available_flag_false_when_env_var_unset(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        # Clear API-key env, the Bedrock bearer token, and force the local-only
+        # checks (bedrock SigV4, ollama reachability) off so nothing is
+        # available.
+        for var in _PROVIDER_ENV_VARS:
+            monkeypatch.delenv(var, raising=False)
+        monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
+        with patch(
+            "studyloop.web.routes.content_gen._bedrock_credentials_available",
+            return_value=False,
+        ), patch(
+            "studyloop.web.routes.content_gen._ollama_reachable",
+            return_value=False,
+        ), patch(
+            "studyloop.web.routes.content_gen.get_secret",
+            return_value=None,
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            data = cl.get("/api/content/providers").json()
         assert all(not entry["available"] for entry in data)
 
     def test_available_flag_true_when_env_var_set(
@@ -160,6 +182,62 @@ class TestProvidersRoute:
         assert availability["openrouter"] is True
         assert availability["openai"] is False
         assert availability["anthropic"] is False
+
+    def test_no_duplicate_providers(self, client: TestClient) -> None:
+        """Each slug appears exactly once.
+
+        Regression: bedrock used to be appended ad-hoc after the PROFILES loop;
+        now it lives in PROFILES, so the append was removed. Guard against it
+        coming back (which would double the bedrock entry).
+        """
+        data = client.get("/api/content/providers").json()
+        slugs = [e["slug"] for e in data]
+        assert len(slugs) == len(set(slugs)), f"duplicate provider slug(s): {slugs}"
+
+    def test_every_entry_has_auth_kind(self, client: TestClient) -> None:
+        data = client.get("/api/content/providers").json()
+        valid = {"api_key", "bedrock_bearer", "local_keyless"}
+        for entry in data:
+            assert entry.get("auth_kind") in valid, entry
+
+    def test_ollama_in_provider_list(self, client: TestClient) -> None:
+        data = client.get("/api/content/providers").json()
+        ollama = next((e for e in data if e["slug"] == "ollama"), None)
+        assert ollama is not None
+        assert ollama["auth_kind"] == "local_keyless"
+        assert "base_url" in ollama
+
+    def test_ollama_available_when_reachable(self) -> None:
+        with patch(
+            "studyloop.web.routes.content_gen._ollama_reachable", return_value=True
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            data = cl.get("/api/content/providers").json()
+        ollama = next(e for e in data if e["slug"] == "ollama")
+        assert ollama["available"] is True
+
+    def test_ollama_unavailable_when_unreachable(self) -> None:
+        with patch(
+            "studyloop.web.routes.content_gen._ollama_reachable", return_value=False
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            data = cl.get("/api/content/providers").json()
+        ollama = next(e for e in data if e["slug"] == "ollama")
+        assert ollama["available"] is False
+
+    def test_bedrock_available_when_bearer_token_stored(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        for var in _PROVIDER_ENV_VARS:
+            monkeypatch.delenv(var, raising=False)
+        with patch(
+            "studyloop.web.routes.content_gen.get_secret",
+            return_value="tok-bearer",
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            data = cl.get("/api/content/providers").json()
+        bedrock = next(e for e in data if e["slug"] == "bedrock")
+        assert bedrock["available"] is True
 
 
 class TestContentCoursesRoute:
