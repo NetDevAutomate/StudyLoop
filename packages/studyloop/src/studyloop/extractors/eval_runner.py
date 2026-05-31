@@ -35,6 +35,7 @@ from studyloop.extractors.llm import (
     INITIAL_PROMPT,
     extract_struggles,
 )
+from studyloop.extractors.pipeline import pre_filter
 
 _FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 _GOLDEN_PATH = _FIXTURES / "eval_golden.json"
@@ -73,6 +74,13 @@ def _fetch_messages(conn: sqlite3.Connection, session_id: str) -> list[dict[str,
         (session_id,),
     ).fetchall()
     return [{"role": r["role"], "content": r["content"]} for r in rows]
+
+
+def _session_source(conn: sqlite3.Connection, session_id: str) -> str | None:
+    row = conn.execute(
+        "SELECT source FROM sessions WHERE id = ?", (session_id,)
+    ).fetchone()
+    return row["source"] if row else None
 
 
 def _expected_keys(entry: dict[str, Any]) -> set[tuple[str, str]]:
@@ -177,12 +185,21 @@ def run_eval(
             if entry is None:
                 continue
             messages = _fetch_messages(conn, sid)
-            results = extract_struggles(
-                messages, sid, client=client, model=model, prompt_template=prompt_template
-            )
-            usage = getattr(extract_struggles, "last_usage", {}) or {}
-            cost += usage.get("inputTokens", 0) * _PRICE_IN
-            cost += usage.get("outputTokens", 0) * _PRICE_OUT
+            source = _session_source(conn, sid)
+            # Mirror production exactly: the real pipeline only extracts from
+            # sessions that pass pre_filter (kiro_cli source + <50% tool-noise).
+            # Sessions the pipeline would skip produce zero rows here too — and
+            # skip the API call (a cost saving), so the eval measures the
+            # SYSTEM that ships, not the raw prompt on inputs it never sees.
+            if pre_filter(sid, source, messages):
+                results = extract_struggles(
+                    messages, sid, client=client, model=model, prompt_template=prompt_template
+                )
+                usage = getattr(extract_struggles, "last_usage", {}) or {}
+                cost += usage.get("inputTokens", 0) * _PRICE_IN
+                cost += usage.get("outputTokens", 0) * _PRICE_OUT
+            else:
+                results = []
             scores.append(score_session(entry, results))
     finally:
         conn.close()
