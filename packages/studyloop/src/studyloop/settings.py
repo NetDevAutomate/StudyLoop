@@ -347,6 +347,32 @@ def load_raw_config() -> dict[str, Any]:
     return loaded
 
 
+def resolve_study_dirs() -> list[str]:
+    """Resolve the directories the review panels scan for decks.
+
+    The web/MCP layers read decks from ``review.directories``; the content
+    generator WRITES them under ``content.base_path``. These are two separate
+    config keys that MUST agree, but a typical config sets only ``content``
+    (the generator's root) and omits ``review`` entirely — so the panels were
+    handed ``[]`` and showed nothing, even though decks were on disk.
+
+    Resolution order:
+      1. ``review.directories`` when explicitly set (verbatim — power users
+         may point the panels at extra roots).
+      2. Fallback to ``content.base_path`` (the generator's write root), so a
+         freshly generated deck is discoverable with zero extra config.
+
+    Always returns at least one entry (the default ``content.base_path`` when
+    nothing is configured) so the panels have a root to scan on a fresh install.
+    """
+    raw = load_raw_config()
+    review_dirs = raw.get("review", {}).get("directories") or []
+    if review_dirs:
+        return [str(d) for d in review_dirs]
+    base_path = load_settings().content.base_path
+    return [str(Path(base_path).expanduser())]
+
+
 def write_raw_config(data: dict[str, Any]) -> Path:
     """Write raw YAML config to the active config path and return the path."""
     config_path = get_config_path()
