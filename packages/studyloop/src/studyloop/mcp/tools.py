@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as param type
@@ -454,3 +455,56 @@ def register_tools(mcp: FastMCP) -> None:
             results["resolved"] = success
 
         return results
+
+    # ── §log_topic — mid-session learning signal recorder ────────
+
+    _VALID_STATUSES = frozenset({"learning", "struggling", "insight", "win", "parked"})
+    _CONFIDENCE_MAP: dict[str, str] = {
+        "struggling": "struggling",
+        "learning": "learning",
+        "win": "confident",
+        "insight": "confident",
+    }
+
+    @mcp.tool()
+    def log_topic(topic: str, status: str, note: str = "") -> dict[str, str]:
+        """Record a topic the user is learning/struggling with this session.
+
+        Writes to session-topics.md (so it's counted at session end) AND, for
+        learning-signal statuses, to study_progress (the spaced-repetition store).
+        Call this during a session whenever the user clearly struggles with,
+        learns, or has an insight about a concept — especially after 2+ rounds
+        without breakthrough (status='struggling').
+
+        Args:
+            topic: The concept or topic the user is engaging with.
+            status: One of 'learning', 'struggling', 'insight', 'win', 'parked'.
+            note: Optional free-text note (e.g. what exactly confused them).
+        """
+        from studyloop.history import record_progress
+        from studyloop.session_state import append_topic
+
+        if status not in _VALID_STATUSES:
+            allowed = ", ".join(sorted(_VALID_STATUSES))
+            raise ToolError(f"Invalid status {status!r}. Allowed: {allowed}")
+
+        time_str = datetime.now().strftime("%H:%M")
+        append_topic(time_str, topic, status, note)
+
+        confidence = _CONFIDENCE_MAP.get(status)
+        if confidence is not None:
+            try:
+                record_progress(
+                    topic=topic,
+                    concept=topic,
+                    confidence=confidence,
+                    notes=note or None,
+                )
+            except Exception:
+                logger.exception(
+                    "log_topic: record_progress failed for topic=%r status=%r — continuing",
+                    topic,
+                    status,
+                )
+
+        return {"logged": "true", "topic": topic, "status": status}

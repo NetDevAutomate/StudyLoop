@@ -19,6 +19,7 @@ studyloop wins                # Learning wins (fight imposter syndrome)
 studyloop progress CONCEPT    # Record progress
 session-export               # Export AI sessions to SQLite
 session-query search QUERY   # Search across sessions
+studyloop extract-struggles --incremental  # after session export — extract struggle signals into study_progress
 ```
 
 ## Study Mentor Agent

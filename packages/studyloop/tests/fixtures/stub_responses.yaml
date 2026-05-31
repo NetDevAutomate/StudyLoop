@@ -1,0 +1,31 @@
+# Hardcoded responses for the stub extractor (pipeline-plumbing tests only).
+#
+# Maps a session_id to a fixed list of ExtractorResult fields. The stub returns
+# the list for the matching session_id, or its `default` list for any other
+# session_id. This makes pipeline tests fully deterministic with zero LLM cost.
+#
+# These are NOT ground-truth labels — they are plumbing fixtures. Ground truth
+# lives in eval_golden.json (human-authored, used by the quality-eval tier).
+
+# A known session_id used by the idempotency / row-count tests.
+"stub-session-001":
+  - topic: python
+    concept: abc-vs-protocol
+    confidence: struggling
+    notes: "stub fixture: structural-vs-nominal subtyping confusion"
+  - topic: sql-joins
+    concept: outer-join
+    confidence: struggling
+    notes: "stub fixture: repeated outer-join question"
+
+# Any session_id not listed above falls back to this. Two valid results so the
+# row-count assertions have a stable expected value regardless of session_id.
+default:
+  - topic: python
+    concept: abc-vs-protocol
+    confidence: struggling
+    notes: "stub fixture default entry 1"
+  - topic: sql-joins
+    concept: outer-join
+    confidence: struggling
+    notes: "stub fixture default entry 2"
