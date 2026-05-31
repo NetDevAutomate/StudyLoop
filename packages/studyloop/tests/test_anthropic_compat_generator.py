@@ -238,12 +238,63 @@ class TestRetry:
             assert route.call_count == 2
             second_body = json.loads(route.calls[1].request.content)
             messages = second_body["messages"]
-            assert any(
-                m.get("role") == "user"
-                and isinstance(m.get("content"), str)
-                and "did not validate" in m["content"]
+            # The correction MUST be delivered as a tool_result block (not a
+            # plain-text user turn): Anthropic's protocol requires the user turn
+            # after an assistant tool_use to carry a tool_result for that
+            # tool_use id. MiniMax's shim enforces this strictly (error 2013).
+            corrections = [
+                m
                 for m in messages
+                if m.get("role") == "user" and isinstance(m.get("content"), list)
+            ]
+            assert corrections, "expected a tool_result correction turn"
+            block = corrections[-1]["content"][0]
+            assert block["type"] == "tool_result"
+            assert block["tool_use_id"] == "toolu_1"  # references the prior tool_use
+            assert "did not validate" in block["content"]
+            # Protocol sanity: every assistant tool_use turn is immediately
+            # followed by a user tool_result turn (valid alternation).
+            for i, m in enumerate(messages[:-1]):
+                if m.get("role") == "assistant" and isinstance(m.get("content"), list):
+                    has_tool_use = any(
+                        b.get("type") == "tool_use" for b in m["content"]
+                    )
+                    if has_tool_use:
+                        nxt = messages[i + 1]
+                        assert nxt["role"] == "user"
+                        assert isinstance(nxt["content"], list)
+                        assert nxt["content"][0]["type"] == "tool_result"
+        finally:
+            gen.close()
+
+    @pytest.mark.usefixtures("minimax_key")
+    @respx.mock
+    def test_minimax_retry_sends_tool_result_not_plain_text(self) -> None:
+        # Regression for MiniMax error 2013 ("tool call result does not follow
+        # tool call"): the strict /anthropic shim rejected a plain-text user
+        # turn after an assistant tool_use. The retry must send a tool_result.
+        gen = _make_generator("minimax", "MiniMax-M2.7")
+        try:
+            bad = {"title": "X"}  # missing cards -> validation fails first
+            good = {"title": "X", "cards": [{"front": "Q?", "back": "A."}]}
+            route = respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+                side_effect=[
+                    httpx.Response(
+                        200, json=_tool_use_response("emit_flashcard_deck", bad)
+                    ),
+                    httpx.Response(
+                        200, json=_tool_use_response("emit_flashcard_deck", good)
+                    ),
+                ]
             )
+            deck = gen.generate_flashcards(source="x", title="X")
+            assert deck.title == "X"
+            second_body = json.loads(route.calls[1].request.content)
+            # No plain-text user turn allowed after the tool_use.
+            for m in second_body["messages"]:
+                if m["role"] == "user" and m is not second_body["messages"][0]:
+                    assert isinstance(m["content"], list)
+                    assert m["content"][0]["type"] == "tool_result"
         finally:
             gen.close()
 
