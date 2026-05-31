@@ -243,6 +243,8 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 | `opencode` | OpenCode |
 | `litellm` | LiteLLM |
 | `repoprompt` | RepoPrompt |
+| `pi` | pi coding agent (`@earendil-works/pi-coding-agent`) |
+| `omp` | oh-my-pi (`@oh-my-pi/pi-coding-agent`) |
 
 ### Install & Export Examples
 
@@ -251,12 +253,17 @@ studyloop install tools
 studyloop install agents
 studyloop install agents --tool codex
 studyloop install agents --tool claude --tool gemini
+studyloop install agents --tool pi
+studyloop install agents --tool omp
 
 session-export
 session-export --sources claude codex
 session-export --sources gemini opencode
+session-export --sources pi omp
 session-export --claude-only
 session-export --gemini-only
+session-export --pi-only
+session-export --omp-only
 session-export --full
 ```
 

@@ -31,6 +31,7 @@ flowchart LR
 |---|---|
 | [Current Architecture](architecture/current.md) | Containers, components, flows, and limitations as they work today (C4 L1+L2+L3 + sequence diagram). |
 | [Target Architecture](architecture/target.md) | Plugin interfaces, ACP/PTY session strategy, native app direction. |
+| [pi / omp Harness Integration](architecture/pi-omp-harness-integration.md) | How `@earendil-works/pi-coding-agent` (pi) and `@oh-my-pi/pi-coding-agent` (omp) plug into the session export pipeline, installer, and doctor. Includes C4 L1+L2 diagrams and end-of-session sequence. |
 | [System Overview](system-overview.md) | User-facing explanation of how the pieces connect. |
 | [Web UI Guide](web-ui-guide.md) | Web UI walkthrough, ACP chat mode, theme palettes, ttyd fallback. |
 | [Session Protocol](session-protocol.md) | The transport-agnostic study protocol every agent follows. |

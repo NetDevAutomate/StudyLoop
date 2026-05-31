@@ -1,6 +1,6 @@
 # Agent Installation Guide
 
-How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini CLI, OpenCode, and Amp.
+How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini CLI, OpenCode, Amp, pi, and oh-my-pi (omp).
 
 ## Table of Contents
 
@@ -12,6 +12,8 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini 
 - [Gemini CLI Setup](#gemini-cli-setup)
 - [OpenCode Setup](#opencode-setup)
 - [Amp Setup](#amp-setup)
+- [pi Setup](#pi-setup)
+- [oh-my-pi (omp) Setup](#oh-my-pi-omp-setup)
 - [Local LLMs](#local-llms)
 - [Agent Descriptions](#agent-descriptions)
 - [Skills Reference](#skills-reference)
@@ -36,13 +38,15 @@ The install-mentor uses `studyloop doctor --json` as its contract — it parses 
 
 AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.
 
-This project ships agents for six platforms:
+This project ships agents for eight platforms:
 - **study-mentor** (kiro-cli) — full study pipeline with spaced repetition
 - **socratic-mentor** (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
 - **AGENTS.md** (Codex CLI) — Socratic mentoring auto-loaded from project context
 - **study-mentor** (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
 - **study-mentor** (OpenCode) — AuDHD-aware study mentor with spaced repetition
 - **AGENTS.md** (Amp) — Socratic mentoring loaded automatically from project context
+- **AGENTS.md** (pi) — session-export mandate + studyloop context for pi coding agent
+- **AGENTS.md** (omp) — session-export mandate + studyloop context for oh-my-pi
 
 ## Automatic Installation
 
@@ -69,6 +73,8 @@ studyloop install agents --tool codex
 studyloop install agents --tool gemini
 studyloop install agents --tool opencode
 studyloop install agents --tool amp
+studyloop install agents --tool pi
+studyloop install agents --tool omp
 studyloop install agents --uninstall
 ```
 
@@ -316,6 +322,113 @@ ln -s "$(pwd)/agents/shared" ~/.agents/shared
 amp
 # AGENTS.md is loaded automatically — just start asking for a study session
 ```
+
+## pi Setup
+
+### Prerequisites
+
+- [pi coding agent](https://github.com/earendil-works/pi-coding-agent) installed (`npm install -g @earendil-works/pi-coding-agent`)
+- `~/.pi/` directory exists (created on first run of `pi`)
+
+### What gets installed
+
+| Source | Target | Purpose |
+|--------|--------|---------|
+| `agents/pi/AGENTS.md` | `~/.pi/agent/AGENTS.md` | Project-level pi instructions — loads session-export mandate |
+| *(generated from template)* | `~/.pi/agent/session-db.md` | Session-export steering mandate |
+
+pi loads `AGENTS.md` from its agent directory, which references `session-db.md` to pull in the session-export instructions.
+
+### Auto-install
+
+```bash
+studyloop install agents --tool pi
+```
+
+### Manual install
+
+```bash
+# Symlink AGENTS.md
+mkdir -p ~/.pi/agent
+ln -s "$(pwd)/agents/pi/AGENTS.md" ~/.pi/agent/AGENTS.md
+
+# Write steering mandate
+studyloop doctor --fix   # writes ~/.pi/agent/session-db.md
+```
+
+### Exporting sessions
+
+```bash
+session-export --pi-only           # Export only pi sessions
+session-export --sources pi omp    # Export pi and omp together
+```
+
+### Verifying
+
+```bash
+studyloop doctor   # checks ~/.pi/agent/session-db.md contains the mandate
+```
+
+---
+
+## oh-my-pi (omp) Setup
+
+oh-my-pi is a fork of pi with an identical session format. The setup mirrors pi exactly, substituting `~/.omp` for `~/.pi`.
+
+### Prerequisites
+
+- [oh-my-pi](https://github.com/oh-my-pi/pi-coding-agent) installed (`npm install -g @oh-my-pi/pi-coding-agent`)
+- `~/.omp/` directory exists (created on first run of `omp`)
+
+### What gets installed
+
+| Source | Target | Purpose |
+|--------|--------|---------|
+| `agents/omp/AGENTS.md` | `~/.omp/agent/AGENTS.md` | Project-level omp instructions — loads session-export mandate |
+| *(generated from template)* | `~/.omp/agent/session-db.md` | Session-export steering mandate |
+
+### Auto-install
+
+```bash
+studyloop install agents --tool omp
+```
+
+### Manual install
+
+```bash
+# Symlink AGENTS.md
+mkdir -p ~/.omp/agent
+ln -s "$(pwd)/agents/omp/AGENTS.md" ~/.omp/agent/AGENTS.md
+
+# Write steering mandate
+studyloop doctor --fix   # writes ~/.omp/agent/session-db.md
+```
+
+### Exporting sessions
+
+```bash
+session-export --omp-only           # Export only omp sessions
+session-export --sources pi omp     # Export pi and omp together
+```
+
+### Verifying
+
+```bash
+studyloop doctor   # checks ~/.omp/agent/session-db.md contains the mandate
+```
+
+### Session format note
+
+pi and omp use JSONL v3 (one JSON object per line). Session files live under:
+
+```
+~/.pi/agent/sessions/<cwd-slug>/<ISO-ts>_<uuid>.jsonl
+~/.omp/agent/sessions/<cwd-slug>/<ISO-ts>_<uuid>.jsonl
+```
+
+The `<cwd-slug>` is the working directory path with `/` replaced by `-`. See the [pi / omp Harness Integration](architecture/pi-omp-harness-integration.md) doc for full details, and [Troubleshooting: pi / omp](troubleshooting/pi-omp.md) if sessions aren't appearing in the DB.
+
+---
 
 ## Local LLMs
 
