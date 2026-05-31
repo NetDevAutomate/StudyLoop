@@ -51,3 +51,39 @@ def test_session_options_returns_course_hierarchy(
     assert "agents" in body
     assert all(agent["recommended_transport"] == "ttyd" for agent in body["agents"])
     assert all(agent["acp_ready"] is False for agent in body["agents"])
+
+
+def test_session_options_lists_vendors_directly_under_study_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Course vendors live directly under the study root (no ``Courses/`` level).
+
+    Regression: ``_courses_roots()`` required an intermediate ``Courses/``
+    directory that does not exist in the real vault — vendor dirs
+    (ArjanCodes, CodeWithMosh, …) sit directly under ``Study/``. The missing
+    level left the Course Vendor picker empty, which cascaded to empty
+    Course and Lesson pickers.
+    """
+    study_root = tmp_path / "Study"
+    lesson = study_root / "ArjanCodes" / "The_Software_Designer_Mindset" / "Module_01"
+    lesson.mkdir(parents=True)
+    (study_root / "CodeWithMosh").mkdir()
+
+    class Content:
+        def __init__(self) -> None:
+            self.study_paths = [study_root]
+
+    class Settings:
+        def __init__(self) -> None:
+            self.content = Content()
+
+    monkeypatch.setattr("studyloop.settings.load_settings", Settings)
+
+    client = TestClient(create_app())
+    body = client.get("/api/session/options").json()
+
+    vendor_labels = {v["label"] for v in body["vendors"]}
+    assert "ArjanCodes" in vendor_labels
+    assert "CodeWithMosh" in vendor_labels
+    assert any(c["label"] == "The Software Designer Mindset" for c in body["courses"])
+    assert any(lesson_["label"] == "Module 01" for lesson_ in body["lessons"])
