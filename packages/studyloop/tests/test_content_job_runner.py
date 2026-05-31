@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -274,3 +276,47 @@ class TestErrorPropagation:
             # slot must be free.
             current = asyncio.run(active_gen.current())
             assert current is None
+
+
+class TestMaybeInjectBearer:
+    """_maybe_inject_bearer sets AWS_BEARER_TOKEN_BEDROCK for a bedrock run
+    only when a token is stored, and always restores the prior env after."""
+
+    def _bedrock_config(self) -> CardGeneratorConfig:
+        return CardGeneratorConfig(backend="bedrock")
+
+    def test_injects_token_for_bedrock_when_stored(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from studyloop.content.job import _maybe_inject_bearer
+
+        monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
+        with patch("studyloop.secrets.get_secret", return_value="tok-stored"), \
+                _maybe_inject_bearer(self._bedrock_config()):
+            assert os.environ["AWS_BEARER_TOKEN_BEDROCK"] == "tok-stored"
+        assert "AWS_BEARER_TOKEN_BEDROCK" not in os.environ
+
+    def test_no_token_stored_is_noop(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from studyloop.content.job import _maybe_inject_bearer
+
+        monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
+        with patch("studyloop.secrets.get_secret", return_value=None), \
+                _maybe_inject_bearer(self._bedrock_config()):
+            assert "AWS_BEARER_TOKEN_BEDROCK" not in os.environ
+
+    def test_noop_for_non_bedrock_backend(self) -> None:
+        from studyloop.content.job import _maybe_inject_bearer
+
+        cfg = CardGeneratorConfig(backend="ollama")
+        with patch("studyloop.secrets.get_secret") as mock_get, _maybe_inject_bearer(cfg):
+            pass
+        mock_get.assert_not_called()
+
+    def test_restores_prior_env_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from studyloop.content.job import _maybe_inject_bearer
+
+        monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "pre-existing")
+        with patch("studyloop.secrets.get_secret", return_value="tok-stored"), \
+                _maybe_inject_bearer(self._bedrock_config()):
+            assert os.environ["AWS_BEARER_TOKEN_BEDROCK"] == "tok-stored"
+        assert os.environ["AWS_BEARER_TOKEN_BEDROCK"] == "pre-existing"

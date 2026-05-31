@@ -392,64 +392,49 @@ async def list_providers() -> list[dict[str, Any]]:
     import os
 
     from studyloop.content.generators.provider_profiles import PROFILES
+    from studyloop.secrets import get_auth_kind
 
     out: list[dict[str, Any]] = []
     for slug, profile in PROFILES.items():
-        out.append(
-            {
-                "slug": slug,
-                "label": profile.label,
-                "adapter": profile.adapter,
-                "auth_env": profile.auth_env,
-                # Available if a key is in the encrypted store OR the env var.
-                # get_secret already resolves store -> env, so it covers both;
-                # the explicit env check is kept as a defensive belt-and-braces.
-                "available": bool(
-                    get_secret(slug) or os.environ.get(profile.auth_env, "").strip()
-                ),
-                "models": [
-                    {
-                        "id": m.id,
-                        "label": m.label,
-                        "cost_tier": m.cost_tier,
-                        "thinking": m.thinking,
-                        "notes": m.notes,
-                    }
-                    for m in profile.models
-                ],
-            }
-        )
+        auth_kind = get_auth_kind(slug)
 
-    # Bedrock uses boto3 + AWS credential profiles, not an env-var API key.
-    # Availability: boto3 importable AND at least one credential signal present.
-    # Model IDs are cross-region inference profiles — verify in the live
-    # Bedrock console before relying on these in production (model availability
-    # and inference-profile naming evolves).
-    out.append(
-        {
-            "slug": "bedrock",
-            "label": "AWS Bedrock",
-            "adapter": "bedrock",
-            "auth_env": "AWS_PROFILE",  # tooltip hint; bedrock has no single env var
-            "available": _bedrock_credentials_available(),
+        if slug == "bedrock":
+            # Bearer token (encrypted store / env) OR an AWS profile/SigV4 signal.
+            available = bool(
+                get_secret("bedrock_bearer_token") or _bedrock_credentials_available()
+            )
+        elif slug == "ollama":
+            # Local + keyless: available iff the endpoint responds.
+            available = _ollama_reachable(_ollama_base_url())
+        else:
+            # API-key providers: get_secret already resolves store -> env; the
+            # explicit env check is defensive belt-and-braces.
+            available = bool(
+                get_secret(slug) or os.environ.get(profile.auth_env, "").strip()
+            )
+
+        entry: dict[str, Any] = {
+            "slug": slug,
+            "label": profile.label,
+            "adapter": profile.adapter,
+            "auth_env": profile.auth_env,
+            "auth_kind": auth_kind,
+            "available": available,
             "models": [
                 {
-                    "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-                    "label": "Claude Haiku 4.5 (Bedrock)",
-                    "cost_tier": "cheap",
-                    "thinking": False,
-                    "notes": "Cross-region inference profile",
-                },
-                {
-                    "id": "us.anthropic.claude-sonnet-4-6-20251101-v1:0",
-                    "label": "Claude Sonnet 4.6 (Bedrock)",
-                    "cost_tier": "balanced",
-                    "thinking": False,
-                    "notes": "Cross-region inference profile",
-                },
+                    "id": m.id,
+                    "label": m.label,
+                    "cost_tier": m.cost_tier,
+                    "thinking": m.thinking,
+                    "notes": m.notes,
+                }
+                for m in profile.models
             ],
         }
-    )
+        if slug == "ollama":
+            entry["base_url"] = _ollama_base_url()
+        out.append(entry)
+
     return out
 
 
@@ -487,6 +472,36 @@ def _bedrock_credentials_available() -> bool:
         resolved = creds.resolve()
         return resolved is not None
     except (ImportError, NoCredentialsError, Exception):  # noqa: BLE001
+        return False
+
+
+def _ollama_base_url() -> str:
+    """Resolve the Ollama endpoint: stored override → settings → default."""
+    from studyloop.secrets import get_secret
+
+    stored = get_secret("ollama_base_url")
+    if stored:
+        return stored
+    try:
+        from studyloop.settings import load_settings
+
+        return load_settings().card_generator.ollama.base_url
+    except Exception:  # fall back to the well-known default
+        return "http://localhost:11434"
+
+
+def _ollama_reachable(base_url: str) -> bool:
+    """Return True if the Ollama server answers ``GET /api/tags`` quickly.
+
+    A cheap liveness probe (1s timeout); does not list or validate models —
+    that is what the explicit ``/providers/ollama/test`` endpoint does.
+    """
+    import httpx
+
+    try:
+        resp = httpx.get(f"{base_url.rstrip('/')}/api/tags", timeout=1.0)
+        return resp.status_code == 200
+    except Exception:  # unreachable / bad URL → not available
         return False
 
 
