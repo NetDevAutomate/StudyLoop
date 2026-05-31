@@ -7,6 +7,8 @@ Supported sources:
 - Gemini CLI (~/.gemini/tmp/)
 - Kilocode CLI (~/.kilocode/cli/)
 - Aider (.aider.chat.history.md files)
+- pi coding agent (~/.pi/agent/sessions/)
+- oh-my-pi (omp) (~/.omp/agent/sessions/)
 """
 
 import shutil
@@ -123,7 +125,9 @@ SOURCE_CHOICES = [
     "gemini",
     "kilocode",
     "kiro",
+    "omp",
     "opencode",
+    "pi",
     "repoprompt",
 ]
 
@@ -226,6 +230,12 @@ def main(
     kilocode_only: Annotated[
         bool, typer.Option("--kilocode-only", help="Only export Kilocode CLI")
     ] = False,
+    pi_only: Annotated[
+        bool, typer.Option("--pi-only", help="Only export pi coding agent")
+    ] = False,
+    omp_only: Annotated[
+        bool, typer.Option("--omp-only", help="Only export oh-my-pi (omp)")
+    ] = False,
     sources: Annotated[
         list[str] | None,
         typer.Option(
@@ -265,6 +275,8 @@ def main(
     - kilocode_cli: Kilocode CLI (~/.kilocode/cli/)
     - opencode: OpenCode CLI (~/.local/share/opencode/storage/)
     - repoprompt: RepoPrompt (~/Library/Application Support/RepoPrompt/)
+    - pi: pi coding agent (~/.pi/agent/sessions/)
+    - omp: oh-my-pi (omp) (~/.omp/agent/sessions/)
 
     Examples:
         session-export                    # Export all sources
@@ -289,6 +301,8 @@ def main(
         "kiro": kiro_only,
         "gemini": gemini_only,
         "kilocode": kilocode_only,
+        "pi": pi_only,
+        "omp": omp_only,
     }
     active = [k for k, v in only_flags.items() if v]
     if len(active) > 1:

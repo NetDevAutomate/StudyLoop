@@ -2,56 +2,60 @@
   "version": 1,
   "agents": {
     "claude/socratic-mentor.md": {
-      "hash": "1cfb13b620a74ab2",
-      "updated": "2026-04-13"
-    },
-    "codex/AGENTS.md": {
-      "hash": "4b11b0cd7e83ad53",
-      "updated": "2026-04-13"
+      "hash": "1622131d8c4ce11a",
+      "updated": "2026-05-31"
     },
     "gemini/study-mentor.md": {
-      "hash": "261812c97e310036",
-      "updated": "2026-04-13"
+      "hash": "ef9aedbcb02a4d54",
+      "updated": "2026-05-31"
     },
     "kiro/study-mentor.json": {
-      "hash": "7922206563cbc927",
-      "updated": "2026-04-13"
+      "hash": "c9f2302ebc8d3c39",
+      "updated": "2026-05-31"
+    },
+    "omp/AGENTS.md": {
+      "hash": "11fc8823e09973ea",
+      "updated": "2026-05-31"
     },
     "opencode/study-mentor.md": {
-      "hash": "dce4e9e04c087cd8",
-      "updated": "2026-04-13"
+      "hash": "1b47ae4dec5ba96a",
+      "updated": "2026-05-31"
+    },
+    "pi/AGENTS.md": {
+      "hash": "2938d63517e5b284",
+      "updated": "2026-05-31"
     },
     "shared/audhd-framework.md": {
-      "hash": "b348d17a8d545288",
-      "updated": "2026-04-13"
+      "hash": "faa6f20037dc8fbd",
+      "updated": "2026-05-31"
     },
     "shared/break-science.md": {
       "hash": "74541a44431f7f6a",
-      "updated": "2026-04-13"
+      "updated": "2026-05-31"
     },
     "shared/knowledge-bridging.md": {
-      "hash": "d7905e0fc036a404",
-      "updated": "2026-04-13"
+      "hash": "adb4221cda83498f",
+      "updated": "2026-05-31"
     },
     "shared/network-bridges.md": {
-      "hash": "eebe8a4ec9de6330",
-      "updated": "2026-04-13"
+      "hash": "8af4732b77cc15ae",
+      "updated": "2026-05-31"
     },
     "shared/session-protocol.md": {
-      "hash": "740f283a70807c74",
-      "updated": "2026-04-13"
+      "hash": "86c6390a18f8e6ba",
+      "updated": "2026-05-31"
     },
     "shared/socratic-engine.md": {
-      "hash": "044281e8c81723de",
-      "updated": "2026-04-13"
+      "hash": "42738fba9479ec14",
+      "updated": "2026-05-31"
     },
     "shared/teach-back-protocol.md": {
-      "hash": "46f5d9fd8cd1155b",
-      "updated": "2026-04-13"
+      "hash": "9bbe8831f1c74837",
+      "updated": "2026-05-31"
     },
     "shared/wind-down-protocol.md": {
-      "hash": "c4e79730c2dde3ac",
-      "updated": "2026-04-13"
+      "hash": "5626c7ef8636e9d5",
+      "updated": "2026-05-31"
     }
   }
 }
