@@ -29,6 +29,8 @@ from studyloop.cli._lazy import LazyGroup
         # _review.py — spaced repetition, progress, wins, streaks, bridges
         "review": "studyloop.cli._review:review",
         "struggles": "studyloop.cli._review:struggles",
+        # _extract.py — struggle-extraction pipeline (sessions.db -> study_progress)
+        "extract-struggles": "studyloop.cli._extract:extract_struggles_cmd",
         "wins": "studyloop.cli._review:wins",
         "progress": "studyloop.cli._review:progress",
         "resume": "studyloop.cli._review:resume",
