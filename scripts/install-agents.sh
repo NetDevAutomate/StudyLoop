@@ -16,9 +16,11 @@ for arg in "$@"; do
     --opencode)  TOOLS+=("--tool" "opencode") ;;
     --codex)     TOOLS+=("--tool" "codex") ;;
     --amp)       TOOLS+=("--tool" "amp") ;;
+    --pi)        TOOLS+=("--tool" "pi") ;;
+    --omp)       TOOLS+=("--tool" "omp") ;;
     --uninstall) UNINSTALL=true ;;
     -h|--help)
-      echo "Usage: ./scripts/install-agents.sh [--kiro|--claude|--gemini|--opencode|--codex|--amp] [--uninstall]"
+      echo "Usage: ./scripts/install-agents.sh [--kiro|--claude|--gemini|--opencode|--codex|--amp|--pi|--omp] [--uninstall]"
       exit 0
       ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
