@@ -802,10 +802,11 @@
               <select x-model="form.provider" @change="onProviderChange()">
                 <option value="">— pick a provider —</option>
                 <template x-for="p in providers" :key="p.slug">
-                  <option :value="p.slug">
-                    <span x-text="p.label"></span>
-                    <span x-show="!p.available"> — needs API key</span>
-                  </option>
+                  <!-- The unavailable-suffix must be part of the option's text,
+                       not a nested <span x-show>: browsers flatten <option>
+                       content and ignore display:none on children, so a hidden
+                       span still renders. Build the whole label via x-text. -->
+                  <option :value="p.slug" x-text="providerOptionLabel(p)"></option>
                 </template>
               </select>
             </label>
@@ -830,6 +831,26 @@
                 <small x-show="keyEntry.error" class="key-error" x-text="keyEntry.error"></small>
                 <small x-show="keyEntry.saved" class="key-ok">✓ Key verified and stored encrypted in ~/.config/studyloop/</small>
                 <small class="key-hint">Tested against the provider before saving. Stored encrypted; never leaves this machine.</small>
+              </div>
+            </div>
+
+            <!-- Bedrock uses AWS SigV4 credentials, not a typed API key, so it
+                 gets a guidance hint rather than the key-entry box above. -->
+            <div class="form-row bedrock-creds-hint"
+                 x-show="needsBedrockCreds"
+                 x-transition>
+              <span>AWS credentials</span>
+              <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                <small class="key-hint">
+                  Bedrock authenticates with your AWS credentials, not a typed key.
+                  Set <code>AWS_PROFILE</code> (or <code>AWS_ACCESS_KEY_ID</code>)
+                  before launching StudyLoop, then reload this page.
+                </small>
+                <small class="key-hint">
+                  No credentials yet? Run your Bedrock credential setup
+                  (e.g. <code>aictl claude bedrock</code>) or pick an API-key
+                  provider above.
+                </small>
               </div>
             </div>
 
@@ -1373,6 +1394,24 @@
         return !!p && !p.available && p.adapter !== 'bedrock';
       },
 
+      get needsBedrockCreds() {
+        // Bedrock authenticates with AWS SigV4 credentials (IAM role /
+        // AWS_PROFILE / access keys), not a typed API key. When it is chosen
+        // but credentials don't resolve, show an AWS-specific hint instead of
+        // the key-entry box.
+        const p = this.selectedProvider;
+        return !!p && !p.available && p.adapter === 'bedrock';
+      },
+
+      providerOptionLabel(p) {
+        // Build the full <option> text here — x-show/display:none does NOT
+        // work on elements nested inside <option> (browsers render the
+        // flattened text content). Bedrock uses AWS creds, not a typed key.
+        if (p.available) return p.label;
+        const suffix = p.adapter === 'bedrock' ? ' — needs AWS credentials' : ' — needs API key';
+        return p.label + suffix;
+      },
+
       async init() {
         // The tree is 3-level: publisher → course → lesson file. Load the
         // publishers (study-tree top level) and the LLM providers up front;
@@ -1481,6 +1520,9 @@
         // submission until the key is entered, else the job fails async on the
         // backend (CardGenerationError) instead of a clean disabled button.
         if (this.needsKey) return false;
+        // Same reasoning for Bedrock: block until AWS credentials resolve,
+        // else the job fails async with CardGenerationError.
+        if (this.needsBedrockCreds) return false;
         if (!this.form.publisher) return false;
         if (!this.form.course) return false;
         if (this.form.kinds.length === 0) return false;

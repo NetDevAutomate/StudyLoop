@@ -2974,6 +2974,7 @@ docs = [
 [package.dev-dependencies]
 dev = [
     { name = "bandit" },
+    { name = "boto3" },
     { name = "httpx" },
     { name = "mcp", extra = ["cli"] },
     { name = "pexpect" },
@@ -2998,6 +2999,7 @@ provides-extras = ["docs"]
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = ">=1.8" },
+    { name = "boto3", specifier = ">=1.40" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.0.0" },
     { name = "pexpect", specifier = ">=4.9.0" },
