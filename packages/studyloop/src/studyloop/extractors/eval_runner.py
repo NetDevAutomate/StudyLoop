@@ -90,30 +90,97 @@ def _session_source(conn: sqlite3.Connection, session_id: str) -> str | None:
     return row["source"] if row else None
 
 
-def _expected_keys(entry: dict[str, Any]) -> set[tuple[str, str]]:
-    return {_norm(t["topic"], t["concept"]) for t in entry.get("expected_topics", [])}
+# Concept tokens that carry no matching signal — stripped before comparison so
+# "abc-vs-protocol" and "abc" share their meaningful token.
+_STOPWORDS = frozenset(
+    {"vs", "and", "or", "the", "a", "an", "to", "of", "in", "for", "with", "using", "on"}
+)
 
 
-def _expected_struggling(entry: dict[str, Any]) -> set[tuple[str, str]]:
-    return {
+def _concept_tokens(concept: str) -> frozenset[str]:
+    """Meaningful kebab/space tokens of a concept, stopwords removed."""
+    raw = concept.replace("-", " ").replace("_", " ").lower().split()
+    return frozenset(t for t in raw if t and t not in _STOPWORDS)
+
+
+def _concepts_match(a: str, b: str) -> bool:
+    """Fuzzy concept equality: same struggle expressed with different strings.
+
+    True when the token sets meaningfully overlap — either by Jaccard >= 0.34
+    OR by containment (the shorter concept's tokens are mostly inside the
+    longer). This makes 'embedding' match 'lightrag-embedding-pipeline' and
+    'abc' match 'abc-vs-protocol', while keeping unrelated concepts apart.
+    """
+    ta, tb = _concept_tokens(a), _concept_tokens(b)
+    if not ta or not tb:
+        return a.strip().lower() == b.strip().lower()
+    inter = ta & tb
+    if not inter:
+        return False
+    jaccard = len(inter) / len(ta | tb)
+    containment = len(inter) / min(len(ta), len(tb))
+    return jaccard >= 0.34 or containment >= 0.5
+
+
+def _match_pairs(
+    expected: list[tuple[str, str]], predicted: list[tuple[str, str]]
+) -> tuple[int, list[tuple[str, str]], list[tuple[str, str]]]:
+    """Greedy bipartite match of (topic, concept) pairs by topic= + fuzzy concept.
+
+    Returns (matched_count, unmatched_expected, unmatched_predicted). Each
+    predicted pair matches at most one expected pair (no double-counting).
+    """
+    remaining_exp = list(expected)
+    unmatched_pred: list[tuple[str, str]] = []
+    matched = 0
+    for p_topic, p_concept in predicted:
+        hit = next(
+            (
+                e
+                for e in remaining_exp
+                if e[0] == p_topic and _concepts_match(e[1], p_concept)
+            ),
+            None,
+        )
+        if hit is not None:
+            remaining_exp.remove(hit)
+            matched += 1
+        else:
+            unmatched_pred.append((p_topic, p_concept))
+    return matched, remaining_exp, unmatched_pred
+
+
+def _expected_all(entry: dict[str, Any]) -> list[tuple[str, str]]:
+    return [_norm(t["topic"], t["concept"]) for t in entry.get("expected_topics", [])]
+
+
+def _expected_struggling(entry: dict[str, Any]) -> list[tuple[str, str]]:
+    return [
         _norm(t["topic"], t["concept"])
         for t in entry.get("expected_topics", [])
         if t.get("confidence") == "struggling"
-    }
+    ]
 
 
-def _predicted_keys(results: Iterable[ExtractorResult]) -> set[tuple[str, str]]:
-    return {_norm(r.topic, r.concept) for r in results}
+def _predicted_all(results: Iterable[ExtractorResult]) -> list[tuple[str, str]]:
+    return [_norm(r.topic, r.concept) for r in results]
 
 
-def _predicted_struggling(results: Iterable[ExtractorResult]) -> set[tuple[str, str]]:
-    return {_norm(r.topic, r.concept) for r in results if r.confidence == "struggling"}
+def _predicted_struggling(results: Iterable[ExtractorResult]) -> list[tuple[str, str]]:
+    return [_norm(r.topic, r.concept) for r in results if r.confidence == "struggling"]
 
 
 def score_session(
     entry: dict[str, Any], results: list[ExtractorResult]
 ) -> SessionScore:
-    """Score one session's extractor output against its golden entry (pure Python)."""
+    """Score one session's extractor output against its golden entry (pure Python).
+
+    Uses FUZZY concept matching (greedy bipartite assignment) rather than exact
+    string equality, so 'graphrag/embedding' counts as a hit against the human
+    label 'graphrag/lightrag-embedding-pipeline'. Exact matching was pinning
+    recall at a floor and letting the hill-climber Goodhart precision by
+    suppressing output.
+    """
     is_neg = entry.get("is_negative", False)
     if is_neg:
         return SessionScore(
@@ -126,17 +193,19 @@ def score_session(
             fp_on_negative=len(results),
         )
 
-    exp_all = _expected_keys(entry)
-    pred_all = _predicted_keys(results)
-    inter = exp_all & pred_all
-    union = exp_all | pred_all
-    jaccard = len(inter) / len(union) if union else 1.0
+    # Jaccard over ALL topics (any confidence) with fuzzy matching — informational.
+    exp_all = _expected_all(entry)
+    pred_all = _predicted_all(results)
+    matched_all, unmatched_exp_all, unmatched_pred_all = _match_pairs(exp_all, pred_all)
+    union = matched_all + len(unmatched_exp_all) + len(unmatched_pred_all)
+    jaccard = matched_all / union if union else 1.0
 
+    # Precision/recall on the STRUGGLING subset, fuzzy-matched.
     exp_str = _expected_struggling(entry)
     pred_str = _predicted_struggling(results)
-    tp = len(exp_str & pred_str)
-    fp = len(pred_str - exp_str)
-    fn = len(exp_str - pred_str)
+    tp, fn_pairs, fp_pairs = _match_pairs(exp_str, pred_str)
+    fp = len(fp_pairs)
+    fn = len(fn_pairs)
     return SessionScore(
         session_id=entry["session_id"],
         is_negative=False,
@@ -147,8 +216,9 @@ def score_session(
         fp_on_negative=0,
         # Concrete pairs the hill-climber feeds the meta-agent as labelled
         # failure examples ("you missed these" / "you hallucinated these").
-        fn_pairs=sorted(exp_str - pred_str),
-        fp_pairs=sorted(pred_str - exp_str),
+        # These are the post-fuzzy-match leftovers from _match_pairs.
+        fn_pairs=sorted(fn_pairs),
+        fp_pairs=sorted(fp_pairs),
     )
 
 
