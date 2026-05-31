@@ -196,17 +196,29 @@ class AnthropicCompatGenerator:
         tool_choice = {"type": "tool", "name": tool_name}
 
         def call(ctx: CallContext) -> tuple[Any, list[dict[str, Any]]]:
-            messages = list(base_messages) + list(ctx.history_extension)
-            if ctx.last_error is not None:
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            f"The previous tool call did not validate against the schema: "
-                            f"{ctx.last_error}. Re-emit a corrected payload that conforms."
-                        ),
-                    }
-                )
+            history = list(ctx.history_extension)
+            # On a retry, fill in the real validation error on the tool_result
+            # placeholder that the previous attempt appended. The Anthropic
+            # Messages spec requires the user turn after an assistant tool_use
+            # to be a tool_result for that tool_use id; MiniMax's /anthropic
+            # shim enforces this strictly (a plain-text user turn -> error
+            # 2013). Carrying the correction AS a tool_result keeps the
+            # alternation valid across all providers.
+            if ctx.last_error is not None and history:
+                last = history[-1]
+                if (
+                    last.get("role") == "user"
+                    and isinstance(last.get("content"), list)
+                    and last["content"]
+                    and last["content"][0].get("type") == "tool_result"
+                ):
+                    last["content"][0]["content"] = (
+                        f"The previous tool call did not validate against the "
+                        f"schema: {ctx.last_error}. Re-emit a corrected payload "
+                        f"that conforms exactly."
+                    )
+
+            messages = list(base_messages) + history
 
             payload: dict[str, Any] = {
                 "model": self._model.id,
@@ -224,18 +236,27 @@ class AnthropicCompatGenerator:
                 }
 
             resp = self._post_messages(payload)
-            tool_payload, assistant_turn = self._extract_tool_payload(resp, tool_name)
-            new_history = list(ctx.history_extension) + [assistant_turn]
-            if ctx.last_error is not None:
-                new_history.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            f"The previous tool call did not validate against the schema: "
-                            f"{ctx.last_error}. Re-emit a corrected payload that conforms."
-                        ),
-                    }
-                )
+            tool_payload, assistant_turn, tool_use_id = self._extract_tool_payload(
+                resp, tool_name
+            )
+            # Append the assistant's tool_use turn followed immediately by a
+            # placeholder tool_result so the history stays protocol-valid. If
+            # validation fails, the NEXT attempt overwrites the placeholder
+            # content with the actual error (above).
+            new_history = [
+                *history,
+                assistant_turn,
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_id,
+                            "content": "Acknowledged.",
+                        }
+                    ],
+                },
+            ]
             return tool_payload, new_history
 
         return call_with_correction(
@@ -266,7 +287,7 @@ class AnthropicCompatGenerator:
 
     def _extract_tool_payload(
         self, resp: dict[str, Any], expected_tool_name: str
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any], str]:
         """Pull the ``tool_use`` block out of an Anthropic Messages response.
 
         Anthropic returns ``content`` as a list of typed blocks. With
@@ -274,6 +295,10 @@ class AnthropicCompatGenerator:
         ``{type:"tool_use", name, input}`` block. We assemble the
         assistant turn from the full content list so the correction-turn
         history sees what the model actually said.
+
+        Returns ``(tool_input, assistant_turn, tool_use_id)``. The
+        ``tool_use_id`` lets the caller build a protocol-valid
+        ``tool_result`` correction turn that references this exact call.
         """
         content = resp.get("content")
         if not isinstance(content, list) or not content:
@@ -314,7 +339,8 @@ class AnthropicCompatGenerator:
             )
 
         assistant_turn = {"role": "assistant", "content": content}
-        return args, assistant_turn
+        tool_use_id = str(tool_use_block.get("id") or "toolu_correction")
+        return args, assistant_turn, tool_use_id
 
 
 __all__ = ["AnthropicCompatGenerator"]
