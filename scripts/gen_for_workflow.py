@@ -107,6 +107,14 @@ def main() -> int:
     ap.add_argument("--target-count", type=int, default=5)
     ap.add_argument("--guidance", default="")
     ap.add_argument("--tag", default="")
+    ap.add_argument(
+        "--max-retries",
+        type=int,
+        default=-1,
+        help="Override generator max_retries. Flaky providers (MiniMax) benefit "
+        "from a higher budget so consecutive bad emissions don't exhaust it. "
+        "-1 = use the settings default.",
+    )
     args = ap.parse_args()
 
     _patch_prompts(args.target_count, args.guidance)
@@ -114,6 +122,8 @@ def main() -> int:
     settings = load_settings()
     cg = settings.card_generator
     overrides: dict = {"backend": args.backend}
+    if args.max_retries >= 0:
+        overrides["max_retries"] = args.max_retries
     if args.backend == "ollama":
         overrides["ollama"] = replace(
             cg.ollama,
