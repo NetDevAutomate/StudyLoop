@@ -8,6 +8,7 @@ from .gemini import GeminiCliExporter
 from .kiro import KiroCliExporter
 from .litellm import LitellmExporter
 from .opencode import OpenCodeExporter
+from .pi import OhMyPiExporter, PiExporter, PiFamilyExporter
 from .repoprompt import RepoPromptExporter
 
 __all__ = [
@@ -22,6 +23,9 @@ __all__ = [
     "LitellmExporter",
     "RepoPromptExporter",
     "OpenCodeExporter",
+    "PiFamilyExporter",
+    "PiExporter",
+    "OhMyPiExporter",
 ]
 
 # Registry of available exporters
@@ -34,6 +38,8 @@ EXPORTERS = {
     "bedrock": BedrockProxyExporter(),
     "litellm": LitellmExporter(),
     "repoprompt": RepoPromptExporter(),
+    "pi": PiExporter,
+    "omp": OhMyPiExporter,
 }
 
 
