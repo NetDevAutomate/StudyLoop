@@ -41,6 +41,10 @@ from pydantic import BaseModel, Field
 
 from studyloop.content import active_gen
 from studyloop.content.job import JobRequest, run_job
+# Module-level so the providers route can OR the encrypted store into its
+# availability flag. Named import (not `import studyloop.secrets`) avoids the
+# clash with the stdlib `secrets` module already imported above for token_hex.
+from studyloop.secrets import get_secret
 from studyloop.content.scope import (
     ResolvedSource,
     ScopeRequest,
@@ -397,7 +401,12 @@ async def list_providers() -> list[dict[str, Any]]:
                 "label": profile.label,
                 "adapter": profile.adapter,
                 "auth_env": profile.auth_env,
-                "available": bool(os.environ.get(profile.auth_env, "").strip()),
+                # Available if a key is in the encrypted store OR the env var.
+                # get_secret already resolves store -> env, so it covers both;
+                # the explicit env check is kept as a defensive belt-and-braces.
+                "available": bool(
+                    get_secret(slug) or os.environ.get(profile.auth_env, "").strip()
+                ),
                 "models": [
                     {
                         "id": m.id,
