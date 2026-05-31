@@ -438,6 +438,56 @@ async def list_providers() -> list[dict[str, Any]]:
     return out
 
 
+class TestProviderRequest(BaseModel):
+    """Body for POST /api/content/providers/{slug}/test.
+
+    ``key`` carries the credential to test (API key or Bedrock bearer token).
+    It is empty for local/keyless providers (Ollama) and for testing Bedrock's
+    AWS-profile path.
+    """
+
+    key: str = ""
+
+
+class TestProviderResponse(BaseModel):
+    ok: bool
+    message: str = ""
+
+
+@router.post("/content/providers/{slug}/test", response_model=TestProviderResponse)
+async def test_provider(slug: str, body: TestProviderRequest) -> TestProviderResponse:
+    """Test a provider's credentials without persisting anything.
+
+    - ``ollama``  → a real local generation (validated against the quality
+      bar); run in a worker thread so it never blocks the event loop.
+    - ``bedrock`` with a key → a minimal Converse probe of the bearer token
+      (also off-thread).
+    - ``bedrock`` with no key → the AWS-SDK/profile path; informational.
+    - api-key providers → the cheap HTTP auth check.
+
+    Unknown slug → 404. The raw key is never logged or echoed.
+    """
+    from studyloop.content.generators.provider_profiles import PROFILES
+    from studyloop.secrets import test_provider_auth
+
+    slug = slug.lower().strip()
+    if slug not in PROFILES:
+        raise HTTPException(status_code=404, detail=f"Unknown provider {slug!r}.")
+
+    if slug == "ollama":
+        ok, message = await asyncio.to_thread(
+            test_provider_auth, "ollama", "", _ollama_base_url()
+        )
+    elif slug == "bedrock" and body.key.strip():
+        # Real bearer-token Converse probe — off-thread (network + boto3).
+        ok, message = await asyncio.to_thread(test_provider_auth, "bedrock", body.key)
+    else:
+        # Cheap HTTP auth check (api-key providers) or bedrock no-key fast-path.
+        ok, message = test_provider_auth(slug, body.key)
+
+    return TestProviderResponse(ok=ok, message=message)
+
+
 def _bedrock_credentials_available() -> bool:
     """Return True if boto3 is importable and AWS credentials are likely present.
 
@@ -628,15 +678,25 @@ async def _drain_queue_quietly(queue: asyncio.Queue[dict[str, Any]]) -> None:
 #   - Raw key values are NEVER logged. Diagnostics use ``key[:6] + "…"``.
 #   - On auth-test failure the key is NOT persisted.
 
-# The complete set of providers StudyLoop knows about for secrets.
-# ``bedrock`` uses AWS SDK auth, not API keys — excluded from the secrets store.
+# The complete set of secret NAMES the store manages. These are not all
+# provider slugs: ``bedrock`` (the slug) uses AWS auth and is keyless, but its
+# optional bearer token is stored under ``bedrock_bearer_token``; ``ollama``
+# (the slug) is keyless but its endpoint override is stored under
+# ``ollama_base_url``. Keeping the store names distinct from the keyless slugs
+# lets the slug-level KEYLESS_PROVIDERS guard stay correct.
 _SECRETS_PROVIDERS: tuple[str, ...] = (
     "openai",
     "anthropic",
     "openrouter",
     "gemini",
     "minimax",
+    "bedrock_bearer_token",
+    "ollama_base_url",
 )
+
+# Store names that are config values, not credentials — skip the live
+# auth-test on store (there is nothing to authenticate; it's a URL).
+_NON_CREDENTIAL_SECRETS: frozenset[str] = frozenset({"ollama_base_url"})
 
 
 class StoreKeyRequest(BaseModel):
@@ -705,12 +765,22 @@ def store_key(body: StoreKeyRequest) -> StoreKeyResponse:
         )
 
     key = body.key
+
+    # Config values (e.g. the Ollama endpoint URL) are stored without a live
+    # auth-test — there is no credential to verify.
+    if provider in _NON_CREDENTIAL_SECRETS:
+        set_secret(provider, key)
+        logger.info("Config value stored for %r", provider)
+        return StoreKeyResponse(ok=True)
+
     key_hint = key[:6] + "…"
-    logger.info("Testing API key for provider %r (key=%s)", provider, key_hint)
+    logger.info("Testing credential for %r (value=%s)", provider, key_hint)
+    # test_provider_auth normalises bedrock_bearer_token → bedrock (real
+    # bearer-token Converse probe).
     ok, message = test_provider_auth(provider, key)
     if not ok:
         logger.warning(
-            "API key test failed for provider %r (key=%s): %s",
+            "Credential test failed for %r (value=%s): %s",
             provider,
             key_hint,
             message,
@@ -718,7 +788,7 @@ def store_key(body: StoreKeyRequest) -> StoreKeyResponse:
         raise HTTPException(status_code=400, detail=message)
 
     set_secret(provider, key)
-    logger.info("API key stored for provider %r", provider)
+    logger.info("Credential stored for %r", provider)
     return StoreKeyResponse(ok=True)
 
 

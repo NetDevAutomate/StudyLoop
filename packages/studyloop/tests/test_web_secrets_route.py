@@ -253,3 +253,98 @@ class TestDeleteSecrets:
         set_secret("gemini", "AIzaVerySecretKey12345")
         resp = client.delete("/api/content/secrets/gemini")
         assert "AIzaVerySecretKey12345" not in resp.text
+
+
+class TestBedrockBearerTokenRoute:
+    """The bearer token is stored under 'bedrock_bearer_token'; the 'bedrock'
+    slug itself stays keyless (422)."""
+
+    def test_post_bedrock_bearer_token_accepted(self, client: TestClient) -> None:
+        with patch("studyloop.secrets.test_provider_auth") as mock_test:
+            mock_test.return_value = (True, "Bearer token verified")
+            with patch("studyloop.secrets.set_secret") as mock_set:
+                resp = client.post(
+                    "/api/content/secrets",
+                    json={"provider": "bedrock_bearer_token", "key": "tok-123"},
+                )
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+        mock_set.assert_called_once_with("bedrock_bearer_token", "tok-123")
+
+    def test_post_bedrock_slug_still_422(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/content/secrets",
+            json={"provider": "bedrock", "key": "tok-123"},
+        )
+        assert resp.status_code == 422
+
+    def test_delete_bedrock_bearer_token_accepted(self, client: TestClient) -> None:
+        resp = client.delete("/api/content/secrets/bedrock_bearer_token")
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+    def test_delete_bedrock_slug_still_422(self, client: TestClient) -> None:
+        resp = client.delete("/api/content/secrets/bedrock")
+        assert resp.status_code == 422
+
+
+class TestOllamaBaseUrlRoute:
+    """The Ollama endpoint URL is a config value: stored without a live test."""
+
+    def test_post_ollama_base_url_no_auth_test(self, client: TestClient) -> None:
+        with patch("studyloop.secrets.test_provider_auth") as mock_test, \
+                patch("studyloop.secrets.set_secret") as mock_set:
+            resp = client.post(
+                "/api/content/secrets",
+                json={"provider": "ollama_base_url", "key": "http://box:11434"},
+            )
+        assert resp.status_code == 200
+        # URL is stored WITHOUT calling the auth-test (nothing to authenticate).
+        mock_test.assert_not_called()
+        mock_set.assert_called_once_with("ollama_base_url", "http://box:11434")
+
+    def test_delete_ollama_base_url_accepted(self, client: TestClient) -> None:
+        resp = client.delete("/api/content/secrets/ollama_base_url")
+        assert resp.status_code == 200
+
+
+class TestProviderTestEndpoint:
+    """POST /api/content/providers/{slug}/test — test-only, no persistence."""
+
+    def test_ollama_test_ok(self, client: TestClient) -> None:
+        with patch("studyloop.secrets.test_provider_auth") as mock_test:
+            mock_test.return_value = (True, "Ollama produced 3 cards")
+            resp = client.post("/api/content/providers/ollama/test", json={})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert "3 cards" in body["message"]
+
+    def test_ollama_test_failure(self, client: TestClient) -> None:
+        with patch("studyloop.secrets.test_provider_auth") as mock_test:
+            mock_test.return_value = (False, "Ollama test failed (unreachable)")
+            resp = client.post("/api/content/providers/ollama/test", json={})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert "unreachable" in body["message"]
+
+    def test_bedrock_test_with_token(self, client: TestClient) -> None:
+        with patch("studyloop.secrets.test_provider_auth") as mock_test:
+            mock_test.return_value = (True, "Bearer token verified")
+            resp = client.post(
+                "/api/content/providers/bedrock/test", json={"key": "tok-123"}
+            )
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+    def test_bedrock_test_no_key_is_sigv4_message(self, client: TestClient) -> None:
+        resp = client.post("/api/content/providers/bedrock/test", json={"key": ""})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert "AWS" in body["message"]
+
+    def test_unknown_slug_returns_404(self, client: TestClient) -> None:
+        resp = client.post("/api/content/providers/nope/test", json={})
+        assert resp.status_code == 404
