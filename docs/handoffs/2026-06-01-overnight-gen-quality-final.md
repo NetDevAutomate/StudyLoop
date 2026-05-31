@@ -136,14 +136,31 @@ rejections. **MiniMax M2.7's quiz content quality is a model limitation.**
    while its flashcards are genuinely strong (judge score 9). Options:
    (a) keep MiniMax for **flashcards only**; (b) keep it for both and accept
    weaker quizzes; (c) drop it for quizzes. No code work needed for any choice.
-2. **Issue #3 (per-provider model dropdown) — NOT done, deliberately deferred.**
-   It edits `index.html`, and the workflow's Validate phase was driving Playwright
-   against the live panels; touching static assets mid-run risked perturbing
-   validation, and the DoD ranked it lowest ("only after the above is green").
-   The backend already returns discovered models in `/api/content/providers`
-   (`models[]`; Ollama via live `/api/tags`), so it's a frontend-only task: add a
-   `<select>` per provider row + in the Generate panel, persist `model:<slug>`.
-   Estimate ~1–2 h. Recommend a fresh session.
+2. **Issue #3 (per-provider model dropdown) — PARTIALLY ALREADY DONE; rest
+   deliberately deferred.**
+   - The **Generate panel already has a working model dropdown** (`index.html`
+     ~L866, `form.model` ← `modelsForProvider` ← the providers response's
+     `models[]`). So "Generate panel uses discovered models" is already true.
+   - **Not done:** the per-provider `<select>` in the **Settings** panel + the
+     `model:<slug>` persistence that pre-seeds Generate. The handoff itself called
+     `model:<slug>` a *proposed* store key — that's a persistence-schema decision
+     I declined to make unattended. Frontend-only once you confirm the key name;
+     estimate ~1–2 h. Recommend a fresh session.
+   - **⚠️ Related real finding (verify before relying on the Bedrock dropdown):**
+     the curated Bedrock model IDs in `provider_profiles.py` are WRONG for this
+     account. The dated foundation-model IDs
+     (`us.anthropic.claude-sonnet-4-6-20251101-v1:0`,
+     `...-haiku-4-5-20251001-v1:0`) both fail with `ValidationException: provided
+     model identifier is invalid`. The inference-profile form
+     `us.anthropic.claude-sonnet-4-6` WORKS (proven — it's what the workflow used
+     and the settings default). But `us.anthropic.claude-haiku-4-5` ALSO fails —
+     so the IDs are **account/region-specific and not guessable**. I deliberately
+     did NOT "fix" the curated list because I could only empirically verify the
+     Sonnet id. **Action for you:** run `aws --profile bedrock-prod bedrock
+     list-inference-profiles --region us-east-1` (your SSO token had expired
+     overnight) and update the curated Bedrock `models[]` to the real available
+     profile IDs. Until then, a user picking Bedrock-Haiku in the dropdown will hit
+     a ValidationException; Bedrock-Sonnet works.
 3. **Ollama deferred nits** (approved, non-blocking): the judge flagged 4 quiz/
    flashcard improvements (connectivity-trivia card, a Workbench-UI quiz Q, a
    trigger-rationale fix, a DECIMAL(19,4) nuance). Accept as-is or queue a
