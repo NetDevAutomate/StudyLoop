@@ -186,7 +186,9 @@ def _read_store() -> dict[str, str]:
     try:
         data = json.loads(plaintext.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise ValueError(f"Secrets file {secrets_path} is not valid JSON after decrypt: {exc}") from exc
+        raise ValueError(
+            f"Secrets file {secrets_path} is not valid JSON after decrypt: {exc}"
+        ) from exc
 
     if not isinstance(data, dict):
         raise ValueError(f"Secrets file {secrets_path} decoded to non-dict type: {type(data)}")
@@ -336,7 +338,12 @@ _AUTH_TEST_PROVIDERS: dict[str, dict[str, object]] = {
     },
     "gemini": {
         "url": "https://generativelanguage.googleapis.com/v1beta/models",
-        "auth": "query",  # key passed as ?key=<key>
+        # Header, NOT ?key=<key>: a query-param key is echoed verbatim in
+        # httpx error messages and would leak into a client-visible response if
+        # raise_for_status() were ever added. The header keeps the secret out
+        # of the URL. Google accepts x-goog-api-key as an alternative to the
+        # key query param.
+        "auth": "x-goog-api-key",
     },
     "minimax": {
         # Smallest non-destructive endpoint; token must be in Authorization header.
@@ -405,8 +412,9 @@ def _run_auth_test(provider: str, key: str, spec: dict[str, object]) -> tuple[bo
         headers["x-api-key"] = key
         # Anthropic requires this header to be present
         headers["anthropic-version"] = "2023-06-01"
-    elif auth_style == "query":
-        params["key"] = key
+    elif auth_style == "x-goog-api-key":
+        # Gemini: header keeps the key out of the URL (see spec comment).
+        headers["x-goog-api-key"] = key
 
     with httpx.Client(timeout=_AUTH_TIMEOUT) as client:
         if method == "post":
