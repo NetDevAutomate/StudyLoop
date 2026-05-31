@@ -64,6 +64,7 @@ nav:
     - Architecture Overview: architecture.md
     - Current Architecture: architecture/current.md
     - Target Architecture: architecture/target.md
+    - pi / omp Harness Integration: architecture/pi-omp-harness-integration.md
   - Learning:
     - Content Pipeline: content-pipeline.md
     - AuDHD Philosophy: audhd-learning-philosophy.md
@@ -78,6 +79,8 @@ nav:
     - Socratic Engine: socratic-engine.md
     - Network Bridges: network-bridges.md
     - Repository Standards: standards/repo-standards.md
+  - Troubleshooting:
+    - pi / omp Harnesses: troubleshooting/pi-omp.md
   - Governance:
     - Audit 2026-05-09: audit/2026_05_09_audit.md
     - Planning 2026-05-09: planning/2026_05_09_planning.md

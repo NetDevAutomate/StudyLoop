@@ -17,7 +17,7 @@ Four things:
 1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
 2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes and flashcards locally, without requiring external notebook services.
 3. **Flashcard review** — Spaced repetition (SM-2) via a PWA web app. Works on phone, tablet, laptop.
-4. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions.
+4. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions.
 
 Built by a neurodivergent learner transitioning from networking to data engineering. If you're self-teaching and AuDHD, this might help.
 
@@ -128,6 +128,8 @@ studyloop session effectiveness      # Persona effectiveness over time
 ```bash
 session-export                       # Export AI sessions to SQLite
 session-export --sources claude codex
+session-export --pi-only             # Export only pi sessions
+session-export --omp-only            # Export only omp sessions
 session-query search QUERY           # Full-text search across sessions
 session-query list --since 7d        # List recent sessions
 session-query stats                  # Database statistics
@@ -143,6 +145,8 @@ session-sync push/pull/sync HOST     # Cross-machine sync
 | Kiro CLI | `study-mentor` | `kiro-cli chat --agent study-mentor` |
 | Gemini CLI | `study-mentor` | `gemini` (auto-detected) |
 | OpenCode | `study-mentor` | Tab to switch agent |
+| pi | `AGENTS.md` | `pi` in the project root |
+| omp | `AGENTS.md` | `omp` in the project root |
 | Ollama | (local LLM) | `studyloop study "topic" --agent ollama` |
 | LM Studio | (local LLM) | `studyloop study "topic" --agent lmstudio` |
 

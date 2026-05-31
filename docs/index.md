@@ -53,6 +53,8 @@ graph LR
         GA[Gemini CLI]
         OA[OpenCode]
         AA[Amp]
+        PI[pi]
+        OMP[omp]
     end
 
     OB -->|study sources| SC
@@ -66,6 +68,8 @@ graph LR
     GA -->|Socratic sessions| DB
     OA -->|Socratic sessions| DB
     AA -->|Socratic sessions| DB
+    PI -->|Socratic sessions| DB
+    OMP -->|Socratic sessions| DB
 ```
 
 ---
@@ -75,7 +79,7 @@ graph LR
 | Tool | Purpose |
 |------|---------|
 | **studyloop** | Interactive study sessions, local content generation, spaced repetition, struggle detection, win tracking |
-| **agent-session-tools** | Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, and more |
+| **agent-session-tools** | Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, pi, omp, and more |
 | **AI Agents** | Socratic mentors that adapt to your energy, emotional state, and sensory environment |
 
 !!! energy-check "Designed for AuDHD brains"
