@@ -51,6 +51,12 @@ document.addEventListener("alpine:init", () => {
     /* Reading-font picker: inter (default), lexend, atkinson, system, serif.
        Independent of the OpenDyslexic toggle, which overrides when active. */
     font: localStorage.getItem("font") || "inter",
+    // isSpeaking: driven by 'tts:state-change' events from tts-engine.js.
+    // true while any tier (neural or Web Speech API) is producing audio.
+    isSpeaking: false,
+    // ttsDownloadPct: 0-100 during first-run model download, -1 when idle.
+    ttsDownloadPct: -1,
+    ttsDownloadFile: '',
     _preferredVoice: null,
     _voicesLoaded: false,
 
@@ -59,6 +65,27 @@ document.addEventListener("alpine:init", () => {
       if (this.light) document.body.classList.add("light");
       this._applyPalette();
       this._applyFont();
+
+      // Wire tts:state-change → isSpeaking reactive flag.
+      // tts-engine.js also patches this directly (see _createEngine bridge),
+      // but this listener is the canonical Alpine-side binding.
+      window.addEventListener('tts:state-change', (e) => {
+        this.isSpeaking = (e.detail.state === 'speaking');
+      });
+
+      // Wire tts:download-progress → ttsDownloadPct for the progress indicator.
+      window.addEventListener('tts:download-progress', (e) => {
+        this.ttsDownloadPct = e.detail.done ? -1 : e.detail.pct;
+        this.ttsDownloadFile = e.detail.done ? '' : (e.detail.file || '');
+      });
+
+      // Wire tts:tier-change → rebuild voice selector when tier is resolved.
+      window.addEventListener('tts:tier-change', () => {
+        this.loadVoices();
+      });
+
+      // Web Speech API fallback: load WSA voices if ttsEngine is not yet
+      // initialised (or falls back to web-speech tier).
       this.loadVoices();
       if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
@@ -134,13 +161,24 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
+    // speak() — gate on voiceOn, then route through ttsEngine.
+    // Falls back to Web Speech API only if ttsEngine is absent (shouldn't
+    // happen once tts-engine.js loads, but defensive guard kept).
     speak(text) {
-      if (!this.voiceOn || !window.speechSynthesis || !text) return;
+      if (!this.voiceOn || !text) return;
       this.speakNow(text);
     },
 
+    // speakNow() — bypass voiceOn gate (used for confirmations like
+    // "Voice enabled"). Routes through ttsEngine for all tiers.
     speakNow(text) {
-      if (!window.speechSynthesis || !text) return;
+      if (!text) return;
+      if (window.ttsEngine) {
+        window.ttsEngine.speak(text);
+        return;
+      }
+      // Legacy WSA fallback (tts-engine.js not yet loaded)
+      if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.rate = 0.95;
@@ -149,18 +187,50 @@ document.addEventListener("alpine:init", () => {
       window.speechSynthesis.speak(u);
     },
 
+    // stopSpeaking() — delegates to the unified engine stop().
     stopSpeaking() {
+      if (window.ttsEngine) {
+        window.ttsEngine.stop();
+        return;
+      }
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     },
 
+    // loadVoices() — populates the #voice-select dropdown.
+    // Neural tiers: uses ttsEngine.listVoices() (Kokoro catalogue).
+    // web-speech tier / no engine: uses speechSynthesis.getVoices().
     loadVoices() {
+      const select = document.getElementById("voice-select");
+
+      // Neural tier: ttsEngine is initialised and not web-speech
+      if (window.ttsEngine && window.ttsEngine.tier &&
+          window.ttsEngine.tier !== 'web-speech' && window.ttsEngine.tier !== 'silent') {
+        const voices = window.ttsEngine.listVoices();
+        if (select) {
+          select.innerHTML = "";
+          voices.forEach((v) => {
+            const opt = document.createElement("option");
+            opt.value = v.id;
+            opt.textContent = v.grade ? `${v.name} [${v.grade}]` : v.name;
+            select.appendChild(opt);
+          });
+          // Restore saved neural voice preference
+          const saved = localStorage.getItem("neuralVoiceId");
+          if (saved && voices.find((v) => v.id === saved)) {
+            select.value = saved;
+          }
+        }
+        this._voicesLoaded = true;
+        return;
+      }
+
+      // Web Speech API / fallback path (unchanged behaviour)
       if (!window.speechSynthesis) return;
       const voices = window.speechSynthesis.getVoices();
       if (!voices.length) return;
       this._voicesLoaded = true;
 
       const english = voices.filter((v) => v.lang.startsWith("en"));
-      const select = document.getElementById("voice-select");
       if (select) {
         select.innerHTML = "";
         english.forEach((v) => {
@@ -189,6 +259,15 @@ document.addEventListener("alpine:init", () => {
     },
 
     onVoiceChange(name) {
+      // Neural tier: name is a Kokoro voice id (e.g. 'am_michael')
+      if (window.ttsEngine && window.ttsEngine.tier &&
+          window.ttsEngine.tier !== 'web-speech' && window.ttsEngine.tier !== 'silent') {
+        localStorage.setItem("neuralVoiceId", name);
+        window.ttsEngine.setVoice(name);
+        if (this.voiceOn) this.speakNow("Voice changed");
+        return;
+      }
+      // WSA fallback
       const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
       this._preferredVoice = voices.find((v) => v.name === name) || null;
       localStorage.setItem("voiceName", name);
@@ -689,6 +768,14 @@ function reviewApp(defaultMode) {
       const text = this.currentCard.type === 'flashcard'
         ? (this.revealed ? this.currentCard.back : this.currentCard.front)
         : this.currentCard.question;
+      // Route through the unified tts-engine (all three tiers: neural-webgpu,
+      // neural-wasm, web-speech). ttsEngine.speak() handles stop + restart
+      // internally so calling it mid-utterance is safe.
+      if (window.ttsEngine) {
+        window.ttsEngine.speak(text);
+        return;
+      }
+      // Legacy WSA fallback (tts-engine.js not yet loaded)
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
