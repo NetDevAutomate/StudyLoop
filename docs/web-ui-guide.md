@@ -24,7 +24,7 @@ Open your browser to `http://localhost:8567`. The PWA is installable; add it to 
 
 ```mermaid
 graph TB
-    HOME["Home: Course Grid<br/>(shows due counts per course)"]
+    HOME["Home: Course List<br/>(grouped by publisher, searchable)"]
     CONFIG["Session Config<br/>(filter by chapter, set card limit)"]
     STUDY["Card View<br/>(flip to reveal answer)"]
     ANSWER["Mark: Correct / Incorrect / Skip"]
@@ -40,11 +40,37 @@ graph TB
     SUMMARY -->|"Escape = home"| HOME
 ```
 
+### The course list (scales to 100+ sets)
+
+The **Flashcards** and **Quizzes** panels are **mode-specific**: the Flashcards
+panel lists only courses that have flashcards (with a single **Flashcards**
+action per row); the Quizzes panel lists only courses with quiz questions (with
+a single **Quiz** action). Each label means exactly what it says — neither panel
+shows the other's button.
+
+Courses render as **compact one-line rows** grouped under **collapsible publisher
+headers** (e.g. `ARJANCODES (1)`, `CODEWITHMOSH (3)`), derived from the
+`publisher/course` folder layout. A **search box** at the top filters by course
+name instantly. This keeps the list usable as your library grows to hundreds of
+sets: collapse the publishers you're not studying, type to filter, and each row
+is far denser than the old cards.
+
+- **Search** — type any substring of a course name; non-matching rows hide, and a
+  publisher group with no matches disappears entirely. Clear the box to restore all.
+- **Collapse/expand** — click a publisher header to fold its courses away; the
+  collapsed state is per-group and persists while you browse (resets on reload).
+- **Row meta** — each row shows the card count, a **due** badge when cards are
+  due, and a **mastered** count once you've reviewed.
+
 ### Walkthrough
 
-1. **Home screen** — shows all courses as cards with due-count badges. A 90-day activity heatmap shows your study consistency. Courses with cards due today are highlighted.
+1. **Home screen** — shows courses grouped by publisher with a search box and
+   per-row due-count badges. A 90-day activity heatmap below shows your study
+   consistency.
 
-2. **Pick a course** — click the **Flashcards** button on a course card. If the course has multiple chapters, you'll see a filter dropdown to select specific chapters and a card limit picker.
+2. **Pick a course** — click the **Flashcards** button on a course row. If the
+   course has multiple chapters, you'll see a filter dropdown to select specific
+   chapters and a card limit picker.
 
 3. **Study cards** — each card shows the front (question). Press **Space** or **Enter** to flip and reveal the answer.
 
@@ -75,13 +101,13 @@ graph TB
 
 ```mermaid
 graph TB
-    HOME["Home: Course Grid"]
+    HOME["Home: Course List<br/>(quiz decks only, grouped + searchable)"]
     CONFIG["Session Config<br/>(filter + limit)"]
     QUIZ["Quiz Card<br/>(multiple choice, 4 options)"]
     RESULT["Instant Feedback<br/>(correct/incorrect highlight)"]
     SUMMARY["Session Summary"]
 
-    HOME -->|"click Quizzes"| CONFIG
+    HOME -->|"click Quiz"| CONFIG
     CONFIG -->|"Start Session"| QUIZ
     QUIZ -->|"1-4 or A-D to pick"| RESULT
     RESULT -->|"auto-advance"| QUIZ
@@ -90,9 +116,13 @@ graph TB
     SUMMARY -->|"Escape"| HOME
 ```
 
+The Quizzes panel uses the same grouped, searchable, compact course list as the
+Flashcards panel (see [The course list](#the-course-list-scales-to-100-sets)) —
+but lists only decks that have quiz questions, with a single **Quiz** action per row.
+
 ### Walkthrough
 
-1. **Pick a course** — click the **Quizzes** button on a course card.
+1. **Pick a course** — click the **Quiz** button on a course row.
 
 2. **Answer questions** — each card shows a question with 4 multiple-choice options. Press **1-4** or **A-D** to select your answer. Correct answers highlight green; wrong answers highlight red with the correct answer shown.
 
@@ -383,23 +413,60 @@ While the job is in flight, the Generate button is disabled. The progress area s
 
 ### Provider plumbing under the hood
 
-The form's **Provider** dropdown is populated from a curated [provider registry](content-pipeline.md#pluggable-provider-abstraction). Five providers ship today: OpenAI, OpenRouter, Gemini, MiniMax (via its Anthropic-compat shim), and Anthropic. Each provider's available models are tagged with cost-tier (cheap / balanced / premium) and a thinking-model flag.
+The form's **Provider** dropdown is populated from a curated [provider registry](content-pipeline.md#pluggable-provider-abstraction). Seven providers ship today: **OpenAI, OpenRouter, Gemini, MiniMax** (via its Anthropic-compat shim), **Anthropic, AWS Bedrock,** and **Ollama** (local). Each provider's available models are tagged with cost-tier (cheap / balanced / premium) and a thinking-model flag; the **Model** dropdown lists the chosen provider's discovered models.
 
-API keys live in a project-root `.env`:
+Credentials are resolved by `secrets.get_secret(slug)`, which checks the **encrypted store first, then the environment**:
 
-```bash
-OPENAI_API_KEY=
-OPENROUTER_API_KEY=
-GEMINI_API_KEY=
-MINIMAX_API_KEY=
-ANTHROPIC_API_KEY=
-```
+1. **Encrypted store** — `~/.config/studyloop/secrets.bin` (Fernet-encrypted; key seed in `~/.config/studyloop/.secrets-key`, mode `0600`). This is what the **Settings → LLM Providers** panel writes (see below) — the recommended path.
+2. **Environment / project-root `.env`** — `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`. `.env` is auto-loaded on import (`studyloop/__init__.py`); explicitly-exported shell vars win.
 
-`.env` is auto-loaded on package import (see `studyloop/__init__.py`). Providers without a configured env var appear in the dropdown but are disabled with a tooltip telling you which env var to set.
+Provider availability is computed per auth kind (see Settings below). API-key providers without a stored key or env var appear in the dropdown but are disabled with a tooltip. **Bedrock** authenticates with an AWS profile/SigV4 or an optional bearer token (no typed key); **Ollama** is local and keyless (available iff its endpoint responds).
 
 ### CLI parity
 
 Everything the panel does is also available as the existing `studyloop content generate-cards` command. The panel is a UI over the same producer pipeline, not a separate code path.
+
+---
+
+## Settings → LLM Providers
+
+The **Settings** tab in the sidebar holds an **LLM Providers** admin panel for
+managing generation credentials from the browser — no `.env` editing required.
+Keys are stored **encrypted** at `~/.config/studyloop/secrets.bin` and never
+leave the machine.
+
+Each provider renders one row whose controls match its **auth kind**:
+
+| Auth kind | Providers | Controls |
+|---|---|---|
+| `api_key` | OpenAI, OpenRouter, Gemini, MiniMax, Anthropic | Password field + **Test & save** (the key is verified with a cheap live auth call before it's stored), **Delete**, **Test** |
+| `bedrock_bearer` | AWS Bedrock | Optional bearer-token field (`AWS_BEARER_TOKEN_BEDROCK`) + **Test & save** / **Test AWS creds**. Leave empty to use your AWS profile / IAM role instead |
+| `local_keyless` | Ollama (local) | Base-URL field (defaults to `http://localhost:11434`) + **Save URL** + **Test connection** (runs a real generation against a recommended model) |
+
+```mermaid
+graph TB
+    Row["Provider row<br/>(per auth_kind controls)"]
+    Save["Test & save"]
+    Verify["Live auth check<br/>(cheap call to the provider)"]
+    Store[("Encrypted store<br/>~/.config/studyloop/secrets.bin")]
+    OK["✓ Verified and saved"]
+    Err["✗ error (shown inline on the row)"]
+
+    Row -->|"enter key / token / url"| Save
+    Save --> Verify
+    Verify -->|ok| Store --> OK
+    Verify -->|fail| Err
+```
+
+**Why verify before storing?** A key that doesn't authenticate is worse than no
+key — it fails silently at generation time. The panel tests the credential live
+(or, for Bedrock, checks AWS creds; for Ollama, runs a real generation) and only
+stores it on success, showing the result inline on that provider's row.
+
+The same encrypted store backs both this panel and the Generate panel's provider
+dropdown — a key added here immediately makes that provider "configured" in
+Generate. The panel is its own Alpine component (`settingsPanel()`); it shares no
+reactive state with the Generate form, only the store.
 
 ---
 
@@ -411,14 +478,20 @@ Toggle the OpenDyslexic font via the **Aa** button in the header. The preference
 
 ### Theme Palettes
 
-The header has a **theme dropdown** with four palettes:
+The header has a **theme dropdown** with twelve palettes — four originals plus a
+broader set covering the common editor themes:
 
-| Palette | Variant | Notes |
-|---|---|---|
-| Tokyo Night | dark (default) | Original StudyLoop palette. |
-| Dracula | dark | High-contrast purple accent. |
-| Catppuccin Mocha | dark | Pastel dark — eye-friendly for long sessions. |
-| Catppuccin Latte | light | Light-mode partner to Mocha. |
+| Palette | Variant |
+|---|---|
+| Tokyo Night | dark (default) |
+| Dracula | dark |
+| Catppuccin Mocha / Latte | dark / light |
+| Nord | dark |
+| Gruvbox Dark / Light | dark / light |
+| Solarized Dark / Light | dark / light |
+| One Dark | dark |
+| Rosé Pine | dark |
+| Everforest | dark |
 
 Selection persists to `localStorage` under `palette`. Each palette overrides a small set of CSS custom properties (`--bg`, `--bg-card`, `--text`, `--accent`, etc.); every component re-themes automatically.
 

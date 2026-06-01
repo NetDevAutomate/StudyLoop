@@ -65,8 +65,11 @@ class AiderExporter:
                         history_file, incremental, conn
                     )
                     if session_data:
-                        if session_data.get("status") == "skipped":
+                        status = session_data.get("status")
+                        if status == "skipped":
                             stats.skipped += 1
+                        elif status == "empty":
+                            stats.empty += 1
                         else:
                             batch.append(session_data)
                             batch_messages.extend(msgs)
@@ -136,7 +139,7 @@ class AiderExporter:
 
         messages = self._parse_aider_markdown(content)
         if not messages:
-            return {"id": session_id, "status": "skipped"}, []
+            return {"id": session_id, "status": "empty"}, []
 
         # Build session record
         session_data = {

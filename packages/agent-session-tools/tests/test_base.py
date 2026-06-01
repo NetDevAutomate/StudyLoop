@@ -18,22 +18,25 @@ class TestExportStats:
         assert stats.added == 0
         assert stats.updated == 0
         assert stats.skipped == 0
+        assert stats.empty == 0
         assert stats.errors == 0
 
     def test_custom_values(self):
-        stats = ExportStats(added=1, updated=2, skipped=3, errors=4)
+        stats = ExportStats(added=1, updated=2, skipped=3, empty=5, errors=4)
         assert stats.added == 1
         assert stats.updated == 2
         assert stats.skipped == 3
+        assert stats.empty == 5
         assert stats.errors == 4
 
     def test_iadd_accumulates(self):
-        a = ExportStats(added=1, updated=2, skipped=3, errors=4)
-        b = ExportStats(added=10, updated=20, skipped=30, errors=40)
+        a = ExportStats(added=1, updated=2, skipped=3, empty=5, errors=4)
+        b = ExportStats(added=10, updated=20, skipped=30, empty=50, errors=40)
         a += b
         assert a.added == 11
         assert a.updated == 22
         assert a.skipped == 33
+        assert a.empty == 55
         assert a.errors == 44
 
     def test_iadd_returns_self(self):
@@ -153,6 +156,11 @@ class TestCommitBatch:
         stats = ExportStats()
         commit_batch(self.conn, [_make_session(status="skipped")], [], stats)
         assert stats.skipped == 1
+
+    def test_stats_incremented_for_empty(self):
+        stats = ExportStats()
+        commit_batch(self.conn, [_make_session(status="empty")], [], stats)
+        assert stats.empty == 1
 
     def test_default_status_is_added(self):
         session = _make_session()

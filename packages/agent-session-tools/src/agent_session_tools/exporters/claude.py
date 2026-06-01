@@ -43,7 +43,7 @@ class ClaudeCodeExporter:
 
         for agent_file in self.projects_dir.rglob("agent-*.jsonl"):
             try:
-                session_data, msgs = self._process_session_file(
+                session_data, msgs, reason = self._process_session_file(
                     conn, agent_file, incremental
                 )
                 if session_data:
@@ -53,6 +53,10 @@ class ClaudeCodeExporter:
                         commit_batch(conn, batch, batch_messages, stats)
                         batch = []
                         batch_messages = []
+                elif reason == "skipped":
+                    stats.skipped += 1
+                elif reason == "empty":
+                    stats.empty += 1
             except Exception:
                 stats.errors += 1
 
@@ -64,8 +68,13 @@ class ClaudeCodeExporter:
 
     def _process_session_file(
         self, conn: sqlite3.Connection, agent_file: Path, incremental: bool
-    ) -> tuple[dict | None, list[dict]]:
-        """Return session data and messages instead of direct commit."""
+    ) -> tuple[dict | None, list[dict], str | None]:
+        """Return ``(session_data, messages, reason)``.
+
+        ``reason`` explains a ``None`` session: ``"skipped"`` (unchanged
+        fingerprint) or ``"empty"`` (no extractable messages). It is ``None``
+        when a session is returned for import.
+        """
         project_path = str(agent_file.parent).replace(str(self.projects_dir) + "/", "")
         session_id = agent_file.stem
         fingerprint = file_fingerprint(agent_file)
@@ -76,7 +85,7 @@ class ClaudeCodeExporter:
                 "SELECT import_fingerprint FROM sessions WHERE id = ?", (session_id,)
             ).fetchone()
             if existing and existing[0] == fingerprint:
-                return None, []
+                return None, [], "skipped"
 
         # Parse JSONL file
         messages = []
@@ -136,7 +145,7 @@ class ClaudeCodeExporter:
                 )
 
         if not messages:
-            return None, []
+            return None, [], "empty"
 
         # Check if this is an update or new insert
         is_update = conn.execute(
@@ -155,16 +164,20 @@ class ClaudeCodeExporter:
             "status": "added" if not is_update else "updated",
         }
 
-        return session_data, [
-            {
-                "id": m["id"],
-                "session_id": session_id,
-                "role": m["role"],
-                "content": m["content"],
-                "model": m["model"],
-                "timestamp": m["timestamp"],
-                "metadata": m["metadata"],
-                "seq": idx + 1,
-            }
-            for idx, m in enumerate(messages)
-        ]
+        return (
+            session_data,
+            [
+                {
+                    "id": m["id"],
+                    "session_id": session_id,
+                    "role": m["role"],
+                    "content": m["content"],
+                    "model": m["model"],
+                    "timestamp": m["timestamp"],
+                    "metadata": m["metadata"],
+                    "seq": idx + 1,
+                }
+                for idx, m in enumerate(messages)
+            ],
+            None,
+        )

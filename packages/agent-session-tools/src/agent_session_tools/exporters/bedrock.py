@@ -89,7 +89,7 @@ class BedrockProxyExporter:
                 ).fetchall()
 
                 if not messages:
-                    stats.skipped += 1
+                    stats.empty += 1
                     continue
 
                 # Add session to batch

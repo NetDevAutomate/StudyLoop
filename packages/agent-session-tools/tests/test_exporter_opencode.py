@@ -249,7 +249,8 @@ class TestExportAll:
         conn, _ = migrated_db
         exporter = OpenCodeExporter()
         stats = exporter.export_all(conn, incremental=False)
-        assert stats.skipped == 1
+        assert stats.empty == 1
+        assert stats.skipped == 0
         assert stats.added == 0
 
     def test_incremental_reimports_updated_session(

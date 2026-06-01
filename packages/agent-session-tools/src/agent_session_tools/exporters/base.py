@@ -9,13 +9,15 @@ from typing import Protocol
 class ExportStats:
     added: int = 0
     updated: int = 0
-    skipped: int = 0
+    skipped: int = 0  # already up-to-date since last export (unchanged)
+    empty: int = 0  # no extractable messages (header-only, content-less)
     errors: int = 0
 
     def __iadd__(self, other: "ExportStats") -> "ExportStats":
         self.added += other.added
         self.updated += other.updated
         self.skipped += other.skipped
+        self.empty += other.empty
         self.errors += other.errors
         return self
 
@@ -115,6 +117,8 @@ def commit_batch(
                 stats.updated += 1
             elif status == "skipped":
                 stats.skipped += 1
+            elif status == "empty":
+                stats.empty += 1
 
         conn.commit()
     except Exception:
