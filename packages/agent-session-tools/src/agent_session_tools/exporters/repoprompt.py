@@ -114,7 +114,7 @@ class RepoPromptExporter:
 
             for chat_file in chats_dir.glob("ChatSession-*.json"):
                 try:
-                    session_data, msgs = self._process_chat_file(
+                    session_data, msgs, reason = self._process_chat_file(
                         conn, chat_file, workspace_name, incremental
                     )
                     if session_data:
@@ -124,6 +124,10 @@ class RepoPromptExporter:
                             commit_batch(conn, batch, batch_messages, stats)
                             batch = []
                             batch_messages = []
+                    elif reason == "skipped":
+                        stats.skipped += 1
+                    elif reason == "empty":
+                        stats.empty += 1
                 except Exception:
                     stats.errors += 1
 
@@ -139,8 +143,14 @@ class RepoPromptExporter:
         chat_file: Path,
         workspace_name: str,
         incremental: bool,
-    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-        """Process a single chat session file."""
+    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]], str | None]:
+        """Process a single chat session file.
+
+        Returns ``(session_data, messages, reason)``. ``reason`` explains a
+        ``None`` session: ``"skipped"`` (unchanged fingerprint) or ``"empty"``
+        (unparseable, missing id, or no messages). It is ``None`` when a session
+        is returned for import.
+        """
         fingerprint = file_fingerprint(chat_file)
 
         # Parse JSON file
@@ -148,11 +158,11 @@ class RepoPromptExporter:
             with open(chat_file) as f:
                 chat_data = json.load(f)
         except (json.JSONDecodeError, OSError):
-            return None, []
+            return None, [], "empty"
 
         session_id = chat_data.get("id")
         if not session_id:
-            return None, []
+            return None, [], "empty"
 
         # Check if already imported with same fingerprint (incremental mode)
         if incremental:
@@ -163,14 +173,14 @@ class RepoPromptExporter:
                 try:
                     meta = json.loads(existing[0] or "{}")
                     if meta.get("fingerprint") == fingerprint:
-                        return None, []
+                        return None, [], "skipped"
                 except json.JSONDecodeError:
                     pass
 
         # Extract messages
         raw_messages = chat_data.get("messages", [])
         if not raw_messages:
-            return None, []
+            return None, [], "empty"
 
         messages = []
         first_ts = None
@@ -238,4 +248,4 @@ class RepoPromptExporter:
             "status": "added" if not is_update else "updated",
         }
 
-        return session_data, messages
+        return session_data, messages, None

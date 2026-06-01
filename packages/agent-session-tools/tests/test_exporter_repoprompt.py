@@ -239,9 +239,11 @@ class TestExportAll:
         assert stats_first.added == 1
 
         stats_second = exporter.export_all(conn, incremental=True)
-        # Fingerprint match -> _process_chat_file returns (None, []) -> not counted
-        # This means neither added nor skipped via ExportStats, it just returns None
+        # Fingerprint match -> _process_chat_file returns (None, [], "skipped")
+        # -> counted as skipped.
         assert stats_second.added == 0
+        assert stats_second.skipped == 1
+        assert stats_second.empty == 0
 
     def test_unavailable_returns_zero_stats(self, migrated_db, tmp_path):
         conn, _ = migrated_db

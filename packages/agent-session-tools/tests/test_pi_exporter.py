@@ -294,7 +294,8 @@ class TestPiExportAll:
         assert stats1.added == 1
 
         stats2 = exp.export_all(conn, incremental=True)
-        assert stats2.skipped == 0  # skipped sessions don't reach batch — no stats
+        assert stats2.skipped == 1  # unchanged updated_at — counted as skipped
+        assert stats2.empty == 0
         assert stats2.added == 0
 
     def test_unavailable_returns_zero_stats(self, migrated_db, tmp_path):
@@ -306,7 +307,7 @@ class TestPiExportAll:
         assert stats.skipped == 0
 
     def test_no_messages_file_skipped(self, migrated_db, tmp_path):
-        """A JSONL with only a header and no parseable messages is skipped."""
+        """A JSONL with only a header and no parseable messages is counted empty."""
         root = tmp_path / "sessions"
         slug = root / "-empty"
         _write_jsonl(slug / "empty.jsonl", [_header(session_id="empty-sess")])
@@ -315,6 +316,8 @@ class TestPiExportAll:
         exp = PiFamilyExporter("pi", root)
         stats = exp.export_all(conn, incremental=False)
         assert stats.added == 0
+        assert stats.empty == 1
+        assert stats.skipped == 0
         assert stats.errors == 0
 
     def test_incremental_reimports_on_update(self, migrated_db, tmp_path):
@@ -417,8 +420,11 @@ class TestMalformedInputHandling:
         conn, _ = migrated_db
         exp = PiFamilyExporter("pi", root)
         stats = exp.export_all(conn, incremental=False)
-        # Missing id causes _process_file to return (None, []) — not counted as error
+        # Missing id causes _process_file to return (None, [], "empty") — counted
+        # as empty, not an error.
         assert stats.added == 0
+        assert stats.empty == 1
+        assert stats.errors == 0
 
     def test_malformed_message_line_silently_skipped(self, migrated_db, tmp_path):
         """A bad JSON line after the header does not crash; valid messages still land."""
@@ -454,6 +460,7 @@ class TestMalformedInputHandling:
         exp = PiFamilyExporter("pi", root)
         stats = exp.export_all(conn, incremental=False)
         assert stats.added == 0
+        assert stats.empty == 1
         assert stats.errors == 0
 
 
