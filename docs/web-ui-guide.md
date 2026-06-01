@@ -141,6 +141,65 @@ but lists only decks that have quiz questions, with a single **Quiz** action per
 
 ---
 
+## Course Explorer
+
+The **Course Explorer** is a persistent side panel (a third layout column) opened by the **Courses** button in the sidebar. It is independent of the Flashcards and Quizzes review panels — it is a reading surface for your source study material, not a review surface for generated decks.
+
+```mermaid
+flowchart LR
+    Open["Click Courses<br/>sidebar button"]
+    Browse["Browse view<br/>provider carousels"]
+    Filter["Per-provider<br/>filter input"]
+    Select["Click a course<br/>→ lesson list"]
+    Read["Lesson reader<br/>(markdown + mermaid + code)"]
+    Search["Global search<br/>(titles instant + bodies FTS)"]
+    Struggle["Struggling? button<br/>→ session DB"]
+    Listen["▶ Listen<br/>(TTS, if installed)"]
+
+    Open --> Browse
+    Browse --> Filter
+    Browse --> Select
+    Select --> Read
+    Open --> Search
+    Search --> Read
+    Read --> Struggle
+    Read --> Listen
+```
+
+### Walkthrough
+
+1. **Open the panel** — click the **Courses** button in the sidebar. The layout gains a third column (320 px). Click again, or the × in the panel header, to close. The panel is hidden on screens narrower than 600 px.
+
+2. **Browse by provider** — the browser view shows one horizontal carousel row per provider (top-level directories under `content.base_path`). Each carousel card shows the course name and provider. Use the **filter** input on a provider row to narrow by course name; use the **‹** / **›** buttons to scroll the carousel.
+
+3. **Open a course** — click any course card. A lesson list expands below the carousel showing every source file in that course (`.md`, `.markdown`, `.txt`), numbered in file-system order.
+
+4. **Read a lesson** — click any lesson in the list. The reader view renders the lesson's markdown: headings, lists, code blocks (syntax-highlighted via highlight.js), and mermaid diagrams (two-pass render via mermaid v11.4.1). YAML frontmatter is stripped before rendering. A back arrow returns to the browser view.
+
+5. **Search** — type in the **Search lessons…** box (visible in browser view). Results appear grouped by provider. Two tiers run in parallel:
+   - **Fuse.js** (client-side, vendored v7.0.0) — instant fuzzy match over provider/course/lesson titles.
+   - **SQLite FTS5** (server-side, debounced) — full-text search over lesson bodies via `GET /api/explorer/search`. Porter-stemmed, BM25-ranked with title weighted higher than body, returns snippet excerpts with `<mark>` highlights. The FTS index (`explorer_fts.db`) is built lazily on first search and refreshed incrementally (mtime-based) on each call.
+
+   Click any result to open that lesson directly in the reader.
+
+6. **Mark a struggle** — while reading a lesson, click the **Struggling?** button in the reader header. This writes a `study_progress` row (`confidence='struggling'`) to the session DB via `POST /api/history/struggling-topics`. The row surfaces in the next Generate session's "Topic I'm struggling on" scope and in `studyloop struggles`.
+
+7. **Listen (TTS)** — the **▶ Listen** button appears only when `window.ttsEngine` is present (provided by the `browser-neural-tts` feature branch). When the engine is absent the button is hidden and no-op. When active, click to start reading the lesson aloud; the button becomes **⏹ Stop**.
+
+### Endpoints called
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/explorer/tree` | Provider→course tree (mtime-cached on server) |
+| `GET /api/explorer/courses/{course_id}/lessons` | Lesson list for a course (`course_id` = `provider/course`) |
+| `GET /api/explorer/lesson/{lesson_id}/content` | Raw markdown for a lesson (`lesson_id` = `provider/course/slug`) |
+| `GET /api/explorer/search?q=&limit=20` | FTS5 full-text search over lesson bodies |
+| `POST /api/history/struggling-topics` | Write a struggle flag to `study_progress` |
+
+All content endpoints are path-traversal guarded (resolved path must be a child of `content.base_path`; suffix restricted to `.md`, `.markdown`, `.txt`). The FTS index lives in its own file (`<session_db_dir>/explorer_fts.db`) — it is a derived cache, never touches `sessions.db`, and requires no schema migration.
+
+---
+
 ## Live Interactive Sessions
 
 When you start a study session with `--web`, the dashboard provides a real-time view of your session from any device:

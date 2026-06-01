@@ -165,6 +165,13 @@ Launch with `studyloop web`. Accessible from any device on the network.
 - Pomodoro timer, voice output, OpenDyslexic font toggle
 - PWA installable — add to home screen
 
+**Course Explorer** (sidebar "Courses" button):
+- Browse course material by provider in horizontal carousels, with per-provider filter
+- Click a course to list its lessons; click a lesson to read rendered markdown + mermaid diagrams + syntax-highlighted code
+- Global fuzzy search (Fuse.js, instant over titles) + full-text search (SQLite FTS5, over lesson bodies)
+- "Struggling?" button in the reader flags a lesson to the session DB; surfaces in next study session and deck generation
+- "▶ Listen" TTS read-aloud button (appears only when the `browser-neural-tts` feature is installed)
+
 **Live session dashboard** (`/session`):
 - Real-time activity feed via SSE (Server-Sent Events)
 - Timer with energy-adaptive colour phases (green/amber/red)

@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the Anthropic-compat adapter robustness work (MiniMax was trialled then removed for quiz quality), the scalable (mode-split, publisher-grouped, searchable) course-review list, the opt-in Obsidian session-memory export (`session-export --obsidian`), and the in-browser neural TTS engine.
+> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the Anthropic-compat adapter robustness work (MiniMax was trialled then removed for quiz quality), the scalable (mode-split, publisher-grouped, searchable) course-review list, the opt-in Obsidian session-memory export (`session-export --obsidian`), the in-browser neural TTS engine, and the Course Explorer side panel (Phases 1–6).
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -66,6 +66,7 @@ flowchart TB
 
     subgraph "studyloop web (Python / FastAPI / uvicorn)"
       API["HTTP + WebSocket API<br/>──────────<br/>/api/session/start<br/>/api/session/ws<br/>/api/session/end<br/>SSE for activity feed"]
+      ExplorerAPI["Explorer API<br/>──────────<br/>/api/explorer/tree<br/>/api/explorer/courses/{id}/lessons<br/>/api/explorer/lesson/{id}/content<br/>/api/explorer/search"]
       Runtime["SessionRuntime<br/>──────────<br/>Active-session singleton.<br/>Owns the transport.<br/>Forwards events to WS."]
       ACP["ACPTransport<br/>──────────<br/>JSON-RPC over stdio.<br/>session/new,<br/>session/prompt,<br/>session/update,<br/>session/request_permission."]
       PTY["PTYTransport<br/>──────────<br/>Raw bytes,<br/>WINSZ ioctl,<br/>SIGCHLD-driven exit."]
@@ -74,6 +75,7 @@ flowchart TB
 
     subgraph "Local stores"
       DB[("sessions.db<br/>(SQLite + WAL)<br/>──────────<br/>study sessions,<br/>progress, review state.")]
+      FTS[("explorer_fts.db<br/>(SQLite FTS5)<br/>──────────<br/>derived lesson index;<br/>rebuildable cache,<br/>no migration.")]
       IPC["~/.config/studyloop/<br/>session-state.json<br/>session-topics.md<br/>session-parking.md"]
       Persona["agents/shared/personas/*<br/>(canonical persona text)"]
       AgentMemory[("AgentMemory/<br/>(Obsidian vault)<br/>──────────<br/>Markdown notes,<br/>Dataview frontmatter,<br/>[[wikilinks]], MOC index.")]
@@ -87,6 +89,7 @@ flowchart TB
     Learner --> PWA
     PWA -->|"HTTP /api/*"| API
     PWA <-->|"WebSocket /api/session/ws"| API
+    PWA -->|"HTTP /api/explorer/*<br/>/api/history/struggling-topics"| ExplorerAPI
     API --> Runtime
     Runtime -->|"transport.start()"| ACP
     Runtime -->|"transport.start()"| PTY
@@ -95,6 +98,9 @@ flowchart TB
     API --> DB
     API --> IPC
     API -->|"build_canonical_persona"| Persona
+    ExplorerAPI -->|"reads source markdown"| Persona
+    ExplorerAPI --> FTS
+    ExplorerAPI --> DB
     Export --> DB
     Export -.->|"after commit, if --obsidian"| ObsidianWriter
     ObsidianWriter --> AgentMemory
@@ -531,6 +537,85 @@ flowchart TB
 | Service-worker model-cache preservation | `packages/studyloop/src/studyloop/web/static/sw.js` | self-destruct handler |
 | Vendored libs (LFS for `*.wasm`) | `packages/studyloop/src/studyloop/web/static/vendor/js/` | — |
 | TTS contract + stop-control tests | `packages/studyloop/tests/test_web_tts.py` | full file |
+
+---
+
+## C4 Level 3 — Component (zoomed into the Course Explorer)
+
+The Course Explorer is a read-only study-material browser embedded as a third layout column. It shares no reactive state with the session, review, or generate panels; the only write path is the struggle flag via `POST /api/history/struggling-topics`.
+
+```mermaid
+flowchart TB
+    subgraph Browser["Browser — Alpine `courseExplorer()` component"]
+      direction TB
+      Toggle["$store.explorer.toggle()<br/>──────────<br/>Opens 3rd column;<br/>adds .explorer-open to .app-layout"]
+      TreeFetch["init() → GET /api/explorer/tree<br/>──────────<br/>Populates providers[]; mtime-cached<br/>server-side. [] on missing base."]
+      Carousel["Provider carousel row<br/>──────────<br/>CSS scroll-snap, data-carousel-id;<br/>filteredCourses(provider) per row;<br/>scrollCarousel() via querySelector"]
+      LessonFetch["selectCourse(course)<br/>→ GET /api/explorer/courses/{id}/lessons<br/>──────────<br/>Lesson list below carousel"]
+      Reader["openLesson(lesson)<br/>→ GET /api/explorer/lesson/{id}/content<br/>──────────<br/>_stripFrontmatter → renderMarkdown<br/>→ x-html (view='reader')"]
+      MermaidPass["_renderMermaidPlaceholders(rootEl)<br/>──────────<br/>Second $nextTick pass;<br/>mermaid.render() per placeholder div"]
+      SearchBox["onSearchInput() (debounced)<br/>──────────<br/>Fuse.js instant over titles +<br/>GET /api/explorer/search (FTS5 bodies);<br/>results grouped by provider"]
+      StruggleBtn["markStruggle()<br/>→ POST /api/history/struggling-topics<br/>──────────<br/>confidence='struggling', created_by='web';<br/>surfaces in next deck gen scope"]
+      TTSBtn["readAloud() / stopReading()<br/>──────────<br/>Gated: ttsAvailable = !!window.ttsEngine;<br/>button hidden when engine absent"]
+    end
+
+    subgraph Backend["Server — web/routes/explorer.py"]
+      direction TB
+      TreeRoute["GET /api/explorer/tree<br/>──────────<br/>_build_tree(base); app.state cache;<br/>[] on missing/empty base"]
+      LessonsRoute["GET /api/explorer/courses/{course_id:path}/lessons<br/>──────────<br/>rglob walk; skip _OUTPUT_SUBDIRS;<br/>traversal guard (is_relative_to)"]
+      ContentRoute["GET /api/explorer/lesson/{lesson_id:path}/content<br/>──────────<br/>Probe .md/.markdown/.txt in order;<br/>path-traversal + suffix allowlist;<br/>returns {content, lesson_id}"]
+      SearchRoute["GET /api/explorer/search?q=&limit=20<br/>──────────<br/>_run_fts_search: lazy-build +<br/>mtime incremental refresh;<br/>bm25 title>body, snippet excerpts"]
+    end
+
+    subgraph Stores["Stores"]
+      ContentBase[("content.base_path/<br/>source markdown files<br/>(read-only)")]
+      FTSDb[("explorer_fts.db<br/>──────────<br/>FTS5 virtual table;<br/>lesson_index_meta for mtimes;<br/>porter unicode61 tokenizer")]
+      SessionDB[("sessions.db<br/>study_progress table")]
+    end
+
+    Toggle --> TreeFetch
+    TreeFetch --> Carousel
+    Carousel --> LessonFetch
+    LessonFetch --> Reader
+    Reader --> MermaidPass
+    SearchBox --> TreeFetch
+    Reader --> StruggleBtn
+    Reader --> TTSBtn
+
+    TreeRoute --> ContentBase
+    LessonsRoute --> ContentBase
+    ContentRoute --> ContentBase
+    SearchRoute --> FTSDb
+    FTSDb -.->|"indexes"| ContentBase
+    StruggleBtn --> SessionDB
+```
+
+**Key invariants**:
+
+- **Read-only over content.** The explorer API never writes to `content.base_path`. Every content endpoint resolves paths with `is_relative_to(base)` and restricts suffixes to `.md`, `.markdown`, `.txt`.
+- **FTS index is a derived cache.** `explorer_fts.db` lives in `<session_db_dir>/` alongside `sessions.db` but is never opened by the session migration system. It can be deleted and will be rebuilt on the next search call. No schema migration is required.
+- **TTS is gated by feature detection.** `ttsAvailable = !!window.ttsEngine`. The "▶ Listen" button is `x-show="ttsAvailable && activeLesson"` — hidden entirely when the `browser-neural-tts` worktree is not merged.
+- **Struggle write reuses the existing pipeline.** `POST /api/history/struggling-topics` calls the same `record_progress()` / `get_struggling_topics()` helpers used by the agent session path. The Generate panel's "Topic I'm struggling on" scope sees the web-flagged rows with no extra plumbing.
+
+### Component → file map (Course Explorer)
+
+| Component | File | Notes |
+|---|---|---|
+| `courseExplorer()` Alpine factory | `packages/studyloop/src/studyloop/web/static/components.js` | ~line 932; owns all panel state |
+| `renderMarkdown()` | `components.js` | ~line 44; top-level shared fn; marked → DOMPurify → hljs |
+| `_stripFrontmatter()` | `components.js` | ~line 107; strips YAML front matter before render |
+| `_renderMermaidPlaceholders()` | `components.js` | ~line 171; second-pass mermaid.render() after `$nextTick` |
+| `_mdToPlainText()` | `components.js` | ~line 129; strips markdown to plain text for TTS |
+| `<aside class="course-explorer-panel">` | `packages/studyloop/src/studyloop/web/static/index.html` | ~line 248; browser + reader views |
+| Courses sidebar button + `$store.explorer` | `index.html` | ~line 225 (button), ~line 1686 (store) |
+| Mermaid + Fuse.js `<script>` tags | `index.html` | ~line 39 (mermaid), ~line 48 (fuse) |
+| `.course-explorer-panel`, `.explorer-*` CSS | `packages/studyloop/src/studyloop/web/static/style.css` | `.app-layout` 3rd column; 0px closed, 320px `.explorer-open`; hidden ≤600px |
+| Explorer API router | `packages/studyloop/src/studyloop/web/routes/explorer.py` | all four endpoints; `_fts_lock` for single-writer FTS |
+| Migration v22 | `packages/agent-session-tools/src/agent_session_tools/migrations.py` | ~line 736; adds `source_course`, `source_section`, `source_publisher`, `created_by` to `study_progress` |
+| `record_progress()` (provenance args) | `packages/studyloop/src/studyloop/history/progress.py` | keyword-only provenance args; back-compat |
+| `POST /api/history/struggling-topics` | `packages/studyloop/src/studyloop/web/routes/history.py` | ~line 82; `StruggleRequest` body |
+| Vendored mermaid v11.4.1 | `web/static/vendor/js/mermaid-11.4.1.min.js` | `globalThis.mermaid` assignment; `startOnLoad:false` |
+| Vendored Fuse.js v7.0.0 | `web/static/vendor/js/fuse-7.0.0.min.js` | `window.Fuse` UMD global |
 
 ---
 
