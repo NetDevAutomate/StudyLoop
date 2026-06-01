@@ -29,6 +29,7 @@ def _get_registry():
         check_local_llm_servers,
     )
     from studyloop.doctor.config import (
+        check_obsidian_export,
         check_obsidian_vault,
         check_pandoc,
         check_review_directories,
@@ -55,7 +56,13 @@ def _get_registry():
         registry.register("core")(fn)
     for fn in [check_review_db, check_sessions_db]:
         registry.register("database")(fn)
-    for fn in [check_obsidian_vault, check_review_directories, check_pandoc, check_tmux_resurrect]:
+    for fn in [
+        check_obsidian_vault,
+        check_obsidian_export,
+        check_review_directories,
+        check_pandoc,
+        check_tmux_resurrect,
+    ]:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
     registry.register("deps")(check_system_binaries)

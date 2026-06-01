@@ -42,6 +42,18 @@ def check_obsidian_vault() -> list[CheckResult]:
                 False,
             )
         ]
+    obsidian_marker = vault_path / ".obsidian"
+    if not obsidian_marker.is_dir():
+        return [
+            CheckResult(
+                "config",
+                "obsidian_vault",
+                "warn",
+                "Vault path exists but .obsidian/ not found",
+                "Ensure this is your Obsidian vault root",
+                False,
+            )
+        ]
     return [
         CheckResult(
             "config",
@@ -196,6 +208,65 @@ def check_tmux_resurrect() -> list[CheckResult]:
             "warn",
             "tmux-resurrect detected but no restore hook for study-* sessions",
             "See: studyloop docs setup-guide.md#tmux-resurrect-compatibility",
+            False,
+        )
+    ]
+
+
+def check_obsidian_export() -> list[CheckResult]:
+    """Check Obsidian export configuration and vault writability.
+
+    If export is enabled, verify that the resolved vault_path/memory_dir
+    is present (or at least that the vault exists).  If export is disabled,
+    return an informational result.
+    """
+    settings = _load_settings()
+    obsidian = getattr(settings, "obsidian", None)
+    if obsidian is None:
+        return [
+            CheckResult(
+                "config",
+                "obsidian_export",
+                "info",
+                "Obsidian export disabled",
+                "",
+                False,
+            )
+        ]
+
+    if not obsidian.export_enabled:
+        return [
+            CheckResult(
+                "config",
+                "obsidian_export",
+                "info",
+                "Obsidian export disabled",
+                "",
+                False,
+            )
+        ]
+
+    # Export is enabled — verify vault_path / memory_dir is accessible.
+    vault_path = Path(obsidian.vault_path).expanduser()
+    memory_dir = vault_path / obsidian.memory_dir
+    if vault_path.is_dir():
+        return [
+            CheckResult(
+                "config",
+                "obsidian_export",
+                "pass",
+                f"Obsidian export enabled; memory dir: {memory_dir}",
+                "",
+                False,
+            )
+        ]
+    return [
+        CheckResult(
+            "config",
+            "obsidian_export",
+            "warn",
+            f"Obsidian export enabled but vault not found: {vault_path}",
+            f"Create directory or update config: {vault_path}",
             False,
         )
     ]

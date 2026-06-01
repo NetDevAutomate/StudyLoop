@@ -459,3 +459,103 @@ def test_knowledge_domains_parsed(tmp_path):
     assert len(s.knowledge_domains.anchors) == 1
     assert len(s.knowledge_domains.secondary) == 1
     assert s.knowledge_domains.secondary[0].domain == "cooking"
+
+
+# ---------------------------------------------------------------------------
+# ObsidianConfig (obsidian: section)
+# ---------------------------------------------------------------------------
+
+
+def test_obsidian_section_fully_parsed(tmp_path):
+    """All keys in the obsidian: section are loaded into ObsidianConfig."""
+    config_path = _write_config(
+        tmp_path,
+        {
+            "obsidian": {
+                "export_enabled": True,
+                "vault_path": str(tmp_path / "vault"),
+                "memory_dir": "AgentMemory",
+                "moc_dir": "AgentMemory/MOC",
+                "backlinks": True,
+                "granularity": "both",
+            }
+        },
+    )
+    s = _load(config_path)
+
+    assert s.obsidian.export_enabled is True
+    assert s.obsidian.vault_path == tmp_path / "vault"
+    assert s.obsidian.memory_dir == "AgentMemory"
+    assert s.obsidian.moc_dir == "AgentMemory/MOC"
+    assert s.obsidian.backlinks is True
+    assert s.obsidian.granularity == "both"
+
+
+def test_obsidian_export_disabled_by_default(tmp_path):
+    """export_enabled defaults to False when the section is absent."""
+    config_path = _write_config(tmp_path, {"browser": "safari"})
+    s = _load(config_path)
+    assert s.obsidian.export_enabled is False
+
+
+def test_obsidian_vault_path_defaults_to_obsidian_base_when_absent(tmp_path):
+    """vault_path falls back to obsidian_base when not given in the obsidian: section."""
+    config_path = _write_config(
+        tmp_path,
+        {
+            "obsidian_base": str(tmp_path / "MyVault"),
+            "obsidian": {"export_enabled": False},
+        },
+    )
+    s = _load(config_path)
+    assert s.obsidian.vault_path == tmp_path / "MyVault"
+
+
+def test_obsidian_vault_path_defaults_to_obsidian_base_when_no_section(tmp_path):
+    """vault_path is aligned with obsidian_base even when the obsidian: section is missing."""
+    config_path = _write_config(
+        tmp_path,
+        {"obsidian_base": str(tmp_path / "MyVault")},
+    )
+    s = _load(config_path)
+    assert s.obsidian.vault_path == tmp_path / "MyVault"
+
+
+def test_obsidian_vault_path_explicit_wins_over_obsidian_base(tmp_path):
+    """An explicit vault_path in the obsidian: section overrides obsidian_base."""
+    config_path = _write_config(
+        tmp_path,
+        {
+            "obsidian_base": str(tmp_path / "Base"),
+            "obsidian": {
+                "export_enabled": True,
+                "vault_path": str(tmp_path / "Override"),
+            },
+        },
+    )
+    s = _load(config_path)
+    assert s.obsidian.vault_path == tmp_path / "Override"
+
+
+def test_obsidian_vault_path_tilde_expanded(tmp_path):
+    """vault_path with ~ is expanded to an absolute path."""
+    config_path = _write_config(
+        tmp_path,
+        {"obsidian": {"vault_path": "~/SomeVault"}},
+    )
+    s = _load(config_path)
+    assert s.obsidian.vault_path == Path.home() / "SomeVault"
+
+
+def test_obsidian_section_partial_override_uses_defaults(tmp_path):
+    """Partial obsidian: section uses dataclass defaults for missing keys."""
+    config_path = _write_config(
+        tmp_path,
+        {"obsidian": {"export_enabled": True}},
+    )
+    s = _load(config_path)
+    assert s.obsidian.export_enabled is True
+    assert s.obsidian.memory_dir == "AgentMemory"
+    assert s.obsidian.moc_dir == "AgentMemory/MOC"
+    assert s.obsidian.backlinks is True
+    assert s.obsidian.granularity == "both"

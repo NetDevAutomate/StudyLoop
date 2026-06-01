@@ -121,6 +121,27 @@ def setup() -> None:
             )
         else:
             console.print(f"  [green]Found vault at {obsidian_path}[/green]\n")
+            if not (obsidian_path / ".obsidian").is_dir():
+                console.print(
+                    f"  [yellow]Warning: no .obsidian/ folder found — "
+                    f"{obsidian_path} may not be a vault root.[/yellow]\n"
+                )
+            export_sessions = click.confirm(
+                "  Export agent session-memory notes to this vault?", default=False
+            )
+            if export_sessions:
+                config["obsidian"] = {
+                    "export_enabled": True,
+                    "vault_path": str(obsidian_raw),
+                    "memory_dir": "AgentMemory",
+                    "moc_dir": "AgentMemory/MOC",
+                    "backlinks": True,
+                    "granularity": "both",
+                }
+                console.print(
+                    "  [dim]Session-memory export enabled. "
+                    "Notes will be written to AgentMemory/ in your vault.[/dim]\n"
+                )
     else:
         console.print("  [dim]Skipped — you can set obsidian_base in config.yaml later.[/dim]\n")
 
@@ -140,8 +161,8 @@ def setup() -> None:
 
     # New values take precedence over existing
     merged = {**existing, **config}
-    # Nested dicts: merge content and notebooklm sub-keys
-    for key in ("content", "notebooklm"):
+    # Nested dicts: merge content, notebooklm, and obsidian sub-keys
+    for key in ("content", "notebooklm", "obsidian"):
         if key in existing and key in config and isinstance(existing[key], dict):
             merged[key] = {**existing[key], **config[key]}
 
