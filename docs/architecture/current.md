@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the Anthropic-compat adapter robustness work (MiniMax was trialled then removed for quiz quality), the scalable (mode-split, publisher-grouped, searchable) course-review list, and the opt-in Obsidian session-memory export (`session-export --obsidian`).
+> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the Anthropic-compat adapter robustness work (MiniMax was trialled then removed for quiz quality), the scalable (mode-split, publisher-grouped, searchable) course-review list, the opt-in Obsidian session-memory export (`session-export --obsidian`), and the in-browser neural TTS engine.
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -33,6 +33,10 @@ flowchart TB
       Bedrock["AWS Bedrock<br/>(cloud LLM)"]
     end
 
+    subgraph "Model hosting (first-run only)"
+      HF["Hugging Face<br/>(Kokoro-82M TTS weights,<br/>fetched by the browser,<br/>then cached on-device)"]
+    end
+
     Learner -->|"studyloop study<br/>or browser"| StudyLoop
     StudyLoop -->|"ACP / JSON-RPC<br/>over stdio"| Kiro
     StudyLoop -->|"ACP / JSON-RPC<br/>over stdio"| Gemini
@@ -41,9 +45,10 @@ flowchart TB
     StudyLoop -->|"PTY / raw bytes"| OpenCode
     StudyLoop -.->|"flashcard /<br/>quiz generation"| Ollama
     StudyLoop -.->|"flashcard /<br/>quiz generation"| Bedrock
+    Learner -.->|"browser fetches TTS model<br/>(first run, then offline)"| HF
 ```
 
-**Trust boundaries** — everything happens on the learner's machine. The only outbound network calls are (a) the agent CLI's own model calls (the agent owns those creds and policy) and (b) optional Bedrock for content generation. StudyLoop itself has no server-side component and never phones home.
+**Trust boundaries** — everything happens on the learner's machine. The only outbound network calls are (a) the agent CLI's own model calls (the agent owns those creds and policy), (b) optional Bedrock for content generation, and (c) a one-time browser fetch of the in-browser TTS model weights from Hugging Face (cached on-device thereafter; voice synthesis itself is fully local — no text is ever sent off-device). StudyLoop's Python server has no outbound component and never phones home.
 
 ---
 
@@ -469,9 +474,69 @@ flowchart TB
 
 ---
 
+## C4 Level 3 — Component (zoomed into in-browser neural TTS)
+
+Shipped 2026-06-01. Voice output is a **browser-only** subsystem — there is no server-side TTS component for the web path. The page downloads a neural model once and synthesises speech on-device (WebGPU/WASM); StudyLoop's FastAPI server only serves the static engine module and the vendored ONNX-runtime WASM. This is the first part of the system that reaches an external network host (Hugging Face) directly from the browser.
+
+```mermaid
+flowchart TB
+    subgraph Browser["Browser"]
+      direction TB
+      Settings["Alpine settings store<br/>(components.js)<br/>──────────<br/>speak() / stopSpeaking()<br/>isSpeaking, ttsDownloadPct<br/>listens: tts:state-change,<br/>tts:download-progress"]
+      Review["reviewApp.speakCurrentCard()<br/>(T key / speaker button)"]
+      Engine["ttsEngine singleton<br/>(tts-engine.js)<br/>──────────<br/>init() tier-select,<br/>speak(), stop(),<br/>listVoices()"]
+      Tiers["Tier selection<br/>──────────<br/>1. neural-webgpu (navigator.gpu)<br/>2. neural-wasm (numThreads=1)<br/>3. web-speech (fallback)"]
+      Kokoro["Kokoro-82M via transformers.js<br/>StyleTextToSpeech2Model<br/>+ AutoTokenizer + phonemizer"]
+      ORT["onnxruntime-web<br/>wasmPaths → /vendor/js/<br/>(jsep WASM: webgpu + wasm)"]
+      Audio["WebAudio<br/>──────────<br/>AudioBufferSourceNode;<br/>stop() halts source +<br/>settles play promise"]
+      Cache[("Cache Storage<br/>'transformers-cache' (~92 MB)<br/>'kokoro-voices'<br/>──────────<br/>spared by sw.js self-destruct")]
+    end
+
+    subgraph Server["studyloop web (FastAPI StaticFiles)"]
+      Static["/tts-engine.js<br/>/vendor/js/transformers-*.web.js<br/>/vendor/js/ort.all.bundle.min.mjs<br/>/vendor/js/ort-wasm-*.jsep.{wasm,mjs}"]
+    end
+
+    HF["Hugging Face<br/>(onnx-community/Kokoro-82M-v1.0-ONNX)<br/>model_quantized.onnx + voices"]
+
+    Settings --> Engine
+    Review --> Engine
+    Engine --> Tiers
+    Tiers --> Kokoro
+    Kokoro --> ORT
+    Engine --> Audio
+    Engine -.->|"import (importmap)"| Static
+    ORT -.->|"WASM from"| Static
+    Kokoro -->|"first run only"| HF
+    HF -->|"cached after 1st load"| Cache
+    Cache -->|"subsequent loads (offline)"| Kokoro
+    Engine -->|"events"| Settings
+```
+
+**Key invariants**:
+
+- **No COOP/COEP headers.** `env.backends.onnx.wasm.numThreads = 1` + WebGPU preference means `SharedArrayBuffer` is never requested, so `SecurityHeadersMiddleware` is untouched and the same-origin ttyd iframe (which relies on `X-Frame-Options: SAMEORIGIN`) keeps working. This is a deliberate engine-choice constraint, not an oversight.
+- **ORT WASM is pinned to vendored files.** `wasmPaths = '/vendor/js/'` stops transformers.js falling back to the jsdelivr CDN — which both breaks offline use and triggers a JS-glue/WASM version mismatch (`_OrtGetInputName is not a function`). The vendored `ort-wasm-simd-threaded.jsep.wasm` (23 MB, stored via Git LFS) serves both the webgpu and wasm execution providers.
+- **Model persists across reloads.** `env.useBrowserCache = true` (the library default) stores the ~92 MB q8 model in Cache Storage. The PWA service worker's self-destruct handler explicitly spares `transformers-cache` and `kokoro-voices`, so a code-asset refresh never forces a re-download.
+- **`stop()` is unified across tiers.** It halts the neural `AudioBufferSourceNode` (`.stop()` + `disconnect()`) AND settles the in-flight playback promise *before* suspending the AudioContext — a suspended context freezes the clock so `onended` never fires. Web-speech tier delegates to `speechSynthesis.cancel()`.
+- **Browser → Hugging Face is the only new egress.** First-run model fetch is the single direct browser-to-internet call; everything else (engine module, WASM) is same-origin from FastAPI. After first load the model is served from Cache Storage and voice works fully offline.
+
+### Component → file map (for the TTS surface)
+
+| Component | File | Notable lines |
+|---|---|---|
+| TTS engine (singleton, tiers, speak/stop) | `packages/studyloop/src/studyloop/web/static/tts-engine.js` | full file |
+| Settings store TTS wiring (speak / stopSpeaking / isSpeaking / download progress) | `packages/studyloop/src/studyloop/web/static/components.js` | ~44–200 |
+| `reviewApp.speakCurrentCard()` | `components.js` | ~590 |
+| Importmap + module load + stop button + progress bar | `index.html` | head (importmap) + header controls |
+| Service-worker model-cache preservation | `packages/studyloop/src/studyloop/web/static/sw.js` | self-destruct handler |
+| Vendored libs (LFS for `*.wasm`) | `packages/studyloop/src/studyloop/web/static/vendor/js/` | — |
+| TTS contract + stop-control tests | `packages/studyloop/tests/test_web_tts.py` | full file |
+
+---
+
 ## What's NOT in this diagram
 
-- **The Pomodoro overlay**, voice output, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline.
+- **The Pomodoro overlay**, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline. (Voice output is now documented in its own C4 L3 component section above.)
 - **The Generate panel UI surface** — see U8 in the [Generation Panel Plan](../plans/2026-05-29-001-feat-content-generation-panel-plan.md). Shipped on `main`.
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
 - **Legacy tmux + ttyd** — kept as fallback; documented in [Web UI Guide § Terminal Fallback (ttyd)](../web-ui-guide.md#terminal-fallback-ttyd). Will be retired once ACP + PTY web sessions cover all agents.

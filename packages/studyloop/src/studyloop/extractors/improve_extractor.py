@@ -125,7 +125,8 @@ def _mutate_prompt(
 def _write_candidate(prompt: str, metrics: dict[str, float]) -> None:
     """Persist the best prompt as an importable module."""
     content = (
-        '"""Best extractor prompt found by the P6 hill-climber. Generated — do not hand-edit."""\n\n'
+        '"""Best extractor prompt found by the P6 hill-climber. '
+        'Generated — do not hand-edit."""\n\n'
         f"# Train metrics at write time: {json.dumps(metrics)}\n\n"
         "EXTRACTOR_PROMPT = '''" + prompt.replace("'''", "\\'\\'\\'") + "'''\n"
     )
@@ -145,7 +146,9 @@ def hill_climb(
 
     # ── baseline-first ────────────────────────────────────────────────
     best_prompt = INITIAL_PROMPT
-    metrics, cost, scores = run_eval("train", db_path=db_path, prompt_template=best_prompt, client=client)
+    metrics, cost, scores = run_eval(
+        "train", db_path=db_path, prompt_template=best_prompt, client=client
+    )
     cumulative_cost += cost
     best_f1 = metrics["f1"]
     append_results_row(
@@ -214,7 +217,9 @@ def hill_climb(
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Hill-climb the extractor prompt to thresholds.")
-    ap.add_argument("--db", type=Path, default=Path.home() / ".config" / "studyloop" / "sessions.db")
+    ap.add_argument(
+        "--db", type=Path, default=Path.home() / ".config" / "studyloop" / "sessions.db"
+    )
     ap.add_argument("--profile", default="arraafat+prod-user")
     ap.add_argument("--budget-usd", type=float, default=2.0)
     ap.add_argument("--max-iterations", type=int, default=20)

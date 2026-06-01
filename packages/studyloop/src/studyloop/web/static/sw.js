@@ -1,10 +1,21 @@
-/* Self-destruct: unregister and clear all caches on activate.
+/* Self-destruct: unregister and clear app-shell caches on activate.
    This ensures browsers pick up fresh assets after code changes.
-   Re-enable caching by reverting this block and bumping CACHE version. */
+   Re-enable caching by reverting this block and bumping CACHE version.
+
+   EXCEPTION: the neural-TTS model caches are spared. 'transformers-cache'
+   holds the ~92 MB Kokoro weights and 'kokoro-voices' holds voice embeddings;
+   wiping them would force a multi-MB re-download on every code change. They are
+   content-addressed by URL, so stale entries are not a correctness risk. */
+const TTS_PRESERVE = new Set(["transformers-cache", "kokoro-voices"]);
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n))))
+    caches.keys()
+      .then((names) =>
+        Promise.all(
+          names.filter((n) => !TTS_PRESERVE.has(n)).map((n) => caches.delete(n))
+        )
+      )
       .then(() => self.clients.matchAll())
       .then((clients) => clients.forEach((c) => c.navigate(c.url)))
   );

@@ -101,14 +101,14 @@ def _persist_session_data(
     try:
         from studyloop.history import record_progress
 
-        _CONFIDENCE = {
+        confidence_by_status = {
             "win": "confident",
             "insight": "confident",
             "struggling": "struggling",
             "learning": "learning",
         }
         for entry in topic_entries:
-            confidence = _CONFIDENCE.get(entry.status)
+            confidence = confidence_by_status.get(entry.status)
             if confidence is None or not entry.topic.strip():
                 continue
             record_progress(
