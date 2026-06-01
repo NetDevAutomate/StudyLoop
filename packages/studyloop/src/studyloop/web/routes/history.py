@@ -7,7 +7,7 @@ import sqlite3
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
-from studyloop.history.progress import get_struggling_topics
+from studyloop.history.progress import get_struggling_topics, record_progress
 from studyloop.review_db import ensure_tables, record_session
 from studyloop.settings import get_db_path
 
@@ -68,6 +68,36 @@ def post_session(body: SessionRequest) -> dict:
         duration_seconds=body.duration_seconds,
     )
     return {"ok": True}
+
+
+class StruggleRequest(BaseModel):
+    """POST /api/history/struggling-topics request body."""
+
+    course: str
+    section: str
+    publisher: str | None = None
+    note: str | None = None
+
+
+@router.post("/history/struggling-topics")
+def post_struggling_topic(body: StruggleRequest) -> dict:
+    """Flag a lesson section as a struggle topic.
+
+    Writes a study_progress row with confidence='struggling' and full
+    course/section provenance so the row surfaces in GET struggling-topics
+    and drives deck generation without any extra plumbing.
+    """
+    ok = record_progress(
+        topic=body.course,
+        concept=body.section,
+        confidence="struggling",
+        notes=body.note,
+        source_course=body.course,
+        source_section=body.section,
+        source_publisher=body.publisher,
+        created_by="web",
+    )
+    return {"ok": ok}
 
 
 @router.get("/history/struggling-topics")

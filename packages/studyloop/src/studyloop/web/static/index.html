@@ -489,7 +489,7 @@
         <!-- ---- Reader view (M3) ---- -->
         <div x-show="view === 'reader'" class="explorer-reader-view">
 
-          <!-- Reader header: back button + lesson title -->
+          <!-- Reader header: back button + lesson title + struggle flag -->
           <div class="explorer-reader-header">
             <button class="nav-btn" @click="backToBrowser()" title="Back to courses"
                     aria-label="Back to courses">
@@ -497,7 +497,21 @@
             </button>
             <span class="explorer-reader-title"
                   x-text="activeLesson ? activeLesson.name : ''"></span>
+            <button class="explorer-struggle-btn"
+                    x-show="activeLesson"
+                    @click="markStruggle()"
+                    :disabled="struggleMarked"
+                    :title="struggleMarked ? 'Marked as struggle topic' : 'Mark this section as a struggle topic'"
+                    :aria-pressed="struggleMarked ? 'true' : 'false'"
+                    aria-label="Mark as struggling">
+              <span x-text="struggleMarked ? '✓ Marked' : 'Struggling?'"></span>
+            </button>
           </div>
+          <!-- Inline error for struggle marking failure -->
+          <div x-show="struggleError"
+               class="explorer-error"
+               style="padding:2px 12px 4px;font-size:0.75rem;"
+               x-text="struggleError"></div>
 
           <!-- Loading state -->
           <div x-show="readerLoading" class="explorer-loading">

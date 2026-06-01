@@ -76,8 +76,23 @@ def record_progress(
     concept: str,
     confidence: str,
     notes: str | None = None,
+    *,
+    source_course: str | None = None,
+    source_section: str | None = None,
+    source_publisher: str | None = None,
+    created_by: str = "agent",
 ) -> bool:
-    """Record or update progress on a concept."""
+    """Record or update progress on a concept.
+
+    The optional keyword-only arguments (source_course, source_section,
+    source_publisher, created_by) capture provenance when the struggle is
+    flagged from a specific course lesson in the web UI (Phase 5).  Existing
+    callers that omit them continue to work: new columns default to None /
+    'agent'.
+
+    The ON CONFLICT COALESCE pattern means a later call without provenance
+    will not overwrite provenance written by an earlier web-flagged row.
+    """
     conn = _connection._connect()
     if not conn:
         return False
@@ -90,16 +105,33 @@ def record_progress(
         conn.execute(
             """
             INSERT INTO study_progress
-                (id, topic, concept, confidence, first_seen, last_seen, session_count, notes)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+                (id, topic, concept, confidence, first_seen, last_seen, session_count,
+                 notes, source_course, source_section, source_publisher, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 confidence = excluded.confidence,
                 last_seen = excluded.last_seen,
                 session_count = session_count + 1,
                 notes = COALESCE(excluded.notes, notes),
+                source_course = COALESCE(excluded.source_course, source_course),
+                source_section = COALESCE(excluded.source_section, source_section),
+                source_publisher = COALESCE(excluded.source_publisher, source_publisher),
+                created_by = COALESCE(excluded.created_by, created_by),
                 updated_at = datetime('now')
             """,
-            (progress_id, topic, concept, confidence, now, now, notes),
+            (
+                progress_id,
+                topic,
+                concept,
+                confidence,
+                now,
+                now,
+                notes,
+                source_course,
+                source_section,
+                source_publisher,
+                created_by,
+            ),
         )
         conn.commit()
         return True
@@ -240,9 +272,7 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
     finally:
         conn.close()
 
-    return sorted(
-        merged.values(), key=lambda d: d["last_seen"] or "", reverse=True
-    )
+    return sorted(merged.values(), key=lambda d: d["last_seen"] or "", reverse=True)
 
 
 def get_progress_for_map() -> list[dict]:

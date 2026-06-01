@@ -3282,6 +3282,35 @@ body[data-palette="everforest"] {
   white-space: nowrap;
 }
 
+/* Phase 5: "Struggling?" button in the reader header.
+   Sits to the right of the lesson title; ml-auto pushes it flush-right.
+   Transitions to a muted "confirmed" state when struggleMarked=true. */
+.explorer-struggle-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.explorer-struggle-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--bg-card);
+}
+.explorer-struggle-btn:disabled {
+  border-color: var(--success, #9ece6a);
+  color: var(--success, #9ece6a);
+  cursor: default;
+  opacity: 0.85;
+}
+
 /* Reader prose container: scrollable, padded, readable line-length. */
 .explorer-reader-prose {
   flex: 1;

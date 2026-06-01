@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 21
+CURRENT_VERSION = 22
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -731,6 +731,23 @@ def migrate_v21(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_study_sessions_slug "
         "ON study_sessions(topic_slug)"
     )
+
+
+@migration(
+    22, "Add course/section provenance to study_progress for web-flagged struggles"
+)
+def migrate_v22(conn: sqlite3.Connection) -> None:
+    """Add source_course, source_section, source_publisher, created_by to study_progress.
+
+    These columns record where a struggle was flagged from (web UI, agent, etc.)
+    and which course/section triggered the flag. All columns are nullable so
+    existing rows remain valid; created_by defaults to 'agent' for back-compat.
+    """
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(study_progress)")}
+    for col in ("source_course", "source_section", "source_publisher", "created_by"):
+        if col not in existing:
+            default = " DEFAULT 'agent'" if col == "created_by" else ""
+            conn.execute(f"ALTER TABLE study_progress ADD COLUMN {col} TEXT{default}")
 
 
 def check_migration_status(db_path: Path) -> dict:
