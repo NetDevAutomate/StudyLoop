@@ -42,7 +42,7 @@ flowchart TB
 
 ## Pluggable Provider Abstraction
 
-Five real providers (OpenAI, OpenRouter, Gemini, MiniMax, Anthropic) plus the legacy Ollama/Bedrock paths and the test-only Stub backend all share one factory: `studyloop.content.generators.get_generator(config)`. Two generic adapter classes carry every HTTP-backed provider:
+Seven providers — OpenAI, OpenRouter, Gemini, MiniMax, Anthropic, **AWS Bedrock**, and **Ollama** — plus the test-only Stub backend all share one factory: `studyloop.content.generators.get_generator(config)` and one registry (`provider_profiles.py`). Bedrock and Ollama are now **first-class registry entries** (not ad-hoc paths): the registry drives the Generate panel and the Settings → LLM Providers panel uniformly. Two generic adapter classes carry the HTTP-backed providers; Bedrock keeps its own boto3/Converse generator and Ollama its own local generator:
 
 ```mermaid
 flowchart LR
@@ -71,17 +71,37 @@ flowchart LR
 
 ### Provider profile registry
 
-The registry is data, not code. Each entry binds a slug to an adapter class, base URL, env var, and curated model list:
+The registry is data, not code. Each entry binds a slug to an adapter class, base URL, auth, and curated model list. The **auth kind** drives how the Settings panel renders that provider's controls and how availability is computed:
 
-| Slug | Adapter | Base URL | Auth env | Notes |
-|---|---|---|---|---|
-| `openai` | OpenAI-compat | `api.openai.com/v1` | `OPENAI_API_KEY` | Includes thinking models (o3-mini) |
-| `openrouter` | OpenAI-compat | `openrouter.ai/api/v1` | `OPENROUTER_API_KEY` | Single key, many backing models |
-| `gemini` | OpenAI-compat | `generativelanguage.googleapis.com/v1beta/openai` | `GEMINI_API_KEY` | Google's OpenAI-compat shim |
-| `minimax` | **Anthropic-compat** | `api.minimax.io/anthropic` | `MINIMAX_API_KEY` | Speaks the Messages API natively |
-| `anthropic` | Anthropic-compat | `api.anthropic.com` | `ANTHROPIC_API_KEY` | Includes Claude Haiku/Sonnet/Opus |
+| Slug | Adapter | Base URL | Auth kind | Auth source | Notes |
+|---|---|---|---|---|---|
+| `openai` | OpenAI-compat | `api.openai.com/v1` | `api_key` | `OPENAI_API_KEY` | Includes thinking models (o3-mini) |
+| `openrouter` | OpenAI-compat | `openrouter.ai/api/v1` | `api_key` | `OPENROUTER_API_KEY` | Single key, many backing models |
+| `gemini` | OpenAI-compat | `generativelanguage.googleapis.com/v1beta/openai` | `api_key` | `GEMINI_API_KEY` | Google's OpenAI-compat shim |
+| `minimax` | **Anthropic-compat** | `api.minimax.io/anthropic` | `api_key` | `MINIMAX_API_KEY` | Speaks the Messages API natively (see adapter note below) |
+| `anthropic` | Anthropic-compat | `api.anthropic.com` | `api_key` | `ANTHROPIC_API_KEY` | Includes Claude Haiku/Sonnet/Opus |
+| `bedrock` | Bedrock (boto3/Converse) | — | `bedrock_bearer` | AWS profile/SigV4, or optional `AWS_BEARER_TOKEN_BEDROCK` | Model IDs are cross-region **inference profiles** (e.g. `us.anthropic.claude-sonnet-4-6`), verified per account |
+| `ollama` | Ollama (local) | `http://localhost:11434` | `local_keyless` | none | Base URL stored as the `ollama_base_url` secret; available iff the endpoint responds |
 
 **Adding a new provider** = one row in `PROFILES` + a curated model list + (optionally) one row in `.env.example`. No new generator code, no new tests beyond the live-smoke parametrise list expanding automatically.
+
+> **Bedrock model IDs are account-specific.** The curated list uses cross-region inference-profile IDs (e.g. `us.anthropic.claude-sonnet-4-6`), **not** the raw dated foundation-model IDs (`...-20251101-v1:0`), which raise `ValidationException: provided model identifier is invalid` in many accounts. Verify available profiles with `aws bedrock list-inference-profiles --region <r>` before relying on a given ID.
+
+### Credential resolution (encrypted store first)
+
+`secrets.get_secret(slug)` resolves credentials in this order:
+
+1. **Encrypted store** — `~/.config/studyloop/secrets.bin` (Fernet token; key seed in `~/.config/studyloop/.secrets-key`, mode `0600`). Written by the **Settings → LLM Providers** panel after a live verification. This is the recommended path and is honoured by every adapter.
+2. **Environment / `.env`** — the `Auth source` env var above.
+
+This means a key added in the web UI takes effect immediately, with no `.env` edit and no shell export.
+
+### MiniMax adapter hardening
+
+MiniMax's M2.7 (via the `/anthropic` shim) has two quirks the Anthropic-compat adapter handles:
+
+- **Schema-correction retries must carry a `tool_result` block**, not a plain-text user turn — the strict shim rejects the latter with error 2013 (`tool call result does not follow tool call`). The adapter emits a protocol-valid `tool_result` correction.
+- **Tool calls are sometimes emitted as inline XML** (`<minimax:tool_call><invoke …><parameter …>`) inside a text block instead of a native `tool_use` block (~half the time). The adapter parses that inline markup as a fallback, and the shared `call_with_correction` loop retries a transient bad emission within its budget so a single malformed response doesn't hard-fail the job.
 
 ### Curation policy
 
@@ -95,7 +115,7 @@ The `thinking` flag on a model entry triggers a 3× `request_timeout` multiplier
 
 ### `.env` loading
 
-`studyloop/__init__.py` calls `dotenv.load_dotenv(override=False)` on package import. Project-root `.env` is loaded; explicitly-exported shell vars always win. Keys are documented in `.env.example`.
+`studyloop/__init__.py` calls `dotenv.load_dotenv(override=False)` on package import. Project-root `.env` is loaded; explicitly-exported shell vars always win. Keys are documented in `.env.example`. **Note:** for API-key providers the encrypted store (above) is checked *before* the environment, so the Settings panel is the preferred way to set keys; `.env` remains a valid fallback for headless/CI use.
 
 ### Adapter wire-shape divergences (the genuine differences)
 
@@ -217,7 +237,7 @@ Quizzes:
 
 ```yaml
 content:
-  base_path: ~/study-materials
+  base_path: ~/Obsidian/Personal/Study   # where generated decks are WRITTEN
   study_paths:
     - ~/Obsidian/Personal/Study
 
@@ -227,7 +247,16 @@ card_generator:
   ollama:
     base_url: http://localhost:11434
     model: qwen2.5:7b
+
+# Optional: where the review panels READ decks from. If omitted, the panels
+# fall back to content.base_path, so generated decks are discoverable with no
+# extra config. Set this only to point the reviewer at additional roots.
+# review:
+#   directories:
+#     - ~/Obsidian/Personal/Study
 ```
+
+> **Write root vs read root.** Generation writes decks under `content.base_path/<publisher>/<course>/{flashcards,quizzes}/`. The review panels discover decks via `review.directories`; when that key is unset, `settings.resolve_study_dirs()` falls back to `content.base_path`, and discovery walks the 3-level `publisher/course` tree. (Earlier, an unset `review.directories` left the panels empty even though decks were on disk — that fallback is now automatic.)
 
 ## Target Parser Architecture
 

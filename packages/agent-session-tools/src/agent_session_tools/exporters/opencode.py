@@ -70,7 +70,7 @@ class OpenCodeExporter:
             # Collect messages for this session
             messages = self._collect_messages(session_id)
             if not messages:
-                stats.skipped += 1
+                stats.empty += 1
                 continue
 
             batch.append(

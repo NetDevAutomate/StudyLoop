@@ -242,9 +242,42 @@ study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
 | `aider` | Aider |
 | `opencode` | OpenCode |
 | `litellm` | LiteLLM |
+| `bedrock` | Bedrock proxy |
 | `repoprompt` | RepoPrompt |
 | `pi` | pi coding agent (`@earendil-works/pi-coding-agent`) |
 | `omp` | oh-my-pi (`@oh-my-pi/pi-coding-agent`) |
+
+### Results & Incremental Behaviour
+
+By default `session-export` runs **incrementally**: it only imports sessions
+that are new or whose source file changed since the last export. The summary
+reports four outcomes:
+
+| Outcome | Meaning |
+|---------|---------|
+| `added` | New session imported for the first time |
+| `updated` | Existing session re-imported because its source changed |
+| `skipped` | Already up-to-date since last export (unchanged) — **not** re-read |
+| `empty` | No extractable messages (header-only, content-less, or only tool-results) |
+
+```text
+Export results:
+  added:   0
+  updated: 6
+  skipped: 710 (unchanged since last export)
+  empty:   96 (no extractable messages)
+
+note: 'skipped' = sessions already up-to-date since last export;
+re-run with --full to force a full re-import.
+```
+
+`skipped` is the steady-state for a repeat run — a large `skipped` count is
+normal and means deduplication is working, not that anything failed. `empty`
+is tracked separately so a session with no usable text is never mistaken for
+one that was simply unchanged.
+
+Use `--full` to ignore change-detection and re-import every session (every
+unchanged session then re-imports as `updated` instead of `skipped`).
 
 ### Install & Export Examples
 

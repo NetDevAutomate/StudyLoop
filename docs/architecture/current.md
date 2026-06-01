@@ -1,8 +1,8 @@
 # Current Architecture
 
-> Last updated: 2026-05-28. Reflects the ACP chat-UI feature shipped 2026-05-27 and the dogfood hotfix landed 2026-05-28 (commit `bfe9210`).
+> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the MiniMax adapter hardening, and the scalable (mode-split, publisher-grouped, searchable) course-review list.
 
-This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat surface).
+This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
 For the planned direction, see [Target Architecture](target.md).
 
@@ -256,11 +256,13 @@ flowchart TB
       Runner["generate_concurrently<br/>(generators/runner.py)"]
       Factory["get_generator<br/>(generators/__init__.py)"]
       Adapters["StubGenerator<br/>OllamaGenerator<br/>BedrockGenerator<br/>OpenAICompatGenerator<br/>AnthropicCompatGenerator"]
+      Secrets["secrets.get_secret(slug)<br/>──────────<br/>encrypted store → env.<br/>auth_kind: api_key /<br/>bedrock_bearer / local_keyless"]
       Helpers["on-existing helpers<br/>(storage.next_unique_path,<br/>FlashcardDeck.merge_dedupe,<br/>QuizDeck.merge_dedupe)"]
     end
 
-    Disk[("content.base_path/<br/>course/flashcards/<br/>course/quizzes/")]
-    Reviewer["/api/cards, /api/quizzes<br/>(existing reviewer)"]
+    Store[("~/.config/studyloop/<br/>secrets.bin (Fernet)")]
+    Disk[("content.base_path/<br/>&lt;publisher&gt;/&lt;course&gt;/<br/>flashcards/ + quizzes/")]
+    Reviewer["/api/courses, /api/cards<br/>(review surface — see below)"]
 
     Form --> RestCall --> Routes
     Form --> WsOpen
@@ -274,13 +276,15 @@ flowchart TB
     Job --> Scope
     Job --> Factory
     Factory --> Adapters
+    Adapters -->|"resolve key/token"| Secrets
+    Secrets -.reads.- Store
     Job --> Runner
     Runner -->|"on_complete callback"| Job
     Job --> Helpers
     Helpers --> Disk
     Job -->|release| Single
 
-    Disk -->|already read by| Reviewer
+    Disk -->|discovered by| Reviewer
 ```
 
 **Job lifecycle (one click of Generate)**:
@@ -351,16 +355,95 @@ sequenceDiagram
 | Shared retry-with-correction helper | `packages/studyloop/src/studyloop/content/generators/_retry.py` | full file |
 | On-existing helpers (merge / unique-path) | `packages/studyloop/src/studyloop/content/{schemas,storage}.py` | `merge_dedupe`, `next_unique_path` |
 | `.env` autoload | `packages/studyloop/src/studyloop/__init__.py` | full file |
+| Encrypted secret store + auth-kind taxonomy | `packages/studyloop/src/studyloop/secrets.py` | `get_secret`, `set_secret`, `get_auth_kind` |
+| Provider auth tests (Bedrock bearer / Ollama) | `packages/studyloop/src/studyloop/provider_auth.py` | full file |
 | `live_provider` pytest marker | `packages/studyloop/pyproject.toml` | `[tool.pytest.ini_options]` |
 | Live MVD smoke (parametrised over registry) | `packages/studyloop/tests/test_live_provider_smoke.py` | full file |
 | MVD source fixture (photosynthesis) | `packages/studyloop/tests/fixtures/mvd_source.md` | full file |
 
 ---
 
+## C4 Level 3 — Component (Review surface + Settings → LLM Providers)
+
+The third browser surface: the **Flashcards/Quizzes review list** (where generated
+decks are consumed) and the **Settings → LLM Providers** admin panel (where
+generation credentials are managed). Both shipped on `main` 2026-06-01.
+
+```mermaid
+flowchart TB
+    subgraph Browser["Browser — Alpine"]
+      direction TB
+      Review["reviewApp('flashcards' | 'quiz')<br/>──────────<br/>mode-split list.<br/>filteredCourses (mode + search),<br/>groupedCourses (by publisher),<br/>toggleGroup, searchQuery"]
+      Settings["settingsPanel()<br/>──────────<br/>one row per provider,<br/>controls per auth_kind;<br/>Test &amp; save → live verify"]
+    end
+
+    subgraph Backend["Server — FastAPI"]
+      direction TB
+      Courses["GET /api/courses<br/>(+ publisher field)"]
+      Cards["GET /api/cards/&lt;course&gt;"]
+      Providers["GET /api/content/providers<br/>(auth_kind + availability)"]
+      Test["POST /api/content/providers/&lt;slug&gt;/test"]
+      SecretsRoute["POST/DELETE /api/content/secrets"]
+      Resolve["settings.resolve_study_dirs()<br/>──────────<br/>review.directories,<br/>else content.base_path"]
+      Discover["review_loader.discover_directories<br/>──────────<br/>recursive walk of<br/>&lt;publisher&gt;/&lt;course&gt; (depth 4),<br/>stops at first deck-bearing dir"]
+      Auth["provider_auth + secrets<br/>──────────<br/>get_auth_kind, get_secret,<br/>test_bedrock_bearer / ollama"]
+    end
+
+    Disk[("content.base_path/<br/>&lt;publisher&gt;/&lt;course&gt;/<br/>flashcards/ + quizzes/")]
+    Store[("~/.config/studyloop/<br/>secrets.bin")]
+
+    Review -->|list| Courses
+    Review -->|study| Cards
+    Courses --> Resolve --> Discover --> Disk
+    Cards --> Discover
+
+    Settings -->|load| Providers
+    Settings -->|verify| Test
+    Settings -->|store/remove| SecretsRoute
+    Providers --> Auth
+    Test --> Auth
+    SecretsRoute --> Store
+    Auth -.reads.- Store
+```
+
+**Key points:**
+
+- **Mode split** lives entirely in the shared `reviewApp` component: each panel is
+  instantiated with its `mode` (`'flashcards'` or `'quiz'`), and `filteredCourses`
+  gates the list on the matching count before the search filter. The Flashcards
+  panel shows only flashcard decks (single Flashcards action); Quizzes mirrors.
+- **Scaling** is `groupedCourses` (group `filteredCourses` by the API's new
+  `publisher` field) + collapsible group headers + a name search box + compact
+  one-line rows.
+- **Write root ≠ read root.** Generation writes under `content.base_path`; the
+  reviewer reads via `resolve_study_dirs()`, which falls back to `content.base_path`
+  when `review.directories` is unset, and `discover_directories` walks the
+  3-level `publisher/course` tree. (Before this, an unset `review.directories`
+  silently left the panels empty.)
+- **`name` is the identity key** for `/api/cards`, `openConfig`, and the SM-2
+  review DB. `publisher` is display/grouping only — never keyed on.
+- **Settings stores credentials only after a live verification** (auth call for
+  api_key, AWS-cred check for Bedrock, real generation for Ollama), encrypted in
+  `secrets.bin`. The same store backs the Generate panel's provider availability.
+
+### Component → file map (Review + Settings)
+
+| Component | File | Notable |
+|---|---|---|
+| Review list + mode-split + grouping/search | `web/static/index.html` (courses views) + `web/static/components.js` | `reviewApp`, `filteredCourses`, `groupedCourses`, `toggleGroup` |
+| Settings panel | `web/static/index.html` (`settingsPanel()` block) + `components.js` | per-`auth_kind` rows |
+| Course list + publisher field | `packages/studyloop/src/studyloop/services/review.py` | `list_course_summaries` |
+| Read-root resolver | `packages/studyloop/src/studyloop/settings.py` | `resolve_study_dirs` |
+| Recursive deck discovery | `packages/studyloop/src/studyloop/review_loader.py` | `discover_directories` |
+| Course / cards routes | `packages/studyloop/src/studyloop/web/routes/courses.py`, `cards.py` | — |
+| Providers / test / secrets routes | `packages/studyloop/src/studyloop/web/routes/content_gen.py` | `list_providers`, `/providers/{slug}/test`, `/secrets` |
+| Scale + settings e2e | `tests/test_web_course_list_scale_e2e.py`, `tests/test_web_settings_panel_e2e.py` | geometry + behaviour |
+
+---
+
 ## What's NOT in this diagram
 
 - **The Pomodoro overlay**, voice output, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline.
-- **The flashcard / quiz review path** — separate from interactive sessions; covered in [Web UI Guide](../web-ui-guide.md).
-- **The Generate panel UI surface** — see U8 in the [Generation Panel Plan](../plans/2026-05-29-001-feat-content-generation-panel-plan.md). Backend is shipped as of 2026-05-28; UI is Session-2 work.
+- **The Generate panel UI surface** — see U8 in the [Generation Panel Plan](../plans/2026-05-29-001-feat-content-generation-panel-plan.md). Shipped on `main`.
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
 - **Legacy tmux + ttyd** — kept as fallback; documented in [Web UI Guide § Terminal Fallback (ttyd)](../web-ui-guide.md#terminal-fallback-ttyd). Will be retired once ACP + PTY web sessions cover all agents.

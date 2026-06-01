@@ -109,9 +109,12 @@ class LitellmExporter:
             # Export each session
             for session in sessions:
                 try:
-                    if self._export_session(conn, session, incremental):
+                    status = self._export_session(conn, session, incremental)
+                    if status == "added":
                         stats.added += 1
-                    else:
+                    elif status == "empty":
+                        stats.empty += 1
+                    else:  # "skipped" — already imported, unchanged
                         stats.skipped += 1
                 except Exception:
                     logger.warning("Failed to export session", exc_info=True)
@@ -383,21 +386,26 @@ class LitellmExporter:
 
     def _export_session(
         self, conn: sqlite3.Connection, session: dict, incremental: bool
-    ) -> bool:
-        """Export single session to Agent Session Tools database."""
+    ) -> str:
+        """Export single session to Agent Session Tools database.
+
+        Returns the outcome status: ``"added"`` on insert, ``"skipped"`` when the
+        session is already imported (unchanged), or ``"empty"`` when it has no
+        extractable messages.
+        """
         session_id = session["id"]
 
-        # Check if already imported (incremental mode)
+        # Already imported and unchanged — skip
         if incremental:
             existing = conn.execute(
                 "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
             ).fetchone()
             if existing:
-                return False
+                return "skipped"
 
-        # Skip sessions with no messages
+        # No extractable content — empty
         if not session["messages"]:
-            return False
+            return "empty"
 
         # Insert session record
         conn.execute(
@@ -437,4 +445,4 @@ class LitellmExporter:
             ],
         )
 
-        return True
+        return "added"

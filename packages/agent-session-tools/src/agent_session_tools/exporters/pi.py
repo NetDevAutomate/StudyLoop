@@ -153,7 +153,9 @@ class PiFamilyExporter:
 
         for session_file in sorted(self._root.rglob("*.jsonl")):
             try:
-                session_data, msgs = self._process_file(conn, session_file, incremental)
+                session_data, msgs, reason = self._process_file(
+                    conn, session_file, incremental
+                )
                 if session_data is not None:
                     batch.append(session_data)
                     batch_messages.extend(msgs)
@@ -161,6 +163,10 @@ class PiFamilyExporter:
                         commit_batch(conn, batch, batch_messages, stats)
                         batch = []
                         batch_messages = []
+                elif reason == "skipped":
+                    stats.skipped += 1
+                elif reason == "empty":
+                    stats.empty += 1
             except Exception:
                 stats.errors += 1
 
@@ -178,24 +184,26 @@ class PiFamilyExporter:
         conn: sqlite3.Connection,
         session_file: Path,
         incremental: bool,
-    ) -> tuple[dict | None, list[dict]]:
+    ) -> tuple[dict | None, list[dict], str | None]:
         """Parse one JSONL session file.
 
-        Returns ``(session_dict, message_rows)`` or ``(None, [])`` when the
-        file should be skipped.
+        Returns ``(session_dict, message_rows, reason)``. ``reason`` explains a
+        ``None`` session: ``"skipped"`` (unchanged ``updated_at``) or ``"empty"``
+        (no header, no id, or no extractable messages). It is ``None`` when a
+        session is returned for import.
         """
         lines = session_file.read_text(encoding="utf-8").splitlines()
         if not lines:
-            return None, []
+            return None, [], "empty"
 
         header = _parse_header(lines[0])
         if header is None:
             # File does not start with a valid session header — skip
-            return None, []
+            return None, [], "empty"
 
         session_id = header.get("id", "")
         if not session_id:
-            return None, []
+            return None, [], "empty"
 
         header_ts = _header_timestamp(header)
         cwd = header.get("cwd", "")
@@ -266,9 +274,8 @@ class PiFamilyExporter:
             )
 
         if not messages:
-            # No extractable content — skip (caller leaves stats untouched, matching
-            # opencode.py, which also never counts content-less sessions as skipped).
-            return None, []
+            # No extractable content — caller counts this as "empty".
+            return None, [], "empty"
 
         # Assign sequence numbers
         for idx, m in enumerate(messages):
@@ -285,7 +292,7 @@ class PiFamilyExporter:
 
         if existing and incremental:
             if existing["updated_at"] == updated_at:
-                return None, []
+                return None, [], "skipped"
             # Updated — delete stale messages
             conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
             status = "updated"
@@ -309,7 +316,7 @@ class PiFamilyExporter:
             "status": status,
         }
 
-        return session_data, messages
+        return session_data, messages, None
 
 
 # Concrete instances used by the exporter registry

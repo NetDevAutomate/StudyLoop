@@ -312,7 +312,7 @@ class TestExportAll:
         assert messages[1]["content"] == "Updated answer"
 
     def test_empty_messages_session_skipped(self, migrated_db, tmp_path, monkeypatch):
-        """A session file with zero messages should be skipped, not error."""
+        """A session file with zero messages is counted as empty, not error."""
         gemini_tmp = tmp_path / "gemini_empty_msg"
         chats = gemini_tmp / "proj" / "chats"
         chats.mkdir(parents=True)
@@ -325,4 +325,5 @@ class TestExportAll:
         stats = exporter.export_all(conn, incremental=False)
 
         assert stats.added == 0
-        assert stats.skipped == 1
+        assert stats.empty == 1
+        assert stats.skipped == 0

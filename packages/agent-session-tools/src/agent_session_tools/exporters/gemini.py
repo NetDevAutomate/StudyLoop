@@ -63,7 +63,7 @@ class GeminiCliExporter:
                         status = "added"
 
                     if not messages:
-                        stats.skipped += 1
+                        stats.empty += 1
                         continue
 
                     session_data = {
