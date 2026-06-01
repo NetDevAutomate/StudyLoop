@@ -6,6 +6,19 @@ import subprocess
 from pathlib import Path
 
 
+def test_justfile_has_shellcheck_recipe_for_install_and_release_scripts() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    justfile = repo_root / "Justfile"
+    justfile_text = justfile.read_text()
+
+    assert "shellcheck:" in justfile_text
+    assert "shellcheck \\" in justfile_text
+    assert "scripts/install.sh" in justfile_text
+    assert "scripts/smoke-installed-cli.sh" in justfile_text
+    assert "scripts/build-release.sh" in justfile_text
+    assert "scripts/smoke-uv-tool-install.sh" in justfile_text
+
+
 def test_install_script_smoke_checks_run_self_test_json() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     script = repo_root / "scripts" / "install.sh"

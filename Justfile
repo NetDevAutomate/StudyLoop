@@ -61,6 +61,13 @@ lint:
     uv run --group dev ruff check .
     uv run --group dev ruff format --check .
 
+shellcheck:
+    shellcheck \
+        scripts/install.sh \
+        scripts/smoke-installed-cli.sh \
+        scripts/build-release.sh \
+        scripts/smoke-uv-tool-install.sh
+
 typecheck:
     uv run --group dev pyright
 
