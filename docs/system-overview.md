@@ -30,6 +30,7 @@ flowchart TB
         Agent["Selected assistant<br/>Claude/Codex/Gemini/Kiro/OpenCode"]
         Tmux["tmux/Textual<br/>current runtime"]
         Web["Web/PWA<br/>dashboard + review"]
+        Explorer["Course Explorer<br/>(browse + read + search<br/>study material)"]
         TTYD["ttyd<br/>browser terminal fallback"]
     end
 
@@ -51,6 +52,9 @@ flowchart TB
     Tmux --> Agent
     Studyctl --> Web
     Web --> TTYD
+    Web --> Explorer
+    Explorer -->|"reads source material"| Obsidian
+    Explorer -->|"writes struggle flags"| DB
     TTYD --> Tmux
     Agent --> DB
     AST --> DB
@@ -166,8 +170,9 @@ flowchart TD
 | Store | Purpose |
 |---|---|
 | SQLite `sessions.db` | study sessions, progress, review state, imported assistant sessions |
+| SQLite `explorer_fts.db` | derived lesson full-text index (rebuildable cache, separate from `sessions.db`, no migration) |
 | IPC files | current live session state for sidebar/dashboard |
-| `content.base_path` | generated flashcard and quiz JSON |
+| `content.base_path` | source study material (markdown/text) + generated flashcard and quiz JSON |
 | assistant session dirs | per-agent local conversation state |
 
 ## Optional Integrations
