@@ -1,6 +1,11 @@
 # Voice Output
 
-`study-speak` is a TTS CLI tool that speaks agent responses aloud using kokoro-onnx — an 82M parameter model with the `am_michael` voice. Designed for AuDHD learners who benefit from auditory reinforcement alongside visual text.
+StudyLoop has two complementary neural-TTS paths, both built on Kokoro-82M for natural voice quality (designed for AuDHD learners who benefit from auditory reinforcement alongside visual text):
+
+- **`study-speak` CLI** (this page, below) — speaks agent responses aloud during terminal sessions via `kokoro-onnx` (server-side, on CPU).
+- **Web PWA in-browser TTS** ([jump to section](#web-pwa-voice-in-browser-neural-tts)) — synthesises speech entirely in the browser via WebGPU/WASM, no remote API. Same model, runs on-device.
+
+`study-speak` is a TTS CLI tool that speaks agent responses aloud using kokoro-onnx — an 82M parameter model with the `am_michael` voice.
 
 ---
 
@@ -120,22 +125,34 @@ Replace the path with your actual clone location. The `scripts/install-agents.sh
 
 ---
 
-## Web PWA Voice
+## Web PWA Voice (in-browser neural TTS)
 
-The study web app (`studyloop web`) has built-in voice support via the Web Speech API -- no extra dependencies needed. It works on any device with a browser.
+The study web app (`studyloop web`) synthesises speech **entirely in the browser** with a neural model — the same Kokoro-82M voice quality as the `study-speak` CLI, running locally via WebGPU/WASM. **No text is ever sent to a remote API.** This replaces the old Web Speech API path, which depended on the OS's built-in voices (poor quality on macOS without manual voice downloads).
 
-**Voice selector dropdown** -- choose from all English voices available on your device. The dropdown appears in the header bar and persists your selection across sessions.
+### How it works
 
-**Two modes:**
+`tts-engine.js` loads [Kokoro-82M](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX) via [transformers.js](https://github.com/huggingface/transformers.js) and runs inference on-device. It auto-selects the best available tier:
 
-- **Read once** -- tap the speaker icon on a card, or press `T`. Reads the current content once.
-- **Auto-voice** -- toggle the header speaker icon, or press `V`. Reads everything automatically as you navigate.
+| Tier | Engine | When |
+|---|---|---|
+| **`neural-webgpu`** | Kokoro on WebGPU | Browser exposes `navigator.gpu` (Chrome/Edge, recent Safari) |
+| **`neural-wasm`** | Kokoro on single-thread WASM | No WebGPU, but device is fast enough (passes a warm-up speed probe) |
+| **`web-speech`** | Web Speech API (OS voices) | Neural unavailable or device too slow — graceful fallback |
 
-**Best quality voices:**
+There is **no COOP/COEP requirement** — the engine forces single-thread WASM (`numThreads=1`) and prefers WebGPU, so it never needs `SharedArrayBuffer`. This keeps the same-origin ttyd terminal iframe working.
 
-- **macOS**: System Settings → Accessibility → Spoken Content → Manage Voices → download Samantha (Enhanced) or Siri voices
-- **iOS**: Settings → Accessibility → Spoken Content → Voices → English → download Siri voices
-- **Windows**: Settings → Time & Language → Speech → Manage voices
+### First-run download
+
+On first use the model downloads **once** (~92 MB: the q8-quantised Kokoro weights + tokenizer + voice embeddings) from Hugging Face, with a progress indicator in the header. It is then cached in the browser's **Cache Storage** (`transformers-cache`) and reused on every subsequent load — **subsequent loads are offline and fast** (init drops from ~30 s to ~4 s). The PWA service worker is specifically configured to spare this cache when it clears app-shell assets.
+
+> **First run needs internet** to fetch the weights. After that, voice works fully offline.
+
+### Controls
+
+- **Voice selector dropdown** — choose a Kokoro voice (e.g. `am_michael`, `af_heart`, `bf_emma`). Appears in the header; selection persists across sessions. (Falls back to listing OS voices if the engine is on the `web-speech` tier.)
+- **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once.
+- **Auto-voice** — toggle the header speaker icon, or press `V`. Reads everything automatically as you navigate.
+- **Stop** — a stop button appears in the header while audio is playing; click it (or it clears automatically when playback ends) to interrupt mid-utterance. The stop control halts neural WebGPU/WASM playback, not just Web Speech API output.
 
 ---
 

@@ -18,6 +18,32 @@
   <!-- xterm.js base stylesheet (loaded but not wired until §1.7 Alpine component) -->
   <link rel="stylesheet" href="/vendor/css/xterm-6.0.0.css">
   <style>[x-cloak] { display: none !important; }</style>
+
+  <!-- ================================================================
+       TTS importmap — must appear before any <script type="module">.
+       Maps bare specifiers used by tts-engine.js to vendored bundles.
+       ort.all.bundle.min.mjs serves both onnxruntime-web and
+       onnxruntime-common (same file, two aliases — ORT self-contains
+       its WASM and does not need a separate common package at runtime).
+       phonemizer-1.2.1.js is the eSpeak-NG WASM bundle (WASM inline
+       as base64 — no external fetch, no Node requires).
+       ================================================================ -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@huggingface/transformers": "/vendor/js/transformers-3.5.2.web.js",
+      "onnxruntime-web":           "/vendor/js/ort.all.bundle.min.mjs",
+      "onnxruntime-common":        "/vendor/js/ort.all.bundle.min.mjs",
+      "phonemizer":                "/vendor/js/phonemizer-1.2.1.js"
+    }
+  }
+  </script>
+
+  <!-- tts-engine.js — ESM module; importmap must precede this tag.
+       Assigns window.ttsEngine singleton. Does NOT call init() at load
+       time — init() is lazy-triggered on the first speak() call. -->
+  <script type="module" src="/tts-engine.js"></script>
+
   <!-- HTMX + SSE extension (vendored for offline PWA) -->
   <script src="/vendor/js/htmx-2.0.4.min.js"></script>
   <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
@@ -80,6 +106,35 @@
               @click="$store.settings.toggleVoice()" title="Toggle voice (reads questions aloud)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
       </button>
+
+      <!-- Stop-speech button: visible only while the TTS engine is speaking.
+           Works for all tiers: neural WebAudio (AudioBufferSourceNode.stop())
+           and Web Speech API (speechSynthesis.cancel()). x-cloak hides it
+           during Alpine init to prevent flash-of-visible. -->
+      <button class="toggle-btn stop-tts-btn"
+              x-show="$store.settings.isSpeaking"
+              x-cloak
+              @click="$store.settings.stopSpeaking()"
+              title="Stop reading aloud">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="6" width="12" height="12" rx="1"/>
+        </svg>
+      </button>
+
+      <!-- First-run model download progress indicator.
+           ttsDownloadPct is -1 when idle, 0-100 during download.
+           Hidden once download completes (done event sets pct back to -1). -->
+      <div class="tts-download-progress"
+           x-show="$store.settings.ttsDownloadPct >= 0"
+           x-cloak
+           :title="'Downloading TTS model: ' + $store.settings.ttsDownloadPct + '%' + ($store.settings.ttsDownloadFile ? ' (' + $store.settings.ttsDownloadFile + ')' : '')">
+        <div class="tts-progress-track">
+          <div class="tts-progress-fill"
+               :style="'width:' + $store.settings.ttsDownloadPct + '%'"></div>
+        </div>
+        <span class="tts-progress-label" x-text="$store.settings.ttsDownloadPct + '%'"></span>
+      </div>
+
       <select id="voice-select" class="voice-select" :class="{ hidden: !$store.settings.voiceOn }"
               @change="$store.settings.onVoiceChange($event.target.value)" title="Choose voice"></select>
       <button class="toggle-btn" :class="{ active: $store.settings.light }"

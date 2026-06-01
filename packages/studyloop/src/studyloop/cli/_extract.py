@@ -109,7 +109,9 @@ def _process_one(
 
 
 @click.command(name="extract-struggles")
-@click.option("--incremental", is_flag=True, help="Process one session (default: most recent kiro).")
+@click.option(
+    "--incremental", is_flag=True, help="Process one session (default: most recent kiro)."
+)
 @click.option("--full", "full", is_flag=True, help="Process all kiro_cli sessions (backfill).")
 @click.option("--session-id", default=None, help="Target session id (with --incremental).")
 @click.option("--dry-run", is_flag=True, help="Print what would be written; do not write.")

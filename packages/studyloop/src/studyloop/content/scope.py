@@ -136,7 +136,11 @@ def resolve_scope(
     base = Path(settings.content.base_path).expanduser()
     # 3-level tree: base/<publisher>/<course>/. publisher is optional for
     # backwards compatibility with the legacy flat layout (base/<course>).
-    course_dir = (base / request.publisher / request.course) if request.publisher else (base / request.course)
+    course_dir = (
+        (base / request.publisher / request.course)
+        if request.publisher
+        else (base / request.course)
+    )
     if not course_dir.is_dir():
         raise ScopeResolutionError(
             f"Course directory not found: {course_dir} "

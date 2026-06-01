@@ -148,6 +148,48 @@ header {
 .voice-select.hidden { display: none; }
 .voice-select:focus { border-color: var(--accent); outline: none; }
 
+/* --- TTS stop button --- */
+/* Inherits .toggle-btn base styles. Active colour overridden to red
+   so it reads as a destructive/stop action while audio is playing. */
+.stop-tts-btn {
+  border-color: var(--red);
+  color: var(--red);
+}
+.stop-tts-btn:hover {
+  background: var(--red);
+  color: var(--bg);
+  border-color: var(--red);
+}
+
+/* --- TTS first-run download progress indicator --- */
+/* Compact inline bar in the header. Appears only during the initial
+   ~91 MB model download; auto-hides when done (Alpine x-show). */
+.tts-download-progress {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 80px;
+}
+.tts-progress-track {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tts-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.tts-progress-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: right;
+}
+
 /* --- Nav bar (in study view) --- */
 .nav-bar {
   display: flex;
