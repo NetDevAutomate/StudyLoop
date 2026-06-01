@@ -121,6 +121,13 @@ EXPORTERS = {
 
 Unlike OpenCode (which uses an `updated_at` JSON field), pi/omp sessions are detected via the JSONL file's on-disk `mtime`. The first line of each file carries the session header timestamp, but the safest incremental marker is comparing the stored `updated_at` in the DB against the file's last-modified time (converted to ISO).
 
+`_process_file` returns `(session_data, messages, reason)`. A non-imported session carries a `reason` so the summary is honest and uniform across all exporters:
+
+- `"skipped"` — the stored `updated_at` matches (unchanged since last export).
+- `"empty"` — header-only, missing `id`, or no extractable messages.
+
+`export_all` increments `stats.skipped` or `stats.empty` accordingly. This matches the convention used by every other exporter (see [CLI Reference § Results & Incremental Behaviour](../cli-reference.md#results-incremental-behaviour)).
+
 ### cwd-slug
 
 The session directory name encodes the working directory: every `/` becomes `-`. The exporter recovers the original path from the session header's `"cwd"` field (line 1 of each JSONL file).
@@ -206,7 +213,9 @@ session-export --sources pi omp
 session-export
 ```
 
-The flags appear in `SOURCE_CHOICES` and the `main()` `only_flags` dict in `export_sessions.py`. They are mutually exclusive with each other and all other `--*-only` flags.
+The flags appear in `SOURCE_CHOICES` and the `only_flags` dict inside the `export()` command function in `export_sessions.py`. They are mutually exclusive with each other and all other `--*-only` flags.
+
+> The `[project.scripts]` entry point targets a thin `main()` wrapper that calls `app()`, **not** the `@app.command()`-decorated `export()` function. Pointing the entry point at a decorated command object bypasses Typer's argument parser entirely — every flag silently falls back to its default. A regression test (`TestEntryPointParsesArgv`) guards this wiring.
 
 ---
 
@@ -244,8 +253,10 @@ sequenceDiagram
   alt session is new or changed
     Exporter->>DB: upsert session row + message rows
     DB-->>Exporter: OK
-  else no change
+  else unchanged since last export
     Exporter->>Exporter: skip (stats.skipped++)
+  else no extractable messages
+    Exporter->>Exporter: empty (stats.empty++)
   end
   Exporter-->>Agent: exit 0 (or non-zero on error)
   Agent-->>Learner: "Sessions exported to sessions.db"
