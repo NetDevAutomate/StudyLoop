@@ -224,13 +224,18 @@ header {
    stays centred (was an unsized empty span, shifting the title ~18px). */
 .nav-spacer { width: 36px; flex: none; }
 
-/* --- App layout: sidebar + content --- */
+/* --- App layout: sidebar + content + optional course-explorer panel --- */
 .app-layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 200px 1fr 0px;
   min-height: 0; /* allow flex children to shrink */
   overflow: hidden;
+}
+
+/* When the explorer panel is open, grow the 3rd column to 320px */
+.app-layout.explorer-open {
+  grid-template-columns: 200px 1fr 320px;
 }
 
 .sidebar {
@@ -382,10 +387,12 @@ main {
 
 /* --- Mobile: sidebar → bottom tabs --- */
 @media (max-width: 600px) {
-  .app-layout {
+  .app-layout,
+  .app-layout.explorer-open {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto;
   }
+  .course-explorer-panel { display: none !important; }
   .sidebar {
     order: 2; /* below content */
     flex-direction: row;
@@ -2956,3 +2963,360 @@ body[data-palette="everforest"] {
   text-decoration: underline;
 }
 .form-error { color: #c14b4b; font-size: 0.85rem; }
+
+/* ==========================================================================
+ * M2: Course Explorer Panel
+ * A 3rd grid column that lazy-fetches the study tree and renders
+ * one horizontal carousel row per provider. All CSS is scoped under
+ * .course-explorer-panel so nothing cascades into other views.
+ * M3 seam: .explorer-reader-view is reserved but empty here.
+ * ========================================================================== */
+
+.course-explorer-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  min-height: 0;
+  /* Clip the 0px column state so nothing bleeds through */
+  overflow-x: hidden;
+}
+
+/* Panel header — uses a scoped div, NOT a bare <header> tag, to avoid
+   the global `header { display: flex }` cascade that caused the body-double
+   h2/p overlap bug. Same reset as .body-double-header. */
+.explorer-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.explorer-panel-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.explorer-close-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.explorer-close-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Scrollable body — the provider rows stack vertically inside here */
+.explorer-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 0 16px;
+}
+
+/* Loading / error states */
+.explorer-loading,
+.explorer-error {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.explorer-error {
+  color: var(--red);
+}
+
+/* --- Provider row (one per provider/publisher) --- */
+.explorer-provider-row {
+  margin-bottom: 16px;
+}
+
+.explorer-provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 12px 6px;
+}
+
+.explorer-provider-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Per-provider text filter */
+.explorer-filter {
+  flex: 1;
+  min-width: 0;
+  max-width: 120px;
+  padding: 3px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+.explorer-filter:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Carousel prev/next nav buttons */
+.explorer-carousel-nav {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.explorer-nav-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.explorer-nav-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* --- Horizontal carousel (CSS scroll-snap, zero JS lib) --- */
+.explorer-carousel {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;       /* Firefox */
+  padding: 2px 12px 4px;
+}
+.explorer-carousel::-webkit-scrollbar {
+  display: none;               /* Chrome/Safari */
+}
+
+/* Individual course card inside a carousel */
+.explorer-course-card {
+  flex: 0 0 150px;
+  scroll-snap-align: start;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+  min-width: 0;
+}
+.explorer-course-card:hover,
+.explorer-course-card:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  outline: none;
+}
+.explorer-course-card.active {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.explorer-course-card-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.explorer-course-card-provider {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty state when filter yields zero results */
+.explorer-carousel-empty {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* --- Lessons panel (shown below the carousels when a course is selected) --- */
+.explorer-lessons-panel {
+  padding: 8px 12px 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.explorer-lessons-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.explorer-lessons-loading {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.explorer-lesson-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-size: 0.78rem;
+  color: var(--text);
+  border: 1px solid transparent;
+}
+.explorer-lesson-item:hover,
+.explorer-lesson-item:focus-visible {
+  background: var(--bg-hover);
+  border-color: var(--border);
+  outline: none;
+}
+
+.explorer-lesson-index {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.explorer-lesson-name {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+/* --- Toggle button in header to open/close the panel --- */
+.explorer-toggle-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.explorer-toggle-btn:hover { border-color: var(--accent); color: var(--text); }
+.explorer-toggle-btn.active { border-color: var(--accent); color: var(--accent); background: var(--bg-hover); }
+
+/* ---- Reader view (M3) ---- */
+.explorer-reader-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.explorer-reader-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.explorer-reader-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Reader prose container: scrollable, padded, readable line-length. */
+.explorer-reader-prose {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  /* Constrain line length for readability inside the narrow panel. */
+  max-width: 100%;
+}
+
+/* Mermaid diagram container: SVG can overflow horizontally on mobile. */
+.mermaid-diagram {
+  overflow-x: auto;
+  margin: 12px 0;
+  text-align: center;
+}
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Fallback pre shown when mermaid.render() throws. */
+.mermaid-fallback {
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Sidebar button for course explorer */
+.sidebar-btn.explorer-sidebar-btn svg {
+  stroke: currentColor;
+}

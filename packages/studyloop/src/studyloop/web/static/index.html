@@ -57,6 +57,17 @@
   <script src="/vendor/js/marked-12.0.0.min.js"></script>
   <script src="/vendor/js/highlight-11.9.0.min.js"></script>
   <link rel="stylesheet" href="/vendor/css/highlight-tokyo-night-dark.css">
+  <!-- Mermaid v11 (vendored). Exposes window.mermaid via globalThis assignment.
+       Loaded as a plain <script> (the bundle ends with:
+         globalThis.mermaid = globalThis.__esbuild_esm_mermaid.default;
+       so it works without importmap/ESM). Initialize with startOnLoad:false
+       so we control rendering timing (two-pass after Alpine DOM flush). -->
+  <script src="/vendor/js/mermaid-11.4.1.min.js"></script>
+  <script>
+    if (window.mermaid) {
+      window.mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    }
+  </script>
   <!-- xterm.js + addons (vendored). UMD globals:
        window.Terminal, window.FitAddon, window.WebglAddon, window.ClipboardAddon.
        Addon scripts depend on xterm.js being loaded first. -->
@@ -261,6 +272,15 @@
         </div>
       </div>
 
+      <!-- Course Explorer toggle — opens the 3rd-column panel -->
+      <button class="sidebar-btn explorer-sidebar-btn"
+              :class="{ active: $store.explorer.open }"
+              @click="$store.explorer.toggle()"
+              title="Browse courses and lessons">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        <span>Courses</span>
+      </button>
+
       <!-- Spacer pushes Settings to the bottom of the sidebar (gear convention) -->
       <div class="sidebar-spacer" aria-hidden="true"></div>
       <button class="sidebar-btn"
@@ -270,6 +290,171 @@
         <span>Settings</span>
       </button>
     </nav>
+
+    <!-- ============================================================ -->
+    <!-- COURSE EXPLORER PANEL (M2)                                   -->
+    <!-- 3rd grid column: provider carousels + lesson list.           -->
+    <!-- M3 seam: .explorer-reader-view is reserved but empty.        -->
+    <!-- ============================================================ -->
+    <aside class="course-explorer-panel"
+           x-data="courseExplorer()"
+           x-show="$store.explorer.open"
+           x-cloak
+           aria-label="Course explorer">
+
+      <!-- Panel header — scoped div, NOT bare <header>, to avoid the
+           global `header { display:flex }` cascade (see body-double-header
+           fix in style.css). -->
+      <div class="explorer-panel-header">
+        <span class="explorer-panel-title">Course Explorer</span>
+        <button class="explorer-close-btn" @click="close()" title="Close"
+                aria-label="Close course explorer">&times;</button>
+      </div>
+
+      <!-- Panel body -->
+      <div class="explorer-panel-body">
+
+        <!-- Loading state -->
+        <div x-show="loading" class="explorer-loading">
+          <div class="spinner" style="width:20px;height:20px;margin:0 auto 8px"></div>
+          Loading courses…
+        </div>
+
+        <!-- Error state -->
+        <div x-show="!loading && loadError" class="explorer-error" x-text="loadError"></div>
+
+        <!-- ---- Browser view: one carousel row per provider ---- -->
+        <div x-show="!loading && !loadError && view === 'browser'">
+
+          <template x-if="providers.length === 0 && _treeLoaded">
+            <div class="explorer-loading">No courses found in the study vault.</div>
+          </template>
+
+          <template x-for="provider in providers" :key="provider.id">
+            <div class="explorer-provider-row">
+
+              <!-- Provider header: name + filter input + prev/next -->
+              <div class="explorer-provider-header">
+                <span class="explorer-provider-name" x-text="provider.name"></span>
+                <input class="explorer-filter"
+                       type="search"
+                       placeholder="filter…"
+                       x-model="filters[provider.id]"
+                       :aria-label="'Filter ' + provider.name + ' courses'">
+                <!-- Alpine 3 x-ref is static-only; we use data-carousel-id
+                     and querySelector inside scrollCarousel() instead. -->
+                <div class="explorer-carousel-nav" :aria-label="provider.name + ' carousel controls'">
+                  <button class="explorer-nav-btn"
+                          @click="scrollCarousel(provider.id, -1)"
+                          :title="'Scroll ' + provider.name + ' left'"
+                          aria-label="Scroll left">&#8249;</button>
+                  <button class="explorer-nav-btn"
+                          @click="scrollCarousel(provider.id, 1)"
+                          :title="'Scroll ' + provider.name + ' right'"
+                          aria-label="Scroll right">&#8250;</button>
+                </div>
+              </div>
+
+              <!-- data-carousel-id lets scrollCarousel() find this element
+                   via querySelector without needing dynamic x-ref. -->
+              <div class="explorer-carousel"
+                   :data-carousel-id="provider.id"
+                   role="list"
+                   :aria-label="provider.name + ' courses'">
+
+                <template x-if="filteredCourses(provider).length === 0">
+                  <div class="explorer-carousel-empty">No matches</div>
+                </template>
+
+                <template x-for="course in filteredCourses(provider)" :key="course.id">
+                  <div class="explorer-course-card"
+                       role="listitem"
+                       tabindex="0"
+                       :class="{ active: activeCourse && activeCourse.id === course.id }"
+                       @click="selectCourse(course)"
+                       @keydown.enter.prevent="selectCourse(course)"
+                       @keydown.space.prevent="selectCourse(course)"
+                       :aria-pressed="activeCourse && activeCourse.id === course.id ? 'true' : 'false'"
+                       :title="course.name">
+                    <div class="explorer-course-card-name" x-text="course.name"></div>
+                    <div class="explorer-course-card-provider" x-text="course.provider"></div>
+                  </div>
+                </template>
+              </div>
+
+            </div>
+          </template>
+
+          <!-- Lessons panel: shown when a course is selected -->
+          <div x-show="activeCourse" class="explorer-lessons-panel">
+            <div class="explorer-lessons-title"
+                 x-text="activeCourse ? activeCourse.name : ''"></div>
+
+            <div x-show="lessonsLoading" class="explorer-lessons-loading">
+              Loading lessons…
+            </div>
+            <div x-show="!lessonsLoading && lessonsError"
+                 class="explorer-error" style="padding:4px 0"
+                 x-text="lessonsError"></div>
+
+            <template x-if="!lessonsLoading && !lessonsError">
+              <div role="list" :aria-label="activeCourse ? activeCourse.name + ' lessons' : 'Lessons'">
+                <template x-if="lessons.length === 0 && !lessonsLoading">
+                  <div class="explorer-lessons-loading">No lessons found.</div>
+                </template>
+                <template x-for="(lesson, idx) in lessons" :key="lesson.id">
+                  <div class="explorer-lesson-item"
+                       role="listitem"
+                       tabindex="0"
+                       @click="openLesson(lesson)"
+                       @keydown.enter.prevent="openLesson(lesson)"
+                       @keydown.space.prevent="openLesson(lesson)"
+                       :title="lesson.name">
+                    <div class="explorer-lesson-index" x-text="idx + 1"></div>
+                    <div class="explorer-lesson-name" x-text="lesson.name"></div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+
+        </div><!-- end browser view -->
+
+        <!-- ---- Reader view (M3) ---- -->
+        <div x-show="view === 'reader'" class="explorer-reader-view">
+
+          <!-- Reader header: back button + lesson title -->
+          <div class="explorer-reader-header">
+            <button class="nav-btn" @click="backToBrowser()" title="Back to courses"
+                    aria-label="Back to courses">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <span class="explorer-reader-title"
+                  x-text="activeLesson ? activeLesson.name : ''"></span>
+          </div>
+
+          <!-- Loading state -->
+          <div x-show="readerLoading" class="explorer-loading">
+            <div class="spinner" style="width:20px;height:20px;margin:0 auto 8px"></div>
+            Loading lesson…
+          </div>
+
+          <!-- Error state -->
+          <div x-show="!readerLoading && readerError"
+               class="explorer-error"
+               x-text="readerError"></div>
+
+          <!-- Rendered markdown content.
+               .acp-message-final reuses the existing prose/code-block styles.
+               .explorer-reader-prose adds reader-specific padding + line-height. -->
+          <div x-show="!readerLoading && !readerError && readerHtml"
+               class="acp-message-final explorer-reader-prose"
+               x-html="readerHtml"></div>
+
+        </div>
+
+      </div><!-- .explorer-panel-body -->
+    </aside>
 
     <!-- Content area -->
     <div class="content-area">
@@ -1458,6 +1643,29 @@
   <script>
   document.addEventListener('alpine:init', () => {
     /* ----------------------------------------------------------------
+     * Course Explorer store — drives the sidebar toggle button state.
+     * The full courseExplorer() component (in components.js) reads and
+     * writes this store so the sidebar button and the panel stay in sync.
+     * ---------------------------------------------------------------- */
+    Alpine.store('explorer', {
+      open: false,
+      // These stubs fire if the sidebar button is clicked before the
+      // courseExplorer() component mounts (very brief window at boot).
+      // The full implementation lives in courseExplorer().toggle()/close()
+      // which also drive the .app-layout.explorer-open CSS class.
+      toggle() {
+        this.open = !this.open;
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.toggle('explorer-open', this.open);
+      },
+      close() {
+        this.open = false;
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.remove('explorer-open');
+      },
+    });
+
+    /* ----------------------------------------------------------------
      * Navigation store — drives sidebar + view switching
      * ---------------------------------------------------------------- */
     Alpine.store('nav', {
@@ -1465,7 +1673,7 @@
 
       init() {
         const hash = window.location.hash.slice(1);
-        const valid = ['flashcards', 'quizzes', 'generate', 'body-double', 'study-session', 'settings'];
+        const valid = ['flashcards', 'quizzes', 'generate', 'body-double', 'study-session', 'settings', 'course-reader'];
         if (hash && valid.includes(hash)) this.current = hash;
       },
 
@@ -2724,51 +2932,13 @@
            U5 may surface it inline; for now we just clear streaming state. */
       },
 
-      _renderMarkdown(text) {
-        if (!text) return '';
-        let html;
-        try {
-          html = window.marked.parse(text, { gfm: true, breaks: false });
-        } catch {
-          /* If marked throws on degenerate input, fall back to escaped text. */
-          return this._escapeHtml(text);
-        }
-        /* DOMPurify config — tighter than default. We forbid script/iframe/embed/etc.,
-           and post-sanitise to add target+rel on anchors and strip javascript: hrefs.
-           marked v12 already escapes HTML by default; this is defence in depth. */
-        const sanitised = window.DOMPurify.sanitize(html, {
-          FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
-          FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
-          ALLOW_DATA_ATTR: false,
-        });
-        /* Wrap in a temp container to apply highlight.js + harden anchors. */
-        const tmp = document.createElement('div');
-        tmp.innerHTML = sanitised;
-        /* Harden anchors: open in new tab, strip javascript: hrefs. */
-        tmp.querySelectorAll('a').forEach((a) => {
-          const href = a.getAttribute('href') || '';
-          if (/^javascript:/i.test(href)) {
-            a.removeAttribute('href');
-          } else if (href) {
-            a.setAttribute('target', '_blank');
-            a.setAttribute('rel', 'noopener noreferrer');
-          }
-        });
-        /* highlight.js — call highlightElement on each <pre><code> block.
-           hljs.highlightAll() walks the document; we want subtree-only, so iterate. */
-        if (window.hljs) {
-          tmp.querySelectorAll('pre code').forEach((block) => {
-            try { window.hljs.highlightElement(block); } catch { /* ignore highlight errors */ }
-          });
-        }
-        return tmp.innerHTML;
-      },
+      /* Delegates to the top-level renderMarkdown() in components.js.
+         Kept as a method so existing callers in this template
+         (x-html="_renderMarkdown(…)" and _handleTurnEnd) are unchanged. */
+      _renderMarkdown(text) { return renderMarkdown(text); },
 
-      _escapeHtml(s) {
-        const div = document.createElement('div');
-        div.textContent = s;
-        return div.innerHTML;
-      },
+      /* Delegates to the top-level _escapeHtml() in components.js. */
+      _escapeHtml(s) { return _escapeHtml(s); },
 
       _scrollChatToBottom() {
         this.$nextTick(() => {

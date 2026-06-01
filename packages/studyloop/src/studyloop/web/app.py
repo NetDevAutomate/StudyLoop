@@ -60,6 +60,8 @@ def create_app(
     app.state.ttyd_port = ttyd_port
     app.state.dev_mode = dev_mode
     app.state.agent_session_manager = AgentSessionManager()
+    app.state.explorer_tree_cache = None
+    app.state.explorer_tree_mtime = 0.0
 
     # Optional password protection (LAN mode)
     if password:
@@ -76,6 +78,7 @@ def create_app(
         cards,
         content_gen,
         courses,
+        explorer,
         history,
         session,
     )
@@ -85,6 +88,7 @@ def create_app(
     app.include_router(history.router, prefix="/api")
     app.include_router(session.router, prefix="/api")
     app.include_router(content_gen.router, prefix="/api")
+    app.include_router(explorer.router, prefix="/api")
     app.include_router(artefacts.router)
 
     # Pomodoro config endpoint — serves configured durations for the slider
@@ -136,7 +140,7 @@ def create_app(
         # `defer`, the adapter runs synchronously *before* xterm, which then
         # overwrites the patch.
         wterm_scripts = (
-            '\n  <!-- wterm dev-mode: defer so it runs after the xterm defer'
+            "\n  <!-- wterm dev-mode: defer so it runs after the xterm defer"
             " scripts; the adapter patches window.Terminal last -->"
             '\n  <script defer src="/vendor/js/wterm-0.3.0.js"></script>'
             '\n  <script defer src="/vendor/js/wterm-adapter-0.3.0.js"></script>'

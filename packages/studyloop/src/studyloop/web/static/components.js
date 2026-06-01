@@ -9,6 +9,147 @@
 /* eslint-disable no-unused-vars */
 
 /* ====================================================================
+ * Shared markdown renderer — used by liveAgentConsole AND courseExplorer.
+ *
+ * _escapeHtml(s)     — HTML-escape a plain string (no deps).
+ * renderMarkdown(s)  — marked → DOMPurify → anchor-harden → hljs → html.
+ *                      Mermaid code blocks are replaced with placeholder
+ *                      <div class="mermaid-diagram" data-src="…"> so the
+ *                      caller can run a two-pass mermaid.render() after
+ *                      the DOM is updated.
+ * ==================================================================== */
+
+/**
+ * HTML-escape a plain string.
+ * @param {string} s
+ * @returns {string}
+ */
+function _escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+/**
+ * Render markdown to sanitised HTML.
+ *
+ * Special handling: ```mermaid fences are intercepted BEFORE hljs runs.
+ * marked emits them as <pre><code class="language-mermaid">…</code></pre>.
+ * We replace each such block with <div class="mermaid-diagram" data-src="…">
+ * so the caller can invoke mermaid.render() in a second pass after DOM update.
+ *
+ * @param {string} text — raw markdown
+ * @returns {string} — sanitised HTML ready for x-html / innerHTML
+ */
+function renderMarkdown(text) {
+  if (!text) return '';
+  let html;
+  try {
+    html = window.marked.parse(text, { gfm: true, breaks: false });
+  } catch {
+    return _escapeHtml(text);
+  }
+
+  /* DOMPurify — defence-in-depth on top of marked's own escaping. */
+  const sanitised = window.DOMPurify.sanitize(html, {
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+    ALLOW_DATA_ATTR: false,
+  });
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = sanitised;
+
+  /* Harden anchors: new tab + strip javascript: hrefs. */
+  tmp.querySelectorAll('a').forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    if (/^javascript:/i.test(href)) {
+      a.removeAttribute('href');
+    } else if (href) {
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+
+  /* Intercept mermaid blocks BEFORE hljs so hljs doesn't corrupt the source.
+     marked emits: <pre><code class="language-mermaid">…RAW DIAGRAM…</code></pre>
+     We replace the whole <pre> with a placeholder div carrying data-src. */
+  tmp.querySelectorAll('pre code.language-mermaid').forEach((code) => {
+    const pre = code.parentElement;
+    if (!pre) return;
+    /* code.textContent is the raw diagram source (marked already un-escapes it). */
+    const diagramSrc = code.textContent;
+    const placeholder = document.createElement('div');
+    placeholder.className = 'mermaid-diagram';
+    placeholder.dataset.src = diagramSrc;
+    pre.replaceWith(placeholder);
+  });
+
+  /* highlight.js — subtree-only, skip mermaid blocks (already replaced). */
+  if (window.hljs) {
+    tmp.querySelectorAll('pre code').forEach((block) => {
+      try { window.hljs.highlightElement(block); } catch { /* ignore */ }
+    });
+  }
+
+  return tmp.innerHTML;
+}
+
+/**
+ * Strip a YAML frontmatter block from a markdown string.
+ * Real lesson files start with `---\nkey: value\n...\n---\n`.
+ * If passed raw, marked renders the `---` lines as <hr> tags and dumps
+ * the YAML keys as paragraph text.  Strip the entire opening block.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function _stripFrontmatter(text) {
+  if (!text.startsWith('---\n')) return text;
+  /* Find the closing ---. Must be on its own line after at least one key line. */
+  const close = text.indexOf('\n---\n', 4);
+  if (close === -1) return text;           /* malformed — leave as-is */
+  return text.slice(close + 5);            /* skip past the closing `---\n` */
+}
+
+/**
+ * Second-pass mermaid rendering.
+ * renderMarkdown() leaves <div class="mermaid-diagram" data-src="…"> placeholders.
+ * This function finds them inside `rootEl`, calls mermaid.render() for each,
+ * injects the returned SVG, and removes `data-src` to prevent double-render.
+ *
+ * Guards:
+ *  - window.mermaid missing → silently falls back (shows raw diagram text in pre)
+ *  - Individual render failures → falls back to a <pre> with the raw source
+ *
+ * @param {Element} rootEl — the Alpine component root ($el)
+ */
+async function _renderMermaidPlaceholders(rootEl) {
+  if (!window.mermaid) return;
+  const placeholders = rootEl.querySelectorAll('.mermaid-diagram[data-src]');
+  if (!placeholders.length) return;
+
+  let counter = 0;
+  for (const el of placeholders) {
+    const src = el.dataset.src;
+    /* Remove immediately to prevent double-render on re-entry. */
+    delete el.dataset.src;
+    const id = 'mermaid-render-' + Date.now() + '-' + (counter++);
+    try {
+      const { svg } = await window.mermaid.render(id, src);
+      el.innerHTML = svg;
+    } catch (err) {
+      console.warn('[CourseExplorer] mermaid.render failed:', err);
+      /* Fallback: show the raw diagram source in a <pre> block. */
+      const pre = document.createElement('pre');
+      pre.className = 'mermaid-fallback';
+      pre.textContent = src;
+      el.replaceWith(pre);
+    }
+  }
+}
+
+/* ====================================================================
  * Pomodoro helpers
  * ==================================================================== */
 
@@ -814,5 +955,209 @@ function reviewApp(defaultMode) {
         // No global shortcuts on courses view
       }
     },
+  };
+}
+
+/* ======================================================================
+ * M2: Course Explorer Panel
+ *
+ * Fetches GET /api/explorer/tree on first open and renders one horizontal
+ * CSS scroll-snap carousel row per provider. Clicking a course card
+ * fetches GET /api/explorer/courses/{course_id:path}/lessons and shows a
+ * lesson list below the carousels.
+ *
+ * M3 seam
+ * -------
+ * - view: 'browser' | 'reader'  (only 'browser' is implemented here)
+ * - activeLesson: stashed lesson object
+ * - openLesson(lesson): STUB — sets view='reader', stashes lesson.
+ *   M3 will call GET /api/explorer/lesson/{lesson_id:path}/content and
+ *   render markdown inside .explorer-reader-view.
+ * - backToBrowser(): returns from reader to browser view.
+ * ====================================================================== */
+function courseExplorer() {
+  return {
+    // ---- View state — 'browser' = carousels, 'reader' = M3 lesson view
+    view: 'browser',
+
+    // ---- Tree data  [{ id, name, courses: [{ id, name, provider }] }]
+    providers: [],
+    loading: false,
+    loadError: '',
+    _treeLoaded: false,
+
+    // ---- Per-provider filter strings keyed by provider id
+    filters: {},
+
+    // ---- Active course and its lessons
+    activeCourse: null,
+    lessons: [],
+    lessonsLoading: false,
+    lessonsError: '',
+
+    // ---- M3: reader view state
+    activeLesson: null,
+    readerHtml: '',
+    readerLoading: false,
+    readerError: '',
+
+    // ------------------------------------------------------------------
+    // init: wire this component's toggle/close onto the store so the
+    // sidebar button ($store.explorer.toggle()) gets the full behaviour
+    // (lazy-fetch + layout class) rather than the boot-stub.
+    // ------------------------------------------------------------------
+    init() {
+      const self = this;
+      const store = Alpine.store('explorer');
+      store.toggle = () => self.toggle();
+      store.close  = () => self.close();
+    },
+
+    // ------------------------------------------------------------------
+    // Toggle the panel open/closed; lazy-fetch tree on first open.
+    // Drives $store.explorer.open so the sidebar button :class reacts.
+    // ------------------------------------------------------------------
+    async toggle() {
+      const store = Alpine.store('explorer');
+      store.open = !store.open;
+      const layout = document.querySelector('.app-layout');
+      if (layout) layout.classList.toggle('explorer-open', store.open);
+      if (store.open && !this._treeLoaded) {
+        await this._fetchTree();
+      }
+    },
+
+    close() {
+      const store = Alpine.store('explorer');
+      store.open = false;
+      const layout = document.querySelector('.app-layout');
+      if (layout) layout.classList.remove('explorer-open');
+    },
+
+    // ------------------------------------------------------------------
+    // Fetch the study tree once.
+    // ------------------------------------------------------------------
+    async _fetchTree() {
+      this.loading = true;
+      this.loadError = '';
+      try {
+        const res = await fetch('/api/explorer/tree');
+        if (res.ok) {
+          const data = await res.json();
+          this.providers = data;
+          // Seed a filter entry for each provider so x-model is bound
+          data.forEach((p) => {
+            if (!(p.id in this.filters)) this.filters[p.id] = '';
+          });
+          this._treeLoaded = true;
+        } else {
+          this.loadError = `Could not load course tree (${res.status})`;
+        }
+      } catch {
+        this.loadError = 'Network error loading course tree';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // ------------------------------------------------------------------
+    // Filtered course list for a provider row.
+    // ------------------------------------------------------------------
+    filteredCourses(provider) {
+      const q = (this.filters[provider.id] || '').toLowerCase().trim();
+      if (!q) return provider.courses;
+      return provider.courses.filter((c) =>
+        c.name.toLowerCase().includes(q)
+      );
+    },
+
+    // ------------------------------------------------------------------
+    // Scroll a carousel left or right.
+    // Alpine 3 x-ref is static-only (no dynamic binding), so the carousel
+    // divs use data-carousel-id and we find them with querySelector.
+    // ------------------------------------------------------------------
+    scrollCarousel(providerId, direction) {
+      const el = this.$el.querySelector(
+        `.explorer-carousel[data-carousel-id="${CSS.escape(providerId)}"]`
+      );
+      if (el) el.scrollBy({ left: direction * 158, behavior: 'smooth' });
+    },
+
+    // ------------------------------------------------------------------
+    // A course card was clicked: fetch lessons.
+    // Clicking the already-active course collapses the lesson list.
+    // ------------------------------------------------------------------
+    async selectCourse(course) {
+      if (this.activeCourse && this.activeCourse.id === course.id) {
+        this.activeCourse = null;
+        this.lessons = [];
+        this.lessonsError = '';
+        return;
+      }
+      this.activeCourse = course;
+      this.lessons = [];
+      this.lessonsError = '';
+      this.lessonsLoading = true;
+      try {
+        // CRITICAL: the :path segment must preserve real slashes.
+        // Encode each segment of the id individually and rejoin with '/'.
+        const enc = (id) => id.split('/').map(encodeURIComponent).join('/');
+        const res = await fetch(`/api/explorer/courses/${enc(course.id)}/lessons`);
+        if (res.ok) {
+          this.lessons = await res.json();
+        } else {
+          this.lessonsError = `Could not load lessons (${res.status})`;
+        }
+      } catch {
+        this.lessonsError = 'Network error loading lessons';
+      } finally {
+        this.lessonsLoading = false;
+      }
+    },
+
+    // ------------------------------------------------------------------
+    // Open a lesson: fetch raw markdown, strip frontmatter, render HTML.
+    // ------------------------------------------------------------------
+    async openLesson(lesson) {
+      this.activeLesson = lesson;
+      this.readerHtml = '';
+      this.readerError = '';
+      this.readerLoading = true;
+      this.view = 'reader';
+
+      try {
+        // lesson.id is the full "provider/course/slug" path.
+        // Encode each segment individually so the :path route param sees
+        // real slashes, not %2F which Starlette would reject.
+        const enc = (id) => id.split('/').map(encodeURIComponent).join('/');
+        const res = await fetch('/api/explorer/lesson/' + enc(lesson.id) + '/content');
+        if (res.ok) {
+          const data = await res.json();
+          const raw = data.content || '';
+          const stripped = _stripFrontmatter(raw);
+          this.readerHtml = renderMarkdown(stripped);
+          /* Two-pass mermaid: wait for Alpine to flush the DOM, then render
+             any mermaid placeholder divs that renderMarkdown left behind. */
+          await this.$nextTick();
+          await _renderMermaidPlaceholders(this.$el);
+        } else {
+          this.readerError = `Could not load lesson (${res.status})`;
+        }
+      } catch (err) {
+        this.readerError = 'Network error loading lesson';
+        console.error('[CourseExplorer] openLesson error:', err);
+      } finally {
+        this.readerLoading = false;
+      }
+    },
+
+    // Back to carousel view from reader.
+    backToBrowser() {
+      this.view = 'browser';
+      this.activeLesson = null;
+      this.readerHtml = '';
+      this.readerError = '';
+    },
+
   };
 }
