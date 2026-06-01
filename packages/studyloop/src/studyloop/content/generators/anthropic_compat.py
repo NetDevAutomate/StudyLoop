@@ -29,6 +29,7 @@ import for HTTP-only providers). The line between adapter classes is
 from __future__ import annotations
 
 import json
+import re
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -74,6 +75,48 @@ _THINKING_BUDGET_TOKENS = 2000
 # Default max_tokens for the response. Big enough for a 12-card deck
 # with rationales; small enough to bound cost on a runaway model.
 _DEFAULT_MAX_TOKENS = 4096
+
+
+# MiniMax M2.7 sometimes emits the forced tool call as inline XML markup inside
+# a text block rather than a native Anthropic tool_use block, e.g.:
+#   <minimax:tool_call>
+#   <invoke name="emit_quiz_deck">
+#   <parameter name="title">"DT"</parameter>
+#   <parameter name="questions">[ ... JSON ... ]</parameter>
+#   </invoke>
+#   </minimax:tool_call>
+# Each <parameter> value is the JSON encoding of that key's value. We reassemble
+# them into the tool-input dict the schema expects.
+_INVOKE_RE = re.compile(r'<invoke\s+name="(?P<name>[^"]+)"\s*>(?P<body>.*?)</invoke>', re.DOTALL)
+_PARAM_RE = re.compile(
+    r'<parameter\s+name="(?P<key>[^"]+)"\s*>(?P<val>.*?)</parameter>', re.DOTALL
+)
+
+
+def _parse_inline_tool_call(text: str, expected_tool_name: str) -> dict[str, Any] | None:
+    """Parse MiniMax's inline ``<invoke>`` markup into a tool-input dict.
+
+    Returns the assembled tool input, or ``None`` if the text contains no
+    matching ``<invoke name="<expected_tool_name>">`` block (so a genuine
+    text-only refusal still surfaces as an error upstream).
+    """
+    for m in _INVOKE_RE.finditer(text):
+        if m.group("name") != expected_tool_name:
+            continue
+        body = m.group("body")
+        params: dict[str, Any] = {}
+        for pm in _PARAM_RE.finditer(body):
+            key = pm.group("key")
+            raw = pm.group("val").strip()
+            try:
+                params[key] = json.loads(raw)
+            except (ValueError, json.JSONDecodeError):
+                # Fall back to the raw string when a value isn't JSON-encoded
+                # (e.g. a bare title); the schema validator catches real misses.
+                params[key] = raw
+        if params:
+            return params
+    return None
 
 
 class AnthropicCompatGenerator:
@@ -196,17 +239,29 @@ class AnthropicCompatGenerator:
         tool_choice = {"type": "tool", "name": tool_name}
 
         def call(ctx: CallContext) -> tuple[Any, list[dict[str, Any]]]:
-            messages = list(base_messages) + list(ctx.history_extension)
-            if ctx.last_error is not None:
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            f"The previous tool call did not validate against the schema: "
-                            f"{ctx.last_error}. Re-emit a corrected payload that conforms."
-                        ),
-                    }
-                )
+            history = list(ctx.history_extension)
+            # On a retry, fill in the real validation error on the tool_result
+            # placeholder that the previous attempt appended. The Anthropic
+            # Messages spec requires the user turn after an assistant tool_use
+            # to be a tool_result for that tool_use id; MiniMax's /anthropic
+            # shim enforces this strictly (a plain-text user turn -> error
+            # 2013). Carrying the correction AS a tool_result keeps the
+            # alternation valid across all providers.
+            if ctx.last_error is not None and history:
+                last = history[-1]
+                if (
+                    last.get("role") == "user"
+                    and isinstance(last.get("content"), list)
+                    and last["content"]
+                    and last["content"][0].get("type") == "tool_result"
+                ):
+                    last["content"][0]["content"] = (
+                        f"The previous tool call did not validate against the "
+                        f"schema: {ctx.last_error}. Re-emit a corrected payload "
+                        f"that conforms exactly."
+                    )
+
+            messages = list(base_messages) + history
 
             payload: dict[str, Any] = {
                 "model": self._model.id,
@@ -224,18 +279,27 @@ class AnthropicCompatGenerator:
                 }
 
             resp = self._post_messages(payload)
-            tool_payload, assistant_turn = self._extract_tool_payload(resp, tool_name)
-            new_history = list(ctx.history_extension) + [assistant_turn]
-            if ctx.last_error is not None:
-                new_history.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            f"The previous tool call did not validate against the schema: "
-                            f"{ctx.last_error}. Re-emit a corrected payload that conforms."
-                        ),
-                    }
-                )
+            tool_payload, assistant_turn, tool_use_id = self._extract_tool_payload(
+                resp, tool_name
+            )
+            # Append the assistant's tool_use turn followed immediately by a
+            # placeholder tool_result so the history stays protocol-valid. If
+            # validation fails, the NEXT attempt overwrites the placeholder
+            # content with the actual error (above).
+            new_history = [
+                *history,
+                assistant_turn,
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_id,
+                            "content": "Acknowledged.",
+                        }
+                    ],
+                },
+            ]
             return tool_payload, new_history
 
         return call_with_correction(
@@ -266,7 +330,7 @@ class AnthropicCompatGenerator:
 
     def _extract_tool_payload(
         self, resp: dict[str, Any], expected_tool_name: str
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any], str]:
         """Pull the ``tool_use`` block out of an Anthropic Messages response.
 
         Anthropic returns ``content`` as a list of typed blocks. With
@@ -274,6 +338,10 @@ class AnthropicCompatGenerator:
         ``{type:"tool_use", name, input}`` block. We assemble the
         assistant turn from the full content list so the correction-turn
         history sees what the model actually said.
+
+        Returns ``(tool_input, assistant_turn, tool_use_id)``. The
+        ``tool_use_id`` lets the caller build a protocol-valid
+        ``tool_result`` correction turn that references this exact call.
         """
         content = resp.get("content")
         if not isinstance(content, list) or not content:
@@ -289,11 +357,20 @@ class AnthropicCompatGenerator:
                 break
 
         if tool_use_block is None:
+            # MiniMax M2.7 intermittently narrates the tool call as inline XML
+            # markup inside a text block instead of emitting a native tool_use
+            # block (a reasoning-model quirk). Parse that fallback before giving
+            # up, so generation doesn't fail ~half the time on this provider.
             text_blocks = [b for b in content if b.get("type") == "text"]
-            text = (text_blocks[0].get("text", "") if text_blocks else "")[:200]
+            full_text = "".join(b.get("text", "") for b in text_blocks)
+            inline = _parse_inline_tool_call(full_text, expected_tool_name)
+            if inline is not None:
+                assistant_turn = {"role": "assistant", "content": content}
+                return inline, assistant_turn, "toolu_inline"
+            preview = full_text[:200]
             raise CardGenerationError(
                 f"{self._profile.label} response missing tool_use block "
-                f"(expected {expected_tool_name!r}). Text content was: {text!r}"
+                f"(expected {expected_tool_name!r}). Text content was: {preview!r}"
             )
 
         if tool_use_block.get("name") != expected_tool_name:
@@ -314,7 +391,8 @@ class AnthropicCompatGenerator:
             )
 
         assistant_turn = {"role": "assistant", "content": content}
-        return args, assistant_turn
+        tool_use_id = str(tool_use_block.get("id") or "toolu_correction")
+        return args, assistant_turn, tool_use_id
 
 
 __all__ = ["AnthropicCompatGenerator"]

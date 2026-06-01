@@ -286,6 +286,19 @@ def load_quizzes(directory: Path) -> list[QuizQuestion]:
 
 _GENERIC_DIR_NAMES = {"downloads", "content", "data", "files", "output", "generated"}
 
+# Course-internal subdirs created by storage.get_course_dir. These are NEVER
+# courses themselves — a ``flashcards/`` dir contains ``*flashcards.json`` which
+# would otherwise match _has_review_content and surface as a bogus "flashcards"
+# course. Discovery must never recurse into or report these.
+_DECK_SUBDIRS = frozenset(
+    {"flashcards", "quizzes", "audio", "chapters", "video", "slides"}
+)
+
+# Depth guard for the recursive course search. The real vault is
+# ``base/<publisher>/<course>/`` (3 levels); 4 leaves headroom without risking
+# a runaway walk of an arbitrarily deep tree.
+_MAX_DISCOVERY_DEPTH = 4
+
 
 def _course_name(directory: Path) -> str:
     """Derive a display name from a directory path.
@@ -302,34 +315,82 @@ def discover_directories(config_dirs: list[str] | None = None) -> list[tuple[str
     """Discover course directories with flashcard/quiz content.
 
     Returns list of (course_name, directory_path) tuples.
-    Searches configured directories and their subdirectories.
+
+    The real study vault is a 3-level tree --
+    ``base/<publisher>/<course>/{flashcards,quizzes}/`` -- so a flat
+    "base + one child level" scan never reached the course dirs that
+    ``content.job`` writes to (the publisher level is one hop too shallow).
+    Discovery therefore walks down to ``_MAX_DISCOVERY_DEPTH``, stopping at the
+    FIRST content-bearing directory on each branch (a course is a leaf: we must
+    not descend into its ``flashcards/`` deck subdir and report that as a
+    second, bogus course).
+
+    The legacy ``downloads/`` special-case is preserved for flat vaults.
     """
     if not config_dirs:
         return []
 
     courses: list[tuple[str, Path]] = []
+    seen: set[Path] = set()
     for dir_str in config_dirs:
         base = Path(dir_str).expanduser()
         if not base.is_dir():
             continue
 
-        # Check if this directory itself has content
+        # Check if this directory itself has content (flat single-course layout).
         if _has_review_content(base):
-            courses.append((_course_name(base), base))
+            _append_course(courses, seen, _course_name(base), base)
             continue
 
-        # Check subdirectories (e.g. downloads/flashcards/)
+        # Legacy: a downloads/ holding the decks directly under the root.
         downloads = base / "downloads"
         if downloads.is_dir() and _has_review_content(downloads):
-            courses.append((_course_name(base), downloads))
+            _append_course(courses, seen, _course_name(base), downloads)
             continue
 
-        # Check immediate children
-        for child in sorted(base.iterdir()):
-            if child.is_dir() and _has_review_content(child):
-                courses.append((_course_name(child), child))
+        # Otherwise descend the publisher/course tree.
+        _discover_recursive(base, courses, seen, depth=0)
 
     return courses
+
+
+def _discover_recursive(
+    directory: Path,
+    courses: list[tuple[str, Path]],
+    seen: set[Path],
+    depth: int,
+) -> None:
+    """Walk ``directory``'s children, collecting content-bearing course dirs.
+
+    A content-bearing directory is treated as a leaf course -- recursion stops
+    there so its ``flashcards/`` / ``quizzes/`` deck subdirs are never reported
+    as their own courses. Deck subdirs and dot-dirs are skipped entirely.
+    """
+    if depth >= _MAX_DISCOVERY_DEPTH:
+        return
+    for child in sorted(directory.iterdir()):
+        if not child.is_dir() or child.name.startswith("."):
+            continue
+        if child.name in _DECK_SUBDIRS:
+            continue
+        if _has_review_content(child):
+            _append_course(courses, seen, _course_name(child), child)
+            continue
+        _discover_recursive(child, courses, seen, depth + 1)
+
+
+def _append_course(
+    courses: list[tuple[str, Path]],
+    seen: set[Path],
+    name: str,
+    path: Path,
+) -> None:
+    """Append (name, path) once, de-duplicating on the resolved path."""
+    resolved = path.resolve()
+    if resolved in seen:
+        return
+    seen.add(resolved)
+    courses.append((name, path))
 
 
 def _has_review_content(directory: Path) -> bool:

@@ -39,11 +39,13 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
 
     import secrets
 
-    from studyloop.settings import load_raw_config
+    from studyloop.settings import resolve_study_dirs
 
     study_dirs: list[str] = []
     with contextlib.suppress(Exception):
-        study_dirs = load_raw_config().get("review", {}).get("directories", [])
+        # Falls back to content.base_path when review.directories is unset, so
+        # the review panels discover decks the generator just wrote.
+        study_dirs = resolve_study_dirs()
 
     # Resolve credentials: always read username from config; password from CLI > config > auto
     username = "study"

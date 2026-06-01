@@ -66,6 +66,63 @@ def test_load_raw_config_reads_env_override(monkeypatch, tmp_path):
     assert load_raw_config() == {"browser": "firefox"}
 
 
+def test_resolve_study_dirs_uses_explicit_review_directories(monkeypatch, tmp_path):
+    # When review.directories is set, it wins verbatim.
+    from studyloop.settings import resolve_study_dirs
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        yaml.dump(
+            {
+                "content": {"base_path": str(tmp_path / "study")},
+                "review": {"directories": [str(tmp_path / "explicit")]},
+            }
+        )
+    )
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    assert resolve_study_dirs() == [str(tmp_path / "explicit")]
+
+
+def test_resolve_study_dirs_falls_back_to_content_base_path(monkeypatch, tmp_path):
+    # The real bug: review.directories unset → read root must default to the
+    # write root (content.base_path) so generated decks are discoverable.
+    from studyloop.settings import resolve_study_dirs
+
+    study = tmp_path / "Study"
+    study.mkdir()
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump({"content": {"base_path": str(study)}}))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    assert resolve_study_dirs() == [str(study)]
+
+
+def test_resolve_study_dirs_expands_user_in_fallback(monkeypatch, tmp_path):
+    from studyloop.settings import resolve_study_dirs
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump({"content": {"base_path": "~/Obsidian/Personal/Study"}}))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    resolved = resolve_study_dirs()
+    assert resolved == [str(Path.home() / "Obsidian" / "Personal" / "Study")]
+    assert "~" not in resolved[0]
+
+
+def test_resolve_study_dirs_empty_when_nothing_configured(monkeypatch, tmp_path):
+    from studyloop.settings import resolve_study_dirs
+
+    missing = tmp_path / "none.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(missing))
+
+    # No config at all → default content.base_path (~/study-materials) is used;
+    # resolver always yields exactly one root (never empty), so panels have a
+    # root to scan even on a fresh install.
+    resolved = resolve_study_dirs()
+    assert len(resolved) == 1
+
+
 def test_write_raw_config_creates_parent_and_round_trips(monkeypatch, tmp_path):
     from studyloop.settings import load_raw_config, write_raw_config
 

@@ -33,7 +33,8 @@ def list_course_summaries(study_dirs: list[str]) -> list[dict]:
         study_dirs: List of directory paths from config review.directories.
 
     Returns:
-        List of dicts with name, card_count, quiz_count, due_count, stats.
+        List of dicts with name, publisher, flashcard_count, quiz_count,
+        due_count, total_reviews, mastered.
     """
     courses = review_loader.discover_directories(study_dirs)
     result = []
@@ -46,6 +47,11 @@ def list_course_summaries(study_dirs: list[str]) -> list[dict]:
         result.append(
             {
                 "name": name,
+                # Publisher = the parent dir of the course (e.g. "CodeWithMosh").
+                # Display/grouping only — NOT an identity key. ``name`` (the leaf
+                # dir) remains the key used by openConfig, /api/cards, and the
+                # SM-2 review DB; changing that would orphan stored progress.
+                "publisher": path.parent.name,
                 "flashcard_count": fc_count,
                 "quiz_count": quiz_count,
                 "due_count": due,

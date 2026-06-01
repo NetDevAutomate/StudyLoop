@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as par
 from mcp.server.fastmcp.exceptions import ToolError
 
 from studyloop.services.review import get_due, get_stats, record_review
-from studyloop.settings import load_raw_config, load_settings
+from studyloop.settings import load_settings
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,8 +46,10 @@ def register_tools(mcp: FastMCP) -> None:
         Each course has: name, card_count, quiz_count, due_count.
         """
         from studyloop.services.review import list_course_summaries
+        from studyloop.settings import resolve_study_dirs
 
-        study_dirs = load_raw_config().get("review", {}).get("directories", [])
+        # Falls back to content.base_path when review.directories is unset.
+        study_dirs = resolve_study_dirs()
 
         return {"courses": list_course_summaries(study_dirs)}
 

@@ -86,6 +86,9 @@ class TestCoursesAPI:
         assert data[0]["name"] == "test-course"
         assert data[0]["flashcard_count"] == 2
         assert data[0]["quiz_count"] == 1
+        # publisher is a display/grouping field (parent dir name); present + string.
+        assert "publisher" in data[0]
+        assert isinstance(data[0]["publisher"], str)
 
     def test_sources_returns_flat_strings(self, client: TestClient) -> None:
         resp = client.get("/api/sources/test-course?mode=flashcards")

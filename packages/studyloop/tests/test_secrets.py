@@ -93,7 +93,7 @@ class TestRoundTrip:
         delete_secret("openai")
 
     def test_multiple_providers(self) -> None:
-        from studyloop.secrets import get_secret, list_secret_names, set_secret
+        from studyloop.secrets import list_secret_names, set_secret
 
         set_secret("openai", "sk-openai-key")
         set_secret("anthropic", "sk-ant-key")
@@ -248,11 +248,15 @@ class TestCorruptStore:
 
 
 class TestProviderAuthBedrock:
-    def test_bedrock_skipped(self) -> None:
-        """Bedrock always returns (True, message) — no HTTP call."""
+    def test_bedrock_no_key_returns_sigv4_message(self) -> None:
+        """Bedrock with no key → AWS-SDK/profile path; informational (True, …).
+
+        (With a key, bedrock now routes to the real bearer-token test — see
+        TestBedrockBearerToken.)
+        """
         from studyloop.secrets import test_provider_auth
 
-        ok, msg = test_provider_auth("bedrock", "any-key")
+        ok, msg = test_provider_auth("bedrock", "")
         assert ok is True
         assert "AWS" in msg or "bedrock" in msg.lower()
 
@@ -263,8 +267,8 @@ class TestProviderAuthMocked:
     @pytest.fixture()
     def mock_openai_success(self):  # type: ignore[no-untyped-def]
         """Mock OpenAI /v1/models returning 200."""
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://api.openai.com/v1/models").mock(
@@ -275,8 +279,8 @@ class TestProviderAuthMocked:
     @pytest.fixture()
     def mock_openai_failure(self):  # type: ignore[no-untyped-def]
         """Mock OpenAI /v1/models returning 401."""
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://api.openai.com/v1/models").mock(
@@ -286,8 +290,8 @@ class TestProviderAuthMocked:
 
     @pytest.fixture()
     def mock_anthropic_success(self):  # type: ignore[no-untyped-def]
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://api.anthropic.com/v1/models").mock(
@@ -297,8 +301,8 @@ class TestProviderAuthMocked:
 
     @pytest.fixture()
     def mock_anthropic_failure(self):  # type: ignore[no-untyped-def]
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://api.anthropic.com/v1/models").mock(
@@ -308,8 +312,8 @@ class TestProviderAuthMocked:
 
     @pytest.fixture()
     def mock_openrouter_success(self):  # type: ignore[no-untyped-def]
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://openrouter.ai/api/v1/models").mock(
@@ -319,8 +323,8 @@ class TestProviderAuthMocked:
 
     @pytest.fixture()
     def mock_gemini_success(self):  # type: ignore[no-untyped-def]
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://generativelanguage.googleapis.com/v1beta/models").mock(
@@ -330,8 +334,8 @@ class TestProviderAuthMocked:
 
     @pytest.fixture()
     def mock_gemini_failure(self):  # type: ignore[no-untyped-def]
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.get("https://generativelanguage.googleapis.com/v1beta/models").mock(
@@ -341,8 +345,8 @@ class TestProviderAuthMocked:
 
     @pytest.fixture()
     def mock_minimax_success(self):  # type: ignore[no-untyped-def]
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.post("https://api.minimax.io/v1/text/chatcompletion_v2").mock(
@@ -352,8 +356,8 @@ class TestProviderAuthMocked:
 
     @pytest.fixture()
     def mock_minimax_failure(self):  # type: ignore[no-untyped-def]
-        import respx
         import httpx as _httpx
+        import respx
 
         with respx.mock(assert_all_called=False) as mock:
             mock.post("https://api.minimax.io/v1/text/chatcompletion_v2").mock(
@@ -462,3 +466,121 @@ class TestProviderAuthMocked:
             ok, msg = test_provider_auth("openai", "sk-timeout-test")
         assert ok is False
         assert "timeout" in msg.lower() or "network" in msg.lower()
+
+
+# ---------------------------------------------------------------------------
+# Auth-kind taxonomy
+# ---------------------------------------------------------------------------
+
+
+class TestAuthKind:
+    """get_auth_kind classifies each provider correctly."""
+
+    def test_api_key_providers(self) -> None:
+        from studyloop.secrets import get_auth_kind
+
+        for slug in ("openai", "anthropic", "openrouter", "gemini", "minimax"):
+            assert get_auth_kind(slug) == "api_key"
+
+    def test_bedrock_is_bearer(self) -> None:
+        from studyloop.secrets import get_auth_kind
+
+        assert get_auth_kind("bedrock") == "bedrock_bearer"
+
+    def test_ollama_is_local_keyless(self) -> None:
+        from studyloop.secrets import get_auth_kind
+
+        assert get_auth_kind("ollama") == "local_keyless"
+
+    def test_unknown_returns_none(self) -> None:
+        from studyloop.secrets import get_auth_kind
+
+        assert get_auth_kind("nope") is None
+
+    def test_case_insensitive(self) -> None:
+        from studyloop.secrets import get_auth_kind
+
+        assert get_auth_kind("  OpenAI ") == "api_key"
+
+
+# ---------------------------------------------------------------------------
+# Bedrock bearer token storage + dispatch
+# ---------------------------------------------------------------------------
+
+
+class TestBedrockBearerToken:
+    """The bearer token is stored under its own name and resolves like any key."""
+
+    def test_store_and_get_bearer_token(self) -> None:
+        from studyloop.secrets import get_secret, set_secret
+
+        set_secret("bedrock_bearer_token", "tok-abc123")
+        assert get_secret("bedrock_bearer_token") == "tok-abc123"
+
+    def test_bearer_token_env_fallback(self, monkeypatch: MonkeyPatch) -> None:
+        from studyloop.secrets import get_secret
+
+        monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "tok-from-env")
+        assert get_secret("bedrock_bearer_token") == "tok-from-env"
+
+    def test_delete_bearer_token(self) -> None:
+        from studyloop.secrets import delete_secret, get_secret, set_secret
+
+        set_secret("bedrock_bearer_token", "tok-xyz")
+        delete_secret("bedrock_bearer_token")
+        assert get_secret("bedrock_bearer_token") is None
+
+    def test_auth_dispatch_bedrock_with_key_delegates(self) -> None:
+        """bedrock + key routes to provider_auth.test_bedrock_bearer."""
+        from studyloop import secrets
+
+        with patch("studyloop.provider_auth.test_bedrock_bearer") as mock_test:
+            mock_test.return_value = (True, "ok")
+            ok, _ = secrets.test_provider_auth("bedrock", "tok-123")
+        assert ok is True
+        mock_test.assert_called_once_with("tok-123")
+
+    def test_auth_dispatch_bearer_token_name_normalises(self) -> None:
+        """The 'bedrock_bearer_token' name normalises to the bedrock slug."""
+        from studyloop import secrets
+
+        with patch("studyloop.provider_auth.test_bedrock_bearer") as mock_test:
+            mock_test.return_value = (True, "ok")
+            ok, _ = secrets.test_provider_auth("bedrock_bearer_token", "tok-123")
+        assert ok is True
+        mock_test.assert_called_once_with("tok-123")
+
+    def test_auth_dispatch_bedrock_no_key_is_sigv4_message(self) -> None:
+        from studyloop.secrets import test_provider_auth
+
+        ok, msg = test_provider_auth("bedrock", "")
+        assert ok is True
+        assert "AWS" in msg
+
+    def test_auth_dispatch_ollama_delegates(self) -> None:
+        from studyloop import secrets
+
+        with patch("studyloop.provider_auth.test_ollama_generate") as mock_test:
+            mock_test.return_value = (True, "2 cards")
+            ok, _ = secrets.test_provider_auth("ollama", base_url="http://x:1")
+        assert ok is True
+        mock_test.assert_called_once_with(base_url="http://x:1")
+
+
+class TestEmptyKeyGuard:
+    """An empty key must never reach the HTTP layer (would build 'Bearer ')."""
+
+    def test_empty_key_returns_false_no_http(self) -> None:
+        from studyloop.secrets import test_provider_auth
+
+        # No respx mock set up — if it tried HTTP this would error; instead it
+        # must short-circuit on the empty key.
+        ok, msg = test_provider_auth("minimax", "")
+        assert ok is False
+        assert "no api key" in msg.lower()
+
+    def test_whitespace_key_returns_false(self) -> None:
+        from studyloop.secrets import test_provider_auth
+
+        ok, msg = test_provider_auth("openai", "   ")
+        assert ok is False
