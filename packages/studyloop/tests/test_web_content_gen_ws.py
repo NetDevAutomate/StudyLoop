@@ -17,15 +17,18 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
+from _helpers import run_async
 
 pytest.importorskip("fastapi")
 
-from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
-from starlette.websockets import WebSocketDisconnect  # noqa: E402  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
+from starlette.websockets import (
+    WebSocketDisconnect,  # pyright: ignore[reportMissingImports]
+)
 
-from studyloop.content import active_gen  # noqa: E402
-from studyloop.web.app import create_app  # noqa: E402
-from studyloop.web.routes import content_gen as cg_route  # noqa: E402
+from studyloop.content import active_gen
+from studyloop.web.app import create_app
+from studyloop.web.routes import content_gen as cg_route
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,10 +43,10 @@ if TYPE_CHECKING:
 
 @pytest.fixture(autouse=True)
 def _clean_module_state():
-    asyncio.run(active_gen.release())
+    run_async(active_gen.release())
     cg_route._JOB_QUEUES.clear()
     yield
-    asyncio.run(active_gen.release())
+    run_async(active_gen.release())
     cg_route._JOB_QUEUES.clear()
 
 
@@ -63,9 +66,7 @@ def stub_settings(vault: Path, monkeypatch: MonkeyPatch):
 
     s = Settings()
     s.content = ContentConfig(base_path=vault)
-    s.card_generator = CardGeneratorConfig(
-        backend="stub", max_workers=2, stub_card_count=3
-    )
+    s.card_generator = CardGeneratorConfig(backend="stub", max_workers=2, stub_card_count=3)
     monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
     return s
 
@@ -104,9 +105,7 @@ def _kick_job(client: TestClient) -> str:
 
 
 class TestStream:
-    def test_streams_started_then_task_complete_then_all_done(
-        self, client: TestClient
-    ) -> None:
+    def test_streams_started_then_task_complete_then_all_done(self, client: TestClient) -> None:
         """Happy-path frame sequence ends with ``all_done`` and a clean close."""
         job_id = _kick_job(client)
         with client.websocket_connect(
@@ -128,14 +127,12 @@ class TestStream:
         # Singleton released by the orchestrator's finally.
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
-            if asyncio.run(active_gen.current()) is None:
+            if run_async(active_gen.current()) is None:
                 break
             time.sleep(0.02)
-        assert asyncio.run(active_gen.current()) is None
+        assert run_async(active_gen.current()) is None
 
-    def test_started_frame_includes_task_count_and_sources(
-        self, client: TestClient
-    ) -> None:
+    def test_started_frame_includes_task_count_and_sources(self, client: TestClient) -> None:
         job_id = _kick_job(client)
         with client.websocket_connect(
             f"/api/content/generate/ws?job_id={job_id}",
@@ -152,24 +149,28 @@ class TestStream:
 class TestRouting:
     def test_unknown_job_id_closes_with_4404(self, client: TestClient) -> None:
         """No queue → close with the 'job not found' application code."""
-        with pytest.raises(WebSocketDisconnect) as excinfo:
-            with client.websocket_connect(
+        with (
+            pytest.raises(WebSocketDisconnect) as excinfo,
+            client.websocket_connect(
                 "/api/content/generate/ws?job_id=gen-deadbeef",
                 headers={"origin": "http://127.0.0.1:8788"},
-            ) as ws:
-                ws.receive_json()  # Should never arrive.
+            ) as ws,
+        ):
+            ws.receive_json()  # Should never arrive.
         assert excinfo.value.code == 4404
 
     def test_disallowed_origin_closes_with_1008(self, client: TestClient) -> None:
         # Pre-load a queue so the origin guard is the only thing that
         # can reject -- isolates the assertion.
         cg_route._JOB_QUEUES["gen-x"] = asyncio.Queue()
-        with pytest.raises(WebSocketDisconnect) as excinfo:
-            with client.websocket_connect(
+        with (
+            pytest.raises(WebSocketDisconnect) as excinfo,
+            client.websocket_connect(
                 "/api/content/generate/ws?job_id=gen-x",
                 headers={"origin": "http://evil.example.com"},
-            ) as ws:
-                ws.receive_json()
+            ) as ws,
+        ):
+            ws.receive_json()
         assert excinfo.value.code == 1008
 
 

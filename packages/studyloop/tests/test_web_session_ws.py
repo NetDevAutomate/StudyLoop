@@ -14,12 +14,12 @@ loop. The active-session singleton is seeded from sync code via
 
 from __future__ import annotations
 
-import asyncio
 import sys
 import time
 from pathlib import Path
 
 import pytest
+from _helpers import run_async
 
 pytest.importorskip("fastapi")
 
@@ -49,9 +49,9 @@ from conftest import StubTransport  # noqa: E402
 @pytest.fixture(autouse=True)
 def _reset_active_state():
     """Clear the active-session singleton around every test."""
-    asyncio.run(active.release())
+    run_async(active.release())
     yield
-    asyncio.run(active.release())
+    run_async(active.release())
 
 
 @pytest.fixture(autouse=True)
@@ -91,7 +91,7 @@ def _install_active(stub: StubTransport, config: SessionConfig) -> None:
     pump it through ``asyncio.run``. A fresh loop is fine — acquire only
     needs a running loop for session_state writes via run_in_executor.
     """
-    asyncio.run(active.acquire(config, lambda: stub))
+    run_async(active.acquire(config, lambda: stub))
 
 
 # ---------------------------------------------------------------------------
@@ -343,8 +343,8 @@ class TestPermissionResponseForwarding:
                 await self.end()
 
         pty_like = _NoPerm()
-        asyncio.run(active.release())
-        asyncio.run(active.acquire(config, lambda: pty_like))
+        run_async(active.release())
+        run_async(active.acquire(config, lambda: pty_like))
 
         with client.websocket_connect(
             "/api/session/ws?study_session_id=study-1",
@@ -388,5 +388,5 @@ class TestCleanup:
         # Give the route's finally-block time to run release().
         time.sleep(0.15)
 
-        assert asyncio.run(active.current()) is None
+        assert run_async(active.current()) is None
         assert stub.end_calls == 1
