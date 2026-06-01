@@ -280,9 +280,15 @@ class TTSEngine {
     // version skew). Must be set before any from_pretrained call.
     env.backends.onnx.wasm.wasmPaths = ORT_WASM_PATH;
 
-    // Disable Cache Storage for model weights — ORT will use its own IndexedDB store.
-    // This means the sw.js Cache Storage self-destruct has NO effect on model weights.
-    env.useBrowserCache = false;
+    // Persist the ~92 MB model in Cache Storage ('transformers-cache') so it
+    // downloads ONCE and survives reloads / works offline. This is the library
+    // default (useBrowserCache = IS_WEB_CACHE_AVAILABLE); we set it explicitly
+    // to document intent. The earlier `= false` here was a bug: it disabled the
+    // ONLY store that holds the weights (ORT's IndexedDB caches compiled WASM
+    // kernels, NOT model weights), so every page load re-fetched 92 MB from HF.
+    // The self-destruct sw.js is patched to spare 'transformers-cache' so a
+    // lingering dev service worker can't wipe the model.
+    env.useBrowserCache = true;
 
     // Device is selected per-call via from_pretrained({ device }) below — NOT via
     // env.backends.onnx.preferredBackend, which is not a real transformers.js v3
