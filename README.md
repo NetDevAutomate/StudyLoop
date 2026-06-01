@@ -30,6 +30,7 @@ cd studyloop
 ./scripts/install.sh
 
 # Configure
+studyloop self-test        # Lightweight post-install check
 studyloop setup              # Interactive setup wizard (incl. optional Obsidian export)
 studyloop doctor --fix       # Verify and apply safe fixes
 
