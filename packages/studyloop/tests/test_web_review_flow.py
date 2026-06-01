@@ -150,7 +150,7 @@ class TestCoursesView:
         _stub_stats(web_page, {"total_reviews": 0, "unique_cards": 0, "mastered": 0})
 
         _goto_review(web_page, "flashcards")
-        card = web_page.locator('[x-show*="flashcards"] .course-card', has_text="Python-101")
+        card = web_page.locator('[x-show*="flashcards"] .course-row', has_text="Python-101")
         card.wait_for(state="visible", timeout=5000)
 
         # Due-count badge appears when due_count > 0.
@@ -177,8 +177,8 @@ class TestCoursesView:
         _stub_sources(web_page, ["ch1", "ch2"])
         _goto_review(web_page, "flashcards")
 
-        card = web_page.locator('[x-show*="flashcards"] .course-card', has_text="Python-101")
-        card.locator(".mode-btn.flashcard").click()
+        card = web_page.locator('[x-show*="flashcards"] .course-row', has_text="Python-101")
+        card.locator(".course-row-action.flashcard").click()
 
         # Alpine switches reviewApp.view to 'config'.
         web_page.wait_for_function(
@@ -220,7 +220,7 @@ class TestFlashcardsStudyFlow:
         _goto_review(web_page, "flashcards")
 
         root = '[x-data*="flashcards"]'
-        web_page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
         # Click Start inside the config view.
         web_page.locator(f'{root} button:has-text("Start Session")').click()
 
@@ -257,7 +257,7 @@ class TestFlashcardsStudyFlow:
         _goto_review(web_page, "flashcards")
 
         root = '[x-data*="flashcards"]'
-        web_page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
 
         # Drive flipCard() directly to avoid brittle card-click targeting.
@@ -300,7 +300,7 @@ class TestFlashcardsStudyFlow:
         _goto_review(web_page, "flashcards")
 
         root = '[x-data*="flashcards"]'
-        web_page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
@@ -338,7 +338,7 @@ class TestFlashcardsStudyFlow:
         _goto_review(web_page, "flashcards")
 
         root = '[x-data*="flashcards"]'
-        web_page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
@@ -382,7 +382,7 @@ class TestFlashcardsStudyFlow:
         _goto_review(web_page, "flashcards")
 
         root = '[x-data*="flashcards"]'
-        web_page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
@@ -437,7 +437,7 @@ class TestQuizStudyFlow:
         _goto_review(web_page, "quizzes")
 
         root = '[x-data*="quiz"]'
-        web_page.locator(f"{root} .course-card .mode-btn.quiz").first.click()
+        web_page.locator(f"{root} .course-row-action.quiz").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
@@ -480,7 +480,7 @@ class TestQuizStudyFlow:
         _goto_review(web_page, "quizzes")
 
         root = '[x-data*="quiz"]'
-        web_page.locator(f"{root} .course-card .mode-btn.quiz").first.click()
+        web_page.locator(f"{root} .course-row-action.quiz").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
@@ -524,7 +524,7 @@ class TestQuizStudyFlow:
         _goto_review(web_page, "quizzes")
 
         root = '[x-data*="quiz"]'
-        web_page.locator(f"{root} .course-card .mode-btn.quiz").first.click()
+        web_page.locator(f"{root} .course-row-action.quiz").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
@@ -577,7 +577,7 @@ class TestSummaryView:
         _goto_review(web_page, "flashcards")
 
         root = '[x-data*="flashcards"]'
-        web_page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
@@ -620,7 +620,7 @@ class TestSummaryView:
         _goto_review(web_page, "flashcards")
 
         root = '[x-data*="flashcards"]'
-        web_page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
         web_page.locator(f'{root} button:has-text("Start Session")').click()
         web_page.wait_for_function(
             f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'study'",
