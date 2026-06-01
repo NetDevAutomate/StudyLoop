@@ -105,11 +105,13 @@ function renderMarkdown(text) {
  * @returns {string}
  */
 function _stripFrontmatter(text) {
-  if (!text.startsWith('---\n')) return text;
-  /* Find the closing ---. Must be on its own line after at least one key line. */
-  const close = text.indexOf('\n---\n', 4);
-  if (close === -1) return text;           /* malformed — leave as-is */
-  return text.slice(close + 5);            /* skip past the closing `---\n` */
+  /* Accept both LF (`---\n`) and CRLF (`---\r\n`) openers. */
+  if (!text.startsWith('---\n') && !text.startsWith('---\r\n')) return text;
+  /* Match the full frontmatter block: opening ---, YAML body, closing ---.
+     \r? before each \n makes this CRLF-safe while keeping the LF path fast. */
+  const match = text.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+  if (!match) return text;                 /* malformed/unclosed — leave as-is */
+  return text.slice(match[0].length);      /* skip past the matched block */
 }
 
 /**
@@ -1000,6 +1002,10 @@ function courseExplorer() {
     readerHtml: '',
     readerLoading: false,
     readerError: '',
+    // Generation counter: incremented each time a new openLesson() or
+    // backToBrowser() is triggered.  Each async chain captures its own
+    // generation at entry and bails if it has been superseded.
+    _readerGen: 0,
 
     // ------------------------------------------------------------------
     // init: wire this component's toggle/close onto the store so the
@@ -1117,8 +1123,16 @@ function courseExplorer() {
 
     // ------------------------------------------------------------------
     // Open a lesson: fetch raw markdown, strip frontmatter, render HTML.
+    //
+    // Race-safety: a generation counter (_readerGen) is incremented at the
+    // top of every call.  After each await point the chain checks whether
+    // its own captured generation is still current; if a newer call (or
+    // backToBrowser) has run, this chain silently abandons its result so
+    // stale content never overwrites fresher content.
     // ------------------------------------------------------------------
     async openLesson(lesson) {
+      const myGen = ++this._readerGen;   // capture generation before any await
+
       this.activeLesson = lesson;
       this.readerHtml = '';
       this.readerError = '';
@@ -1131,32 +1145,63 @@ function courseExplorer() {
         // real slashes, not %2F which Starlette would reject.
         const enc = (id) => id.split('/').map(encodeURIComponent).join('/');
         const res = await fetch('/api/explorer/lesson/' + enc(lesson.id) + '/content');
+
+        // Guard 1: a newer openLesson or backToBrowser ran while we fetched.
+        if (this._readerGen !== myGen) return;
+
         if (res.ok) {
           const data = await res.json();
+
+          // Guard 2: a newer call ran while we parsed the JSON body.
+          if (this._readerGen !== myGen) return;
+
           const raw = data.content || '';
           const stripped = _stripFrontmatter(raw);
           this.readerHtml = renderMarkdown(stripped);
-          /* Two-pass mermaid: wait for Alpine to flush the DOM, then render
-             any mermaid placeholder divs that renderMarkdown left behind. */
+
+          /* Two-pass mermaid: Alpine's x-html directive schedules its DOM
+             write as a reactive effect.  The first $nextTick exhausts the
+             current microtask queue and triggers the effect; the second
+             $nextTick waits for the effect's DOM mutation to be flushed
+             before _renderMermaidPlaceholders queries for placeholders.
+             Without both ticks the querySelectorAll runs before x-html has
+             written the content and finds nothing to render. */
           await this.$nextTick();
+          await this.$nextTick();
+
+          // Guard 3: a newer call ran during the DOM-flush ticks.
+          if (this._readerGen !== myGen) return;
+
           await _renderMermaidPlaceholders(this.$el);
         } else {
           this.readerError = `Could not load lesson (${res.status})`;
         }
       } catch (err) {
-        this.readerError = 'Network error loading lesson';
-        console.error('[CourseExplorer] openLesson error:', err);
+        // Only surface the error if this generation is still current.
+        if (this._readerGen === myGen) {
+          this.readerError = 'Network error loading lesson';
+          console.error('[CourseExplorer] openLesson error:', err);
+        }
       } finally {
-        this.readerLoading = false;
+        // Only clear the loading spinner for the generation that set it.
+        if (this._readerGen === myGen) {
+          this.readerLoading = false;
+        }
       }
     },
 
     // Back to carousel view from reader.
+    // Bumps _readerGen to invalidate any in-flight openLesson() chain so
+    // a late-arriving response cannot overwrite the browser view.
+    // Also clears readerLoading so the spinner doesn't persist if Back is
+    // pressed while a fetch is still running (F7).
     backToBrowser() {
+      this._readerGen++;          // invalidate any in-flight openLesson chain
       this.view = 'browser';
       this.activeLesson = null;
       this.readerHtml = '';
       this.readerError = '';
+      this.readerLoading = false; // clear spinner even if fetch was in-flight
     },
 
   };

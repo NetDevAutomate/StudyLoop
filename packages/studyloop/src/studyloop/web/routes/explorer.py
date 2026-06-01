@@ -31,6 +31,9 @@ router = APIRouter()
 # module is self-contained.
 _OUTPUT_SUBDIRS: frozenset[str] = frozenset({"flashcards", "quizzes"})
 _SOURCE_SUFFIXES: frozenset[str] = frozenset({".md", ".markdown", ".txt"})
+# Ordered probe sequence for the content endpoint: .md wins over .markdown wins over .txt.
+# Iterating a frozenset is PYTHONHASHSEED-dependent; this tuple is deterministic.
+_SUFFIX_PRIORITY: tuple[str, ...] = (".md", ".markdown", ".txt")
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +170,8 @@ def explorer_lessons(course_id: str) -> list[dict[str, Any]]:
             continue
         if file_path.suffix.lower() not in _SOURCE_SUFFIXES:
             continue
+        if not file_path.resolve().is_relative_to(base.resolve()):
+            continue
         rel = file_path.relative_to(candidate)
         # Skip any path whose parts touch an output dir or a dot-dir.
         if any(part in _OUTPUT_SUBDIRS or part.startswith(".") for part in rel.parts):
@@ -209,7 +214,7 @@ def explorer_lesson_content(lesson_id: str) -> dict[str, str]:
     base = Path(settings.content.base_path).expanduser().resolve()
 
     resolved: Path | None = None
-    for suffix in _SOURCE_SUFFIXES:
+    for suffix in _SUFFIX_PRIORITY:
         candidate = (base / lesson_id).with_suffix(suffix)
         try:
             r = candidate.resolve()
@@ -232,5 +237,5 @@ def explorer_lesson_content(lesson_id: str) -> dict[str, str]:
     if resolved.suffix.lower() not in _SOURCE_SUFFIXES:
         raise HTTPException(status_code=404)
 
-    content = resolved.read_text(encoding="utf-8")
+    content = resolved.read_text(encoding="utf-8", errors="replace")
     return {"content": content, "lesson_id": lesson_id}
