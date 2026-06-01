@@ -147,6 +147,20 @@ On first use the model downloads **once** (~92 MB: the q8-quantised Kokoro weigh
 
 > **First run needs internet** to fetch the weights. After that, voice works fully offline.
 
+### Future: fully-offline (cold-start) voice
+
+The current design needs internet **once** (the first-run fetch). Making voice work with *zero* internet from a cold install is possible but deliberately **not** done yet — and notably, it **cannot** be solved by the install script.
+
+**Why the install script can't help:** the model is downloaded *by the browser* into the browser's per-origin **Cache Storage**. `scripts/install.sh` runs in the shell, server-side — it has no path to write into a browser's Cache Storage (unlike the `study-speak` CLI, which reads weights from `~/.cache/kokoro-onnx/` on the filesystem and *can* be pre-warmed by a shell `curl`). A shell download would land the bytes somewhere the web engine can't read.
+
+**The only real cold-offline path is to self-host the weights:**
+
+1. Vendor the ~92 MB Kokoro model under `web/static/` (tracked via Git LFS, like the ORT WASM already is).
+2. Point `KOKORO_MODEL_ID` / the transformers.js model path at that same-origin location instead of the Hugging Face hub.
+3. The browser then fetches the model from `localhost` on first load — no internet, ever. (It still populates Cache Storage once; that's a local fetch.)
+
+**Why deferred:** it adds 92 MB to the repo/LFS for a one-time-internet saving that most LAN/desktop users don't need. A lighter middle-ground is a "warm voice cache" button in settings that calls `ttsEngine.init()` on demand, so the download happens deliberately (with progress) rather than on first card-read — still internet-once, but user-controlled.
+
 ### Controls
 
 - **Voice selector dropdown** — choose a Kokoro voice (e.g. `am_michael`, `af_heart`, `bf_emma`). Appears in the header; selection persists across sessions. (Falls back to listing OS voices if the engine is on the `web-speech` tier.)
