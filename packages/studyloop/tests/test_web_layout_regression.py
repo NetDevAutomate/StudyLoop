@@ -622,3 +622,150 @@ class TestLessonReadingViewLayout:
             f"Last child of .explorer-reader-prose not visible after scrolling to bottom: "
             f"lastBottom={reachable['lastBottom']:.1f} contBottom={reachable['contBottom']:.1f}"
         )
+
+
+class TestCourseExplorerTtsGating:
+    """Phase 6: read-aloud (TTS) is GATED on the browser-neural-tts worktree.
+
+    window.ttsEngine is provided only by that worktree's tts-engine.js, which is
+    NOT loaded on this branch. These tests lock in the gating contract:
+
+      - the read-aloud button is hidden while ttsAvailable is false (default here)
+      - readAloud()/stopReading() are safe no-ops when the engine is absent
+      - _mdToPlainText() strips markdown so the engine never speaks syntax noise
+      - the button appears once a (stub) window.ttsEngine is present
+
+    Without these, a future change could ship a dead/throwing button, or feed raw
+    markdown to TTS once the engine merges.
+    """
+
+    def _goto_with_lesson_open(self, page: Page) -> None:
+        _stub_explorer_tree(page)
+        _stub_explorer_lessons(page)
+        _stub_explorer_content(page)
+        _stub_courses(page, [])
+        _stub_session_state(page)
+        _stub_stats(page)
+        _goto(page, "flashcards")
+        _open_explorer_panel(page)
+        page.wait_for_function(
+            "() => document.querySelectorAll('.explorer-course-card').length > 0",
+            timeout=4000,
+        )
+        lesson = _LESSONS[0]
+        page.evaluate(
+            """(lesson) => {
+                const comp = window.Alpine.$data(
+                    document.querySelector('.course-explorer-panel'));
+                comp.openLesson(lesson);
+            }""",
+            lesson,
+        )
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('.course-explorer-panel');
+                const d = el && window.Alpine.$data(el);
+                return d && d.view === 'reader' && !d.readerLoading;
+            }""",
+            timeout=5000,
+        )
+        page.wait_for_timeout(300)
+
+    def test_tts_button_hidden_when_engine_absent(self, web_page: Page) -> None:
+        # On this branch window.ttsEngine is absent → ttsAvailable false →
+        # the read-aloud button must be hidden (display:none via x-show).
+        self._goto_with_lesson_open(web_page)
+        state = web_page.evaluate(
+            """() => {
+                const d = window.Alpine.$data(
+                    document.querySelector('.course-explorer-panel'));
+                const btn = document.querySelector('.explorer-tts-btn');
+                return {
+                    enginePresent: typeof window.ttsEngine !== 'undefined',
+                    ttsAvailable: d.ttsAvailable,
+                    btnVisible: btn ? btn.offsetParent !== null : false,
+                };
+            }"""
+        )
+        assert state["enginePresent"] is False, "ttsEngine should be absent on this branch"
+        assert state["ttsAvailable"] is False
+        assert state["btnVisible"] is False, "read-aloud button must be hidden when TTS absent"
+
+    def test_read_aloud_is_safe_noop_when_engine_absent(self, web_page: Page) -> None:
+        # Calling readAloud()/stopReading() without an engine must not throw.
+        self._goto_with_lesson_open(web_page)
+        result = web_page.evaluate(
+            """() => {
+                const d = window.Alpine.$data(
+                    document.querySelector('.course-explorer-panel'));
+                let threw = false;
+                try { d.readAloud(); d.stopReading(); } catch (e) { threw = true; }
+                return { threw, isReading: d.isReading };
+            }"""
+        )
+        assert result["threw"] is False, (
+            "readAloud/stopReading must no-op (not throw) without engine"
+        )
+        assert result["isReading"] is False
+
+    def test_md_to_plain_text_strips_markdown(self, web_page: Page) -> None:
+        # _mdToPlainText must remove headings, emphasis, links, code fences and
+        # list markers so TTS speaks prose, not syntax.
+        self._goto_with_lesson_open(web_page)
+        md = (
+            "# Title\n\n**bold** and *it* see [x](http://y)\n\n"
+            "```py\ncode()\n```\n\n- one\n- two"
+        )
+        plain = web_page.evaluate("(md) => window._mdToPlainText(md)", md)
+        assert "#" not in plain
+        assert "**" not in plain and "*" not in plain
+        assert "```" not in plain and "code()" not in plain
+        assert "http://y" not in plain
+        assert "Title" in plain and "bold" in plain and "one" in plain
+
+    def test_tts_button_appears_when_engine_injected(self, web_page: Page) -> None:
+        # Prove the gate flips: inject a stub window.ttsEngine BEFORE the panel
+        # component initialises, then confirm the button becomes visible. This
+        # guards against the button being hard-hidden (the gate must be live).
+        _stub_explorer_tree(web_page)
+        _stub_explorer_lessons(web_page)
+        _stub_explorer_content(web_page)
+        _stub_courses(web_page, [])
+        _stub_session_state(web_page)
+        _stub_stats(web_page)
+        web_page.add_init_script(
+            "window.ttsEngine = { speak() {}, stop() {}, isSpeaking: false };"
+        )
+        _goto(web_page, "flashcards")
+        _open_explorer_panel(web_page)
+        web_page.wait_for_function(
+            "() => document.querySelectorAll('.explorer-course-card').length > 0",
+            timeout=4000,
+        )
+        web_page.evaluate(
+            """(lesson) => {
+                window.Alpine.$data(
+                    document.querySelector('.course-explorer-panel')).openLesson(lesson);
+            }""",
+            _LESSONS[0],
+        )
+        web_page.wait_for_function(
+            """() => {
+                const el = document.querySelector('.course-explorer-panel');
+                const d = el && window.Alpine.$data(el);
+                return d && d.view === 'reader' && !d.readerLoading;
+            }""",
+            timeout=5000,
+        )
+        web_page.wait_for_timeout(300)
+        state = web_page.evaluate(
+            """() => {
+                const d = window.Alpine.$data(
+                    document.querySelector('.course-explorer-panel'));
+                const btn = document.querySelector('.explorer-tts-btn');
+                return { ttsAvailable: d.ttsAvailable,
+                         btnVisible: btn ? btn.offsetParent !== null : false };
+            }"""
+        )
+        assert state["ttsAvailable"] is True, "ttsAvailable must be true when engine injected"
+        assert state["btnVisible"] is True, "read-aloud button must appear when TTS present"

@@ -3311,6 +3311,33 @@ body[data-palette="everforest"] {
   opacity: 0.85;
 }
 
+/* Phase 6: read-aloud button — sits beside the struggle button in the reader
+   header. Hidden via x-show unless the TTS engine is present. Does NOT take
+   margin-left:auto (the struggle button already does, pushing both right). */
+.explorer-tts-btn {
+  flex-shrink: 0;
+  margin-left: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.explorer-tts-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--bg-card);
+}
+.explorer-tts-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* Reader prose container: scrollable, padded, readable line-length. */
 .explorer-reader-prose {
   flex: 1;
