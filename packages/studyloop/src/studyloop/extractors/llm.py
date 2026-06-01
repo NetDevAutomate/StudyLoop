@@ -253,4 +253,10 @@ def extract_struggles(
 # Initialised so callers can read it even before the first call.
 extract_struggles.last_usage = {}  # type: ignore[attr-defined]
 
-__all__ = ["extract_struggles", "INITIAL_PROMPT", "DEFAULT_MODEL", "DEFAULT_REGION", "DEFAULT_PROFILE"]
+__all__ = [
+    "DEFAULT_MODEL",
+    "DEFAULT_PROFILE",
+    "DEFAULT_REGION",
+    "INITIAL_PROMPT",
+    "extract_struggles",
+]

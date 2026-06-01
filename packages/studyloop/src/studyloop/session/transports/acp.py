@@ -57,7 +57,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _INITIALIZE_TIMEOUT_S = 15.0
-_SESSION_NEW_TIMEOUT_S = 60.0  # Kiro's MCP-server bootstrap takes ~13s; gemini varies. Generous margin.
+# Kiro's MCP-server bootstrap takes ~13s; gemini varies. Generous margin.
+_SESSION_NEW_TIMEOUT_S = 60.0
 _EVENT_QUEUE_MAX = 256
 
 
