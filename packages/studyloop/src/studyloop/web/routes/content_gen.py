@@ -41,16 +41,17 @@ from pydantic import BaseModel, Field
 
 from studyloop.content import active_gen
 from studyloop.content.job import JobRequest, run_job
-# Module-level so the providers route can OR the encrypted store into its
-# availability flag. Named import (not `import studyloop.secrets`) avoids the
-# clash with the stdlib `secrets` module already imported above for token_hex.
-from studyloop.secrets import get_secret
 from studyloop.content.scope import (
     ResolvedSource,
     ScopeRequest,
     ScopeResolutionError,
     resolve_scope,
 )
+
+# Module-level so the providers route can OR the encrypted store into its
+# availability flag. Named import (not `import studyloop.secrets`) avoids the
+# clash with the stdlib `secrets` module already imported above for token_hex.
+from studyloop.secrets import get_secret
 
 if TYPE_CHECKING:
     from studyloop.settings import Settings
@@ -73,6 +74,11 @@ router = APIRouter()
 
 _JOB_QUEUES: dict[str, asyncio.Queue[dict[str, Any]]] = {}
 _JOB_QUEUE_MAX = 256
+
+# Strong references to in-flight background job tasks. Without this, the event
+# loop only holds a weak reference and may garbage-collect a running task
+# mid-flight (see RUF006). Tasks remove themselves on completion.
+_BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 
 
 def _get_or_create_queue(job_id: str) -> asyncio.Queue[dict[str, Any]]:
@@ -192,7 +198,7 @@ def _resolved_backend(settings: Settings, req: GenerateRequest) -> str:
 
 
 def _expected_task_count(sources: list[ResolvedSource], kinds: list[str]) -> int:
-    """Sources × kinds = expected runner tasks. Used in the 202 plan summary."""
+    """Sources x kinds = expected runner tasks. Used in the 202 plan summary."""
     return len(sources) * len(kinds)
 
 
@@ -233,7 +239,7 @@ async def _run_job_background(
         # handler -- but the orchestrator re-resolves so we cover both
         # paths defensively.
         await queue.put({"type": "transport_error", "message": str(exc)})
-    except Exception as exc:  # noqa: BLE001 -- forward then close
+    except Exception as exc:
         logger.exception("job %s failed unexpectedly", job_id)
         await queue.put({"type": "transport_error", "message": repr(exc)})
 
@@ -286,10 +292,14 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
     #    singleton in its ``finally`` -- we don't need to here.
     queue = _get_or_create_queue(job_id)
     job_req = _build_job_request(req)
-    asyncio.create_task(
+    task = asyncio.create_task(
         _run_job_background(job_id, job_req, settings, queue),
         name=f"content-gen-{job_id}",
     )
+    # Hold a strong reference until the task finishes so the event loop does
+    # not GC it mid-flight (RUF006), then drop it to avoid unbounded growth.
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
 
     return GenerateResponse(
         job_id=job_id,
@@ -515,7 +525,7 @@ def _bedrock_credentials_available() -> bool:
         or os.environ.get("AWS_DEFAULT_PROFILE", "").strip()
     ):
         try:
-            import boto3  # noqa: F401  # pyright: ignore[reportMissingImports]
+            import boto3  # pyright: ignore[reportMissingImports]
 
             return True
         except ImportError:
@@ -533,7 +543,7 @@ def _bedrock_credentials_available() -> bool:
             return False
         resolved = creds.resolve()
         return resolved is not None
-    except (ImportError, NoCredentialsError, Exception):  # noqa: BLE001
+    except (ImportError, NoCredentialsError, Exception):
         return False
 
 
@@ -669,7 +679,7 @@ async def _drain_queue_quietly(queue: asyncio.Queue[dict[str, Any]]) -> None:
     while True:
         try:
             frame = await asyncio.wait_for(queue.get(), timeout=30.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return
         if frame.get("type") in _TERMINAL_FRAMES:
             return
@@ -823,4 +833,4 @@ def delete_key(provider: str) -> StoreKeyResponse:
     return StoreKeyResponse(ok=True)
 
 
-__all__ = ["router", "GenerateRequest", "GenerateResponse"]
+__all__ = ["GenerateRequest", "GenerateResponse", "router"]

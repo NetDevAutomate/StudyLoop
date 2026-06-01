@@ -460,8 +460,8 @@ def register_tools(mcp: FastMCP) -> None:
 
     # ── §log_topic — mid-session learning signal recorder ────────
 
-    _VALID_STATUSES = frozenset({"learning", "struggling", "insight", "win", "parked"})
-    _CONFIDENCE_MAP: dict[str, str] = {
+    valid_statuses = frozenset({"learning", "struggling", "insight", "win", "parked"})
+    confidence_map: dict[str, str] = {
         "struggling": "struggling",
         "learning": "learning",
         "win": "confident",
@@ -486,14 +486,14 @@ def register_tools(mcp: FastMCP) -> None:
         from studyloop.history import record_progress
         from studyloop.session_state import append_topic
 
-        if status not in _VALID_STATUSES:
-            allowed = ", ".join(sorted(_VALID_STATUSES))
+        if status not in valid_statuses:
+            allowed = ", ".join(sorted(valid_statuses))
             raise ToolError(f"Invalid status {status!r}. Allowed: {allowed}")
 
         time_str = datetime.now().strftime("%H:%M")
         append_topic(time_str, topic, status, note)
 
-        confidence = _CONFIDENCE_MAP.get(status)
+        confidence = confidence_map.get(status)
         if confidence is not None:
             try:
                 record_progress(
