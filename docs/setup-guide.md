@@ -71,9 +71,15 @@ primary installer because it installs both `studyloop` and the
 git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
 cd studyloop
 ./scripts/install.sh
+studyloop self-test
 studyloop setup
 studyloop doctor --fix
 ```
+
+`studyloop self-test` is the fastest post-install confidence check. It verifies
+that the CLI imports, config is readable if present, the sessions database path
+is usable, and the web module imports. A warning exit (`1`) is acceptable before
+first setup if `config.yaml` does not exist yet.
 
 > If `studyloop doctor` reports `agent-session-tools not installed`, run
 > `studyloop install tools` — it reinstalls the workspace tools with
@@ -95,6 +101,7 @@ install:
 ```bash
 studyloop install tools
 studyloop install agents
+studyloop self-test
 studyloop doctor --fix
 ```
 
@@ -144,6 +151,7 @@ For contributor setups, the cleanest flow is usually:
 ```bash
 uv sync
 uv run studyloop install agents
+uv run studyloop self-test
 uv run studyloop doctor --fix
 ```
 

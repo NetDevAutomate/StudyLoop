@@ -53,6 +53,7 @@ from studyloop.cli._lazy import LazyGroup
         "backlog": "studyloop.cli._topics:topics_group",
         # _doctor.py — diagnostic health checks
         "doctor": "studyloop.cli._doctor:doctor",
+        "self-test": "studyloop.cli._self_test:self_test",
         # _upgrade.py — update check + upgrade apply
         "update": "studyloop.cli._upgrade:update",
         "upgrade": "studyloop.cli._upgrade:upgrade",
