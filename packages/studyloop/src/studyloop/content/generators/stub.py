@@ -71,10 +71,10 @@ class StubGenerator:
             QuizQuestion(
                 question=f"[{title}] stub question {i + 1}? (source len={len(source)})",
                 hint="",
-                answer_options=[
-                    QuizOption(text="Correct option", is_correct=True, rationale="stub correct"),
-                    QuizOption(text="Wrong option A", is_correct=False, rationale="stub wrong A"),
-                    QuizOption(text="Wrong option B", is_correct=False, rationale="stub wrong B"),
+                answerOptions=[
+                    QuizOption(text="Correct option", isCorrect=True, rationale="stub correct"),
+                    QuizOption(text="Wrong option A", isCorrect=False, rationale="stub wrong A"),
+                    QuizOption(text="Wrong option B", isCorrect=False, rationale="stub wrong B"),
                 ],
             )
             for i in range(count)
@@ -103,9 +103,7 @@ class StubGenerator:
         if mode == "fail_titles":
             failing = getattr(self._config, "stub_failure_titles", ())
             if title in failing:
-                raise CardGenerationError(
-                    f"stub configured to fail this title (title={title!r})"
-                )
+                raise CardGenerationError(f"stub configured to fail this title (title={title!r})")
 
 
 __all__ = ["StubGenerator"]

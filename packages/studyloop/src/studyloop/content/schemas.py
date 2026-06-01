@@ -257,9 +257,7 @@ class QuizDeck(BaseModel):
             kept.append(q)
         merged_data = {
             "title": self.title or other.title,
-            "questions": [
-                q.model_dump(mode="python", by_alias=True) for q in kept
-            ],
+            "questions": [q.model_dump(mode="python", by_alias=True) for q in kept],
         }
         return QuizDeck.model_validate(merged_data)
 

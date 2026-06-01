@@ -290,9 +290,7 @@ _GENERIC_DIR_NAMES = {"downloads", "content", "data", "files", "output", "genera
 # courses themselves — a ``flashcards/`` dir contains ``*flashcards.json`` which
 # would otherwise match _has_review_content and surface as a bogus "flashcards"
 # course. Discovery must never recurse into or report these.
-_DECK_SUBDIRS = frozenset(
-    {"flashcards", "quizzes", "audio", "chapters", "video", "slides"}
-)
+_DECK_SUBDIRS = frozenset({"flashcards", "quizzes", "audio", "chapters", "video", "slides"})
 
 # Depth guard for the recursive course search. The real vault is
 # ``base/<publisher>/<course>/`` (3 levels); 4 leaves headroom without risking

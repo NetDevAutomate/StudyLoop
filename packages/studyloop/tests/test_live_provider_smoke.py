@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -47,7 +48,7 @@ def mvd_source() -> str:
     return text
 
 
-def _provider_params() -> list[pytest.param]:
+def _provider_params() -> list[Any]:
     """Build one parametrise entry per registered provider.
 
     Each entry carries the slug + the default cheap-tier model so we
@@ -57,9 +58,7 @@ def _provider_params() -> list[pytest.param]:
     for slug in sorted(PROFILES):
         profile = get_profile(slug)
         entry = default_model(profile)
-        params.append(
-            pytest.param(slug, entry.id, profile.adapter, id=f"{slug}:{entry.id}")
-        )
+        params.append(pytest.param(slug, entry.id, profile.adapter, id=f"{slug}:{entry.id}"))
     return params
 
 
@@ -99,8 +98,7 @@ def test_flashcards_minimum_viable(
     # echoing schema/template noise.
     joined = " ".join(c.front + " " + c.back for c in deck.cards).lower()
     assert any(
-        keyword in joined
-        for keyword in ("photo", "chloro", "glucose", "oxygen", "light")
+        keyword in joined for keyword in ("photo", "chloro", "glucose", "oxygen", "light")
     ), "no photosynthesis-related keyword found in any card -- model ignored source?"
 
 

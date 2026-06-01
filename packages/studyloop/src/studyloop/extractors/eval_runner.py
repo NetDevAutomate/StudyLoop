@@ -4,7 +4,7 @@ Loads the frozen golden labels + train/held-out split, runs the extractor on
 the chosen split's sessions (reading transcripts from the live sessions.db,
 read-only), and computes pure-Python metrics against the human labels:
 
-- Topic Jaccard: |pred ∩ exp| / |pred ∪ exp| on normalised (topic, concept) keys
+- Topic Jaccard: |pred intersection exp| / |pred union exp| on normalised (topic, concept) keys
 - Confidence precision: of predicted struggling pairs, fraction that match a
   human struggling label
 - Confidence recall: of human struggling pairs, fraction predicted
@@ -24,18 +24,21 @@ import argparse
 import hashlib
 import json
 import sqlite3
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from studyloop.extractors import ExtractorResult
 from studyloop.extractors.llm import (
     DEFAULT_MODEL,
     INITIAL_PROMPT,
     extract_struggles,
 )
 from studyloop.extractors.pipeline import pre_filter
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from studyloop.extractors import ExtractorResult
 
 _FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 _GOLDEN_PATH = _FIXTURES / "eval_golden.json"
@@ -84,9 +87,7 @@ def _fetch_messages(conn: sqlite3.Connection, session_id: str) -> list[dict[str,
 
 
 def _session_source(conn: sqlite3.Connection, session_id: str) -> str | None:
-    row = conn.execute(
-        "SELECT source FROM sessions WHERE id = ?", (session_id,)
-    ).fetchone()
+    row = conn.execute("SELECT source FROM sessions WHERE id = ?", (session_id,)).fetchone()
     return row["source"] if row else None
 
 
@@ -135,11 +136,7 @@ def _match_pairs(
     matched = 0
     for p_topic, p_concept in predicted:
         hit = next(
-            (
-                e
-                for e in remaining_exp
-                if e[0] == p_topic and _concepts_match(e[1], p_concept)
-            ),
+            (e for e in remaining_exp if e[0] == p_topic and _concepts_match(e[1], p_concept)),
             None,
         )
         if hit is not None:
@@ -170,9 +167,7 @@ def _predicted_struggling(results: Iterable[ExtractorResult]) -> list[tuple[str,
     return [_norm(r.topic, r.concept) for r in results if r.confidence == "struggling"]
 
 
-def score_session(
-    entry: dict[str, Any], results: list[ExtractorResult]
-) -> SessionScore:
+def score_session(entry: dict[str, Any], results: list[ExtractorResult]) -> SessionScore:
     """Score one session's extractor output against its golden entry (pure Python).
 
     Uses FUZZY concept matching (greedy bipartite assignment) rather than exact
@@ -284,7 +279,7 @@ def run_eval(
                     cost += usage.get("inputTokens", 0) * _PRICE_IN
                     cost += usage.get("outputTokens", 0) * _PRICE_OUT
                     scores.append(score_session(entry, results))
-                except Exception as exc:  # noqa: BLE001 — loop resilience over strictness
+                except Exception as exc:
                     s = score_session(entry, [])
                     s.error = f"{type(exc).__name__}: {str(exc)[:200]}"
                     scores.append(s)

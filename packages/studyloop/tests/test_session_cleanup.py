@@ -77,10 +77,7 @@ class TestPersistSessionData:
         ):
             self._call("sess-rp", {}, topics, "notes")
 
-        calls = {
-            c.kwargs["topic"]: c.kwargs["confidence"]
-            for c in mock_record.call_args_list
-        }
+        calls = {c.kwargs["topic"]: c.kwargs["confidence"] for c in mock_record.call_args_list}
         assert calls == {
             "Closures": "confident",
             "Decorators": "confident",

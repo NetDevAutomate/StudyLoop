@@ -37,7 +37,7 @@ STUDY_SOURCE = "kiro_cli"
 
 
 def pre_filter(
-    session_id: str,  # noqa: ARG001 — kept for caller symmetry / future logging
+    session_id: str,
     source: str | None,
     messages: Sequence[dict[str, Any]],
 ) -> bool:
@@ -98,4 +98,4 @@ def extract_and_write(
     return written
 
 
-__all__ = ["pre_filter", "extract_and_write", "TOOL_USE_THRESHOLD", "STUDY_SOURCE"]
+__all__ = ["STUDY_SOURCE", "TOOL_USE_THRESHOLD", "extract_and_write", "pre_filter"]

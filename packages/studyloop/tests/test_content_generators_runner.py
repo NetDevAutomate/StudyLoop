@@ -76,9 +76,9 @@ class _FakeGenerator:
             questions=[
                 QuizQuestion(
                     question="Q?",
-                    answer_options=[
-                        QuizOption(text="a", is_correct=True, rationale="right"),
-                        QuizOption(text="b", is_correct=False, rationale="wrong"),
+                    answerOptions=[
+                        QuizOption(text="a", isCorrect=True, rationale="right"),
+                        QuizOption(text="b", isCorrect=False, rationale="wrong"),
                     ],
                 )
             ],

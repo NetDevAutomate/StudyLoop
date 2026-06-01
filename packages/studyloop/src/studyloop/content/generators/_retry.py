@@ -24,7 +24,7 @@ trivially with the existing :func:`generate_concurrently` flow.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -38,7 +38,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 @dataclass(frozen=True)
-class CallContext(Generic[T]):
+class CallContext[T: BaseModel]:
     """Per-attempt context handed to the adapter's call function.
 
     Why a context object: the call function needs to thread a growing
@@ -53,7 +53,7 @@ class CallContext(Generic[T]):
     history_extension: list[dict[str, Any]]
 
 
-def call_with_correction(
+def call_with_correction[T: BaseModel](
     *,
     model_cls: type[T],
     max_retries: int,

@@ -128,9 +128,7 @@ def _build_system_prompt(prompt_template: str = INITIAL_PROMPT) -> str:
     return prompt_template.replace("{vocab}", vocab_lines)
 
 
-def _build_client(
-    *, profile: str = DEFAULT_PROFILE, region: str = DEFAULT_REGION
-) -> Any:
+def _build_client(*, profile: str = DEFAULT_PROFILE, region: str = DEFAULT_REGION) -> Any:
     """Create a bedrock-runtime client. Monkeypatched in unit tests.
 
     boto3 is imported lazily so the ``[sessions]``-only install does not need
@@ -143,9 +141,7 @@ def _build_client(
             "LLM extractor requires boto3. Install with: "
             "uv pip install 'studyloop[bedrock]' (or run eval via uv run --with boto3)."
         ) from exc
-    return boto3.Session(profile_name=profile).client(
-        "bedrock-runtime", region_name=region
-    )
+    return boto3.Session(profile_name=profile).client("bedrock-runtime", region_name=region)
 
 
 def _transcript_text(messages: Sequence[dict[str, Any]], *, max_chars: int = 15000) -> str:
@@ -225,9 +221,7 @@ def extract_struggles(
         messages=[
             {
                 "role": "user",
-                "content": [
-                    {"text": f"Session {session_id} transcript:\n\n{transcript}"}
-                ],
+                "content": [{"text": f"Session {session_id} transcript:\n\n{transcript}"}],
             }
         ],
         inferenceConfig={"temperature": temperature, "maxTokens": max_tokens},

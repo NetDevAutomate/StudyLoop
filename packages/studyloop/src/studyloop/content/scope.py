@@ -231,9 +231,7 @@ def _resolve_course(course_dir: Path) -> list[ResolvedSource]:
         if src is not None:
             sources.append(src)
     if not sources:
-        raise ScopeResolutionError(
-            f"Course {course_dir.name!r} has no readable lesson markdown."
-        )
+        raise ScopeResolutionError(f"Course {course_dir.name!r} has no readable lesson markdown.")
     return sources
 
 
@@ -260,13 +258,10 @@ def _resolve_section(course_dir: Path, section_name: str) -> list[ResolvedSource
                 break
     if path is None or not path.is_file():
         raise ScopeResolutionError(
-            f"Section (lesson file) not found: {section_name!r} "
-            f"under course {course_dir.name!r}"
+            f"Section (lesson file) not found: {section_name!r} under course {course_dir.name!r}"
         )
     if any(part in _OUTPUT_SUBDIRS for part in path.relative_to(course_dir).parts):
-        raise ScopeResolutionError(
-            f"Section {section_name!r} is inside a reserved output dir."
-        )
+        raise ScopeResolutionError(f"Section {section_name!r} is inside a reserved output dir.")
     src = _file_source(course_dir, path, set())
     if src is None:
         raise ScopeResolutionError(f"Section file {path} has no readable markdown.")
@@ -291,9 +286,7 @@ def _resolve_topic_struggles(
     overall).
     """
     if window_days < 1 or window_days > 90:
-        raise ScopeResolutionError(
-            f"window_days must be in [1, 90], got {window_days}"
-        )
+        raise ScopeResolutionError(f"window_days must be in [1, 90], got {window_days}")
     cutoff = (datetime.now(UTC) - timedelta(days=window_days)).isoformat()
     topics = _query_struggling_topics(db_path, cutoff, topic_slug)
     if not topics:
@@ -307,8 +300,8 @@ def _resolve_topic_struggles(
         match = _find_markdown_for_topic(course_dir, topic)
         if match is None:
             continue
-        markdown_text = _concatenate_markdown(match) if match.is_dir() else match.read_text(
-            encoding="utf-8"
+        markdown_text = (
+            _concatenate_markdown(match) if match.is_dir() else match.read_text(encoding="utf-8")
         )
         if not markdown_text:
             continue
@@ -384,9 +377,7 @@ def _find_markdown_for_topic(course_dir: Path, topic: str) -> Path | None:
     return None
 
 
-def _query_struggling_topics(
-    db_path: Path, cutoff_iso: str, topic_slug: str | None
-) -> list[str]:
+def _query_struggling_topics(db_path: Path, cutoff_iso: str, topic_slug: str | None) -> list[str]:
     """Return distinct ``topic`` strings from ``study_progress`` matching the filter.
 
     Uses ``confidence='struggling'`` (matches the filter at
