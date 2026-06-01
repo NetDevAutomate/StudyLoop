@@ -296,6 +296,10 @@ function reviewApp(defaultMode) {
     heatmapDays: [],
     history: [],
 
+    // Course-list scaling: search box + collapsible publisher groups.
+    searchQuery: '',
+    collapsedGroups: new Set(),  // publisher names the user has collapsed
+
     // Config / session setup
     course: '',
     sources: [],
@@ -361,6 +365,41 @@ function reviewApp(defaultMode) {
       if (pct >= 70) return { text: 'Good work', cls: 'grade-b' };
       if (pct >= 50) return { text: 'Keep going', cls: 'grade-c' };
       return { text: 'Review again', cls: 'grade-d' };
+    },
+
+    // --- Course-list filtering + grouping (drives both panels) -------------
+    // Mode-split lives HERE: each panel instantiates reviewApp('flashcards')
+    // or reviewApp('quiz'), so this.mode picks which count gates the list.
+    // The Flashcards panel shows only decks with flashcards; Quizzes only
+    // decks with quiz questions. Then the search box filters by course name.
+    get filteredCourses() {
+      const countKey = this.mode === 'quiz' ? 'quiz_count' : 'flashcard_count';
+      const q = this.searchQuery.trim().toLowerCase();
+      return this.courses
+        .filter((c) => (c[countKey] || 0) > 0)
+        .filter((c) => !q || (c.name || '').toLowerCase().includes(q));
+    },
+
+    // Group the filtered courses by publisher, sorted alphabetically. Only
+    // publishers with ≥1 matching course appear (derived from filteredCourses),
+    // so a group whose courses are all filtered out simply vanishes.
+    get groupedCourses() {
+      const groups = {};
+      for (const c of this.filteredCourses) {
+        const pub = c.publisher || 'Other';
+        (groups[pub] = groups[pub] || []).push(c);
+      }
+      return Object.entries(groups)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([publisher, courses]) => ({ publisher, courses }));
+    },
+
+    // Collapse/expand a publisher group. Reassign the Set (Alpine doesn't
+    // observe in-place Set mutation).
+    toggleGroup(publisher) {
+      const next = new Set(this.collapsedGroups);
+      next.has(publisher) ? next.delete(publisher) : next.add(publisher);
+      this.collapsedGroups = next;
     },
 
     get summaryDuration() {
@@ -470,6 +509,7 @@ function reviewApp(defaultMode) {
       this.skipped = 0;
       this.isRetry = false;
       this.wrongHashes = [];
+      this.searchQuery = '';  // clear the filter when returning to the list
       this._loadCourses();
     },
 
