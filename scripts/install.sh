@@ -79,6 +79,24 @@ run_smoke_checks() {
   session-export --help >/dev/null
 
   set +e
+  self_test_json=$(studyloop self-test --json)
+  self_test_status=$?
+  set -e
+
+  case "$self_test_status" in
+    0|1) ;;
+    *)
+      err "studyloop self-test --json failed with unexpected status ${self_test_status}"
+      exit "$self_test_status"
+      ;;
+  esac
+
+  if ! printf '%s' "$self_test_json" | python3 -m json.tool >/dev/null; then
+    err "studyloop self-test --json did not emit valid JSON"
+    exit 1
+  fi
+
+  set +e
   doctor_json=$(studyloop doctor --json)
   doctor_status=$?
   set -e

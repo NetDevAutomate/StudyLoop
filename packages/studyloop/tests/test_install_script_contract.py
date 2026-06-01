@@ -6,6 +6,18 @@ import subprocess
 from pathlib import Path
 
 
+def test_install_script_smoke_checks_run_self_test_json() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    script = repo_root / "scripts" / "install.sh"
+    script_text = script.read_text()
+
+    assert "self_test_json=$(studyloop self-test --json)" in script_text
+    assert "self_test_status=$?" in script_text
+    assert 'case "$self_test_status" in' in script_text
+    assert "0|1) ;;" in script_text
+    assert "python3 -m json.tool" in script_text
+
+
 def test_install_script_help_documents_supported_flags() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     script = repo_root / "scripts" / "install.sh"
