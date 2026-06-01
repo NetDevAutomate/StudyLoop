@@ -34,7 +34,7 @@ Resolution order (when a provider requests a key)
 
 Provider name conventions
 -------------------------
-``openai``, ``anthropic``, ``openrouter``, ``gemini``, ``minimax``.
+``openai``, ``anthropic``, ``openrouter``, ``gemini``.
 ``bedrock`` is handled by AWS SDK credentials, NOT API keys — skip it here.
 """
 
@@ -74,7 +74,6 @@ _AUTH_KIND_MAP: dict[str, AuthKind] = {
     "anthropic": "api_key",
     "openrouter": "api_key",
     "gemini": "api_key",
-    "minimax": "api_key",
     "bedrock": "bedrock_bearer",
     "ollama": "local_keyless",
 }
@@ -88,7 +87,6 @@ _ENV_VAR_MAP: dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     "gemini": "GEMINI_API_KEY",
-    "minimax": "MINIMAX_API_KEY",
     "bedrock_bearer_token": "AWS_BEARER_TOKEN_BEDROCK",
     "ollama_base_url": "",
 }
@@ -370,18 +368,6 @@ _AUTH_TEST_PROVIDERS: dict[str, dict[str, object]] = {
         # of the URL. Google accepts x-goog-api-key as an alternative to the
         # key query param.
         "auth": "x-goog-api-key",
-    },
-    "minimax": {
-        # Smallest non-destructive endpoint; token must be in Authorization header.
-        "url": "https://api.minimax.io/v1/text/chatcompletion_v2",
-        "auth": "bearer",
-        "method": "post",
-        # Minimal valid body to avoid a 422 — not actually generating.
-        "body": {
-            "model": "abab5.5s-chat",
-            "messages": [{"role": "user", "content": "hi"}],
-            "max_tokens": 1,
-        },
     },
 }
 

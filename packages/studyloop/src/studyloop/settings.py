@@ -212,7 +212,7 @@ class CardGeneratorConfig:
     # via Claude on AWS Bedrock (requires AWS credentials). Or use
     # ``openai_compat`` / ``anthropic_compat`` with a ``provider`` slug
     # from content/generators/provider_profiles.py for OpenAI,
-    # OpenRouter, Gemini, MiniMax, or Anthropic.
+    # OpenRouter, Gemini, or Anthropic.
     backend: str = "ollama"
     # Registry slug for ``*_compat`` backends. Empty for legacy backends
     # (ollama, bedrock, stub) -- they ignore this field.

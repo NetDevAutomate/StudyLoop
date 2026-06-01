@@ -17,10 +17,16 @@ from studyloop.content.generators.provider_profiles import (
 
 class TestRegistryShape:
     def test_all_expected_providers_present(self) -> None:
-        expected = {"openai", "openrouter", "gemini", "minimax", "anthropic"}
+        expected = {"openai", "openrouter", "gemini", "anthropic"}
         assert expected.issubset(set(PROFILES)), (
             f"missing providers: {expected - set(PROFILES)}"
         )
+
+    def test_minimax_removed(self) -> None:
+        # MiniMax was dropped 2026-06-01 (quiz quality failed the Opus-judge bar;
+        # Bedrock + Ollama cover the need). Guard against re-adding it without a
+        # quality re-verification.
+        assert "minimax" not in PROFILES
 
     def test_every_profile_has_at_least_one_model(self) -> None:
         for slug, profile in PROFILES.items():
@@ -31,13 +37,10 @@ class TestRegistryShape:
         for profile in PROFILES.values():
             assert profile.adapter in known
 
-    def test_minimax_routes_to_anthropic_adapter(self) -> None:
-        # Captures the design decision from the plan: MiniMax exposes an
-        # /anthropic shim, so it must use the Anthropic adapter, not
-        # OpenAI-compat.
-        assert PROFILES["minimax"].adapter == "anthropic_compat"
-        assert PROFILES["minimax"].base_url.endswith("/anthropic")
-        assert PROFILES["minimax"].auth_env == "MINIMAX_API_KEY"
+    def test_anthropic_routes_to_anthropic_adapter(self) -> None:
+        # The Anthropic Messages adapter must back the anthropic provider.
+        assert PROFILES["anthropic"].adapter == "anthropic_compat"
+        assert PROFILES["anthropic"].auth_env == "ANTHROPIC_API_KEY"
 
 
 class TestGetProfile:
@@ -52,7 +55,7 @@ class TestGetProfile:
         msg = str(exc.value)
         # Available list is in the error so the user can fix the typo
         # without searching docs.
-        for known in ("openai", "openrouter", "gemini", "minimax", "anthropic"):
+        for known in ("openai", "openrouter", "gemini", "anthropic"):
             assert known in msg
 
 

@@ -306,7 +306,7 @@ class TestFactoryDispatch:
             get_generator(CardGeneratorConfig(backend="openai_compat"))
 
     def test_provider_adapter_mismatch_raises(self) -> None:
-        # MiniMax is anthropic_compat; asking for openai_compat is a
+        # anthropic is anthropic_compat; asking for it via openai_compat is a
         # config bug we want to catch loudly at startup.
         from studyloop.content.generators import get_generator
 
@@ -314,7 +314,7 @@ class TestFactoryDispatch:
             get_generator(
                 CardGeneratorConfig(
                     backend="openai_compat",
-                    provider="minimax",
-                    model="MiniMax-M2.7",
+                    provider="anthropic",
+                    model="claude-haiku-4-5",
                 )
             )

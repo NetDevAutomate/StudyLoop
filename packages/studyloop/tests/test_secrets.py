@@ -151,7 +151,6 @@ class TestResolutionOrder:
             "anthropic": "ANTHROPIC_API_KEY",
             "openrouter": "OPENROUTER_API_KEY",
             "gemini": "GEMINI_API_KEY",
-            "minimax": "MINIMAX_API_KEY",
         }
         for provider, env_var in env_map.items():
             monkeypatch.setenv(env_var, f"test-key-{provider}")
@@ -343,28 +342,6 @@ class TestProviderAuthMocked:
             )
             yield mock
 
-    @pytest.fixture()
-    def mock_minimax_success(self):  # type: ignore[no-untyped-def]
-        import httpx as _httpx
-        import respx
-
-        with respx.mock(assert_all_called=False) as mock:
-            mock.post("https://api.minimax.io/v1/text/chatcompletion_v2").mock(
-                return_value=_httpx.Response(200, json={"choices": []})
-            )
-            yield mock
-
-    @pytest.fixture()
-    def mock_minimax_failure(self):  # type: ignore[no-untyped-def]
-        import httpx as _httpx
-        import respx
-
-        with respx.mock(assert_all_called=False) as mock:
-            mock.post("https://api.minimax.io/v1/text/chatcompletion_v2").mock(
-                return_value=_httpx.Response(401, json={"error": "unauthorized"})
-            )
-            yield mock
-
     # --- OpenAI ---
     def test_openai_success(self, mock_openai_success: object) -> None:
         from studyloop.secrets import test_provider_auth
@@ -433,19 +410,6 @@ class TestProviderAuthMocked:
         )
         assert request.headers.get("x-goog-api-key") == "AIzaSecretValue"
 
-    # --- MiniMax ---
-    def test_minimax_success(self, mock_minimax_success: object) -> None:
-        from studyloop.secrets import test_provider_auth
-
-        ok, msg = test_provider_auth("minimax", "mm-test-key")
-        assert ok is True
-
-    def test_minimax_failure(self, mock_minimax_failure: object) -> None:
-        from studyloop.secrets import test_provider_auth
-
-        ok, msg = test_provider_auth("minimax", "mm-bad-key")
-        assert ok is False
-
     def test_unknown_provider_returns_false(self) -> None:
         from studyloop.secrets import test_provider_auth
 
@@ -479,7 +443,7 @@ class TestAuthKind:
     def test_api_key_providers(self) -> None:
         from studyloop.secrets import get_auth_kind
 
-        for slug in ("openai", "anthropic", "openrouter", "gemini", "minimax"):
+        for slug in ("openai", "anthropic", "openrouter", "gemini"):
             assert get_auth_kind(slug) == "api_key"
 
     def test_bedrock_is_bearer(self) -> None:
@@ -575,7 +539,7 @@ class TestEmptyKeyGuard:
 
         # No respx mock set up — if it tried HTTP this would error; instead it
         # must short-circuit on the empty key.
-        ok, msg = test_provider_auth("minimax", "")
+        ok, msg = test_provider_auth("openai", "")
         assert ok is False
         assert "no api key" in msg.lower()
 

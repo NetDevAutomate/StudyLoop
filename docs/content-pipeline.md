@@ -42,7 +42,7 @@ flowchart TB
 
 ## Pluggable Provider Abstraction
 
-Seven providers — OpenAI, OpenRouter, Gemini, MiniMax, Anthropic, **AWS Bedrock**, and **Ollama** — plus the test-only Stub backend all share one factory: `studyloop.content.generators.get_generator(config)` and one registry (`provider_profiles.py`). Bedrock and Ollama are now **first-class registry entries** (not ad-hoc paths): the registry drives the Generate panel and the Settings → LLM Providers panel uniformly. Two generic adapter classes carry the HTTP-backed providers; Bedrock keeps its own boto3/Converse generator and Ollama its own local generator:
+Six providers — OpenAI, OpenRouter, Gemini, Anthropic, **AWS Bedrock**, and **Ollama** — plus the test-only Stub backend all share one factory: `studyloop.content.generators.get_generator(config)` and one registry (`provider_profiles.py`). Bedrock and Ollama are now **first-class registry entries** (not ad-hoc paths): the registry drives the Generate panel and the Settings → LLM Providers panel uniformly. Two generic adapter classes carry the HTTP-backed providers; Bedrock keeps its own boto3/Converse generator and Ollama its own local generator:
 
 ```mermaid
 flowchart LR
@@ -63,7 +63,6 @@ flowchart LR
     OAA -.->|"Bearer auth"| OR[("OpenRouter<br/>openrouter.ai")]
     OAA -.->|"Bearer auth"| GEM[("Gemini<br/>generativelanguage.<br/>googleapis.com")]
     AAA -.->|"x-api-key"| ANT[("Anthropic<br/>api.anthropic.com")]
-    AAA -.->|"x-api-key"| MM[("MiniMax<br/>api.minimax.io/anthropic")]
 
     Ollama -.->|httpx| OllamaHost[("local Ollama<br/>:11434")]
     Bedrock -.->|boto3 SigV4| BedrockHost[("AWS Bedrock<br/>Converse API")]
@@ -78,7 +77,6 @@ The registry is data, not code. Each entry binds a slug to an adapter class, bas
 | `openai` | OpenAI-compat | `api.openai.com/v1` | `api_key` | `OPENAI_API_KEY` | Includes thinking models (o3-mini) |
 | `openrouter` | OpenAI-compat | `openrouter.ai/api/v1` | `api_key` | `OPENROUTER_API_KEY` | Single key, many backing models |
 | `gemini` | OpenAI-compat | `generativelanguage.googleapis.com/v1beta/openai` | `api_key` | `GEMINI_API_KEY` | Google's OpenAI-compat shim |
-| `minimax` | **Anthropic-compat** | `api.minimax.io/anthropic` | `api_key` | `MINIMAX_API_KEY` | Speaks the Messages API natively (see adapter note below) |
 | `anthropic` | Anthropic-compat | `api.anthropic.com` | `api_key` | `ANTHROPIC_API_KEY` | Includes Claude Haiku/Sonnet/Opus |
 | `bedrock` | Bedrock (boto3/Converse) | — | `bedrock_bearer` | AWS profile/SigV4, or optional `AWS_BEARER_TOKEN_BEDROCK` | Model IDs are cross-region **inference profiles** (e.g. `us.anthropic.claude-sonnet-4-6`), verified per account |
 | `ollama` | Ollama (local) | `http://localhost:11434` | `local_keyless` | none | Base URL stored as the `ollama_base_url` secret; available iff the endpoint responds |
@@ -96,12 +94,19 @@ The registry is data, not code. Each entry binds a slug to an adapter class, bas
 
 This means a key added in the web UI takes effect immediately, with no `.env` edit and no shell export.
 
-### MiniMax adapter hardening
+### Anthropic-compat adapter robustness
 
-MiniMax's M2.7 (via the `/anthropic` shim) has two quirks the Anthropic-compat adapter handles:
+The `AnthropicCompatGenerator` carries three robustness behaviours so a flaky
+Anthropic-compat shim can't silently break generation. (These were originally
+prompted by MiniMax M2.7 — now removed as a provider, see note below — but they
+are correct Messages-protocol handling that protects the `anthropic` provider
+and any future shim.)
 
-- **Schema-correction retries must carry a `tool_result` block**, not a plain-text user turn — the strict shim rejects the latter with error 2013 (`tool call result does not follow tool call`). The adapter emits a protocol-valid `tool_result` correction.
-- **Tool calls are sometimes emitted as inline XML** (`<minimax:tool_call><invoke …><parameter …>`) inside a text block instead of a native `tool_use` block (~half the time). The adapter parses that inline markup as a fallback, and the shared `call_with_correction` loop retries a transient bad emission within its budget so a single malformed response doesn't hard-fail the job.
+- **Schema-correction retries carry a `tool_result` block**, never a plain-text user turn — the Messages protocol requires the user turn after an assistant `tool_use` to be a `tool_result` for that id; strict shims reject the plain-text form (error 2013, `tool call result does not follow tool call`).
+- **Inline-XML tool calls are parsed as a fallback** — if a shim narrates the tool call as `<…:tool_call><invoke …><parameter …>` text instead of a native `tool_use` block, the adapter extracts it rather than failing.
+- **Transient bad emissions are retried** — the shared `call_with_correction` loop retries an unparseable response within its budget, so one malformed reply doesn't hard-fail the job.
+
+> **MiniMax was removed 2026-06-01.** It generated cleanly after the hardening above, but an Opus-4.8 judge rejected its quiz content across 5 SQL sections (wrong `isCorrect` flags, garbled characters, factual errors). Its flashcards were strong, but Bedrock and Ollama both clear the quiz bar, so MiniMax was redundant and dropped.
 
 ### Curation policy
 

@@ -701,7 +701,6 @@ _SECRETS_PROVIDERS: tuple[str, ...] = (
     "anthropic",
     "openrouter",
     "gemini",
-    "minimax",
     "bedrock_bearer_token",
     "ollama_base_url",
 )

@@ -59,7 +59,7 @@ class TestGetSecrets:
         """When no keys are configured, all providers appear in missing_for_providers."""
         # Ensure env vars don't bleed in
         for var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
-                    "GEMINI_API_KEY", "MINIMAX_API_KEY"):
+                    "GEMINI_API_KEY"):
             monkeypatch.delenv(var, raising=False)
 
         resp = client.get("/api/content/secrets")
@@ -76,7 +76,7 @@ class TestGetSecrets:
 
         # Clear env vars to avoid noise
         for var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
-                    "GEMINI_API_KEY", "MINIMAX_API_KEY"):
+                    "GEMINI_API_KEY"):
             monkeypatch.delenv(var, raising=False)
 
         set_secret("openai", "sk-test-key")
@@ -353,7 +353,7 @@ class TestProviderTestEndpoint:
         """The 'Test' button sends key='' — the server must test the STORED key.
 
         Regression: previously an empty key was sent straight to the provider,
-        building an invalid 'Bearer ' header (minimax) or a 403 (gemini).
+        building an invalid 'Bearer ' header or a 403 (e.g. gemini).
         """
         from studyloop import secrets as secrets_mod
 

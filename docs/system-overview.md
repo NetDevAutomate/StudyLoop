@@ -34,7 +34,7 @@ flowchart TB
     end
 
     subgraph "Review Support"
-        Generator["Card generator<br/>(pluggable: Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>MiniMax / Anthropic / Stub)"]
+        Generator["Card generator<br/>(pluggable: Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic / Stub)"]
         JSON["Flashcard/quiz JSON"]
         Review["SM-2 review"]
     end
@@ -109,7 +109,7 @@ studyloop web
 flowchart LR
     Source["Markdown/text source"]
     Generate["studyloop content generate-cards<br/>or Generate panel<br/>(WebUI)"]
-    Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>MiniMax / Anthropic / Stub"]
+    Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic / Stub"]
     Schema["Pydantic validation"]
     Artefacts["course/flashcards<br/>course/quizzes"]
     PWA["Web review"]
@@ -117,7 +117,7 @@ flowchart LR
     Source --> Generate --> Backend --> Schema --> Artefacts --> PWA
 ```
 
-The producer side is **pluggable**: a `ProviderProfile` registry plus two generic HTTP adapters (OpenAI Chat Completions and Anthropic Messages), with Bedrock and Ollama as first-class registry entries, cover seven providers via registry rows. Adding a new provider is a registry edit, not new code. Auth credentials resolve **encrypted store first** (`~/.config/studyloop/secrets.bin`, written by the **Settings → LLM Providers** panel after a live verification), then a project-root `.env` (auto-loaded via `python-dotenv`); models are curated per-provider with cost-tier and thinking-flag annotations. See [Content Pipeline § Pluggable Provider Abstraction](content-pipeline.md#pluggable-provider-abstraction).
+The producer side is **pluggable**: a `ProviderProfile` registry plus two generic HTTP adapters (OpenAI Chat Completions and Anthropic Messages), with Bedrock and Ollama as first-class registry entries, cover six providers via registry rows. Adding a new provider is a registry edit, not new code. Auth credentials resolve **encrypted store first** (`~/.config/studyloop/secrets.bin`, written by the **Settings → LLM Providers** panel after a live verification), then a project-root `.env` (auto-loaded via `python-dotenv`); models are curated per-provider with cost-tier and thinking-flag annotations. See [Content Pipeline § Pluggable Provider Abstraction](content-pipeline.md#pluggable-provider-abstraction).
 
 NotebookLM is not required for this workflow.
 

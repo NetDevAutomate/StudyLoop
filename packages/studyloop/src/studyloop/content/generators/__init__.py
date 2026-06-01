@@ -128,7 +128,7 @@ def get_generator(config: CardGeneratorConfig) -> CardGenerator:
         if not config.provider:
             raise ValueError(
                 f"backend={backend!r} requires card_generator.provider "
-                "to be set (e.g. 'openrouter', 'gemini', 'anthropic', 'minimax', 'openai')."
+                "to be set (e.g. 'openrouter', 'gemini', 'anthropic', 'openai')."
             )
         profile = get_profile(config.provider)
         if profile.adapter != backend:
