@@ -12,12 +12,12 @@ Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.5b
 
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from _helpers import run_async
 
 pytest.importorskip("fastapi")
 
@@ -40,9 +40,9 @@ from conftest import StubTransport  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _reset_active_state():
-    asyncio.run(active.release())
+    run_async(active.release())
     yield
-    asyncio.run(active.release())
+    run_async(active.release())
 
 
 @pytest.fixture(autouse=True)
@@ -158,7 +158,7 @@ class TestPtyStartHappyPath:
         assert body["study_session_id"] == "study-pty-1"
         assert body["ws_url"] == "/api/session/ws?study_session_id=study-pty-1"
         # active.acquire should have run.
-        assert asyncio.run(active.current()) is not None
+        assert run_async(active.current()) is not None
 
     def test_pty_is_default_when_body_and_env_unset(
         self,
@@ -200,7 +200,7 @@ class TestPtyStartSingleSession:
         from studyloop.session.transport import SessionConfig
 
         pre_stub = StubTransport(events=[Started(agent="claude")])
-        asyncio.run(
+        run_async(
             active.acquire(
                 SessionConfig(
                     study_session_id="pre-existing",

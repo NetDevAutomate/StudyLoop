@@ -15,19 +15,19 @@ run in milliseconds and don't touch any provider keys.
 
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import TYPE_CHECKING
 
 import pytest
+from _helpers import run_async
 
 pytest.importorskip("fastapi")
 
-from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
-from studyloop.content import active_gen  # noqa: E402
-from studyloop.web.app import create_app  # noqa: E402
-from studyloop.web.routes import content_gen as cg_route  # noqa: E402
+from studyloop.content import active_gen
+from studyloop.web.app import create_app
+from studyloop.web.routes import content_gen as cg_route
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,10 +43,10 @@ if TYPE_CHECKING:
 @pytest.fixture(autouse=True)
 def _release_singleton_and_queues():
     """Module state for both the singleton and the queue map must be clean."""
-    asyncio.run(active_gen.release())
+    run_async(active_gen.release())
     cg_route._JOB_QUEUES.clear()
     yield
-    asyncio.run(active_gen.release())
+    run_async(active_gen.release())
     cg_route._JOB_QUEUES.clear()
 
 
@@ -56,12 +56,8 @@ def vault(tmp_path: Path) -> Path:
     study = tmp_path / "Study"
     notes = study / "DataCamp" / "Intro_To_Pandas" / "study-notes"
     notes.mkdir(parents=True)
-    (notes / "advanced-pandas.md").write_text(
-        "# Pandas\n\nGroupby.", encoding="utf-8"
-    )
-    (notes / "joins.md").write_text(
-        "# Joins\n\nINNER, LEFT.", encoding="utf-8"
-    )
+    (notes / "advanced-pandas.md").write_text("# Pandas\n\nGroupby.", encoding="utf-8")
+    (notes / "joins.md").write_text("# Joins\n\nINNER, LEFT.", encoding="utf-8")
     return study
 
 
@@ -96,7 +92,7 @@ def _wait_for_job_done(timeout: float = 5.0) -> None:
     """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if asyncio.run(active_gen.current()) is None:
+        if run_async(active_gen.current()) is None:
             return
         time.sleep(0.02)
     raise TimeoutError("job did not release singleton within deadline")
@@ -139,9 +135,7 @@ class TestHappyPath:
         assert data["plan"]["sources"][0]["identifier"] == "joins"
         _wait_for_job_done()
 
-    def test_course_scope_includes_all_lesson_files_in_plan(
-        self, client: TestClient
-    ) -> None:
+    def test_course_scope_includes_all_lesson_files_in_plan(self, client: TestClient) -> None:
         body = _valid_body()
         body["scope"] = {
             "kind": "course",
@@ -196,13 +190,13 @@ class TestSingleton:
         # slot. This is the only way to get a deterministic 409 in a
         # TestClient (the stub job can finish before a second request
         # even arrives).
-        asyncio.run(active_gen.acquire(job_id="gen-held", request=None))
+        run_async(active_gen.acquire(job_id="gen-held", request=None))
         try:
             resp = client.post("/api/content/generate", json=_valid_body())
             assert resp.status_code == 409, resp.text
             assert "active" in resp.json()["detail"].lower()
         finally:
-            asyncio.run(active_gen.release())
+            run_async(active_gen.release())
 
     def test_singleton_released_after_job_completes(self, client: TestClient) -> None:
         resp = client.post("/api/content/generate", json=_valid_body())

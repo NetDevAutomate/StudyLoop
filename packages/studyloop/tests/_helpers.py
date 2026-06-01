@@ -23,11 +23,66 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import sqlite3
-from typing import TYPE_CHECKING
+import threading
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
     from pathlib import Path
+
+
+# A single dedicated event loop, reused for every run_async() call across the
+# whole test session, running on its own background thread.
+#
+# WHY NOT asyncio.run(): the web-session/content-gen test fixtures call
+# asyncio.run(active.release()) in setup/teardown. asyncio.run() raises
+# "cannot be called from a running event loop" if ANY loop is already running
+# on the calling thread. In the full suite, pytest-asyncio (asyncio_mode=strict)
+# leaves a loop installed/running on the main thread after async tests, so
+# every subsequent asyncio.run() in a sync fixture exploded — 35 ERRORs that
+# only appeared in the full ordered run, never in isolation.
+#
+# WHY A PERSISTENT loop (not a fresh one per call): session/active.py and
+# content/active_gen.py hold module-level ``asyncio.Lock()`` singletons. On
+# Python 3.10+ an asyncio.Lock binds to the running loop on first use; reusing
+# it from a different loop raises "bound to a different event loop". A single
+# reused loop keeps those module locks consistently bound for the session.
+#
+# Running on a background thread means run_async() works regardless of whether
+# the *calling* thread already has a running loop — sidestepping the conflict
+# entirely.
+_loop: asyncio.AbstractEventLoop | None = None
+_loop_thread: threading.Thread | None = None
+_loop_lock = threading.Lock()
+
+
+def _ensure_loop() -> asyncio.AbstractEventLoop:
+    """Return the shared background event loop, starting it on first use."""
+    global _loop, _loop_thread
+    with _loop_lock:
+        if _loop is not None and _loop.is_running():
+            return _loop
+        _loop = asyncio.new_event_loop()
+        _loop_thread = threading.Thread(
+            target=_loop.run_forever,
+            name="studyloop-test-loop",
+            daemon=True,
+        )
+        _loop_thread.start()
+        return _loop
+
+
+def run_async(coro: Coroutine[Any, Any, Any]) -> Any:
+    """Run ``coro`` to completion on a dedicated background event loop.
+
+    Drop-in replacement for ``asyncio.run(coro)`` in synchronous test code
+    (fixtures, helpers) that is robust to an already-running loop on the
+    calling thread. See the module-level comment for the full rationale.
+    """
+    loop = _ensure_loop()
+    return asyncio.run_coroutine_threadsafe(coro, loop).result()
 
 
 def make_review_db(tmp_path: Path) -> Path:
