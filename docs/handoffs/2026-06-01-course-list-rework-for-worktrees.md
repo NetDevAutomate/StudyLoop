@@ -1,5 +1,7 @@
 # Hand-off prompt for in-flight worktrees (course-list rework landing on main)
 
+> **✅ LANDED (2026-06-01):** This rework is merged. Commits `04266af`, `f576d53`, `373e6e6` (branch HEAD was `373e6e6`) are now on `main` and already present on all active worktrees; the `feat/settings-providers-panel` branch has been deleted. The future-tense "before you do more work, rebase onto main" instructions below are **historical** — the rebase is done. Kept as a record of the contract (verified accurate against `main`).
+
 Copy the block below into each active worktree agent (e.g. `course-explorer-panel`,
 `browser-neural-tts`). It tells them what changed in the course-list rework that is
 merging to `main`, so they rebase onto it instead of conflicting.
