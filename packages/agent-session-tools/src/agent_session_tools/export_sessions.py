@@ -187,9 +187,18 @@ def _run_export(
 
     # Final commit
     conn.commit()
-    print(
-        f"\nExport results: added: {batch_stats.added}, updated: {batch_stats.updated}, skipped: {batch_stats.skipped}"
-    )
+    print("\nExport results:")
+    print(f"  added:   {batch_stats.added}")
+    print(f"  updated: {batch_stats.updated}")
+    print(f"  skipped: {batch_stats.skipped} (unchanged since last export)")
+    print(f"  empty:   {batch_stats.empty} (no extractable messages)")
+    if batch_stats.errors:
+        print(f"  errors:  {batch_stats.errors}")
+    if incremental and batch_stats.skipped:
+        print(
+            "\nnote: 'skipped' = sessions already up-to-date since last export; "
+            "re-run with --full to force a full re-import."
+        )
 
     # Stats
     stats = conn.execute(
@@ -211,7 +220,7 @@ def _run_export(
 
 
 @app.command()
-def main(
+def export(
     output: Annotated[
         Path | None,
         typer.Option(
@@ -329,5 +338,18 @@ def main(
     _run_export(output_path, export_sources, incremental, aider_paths)
 
 
-if __name__ == "__main__":
+def main() -> int:
+    """Console-script entry point.
+
+    Delegates to the Typer ``app`` so CLI arguments are parsed. The
+    ``[project.scripts]`` entry point targets this wrapper, NOT the
+    ``@app.command()``-decorated ``export`` function — calling a decorated
+    command object directly bypasses Typer's argument parsing entirely
+    (every option silently falls back to its default).
+    """
     app()
+    return 0
+
+
+if __name__ == "__main__":
+    main()
