@@ -161,3 +161,18 @@ flowchart TD
 ## Recommended first cut (MVP)
 
 **Phases 0 → 1 → 2 → 3.** That delivers: browse providers/courses in a carousel, open a lesson, read formatted markdown + mermaid. It's the spine the rest hangs off and is independently demoable. Add search (P4), struggle-marking (P5), and TTS (P6) as follow-ups.
+
+---
+
+## Known limitations / deferred (from M4 adversarial review)
+
+These were surfaced by the 3-lens review fan-out and **consciously deferred** — confirmed real but low-value relative to the MVP. Recorded here so they aren't lost.
+
+| ID | Severity | What | Why deferred | Fix if revisited |
+|----|----------|------|--------------|------------------|
+| F2 | 🟡 | Tree cache keyed on `content.base_path` dir mtime only. Adding a course *inside an existing provider* doesn't bump the base mtime → new course invisible until server restart (or a top-level change). | Vault edits during a running session are rare; restart is a trivial workaround. | Add a short TTL (e.g. 30s) alongside the mtime check, or walk provider-dir mtimes. |
+| F4 | 🔵 | `_fetchTree()` can fire twice on rapid open→close→open within one network round-trip (guard checks `_treeLoaded`, not in-flight). | Harmless (last-write-wins); needs sub-100ms toggling to trigger. | Add an `_treeLoading` in-flight flag. |
+| F8 | 🔵 | Mermaid render IDs use `Date.now()+counter`; two `openLesson` calls in the same ms could collide IDs. | Superseded in practice by the F3 generation-guard (stale call bails before mermaid runs). | Use a monotonic module counter instead of `Date.now()`. |
+| F9 | 🔵 | Single-level vault (`base/course/lesson.md`, no provider dir) renders a provider row with an empty carousel and no message. | The documented/actual layout is always `base/provider/course`. | Detect leaf-with-files and either expose as a synthetic provider or show guidance. |
+
+SEC-003 (DOMPurify FORBID_ATTR is defence-in-depth, not primary control) and SEC-004 (lessons 404 echoes the course_id) were reviewed and assessed **not exploitable** in the localhost personal-tool threat model — no action.
