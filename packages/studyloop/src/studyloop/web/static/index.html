@@ -506,6 +506,17 @@
                     aria-label="Mark as struggling">
               <span x-text="struggleMarked ? '✓ Marked' : 'Struggling?'"></span>
             </button>
+            <!-- Phase 6: read-aloud. Hidden unless the TTS engine is present
+                 (provided by the browser-neural-tts worktree). Toggles play/stop
+                 from isReading, which the tts:state-change listener drives. -->
+            <button class="explorer-tts-btn"
+                    x-show="ttsAvailable && activeLesson"
+                    @click="isReading ? stopReading() : readAloud()"
+                    :title="isReading ? 'Stop reading' : 'Read this lesson aloud'"
+                    :aria-pressed="isReading ? 'true' : 'false'"
+                    aria-label="Read aloud">
+              <span x-text="isReading ? '⏹ Stop' : '▶ Listen'"></span>
+            </button>
           </div>
           <!-- Inline error for struggle marking failure -->
           <div x-show="struggleError"

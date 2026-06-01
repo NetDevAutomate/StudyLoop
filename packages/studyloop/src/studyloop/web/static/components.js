@@ -115,6 +115,48 @@ function _stripFrontmatter(text) {
 }
 
 /**
+ * _mdToPlainText(md) — strip markdown to clean prose for TTS.
+ *
+ * window.ttsEngine.speak() takes PLAIN TEXT; it normalises + sentence-splits
+ * internally. Markdown punctuation (`#`, `*`, backticks, `>`) would otherwise be
+ * read aloud as noise, and code/diagram blocks are not worth speaking. This drops
+ * structural syntax while preserving readable sentences and paragraph breaks (\n,
+ * which the engine's sentence splitter uses).
+ *
+ * Pure + deterministic → unit-testable without a DOM or the TTS engine.
+ * Pass frontmatter-stripped markdown (the `stripped` value from openLesson).
+ */
+function _mdToPlainText(md) {
+  if (!md) return '';
+  let t = md;
+  /* Remove fenced code blocks AND mermaid diagrams entirely (don't speak code). */
+  t = t.replace(/```[\s\S]*?```/g, ' ');
+  t = t.replace(/~~~[\s\S]*?~~~/g, ' ');
+  /* Images: drop entirely (alt text is rarely useful spoken). */
+  t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');
+  /* Links [text](url) -> text. */
+  t = t.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+  /* Inline code `x` -> x. */
+  t = t.replace(/`([^`]*)`/g, '$1');
+  /* Headings: strip leading #'s but keep the heading text (worth speaking). */
+  t = t.replace(/^#{1,6}[ \t]+/gm, '');
+  /* Blockquote / callout markers and list bullets at line start. */
+  t = t.replace(/^[ \t]*>[ \t]?/gm, '');
+  t = t.replace(/^[ \t]*([-*+]|\d+\.)[ \t]+/gm, '');
+  /* Emphasis / strong / strikethrough / Obsidian ==highlight==. */
+  t = t.replace(/(\*\*|__)(.*?)\1/g, '$2');
+  t = t.replace(/(\*|_)(.*?)\1/g, '$2');
+  t = t.replace(/~~(.*?)~~/g, '$1');
+  t = t.replace(/==(.*?)==/g, '$1');
+  /* Horizontal rules / table pipes. */
+  t = t.replace(/^[ \t]*([-*_]){3,}[ \t]*$/gm, ' ');
+  t = t.replace(/\|/g, ' ');
+  /* Collapse 3+ newlines to a paragraph break; trim trailing spaces per line. */
+  t = t.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+  return t.trim();
+}
+
+/**
  * Second-pass mermaid rendering.
  * renderMarkdown() leaves <div class="mermaid-diagram" data-src="…"> placeholders.
  * This function finds them inside `rootEl`, calls mermaid.render() for each,
@@ -1000,8 +1042,15 @@ function courseExplorer() {
     // ---- M3: reader view state
     activeLesson: null,
     readerHtml: '',
+    readerText: '',        // frontmatter-stripped markdown source, for TTS (Phase 6)
     readerLoading: false,
     readerError: '',
+
+    // --- Phase 6: TTS read-aloud (gated on the browser-neural-tts worktree) ---
+    // window.ttsEngine only exists once that worktree merges; all uses below
+    // feature-detect it and no-op gracefully when absent.
+    isReading: false,
+    ttsAvailable: false,   // set in init() by probing window.ttsEngine
     // Generation counter: incremented each time a new openLesson() or
     // backToBrowser() is triggered.  Each async chain captures its own
     // generation at entry and bails if it has been superseded.
@@ -1027,6 +1076,15 @@ function courseExplorer() {
       const store = Alpine.store('explorer');
       store.toggle = () => self.toggle();
       store.close  = () => self.close();
+
+      // Phase 6: probe for the (optional) TTS engine and track speaking state.
+      // window.ttsEngine is provided only by the browser-neural-tts worktree;
+      // when absent, ttsAvailable stays false and the read-aloud button hides.
+      this.ttsAvailable = !!(window.ttsEngine && typeof window.ttsEngine.speak === 'function');
+      window.addEventListener('tts:state-change', (e) => {
+        // Only reflect speaking state while the reader is the active surface.
+        self.isReading = (e.detail && e.detail.state === 'speaking');
+      });
     },
 
     // ------------------------------------------------------------------
@@ -1358,9 +1416,11 @@ function courseExplorer() {
 
       this.activeLesson = lesson;
       this.readerHtml = '';
+      this.readerText = '';
       this.readerError = '';
       this.readerLoading = true;
       this.view = 'reader';
+      this.stopReading();   // halt any TTS playback from a previous lesson
 
       try {
         // lesson.id is the full "provider/course/slug" path.
@@ -1380,6 +1440,7 @@ function courseExplorer() {
 
           const raw = data.content || '';
           const stripped = _stripFrontmatter(raw);
+          this.readerText = stripped;   // raw source for TTS (Phase 6)
           this.readerHtml = renderMarkdown(stripped);
 
           /* Two-pass mermaid: Alpine's x-html directive schedules its DOM
@@ -1420,13 +1481,52 @@ function courseExplorer() {
     // pressed while a fetch is still running (F7).
     backToBrowser() {
       this._readerGen++;          // invalidate any in-flight openLesson chain
+      this.stopReading();         // halt TTS playback when leaving the reader
       this.view = 'browser';
       this.activeLesson = null;
       this.readerHtml = '';
+      this.readerText = '';
       this.readerError = '';
       this.readerLoading = false; // clear spinner even if fetch was in-flight
       this.struggleMarked = false;
       this.struggleError = '';
+    },
+
+    // ---- Phase 6: TTS read-aloud (GATED on the browser-neural-tts worktree) ----
+    // window.ttsEngine is provided ONLY by that worktree's tts-engine.js. Until
+    // it merges, the engine is absent here — every method below feature-detects
+    // it and no-ops, so the button can ship now and "lights up" once TTS lands.
+    //
+    // Contract (verified against the TTS worktree):
+    //   window.ttsEngine.speak(plainText) — takes PLAIN TEXT (not markdown/HTML),
+    //     normalises + sentence-splits internally. Resolves when playback starts.
+    //   window.ttsEngine.stop() — halts synthesis + audio.
+    //   window 'tts:state-change' event, detail.state === 'speaking' | 'idle' | …
+    // We must convert markdown -> plain text ourselves (_mdToPlainText) so the
+    // engine doesn't read '#', '*', backticks, or code/diagram blocks aloud.
+    readAloud() {
+      if (!window.ttsEngine || typeof window.ttsEngine.speak !== 'function') {
+        return;  // TTS not present on this build — gracefully do nothing
+      }
+      if (this.view !== 'reader' || !this.readerText) return;
+      const plain = _mdToPlainText(this.readerText);
+      if (!plain) return;
+      try {
+        // speak() handles stop-then-restart internally; isReading is driven by
+        // the tts:state-change listener wired in init() (single source of truth).
+        window.ttsEngine.speak(plain);
+      } catch (err) {
+        console.error('[CourseExplorer] readAloud error:', err);
+      }
+    },
+
+    stopReading() {
+      if (window.ttsEngine && typeof window.ttsEngine.stop === 'function') {
+        try { window.ttsEngine.stop(); } catch { /* engine already idle */ }
+      }
+      // isReading is reset by the state-change listener; clear eagerly too in
+      // case the engine is absent (no event will fire).
+      this.isReading = false;
     },
 
     // ---- Phase 5: mark current lesson section as a struggle topic --------
