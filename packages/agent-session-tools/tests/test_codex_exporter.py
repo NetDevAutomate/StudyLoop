@@ -255,6 +255,8 @@ class TestCodexIncremental:
         stats2 = exporter.export_all(conn, incremental=True)
         assert stats2.added == 0
         assert stats2.updated == 0
+        assert stats2.skipped == 1
+        assert stats2.empty == 0
 
     def test_modified_file_is_reimported(self, sessions_dir, migrated_db):
         conn, _ = migrated_db
@@ -384,6 +386,8 @@ class TestCodexEdgeCases:
         stats = CodexExporter(sessions_dir=sessions_dir).export_all(conn)
 
         assert stats.added == 0
+        assert stats.empty == 1
+        assert stats.skipped == 0
         assert conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0
 
     def test_malformed_lines_skipped(self, sessions_dir, migrated_db):

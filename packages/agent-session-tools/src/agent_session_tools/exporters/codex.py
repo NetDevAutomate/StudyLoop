@@ -155,7 +155,9 @@ class CodexExporter:
 
         for rollout_file in sorted(self.sessions_dir.glob("*.jsonl")):
             try:
-                session_data, msgs = self._process_rollout(conn, rollout_file, incremental)
+                session_data, msgs, reason = self._process_rollout(
+                    conn, rollout_file, incremental
+                )
                 if session_data:
                     batch.append(session_data)
                     batch_messages.extend(msgs)
@@ -163,6 +165,10 @@ class CodexExporter:
                         commit_batch(conn, batch, batch_messages, stats)
                         batch = []
                         batch_messages = []
+                elif reason == "skipped":
+                    stats.skipped += 1
+                elif reason == "empty":
+                    stats.empty += 1
             except Exception:
                 stats.errors += 1
 
@@ -176,11 +182,12 @@ class CodexExporter:
         conn: sqlite3.Connection,
         rollout_file: Path,
         incremental: bool,
-    ) -> tuple[dict | None, list[dict]]:
-        """Parse one rollout JSONL file and return (session_dict, messages_list).
+    ) -> tuple[dict | None, list[dict], str | None]:
+        """Parse one rollout JSONL file and return ``(session, messages, reason)``.
 
-        Returns ``(None, [])`` when the file should be skipped (fingerprint match
-        or no parseable messages).
+        ``reason`` explains a ``None`` session: ``"skipped"`` (fingerprint match)
+        or ``"empty"`` (no parseable messages). It is ``None`` when a session is
+        returned for import.
         """
         session_id = f"codex_{rollout_file.stem}"
         fingerprint = file_fingerprint(rollout_file)
@@ -190,7 +197,7 @@ class CodexExporter:
                 "SELECT import_fingerprint FROM sessions WHERE id = ?", (session_id,)
             ).fetchone()
             if existing and existing[0] == fingerprint:
-                return None, []
+                return None, [], "skipped"
 
         messages: list[dict] = []
         first_ts: str | None = None
@@ -225,7 +232,7 @@ class CodexExporter:
                 messages.append(msg)
 
         if not messages:
-            return None, []
+            return None, [], "empty"
 
         is_update = conn.execute(
             "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
@@ -259,4 +266,4 @@ class CodexExporter:
             for idx, m in enumerate(messages)
         ]
 
-        return session_data, message_rows
+        return session_data, message_rows, None

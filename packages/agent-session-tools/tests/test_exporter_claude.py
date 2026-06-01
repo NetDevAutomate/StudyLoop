@@ -245,6 +245,8 @@ class TestClaudeIncremental:
         stats2 = exporter.export_all(conn, incremental=True)
         assert stats2.added == 0
         assert stats2.updated == 0
+        assert stats2.skipped == 1
+        assert stats2.empty == 0
 
     def test_modified_file_is_reimported(self, projects_dir, migrated_db):
         conn, _ = migrated_db
@@ -392,6 +394,8 @@ class TestClaudeMalformedJsonl:
         stats = exporter.export_all(conn)
 
         assert stats.added == 0
+        assert stats.empty == 1
+        assert stats.skipped == 0
         count = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
         assert count == 0
 

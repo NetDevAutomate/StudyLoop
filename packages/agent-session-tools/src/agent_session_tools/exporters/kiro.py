@@ -149,7 +149,7 @@ class KiroCliExporter:
                 # Extract messages from conversation history
                 history = data.get("history", [])
                 if not history:
-                    stats.skipped += 1
+                    stats.empty += 1
                     continue
 
                 messages = []
@@ -187,6 +187,10 @@ class KiroCliExporter:
                         commit_batch(conn, batch, batch_messages, stats)
                         batch = []
                         batch_messages = []
+                else:
+                    # History present but no extractable text (e.g. only tool
+                    # results) — count as empty for an honest summary.
+                    stats.empty += 1
 
         # Commit final batch
         if batch:

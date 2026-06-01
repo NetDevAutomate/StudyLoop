@@ -375,7 +375,8 @@ class TestKiroMalformedData:
 
         exporter = KiroCliExporter()
         stats = exporter.export_all(conn)
-        assert stats.skipped == 1
+        assert stats.empty == 1
+        assert stats.skipped == 0
         assert stats.added == 0
 
     def test_missing_history_key_is_skipped(self, kiro_db, migrated_db, monkeypatch):
@@ -387,7 +388,8 @@ class TestKiroMalformedData:
 
         exporter = KiroCliExporter()
         stats = exporter.export_all(conn)
-        assert stats.skipped == 1
+        assert stats.empty == 1
+        assert stats.skipped == 0
 
     def test_non_dict_messages_in_history_are_ignored(
         self, kiro_db, migrated_db, monkeypatch
@@ -427,8 +429,10 @@ class TestKiroMalformedData:
 
         exporter = KiroCliExporter()
         stats = exporter.export_all(conn)
-        # No extractable text → no messages → session not added
+        # No extractable text → no messages → session counted as empty
         assert stats.added == 0
+        assert stats.empty == 1
+        assert stats.skipped == 0
 
 
 # ---------------------------------------------------------------------------
