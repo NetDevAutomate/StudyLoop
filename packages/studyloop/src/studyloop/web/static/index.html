@@ -68,6 +68,10 @@
       window.mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
     }
   </script>
+  <!-- Fuse.js fuzzy search (vendored). UMD global: window.Fuse.
+       Loaded as a plain (non-defer) script before Alpine so courseExplorer()
+       can reference window.Fuse synchronously during init. -->
+  <script src="/vendor/js/fuse-7.0.0.min.js"></script>
   <!-- xterm.js + addons (vendored). UMD globals:
        window.Terminal, window.FitAddon, window.WebglAddon, window.ClipboardAddon.
        Addon scripts depend on xterm.js being loaded first. -->
@@ -309,6 +313,68 @@
         <span class="explorer-panel-title">Course Explorer</span>
         <button class="explorer-close-btn" @click="close()" title="Close"
                 aria-label="Close course explorer">&times;</button>
+      </div>
+
+      <!-- Global search box (Phase 4).
+           Visible in browser view only; hides during reader view.
+           Fuse.js client hits are instant; server FTS body hits are debounced. -->
+      <div class="explorer-search-bar" x-show="view === 'browser'">
+        <input
+          class="explorer-search-input"
+          type="search"
+          placeholder="Search lessons…"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Search all lessons"
+          x-model="searchQuery"
+          @input="onSearchInput()"
+          @keydown.escape="clearSearch()">
+        <!-- Clear button: only shown when a query is active -->
+        <button class="explorer-search-clear"
+                x-show="searchQuery.length > 0"
+                @click="clearSearch()"
+                title="Clear search"
+                aria-label="Clear search">&times;</button>
+      </div>
+
+      <!-- Search results overlay (shown when searchQuery is non-empty) -->
+      <div class="explorer-search-results" x-show="view === 'browser' && searchQuery.trim().length >= 2" x-cloak>
+
+        <!-- Loading indicator while server search is in-flight -->
+        <div x-show="searchLoading" class="explorer-search-status">Searching…</div>
+
+        <!-- No results -->
+        <div x-show="!searchLoading && searchResults.length === 0"
+             class="explorer-search-status">No results</div>
+
+        <!-- Results grouped by provider -->
+        <template x-for="group in searchResultGroups()" :key="group.provider">
+          <div class="explorer-search-group">
+            <div class="explorer-search-group-header" x-text="group.provider"></div>
+            <template x-for="r in group.results" :key="r.lesson_id">
+              <div class="explorer-search-result"
+                   tabindex="0"
+                   role="button"
+                   @click="openSearchResult(r)"
+                   @keydown.enter.prevent="openSearchResult(r)"
+                   @keydown.space.prevent="openSearchResult(r)">
+                <!-- Title rendered as plain text — safe, no HTML needed -->
+                <div class="explorer-search-result-title" x-text="r.title"></div>
+                <div class="explorer-search-result-course" x-text="r.course_id"></div>
+                <!-- Excerpt: server snippet may contain <mark> tags.
+                     SAFETY: the excerpt text comes from SQLite's snippet()
+                     function over raw markdown files.  The only HTML SQLite
+                     injects is our own <mark>…</mark> wrappers.  We escape
+                     the full string then un-escape only those tags so no
+                     user-injected HTML can survive. -->
+                <div class="explorer-search-result-excerpt"
+                     x-show="r.excerpt"
+                     x-html="safeExcerpt(r.excerpt)"></div>
+              </div>
+            </template>
+          </div>
+        </template>
+
       </div>
 
       <!-- Panel body -->
