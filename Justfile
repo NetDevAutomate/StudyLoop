@@ -33,6 +33,9 @@ test-web:
         packages/studyloop/tests/test_web_session_ws.py \
         packages/studyloop/tests/test_web_runtime_feedback.py
 
+test-browser-smoke:
+    uv run --group dev pytest packages/studyloop/tests/test_web_smoke_browser.py -m e2e -q
+
 test-content:
     uv run --group dev pytest \
         packages/studyloop/tests/test_content_cli.py \
