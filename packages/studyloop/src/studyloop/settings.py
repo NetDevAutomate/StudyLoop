@@ -249,6 +249,18 @@ class CardGeneratorConfig:
 
 
 @dataclass
+class ObsidianConfig:
+    """Configuration for the Obsidian vault session-memory export."""
+
+    export_enabled: bool = False
+    vault_path: Path = field(default_factory=lambda: Path.home() / "Obsidian" / "Personal")
+    memory_dir: str = "AgentMemory"
+    moc_dir: str = "AgentMemory/MOC"
+    backlinks: bool = True
+    granularity: str = "both"
+
+
+@dataclass
 class AgentsConfig:
     """Configuration for AI agent detection and priority."""
 
@@ -301,6 +313,7 @@ class Settings:
     pomodoro: PomodoroConfig = field(default_factory=PomodoroConfig)
     lan_username: str = "study"  # username for HTTP Basic Auth when using --lan
     lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = auto-generate)
+    obsidian: ObsidianConfig = field(default_factory=ObsidianConfig)
 
 
 def _path(value: object) -> Path:
@@ -457,6 +470,23 @@ def load_settings() -> Settings:
             long_break=int(pomo.get("long_break", 15)),
             cycles=int(pomo.get("cycles", 4)),
         )
+
+    obs = raw.get("obsidian", {})
+    if obs:
+        # vault_path defaults to settings.obsidian_base when absent from the section
+        raw_vault = obs.get("vault_path", None)
+        vault_path = _path(raw_vault) if raw_vault is not None else settings.obsidian_base
+        settings.obsidian = ObsidianConfig(
+            export_enabled=bool(obs.get("export_enabled", False)),
+            vault_path=vault_path,
+            memory_dir=str(obs.get("memory_dir", "AgentMemory")),
+            moc_dir=str(obs.get("moc_dir", "AgentMemory/MOC")),
+            backlinks=bool(obs.get("backlinks", True)),
+            granularity=str(obs.get("granularity", "both")),
+        )
+    else:
+        # No obsidian: section at all — still align vault_path with obsidian_base
+        settings.obsidian = ObsidianConfig(vault_path=settings.obsidian_base)
 
     ct = raw.get("content", {})
     if ct:

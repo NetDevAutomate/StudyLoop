@@ -20,7 +20,11 @@ from typing import Annotated
 
 import typer
 
-from agent_session_tools.config_loader import get_db_path, load_config
+from agent_session_tools.config_loader import (
+    get_db_path,
+    get_obsidian_config,
+    load_config,
+)
 from agent_session_tools.exporters import (
     EXPORTERS,
     AiderExporter,
@@ -28,6 +32,7 @@ from agent_session_tools.exporters import (
     get_exporter,
 )
 from agent_session_tools.migrations import migrate
+from agent_session_tools import obsidian_writer
 
 # Create Typer app with completion support
 app = typer.Typer(
@@ -138,10 +143,26 @@ def _run_export(
     sources: set[str],
     incremental: bool,
     aider_paths: list[Path] | None = None,
+    obsidian: bool | None = None,
+    obsidian_vault: Path | None = None,
+    obsidian_backfill: bool = False,
+    obsidian_dry_run: bool = False,
 ) -> None:
     """Core export logic shared by all entry points."""
     print(f"Exporting to: {output_path}")
     conn = init_db(str(output_path))
+
+    # Snapshot (id -> updated_at) before export so we can cheaply identify the
+    # sessions actually touched this run for a targeted Obsidian export. Two
+    # lightweight queries beat re-hashing every session on every incremental run.
+    pre_export_state: dict[str, str] = {}
+    if obsidian or (obsidian is None):
+        # Only pay for the snapshot when Obsidian export might run. The config
+        # gate is re-checked after commit; this is a conservative pre-pass.
+        pre_export_state = {
+            row["id"]: row["updated_at"]
+            for row in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
+        }
 
     # Track aggregate stats
     batch_stats = ExportStats(added=0, updated=0, skipped=0, errors=0)
@@ -216,6 +237,69 @@ def _run_export(
             f"  {row['source']}: {row['sessions']} sessions, {row['messages']} messages"
         )
 
+    # ---------------------------------------------------------------------------
+    # Obsidian vault export (after DB commit, before close)
+    # ---------------------------------------------------------------------------
+    cfg = get_obsidian_config()
+
+    # Resolve enabled: explicit CLI flag wins; fall back to config gate.
+    enabled: bool
+    if obsidian is not None:
+        enabled = obsidian
+    else:
+        enabled = bool(cfg.get("export_enabled", False))
+
+    if enabled:
+        # Resolve vault path: CLI flag > config > DEFAULT_CONFIG fallback.
+        if obsidian_vault is not None:
+            vault_path = obsidian_vault
+        else:
+            vault_path = Path(
+                cfg.get("vault_path", str(Path.home() / "Obsidian" / "Personal"))
+            )
+
+        # session_ids determination:
+        # - --obsidian-backfill: pass None so the writer exports every session
+        #   (idempotent; unchanged notes are skipped). This is the one-time
+        #   "import all history" path.
+        # - normal run: export only the sessions actually added/updated this
+        #   run, computed by diffing the pre-export (id -> updated_at) snapshot
+        #   against current state. Avoids scanning + hashing all ~N sessions on
+        #   every incremental export.
+        session_ids: list[str] | None
+        if obsidian_backfill:
+            session_ids = None
+        else:
+            post_export_state = {
+                row["id"]: row["updated_at"]
+                for row in conn.execute(
+                    "SELECT id, updated_at FROM sessions"
+                ).fetchall()
+            }
+            session_ids = [
+                sid
+                for sid, updated in post_export_state.items()
+                if pre_export_state.get(sid) != updated
+            ]
+            if not session_ids:
+                # Nothing changed this run — skip the writer entirely.
+                print("\nObsidian export: no new or updated sessions this run.")
+                conn.close()
+                return
+
+        counts = obsidian_writer.write_vault_notes(
+            conn,
+            cfg,
+            vault_path,
+            session_ids=session_ids,
+            dry_run=obsidian_dry_run,
+        )
+        dry_tag = " (dry-run)" if obsidian_dry_run else ""
+        print(
+            f"\nObsidian export{dry_tag}: "
+            f"written={counts['written']}, skipped={counts['skipped']}, mocs={counts['mocs']}"
+        )
+
     conn.close()
 
 
@@ -278,6 +362,40 @@ def export(
         bool,
         typer.Option("--full", help="Re-import all files, ignoring change detection"),
     ] = False,
+    # Obsidian vault export options
+    obsidian: Annotated[
+        bool | None,
+        typer.Option(
+            "--obsidian/--no-obsidian",
+            help=(
+                "Enable or disable Obsidian vault export for this run. "
+                "Overrides the export_enabled config gate. "
+                "Omit to use the config setting."
+            ),
+        ),
+    ] = None,
+    obsidian_vault: Annotated[
+        Path | None,
+        typer.Option(
+            "--obsidian-vault",
+            help="Override the Obsidian vault path for this run.",
+            exists=False,  # allow non-existent paths; writer handles the guard
+        ),
+    ] = None,
+    obsidian_backfill: Annotated[
+        bool,
+        typer.Option(
+            "--obsidian-backfill",
+            help="Export all historical sessions to the vault (batched, idempotent).",
+        ),
+    ] = False,
+    obsidian_dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--obsidian-dry-run",
+            help="Print what would be written to the vault without writing any files.",
+        ),
+    ] = False,
 ) -> None:
     """Export AI coding assistant sessions to SQLite database.
 
@@ -292,10 +410,14 @@ def export(
     - omp: oh-my-pi (omp) (~/.omp/agent/sessions/)
 
     Examples:
-        session-export                    # Export all sources
-        session-export --claude-only      # Only Claude Code
+        session-export                          # Export all sources
+        session-export --claude-only            # Only Claude Code
         session-export --sources gemini opencode  # Specific sources
-        session-export --dated --backup   # Dated output with backup
+        session-export --dated --backup         # Dated output with backup
+        session-export --obsidian               # Also write Obsidian vault notes
+        session-export --obsidian --obsidian-dry-run  # Preview vault export
+        session-export --obsidian --obsidian-backfill  # Backfill all history
+        session-export --obsidian --obsidian-vault ~/MyVault  # Custom vault path
     """
     output_path = Path(output) if output else DEFAULT_DB
     if dated:
@@ -335,7 +457,16 @@ def export(
         export_sources = set(SOURCE_CHOICES)
 
     incremental = not full
-    _run_export(output_path, export_sources, incremental, aider_paths)
+    _run_export(
+        output_path,
+        export_sources,
+        incremental,
+        aider_paths,
+        obsidian=obsidian,
+        obsidian_vault=obsidian_vault,
+        obsidian_backfill=obsidian_backfill,
+        obsidian_dry_run=obsidian_dry_run,
+    )
 
 
 def main() -> int:

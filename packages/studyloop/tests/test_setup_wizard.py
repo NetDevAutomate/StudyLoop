@@ -45,8 +45,10 @@ class TestSetupDefaults:
     ) -> None:
         """Accepting all defaults completes successfully."""
         # Inputs: materials(Enter), has_ai(y), assistant(Enter=claude-code),
-        # notebooklm(Enter=n), obsidian(Enter=y), vault(Enter=~/Obsidian), launch(Enter=n)
-        user_input = "\ny\n\nn\ny\n\nn\n"
+        # notebooklm(Enter=n), obsidian(Enter=y), vault(Enter=~/Obsidian),
+        # export(Enter=n — new prompt when vault exists), launch(Enter=n)
+        # Extra "n" handles the export confirm if ~/Obsidian already exists on disk.
+        user_input = "\ny\n\nn\ny\n\nn\nn\n"
         result = runner.invoke(cli, ["setup"], input=user_input)
         assert result.exit_code == 0, result.output
 
@@ -59,7 +61,7 @@ class TestSetupDefaults:
         config_path = _patch_config_dir / "config.yaml"
         assert not config_path.exists()
 
-        user_input = "\ny\n\nn\ny\n\nn\n"
+        user_input = "\ny\n\nn\ny\n\nn\nn\n"
         result = runner.invoke(cli, ["setup"], input=user_input)
         assert result.exit_code == 0, result.output
         assert config_path.exists()
@@ -72,7 +74,7 @@ class TestSetupDefaults:
         """Default study-materials path is written to content.base_path."""
         config_path = _patch_config_dir / "config.yaml"
 
-        user_input = "\ny\n\nn\ny\n\nn\n"
+        user_input = "\ny\n\nn\ny\n\nn\nn\n"
         runner.invoke(cli, ["setup"], input=user_input)
 
         config = yaml.safe_load(config_path.read_text())
@@ -86,7 +88,7 @@ class TestSetupDefaults:
         """Default Obsidian vault path ~/Obsidian is written to obsidian_base."""
         config_path = _patch_config_dir / "config.yaml"
 
-        user_input = "\ny\n\nn\ny\n\nn\n"
+        user_input = "\ny\n\nn\ny\n\nn\nn\n"
         runner.invoke(cli, ["setup"], input=user_input)
 
         config = yaml.safe_load(config_path.read_text())
@@ -100,7 +102,7 @@ class TestSetupDefaults:
         """NotebookLM defaults to disabled."""
         config_path = _patch_config_dir / "config.yaml"
 
-        user_input = "\ny\n\nn\ny\n\nn\n"
+        user_input = "\ny\n\nn\ny\n\nn\nn\n"
         runner.invoke(cli, ["setup"], input=user_input)
 
         config = yaml.safe_load(config_path.read_text())
@@ -116,7 +118,7 @@ class TestSetupDefaults:
         config_path = tmp_path / "custom" / "studyloop.yaml"
         monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
-        user_input = "\ny\n\nn\ny\n\nn\n"
+        user_input = "\ny\n\nn\ny\n\nn\nn\n"
         result = runner.invoke(cli, ["setup"], input=user_input)
 
         assert result.exit_code == 0, result.output
@@ -341,3 +343,123 @@ class TestSetupOutput:
         result = runner.invoke(cli, ["setup", "--help"])
         assert result.exit_code == 0
         assert "setup" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# Obsidian export integration (Step 4 extension)
+# ---------------------------------------------------------------------------
+
+
+class TestObsidianExport:
+    """Tests for the export-session-memory prompt added to Step 4."""
+
+    @pytest.fixture
+    def vault_with_obsidian(self, tmp_path: Path) -> Path:
+        """Return a temp vault dir that contains a .obsidian/ marker."""
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        return vault
+
+    def test_export_enabled_written_when_confirmed(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        vault_with_obsidian: Path,
+    ) -> None:
+        """When user answers yes to export, config has obsidian.export_enabled True."""
+        import studyloop.cli._setup as setup_mod
+
+        config_dir = tmp_path / "cfg"
+        config_dir.mkdir()
+        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
+        config_path = config_dir / "config.yaml"
+
+        # Sequence:
+        # Step 1 materials: Enter (default ~/study-materials)
+        # Step 2 has_ai: n
+        # Step 3 notebooklm: n
+        # Step 4 use_obsidian: y
+        #         vault path: <vault>
+        #         export confirm: y   ← new prompt (vault exists + has .obsidian/)
+        # Step 5 launch: n
+        user_input = f"\nn\nn\ny\n{vault_with_obsidian}\ny\nn\n"
+        result = runner.invoke(cli, ["setup"], input=user_input)
+        assert result.exit_code == 0, result.output
+
+        config = yaml.safe_load(config_path.read_text())
+        assert config["obsidian"]["export_enabled"] is True
+
+    def test_obsidian_base_set_with_export_enabled(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        vault_with_obsidian: Path,
+    ) -> None:
+        """obsidian_base is written alongside the obsidian: section."""
+        import studyloop.cli._setup as setup_mod
+
+        config_dir = tmp_path / "cfg"
+        config_dir.mkdir()
+        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
+        config_path = config_dir / "config.yaml"
+
+        user_input = f"\nn\nn\ny\n{vault_with_obsidian}\ny\nn\n"
+        runner.invoke(cli, ["setup"], input=user_input)
+
+        config = yaml.safe_load(config_path.read_text())
+        assert "obsidian_base" in config
+        assert str(vault_with_obsidian) in config["obsidian_base"]
+
+    def test_export_not_written_when_declined(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        vault_with_obsidian: Path,
+    ) -> None:
+        """When user answers no to export, obsidian: section is absent from config."""
+        import studyloop.cli._setup as setup_mod
+
+        config_dir = tmp_path / "cfg"
+        config_dir.mkdir()
+        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
+        config_path = config_dir / "config.yaml"
+
+        # Same sequence but export confirm: n
+        user_input = f"\nn\nn\ny\n{vault_with_obsidian}\nn\nn\n"
+        runner.invoke(cli, ["setup"], input=user_input)
+
+        config = yaml.safe_load(config_path.read_text())
+        # No obsidian: section when export was declined
+        assert "obsidian" not in config
+
+    def test_export_prompt_shown_even_without_obsidian_marker(
+        self,
+        runner: CliRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Export confirm appears whenever the vault dir exists, even without .obsidian/."""
+        import studyloop.cli._setup as setup_mod
+
+        # vault dir exists but no .obsidian/ marker
+        bare_vault = tmp_path / "bare_vault"
+        bare_vault.mkdir()
+
+        config_dir = tmp_path / "cfg"
+        config_dir.mkdir()
+        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
+        config_path = config_dir / "config.yaml"
+
+        # materials=default, ai=n, nlm=n, obsidian=y, vault=bare_vault,
+        # export=n (prompt IS shown — vault exists), launch=n
+        user_input = f"\nn\nn\ny\n{bare_vault}\nn\nn\n"
+        result = runner.invoke(cli, ["setup"], input=user_input)
+        assert result.exit_code == 0, result.output
+
+        config = yaml.safe_load(config_path.read_text())
+        # Declined export → no obsidian: section
+        assert "obsidian" not in config

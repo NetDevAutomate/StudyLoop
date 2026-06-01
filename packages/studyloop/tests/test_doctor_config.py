@@ -21,6 +21,22 @@ def _make_settings(**overrides):
     return SimpleNamespace(**defaults)
 
 
+def _make_obsidian_config(**overrides):
+    """Create a minimal ObsidianConfig-like namespace for doctor tests."""
+    from types import SimpleNamespace
+
+    defaults = {
+        "export_enabled": False,
+        "vault_path": "",
+        "memory_dir": "AgentMemory",
+        "moc_dir": "AgentMemory/MOC",
+        "backlinks": True,
+        "granularity": "both",
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
 class TestObsidianVaultCheck:
     def test_valid_vault(self, tmp_path: Path):
         from studyloop.doctor.config import check_obsidian_vault
@@ -174,3 +190,121 @@ class TestTmuxResurrectCheck:
         assert len(results) == 1
         assert results[0].status == "pass"
         assert "configured" in results[0].message
+
+
+# ---------------------------------------------------------------------------
+# check_obsidian_vault — .obsidian/ marker check (extended behaviour)
+# ---------------------------------------------------------------------------
+
+
+class TestObsidianVaultMarkerCheck:
+    """check_obsidian_vault must warn when the dir exists but .obsidian/ is absent."""
+
+    def test_vault_dir_without_obsidian_marker_warns(self, tmp_path: Path):
+        """A plain directory without .obsidian/ produces a warn result."""
+        from studyloop.doctor.config import check_obsidian_vault
+
+        bare = tmp_path / "bare_vault"
+        bare.mkdir()
+        # No .obsidian/ inside
+
+        with patch(
+            "studyloop.doctor.config._load_settings",
+            return_value=_make_settings(obsidian_base=str(bare)),
+        ):
+            results = check_obsidian_vault()
+
+        assert results[0].status == "warn"
+        assert ".obsidian" in results[0].message
+
+    def test_vault_dir_with_obsidian_marker_passes(self, tmp_path: Path):
+        """A directory WITH .obsidian/ produces a pass result (existing behaviour preserved)."""
+        from studyloop.doctor.config import check_obsidian_vault
+
+        vault = tmp_path / "proper_vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+
+        with patch(
+            "studyloop.doctor.config._load_settings",
+            return_value=_make_settings(obsidian_base=str(vault)),
+        ):
+            results = check_obsidian_vault()
+
+        assert results[0].status == "pass"
+
+
+# ---------------------------------------------------------------------------
+# check_obsidian_export
+# ---------------------------------------------------------------------------
+
+
+class TestCheckObsidianExport:
+    """Tests for the new check_obsidian_export() doctor check."""
+
+    def test_returns_info_when_export_disabled(self, tmp_path: Path):
+        """When export_enabled is False, returns info status."""
+        from studyloop.doctor.config import check_obsidian_export
+
+        obs_cfg = _make_obsidian_config(
+            export_enabled=False,
+            vault_path=str(tmp_path / "vault"),
+        )
+        with patch(
+            "studyloop.doctor.config._load_settings",
+            return_value=_make_settings(
+                obsidian_base=str(tmp_path / "vault"),
+                obsidian=obs_cfg,
+            ),
+        ):
+            results = check_obsidian_export()
+
+        assert len(results) == 1
+        assert results[0].status == "info"
+        assert "disabled" in results[0].message.lower()
+
+    def test_returns_pass_when_export_enabled_and_vault_exists(self, tmp_path: Path):
+        """When export_enabled is True and vault_path exists, returns pass."""
+        from studyloop.doctor.config import check_obsidian_export
+
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        obs_cfg = _make_obsidian_config(
+            export_enabled=True,
+            vault_path=str(vault),
+            memory_dir="AgentMemory",
+        )
+        with patch(
+            "studyloop.doctor.config._load_settings",
+            return_value=_make_settings(
+                obsidian_base=str(vault),
+                obsidian=obs_cfg,
+            ),
+        ):
+            results = check_obsidian_export()
+
+        assert len(results) == 1
+        assert results[0].status == "pass"
+
+    def test_returns_warn_when_export_enabled_and_vault_missing(self, tmp_path: Path):
+        """When export_enabled is True but vault_path does not exist, returns warn."""
+        from studyloop.doctor.config import check_obsidian_export
+
+        missing_vault = tmp_path / "nonexistent"
+        obs_cfg = _make_obsidian_config(
+            export_enabled=True,
+            vault_path=str(missing_vault),
+            memory_dir="AgentMemory",
+        )
+        with patch(
+            "studyloop.doctor.config._load_settings",
+            return_value=_make_settings(
+                obsidian_base=str(missing_vault),
+                obsidian=obs_cfg,
+            ),
+        ):
+            results = check_obsidian_export()
+
+        assert len(results) == 1
+        assert results[0].status == "warn"
+        assert str(missing_vault) in results[0].message

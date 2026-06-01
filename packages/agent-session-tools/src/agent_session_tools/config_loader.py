@@ -58,6 +58,22 @@ DEFAULT_CONFIG = {
         # Auto-embed on export
         "auto_embed": True,
     },
+    "obsidian": {
+        # Feature gate — default OFF; set to true to enable vault export
+        "export_enabled": False,
+        # Absolute path to the Obsidian vault root (~ expanded at load time)
+        "vault_path": str(Path.home() / "Obsidian" / "Personal"),
+        # Folder inside vault for agent-generated session notes
+        "memory_dir": "AgentMemory",
+        # Sub-folder for per-project MOC index notes
+        "moc_dir": "AgentMemory/MOC",
+        # Inject [[wikilink]]s for matched vault topic notes
+        "backlinks": True,
+        # "session" | "moc" | "both"
+        "granularity": "both",
+        # Filename template — supports $date, $source, $slug
+        "filename_template": "$date-$source-$slug",
+    },
     "excluded_dirs": [
         "CloudStorage",
         ".Encrypted",
@@ -200,6 +216,12 @@ def load_config() -> dict[str, Any]:
     )
     config["logging"]["path"] = str(expand_path(config["logging"]["path"]))
 
+    # Expand obsidian vault_path if the section is present
+    if "obsidian" in config and "vault_path" in config["obsidian"]:
+        config["obsidian"]["vault_path"] = str(
+            expand_path(config["obsidian"]["vault_path"])
+        )
+
     return config
 
 
@@ -251,6 +273,19 @@ def get_semantic_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     if config is None:
         config = load_config()
     return config.get("semantic_search", DEFAULT_CONFIG["semantic_search"])
+
+
+def get_obsidian_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Get Obsidian vault-export configuration.
+
+    Returns:
+        Dict with export_enabled, vault_path, memory_dir, moc_dir,
+        backlinks, granularity, filename_template.
+        Falls back to DEFAULT_CONFIG["obsidian"] when the section is absent.
+    """
+    if config is None:
+        config = load_config()
+    return config.get("obsidian", DEFAULT_CONFIG["obsidian"])
 
 
 def get_embedding_model(config: dict[str, Any] | None = None) -> str:
