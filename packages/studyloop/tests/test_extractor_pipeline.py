@@ -26,8 +26,9 @@ from studyloop.extractors.pipeline import (
 )
 from studyloop.extractors.stub import extract_struggles as stub_extract
 
-# study_progress schema — mirrors progress.py (10 columns). Kept local so the
-# test does not import production schema constants and stays a true contract test.
+# study_progress schema — mirrors progress.py (14 columns incl. the v22
+# course/section provenance columns). Kept local so the test does not import
+# production schema constants and stays a true contract test.
 _STUDY_PROGRESS_DDL = """
     CREATE TABLE study_progress (
         id TEXT PRIMARY KEY,
@@ -39,7 +40,11 @@ _STUDY_PROGRESS_DDL = """
         session_count INTEGER,
         notes TEXT,
         created_at TEXT,
-        updated_at TEXT
+        updated_at TEXT,
+        source_course TEXT,
+        source_section TEXT,
+        source_publisher TEXT,
+        created_by TEXT DEFAULT 'agent'
     )
 """
 

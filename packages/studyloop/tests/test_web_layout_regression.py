@@ -672,30 +672,44 @@ class TestCourseExplorerTtsGating:
         page.wait_for_timeout(300)
 
     def test_tts_button_hidden_when_engine_absent(self, web_page: Page) -> None:
-        # On this branch window.ttsEngine is absent → ttsAvailable false →
-        # the read-aloud button must be hidden (display:none via x-show).
+        # The in-browser neural TTS engine (tts-engine.js) loads as a deferred
+        # ES module and may assign window.ttsEngine AFTER courseExplorer.init()
+        # runs — so nulling it pre-load is racy.  Instead, deterministically force
+        # the engine-absent state: delete window.ttsEngine, re-run the component's
+        # init() to re-probe ttsAvailable, then assert the button hides.  This
+        # tests the GATING CONTRACT independent of whether TTS is built in.
         self._goto_with_lesson_open(web_page)
+        # Force engine-absent + re-probe, then let Alpine flush the x-show update.
+        web_page.evaluate(
+            """() => {
+                delete window.ttsEngine;
+                window.Alpine.$data(
+                    document.querySelector('.course-explorer-panel')).init();
+            }"""
+        )
+        web_page.wait_for_timeout(200)  # allow Alpine reactive x-show to settle
         state = web_page.evaluate(
             """() => {
                 const d = window.Alpine.$data(
                     document.querySelector('.course-explorer-panel'));
                 const btn = document.querySelector('.explorer-tts-btn');
                 return {
-                    enginePresent: typeof window.ttsEngine !== 'undefined',
                     ttsAvailable: d.ttsAvailable,
                     btnVisible: btn ? btn.offsetParent !== null : false,
                 };
             }"""
         )
-        assert state["enginePresent"] is False, "ttsEngine should be absent on this branch"
         assert state["ttsAvailable"] is False
         assert state["btnVisible"] is False, "read-aloud button must be hidden when TTS absent"
 
     def test_read_aloud_is_safe_noop_when_engine_absent(self, web_page: Page) -> None:
         # Calling readAloud()/stopReading() without an engine must not throw.
+        # Delete window.ttsEngine in-page to force the engine-absent path
+        # deterministically regardless of whether TTS is built in.
         self._goto_with_lesson_open(web_page)
         result = web_page.evaluate(
             """() => {
+                delete window.ttsEngine;
                 const d = window.Alpine.$data(
                     document.querySelector('.course-explorer-panel'));
                 let threw = false;
