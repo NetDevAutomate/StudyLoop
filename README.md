@@ -218,6 +218,8 @@ sudo apt install ttyd        # Linux (or build from source)
 - [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
 - [Web UI Guide](docs/web-ui-guide.md) — live sessions, terminal fallback, flashcards, quizzes
 - [Agent Installation](docs/agent-install.md) — per-platform agent setup
+- [CI Workflows](docs/ci.md) — local and GitHub Actions quality gates
+- [Ownership Map](docs/ownership.md) — where common changes should live
 - [System Overview](docs/system-overview.md) — architecture and data flow diagrams
 - [Repository Standards](docs/standards/repo-standards.md)
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)

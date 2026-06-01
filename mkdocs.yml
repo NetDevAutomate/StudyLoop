@@ -81,6 +81,7 @@ nav:
     - Session Protocol: session-protocol.md
   - Reference:
     - CLI Reference: cli-reference.md
+    - CI Workflows: ci.md
     - Obsidian Vault Export: obsidian-export.md
     - System Overview: system-overview.md
     - TUI Guide: tui-guide.md
@@ -89,6 +90,7 @@ nav:
     - AuDHD Framework: audhd-framework.md
     - Socratic Engine: socratic-engine.md
     - Network Bridges: network-bridges.md
+    - Ownership Map: ownership.md
     - Repository Standards: standards/repo-standards.md
   - Troubleshooting:
     - General Troubleshooting: troubleshooting.md
