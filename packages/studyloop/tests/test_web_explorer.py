@@ -324,3 +324,114 @@ class TestExplorerTraversalGuard:
                 "/api/explorer/lesson/CodeWithMosh/Complete_SQL_Mastery/study-notes/escape/secret/content"
             )
             assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# F1: non-deterministic file selection (suffix priority)
+# ---------------------------------------------------------------------------
+
+
+class TestSuffixPriority:
+    """F1 — .md must win deterministically when both .md and .txt exist."""
+
+    def test_md_wins_over_txt(self, vault: Path, monkeypatch: MonkeyPatch) -> None:
+        """When dup.md and dup.txt both exist, the content endpoint returns .md."""
+        course_dir = vault / "CodeWithMosh" / "Complete_SQL_Mastery"
+        (course_dir / "dup.md").write_text("MD content", encoding="utf-8")
+        (course_dir / "dup.txt").write_text("TXT content", encoding="utf-8")
+
+        from studyloop.settings import ContentConfig, Settings
+
+        s = Settings()
+        s.content = ContentConfig(base_path=vault)
+        monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+        c = TestClient(create_app(study_dirs=[]))
+
+        resp = c.get("/api/explorer/lesson/CodeWithMosh/Complete_SQL_Mastery/dup/content")
+        assert resp.status_code == 200
+        assert resp.json()["content"] == "MD content"
+
+    def test_markdown_wins_over_txt(self, vault: Path, monkeypatch: MonkeyPatch) -> None:
+        """.markdown wins over .txt when no .md exists."""
+        course_dir = vault / "CodeWithMosh" / "Complete_SQL_Mastery"
+        (course_dir / "note.markdown").write_text("MARKDOWN content", encoding="utf-8")
+        (course_dir / "note.txt").write_text("TXT content", encoding="utf-8")
+
+        from studyloop.settings import ContentConfig, Settings
+
+        s = Settings()
+        s.content = ContentConfig(base_path=vault)
+        monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+        c = TestClient(create_app(study_dirs=[]))
+
+        resp = c.get("/api/explorer/lesson/CodeWithMosh/Complete_SQL_Mastery/note/content")
+        assert resp.status_code == 200
+        assert resp.json()["content"] == "MARKDOWN content"
+
+
+# ---------------------------------------------------------------------------
+# F6: non-UTF-8 bytes → must return 200 (best-effort render), not 500
+# ---------------------------------------------------------------------------
+
+
+class TestNonUtf8Content:
+    """F6 — files with non-UTF-8 bytes must return 200 with replaced chars, not 500."""
+
+    def test_non_utf8_returns_200(self, vault: Path, monkeypatch: MonkeyPatch) -> None:
+        course_dir = vault / "CodeWithMosh" / "Complete_SQL_Mastery"
+        # Write raw bytes that are not valid UTF-8.
+        (course_dir / "bad_encoding.md").write_bytes(b"# T\xff\xfetitle")
+
+        from studyloop.settings import ContentConfig, Settings
+
+        s = Settings()
+        s.content = ContentConfig(base_path=vault)
+        monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+        c = TestClient(create_app(study_dirs=[]))
+
+        resp = c.get("/api/explorer/lesson/CodeWithMosh/Complete_SQL_Mastery/bad_encoding/content")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "content" in body
+        # Content must be a string (replacement chars used, not an exception).
+        assert isinstance(body["content"], str)
+
+
+# ---------------------------------------------------------------------------
+# SEC-001: symlink filename leak in lessons listing
+# ---------------------------------------------------------------------------
+
+
+class TestLessonsSymlinkLeak:
+    """SEC-001 — symlink targets outside the vault must not appear in lessons list."""
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlinks not reliable on Windows")
+    def test_symlink_escape_not_listed(self, vault: Path, monkeypatch: MonkeyPatch) -> None:
+        import tempfile
+
+        course_dir = vault / "CodeWithMosh" / "Complete_SQL_Mastery"
+        # Ensure a normal lesson exists.
+        (course_dir / "real_lesson.md").write_text("# Real", encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as truly_outside:
+            outside = Path(truly_outside)
+            # A file outside the vault with an allowlisted suffix.
+            outside_file = outside / "escape.md"
+            outside_file.write_text("LEAKED", encoding="utf-8")
+
+            # Symlink inside the course pointing to the outside file.
+            link = course_dir / "escape.md"
+            link.symlink_to(outside_file)
+
+            from studyloop.settings import ContentConfig, Settings
+
+            s = Settings()
+            s.content = ContentConfig(base_path=vault)
+            monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+            c = TestClient(create_app(study_dirs=[]))
+
+            resp = c.get("/api/explorer/courses/CodeWithMosh/Complete_SQL_Mastery/lessons")
+            assert resp.status_code == 200
+            slugs = {lesson["slug"] for lesson in resp.json()}
+            assert "real_lesson" in slugs
+            assert "escape" not in slugs
