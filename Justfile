@@ -93,4 +93,7 @@ build-release:
 release-consistency:
     uv run python scripts/check-release-consistency.py --skip-wheel
 
+prepare-release version:
+    uv run python scripts/prepare-release.py {{version}}
+
 release-check: test lint typecheck docs audit audit-full release-consistency smoke-installed
