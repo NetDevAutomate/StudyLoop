@@ -270,15 +270,14 @@ review:
     - ~/Desktop/Python/downloads
 ```
 
-**Voice output** uses the Web Speech API (built into all browsers). For best quality voices:
-
-- **macOS**: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → download Samantha (Enhanced) or Ava (Premium)
-- **iOS**: Settings → Accessibility → Spoken Content → Voices → English → download Siri voices
-- **Windows**: Settings → Time & Language → Speech → Manage voices
+**Voice output** synthesises speech with a neural model (Kokoro-82M) **entirely in the browser** via WebGPU/WASM — no text is sent to a remote API, and no OS voice setup is needed. On first use the model downloads once (~92 MB) and is cached for offline use thereafter; if the device can't run the neural model it falls back to the browser's Web Speech API.
 
 Two voice modes in the PWA:
 - **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once.
 - **Auto-voice** — toggle the header speaker icon, or press `V`. Reads everything automatically as you navigate.
+- **Stop** — a stop button appears while audio plays; it interrupts neural playback mid-utterance.
+
+See [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts) for the full picture.
 
 **Accessibility:** The `Aa` button toggles [OpenDyslexic](https://opendyslexic.org) font. The sun icon toggles light/dark theme. Both are persisted across sessions.
 

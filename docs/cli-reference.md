@@ -193,9 +193,10 @@ studyloop web --lan --password SECRET
 
 **Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** — an embedded ttyd iframe showing the tmux session live via same-origin proxy (`/terminal/`). The panel is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). ttyd is optional (`brew install ttyd`) but required for the terminal panel.
 
-**Voice:** Uses Web Speech API (browser built-in). Two modes:
+**Voice:** In-browser neural TTS (Kokoro on WebGPU/WASM — no remote API; Web Speech API fallback). Two modes:
 - **Read once** — speaker icon on card or `T` key
 - **Auto-voice** — header toggle or `V` key (reads everything automatically)
+- **Stop** — header stop button interrupts playback mid-utterance
 
 **Web + terminal config** (`~/.config/studyloop/config.yaml`):
 
