@@ -14,6 +14,20 @@ studyloop config --help >/dev/null
 studyloop content --help >/dev/null
 studyloop review --help >/dev/null
 
+self_test_output="$(mktemp)"
+self_test_status=0
+studyloop self-test --json >"$self_test_output" || self_test_status=$?
+
+case "$self_test_status" in
+  0|1) ;;
+  *)
+    cat "$self_test_output" >&2
+    exit "$self_test_status"
+    ;;
+esac
+
+python -m json.tool "$self_test_output" >/dev/null
+
 doctor_output="$(mktemp)"
 status=0
 studyloop doctor --json >"$doctor_output" || status=$?
