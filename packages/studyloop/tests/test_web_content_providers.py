@@ -32,7 +32,6 @@ _PROVIDER_ENV_VARS = (
     "OPENAI_API_KEY",
     "OPENROUTER_API_KEY",
     "GEMINI_API_KEY",
-    "MINIMAX_API_KEY",
     "ANTHROPIC_API_KEY",
 )
 
@@ -55,7 +54,8 @@ class TestProvidersRoute:
         resp = client.get("/api/content/providers")
         assert resp.status_code == 200
         slugs = {entry["slug"] for entry in resp.json()}
-        assert {"openai", "openrouter", "gemini", "minimax", "anthropic"} <= slugs
+        assert {"openai", "openrouter", "gemini", "anthropic"} <= slugs
+        assert "minimax" not in slugs  # removed 2026-06-01
 
     def test_stub_not_in_provider_list(self, client: TestClient) -> None:
         """Bug A: stub is a test/CI backend — never user-facing."""

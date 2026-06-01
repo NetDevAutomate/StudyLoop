@@ -1,7 +1,9 @@
 """Anthropic Messages API-compatible :class:`CardGenerator`.
 
-Covers Anthropic itself plus shims that speak the Messages protocol --
-notably MiniMax's ``/anthropic`` endpoint at ``api.minimax.io/anthropic``.
+Covers Anthropic itself plus any shim that speaks the Messages protocol.
+(MiniMax's ``/anthropic`` shim was the original second consumer; it was
+removed as a provider 2026-06-01, but the protocol-robustness handling it
+prompted is retained here — see the inline-XML / tool_result notes below.)
 The adapter shape is identical to :class:`OpenAICompatGenerator`; only
 the wire format differs:
 

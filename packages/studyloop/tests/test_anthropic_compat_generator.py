@@ -3,9 +3,9 @@
 HTTP layer is stubbed via ``respx`` so these tests run offline. Live
 provider smokes are gated separately by ``@pytest.mark.live_provider``.
 
-Covers Anthropic itself plus MiniMax via its ``/anthropic`` shim --
-both routes share the adapter, only ``base_url`` and ``auth_env``
-differ.
+Covers the Anthropic Messages provider and the shared adapter robustness
+(tool_result-correction retries, inline-XML tool-call fallback, transient-retry)
+that any Anthropic-compat shim relies on.
 """
 
 from __future__ import annotations
@@ -28,12 +28,6 @@ from studyloop.settings import CardGeneratorConfig
 def anthropic_key(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-anthropic")
     yield "test-key-anthropic"
-
-
-@pytest.fixture
-def minimax_key(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
-    monkeypatch.setenv("MINIMAX_API_KEY", "test-key-minimax")
-    yield "test-key-minimax"
 
 
 def _tool_use_response(tool_name: str, deck_payload: dict) -> dict:
@@ -186,35 +180,6 @@ class TestHappyPath:
             gen.close()
 
 
-class TestMiniMaxShim:
-    @pytest.mark.usefixtures("minimax_key")
-    @respx.mock
-    def test_minimax_uses_anthropic_wire_at_anthropic_base_url(self) -> None:
-        # Captures the design decision: MiniMax routes through the same
-        # adapter, just with a different base_url. If a future change
-        # accidentally moves MiniMax to OpenAI-compat, this test fails
-        # at the URL match.
-        gen = _make_generator("minimax", "MiniMax-M2.7")
-        try:
-            deck_payload = {
-                "title": "Photosynthesis",
-                "cards": [{"front": "Inputs?", "back": "water + CO2 + sunlight"}],
-            }
-            route = respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
-                return_value=httpx.Response(
-                    200, json=_tool_use_response("emit_flashcard_deck", deck_payload)
-                )
-            )
-            deck = gen.generate_flashcards(source="src", title="Photosynthesis")
-            assert deck.title == "Photosynthesis"
-            assert route.called
-            # MiniMax must not see Anthropic's API key by accident.
-            sent_headers = route.calls[0].request.headers
-            assert sent_headers["x-api-key"] == "test-key-minimax"
-        finally:
-            gen.close()
-
-
 class TestRetry:
     @pytest.mark.usefixtures("anthropic_key")
     @respx.mock
@@ -267,17 +232,19 @@ class TestRetry:
         finally:
             gen.close()
 
-    @pytest.mark.usefixtures("minimax_key")
+    @pytest.mark.usefixtures("anthropic_key")
     @respx.mock
-    def test_minimax_retry_sends_tool_result_not_plain_text(self) -> None:
-        # Regression for MiniMax error 2013 ("tool call result does not follow
-        # tool call"): the strict /anthropic shim rejected a plain-text user
-        # turn after an assistant tool_use. The retry must send a tool_result.
-        gen = _make_generator("minimax", "MiniMax-M2.7")
+    def test_retry_sends_tool_result_not_plain_text(self) -> None:
+        # The schema-correction retry must deliver its correction as a
+        # tool_result block, never a plain-text user turn after an assistant
+        # tool_use. This is required by the Anthropic Messages protocol;
+        # strict Anthropic-compat shims reject the plain-text form outright
+        # (this was the MiniMax error-2013 regression, kept as protocol coverage).
+        gen = _make_generator("anthropic", "claude-haiku-4-5")
         try:
             bad = {"title": "X"}  # missing cards -> validation fails first
             good = {"title": "X", "cards": [{"front": "Q?", "back": "A."}]}
-            route = respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+            route = respx.post("https://api.anthropic.com/v1/messages").mock(
                 side_effect=[
                     httpx.Response(
                         200, json=_tool_use_response("emit_flashcard_deck", bad)
@@ -299,37 +266,37 @@ class TestRetry:
             gen.close()
 
 
-class TestMiniMaxInlineToolCall:
-    """MiniMax M2.7 intermittently emits the tool call as inline XML markup in a
-    text block (``<minimax:tool_call><invoke ...><parameter ...>``) instead of a
-    native Anthropic ``tool_use`` block. The adapter must parse this fallback so
-    quiz/flashcard generation doesn't fail ~half the time on this provider.
+class TestInlineToolCallFallback:
+    """Some Anthropic-compat shims intermittently emit the tool call as inline
+    XML markup in a text block (``<…:tool_call><invoke ...><parameter ...>``)
+    instead of a native ``tool_use`` block. The adapter must parse this fallback
+    so generation doesn't fail when a shim narrates the tool call as text.
+    (Originally surfaced on MiniMax M2.7; kept as provider-agnostic coverage.)
     """
 
     @staticmethod
     def _inline_xml_response(tool_name: str, params: dict) -> dict:
-        # Build the exact shape MiniMax returns: a text block whose text is the
-        # invoke markup. Each param value is rendered as JSON.
+        # A text block whose text is the invoke markup; each param value as JSON.
         param_xml = "".join(
             f'<parameter name="{k}">{json.dumps(v)}</parameter>' for k, v in params.items()
         )
         markup = (
-            f"<minimax:tool_call>\n<invoke name=\"{tool_name}\">\n{param_xml}\n"
-            f"</invoke>\n</minimax:tool_call>"
+            f"<tool_call>\n<invoke name=\"{tool_name}\">\n{param_xml}\n"
+            f"</invoke>\n</tool_call>"
         )
         return {
             "id": "msg_inline",
             "type": "message",
             "role": "assistant",
             "content": [{"type": "text", "text": markup}],
-            "model": "MiniMax-M2.7",
+            "model": "claude-haiku-4-5",
             "stop_reason": "end_turn",
         }
 
-    @pytest.mark.usefixtures("minimax_key")
+    @pytest.mark.usefixtures("anthropic_key")
     @respx.mock
     def test_inline_xml_quiz_is_parsed(self) -> None:
-        gen = _make_generator("minimax", "MiniMax-M2.7")
+        gen = _make_generator("anthropic", "claude-haiku-4-5")
         try:
             questions = [
                 {
@@ -340,7 +307,7 @@ class TestMiniMaxInlineToolCall:
                     ],
                 }
             ]
-            respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+            respx.post("https://api.anthropic.com/v1/messages").mock(
                 return_value=httpx.Response(
                     200,
                     json=self._inline_xml_response("emit_quiz_deck", {
@@ -356,13 +323,13 @@ class TestMiniMaxInlineToolCall:
         finally:
             gen.close()
 
-    @pytest.mark.usefixtures("minimax_key")
+    @pytest.mark.usefixtures("anthropic_key")
     @respx.mock
     def test_inline_xml_flashcards_is_parsed(self) -> None:
-        gen = _make_generator("minimax", "MiniMax-M2.7")
+        gen = _make_generator("anthropic", "claude-haiku-4-5")
         try:
             cards = [{"front": "Q?", "back": "A."}, {"front": "Q2?", "back": "A2."}]
-            respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+            respx.post("https://api.anthropic.com/v1/messages").mock(
                 return_value=httpx.Response(
                     200,
                     json=self._inline_xml_response("emit_flashcard_deck", {
@@ -376,14 +343,14 @@ class TestMiniMaxInlineToolCall:
         finally:
             gen.close()
 
-    @pytest.mark.usefixtures("minimax_key")
+    @pytest.mark.usefixtures("anthropic_key")
     @respx.mock
     def test_transient_extraction_failure_is_retried(self) -> None:
-        # MiniMax intermittently returns an unparseable response (no tool_use,
+        # A shim may intermittently return an unparseable response (no tool_use,
         # no recognisable inline markup). A single bad emission must NOT hard-fail
         # the whole generation — the adapter retries within its budget and
         # succeeds on the next, valid response.
-        gen = _make_generator("minimax", "MiniMax-M2.7")  # default max_retries=2
+        gen = _make_generator("anthropic", "claude-haiku-4-5")  # default max_retries=2
         try:
             garbled = {
                 "content": [{"type": "text", "text": "thinking out loud, no tool here"}],
@@ -392,7 +359,7 @@ class TestMiniMaxInlineToolCall:
             good = _tool_use_response(
                 "emit_flashcard_deck", {"title": "T", "cards": [{"front": "Q?", "back": "A."}]}
             )
-            route = respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+            route = respx.post("https://api.anthropic.com/v1/messages").mock(
                 side_effect=[
                     httpx.Response(200, json=garbled),  # transient bad emission
                     httpx.Response(200, json=good),      # retry succeeds
@@ -475,27 +442,6 @@ class TestFactoryDispatch:
         )
         try:
             assert isinstance(gen, AnthropicCompatGenerator)
-        finally:
-            gen.close()
-
-    @pytest.mark.usefixtures("minimax_key")
-    def test_get_generator_routes_minimax_to_anthropic_adapter(self) -> None:
-        from studyloop.content.generators import get_generator
-
-        gen = get_generator(
-            CardGeneratorConfig(
-                backend="anthropic_compat",
-                provider="minimax",
-                model="MiniMax-M2.7",
-            )
-        )
-        try:
-            assert isinstance(gen, AnthropicCompatGenerator)
-            # Verify the URL was actually picked up from the registry,
-            # not from a fallback.
-            # httpx canonicalises base URLs with a trailing slash; the
-            # path-prefix is what we care about for routing.
-            assert str(gen._client.base_url).startswith("https://api.minimax.io/anthropic")
         finally:
             gen.close()
 

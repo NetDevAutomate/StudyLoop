@@ -5,14 +5,14 @@ Two adapter classes (``OpenAICompatGenerator``,
 modern LLM service speaks one of two specs:
 
 - **OpenAI Chat Completions** (with ``tool_choice``): OpenAI itself,
-  OpenRouter, Google Gemini's OpenAI-compat endpoint, MiniMax's
-  OpenAI-compat endpoint... most "we host an OpenAI-compatible API"
-  services slot in here with just a different ``base_url``.
-- **Anthropic Messages** (with ``tool_use``): Anthropic itself, plus
-  shims like MiniMax's ``/anthropic`` endpoint that speak the Messages
-  protocol natively. Bedrock's Converse API is *similar* but we keep
-  the existing :class:`BedrockGenerator` as a separate path because it
-  uses boto3, profile fallback, and the Converse-specific shape.
+  OpenRouter, Google Gemini's OpenAI-compat endpoint... most "we host an
+  OpenAI-compatible API" services slot in here with just a different
+  ``base_url``.
+- **Anthropic Messages** (with ``tool_use``): Anthropic itself, plus any
+  shim that speaks the Messages protocol natively. Bedrock's Converse API
+  is *similar* but we keep the existing :class:`BedrockGenerator` as a
+  separate path because it uses boto3, profile fallback, and the
+  Converse-specific shape.
 
 Adding a new provider is a registry row plus a curated model list -- no
 new generator class, no new tests beyond the live smoke.
@@ -80,9 +80,9 @@ class ProviderProfile:
 # Registry data
 # ---------------------------------------------------------------------------
 
-# IMPORTANT: preview model IDs (Gemini 3.x, MiniMax M2.7) are subject to
-# drift. Verify against the provider's /models endpoint before assuming a
-# given ID is current. See the plan's "preview ID verification" pre-flight.
+# IMPORTANT: preview model IDs (e.g. Gemini 3.x) are subject to drift.
+# Verify against the provider's /models endpoint before assuming a given ID
+# is current. See the plan's "preview ID verification" pre-flight.
 
 PROFILES: dict[str, ProviderProfile] = {
     "openai": ProviderProfile(
@@ -160,25 +160,15 @@ PROFILES: dict[str, ProviderProfile] = {
             ),
         ],
     ),
-    "minimax": ProviderProfile(
-        slug="minimax",
-        label="MiniMax",
-        # MiniMax exposes both an OpenAI-compat and an Anthropic-compat
-        # endpoint. We use the Anthropic shim at /anthropic per the
-        # vendor's recommended path (matches their tool-use shape and
-        # avoids OpenAI-compat schema-mode quirks).
-        adapter="anthropic_compat",
-        base_url="https://api.minimax.io/anthropic",
-        auth_env="MINIMAX_API_KEY",
-        models=[
-            ModelEntry(
-                id="MiniMax-M2.7",
-                label="MiniMax M2.7",
-                cost_tier="balanced",
-                notes="Anthropic-compat shim; requires token plan",
-            ),
-        ],
-    ),
+    # MiniMax (M2.7 via its /anthropic shim) was removed 2026-06-01: it
+    # generated cleanly after the adapter hardening, but an Opus-4.8 judge
+    # rejected its QUIZ content across 5 SQL sections (wrong isCorrect flags,
+    # garbled non-English characters, factual errors) — unsafe to ship. Its
+    # flashcards were strong, but Bedrock and Ollama both clear the quiz bar and
+    # cover that need, so MiniMax was redundant. The AnthropicCompatGenerator's
+    # tool_result-correction, inline-XML fallback, and transient-retry behaviour
+    # are kept — they are correct Anthropic-protocol handling that also protects
+    # the `anthropic` provider.
     "anthropic": ProviderProfile(
         slug="anthropic",
         label="Anthropic",
