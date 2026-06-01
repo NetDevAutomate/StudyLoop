@@ -73,9 +73,11 @@ def test_study_session_form_renders(web_page: Page) -> None:
     _goto(web_page, "study-session")
 
     assert web_page.evaluate("() => window.Alpine.store('nav').current") == "study-session"
-    assert web_page.locator(".session-start-picker h2").filter(
-        has_text="Start a Study Session"
-    ).is_visible()
+    assert (
+        web_page.locator(".session-start-picker h2")
+        .filter(has_text="Start a Study Session")
+        .is_visible()
+    )
     assert web_page.locator("#session-type-select").is_visible()
     assert web_page.locator("#target-kind-select").is_visible()
     assert web_page.locator(".start-session-btn").is_visible()

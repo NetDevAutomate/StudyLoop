@@ -73,4 +73,3 @@ def test_queue_terminal_frame_drops_oldest_when_full() -> None:
     queue = [{"type": "progress", "n": 1}, {"type": "progress", "n": 2}]
     queue_terminal_frame(queue, {"type": "all_done"}, max_size=2)
     assert queue == [{"type": "progress", "n": 2}, {"type": "all_done"}]
-

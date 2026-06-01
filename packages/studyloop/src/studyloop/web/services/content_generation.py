@@ -34,4 +34,3 @@ def queue_terminal_frame(
     if len(queue) >= max_size:
         del queue[0]
     queue.append(frame)
-
