@@ -71,6 +71,7 @@ nav:
     - Session Protocol: session-protocol.md
   - Reference:
     - CLI Reference: cli-reference.md
+    - Obsidian Vault Export: obsidian-export.md
     - System Overview: system-overview.md
     - TUI Guide: tui-guide.md
     - Web UI Guide: web-ui-guide.md

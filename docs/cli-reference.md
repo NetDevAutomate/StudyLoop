@@ -140,7 +140,7 @@ studyloop upgrade --component agents      # Update agent definitions only
 | `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `updates` (PyPI versions).
+**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `harness` (session-export wiring), `updates` (PyPI versions).
 
 ### Spaced Repetition Intervals
 
@@ -221,6 +221,7 @@ AI session export, search, and cross-machine sync.
 
 ```bash
 session-export [--sources SOURCE ...]    # Export AI sessions to SQLite
+session-export [--obsidian] [--obsidian-vault PATH] [--obsidian-backfill] [--obsidian-dry-run]
 session-query search QUERY               # Full-text search across sessions
 session-query list --since 7d            # List recent sessions
 session-query show SESSION_ID            # Show session details
@@ -299,6 +300,36 @@ session-export --pi-only
 session-export --omp-only
 session-export --full
 ```
+
+### Obsidian Vault Export (opt-in)
+
+`session-export` can also write one Markdown "session-memory" note per session
+into an Obsidian vault, alongside the SQLite export. Notes carry Dataview-ready
+YAML frontmatter (`type: agent-memory`), `[[wikilink]]` backlinks to matching
+vault topic notes, and per-project MOC index notes. Output lands in
+`<vault>/AgentMemory/` (and `<vault>/AgentMemory/MOC/`).
+
+Enable it per-run with `--obsidian`, or set `obsidian.export_enabled: true` in
+`~/.config/studyloop/config.yaml` (see [Configuration](setup-guide.md#obsidian-session-memory-export)).
+
+```bash
+session-export --obsidian                      # write notes for sessions touched this run
+session-export --obsidian --obsidian-vault ~/Obsidian/Personal  # override vault path
+session-export --obsidian --obsidian-backfill  # write notes for ALL historical sessions (idempotent)
+session-export --obsidian --obsidian-dry-run   # preview what would be written; write nothing
+session-export --no-obsidian                   # force-disable even if config enables it
+```
+
+| Flag | Effect |
+|------|--------|
+| `--obsidian` / `--no-obsidian` | Enable/disable export for this run; overrides the `obsidian.export_enabled` config gate. |
+| `--obsidian-vault PATH` | Override the vault root (default: `obsidian.vault_path`, falling back to `obsidian_base`). |
+| `--obsidian-backfill` | Export every session in the DB, not just those touched this run. Idempotent — unchanged notes are skipped. |
+| `--obsidian-dry-run` | Print the written/skipped/MOC counts without writing any files. |
+
+Notes are **idempotent**: a content hash in each note's frontmatter means re-runs
+skip unchanged sessions. A normal `--obsidian` run only writes sessions added or
+updated in that run; use `--obsidian-backfill` for the one-time full history import.
 
 ### Optional Extras
 

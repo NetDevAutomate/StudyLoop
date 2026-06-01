@@ -39,6 +39,10 @@ flowchart TB
         Review["SM-2 review"]
     end
 
+    subgraph "Outputs"
+        AgentMemory["AgentMemory/<br/>(Obsidian vault notes)<br/>Dataview frontmatter +<br/>[[wikilinks]] + MOC index"]
+    end
+
     Obsidian --> Studyctl
     PDF --> Studyctl
     Text --> Studyctl
@@ -50,6 +54,7 @@ flowchart TB
     TTYD --> Tmux
     Agent --> DB
     AST --> DB
+    AST -.->|"--obsidian (opt-in)<br/>obsidian_writer"| AgentMemory
     Studyctl --> Generator
     Generator --> JSON
     JSON --> Review

@@ -338,4 +338,5 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 - [x] `get_persona_effectiveness()` query — win rate per persona version
 - [x] `studyloop session effectiveness` CLI command (Rich table)
 - [ ] Tier 2: Autonomous persona optimisation against simulated student evaluations
-- Obsidian session export — future release
+- [x] Obsidian session export — `session-export --obsidian` writes `AgentMemory/` vault notes (Dataview frontmatter, `[[wikilinks]]`, per-project MOC); shipped 2026-06-01
+- [ ] Obsidian + session-DB GraphRAG — unified retrieval over vault embeddings + sessions (see `docs/designs/obsidian-graphrag-roadmap.md`)
