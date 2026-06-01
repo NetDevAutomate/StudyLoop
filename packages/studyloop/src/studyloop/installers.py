@@ -94,9 +94,7 @@ _HARNESS_EXPORT: dict[str, _HarnessExport] = {
     "claude": _HarnessExport(_HOME / ".claude/rules/session-db.md", "claude-only"),
     "kiro": _HarnessExport(_HOME / ".kiro/steering/session-db.md", "kiro-only"),
     "gemini": _HarnessExport(_HOME / ".gemini/session-db.md", "gemini-only"),
-    "opencode": _HarnessExport(
-        _HOME / ".config/opencode/session-db.md", "sources opencode"
-    ),
+    "opencode": _HarnessExport(_HOME / ".config/opencode/session-db.md", "sources opencode"),
     "pi": _HarnessExport(_HOME / ".pi/agent/session-db.md", "pi-only"),
     "omp": _HarnessExport(_HOME / ".omp/agent/session-db.md", "omp-only"),
 }
@@ -110,15 +108,11 @@ _HOOK_SENTINEL = "session-export --claude-only"
 
 def _render_mandate(repo_root: Path, export_flag: str) -> str:
     """Load the shared mandate template and substitute the harness flag."""
-    template = (repo_root / "agents/shared/session-db-mandate.md").read_text(
-        encoding="utf-8"
-    )
+    template = (repo_root / "agents/shared/session-db-mandate.md").read_text(encoding="utf-8")
     return template.replace("SESSION_EXPORT_FLAG", export_flag)
 
 
-def install_session_db_mandate(
-    repo_root: Path, tools: list[str] | None = None
-) -> dict[str, int]:
+def install_session_db_mandate(repo_root: Path, tools: list[str] | None = None) -> dict[str, int]:
     """Write the session-export steering mandate into each harness's file.
 
     Idempotent: a file already containing the sentinel is left untouched.
@@ -240,7 +234,7 @@ def install_workspace_tools(
     installed: list[str] = []
 
     if sync_workspace:
-        _run(["uv", "sync"], cwd=repo_root)
+        _run(["uv", "sync", "--all-packages"], cwd=repo_root)
 
     packages_dir = repo_root / "packages"
     for pkg_dir in sorted(p for p in packages_dir.iterdir() if p.is_dir()):
@@ -249,7 +243,7 @@ def install_workspace_tools(
         if package_name == "agent-session-tools":
             cmd.append(f"{pkg_dir}[tts]")
         elif package_name == "studyloop":
-            cmd.append(f"{pkg_dir}[tui,web]")
+            cmd.append(f"{pkg_dir}[tui,web,content]")
             cmd.extend(["--with-editable", str(repo_root / "packages" / "agent-session-tools")])
         else:
             cmd.append(str(pkg_dir))

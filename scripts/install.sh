@@ -14,12 +14,14 @@ REPO_DIR=$(dirname "$SCRIPT_DIR")
 TOOLS_ONLY=false
 AGENTS_ONLY=false
 NON_INTERACTIVE=false
+NO_SMOKE=false
 
 for arg in "$@"; do
   case "$arg" in
     --tools-only)      TOOLS_ONLY=true ;;
     --agents-only)     AGENTS_ONLY=true ;;
     --non-interactive) NON_INTERACTIVE=true ;;
+    --no-smoke)        NO_SMOKE=true ;;
     --help|-h)
       echo "Usage: ./scripts/install.sh [OPTIONS]"
       echo ""
@@ -27,6 +29,7 @@ for arg in "$@"; do
       echo "  --non-interactive  Accepted for CI/automation compatibility"
       echo "  --tools-only       Only install CLI tools globally"
       echo "  --agents-only      Only install agent definitions"
+      echo "  --no-smoke         Skip installed CLI smoke checks"
       echo "  -h, --help         Show this help"
       exit 0
       ;;
@@ -63,8 +66,36 @@ else
   info "uv $(uv --version 2>/dev/null | head -1) installed"
 fi
 
+export PATH="$HOME/.local/bin:$PATH"
+
 run_cli() {
   (cd "$REPO_DIR" && uv run studyloop "$@")
+}
+
+run_smoke_checks() {
+  step "Running installed CLI smoke checks"
+  studyloop --version
+  studyloop --help >/dev/null
+  session-export --help >/dev/null
+
+  set +e
+  doctor_json=$(studyloop doctor --json)
+  doctor_status=$?
+  set -e
+
+  case "$doctor_status" in
+    0|1|2) ;;
+    *)
+      err "studyloop doctor --json failed with unexpected status ${doctor_status}"
+      exit "$doctor_status"
+      ;;
+  esac
+
+  if ! printf '%s' "$doctor_json" | python3 -m json.tool >/dev/null; then
+    err "studyloop doctor --json did not emit valid JSON"
+    exit 1
+  fi
+  info "Installed CLI smoke checks passed"
 }
 
 if $AGENTS_ONLY; then
@@ -75,7 +106,7 @@ fi
 
 if ! $TOOLS_ONLY; then
   step "Syncing workspace"
-  (cd "$REPO_DIR" && uv sync)
+  (cd "$REPO_DIR" && uv sync --all-packages)
   info "Workspace synced"
 fi
 
@@ -86,6 +117,10 @@ else
   run_cli install tools --skip-sync
 fi
 info "CLI tools installed"
+
+if ! $NO_SMOKE; then
+  run_smoke_checks
+fi
 
 if $TOOLS_ONLY; then
   echo ""

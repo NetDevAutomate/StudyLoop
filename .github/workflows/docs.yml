@@ -25,4 +25,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --extra docs
-      - run: uv run mkdocs gh-deploy --force
+      - run: uv run --extra docs mkdocs gh-deploy --force
