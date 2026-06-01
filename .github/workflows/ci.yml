@@ -80,6 +80,42 @@ jobs:
       - run: uv sync --all-packages --group dev
       - run: uv run --group dev pytest --tb=short --cov=packages --cov-report=term-missing
 
+  web-profile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - name: Install just
+        run: sudo apt-get update && sudo apt-get install -y just
+      - run: uv sync --all-packages --group dev --extra web
+      - run: just test-web
+
+  content-profile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - name: Install just
+        run: sudo apt-get update && sudo apt-get install -y just
+      - run: uv sync --all-packages --group dev --extra content
+      - run: just test-content
+
+  semantic-profile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - name: Install just
+        run: sudo apt-get update && sudo apt-get install -y just
+      - run: uv sync --all-packages --group dev --extra semantic
+      - run: just test-semantic
+
   build:
     runs-on: ubuntu-latest
     steps:
