@@ -21,7 +21,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install from source
-        run: uv sync --all-packages --extra dev --extra test
+        run: uv sync --all-packages --group dev
 
       - name: Run studyloop doctor
         run: |
