@@ -91,6 +91,7 @@ nav:
     - Network Bridges: network-bridges.md
     - Repository Standards: standards/repo-standards.md
   - Troubleshooting:
+    - General Troubleshooting: troubleshooting.md
     - pi / omp Harnesses: troubleshooting/pi-omp.md
   - Governance:
     - Audit 2026-05-09: audit/2026_05_09_audit.md
