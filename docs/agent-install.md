@@ -467,7 +467,7 @@ Models ranked by suitability for studyloop's agentic, multi-turn workflow:
 
 **Minimum context window**: 64K tokens. Claude Code's system prompt, CLAUDE.md, tool definitions, and file reads consume 20K-50K tokens before your conversation even starts. Models with <32K context will truncate constantly.
 
-**Not recommended**: CodeLlama (superseded), minimax m2.7 (known freeze bug), anything <10B parameters.
+**Not recommended**: CodeLlama (superseded), MiniMax M2.7 as a *local coding agent* (known freeze bug), anything <10B parameters.
 
 ### Option A: LM Studio (simplest)
 
