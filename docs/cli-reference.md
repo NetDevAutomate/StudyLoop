@@ -56,6 +56,7 @@ studyloop install tools                   # Install global CLI entrypoints from 
 studyloop install agents                  # Install agent definitions for detected tools
 studyloop config init                     # Advanced/legacy config initializer
 studyloop config show                     # Display current configuration
+studyloop self-test                       # Lightweight post-install smoke check
 studyloop doctor                          # Full health check
 studyloop update                          # Check for available updates
 studyloop upgrade                         # Apply all available updates
@@ -127,6 +128,9 @@ studyloop session effectiveness -p abc123...     # Filter by persona hash
 ### Health & Updates
 
 ```bash
+studyloop self-test                       # Lightweight post-install smoke check
+studyloop self-test --json                # JSON output for scripts/agents
+studyloop self-test --quiet               # One-line summary
 studyloop doctor                          # Full health check (Rich table)
 studyloop doctor --json                   # JSON output (for AI agents and CI)
 studyloop doctor --quiet                  # One-line summary
@@ -138,6 +142,20 @@ studyloop upgrade --component packages    # Upgrade only packages
 studyloop upgrade --component database    # Run DB migrations only
 studyloop upgrade --component agents      # Update agent definitions only
 ```
+
+Use `studyloop self-test` immediately after install when you only need to
+confirm the CLI imports, config can be read, the sessions database path is
+usable, and the web module imports. It is deliberately lightweight: it does
+not run `doctor --fix`, start web servers, contact external services, or write
+agent/harness files.
+
+**Exit codes for `studyloop self-test`:**
+
+| Code | Meaning |
+|------|---------|
+| `0` | All lightweight checks pass |
+| `1` | One or more warnings, with no failures |
+| `2` | One or more checks failed |
 
 **Exit codes for `studyloop doctor`:**
 
