@@ -529,3 +529,8 @@ benchmarks/d2-output/
 
 # P6 hill-climber generated artifact (regenerated each run)
 extractor_candidate.py
+
+# Code-intelligence / knowledge-graph tool output (large, regenerable — keep local)
+.codegraph/
+.understand-anything/
+graphify-out/
