@@ -726,10 +726,7 @@ class TestCourseExplorerTtsGating:
         # _mdToPlainText must remove headings, emphasis, links, code fences and
         # list markers so TTS speaks prose, not syntax.
         self._goto_with_lesson_open(web_page)
-        md = (
-            "# Title\n\n**bold** and *it* see [x](http://y)\n\n"
-            "```py\ncode()\n```\n\n- one\n- two"
-        )
+        md = "# Title\n\n**bold** and *it* see [x](http://y)\n\n```py\ncode()\n```\n\n- one\n- two"
         plain = web_page.evaluate("(md) => window._mdToPlainText(md)", md)
         assert "#" not in plain
         assert "**" not in plain and "*" not in plain
@@ -747,9 +744,7 @@ class TestCourseExplorerTtsGating:
         _stub_courses(web_page, [])
         _stub_session_state(web_page)
         _stub_stats(web_page)
-        web_page.add_init_script(
-            "window.ttsEngine = { speak() {}, stop() {}, isSpeaking: false };"
-        )
+        web_page.add_init_script("window.ttsEngine = { speak() {}, stop() {}, isSpeaking: false };")
         _goto(web_page, "flashcards")
         _open_explorer_panel(web_page)
         web_page.wait_for_function(

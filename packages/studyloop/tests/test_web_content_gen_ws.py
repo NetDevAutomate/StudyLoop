@@ -147,6 +147,20 @@ class TestStream:
 
 
 class TestRouting:
+    def test_lan_origin_matching_host_streams_preloaded_queue(self, client: TestClient) -> None:
+        queue: asyncio.Queue = asyncio.Queue()
+        queue.put_nowait({"type": "all_done", "job_id": "gen-lan"})
+        cg_route._JOB_QUEUES["gen-lan"] = queue
+
+        with client.websocket_connect(
+            "/api/content/generate/ws?job_id=gen-lan",
+            headers={
+                "Host": "192.168.1.42:8567",
+                "Origin": "http://192.168.1.42:8567",
+            },
+        ) as ws:
+            assert ws.receive_json() == {"type": "all_done", "job_id": "gen-lan"}
+
     def test_unknown_job_id_closes_with_4404(self, client: TestClient) -> None:
         """No queue → close with the 'job not found' application code."""
         with (
@@ -168,6 +182,21 @@ class TestRouting:
             client.websocket_connect(
                 "/api/content/generate/ws?job_id=gen-x",
                 headers={"origin": "http://evil.example.com"},
+            ) as ws,
+        ):
+            ws.receive_json()
+        assert excinfo.value.code == 1008
+
+    def test_lan_host_with_cross_origin_closes_with_1008(self, client: TestClient) -> None:
+        cg_route._JOB_QUEUES["gen-lan"] = asyncio.Queue()
+        with (
+            pytest.raises(WebSocketDisconnect) as excinfo,
+            client.websocket_connect(
+                "/api/content/generate/ws?job_id=gen-lan",
+                headers={
+                    "Host": "192.168.1.42:8567",
+                    "Origin": "https://evil.example.com",
+                },
             ) as ws,
         ):
             ws.receive_json()

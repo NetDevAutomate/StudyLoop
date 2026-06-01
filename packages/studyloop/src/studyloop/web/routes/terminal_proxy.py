@@ -18,8 +18,10 @@ from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 
 from studyloop.session_state import read_session_state
+from studyloop.web.ws_origin import origin_allowed
 
 router = APIRouter()
+_WS_CLOSE_POLICY = 1008
 
 # Headers that must not be forwarded between proxy and upstream (hop-by-hop).
 _HOP_BY_HOP = frozenset(
@@ -126,6 +128,10 @@ async def proxy_terminal_ws(ws: WebSocket) -> None:
     ttyd's WebSocket protocol is relayed verbatim (binary + text frames).
     """
     import websockets
+
+    if not origin_allowed(ws.headers.get("origin", ""), host=ws.headers.get("host", "")):
+        await ws.close(code=_WS_CLOSE_POLICY)
+        return
 
     port: int = getattr(ws.app.state, "ttyd_port", 7681)
     upstream_ws_base = f"ws://127.0.0.1:{port}"

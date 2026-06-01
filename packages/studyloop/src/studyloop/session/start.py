@@ -15,6 +15,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from studyloop.output import console
+from studyloop.web.runtime_feedback import (
+    LanCredentialFeedback,
+    build_web_access_info,
+    format_lan_credential_lines,
+)
 
 if TYPE_CHECKING:
     from studyloop.logic.briefing_logic import ContentContext, ReviewContext
@@ -439,6 +444,7 @@ def start_session(
         # Resolve LAN credentials: CLI flag > config > auto-generate
         lan_username = "study"
         lan_password = password
+        lan_password_generated = False
         if lan:
             try:
                 from studyloop.settings import load_settings as _ls_inner
@@ -453,16 +459,18 @@ def start_session(
             import secrets
 
             lan_password = secrets.token_urlsafe(16)
+            lan_password_generated = True
 
         if lan and lan_password:
-            console.print(
-                f"\n[bold yellow]LAN credentials:[/bold yellow] "
-                f"[green]{lan_username}[/green] / [green]{lan_password}[/green]"
-            )
-            console.print(
-                "[dim]Set lan_username and lan_password in config.yaml to avoid "
-                "auto-generated passwords.[/dim]"
-            )
+            console.print()
+            for line in format_lan_credential_lines(
+                LanCredentialFeedback(
+                    username=lan_username,
+                    password=lan_password,
+                    password_generated=lan_password_generated,
+                )
+            ):
+                console.print(line)
 
         if web:
             start_web_background(session_name, lan=lan, password=lan_password)
@@ -482,11 +490,19 @@ def start_session(
             from studyloop.session.orchestrator import _get_web_port
 
             web_port = _get_web_port()
+            access_info = build_web_access_info(
+                bind_host="0.0.0.0",
+                port=web_port,
+                lan_enabled=True,
+                lan_hosts=(lan_ip,),
+                path="/session",
+            )
+            lan_url = access_info.lan_urls[0] if access_info.lan_urls else access_info.local_url
             write_session_state(
                 {
                     "lan_ip": lan_ip,
                     "lan_password": lan_password,
-                    "lan_url": f"http://{lan_ip}:{web_port}/session",
+                    "lan_url": lan_url,
                 }
             )
 
@@ -494,9 +510,12 @@ def start_session(
             # but is also saved in session state (visible via web dashboard
             # and `studyloop study --resume` output).
             console.print("\n[bold]LAN access:[/bold]")
-            console.print(f"  Dashboard: http://{lan_ip}:{web_port}/session")
+            console.print(f"  Dashboard: {lan_url}")
             console.print(f"  Username:  {lan_username}")
-            console.print(f"  Password:  {lan_password}")
+            if lan_password_generated:
+                console.print(f"  Password:  {lan_password}")
+            elif lan_password:
+                console.print("  Password:  configured; not shown")
 
         attach_if_needed(session_name, result["already_in_tmux"])
     except Exception as exc:

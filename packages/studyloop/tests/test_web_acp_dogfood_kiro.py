@@ -119,9 +119,7 @@ def _kiro_available() -> tuple[bool, str]:
 
 
 _KIRO_OK, _KIRO_REASON = _kiro_available()
-pytestmark.append(
-    pytest.mark.skipif(not _KIRO_OK, reason=f"Live Kiro unavailable: {_KIRO_REASON}")
-)
+pytestmark.append(pytest.mark.skipif(not _KIRO_OK, reason=f"Live Kiro unavailable: {_KIRO_REASON}"))
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +328,7 @@ class TestLiveKiroDogfood:
             _end_any_active_session_via_api()
             start_body = _start_acp_session_via_api(page)
 
-            assert "persona_text" in start_body and start_body["persona_text"], (
+            assert start_body.get("persona_text"), (
                 "/start did not return persona_text — U1 regression"
             )
 
@@ -396,9 +394,7 @@ class TestLiveKiroDogfood:
                             {"rid": state["requestId"], "optId": chosen["optionId"]},
                         )
                 time.sleep(3)
-            assert persona_settled, (
-                "Persona-injection turn did not complete within 3 minutes"
-            )
+            assert persona_settled, "Persona-injection turn did not complete within 3 minutes"
 
             # Sanity: the persona turn left no visible artefact in chat.
             # User bubbles, tool-call cards, plan trees — all of these MUST
@@ -421,9 +417,7 @@ class TestLiveKiroDogfood:
                 "assistant": 0,
                 "toolCalls": 0,
                 "plan": 0,
-            }, (
-                f"Persona-injection turn leaked artefacts into UI: {persona_artefacts}"
-            )
+            }, f"Persona-injection turn leaked artefacts into UI: {persona_artefacts}"
 
             # Send the real question.
             page.evaluate(
@@ -480,9 +474,7 @@ class TestLiveKiroDogfood:
                     )
 
             # No ghost streaming-pre — the U4 element rename should hold.
-            old_pre = page.evaluate(
-                """() => !!document.querySelector('.acp-message-streaming')"""
-            )
+            old_pre = page.evaluate("""() => !!document.querySelector('.acp-message-streaming')""")
             assert not old_pre, ".acp-message-streaming reappeared — U4 regression"
 
             # Markdown was actually rendered: at least one heading or
@@ -500,9 +492,7 @@ class TestLiveKiroDogfood:
                   };
                 }"""
             )
-            assert (
-                structural["h"] + structural["strong"] + structural["code"] > 0
-            ), (
+            assert structural["h"] + structural["strong"] + structural["code"] > 0, (
                 f"Final bubble has no structural HTML elements — markdown render didn't fire. "
                 f"Counts: {structural}"
             )
@@ -521,6 +511,7 @@ class TestLiveKiroDogfood:
             # `data` are backslash-escaped. Match against the JSON-encoded
             # prefix to find the persona's distinctive opening.
             import json as _json
+
             persona_chunk_json = _json.dumps(start_body["persona_text"][:80])
             # _json.dumps wraps in quotes; strip them to get the raw substring
             # we need to find inside the bigger frame's data field.

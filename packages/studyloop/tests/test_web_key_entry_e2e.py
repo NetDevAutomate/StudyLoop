@@ -17,15 +17,22 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Generator
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Browser, Page
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
+
+    from playwright.sync_api import Browser, Page
 
 pytestmark = [pytest.mark.e2e]
 
 WEB_PORT = 18582
+GENERATE_PANEL = "document.querySelector('[x-data=\"generatePanel()\"]')"
+PROVIDERS_READY = f"() => window.Alpine.$data({GENERATE_PANEL}).providers.length > 0"
+NEEDS_KEY = f"() => window.Alpine.$data({GENERATE_PANEL}).needsKey"
 
 
 @pytest.fixture
@@ -140,7 +147,10 @@ def _goto_generate(page: Page) -> None:
     page.goto(f"http://127.0.0.1:{WEB_PORT}/#generate")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_function("() => !!window.Alpine", timeout=5000)
-    page.wait_for_function("() => window.Alpine.store('nav').current === 'generate'", timeout=3000)
+    page.wait_for_function(
+        "() => window.Alpine.store('nav').current === 'generate'",
+        timeout=3000,
+    )
 
 
 @pytest.fixture
@@ -158,10 +168,7 @@ class TestKeyEntryUI:
     def test_key_form_appears_for_unavailable_keyed_provider(self, page: Page) -> None:
         _route_providers(page, anthropic_available=False)
         _goto_generate(page)
-        page.wait_for_function(
-            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).providers.length > 0",
-            timeout=3000,
-        )
+        page.wait_for_function(PROVIDERS_READY, timeout=3000)
         # Select anthropic (no key) → the inline key form must appear.
         page.select_option('select[x-model="form.provider"]', "anthropic")
         page.wait_for_selector(
@@ -172,10 +179,7 @@ class TestKeyEntryUI:
     def test_key_form_hidden_for_available_provider(self, page: Page) -> None:
         _route_providers(page, anthropic_available=False)
         _goto_generate(page)
-        page.wait_for_function(
-            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).providers.length > 0",
-            timeout=3000,
-        )
+        page.wait_for_function(PROVIDERS_READY, timeout=3000)
         # OpenAI is available → no key form.
         page.select_option('select[x-model="form.provider"]', "openai")
         page.wait_for_timeout(300)
@@ -199,10 +203,7 @@ class TestKeyEntryUI:
         page.route("**/api/content/secrets", handle_post)
 
         _goto_generate(page)
-        page.wait_for_function(
-            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).providers.length > 0",
-            timeout=3000,
-        )
+        page.wait_for_function(PROVIDERS_READY, timeout=3000)
         page.select_option('select[x-model="form.provider"]', "anthropic")
         page.wait_for_selector(
             ".api-key-entry input[type='password']", state="visible", timeout=3000
@@ -227,14 +228,11 @@ class TestKeyEntryUI:
         """
         _route_providers(page, anthropic_available=False)
         _goto_generate(page)
-        page.wait_for_function(
-            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).providers.length > 0",
-            timeout=3000,
-        )
+        page.wait_for_function(PROVIDERS_READY, timeout=3000)
         # Satisfy every OTHER submit precondition so needsKey is the only thing
         # that could block submission (publisher+course set; kinds/scope default ok).
         page.evaluate(
-            "() => { const d = window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]'));"
+            f"() => {{ const d = window.Alpine.$data({GENERATE_PANEL});"
             " d.form.publisher = 'p'; d.form.course = 'c'; }"
         )
         # Select the keyless provider → key form shows, needsKey === true.
@@ -244,9 +242,7 @@ class TestKeyEntryUI:
         )
 
         # Sanity: needsKey is genuinely true (otherwise the test proves nothing).
-        needs_key = page.evaluate(
-            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).needsKey"
-        )
+        needs_key = page.evaluate(NEEDS_KEY)
         assert needs_key is True, (
             "precondition: needsKey must be true for this test to be meaningful"
         )
@@ -267,10 +263,7 @@ class TestKeyEntryUI:
             ),
         )
         _goto_generate(page)
-        page.wait_for_function(
-            "() => window.Alpine.$data(document.querySelector('[x-data=\"generatePanel()\"]')).providers.length > 0",
-            timeout=3000,
-        )
+        page.wait_for_function(PROVIDERS_READY, timeout=3000)
         page.select_option('select[x-model="form.provider"]', "anthropic")
         page.wait_for_selector(
             ".api-key-entry input[type='password']", state="visible", timeout=3000

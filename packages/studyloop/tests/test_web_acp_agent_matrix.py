@@ -643,9 +643,7 @@ class TestU2ChatPanelMount:
     without a real Kiro binary.
     """
 
-    def _activate_session(
-        self, page: Page, transport: str = "acp", agent: str = "kiro"
-    ) -> None:
+    def _activate_session(self, page: Page, transport: str = "acp", agent: str = "kiro") -> None:
         """Drive the page into a live session via the bypass-the-picker
         flow used in earlier test classes, parametrised on transport."""
         _end_any_active_session(page)
@@ -709,9 +707,7 @@ class TestU2ChatPanelMount:
             timeout=10000,
         )
 
-    def test_acp_transport_shows_chat_panel_hides_xterm(
-        self, acp_page: Page
-    ) -> None:
+    def test_acp_transport_shows_chat_panel_hides_xterm(self, acp_page: Page) -> None:
         """Starting an ACP session sets terminalMode='acp-chat': the
         .acp-chat-panel becomes visible and .xterm-panel is hidden."""
         self._activate_session(acp_page, transport="acp")
@@ -747,14 +743,10 @@ class TestU2ChatPanelMount:
         assert panel_states["chatHidden"] is False, (
             f".acp-chat-panel should be visible: {panel_states}"
         )
-        assert panel_states["xtermHidden"] is True, (
-            f".xterm-panel should be hidden: {panel_states}"
-        )
+        assert panel_states["xtermHidden"] is True, f".xterm-panel should be hidden: {panel_states}"
         _end_any_active_session(acp_page)
 
-    def test_pty_transport_shows_xterm_hides_chat_panel(
-        self, acp_page: Page
-    ) -> None:
+    def test_pty_transport_shows_xterm_hides_chat_panel(self, acp_page: Page) -> None:
         """Starting a PTY session sets terminalMode='xterm': .xterm-panel
         visible, .acp-chat-panel hidden."""
         # The stub server only supports ACP; PTY sessions spin up a real
@@ -886,9 +878,7 @@ class TestU2ChatPanelMount:
         assert state["pendingPermission"] is None, f"pendingPermission not reset: {state}"
         _end_any_active_session(acp_page)
 
-    def test_send_acp_input_pushes_user_message_in_chat_mode(
-        self, acp_page: Page
-    ) -> None:
+    def test_send_acp_input_pushes_user_message_in_chat_mode(self, acp_page: Page) -> None:
         """In ACP chat mode (_term is null), _sendAcpInput pushes a
         {role: 'user', text} entry into acpMessages instead of writing
         to xterm."""

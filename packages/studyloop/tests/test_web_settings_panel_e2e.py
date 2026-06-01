@@ -18,11 +18,15 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Generator
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Browser, Page
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
+
+    from playwright.sync_api import Browser, Page
 
 pytestmark = [pytest.mark.e2e]
 
@@ -38,8 +42,9 @@ _PROVIDERS = [
         "auth_env": "OPENAI_API_KEY",
         "auth_kind": "api_key",
         "available": False,
-        "models": [{"id": "gpt-x", "label": "GPT-X", "cost_tier": "cheap",
-                    "thinking": False, "notes": ""}],
+        "models": [
+            {"id": "gpt-x", "label": "GPT-X", "cost_tier": "cheap", "thinking": False, "notes": ""}
+        ],
     },
     {
         "slug": "bedrock",
@@ -48,9 +53,15 @@ _PROVIDERS = [
         "auth_env": "AWS_PROFILE",
         "auth_kind": "bedrock_bearer",
         "available": False,
-        "models": [{"id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-                    "label": "Claude Haiku 4.5 (Bedrock)", "cost_tier": "cheap",
-                    "thinking": False, "notes": ""}],
+        "models": [
+            {
+                "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                "label": "Claude Haiku 4.5 (Bedrock)",
+                "cost_tier": "cheap",
+                "thinking": False,
+                "notes": "",
+            }
+        ],
     },
     {
         "slug": "ollama",
@@ -60,8 +71,15 @@ _PROVIDERS = [
         "auth_kind": "local_keyless",
         "available": False,
         "base_url": "http://localhost:11434",
-        "models": [{"id": "qwen2.5:7b", "label": "Qwen 2.5 7B", "cost_tier": "cheap",
-                    "thinking": False, "notes": ""}],
+        "models": [
+            {
+                "id": "qwen2.5:7b",
+                "label": "Qwen 2.5 7B",
+                "cost_tier": "cheap",
+                "thinking": False,
+                "notes": "",
+            }
+        ],
     },
 ]
 
@@ -123,9 +141,7 @@ def _goto_settings(page: Page) -> None:
     page.goto(f"http://127.0.0.1:{WEB_PORT}/#settings")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_function("() => !!window.Alpine", timeout=5000)
-    page.wait_for_function(
-        "() => window.Alpine.store('nav').current === 'settings'", timeout=3000
-    )
+    page.wait_for_function("() => window.Alpine.store('nav').current === 'settings'", timeout=3000)
 
 
 @pytest.fixture
