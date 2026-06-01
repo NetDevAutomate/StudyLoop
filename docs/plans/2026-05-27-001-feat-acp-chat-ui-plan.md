@@ -594,8 +594,8 @@ Per-agent matrix updated; dead xterm-for-ACP code removed; PTY untouched.
 
 ## Sources & References
 
-- **Origin / related plan:** [docs/plans/2026-05-09-refactor-agent-session-transport-plan.md](../../docs/plans/2026-05-09-refactor-agent-session-transport-plan.md)
-- **ACP event shapes research:** [docs/research/2026-05-10-acp-event-shapes.md](../../docs/research/2026-05-10-acp-event-shapes.md)
+- **Origin / related plan:** [docs/plans/2026-05-09-refactor-agent-session-transport-plan.md](2026-05-09-refactor-agent-session-transport-plan.md)
+- **ACP event shapes research:** [docs/research/2026-05-10-acp-event-shapes.md](../research/2026-05-10-acp-event-shapes.md)
 - **xterm vendoring smoke test:** `packages/studyloop/tests/test_web_vendor_xterm.py`
 - **ACP per-agent matrix (existing):** `packages/studyloop/tests/test_web_acp_agent_matrix.py`
 - **Stub ACP agent driver:** `packages/studyloop/tests/_stub_acp_agent.py`
