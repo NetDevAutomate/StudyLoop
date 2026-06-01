@@ -55,11 +55,21 @@ extra_javascript:
 
 exclude_docs: |
   archive/**
+  browser-neural-tts-design.md
+  course-explorer/**
+  designs/**
+  handoffs/**
+  plans/**
+  research/**
+  brainstorms/**
+  explorations/**
+  superpowers/plans/**
 
 nav:
   - Home: index.md
   - Getting Started:
     - Setup Guide: setup-guide.md
+    - Your First Week: first-week.md
     - Agent Installation: agent-install.md
     - Architecture Overview: architecture.md
     - Current Architecture: architecture/current.md
@@ -85,6 +95,7 @@ nav:
   - Governance:
     - Audit 2026-05-09: audit/2026_05_09_audit.md
     - Planning 2026-05-09: planning/2026_05_09_planning.md
+    - Release Process: release-process.md
   - Contributing: contributing.md
   - Roadmap: roadmap.md
   - MCP Integrations: mcp.md

@@ -20,7 +20,7 @@ flowchart TB
     end
 
     subgraph "Core Tools"
-        Studyctl["studyloop"]
+        StudyLoop["studyloop"]
         AST["agent-session-tools"]
         DB[("SQLite<br/>sessions + review")]
     end
@@ -44,13 +44,13 @@ flowchart TB
         AgentMemory["AgentMemory/<br/>(Obsidian vault notes)<br/>Dataview frontmatter +<br/>[[wikilinks]] + MOC index"]
     end
 
-    Obsidian --> Studyctl
-    PDF --> Studyctl
-    Text --> Studyctl
-    Studyctl --> Picker
+    Obsidian --> StudyLoop
+    PDF --> StudyLoop
+    Text --> StudyLoop
+    StudyLoop --> Picker
     Picker --> Tmux
     Tmux --> Agent
-    Studyctl --> Web
+    StudyLoop --> Web
     Web --> TTYD
     Web --> Explorer
     Explorer -->|"reads source material"| Obsidian
@@ -59,7 +59,7 @@ flowchart TB
     Agent --> DB
     AST --> DB
     AST -.->|"--obsidian (opt-in)<br/>obsidian_writer"| AgentMemory
-    Studyctl --> Generator
+    StudyLoop --> Generator
     Generator --> JSON
     JSON --> Review
     Review --> DB
@@ -73,17 +73,17 @@ The main workflow is live interaction with a mentor agent.
 ```mermaid
 sequenceDiagram
     actor User
-    participant Studyctl
+    participant StudyLoop
     participant DB as Shared DB
     participant Agent as Assistant
     participant UI as Web/tmux UI
 
-    User->>Studyctl: studyloop study
-    Studyctl-->>User: picker: body double/topic/vendor/course
-    User->>Studyctl: select session type
-    Studyctl->>DB: create session
-    Studyctl->>Agent: launch selected assistant
-    Studyctl->>UI: show live state
+    User->>StudyLoop: studyloop study
+    StudyLoop-->>User: picker: body double/topic/vendor/course
+    User->>StudyLoop: select session type
+    StudyLoop->>DB: create session
+    StudyLoop->>Agent: launch selected assistant
+    StudyLoop->>UI: show live state
     User->>Agent: ask questions / explain confusion
     Agent->>DB: query struggles, wins, history
     Agent-->>User: Socratic question or targeted explanation

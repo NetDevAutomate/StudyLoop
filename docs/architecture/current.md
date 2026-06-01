@@ -10,7 +10,9 @@ For the planned direction, see [Target Architecture](target.md).
 
 ## C4 Level 1 — System Context
 
-StudyLoop is single-user and runs entirely on one host. The only external systems are the AI agent CLIs (Kiro, Claude Code, Gemini, Codex, OpenCode) and optional generation backends (Ollama / Bedrock).
+StudyLoop is single-user and runs primarily on one host. External systems are
+the AI agent CLIs (Kiro, Claude Code, Gemini, Codex, OpenCode), optional
+generation providers, and the first-run browser TTS model fetch.
 
 ```mermaid
 flowchart TB
@@ -28,7 +30,11 @@ flowchart TB
       OpenCode["OpenCode<br/>(PTY only)"]
     end
 
-    subgraph "Optional generation backends"
+    subgraph "Optional generation providers"
+      OpenAI["OpenAI"]
+      OpenRouter["OpenRouter"]
+      GeminiAPI["Gemini API"]
+      Anthropic["Anthropic"]
       Ollama["Ollama<br/>(local LLM)"]
       Bedrock["AWS Bedrock<br/>(cloud LLM)"]
     end
@@ -43,12 +49,23 @@ flowchart TB
     StudyLoop -->|"PTY / raw bytes"| Claude
     StudyLoop -->|"PTY / raw bytes"| Codex
     StudyLoop -->|"PTY / raw bytes"| OpenCode
+    StudyLoop -.->|"flashcard /<br/>quiz generation"| OpenAI
+    StudyLoop -.->|"flashcard /<br/>quiz generation"| OpenRouter
+    StudyLoop -.->|"flashcard /<br/>quiz generation"| GeminiAPI
+    StudyLoop -.->|"flashcard /<br/>quiz generation"| Anthropic
     StudyLoop -.->|"flashcard /<br/>quiz generation"| Ollama
     StudyLoop -.->|"flashcard /<br/>quiz generation"| Bedrock
     Learner -.->|"browser fetches TTS model<br/>(first run, then offline)"| HF
 ```
 
-**Trust boundaries** — everything happens on the learner's machine. The only outbound network calls are (a) the agent CLI's own model calls (the agent owns those creds and policy), (b) optional Bedrock for content generation, and (c) a one-time browser fetch of the in-browser TTS model weights from Hugging Face (cached on-device thereafter; voice synthesis itself is fully local — no text is ever sent off-device). StudyLoop's Python server has no outbound component and never phones home.
+**Trust boundaries** — the learner controls a single-user local StudyLoop
+process, but optional providers can create outbound calls. The outbound surfaces
+are (a) the agent CLI's own model calls (the agent owns those creds and policy),
+(b) optional content generation via OpenAI, OpenRouter, Gemini, Anthropic, AWS
+Bedrock, or Ollama on a configured local/remote endpoint, and (c) a first-run
+browser fetch of the in-browser TTS model weights from Hugging Face (cached
+on-device thereafter; voice synthesis itself is fully local and does not send
+review text to a TTS API). StudyLoop does not phone home.
 
 ---
 
@@ -300,7 +317,7 @@ flowchart TB
     end
 
     Store[("~/.config/studyloop/<br/>secrets.bin (Fernet)")]
-    Disk[("content.base_path/<br/>&lt;publisher&gt;/&lt;course&gt;/<br/>flashcards/ + quizzes/")]
+    Disk[("content.base_path/<br/>&lt;course&gt;/ or<br/>&lt;publisher&gt;/&lt;course&gt;/<br/>flashcards/ + quizzes/")]
     Reviewer["/api/courses, /api/cards<br/>(review surface — see below)"]
 
     Form --> RestCall --> Routes
@@ -428,7 +445,7 @@ flowchart TB
       Auth["provider_auth + secrets<br/>──────────<br/>get_auth_kind, get_secret,<br/>test_bedrock_bearer / ollama"]
     end
 
-    Disk[("content.base_path/<br/>&lt;publisher&gt;/&lt;course&gt;/<br/>flashcards/ + quizzes/")]
+    Disk[("content.base_path/<br/>&lt;course&gt;/ or<br/>&lt;publisher&gt;/&lt;course&gt;/<br/>flashcards/ + quizzes/")]
     Store[("~/.config/studyloop/<br/>secrets.bin")]
 
     Review -->|list| Courses
@@ -454,11 +471,13 @@ flowchart TB
 - **Scaling** is `groupedCourses` (group `filteredCourses` by the API's new
   `publisher` field) + collapsible group headers + a name search box + compact
   one-line rows.
-- **Write root ≠ read root.** Generation writes under `content.base_path`; the
-  reviewer reads via `resolve_study_dirs()`, which falls back to `content.base_path`
-  when `review.directories` is unset, and `discover_directories` walks the
-  3-level `publisher/course` tree. (Before this, an unset `review.directories`
-  silently left the panels empty.)
+- **Write root ≠ read root.** CLI generation writes under
+  `content.base_path/<course>/{flashcards,quizzes}/`; web generation writes under
+  `content.base_path/<publisher>/<course>/{flashcards,quizzes}/` when a publisher
+  is supplied. The reviewer reads via `resolve_study_dirs()`, which falls back to
+  `content.base_path` when `review.directories` is unset, and
+  `discover_directories` walks both layouts. (Before this, an unset
+  `review.directories` silently left the panels empty.)
 - **`name` is the identity key** for `/api/cards`, `openConfig`, and the SM-2
   review DB. `publisher` is display/grouping only — never keyed on.
 - **Settings stores credentials only after a live verification** (auth call for
@@ -524,7 +543,11 @@ flowchart TB
 - **ORT WASM is pinned to vendored files.** `wasmPaths = '/vendor/js/'` stops transformers.js falling back to the jsdelivr CDN — which both breaks offline use and triggers a JS-glue/WASM version mismatch (`_OrtGetInputName is not a function`). The vendored `ort-wasm-simd-threaded.jsep.wasm` (23 MB, stored via Git LFS) serves both the webgpu and wasm execution providers.
 - **Model persists across reloads.** `env.useBrowserCache = true` (the library default) stores the ~92 MB q8 model in Cache Storage. The PWA service worker's self-destruct handler explicitly spares `transformers-cache` and `kokoro-voices`, so a code-asset refresh never forces a re-download.
 - **`stop()` is unified across tiers.** It halts the neural `AudioBufferSourceNode` (`.stop()` + `disconnect()`) AND settles the in-flight playback promise *before* suspending the AudioContext — a suspended context freezes the clock so `onended` never fires. Web-speech tier delegates to `speechSynthesis.cancel()`.
-- **Browser → Hugging Face is the only new egress.** First-run model fetch is the single direct browser-to-internet call; everything else (engine module, WASM) is same-origin from FastAPI. After first load the model is served from Cache Storage and voice works fully offline.
+- **Browser → Hugging Face is TTS egress only.** First-run model fetch is the
+  single direct browser-to-internet call for voice; optional content providers
+  may also create outbound calls from the Python server during generation.
+  Engine module and WASM assets are same-origin from FastAPI. After first load
+  the model is served from Cache Storage and voice works fully offline.
 
 ### Component → file map (for the TTS surface)
 
@@ -622,6 +645,7 @@ flowchart TB
 ## What's NOT in this diagram
 
 - **The Pomodoro overlay**, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline. (Voice output is now documented in its own C4 L3 component section above.)
-- **The Generate panel UI surface** — see U8 in the [Generation Panel Plan](../plans/2026-05-29-001-feat-content-generation-panel-plan.md). Shipped on `main`.
+- **The Generate panel UI surface** — implemented by U8 in the 2026-05-29
+  generation-panel plan. Shipped on `main`.
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
 - **Legacy tmux + ttyd** — kept as fallback; documented in [Web UI Guide § Terminal Fallback (ttyd)](../web-ui-guide.md#terminal-fallback-ttyd). Will be retired once ACP + PTY web sessions cover all agents.
