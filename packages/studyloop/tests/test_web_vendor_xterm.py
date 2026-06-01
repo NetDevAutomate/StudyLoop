@@ -118,7 +118,9 @@ class TestIndexReferencesChatVendor:
     def test_index_has_highlight_theme_css_link_tag(self) -> None:
         html = INDEX_HTML.read_text(encoding="utf-8")
         assert "/vendor/css/highlight-tokyo-night-dark.css" in html
-        assert "<link" in html.split("/vendor/css/highlight-tokyo-night-dark.css")[0].splitlines()[-1]
+        assert (
+            "<link" in html.split("/vendor/css/highlight-tokyo-night-dark.css")[0].splitlines()[-1]
+        )
 
     def test_chat_libs_load_in_correct_order(self) -> None:
         """DOMPurify must appear before marked and hljs — it is a sanitiser

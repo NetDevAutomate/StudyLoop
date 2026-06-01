@@ -27,7 +27,6 @@ import time
 import urllib.error
 import urllib.request
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -38,6 +37,7 @@ pytest.importorskip("uvicorn")
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from pathlib import Path
 
     from playwright.sync_api import Browser, Page, Route
 
@@ -81,9 +81,7 @@ def vault(tmp_path: Path) -> Path:
     (notes / "advanced-pandas.md").write_text(
         "# Pandas\n\nGroupby and pivot tables.", encoding="utf-8"
     )
-    (notes / "joins.md").write_text(
-        "# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8"
-    )
+    (notes / "joins.md").write_text("# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8")
     return study
 
 
@@ -118,10 +116,8 @@ def sessions_db(tmp_path: Path) -> Path:
     conn.executemany(
         "INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
-            ("id1", "python",    "abc-vs-protocol", "struggling",
-             now, now, 3, None, now, now),
-            ("id2", "sql-joins", "outer-join",       "struggling",
-             now, now, 2, None, now, now),
+            ("id1", "python", "abc-vs-protocol", "struggling", now, now, 3, None, now, now),
+            ("id2", "sql-joins", "outer-join", "struggling", now, now, 2, None, now, now),
         ],
     )
     conn.commit()
@@ -173,9 +169,7 @@ def server(stub_config: Path) -> Generator[subprocess.Popen, None, None]:
         "--port",
         str(WEB_PORT),
     ]
-    proc = subprocess.Popen(
-        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
-    )
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     for _ in range(40):
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
@@ -216,6 +210,7 @@ def page(server: subprocess.Popen, browser: Browser) -> Generator[Page, None, No
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_struggling_topics_js() -> str:
     """Return an inline JS expression (not a function) evaluating to the
     strugglingTopics array on the generatePanel Alpine component.
@@ -238,9 +233,7 @@ def _goto_generate(page: Page) -> None:
     page.goto(f"http://127.0.0.1:{WEB_PORT}/#generate")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_function("() => !!window.Alpine", timeout=5000)
-    page.wait_for_function(
-        "() => window.Alpine.store('nav').current === 'generate'", timeout=3000
-    )
+    page.wait_for_function("() => window.Alpine.store('nav').current === 'generate'", timeout=3000)
 
 
 def _wait_publishers_loaded(page: Page) -> None:
@@ -375,9 +368,7 @@ class TestStrugglingTopicsDropdownShape:
         page.click('.generate-form input[type=radio][value="topic_struggles"]')
 
         # The label row containing the topic select must now be visible.
-        topic_label = page.locator(
-            '.generate-form label:has(select[x-model="form.topic_slug"])'
-        )
+        topic_label = page.locator('.generate-form label:has(select[x-model="form.topic_slug"])')
         assert topic_label.is_visible(), (
             "topic select label row is not visible after clicking topic_struggles radio"
         )
@@ -432,9 +423,7 @@ class TestStrugglingTopicsEndToEnd:
             timeout=5000,
         )
 
-        alpine_topics = page.evaluate(
-            f"() => {_ALPINE_DATA_EXPR}.map(t => t.topic)"
-        )
+        alpine_topics = page.evaluate(f"() => {_ALPINE_DATA_EXPR}.map(t => t.topic)")
         assert "python" in alpine_topics, (
             f"'python' missing from Alpine strugglingTopics: {alpine_topics!r}"
         )
@@ -461,9 +450,5 @@ class TestStrugglingTopicsEndToEnd:
                     .filter(Boolean);
             }"""
         )
-        assert "python" in option_values, (
-            f"'python' not in select options: {option_values!r}"
-        )
-        assert "sql-joins" in option_values, (
-            f"'sql-joins' not in select options: {option_values!r}"
-        )
+        assert "python" in option_values, f"'python' not in select options: {option_values!r}"
+        assert "sql-joins" in option_values, f"'sql-joins' not in select options: {option_values!r}"

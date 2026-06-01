@@ -11,7 +11,7 @@ Verifies:
 
 from __future__ import annotations
 
-from pathlib import Path
+import logging
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -20,11 +20,13 @@ import pytest
 pytest.importorskip("fastapi")
 pytest.importorskip("cryptography")
 
-from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
-from studyloop.web.app import create_app  # noqa: E402
+from studyloop.web.app import create_app
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest import MonkeyPatch
 
 
@@ -58,8 +60,7 @@ class TestGetSecrets:
     def test_empty_store_all_missing(self, client: TestClient, monkeypatch: MonkeyPatch) -> None:
         """When no keys are configured, all providers appear in missing_for_providers."""
         # Ensure env vars don't bleed in
-        for var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
-                    "GEMINI_API_KEY"):
+        for var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY"):
             monkeypatch.delenv(var, raising=False)
 
         resp = client.get("/api/content/secrets")
@@ -70,13 +71,14 @@ class TestGetSecrets:
         assert data["configured"] == []
         assert len(data["missing_for_providers"]) > 0
 
-    def test_configured_provider_appears(self, client: TestClient, monkeypatch: MonkeyPatch) -> None:
+    def test_configured_provider_appears(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
         """A stored key moves the provider from missing to configured."""
         from studyloop.secrets import set_secret
 
         # Clear env vars to avoid noise
-        for var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
-                    "GEMINI_API_KEY"):
+        for var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY"):
             monkeypatch.delenv(var, raising=False)
 
         set_secret("openai", "sk-test-key")
@@ -171,6 +173,23 @@ class TestPostSecrets:
             )
 
         assert secret_value not in resp.text
+
+    def test_key_prefix_never_in_failure_logs(self, client: TestClient, caplog) -> None:
+        """Diagnostics may name the provider, but never raw keys or prefixes."""
+        secret_value = "sk-test-prefix-must-not-appear"
+        with patch("studyloop.secrets.test_provider_auth") as mock_test:
+            mock_test.return_value = (False, "Invalid API key")
+            with caplog.at_level(logging.INFO, logger="studyloop.web.routes.content_gen"):
+                resp = client.post(
+                    "/api/content/secrets",
+                    json={"provider": "openai", "key": secret_value},
+                )
+
+        assert resp.status_code == 400
+        assert "Testing credential for" in caplog.text
+        assert secret_value not in caplog.text
+        assert "sk-test" not in caplog.text
+        assert "sk-tes" not in caplog.text
 
     def test_bedrock_returns_422(self, client: TestClient) -> None:
         """Bedrock uses SDK auth — sending a key should return 422."""
@@ -292,8 +311,10 @@ class TestOllamaBaseUrlRoute:
     """The Ollama endpoint URL is a config value: stored without a live test."""
 
     def test_post_ollama_base_url_no_auth_test(self, client: TestClient) -> None:
-        with patch("studyloop.secrets.test_provider_auth") as mock_test, \
-                patch("studyloop.secrets.set_secret") as mock_set:
+        with (
+            patch("studyloop.secrets.test_provider_auth") as mock_test,
+            patch("studyloop.secrets.set_secret") as mock_set,
+        ):
             resp = client.post(
                 "/api/content/secrets",
                 json={"provider": "ollama_base_url", "key": "http://box:11434"},
@@ -332,9 +353,7 @@ class TestProviderTestEndpoint:
     def test_bedrock_test_with_token(self, client: TestClient) -> None:
         with patch("studyloop.secrets.test_provider_auth") as mock_test:
             mock_test.return_value = (True, "Bearer token verified")
-            resp = client.post(
-                "/api/content/providers/bedrock/test", json={"key": "tok-123"}
-            )
+            resp = client.post("/api/content/providers/bedrock/test", json={"key": "tok-123"})
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
 
@@ -357,8 +376,10 @@ class TestProviderTestEndpoint:
         """
         from studyloop import secrets as secrets_mod
 
-        with patch.object(secrets_mod, "get_secret", return_value="sk-stored"), \
-                patch.object(secrets_mod, "test_provider_auth") as mock_test:
+        with (
+            patch.object(secrets_mod, "get_secret", return_value="sk-stored"),
+            patch.object(secrets_mod, "test_provider_auth") as mock_test,
+        ):
             mock_test.return_value = (True, "ok")
             resp = client.post("/api/content/providers/openai/test", json={"key": ""})
         assert resp.status_code == 200

@@ -30,7 +30,7 @@ _tests_dir = str(Path(__file__).parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from conftest import StubTransport  # noqa: E402
+from conftest import StubTransport  # noqa: E402  # pyright: ignore[reportAttributeAccessIssue]
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -17,11 +17,13 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
-from studyloop.web.app import create_app  # noqa: E402
+from studyloop.web.app import create_app
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from pytest import MonkeyPatch
 
 
@@ -37,7 +39,7 @@ _PROVIDER_ENV_VARS = (
 
 
 @pytest.fixture
-def client(monkeypatch: MonkeyPatch) -> TestClient:
+def client(monkeypatch: MonkeyPatch) -> Iterator[TestClient]:
     for var in _PROVIDER_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
     # Pin the bedrock credential helper to False so tests are deterministic
@@ -66,9 +68,7 @@ class TestProvidersRoute:
             "stub is a CI-only backend and must be hidden from the user-facing dropdown."
         )
 
-    def test_provider_available_from_encrypted_store(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_provider_available_from_encrypted_store(self, monkeypatch: MonkeyPatch) -> None:
         """A key in the encrypted store (no env var) makes the provider available.
 
         Regression for the audit gap: the availability flag checked os.environ
@@ -105,9 +105,7 @@ class TestProvidersRoute:
             cl = TestClient(create_app(study_dirs=[]))
             data = cl.get("/api/content/providers").json()
         slugs = {entry["slug"] for entry in data}
-        assert "bedrock" in slugs, (
-            f"'bedrock' missing from /api/content/providers: {slugs!r}"
-        )
+        assert "bedrock" in slugs, f"'bedrock' missing from /api/content/providers: {slugs!r}"
         bedrock = next(e for e in data if e["slug"] == "bedrock")
         assert bedrock["available"] is True
         assert bedrock["label"] == "AWS Bedrock"
@@ -115,19 +113,20 @@ class TestProvidersRoute:
         first = bedrock["models"][0]
         assert {"id", "label", "cost_tier", "thinking", "notes"} <= first.keys()
 
-    def test_bedrock_unavailable_when_no_credentials(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_bedrock_unavailable_when_no_credentials(self, monkeypatch: MonkeyPatch) -> None:
         """Bedrock entry shows available=False when no creds AND no bearer token."""
         for var in _PROVIDER_ENV_VARS:
             monkeypatch.delenv(var, raising=False)
         monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
-        with patch(
-            "studyloop.web.routes.content_gen._bedrock_credentials_available",
-            return_value=False,
-        ), patch(
-            "studyloop.web.routes.content_gen.get_secret",
-            return_value=None,
+        with (
+            patch(
+                "studyloop.web.routes.content_gen._bedrock_credentials_available",
+                return_value=False,
+            ),
+            patch(
+                "studyloop.web.routes.content_gen.get_secret",
+                return_value=None,
+            ),
         ):
             cl = TestClient(create_app(study_dirs=[]))
             data = cl.get("/api/content/providers").json()
@@ -145,32 +144,32 @@ class TestProvidersRoute:
         first = anthropic["models"][0]
         assert {"id", "label", "cost_tier", "thinking", "notes"} <= first.keys()
 
-    def test_available_flag_false_when_env_var_unset(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_available_flag_false_when_env_var_unset(self, monkeypatch: MonkeyPatch) -> None:
         # Clear API-key env, the Bedrock bearer token, and force the local-only
         # checks (bedrock SigV4, ollama reachability) off so nothing is
         # available.
         for var in _PROVIDER_ENV_VARS:
             monkeypatch.delenv(var, raising=False)
         monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
-        with patch(
-            "studyloop.web.routes.content_gen._bedrock_credentials_available",
-            return_value=False,
-        ), patch(
-            "studyloop.web.routes.content_gen._ollama_reachable",
-            return_value=False,
-        ), patch(
-            "studyloop.web.routes.content_gen.get_secret",
-            return_value=None,
+        with (
+            patch(
+                "studyloop.web.routes.content_gen._bedrock_credentials_available",
+                return_value=False,
+            ),
+            patch(
+                "studyloop.web.routes.content_gen._ollama_reachable",
+                return_value=False,
+            ),
+            patch(
+                "studyloop.web.routes.content_gen.get_secret",
+                return_value=None,
+            ),
         ):
             cl = TestClient(create_app(study_dirs=[]))
             data = cl.get("/api/content/providers").json()
         assert all(not entry["available"] for entry in data)
 
-    def test_available_flag_true_when_env_var_set(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_available_flag_true_when_env_var_set(self, monkeypatch: MonkeyPatch) -> None:
         # Set just one var; only that provider should flip to available.
         for var in _PROVIDER_ENV_VARS:
             monkeypatch.delenv(var, raising=False)
@@ -208,26 +207,20 @@ class TestProvidersRoute:
         assert "base_url" in ollama
 
     def test_ollama_available_when_reachable(self) -> None:
-        with patch(
-            "studyloop.web.routes.content_gen._ollama_reachable", return_value=True
-        ):
+        with patch("studyloop.web.routes.content_gen._ollama_reachable", return_value=True):
             cl = TestClient(create_app(study_dirs=[]))
             data = cl.get("/api/content/providers").json()
         ollama = next(e for e in data if e["slug"] == "ollama")
         assert ollama["available"] is True
 
     def test_ollama_unavailable_when_unreachable(self) -> None:
-        with patch(
-            "studyloop.web.routes.content_gen._ollama_reachable", return_value=False
-        ):
+        with patch("studyloop.web.routes.content_gen._ollama_reachable", return_value=False):
             cl = TestClient(create_app(study_dirs=[]))
             data = cl.get("/api/content/providers").json()
         ollama = next(e for e in data if e["slug"] == "ollama")
         assert ollama["available"] is False
 
-    def test_bedrock_available_when_bearer_token_stored(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_bedrock_available_when_bearer_token_stored(self, monkeypatch: MonkeyPatch) -> None:
         for var in _PROVIDER_ENV_VARS:
             monkeypatch.delenv(var, raising=False)
         with patch(
@@ -269,9 +262,7 @@ class TestContentCoursesRoute:
         names = {entry["name"] for entry in data}
         assert names == {"DataCamp", "PythonForDataScience"}
 
-    def test_returns_empty_when_base_path_missing(
-        self, tmp_path, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_returns_empty_when_base_path_missing(self, tmp_path, monkeypatch: MonkeyPatch) -> None:
         from studyloop.settings import ContentConfig, Settings
 
         s = Settings()

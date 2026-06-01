@@ -13,6 +13,8 @@ Port 18576 — 18575 is taken by test_web_acp_agent_matrix.py.
 Plan: docs/plans/2026-05-27-001-feat-acp-chat-ui-plan.md §U3
 """
 
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import json
@@ -289,9 +291,7 @@ def _send_and_wait_for_turn_end(page: Page, text: str = "ping") -> None:
 @pytest.fixture(scope="class")
 def _server_simple_markdown() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
-    proc = _start_web_server_with_stub(
-        prompt_updates=[_chunk_update("Hello, **world**")]
-    )
+    proc = _start_web_server_with_stub(prompt_updates=[_chunk_update("Hello, **world**")])
     try:
         yield proc
     finally:
@@ -303,7 +303,10 @@ class TestSimpleMarkdownRendersAfterTurnEnd:
     """agent_chunk with markdown → raw pre during streaming, <strong> after turn_end."""
 
     def test_simple_markdown_renders_after_turn_end(
-        self, _server_simple_markdown: subprocess.Popen, _acp_auth_context: BrowserContext, agent: str
+        self,
+        _server_simple_markdown: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
+        agent: str,
     ) -> None:
         _ = _server_simple_markdown
         page = _acp_auth_context.new_page()
@@ -469,9 +472,7 @@ class TestMultiChunkFencedCodeRendersAsOneBlock:
 @pytest.fixture(scope="class")
 def _server_content_object_form() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
-    proc = _start_web_server_with_stub(
-        prompt_updates=[_chunk_update("content-parity-test")]
-    )
+    proc = _start_web_server_with_stub(prompt_updates=[_chunk_update("content-parity-test")])
     try:
         yield proc
     finally:
@@ -479,16 +480,16 @@ def _server_content_object_form() -> Generator[subprocess.Popen, None, None]:
 
 
 @pytest.fixture(scope="class")
-def _server_content_array_form(tmp_path_factory: pytest.TempPathFactory) -> Generator[subprocess.Popen, None, None]:
+def _server_content_array_form(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[subprocess.Popen, None, None]:
     # We can't bind two servers to the same port. The array-form test
     # reuses the same server port class-scoped but parametrises the
     # content shape via the same server — instead we test both shapes
     # within one test method by comparing Alpine state directly.
     clean_ipc()
     # Server emits array-form content for this test.
-    proc = _start_web_server_with_stub(
-        prompt_updates=[_chunk_update_array("content-parity-test")]
-    )
+    proc = _start_web_server_with_stub(prompt_updates=[_chunk_update_array("content-parity-test")])
     try:
         yield proc
     finally:
@@ -575,9 +576,7 @@ class TestContentShapeParity:
 def _server_array_standalone() -> Generator[subprocess.Popen, None, None]:
     """Standalone class-scoped server for array-form shape test."""
     clean_ipc()
-    proc = _start_web_server_with_stub(
-        prompt_updates=[_chunk_update_array("array-form-text")]
-    )
+    proc = _start_web_server_with_stub(prompt_updates=[_chunk_update_array("array-form-text")])
     try:
         yield proc
     finally:
@@ -632,9 +631,7 @@ class TestContentArrayFormRendersText:
 @pytest.fixture(scope="class")
 def _server_xss_script() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
-    proc = _start_web_server_with_stub(
-        prompt_updates=[_chunk_update("<script>alert(1)</script>")]
-    )
+    proc = _start_web_server_with_stub(prompt_updates=[_chunk_update("<script>alert(1)</script>")])
     try:
         yield proc
     finally:
@@ -776,9 +773,7 @@ class TestXssJavascriptHrefIsStripped:
 @pytest.fixture(scope="class")
 def _server_user_bubble() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
-    proc = _start_web_server_with_stub(
-        prompt_updates=[_chunk_update("reply-text")]
-    )
+    proc = _start_web_server_with_stub(prompt_updates=[_chunk_update("reply-text")])
     try:
         yield proc
     finally:
@@ -834,12 +829,8 @@ class TestUserMessageAppearsAfterSend:
                   return el ? el.textContent : null;
                 }"""
             )
-            assert user_text is not None, (
-                ".acp-message-user .acp-message-user-text not found"
-            )
-            assert "hello-user-bubble" in user_text, (
-                f"User text not in bubble: {user_text!r}"
-            )
+            assert user_text is not None, ".acp-message-user .acp-message-user-text not found"
+            assert "hello-user-bubble" in user_text, f"User text not in bubble: {user_text!r}"
             _end_any_active_session(page)
         finally:
             page.close()
@@ -977,12 +968,10 @@ def _wait_for_tool_call_card(page, timeout: int = 8000) -> None:
 
 
 @pytest.fixture(scope="class")
-def _server_tool_call_creates_card() -> "Generator[subprocess.Popen, None, None]":
+def _server_tool_call_creates_card() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     proc = _start_web_server_with_stub(
-        prompt_updates_seq=[
-            [_tool_call_notif("t1", "search_docs", {"q": "x"})]
-        ]
+        prompt_updates_seq=[[_tool_call_notif("t1", "search_docs", {"q": "x"})]]
     )
     try:
         yield proc
@@ -996,8 +985,8 @@ class TestToolCallCreatesCard:
 
     def test_tool_call_creates_card(
         self,
-        _server_tool_call_creates_card: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_tool_call_creates_card: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_tool_call_creates_card
@@ -1035,7 +1024,7 @@ class TestToolCallCreatesCard:
 
 
 @pytest.fixture(scope="class")
-def _server_status_transitions() -> "Generator[subprocess.Popen, None, None]":
+def _server_status_transitions() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     proc = _start_web_server_with_stub(
         prompt_updates_seq=[
@@ -1058,8 +1047,8 @@ class TestToolCallUpdateStatusTransitions:
 
     def test_tool_call_update_status_transitions(
         self,
-        _server_status_transitions: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_status_transitions: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_status_transitions
@@ -1088,9 +1077,7 @@ class TestToolCallUpdateStatusTransitions:
                   };
                 }"""
             )
-            assert result["cardCount"] == 1, (
-                f"Expected exactly 1 card, got {result['cardCount']}"
-            )
+            assert result["cardCount"] == 1, f"Expected exactly 1 card, got {result['cardCount']}"
             assert result["finalStatus"] and result["finalStatus"].lower() == "done", (
                 f"Expected status 'done', got {result['finalStatus']!r}"
             )
@@ -1105,7 +1092,7 @@ class TestToolCallUpdateStatusTransitions:
 
 
 @pytest.fixture(scope="class")
-def _server_bash_exec_pane() -> "Generator[subprocess.Popen, None, None]":
+def _server_bash_exec_pane() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     proc = _start_web_server_with_stub(
         prompt_updates_seq=[
@@ -1127,8 +1114,8 @@ class TestBashToolRendersExecPane:
 
     def test_bash_tool_renders_exec_pane(
         self,
-        _server_bash_exec_pane: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_bash_exec_pane: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_bash_exec_pane
@@ -1196,10 +1183,9 @@ class TestShellHeuristicMatchesVariantNames:
     ) -> None:
         """Verify the shell regex pattern matches expected tool name variants."""
         import re
+
         pattern = re.compile(r"^(bash|shell|exec|run)", re.IGNORECASE)
-        assert pattern.match(tool_name), (
-            f"Expected shell heuristic to match '{tool_name}'"
-        )
+        assert pattern.match(tool_name), f"Expected shell heuristic to match '{tool_name}'"
 
 
 # ---------------------------------------------------------------------------
@@ -1208,7 +1194,7 @@ class TestShellHeuristicMatchesVariantNames:
 
 
 @pytest.fixture(scope="class")
-def _server_failed_tool_auto_expands() -> "Generator[subprocess.Popen, None, None]":
+def _server_failed_tool_auto_expands() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     # Send tool_call_update for "t2" WITHOUT a preceding tool_call (tests defensive create).
     proc = _start_web_server_with_stub(
@@ -1230,8 +1216,8 @@ class TestFailedToolAutoExpands:
 
     def test_failed_tool_auto_expands(
         self,
-        _server_failed_tool_auto_expands: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_failed_tool_auto_expands: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_failed_tool_auto_expands
@@ -1281,7 +1267,7 @@ class TestFailedToolAutoExpands:
 
 
 @pytest.fixture(scope="class")
-def _server_two_concurrent_calls() -> "Generator[subprocess.Popen, None, None]":
+def _server_two_concurrent_calls() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     proc = _start_web_server_with_stub(
         prompt_updates_seq=[
@@ -1305,8 +1291,8 @@ class TestTwoConcurrentToolCallsRenderSeparately:
 
     def test_two_concurrent_tool_calls_render_separately(
         self,
-        _server_two_concurrent_calls: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_two_concurrent_calls: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_two_concurrent_calls
@@ -1332,9 +1318,7 @@ class TestTwoConcurrentToolCallsRenderSeparately:
                   };
                 }"""
             )
-            assert result["count"] >= 2, (
-                f"Expected >= 2 cards, got {result['count']}"
-            )
+            assert result["count"] >= 2, f"Expected >= 2 cards, got {result['count']}"
             names = result["names"]
             assert "read_file" in names, f"read_file card not found: {names}"
             assert "write_file" in names, f"write_file card not found: {names}"
@@ -1349,7 +1333,7 @@ class TestTwoConcurrentToolCallsRenderSeparately:
 
 
 @pytest.fixture(scope="class")
-def _server_collapse_toggle() -> "Generator[subprocess.Popen, None, None]":
+def _server_collapse_toggle() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     proc = _start_web_server_with_stub(
         prompt_updates_seq=[
@@ -1371,8 +1355,8 @@ class TestCollapseToggleExpandsBody:
 
     def test_collapse_toggle_expands_body(
         self,
-        _server_collapse_toggle: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_collapse_toggle: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_collapse_toggle
@@ -1444,7 +1428,7 @@ class TestCollapseToggleExpandsBody:
 
 
 @pytest.fixture(scope="class")
-def _server_unknown_id_no_throw() -> "Generator[subprocess.Popen, None, None]":
+def _server_unknown_id_no_throw() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     # Only a tool_call_update with no preceding tool_call — tests defensive create path.
     proc = _start_web_server_with_stub(
@@ -1466,8 +1450,8 @@ class TestToolCallUpdateUnknownIdDoesNotThrow:
 
     def test_tool_call_update_unknown_id_does_not_throw(
         self,
-        _server_unknown_id_no_throw: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_unknown_id_no_throw: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_unknown_id_no_throw
@@ -1486,17 +1470,14 @@ class TestToolCallUpdateUnknownIdDoesNotThrow:
             # same tick). These are Alpine framework noise, not application errors.
             # The card renders correctly despite these framework-level warnings.
             app_errors_filtered = [
-                e for e in app_errors
-                if "Cannot read properties of null (reading 'type')" not in e
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
             ]
             assert not app_errors_filtered, (
                 f"Unexpected JS errors after unknown-id tool_call_update: {app_errors_filtered}"
             )
 
             # Verify the defensive create actually produced a card in the DOM.
-            card_count = page.evaluate(
-                "() => document.querySelectorAll('.acp-tool-call').length"
-            )
+            card_count = page.evaluate("() => document.querySelectorAll('.acp-tool-call').length")
             assert card_count >= 1, (
                 f"Expected at least 1 placeholder card to be created, got {card_count}"
             )
@@ -1570,16 +1551,18 @@ def _get_plan_steps(page) -> list[dict]:
 
 
 @pytest.fixture(scope="class")
-def _server_plan_three_steps() -> "Generator[subprocess.Popen, None, None]":
+def _server_plan_three_steps() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     proc = _start_web_server_with_stub(
         prompt_updates_seq=[
             [
-                _plan_notif([
-                    {"title": "a", "status": "pending"},
-                    {"title": "b", "status": "pending"},
-                    {"title": "c", "status": "pending"},
-                ]),
+                _plan_notif(
+                    [
+                        {"title": "a", "status": "pending"},
+                        {"title": "b", "status": "pending"},
+                        {"title": "c", "status": "pending"},
+                    ]
+                ),
             ]
         ]
     )
@@ -1595,8 +1578,8 @@ class TestPlanThreeStepsRender:
 
     def test_plan_three_steps_render(
         self,
-        _server_plan_three_steps: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_plan_three_steps: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_plan_three_steps
@@ -1612,13 +1595,10 @@ class TestPlanThreeStepsRender:
             assert len(steps) == 3, f"Expected 3 steps, got {len(steps)}: {steps}"
             titles = [s["title"] for s in steps]
             assert titles == ["a", "b", "c"], f"Unexpected titles: {titles}"
-            assert not any(s["completed"] for s in steps), (
-                f"No steps should be completed: {steps}"
-            )
+            assert not any(s["completed"] for s in steps), f"No steps should be completed: {steps}"
 
             filtered_errors = [
-                e for e in app_errors
-                if "Cannot read properties of null (reading 'type')" not in e
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
             ]
             assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
             _end_any_active_session(page)
@@ -1632,21 +1612,25 @@ class TestPlanThreeStepsRender:
 
 
 @pytest.fixture(scope="class")
-def _server_plan_update_first_completed() -> "Generator[subprocess.Popen, None, None]":
+def _server_plan_update_first_completed() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     proc = _start_web_server_with_stub(
         prompt_updates_seq=[
             [
-                _plan_notif([
-                    {"title": "a", "status": "pending"},
-                    {"title": "b", "status": "pending"},
-                    {"title": "c", "status": "pending"},
-                ]),
-                _plan_update_notif([
-                    {"title": "a", "status": "completed"},
-                    {"title": "b", "status": "pending"},
-                    {"title": "c", "status": "pending"},
-                ]),
+                _plan_notif(
+                    [
+                        {"title": "a", "status": "pending"},
+                        {"title": "b", "status": "pending"},
+                        {"title": "c", "status": "pending"},
+                    ]
+                ),
+                _plan_update_notif(
+                    [
+                        {"title": "a", "status": "completed"},
+                        {"title": "b", "status": "pending"},
+                        {"title": "c", "status": "pending"},
+                    ]
+                ),
             ]
         ]
     )
@@ -1662,8 +1646,8 @@ class TestPlanUpdateFirstStepCompleted:
 
     def test_plan_update_first_step_completed(
         self,
-        _server_plan_update_first_completed: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_plan_update_first_completed: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_plan_update_first_completed
@@ -1689,16 +1673,11 @@ class TestPlanUpdateFirstStepCompleted:
             assert steps[0]["completed"] is True, (
                 f"Step 0 should be completed (struck through): {steps[0]}"
             )
-            assert steps[1]["completed"] is False, (
-                f"Step 1 should not be completed: {steps[1]}"
-            )
-            assert steps[2]["completed"] is False, (
-                f"Step 2 should not be completed: {steps[2]}"
-            )
+            assert steps[1]["completed"] is False, f"Step 1 should not be completed: {steps[1]}"
+            assert steps[2]["completed"] is False, f"Step 2 should not be completed: {steps[2]}"
 
             filtered_errors = [
-                e for e in app_errors
-                if "Cannot read properties of null (reading 'type')" not in e
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
             ]
             assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
             _end_any_active_session(page)
@@ -1712,13 +1691,9 @@ class TestPlanUpdateFirstStepCompleted:
 
 
 @pytest.fixture(scope="class")
-def _server_plan_empty_steps() -> "Generator[subprocess.Popen, None, None]":
+def _server_plan_empty_steps() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
-    proc = _start_web_server_with_stub(
-        prompt_updates_seq=[
-            [_plan_notif([])]
-        ]
-    )
+    proc = _start_web_server_with_stub(prompt_updates_seq=[[_plan_notif([])]])
     try:
         yield proc
     finally:
@@ -1731,8 +1706,8 @@ class TestPlanEmptySteps:
 
     def test_plan_empty_steps(
         self,
-        _server_plan_empty_steps: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_plan_empty_steps: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         _ = _server_plan_empty_steps
@@ -1748,8 +1723,7 @@ class TestPlanEmptySteps:
             assert steps == [], f"Expected no steps for empty plan: {steps}"
 
             filtered_errors = [
-                e for e in app_errors
-                if "Cannot read properties of null (reading 'type')" not in e
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
             ]
             assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
             _end_any_active_session(page)
@@ -1764,7 +1738,7 @@ class TestPlanEmptySteps:
 
 
 @pytest.fixture(scope="class")
-def _server_plan_replace_and_empty_payload() -> "Generator[subprocess.Popen, None, None]":
+def _server_plan_replace_and_empty_payload() -> Generator[subprocess.Popen, None, None]:
     clean_ipc()
     # Turn 1: send an empty-payload plan (scenario 4)
     # Turn 2: send first plan with [x,y], then plan_update with [p,q] (scenario 5)
@@ -1774,14 +1748,18 @@ def _server_plan_replace_and_empty_payload() -> "Generator[subprocess.Popen, Non
             [_plan_notif([])],
             # Turn 2 — original plan then replacement
             [
-                _plan_notif([
-                    {"title": "x", "status": "pending"},
-                    {"title": "y", "status": "pending"},
-                ]),
-                _plan_update_notif([
-                    {"title": "p", "status": "pending"},
-                    {"title": "q", "status": "pending"},
-                ]),
+                _plan_notif(
+                    [
+                        {"title": "x", "status": "pending"},
+                        {"title": "y", "status": "pending"},
+                    ]
+                ),
+                _plan_update_notif(
+                    [
+                        {"title": "p", "status": "pending"},
+                        {"title": "q", "status": "pending"},
+                    ]
+                ),
             ],
         ]
     )
@@ -1797,8 +1775,8 @@ class TestPlanEdgeCases:
 
     def test_plan_no_payload_no_crash(
         self,
-        _server_plan_replace_and_empty_payload: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_plan_replace_and_empty_payload: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """Scenario 4: plan event with {} payload → no JS crash, graceful no-op."""
@@ -1819,20 +1797,17 @@ class TestPlanEdgeCases:
             page.wait_for_timeout(400)
 
             filtered_errors = [
-                e for e in app_errors
-                if "Cannot read properties of null (reading 'type')" not in e
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
             ]
-            assert not filtered_errors, (
-                f"Empty payload plan caused JS errors: {filtered_errors}"
-            )
+            assert not filtered_errors, f"Empty payload plan caused JS errors: {filtered_errors}"
             _end_any_active_session(page)
         finally:
             page.close()
 
     def test_new_plan_replaces_old(
         self,
-        _server_plan_replace_and_empty_payload: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_plan_replace_and_empty_payload: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """Scenario 5: second plan replaces first — only latest titles visible."""
@@ -1863,15 +1838,12 @@ class TestPlanEdgeCases:
             titles = [s["title"] for s in steps]
             assert "x" not in titles, f"Old step 'x' still present: {titles}"
             assert "y" not in titles, f"Old step 'y' still present: {titles}"
-            assert "p" in titles and "q" in titles, (
-                f"New steps p,q not found: {titles}"
-            )
+            assert "p" in titles and "q" in titles, f"New steps p,q not found: {titles}"
             # Only 2 steps (not 4) — replace, not append
             assert len(steps) == 2, f"Expected 2 steps (replace), got {len(steps)}: {steps}"
 
             filtered_errors = [
-                e for e in app_errors
-                if "Cannot read properties of null (reading 'type')" not in e
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
             ]
             assert not filtered_errors, f"Unexpected JS errors: {filtered_errors}"
             _end_any_active_session(page)
@@ -1984,7 +1956,7 @@ def _start_web_server_with_permission_stub() -> subprocess.Popen:
 
 
 @pytest.fixture(scope="class")
-def _server_permission_allow_deny() -> "Generator[subprocess.Popen, None, None]":
+def _server_permission_allow_deny() -> Generator[subprocess.Popen, None, None]:
     """Server where stub emits session/request_permission as a JSON-RPC request
     (U6.5 correct ACP wire protocol) on each prompt turn."""
     clean_ipc()
@@ -2005,8 +1977,8 @@ class TestPermissionPrompt:
 
     def test_allow_deny_buttons_render_and_input_row_hidden(
         self,
-        _server_permission_allow_deny: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_permission_allow_deny: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """Happy: request_permission with [allow, deny] → both buttons render;
@@ -2045,7 +2017,9 @@ class TestPermissionPrompt:
                 "Input row should be hidden while permission prompt is pending"
             )
 
-            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            filtered_errors = [
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
+            ]
             assert not filtered_errors, f"JS errors during permission render: {filtered_errors}"
             _end_any_active_session(page)
         finally:
@@ -2057,8 +2031,8 @@ class TestPermissionPrompt:
 
     def test_click_allow_sends_ws_frame_and_clears_prompt(
         self,
-        _server_permission_allow_deny: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_permission_allow_deny: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """U6.5: click Allow → permission_response WS frame with correct
@@ -2091,19 +2065,13 @@ class TestPermissionPrompt:
             )
 
             # Prompt must disappear.
-            page.wait_for_selector(
-                ".acp-permission-prompt", state="detached", timeout=5000
-            )
+            page.wait_for_selector(".acp-permission-prompt", state="detached", timeout=5000)
 
             # WS frame must carry the U6.5 shape: {type, requestId, outcome}.
             sent = _get_ws_sent(page)
             perm_frames = [f for f in sent if f.get("type") == "permission_response"]
-            assert len(perm_frames) == 1, (
-                f"Expected 1 permission_response frame, got: {sent}"
-            )
-            assert perm_frames[0]["requestId"] == "rq-click", (
-                f"Wrong requestId: {perm_frames[0]}"
-            )
+            assert len(perm_frames) == 1, f"Expected 1 permission_response frame, got: {sent}"
+            assert perm_frames[0]["requestId"] == "rq-click", f"Wrong requestId: {perm_frames[0]}"
             outcome = perm_frames[0].get("outcome", {})
             assert outcome.get("outcome") == "selected", (
                 f"Expected outcome.outcome='selected': {outcome}"
@@ -2121,7 +2089,9 @@ class TestPermissionPrompt:
                 timeout=3000,
             )
 
-            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            filtered_errors = [
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
+            ]
             assert not filtered_errors, f"JS errors after Allow click: {filtered_errors}"
             _end_any_active_session(page)
         finally:
@@ -2133,8 +2103,8 @@ class TestPermissionPrompt:
 
     def test_single_option_renders_one_button(
         self,
-        _server_permission_allow_deny: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_permission_allow_deny: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """Edge: only one option provided → exactly one button in the prompt."""
@@ -2157,7 +2127,9 @@ class TestPermissionPrompt:
                 f"Button should show option name, got: {btns[0]['text']!r}"
             )
 
-            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            filtered_errors = [
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
+            ]
             assert not filtered_errors, f"JS errors during single-option render: {filtered_errors}"
             _end_any_active_session(page)
         finally:
@@ -2169,8 +2141,8 @@ class TestPermissionPrompt:
 
     def test_three_options_all_render_with_name_labels(
         self,
-        _server_permission_allow_deny: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_permission_allow_deny: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """Edge: three options with distinct names → three buttons, each
@@ -2199,7 +2171,9 @@ class TestPermissionPrompt:
             assert "Allow always" in names, f"'Allow always' missing from: {names}"
             assert "Deny" in names, f"'Deny' missing from: {names}"
 
-            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            filtered_errors = [
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
+            ]
             assert not filtered_errors, f"JS errors during three-option render: {filtered_errors}"
             _end_any_active_session(page)
         finally:
@@ -2211,8 +2185,8 @@ class TestPermissionPrompt:
 
     def test_permission_prompt_overlays_when_acp_sending_already_true(
         self,
-        _server_permission_allow_deny: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_permission_allow_deny: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """Error: input row is already locked (acpSending=true from a normal
@@ -2250,9 +2224,7 @@ class TestPermissionPrompt:
             prompt_count = page.evaluate(
                 "() => document.querySelectorAll('.acp-permission-prompt').length"
             )
-            assert prompt_count == 1, (
-                f"Expected exactly 1 permission prompt, got {prompt_count}"
-            )
+            assert prompt_count == 1, f"Expected exactly 1 permission prompt, got {prompt_count}"
             # acpSending must still be true (locked for permission).
             acp_sending = page.evaluate(
                 """() => {
@@ -2264,7 +2236,9 @@ class TestPermissionPrompt:
                 "acpSending should remain true while permission prompt is unresolved"
             )
 
-            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            filtered_errors = [
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
+            ]
             assert not filtered_errors, f"JS errors during overlap test: {filtered_errors}"
             _end_any_active_session(page)
         finally:
@@ -2277,8 +2251,8 @@ class TestPermissionPrompt:
 
     def test_mid_turn_permission_clears_both_locks_on_resolve(
         self,
-        _server_permission_allow_deny: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_permission_allow_deny: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """Integration: mid-turn permission — both acpSending and
@@ -2317,9 +2291,7 @@ class TestPermissionPrompt:
             )
 
             # Prompt must disappear.
-            page.wait_for_selector(
-                ".acp-permission-prompt", state="detached", timeout=5000
-            )
+            page.wait_for_selector(".acp-permission-prompt", state="detached", timeout=5000)
 
             # Both locks must be released.
             state = page.evaluate(
@@ -2329,14 +2301,14 @@ class TestPermissionPrompt:
                   return {acpSending: d.acpSending, pendingPermission: d.pendingPermission};
                 }"""
             )
-            assert state["acpSending"] is False, (
-                f"acpSending not cleared after resolve: {state}"
-            )
+            assert state["acpSending"] is False, f"acpSending not cleared after resolve: {state}"
             assert state["pendingPermission"] is None, (
                 f"pendingPermission not cleared after resolve: {state}"
             )
 
-            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
+            filtered_errors = [
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
+            ]
             assert not filtered_errors, f"JS errors during mid-turn resolve: {filtered_errors}"
             _end_any_active_session(page)
         finally:
@@ -2349,8 +2321,8 @@ class TestPermissionPrompt:
 
     def test_permission_response_ws_frame_reaches_server_route(
         self,
-        _server_permission_allow_deny: "subprocess.Popen",
-        _acp_auth_context: "BrowserContext",
+        _server_permission_allow_deny: subprocess.Popen,
+        _acp_auth_context: BrowserContext,
         agent: str,
     ) -> None:
         """U6.5 Integration (server): after clicking Allow, the permission_response
@@ -2394,9 +2366,7 @@ class TestPermissionPrompt:
             )
 
             # Prompt must clear.
-            page.wait_for_selector(
-                ".acp-permission-prompt", state="detached", timeout=5000
-            )
+            page.wait_for_selector(".acp-permission-prompt", state="detached", timeout=5000)
 
             # The permission_response WS frame must carry the U6.5 shape.
             sent = _get_ws_sent(page)
@@ -2405,12 +2375,8 @@ class TestPermissionPrompt:
                 f"Expected permission_response frame to be sent, got: {sent}"
             )
             frame = perm_frames[0]
-            assert "requestId" in frame, (
-                f"Frame missing 'requestId' (U6.5 shape): {frame}"
-            )
-            assert frame["requestId"], (
-                f"requestId must be non-empty: {frame}"
-            )
+            assert "requestId" in frame, f"Frame missing 'requestId' (U6.5 shape): {frame}"
+            assert frame["requestId"], f"requestId must be non-empty: {frame}"
             outcome = frame.get("outcome", {})
             assert outcome.get("outcome") == "selected", (
                 f"Expected outcome.outcome='selected': {outcome}"
@@ -2429,12 +2395,14 @@ class TestPermissionPrompt:
                     .map(m => m.text);
                 }"""
             )
-            assert not error_msgs, (
-                f"TransportError appeared after permission resolve: {error_msgs}"
-            )
+            assert not error_msgs, f"TransportError appeared after permission resolve: {error_msgs}"
 
-            filtered_errors = [e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e]
-            assert not filtered_errors, f"JS errors during server integration test: {filtered_errors}"
+            filtered_errors = [
+                e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
+            ]
+            assert not filtered_errors, (
+                f"JS errors during server integration test: {filtered_errors}"
+            )
             _end_any_active_session(page)
         finally:
             page.close()

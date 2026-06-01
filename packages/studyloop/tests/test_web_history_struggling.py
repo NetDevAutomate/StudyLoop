@@ -15,9 +15,9 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
-from studyloop.web.app import create_app  # noqa: E402
+from studyloop.web.app import create_app
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,30 +55,72 @@ def seeded_db(tmp_path: Path) -> Path:
     now = datetime.now(UTC)
     rows = [
         # struggling, in window — counts
-        ("id1", "joins", "outer", "struggling",
-         now.isoformat(), now.isoformat(), 2, None,
-         now.isoformat(), now.isoformat()),
+        (
+            "id1",
+            "joins",
+            "outer",
+            "struggling",
+            now.isoformat(),
+            now.isoformat(),
+            2,
+            None,
+            now.isoformat(),
+            now.isoformat(),
+        ),
         # second concept, same topic, struggling — should still be ONE topic
-        ("id2", "joins", "self-join", "struggling",
-         now.isoformat(), now.isoformat(), 3, None,
-         now.isoformat(), now.isoformat()),
+        (
+            "id2",
+            "joins",
+            "self-join",
+            "struggling",
+            now.isoformat(),
+            now.isoformat(),
+            3,
+            None,
+            now.isoformat(),
+            now.isoformat(),
+        ),
         # struggling but out of 14d window
-        ("id3", "ancient", "old", "struggling",
-         (now - timedelta(days=60)).isoformat(),
-         (now - timedelta(days=60)).isoformat(), 1, None,
-         now.isoformat(), now.isoformat()),
+        (
+            "id3",
+            "ancient",
+            "old",
+            "struggling",
+            (now - timedelta(days=60)).isoformat(),
+            (now - timedelta(days=60)).isoformat(),
+            1,
+            None,
+            now.isoformat(),
+            now.isoformat(),
+        ),
         # learning, in window — must be ignored
-        ("id4", "advanced-pandas", "groupby", "learning",
-         now.isoformat(), now.isoformat(), 1, None,
-         now.isoformat(), now.isoformat()),
+        (
+            "id4",
+            "advanced-pandas",
+            "groupby",
+            "learning",
+            now.isoformat(),
+            now.isoformat(),
+            1,
+            None,
+            now.isoformat(),
+            now.isoformat(),
+        ),
         # struggling, in window, different topic
-        ("id5", "indexes", "btree", "struggling",
-         now.isoformat(), now.isoformat(), 1, None,
-         now.isoformat(), now.isoformat()),
+        (
+            "id5",
+            "indexes",
+            "btree",
+            "struggling",
+            now.isoformat(),
+            now.isoformat(),
+            1,
+            None,
+            now.isoformat(),
+            now.isoformat(),
+        ),
     ]
-    conn.executemany(
-        "INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows
-    )
+    conn.executemany("INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
     conn.commit()
     conn.close()
     return db
@@ -87,6 +129,7 @@ def seeded_db(tmp_path: Path) -> Path:
 @pytest.fixture
 def client(seeded_db: Path, monkeypatch: MonkeyPatch) -> TestClient:
     """Patch the progress helper's connect factory to use our tmp DB."""
+
     def _connect_seeded():
         conn = sqlite3.connect(seeded_db)
         conn.row_factory = sqlite3.Row
@@ -160,8 +203,7 @@ def union_db(tmp_path: Path) -> Path:
             win_count INTEGER, struggle_count INTEGER, topic_slug TEXT)"""
     )
     conn.execute(
-        "INSERT INTO study_sessions (id, topic, started_at, struggle_count) "
-        "VALUES (?,?,?,?)",
+        "INSERT INTO study_sessions (id, topic, started_at, struggle_count) VALUES (?,?,?,?)",
         ("s1", "decorators", now, 2),
     )
     # parked_topics: a struggled park on a THIRD topic.
@@ -184,6 +226,7 @@ def test_union_surfaces_all_three_struggle_sources(
     union_db: Path, monkeypatch: MonkeyPatch
 ) -> None:
     """study_progress + study_sessions(struggle) + parked(struggled) all surface."""
+
     def _connect():
         conn = sqlite3.connect(union_db)
         conn.row_factory = sqlite3.Row

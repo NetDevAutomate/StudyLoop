@@ -29,9 +29,7 @@ if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
 from _playwright_helpers import (  # noqa: E402
-    STATE_FILE,
     auth_context_fixture_factory,
-    clean_ipc,
     web_page_fixture_factory,
     web_server_fixture_factory,
 )
@@ -68,9 +66,11 @@ def _stub_session_state(page: Page, state: dict | None = None) -> None:
 def _stub_session_end(page: Page) -> None:
     page.route(
         "**/api/session/end",
-        lambda route: _fulfill(route, {"ended": True, "topic": "SQL"}, status=200)
-        if route.request.method == "POST"
-        else route.continue_(),
+        lambda route: (
+            _fulfill(route, {"ended": True, "topic": "SQL"}, status=200)
+            if route.request.method == "POST"
+            else route.continue_()
+        ),
     )
 
 
@@ -180,9 +180,7 @@ class TestLiveSessionBannerClearedOnStop:
         )
 
         # Fire the stop event (mirrors what endSession() does in sessionTimer).
-        web_page.evaluate(
-            "() => window.dispatchEvent(new CustomEvent('study-session-stop'))"
-        )
+        web_page.evaluate("() => window.dispatchEvent(new CustomEvent('study-session-stop'))")
 
         # Wait until both: Alpine data is null AND DOM reflects it (x-show hides the element).
         web_page.wait_for_function(
@@ -201,9 +199,7 @@ class TestLiveSessionBannerClearedOnStop:
             "Banner must be hidden after study-session-stop event"
         )
 
-    def test_banner_absent_on_flashcards_after_stop_then_navigate(
-        self, web_page: Page
-    ) -> None:
+    def test_banner_absent_on_flashcards_after_stop_then_navigate(self, web_page: Page) -> None:
         """Full user journey: active session → stop → navigate to Flashcards.
 
         This is the exact bug report scenario. The banner must not appear
@@ -251,9 +247,7 @@ class TestLiveSessionBannerClearedOnStop:
         )
 
         # Step 3: Stop the session (user clicks Stop button).
-        page.evaluate(
-            "() => window.dispatchEvent(new CustomEvent('study-session-stop'))"
-        )
+        page.evaluate("() => window.dispatchEvent(new CustomEvent('study-session-stop'))")
 
         # Step 4: Navigate back to Flashcards.
         page.evaluate("() => window.Alpine.store('nav').go('flashcards')")
@@ -278,9 +272,7 @@ class TestLiveSessionBannerClearedOnStop:
             "Banner must NOT be visible when navigating to Flashcards after stopping"
         )
 
-    def test_banner_absent_after_reload_when_session_ended(
-        self, web_page: Page
-    ) -> None:
+    def test_banner_absent_after_reload_when_session_ended(self, web_page: Page) -> None:
         """State is durable: after a full page reload, the banner is still gone.
 
         The server-side session-state.json has mode='ended' after end_session_common()
@@ -299,9 +291,7 @@ class TestLiveSessionBannerClearedOnStop:
         _wait_flashcards_init(web_page)
 
         live = _get_alpine_live_session(web_page)
-        assert live is None, (
-            f"liveSession must be null when mode=ended on page load, got: {live!r}"
-        )
+        assert live is None, f"liveSession must be null when mode=ended on page load, got: {live!r}"
         assert not _live_session_banner_visible(web_page), (
             "Banner must NOT be visible when server returns mode=ended"
         )

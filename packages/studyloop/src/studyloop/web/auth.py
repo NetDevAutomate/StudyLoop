@@ -11,15 +11,15 @@ import base64
 import hmac
 from typing import TYPE_CHECKING
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import Headers
 from starlette.responses import Response
 
 if TYPE_CHECKING:
-    from fastapi import Request
+    from starlette.types import ASGIApp, Receive, Scope, Send
 
 
-class BasicAuthMiddleware(BaseHTTPMiddleware):
-    """Enforce HTTP Basic Auth on all routes when credentials are configured.
+class BasicAuthMiddleware:
+    """Enforce HTTP Basic Auth on HTTP and WebSocket scopes.
 
     Usage::
 
@@ -32,25 +32,33 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
     If password is empty, the middleware is a no-op (pass-through).
     """
 
-    def __init__(self, app, *, username: str = "study", password: str) -> None:
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, *, username: str = "study", password: str) -> None:
+        self.app = app
         self._username = username
         self._password = password
 
-    async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
-        if not self._password:
-            return await call_next(request)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        scope_type = scope["type"]
+        if not self._password or scope_type not in {"http", "websocket"}:
+            await self.app(scope, receive, send)
+            return
 
-        auth_header = request.headers.get("Authorization", "")
+        auth_header = Headers(scope=scope).get("authorization", "")
         if self._check_auth(auth_header):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        return Response(
+        if scope_type == "websocket":
+            await send({"type": "websocket.close", "code": 1008})
+            return
+
+        response = Response(
             content="Authentication required",
             status_code=401,
             headers={"WWW-Authenticate": 'Basic realm="studyloop"'},
             media_type="text/plain",
         )
+        await response(scope, receive, send)
 
     def _check_auth(self, authorization: str) -> bool:
         """Check that the Authorization header contains valid credentials.

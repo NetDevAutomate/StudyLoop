@@ -153,7 +153,8 @@ class TestDevModeFlag:
         dev_page.goto(f"http://127.0.0.1:{WEB_DEV_PORT}/")
         dev_page.wait_for_load_state("domcontentloaded")
         dev_page.wait_for_function(
-            "() => typeof window.WtermLib === 'object' && typeof window.WtermLib.WTerm === 'function'",
+            "() => typeof window.WtermLib === 'object' "
+            "&& typeof window.WtermLib.WTerm === 'function'",
             timeout=5000,
         )
 
@@ -201,9 +202,7 @@ class TestDevModeFlag:
         fatal = [
             e
             for e in errors
-            if "WtermLib" not in e
-            and "WebGL" not in e
-            and "reading 'type'" not in e
+            if "WtermLib" not in e and "WebGL" not in e and "reading 'type'" not in e
         ]
         assert not fatal, f"Unexpected JS errors: {fatal}"
 
@@ -289,9 +288,7 @@ class TestDevModeTerminalMount:
             f.unlink(missing_ok=True)
 
         cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
-        proc = subprocess.Popen(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             # Wait for server
             for _ in range(30):
@@ -327,9 +324,7 @@ class TestDevModeTerminalMount:
                 assert terminal_name != "WTermAdapter", (
                     f"Default mode should NOT load wterm adapter, got {terminal_name!r}"
                 )
-                wterm_lib = page.evaluate(
-                    "() => typeof window.WtermLib !== 'undefined'"
-                )
+                wterm_lib = page.evaluate("() => typeof window.WtermLib !== 'undefined'")
                 assert not wterm_lib, "WtermLib must not be loaded in default mode"
                 # No dev meta tag
                 meta = page.query_selector('meta[name="studyloop-dev-mode"]')

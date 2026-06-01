@@ -39,7 +39,7 @@ _tests_dir = str(Path(__file__).parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from conftest import StubTransport  # noqa: E402
+from conftest import StubTransport  # noqa: E402  # pyright: ignore[reportAttributeAccessIssue]
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -100,6 +100,22 @@ def _install_active(stub: StubTransport, config: SessionConfig) -> None:
 
 
 class TestOriginGuard:
+    def test_allows_ws_with_origin_matching_lan_host(
+        self, client: TestClient, config: SessionConfig
+    ) -> None:
+        """LAN browser origin is allowed when it matches the request Host."""
+        stub = StubTransport(events=[Started(agent="claude")])
+        _install_active(stub, config)
+
+        with client.websocket_connect(
+            "/api/session/ws?study_session_id=study-1",
+            headers={
+                "Host": "192.168.1.42:8567",
+                "Origin": "http://192.168.1.42:8567",
+            },
+        ) as ws:
+            assert ws.receive_json() == {"type": "started", "agent": "claude"}
+
     def test_rejects_ws_with_disallowed_origin(
         self, client: TestClient, config: SessionConfig
     ) -> None:
@@ -112,6 +128,25 @@ class TestOriginGuard:
             client.websocket_connect(
                 "/api/session/ws?study_session_id=study-1",
                 headers={"Origin": "https://evil.example.com"},
+            ) as ws,
+        ):
+            ws.receive_json()
+        assert exc_info.value.code == 1008
+
+    def test_rejects_ws_with_lan_host_and_cross_origin(
+        self, client: TestClient, config: SessionConfig
+    ) -> None:
+        stub = StubTransport(events=[Started(agent="claude")])
+        _install_active(stub, config)
+
+        with (
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            client.websocket_connect(
+                "/api/session/ws?study_session_id=study-1",
+                headers={
+                    "Host": "192.168.1.42:8567",
+                    "Origin": "https://evil.example.com",
+                },
             ) as ws,
         ):
             ws.receive_json()
