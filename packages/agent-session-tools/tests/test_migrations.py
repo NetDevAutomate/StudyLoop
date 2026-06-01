@@ -29,6 +29,72 @@ def fresh_db(tmp_path):
     conn.close()
 
 
+def legacy_v0_connection(tmp_path: Path) -> sqlite3.Connection:
+    """Create a minimal pre-migration DB with user data."""
+    db_path = tmp_path / "legacy-v0.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE sessions (
+            id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            project_path TEXT,
+            git_branch TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            metadata JSON
+        );
+
+        CREATE TABLE messages (
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL REFERENCES sessions(id),
+            parent_id TEXT,
+            role TEXT NOT NULL,
+            content TEXT,
+            model TEXT,
+            timestamp TEXT,
+            metadata JSON
+        );
+
+        CREATE INDEX idx_messages_session ON messages(session_id);
+        CREATE INDEX idx_messages_timestamp ON messages(timestamp);
+        CREATE INDEX idx_sessions_source ON sessions(source);
+        CREATE INDEX idx_sessions_project ON sessions(project_path);
+
+        CREATE VIRTUAL TABLE messages_fts USING fts5(
+            content,
+            session_id UNINDEXED,
+            role UNINDEXED,
+            tokenize='porter unicode61'
+        );
+
+        CREATE TRIGGER messages_fts_insert AFTER INSERT ON messages
+        WHEN NEW.content IS NOT NULL
+        BEGIN
+            INSERT INTO messages_fts(rowid, content, session_id, role)
+            VALUES (NEW.rowid, NEW.content, NEW.session_id, NEW.role);
+        END;
+
+        INSERT INTO sessions (
+            id, source, project_path, git_branch, created_at, updated_at, metadata
+        ) VALUES (
+            'legacy-session', 'claude_code', '/tmp/studyloop', 'main',
+            '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', '{}'
+        );
+
+        INSERT INTO messages (
+            id, session_id, parent_id, role, content, model, timestamp, metadata
+        ) VALUES (
+            'legacy-message', 'legacy-session', NULL, 'user',
+            'legacy migration smoke content', NULL,
+            '2026-01-01T00:00:30Z', '{}'
+        );
+        """
+    )
+    conn.commit()
+    return conn
+
+
 class TestGetUserVersion:
     def test_returns_zero_for_fresh_db(self, fresh_db):
         assert get_user_version(fresh_db) == 0
@@ -79,6 +145,43 @@ class TestMigrate:
             "session_notes",
         ):
             assert expected in tables, f"Table {expected} missing after migration"
+
+    def test_legacy_v0_database_migrates_to_current_version(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            applied = migrate(conn)
+
+            assert applied
+            assert get_user_version(conn) == CURRENT_VERSION
+            row = conn.execute(
+                "SELECT content FROM messages WHERE id = 'legacy-message'"
+            ).fetchone()
+            assert row == ("legacy migration smoke content",)
+        finally:
+            conn.close()
+
+    def test_legacy_v0_database_keeps_fts_readable_after_migration(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+
+            rows = conn.execute(
+                "SELECT content FROM messages_fts WHERE messages_fts MATCH 'legacy'"
+            ).fetchall()
+            assert rows == [("legacy migration smoke content",)]
+        finally:
+            conn.close()
+
+    def test_legacy_v0_database_migration_is_idempotent(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+            second = migrate(conn)
+
+            assert second == []
+            assert get_user_version(conn) == CURRENT_VERSION
+        finally:
+            conn.close()
 
 
 class TestMigrationV12:
