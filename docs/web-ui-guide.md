@@ -65,9 +65,11 @@ graph TB
 | Y | Mark correct |
 | N | Mark incorrect |
 | S | Skip card |
-| T | Read card aloud (text-to-speech) |
+| T | Read card aloud (in-browser neural TTS) |
 | V | Toggle auto-voice (reads every card) |
 | Escape | Return to home |
+
+> Voice uses an in-browser neural model (Kokoro via WebGPU/WASM) — no text leaves the browser. See [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts).
 
 ---
 
@@ -426,9 +428,12 @@ The original light/dark **toggle button** is still present and orthogonal to the
 
 ### Voice Output
 
-- **T** key — read the current card aloud (Web Speech API)
+- **T** key — read the current card aloud (in-browser neural TTS — Kokoro on WebGPU/WASM)
 - **V** key — toggle auto-voice (reads every card automatically)
-- Voice selector dropdown in the header lets you choose from available English voices
+- **Stop button** — appears in the header while speaking; interrupts neural playback mid-utterance
+- Voice selector dropdown in the header lets you choose a Kokoro voice (falls back to OS voices if the device can't run the neural model)
+
+Speech is synthesised entirely on-device — no text is sent to a remote API. The ~92 MB model downloads once on first use, then is cached for offline use. Full details: [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts).
 
 ### Pomodoro Timer (Browser)
 
@@ -444,7 +449,7 @@ The web UI is a Progressive Web App. To install:
 2. Click "Add to Home Screen" (mobile) or the install icon in the address bar (desktop)
 3. The app works offline for reviewing cards you've already loaded
 
-The service worker caches all vendored assets (HTMX, Alpine.js, fonts) for offline use.
+The service worker caches all vendored assets (HTMX, Alpine.js, fonts) for offline use. The in-browser TTS model is cached separately in Cache Storage (`transformers-cache`) by transformers.js — the service worker is configured to preserve it when refreshing app-shell assets, so the ~92 MB model never re-downloads on a code change.
 
 ---
 
