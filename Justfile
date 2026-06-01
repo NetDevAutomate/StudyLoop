@@ -21,6 +21,35 @@ sync-semantic:
 test:
     uv run --group dev pytest
 
+test-web:
+    uv run --group dev pytest \
+        packages/studyloop/tests/test_web_app.py \
+        packages/studyloop/tests/test_web_content_gen_rest.py \
+        packages/studyloop/tests/test_web_content_gen_ws.py \
+        packages/studyloop/tests/test_web_content_providers.py \
+        packages/studyloop/tests/test_web_secrets_route.py \
+        packages/studyloop/tests/test_web_session_start_acp.py \
+        packages/studyloop/tests/test_web_session_start_pty.py \
+        packages/studyloop/tests/test_web_session_ws.py \
+        packages/studyloop/tests/test_web_runtime_feedback.py
+
+test-content:
+    uv run --group dev pytest \
+        packages/studyloop/tests/test_content_cli.py \
+        packages/studyloop/tests/test_content_generators.py \
+        packages/studyloop/tests/test_content_generators_runner.py \
+        packages/studyloop/tests/test_content_generators_stub.py \
+        packages/studyloop/tests/test_content_job_runner.py \
+        packages/studyloop/tests/test_content_scope.py \
+        packages/studyloop/tests/test_content_storage.py \
+        packages/studyloop/tests/test_content_storage_merge.py \
+        packages/studyloop/tests/test_content_workflow.py
+
+test-semantic:
+    uv run --group dev pytest \
+        packages/agent-session-tools/tests/test_embeddings.py \
+        packages/agent-session-tools/tests/test_semantic_search.py
+
 lint:
     uv run --group dev ruff check .
     uv run --group dev ruff format --check .
