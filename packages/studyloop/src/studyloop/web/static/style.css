@@ -3320,3 +3320,131 @@ body[data-palette="everforest"] {
 .sidebar-btn.explorer-sidebar-btn svg {
   stroke: currentColor;
 }
+
+/* ---- Phase 4: global search bar (scoped .explorer-*) ---- */
+
+.explorer-search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.explorer-search-input {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  padding: 5px 28px 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  /* Remove default search-input clear button (Chrome) */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.explorer-search-input:focus {
+  border-color: var(--accent);
+}
+.explorer-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.explorer-search-clear {
+  position: absolute;
+  right: 18px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 2px;
+  transition: color 0.12s;
+}
+.explorer-search-clear:hover {
+  color: var(--text);
+}
+
+/* ---- Search results overlay ---- */
+
+.explorer-search-results {
+  overflow-y: auto;
+  max-height: 55vh;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.explorer-search-status {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 8px 12px;
+}
+
+.explorer-search-group {
+  padding: 0 0 4px;
+}
+
+.explorer-search-group-header {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 6px 12px 2px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1;
+}
+
+.explorer-search-result {
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-radius: 0;
+}
+.explorer-search-result:hover,
+.explorer-search-result:focus-visible {
+  background: var(--bg-hover);
+  outline: none;
+}
+
+.explorer-search-result-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.explorer-search-result-course {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.explorer-search-result-excerpt {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  line-height: 1.4;
+  /* Limit to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.explorer-search-result-excerpt mark {
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+}

@@ -1007,6 +1007,16 @@ function courseExplorer() {
     // generation at entry and bails if it has been superseded.
     _readerGen: 0,
 
+    // ---- Phase 4: global search state
+    searchQuery: '',
+    searchResults: [],   // merged client + server hits
+    searchLoading: false,
+    _searchDebounce: null,
+    _searchGen: 0,       // cancels stale async searches (same pattern as _readerGen)
+    // Fuse.js index over {id, title, course, provider} items from the tree.
+    // Rebuilt whenever the tree is loaded/refreshed.
+    _fuseIndex: null,
+
     // ------------------------------------------------------------------
     // init: wire this component's toggle/close onto the store so the
     // sidebar button ($store.explorer.toggle()) gets the full behaviour
@@ -1056,6 +1066,8 @@ function courseExplorer() {
             if (!(p.id in this.filters)) this.filters[p.id] = '';
           });
           this._treeLoaded = true;
+          // Build Fuse index over provider+course names (title-level search).
+          this._buildFuseIndex(data);
         } else {
           this.loadError = `Could not load course tree (${res.status})`;
         }
@@ -1064,6 +1076,214 @@ function courseExplorer() {
       } finally {
         this.loading = false;
       }
+    },
+
+    // ------------------------------------------------------------------
+    // Build (or rebuild) the Fuse.js index over provider+course names.
+    // Called after the tree loads and can be extended with lesson titles
+    // as courses are opened.
+    // ------------------------------------------------------------------
+    _buildFuseIndex(providers) {
+      if (!window.Fuse) return;
+      const items = [];
+      (providers || []).forEach((p) => {
+        (p.courses || []).forEach((c) => {
+          items.push({
+            lesson_id: null,  // course-level hit — no lesson_id yet
+            course_id: c.id,
+            provider: p.id,
+            title: c.name,
+            _kind: 'course',
+          });
+        });
+      });
+      this._fuseIndex = new window.Fuse(items, {
+        keys: [
+          { name: 'title',    weight: 5 },
+          { name: 'course_id', weight: 2 },
+          { name: 'provider',  weight: 1 },
+        ],
+        threshold: 0.35,
+        ignoreLocation: true,
+        includeMatches: true,
+        minMatchCharLength: 2,
+      });
+    },
+
+    // ------------------------------------------------------------------
+    // Add lesson titles to the Fuse index after a course is opened.
+    // Existing index items for this course are replaced (dedup by course_id).
+    // ------------------------------------------------------------------
+    _addLessonsToFuseIndex(lessons) {
+      if (!window.Fuse || !this._fuseIndex) return;
+      // Grab current items, drop existing lesson entries for this course.
+      const existing = this._fuseIndex._docs || [];
+      const courseId = lessons.length > 0 ? lessons[0].course_id : null;
+      const kept = courseId
+        ? existing.filter((item) => !(item._kind === 'lesson' && item.course_id === courseId))
+        : existing;
+      const newItems = lessons.map((l) => ({
+        lesson_id: l.id,
+        course_id: l.course_id,
+        provider: l.course_id ? l.course_id.split('/')[0] : '',
+        title: l.name,
+        slug: l.slug,
+        _kind: 'lesson',
+      }));
+      const all = [...kept, ...newItems];
+      this._fuseIndex = new window.Fuse(all, {
+        keys: [
+          { name: 'title',    weight: 5 },
+          { name: 'course_id', weight: 2 },
+          { name: 'provider',  weight: 1 },
+        ],
+        threshold: 0.35,
+        ignoreLocation: true,
+        includeMatches: true,
+        minMatchCharLength: 2,
+      });
+    },
+
+    // ------------------------------------------------------------------
+    // Debounced handler for the search input.
+    // ------------------------------------------------------------------
+    onSearchInput() {
+      clearTimeout(this._searchDebounce);
+      const q = this.searchQuery.trim();
+      if (q.length < 2) {
+        this.searchResults = [];
+        this.searchLoading = false;
+        return;
+      }
+      // Show client-side Fuse hits immediately (zero latency).
+      this._applyFuseSearch(q);
+      // Debounce the server FTS call by ~250 ms.
+      this._searchDebounce = setTimeout(() => this._fetchServerSearch(q), 250);
+    },
+
+    clearSearch() {
+      this.searchQuery = '';
+      this.searchResults = [];
+      this.searchLoading = false;
+      clearTimeout(this._searchDebounce);
+    },
+
+    // ------------------------------------------------------------------
+    // Run the Fuse.js index over the current query; fill searchResults
+    // with client-side title hits immediately.
+    // ------------------------------------------------------------------
+    _applyFuseSearch(q) {
+      if (!this._fuseIndex) {
+        this.searchResults = [];
+        return;
+      }
+      const hits = this._fuseIndex.search(q);
+      this.searchResults = hits.map((h) => ({
+        lesson_id: h.item.lesson_id || h.item.course_id,
+        course_id: h.item.course_id,
+        provider:  h.item.provider,
+        title:     h.item.title,
+        excerpt:   '',  // client hits have no body excerpt
+        _kind:     h.item._kind,
+        slug:      h.item.slug || null,
+      }));
+    },
+
+    // ------------------------------------------------------------------
+    // Fetch server FTS body hits and merge with the current results.
+    // Uses a generation counter to ignore stale responses.
+    // ------------------------------------------------------------------
+    async _fetchServerSearch(q) {
+      const myGen = ++this._searchGen;
+      this.searchLoading = true;
+      try {
+        const url = `/api/explorer/search?q=${encodeURIComponent(q)}&limit=20`;
+        const res = await fetch(url);
+        if (this._searchGen !== myGen) return;  // superseded
+        if (!res.ok) return;
+        const data = await res.json();
+        if (this._searchGen !== myGen) return;
+
+        const serverHits = (data.results || []).map((r) => ({
+          ...r,
+          _kind: 'lesson',
+          slug: null,
+        }));
+
+        // Merge: keep all client hits, add server hits not already present.
+        const seen = new Set(this.searchResults.map((r) => r.lesson_id));
+        const merged = [...this.searchResults];
+        for (const hit of serverHits) {
+          if (!seen.has(hit.lesson_id)) {
+            merged.push(hit);
+            seen.add(hit.lesson_id);
+          } else {
+            // Upgrade an existing client hit with the server excerpt.
+            const idx = merged.findIndex((r) => r.lesson_id === hit.lesson_id);
+            if (idx >= 0 && hit.excerpt) {
+              merged[idx] = { ...merged[idx], excerpt: hit.excerpt };
+            }
+          }
+        }
+        this.searchResults = merged;
+      } catch {
+        /* silently ignore network errors — client hits remain shown */
+      } finally {
+        if (this._searchGen === myGen) this.searchLoading = false;
+      }
+    },
+
+    // ------------------------------------------------------------------
+    // Group search results by provider for display.
+    // ------------------------------------------------------------------
+    searchResultGroups() {
+      const groups = {};
+      for (const r of this.searchResults) {
+        const prov = r.provider || r.course_id?.split('/')[0] || 'Unknown';
+        if (!groups[prov]) groups[prov] = { provider: prov, results: [] };
+        groups[prov].results.push(r);
+      }
+      return Object.values(groups);
+    },
+
+    // ------------------------------------------------------------------
+    // Open a result from the search overlay.
+    // Constructs the minimal lesson object openLesson() needs:
+    //   { id, slug, name, course_id }
+    // ------------------------------------------------------------------
+    openSearchResult(result) {
+      this.clearSearch();
+      // lesson_id is the full path "provider/course/slug" — that's openLesson's `id`.
+      // Derive slug from lesson_id by stripping course_id prefix.
+      const lessonId = result.lesson_id;
+      const courseId = result.course_id;
+      const slug = courseId && lessonId.startsWith(courseId + '/')
+        ? lessonId.slice(courseId.length + 1)
+        : lessonId;
+      const lesson = {
+        id: lessonId,
+        slug: slug,
+        name: result.title,
+        course_id: courseId,
+      };
+      this.openLesson(lesson);
+    },
+
+    // ------------------------------------------------------------------
+    // Safe excerpt renderer: escape all HTML, then re-allow only
+    // <mark> and </mark> tags (the only HTML SQLite's snippet() injects).
+    // This prevents any lesson body content from being rendered as HTML.
+    // ------------------------------------------------------------------
+    safeExcerpt(excerpt) {
+      if (!excerpt) return '';
+      // 1. HTML-escape the whole string.
+      const escaped = _escapeHtml(excerpt);
+      // 2. Un-escape only our <mark> sentinel pairs.
+      //    After _escapeHtml, <mark> becomes &lt;mark&gt; and </mark>
+      //    becomes &lt;/mark&gt;. Replace those exact strings back.
+      return escaped
+        .replace(/&lt;mark&gt;/g, '<mark>')
+        .replace(/&lt;\/mark&gt;/g, '</mark>');
     },
 
     // ------------------------------------------------------------------
@@ -1111,6 +1331,9 @@ function courseExplorer() {
         const res = await fetch(`/api/explorer/courses/${enc(course.id)}/lessons`);
         if (res.ok) {
           this.lessons = await res.json();
+          // Extend the Fuse index with lesson titles for this course so
+          // subsequent searches can find individual lessons by title.
+          this._addLessonsToFuseIndex(this.lessons);
         } else {
           this.lessonsError = `Could not load lessons (${res.status})`;
         }
