@@ -164,18 +164,21 @@ document.addEventListener("alpine:init", () => {
     // speak() — gate on voiceOn, then route through ttsEngine.
     // Falls back to Web Speech API only if ttsEngine is absent (shouldn't
     // happen once tts-engine.js loads, but defensive guard kept).
+    // Returns the underlying ttsEngine.speak() promise so callers MAY await
+    // playback completion; existing fire-and-forget callers ignore it.
     speak(text) {
       if (!this.voiceOn || !text) return;
-      this.speakNow(text);
+      return this.speakNow(text);
     },
 
     // speakNow() — bypass voiceOn gate (used for confirmations like
     // "Voice enabled"). Routes through ttsEngine for all tiers.
+    // Returns ttsEngine.speak()'s promise (resolves when playback ends);
+    // the WSA fallback path returns undefined (fire-and-forget).
     speakNow(text) {
       if (!text) return;
       if (window.ttsEngine) {
-        window.ttsEngine.speak(text);
-        return;
+        return window.ttsEngine.speak(text);
       }
       // Legacy WSA fallback (tts-engine.js not yet loaded)
       if (!window.speechSynthesis) return;
