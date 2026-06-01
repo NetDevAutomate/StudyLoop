@@ -112,7 +112,7 @@ flowchart LR
     Source --> Generate --> Backend --> Schema --> Artefacts --> PWA
 ```
 
-The producer side is **pluggable**: a `ProviderProfile` registry plus two generic adapters (OpenAI Chat Completions and Anthropic Messages) cover seven providers via registry rows. Adding a new provider is a registry edit, not new code. Auth keys live in a project-root `.env` (auto-loaded via `python-dotenv`); models are curated per-provider with cost-tier and thinking-flag annotations. See [Content Pipeline § Pluggable Provider Abstraction](content-pipeline.md#pluggable-provider-abstraction).
+The producer side is **pluggable**: a `ProviderProfile` registry plus two generic HTTP adapters (OpenAI Chat Completions and Anthropic Messages), with Bedrock and Ollama as first-class registry entries, cover seven providers via registry rows. Adding a new provider is a registry edit, not new code. Auth credentials resolve **encrypted store first** (`~/.config/studyloop/secrets.bin`, written by the **Settings → LLM Providers** panel after a live verification), then a project-root `.env` (auto-loaded via `python-dotenv`); models are curated per-provider with cost-tier and thinking-flag annotations. See [Content Pipeline § Pluggable Provider Abstraction](content-pipeline.md#pluggable-provider-abstraction).
 
 NotebookLM is not required for this workflow.
 
