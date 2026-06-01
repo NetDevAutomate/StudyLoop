@@ -51,7 +51,7 @@ def _real_client():
         # STS keepalive: skip (don't fail) if creds are expired/missing.
         session.client("sts", region_name=_REGION).get_caller_identity()
         return session.client("bedrock-runtime", region_name=_REGION)
-    except Exception as exc:  # noqa: BLE001 — any cred/profile failure → skip, not fail
+    except Exception as exc:
         pytest.skip(f"AWS profile {_PROFILE!r} unavailable ({type(exc).__name__}) — skipping")
 
 

@@ -58,4 +58,4 @@ class ExtractorResult:
         return self
 
 
-__all__ = ["ExtractorResult", "VALID_CONFIDENCE"]
+__all__ = ["VALID_CONFIDENCE", "ExtractorResult"]

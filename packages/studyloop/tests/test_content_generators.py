@@ -10,20 +10,20 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import httpx
 import pytest
 
-pydantic = pytest.importorskip("pydantic")
-httpx = pytest.importorskip("httpx")
+pytest.importorskip("pydantic")
 
 
-from studyloop.content.generators import (  # noqa: E402
+from studyloop.content.generators import (
     CardGenerationError,
     CardGenerator,
     get_generator,
 )
-from studyloop.content.generators.ollama import OllamaGenerator  # noqa: E402
-from studyloop.content.schemas import FlashcardDeck, QuizDeck  # noqa: E402
-from studyloop.settings import CardGeneratorConfig, OllamaBackendConfig  # noqa: E402
+from studyloop.content.generators.ollama import OllamaGenerator
+from studyloop.content.schemas import FlashcardDeck, QuizDeck
+from studyloop.settings import CardGeneratorConfig, OllamaBackendConfig
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -40,6 +40,7 @@ Provider name conventions
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -143,10 +144,8 @@ def _ensure_dirs() -> None:
     config_dir = _config_dir()
     config_dir.mkdir(parents=True, exist_ok=True)
     # Enforce 0700 on the directory itself.
-    try:
+    with contextlib.suppress(OSError):
         config_dir.chmod(0o700)
-    except OSError:
-        pass  # best-effort on some systems
 
 
 def _load_or_create_fernet():  # type: ignore[no-untyped-def]
@@ -235,10 +234,8 @@ def _write_store(data: dict[str, str]) -> None:
         tmp_path.rename(secrets_path)
     except OSError:
         # Clean up tmp file on failure.
-        try:
+        with contextlib.suppress(OSError):
             tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
         raise
 
 

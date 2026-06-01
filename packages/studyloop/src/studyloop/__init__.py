@@ -5,7 +5,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__version__ = "2.1.0"
+
+def _package_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("studyloop")
+    except Exception:
+        return "0.0.0+unknown"
+
+
+__version__ = _package_version()
 
 
 def _load_dotenv_once() -> None:
@@ -28,7 +38,7 @@ def _load_dotenv_once() -> None:
     if os.environ.get("STUDYLOOP_SKIP_DOTENV") == "1":
         return
     try:
-        from dotenv import load_dotenv  # noqa: PLC0415 -- import-time optional dep
+        from dotenv import load_dotenv
     except ImportError:
         return
 

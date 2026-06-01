@@ -85,6 +85,10 @@ class CardGenerator(Protocol):
         """
         ...
 
+    def close(self) -> None:
+        """Release any backend resources held by the generator."""
+        ...
+
 
 def get_generator(config: CardGeneratorConfig) -> CardGenerator:
     """Return a concrete :class:`CardGenerator` for the configured backend.
@@ -136,9 +140,7 @@ def get_generator(config: CardGeneratorConfig) -> CardGenerator:
                 f"Provider {profile.slug!r} uses adapter {profile.adapter!r}, "
                 f"but config has backend={backend!r}. Change one to match."
             )
-        model_entry = (
-            get_model(profile, config.model) if config.model else default_model(profile)
-        )
+        model_entry = get_model(profile, config.model) if config.model else default_model(profile)
         if backend == "openai_compat":
             from studyloop.content.generators.openai_compat import OpenAICompatGenerator
 

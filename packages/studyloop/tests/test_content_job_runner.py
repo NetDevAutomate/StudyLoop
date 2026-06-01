@@ -17,10 +17,9 @@ import pytest
 
 from studyloop.content import active_gen
 from studyloop.content.job import JobRequest, run_job
-from studyloop.content.schemas import FlashcardDeck, QuizDeck
+from studyloop.content.schemas import FlashcardDeck
 from studyloop.content.scope import ScopeRequest
 from studyloop.settings import CardGeneratorConfig, ContentConfig, Settings
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -45,9 +44,7 @@ def vault(tmp_path: Path) -> Path:
     (notes / "advanced-pandas.md").write_text(
         "# Pandas\n\nGroupby and pivot tables.", encoding="utf-8"
     )
-    (notes / "joins.md").write_text(
-        "# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8"
-    )
+    (notes / "joins.md").write_text("# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8")
     return study
 
 
@@ -90,9 +87,7 @@ def _request(scope_kind: str = "section", **scope_kw) -> JobRequest:
 
 
 class TestHappyPath:
-    def test_writes_one_flashcard_file_per_source(
-        self, settings: Settings, vault: Path
-    ) -> None:
+    def test_writes_one_flashcard_file_per_source(self, settings: Settings, vault: Path) -> None:
         events: list[dict] = []
         result = run_job(
             "gen-1",
@@ -119,9 +114,7 @@ class TestHappyPath:
             data = json.loads(Path(outcome.path).read_text())
             FlashcardDeck.model_validate(data)  # writeback round-trips
 
-    def test_writes_both_kinds_when_requested(
-        self, settings: Settings, vault: Path
-    ) -> None:
+    def test_writes_both_kinds_when_requested(self, settings: Settings, vault: Path) -> None:
         request = JobRequest(
             publisher=_PUBLISHER,
             course=_COURSE,
@@ -131,7 +124,7 @@ class TestHappyPath:
             kinds=("flashcards", "quizzes"),
         )
         result = run_job("gen-2", request, settings)
-        assert result.written == 2  # 1 source × 2 kinds
+        assert result.written == 2  # 1 source x 2 kinds
         kinds_written = sorted(o.kind for o in result.outcomes if o.ok)
         assert kinds_written == ["flashcards", "quizzes"]
 
@@ -142,9 +135,7 @@ class TestHappyPath:
 
 
 class TestPartialFailure:
-    def test_one_failing_task_does_not_abort_run(
-        self, settings: Settings, vault: Path
-    ) -> None:
+    def test_one_failing_task_does_not_abort_run(self, settings: Settings, vault: Path) -> None:
         # Make the stub fail on one specific title only.
         settings.card_generator.stub_failure_mode = "fail_titles"
         settings.card_generator.stub_failure_titles = ("Joins",)
@@ -168,9 +159,7 @@ class TestPartialFailure:
 
 
 class TestOnExistingPolicy:
-    def test_overwrite_replaces_existing_file(
-        self, settings: Settings, vault: Path
-    ) -> None:
+    def test_overwrite_replaces_existing_file(self, settings: Settings, vault: Path) -> None:
         target_file = (
             settings.content.base_path
             / "DataCamp"
@@ -192,9 +181,7 @@ class TestOnExistingPolicy:
     def test_suffix_writes_to_new_path_when_base_exists(
         self, settings: Settings, vault: Path
     ) -> None:
-        target_dir = (
-            settings.content.base_path / "DataCamp" / "Intro_To_Pandas" / "flashcards"
-        )
+        target_dir = settings.content.base_path / "DataCamp" / "Intro_To_Pandas" / "flashcards"
         target_dir.mkdir(parents=True, exist_ok=True)
         (target_dir / "joins-flashcards.json").write_text("OLD")
         result = run_job("gen-5", _request(on_existing="suffix"), settings)
@@ -203,13 +190,9 @@ class TestOnExistingPolicy:
         assert (target_dir / "joins-1-flashcards.json").is_file()
         assert result.written == 1
 
-    def test_merge_dedupes_with_existing_deck(
-        self, settings: Settings, vault: Path
-    ) -> None:
+    def test_merge_dedupes_with_existing_deck(self, settings: Settings, vault: Path) -> None:
         # Pre-seed an existing deck at the target path.
-        target_dir = (
-            settings.content.base_path / "DataCamp" / "Intro_To_Pandas" / "flashcards"
-        )
+        target_dir = settings.content.base_path / "DataCamp" / "Intro_To_Pandas" / "flashcards"
         target_dir.mkdir(parents=True, exist_ok=True)
         existing = FlashcardDeck(
             title="Joins",
@@ -232,9 +215,7 @@ class TestOnExistingPolicy:
 
 
 class TestErrorPropagation:
-    def test_scope_resolution_failure_propagates(
-        self, settings: Settings
-    ) -> None:
+    def test_scope_resolution_failure_propagates(self, settings: Settings) -> None:
         from studyloop.content.scope import ScopeResolutionError
 
         request = JobRequest(
@@ -285,14 +266,14 @@ class TestMaybeInjectBearer:
     def _bedrock_config(self) -> CardGeneratorConfig:
         return CardGeneratorConfig(backend="bedrock")
 
-    def test_injects_token_for_bedrock_when_stored(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_injects_token_for_bedrock_when_stored(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from studyloop.content.job import _maybe_inject_bearer
 
         monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
-        with patch("studyloop.secrets.get_secret", return_value="tok-stored"), \
-                _maybe_inject_bearer(self._bedrock_config()):
+        with (
+            patch("studyloop.secrets.get_secret", return_value="tok-stored"),
+            _maybe_inject_bearer(self._bedrock_config()),
+        ):
             assert os.environ["AWS_BEARER_TOKEN_BEDROCK"] == "tok-stored"
         assert "AWS_BEARER_TOKEN_BEDROCK" not in os.environ
 
@@ -300,8 +281,10 @@ class TestMaybeInjectBearer:
         from studyloop.content.job import _maybe_inject_bearer
 
         monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
-        with patch("studyloop.secrets.get_secret", return_value=None), \
-                _maybe_inject_bearer(self._bedrock_config()):
+        with (
+            patch("studyloop.secrets.get_secret", return_value=None),
+            _maybe_inject_bearer(self._bedrock_config()),
+        ):
             assert "AWS_BEARER_TOKEN_BEDROCK" not in os.environ
 
     def test_noop_for_non_bedrock_backend(self) -> None:
@@ -316,7 +299,9 @@ class TestMaybeInjectBearer:
         from studyloop.content.job import _maybe_inject_bearer
 
         monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "pre-existing")
-        with patch("studyloop.secrets.get_secret", return_value="tok-stored"), \
-                _maybe_inject_bearer(self._bedrock_config()):
+        with (
+            patch("studyloop.secrets.get_secret", return_value="tok-stored"),
+            _maybe_inject_bearer(self._bedrock_config()),
+        ):
             assert os.environ["AWS_BEARER_TOKEN_BEDROCK"] == "tok-stored"
         assert os.environ["AWS_BEARER_TOKEN_BEDROCK"] == "pre-existing"

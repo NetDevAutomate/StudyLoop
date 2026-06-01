@@ -18,9 +18,7 @@ from studyloop.content.generators.provider_profiles import (
 class TestRegistryShape:
     def test_all_expected_providers_present(self) -> None:
         expected = {"openai", "openrouter", "gemini", "anthropic"}
-        assert expected.issubset(set(PROFILES)), (
-            f"missing providers: {expected - set(PROFILES)}"
-        )
+        assert expected.issubset(set(PROFILES)), f"missing providers: {expected - set(PROFILES)}"
 
     def test_minimax_removed(self) -> None:
         # MiniMax was dropped 2026-06-01 (quiz quality failed the Opus-judge bar;

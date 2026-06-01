@@ -124,9 +124,7 @@ def next_unique_path(directory: Path, stem: str, suffix: str) -> Path:
         candidate = directory / f"{stem}-{n}{suffix}"
         if not candidate.exists():
             return candidate
-    raise RuntimeError(
-        f"next_unique_path exhausted 9999 attempts for {directory}/{stem}{suffix}"
-    )
+    raise RuntimeError(f"next_unique_path exhausted 9999 attempts for {directory}/{stem}{suffix}")
 
 
 def check_content_dependencies() -> list[str]:

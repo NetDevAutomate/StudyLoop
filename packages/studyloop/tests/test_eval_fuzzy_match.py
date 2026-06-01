@@ -16,7 +16,6 @@ from studyloop.extractors.eval_runner import (
     score_session,
 )
 
-
 # --- _concepts_match: real mismatch pairs from the overnight run -------------
 
 
@@ -85,7 +84,11 @@ def test_score_session_fuzzy_recall() -> None:
         "session_id": "s1",
         "is_negative": False,
         "expected_topics": [
-            {"topic": "graphrag", "concept": "lightrag-embedding-pipeline", "confidence": "struggling"},
+            {
+                "topic": "graphrag",
+                "concept": "lightrag-embedding-pipeline",
+                "confidence": "struggling",
+            },
         ],
     }
     results = [ExtractorResult("graphrag", "embedding", "struggling")]

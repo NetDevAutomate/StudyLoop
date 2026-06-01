@@ -25,10 +25,6 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 

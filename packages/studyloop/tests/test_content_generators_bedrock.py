@@ -637,8 +637,10 @@ class TestBearerTokenAuth:
             assert service == "bedrock-runtime"  # never 'sts' on this path
             return sentinel_client
 
-        with patch("boto3.client", side_effect=fake_boto_client) as mock_client, \
-                patch("boto3.Session") as mock_session:
+        with (
+            patch("boto3.client", side_effect=fake_boto_client) as mock_client,
+            patch("boto3.Session") as mock_session,
+        ):
             client, model = gen._build_client(
                 region="us-east-1", model="us.anthropic.claude-sonnet-4-6"
             )
@@ -664,9 +666,7 @@ class TestBearerTokenAuth:
         mock_session = MagicMock()
         mock_session.client.return_value = MagicMock()
         with patch("boto3.Session", return_value=mock_session) as session_cls:
-            gen._build_client(
-                region="us-east-1", model="us.anthropic.claude-sonnet-4-6"
-            )
+            gen._build_client(region="us-east-1", model="us.anthropic.claude-sonnet-4-6")
 
         # Profile path: a named Session was created and STS was queried
         # (bedrock-runtime client + sts get_caller_identity precheck).

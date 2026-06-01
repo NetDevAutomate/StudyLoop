@@ -14,14 +14,14 @@ import pytest
 
 pytest.importorskip("pydantic")
 
-from studyloop.content.generators import (  # noqa: E402
+from studyloop.content.generators import (
     CardGenerationError,
     CardGenerator,
     get_generator,
 )
-from studyloop.content.generators.stub import StubGenerator  # noqa: E402
-from studyloop.content.schemas import FlashcardDeck, QuizDeck  # noqa: E402
-from studyloop.settings import CardGeneratorConfig  # noqa: E402
+from studyloop.content.generators.stub import StubGenerator
+from studyloop.content.schemas import FlashcardDeck, QuizDeck
+from studyloop.settings import CardGeneratorConfig
 
 
 def _config(**overrides: object) -> CardGeneratorConfig:

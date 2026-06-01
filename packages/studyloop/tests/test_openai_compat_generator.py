@@ -7,8 +7,7 @@ provider smokes are gated separately by ``@pytest.mark.live_provider``.
 from __future__ import annotations
 
 import json
-import os
-from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import httpx
 import pytest
@@ -19,6 +18,9 @@ from studyloop.content.generators.openai_compat import OpenAICompatGenerator
 from studyloop.content.generators.provider_profiles import get_model, get_profile
 from studyloop.content.schemas import FlashcardDeck, QuizDeck
 from studyloop.settings import CardGeneratorConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @pytest.fixture
@@ -156,8 +158,11 @@ class TestHappyPath:
                     {
                         "question": "When do you use INNER JOIN?",
                         "answerOptions": [
-                            {"text": "When both sides must match", "isCorrect": True,
-                             "rationale": "definition"},
+                            {
+                                "text": "When both sides must match",
+                                "isCorrect": True,
+                                "rationale": "definition",
+                            },
                             {"text": "Always", "isCorrect": False, "rationale": "no"},
                         ],
                     }
@@ -246,11 +251,7 @@ class TestErrorHandling:
             respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
                 return_value=httpx.Response(
                     200,
-                    json={
-                        "choices": [
-                            {"message": {"role": "assistant", "content": "I refuse."}}
-                        ]
-                    },
+                    json={"choices": [{"message": {"role": "assistant", "content": "I refuse."}}]},
                 )
             )
             with pytest.raises(CardGenerationError, match="missing tool_calls"):
@@ -302,7 +303,7 @@ class TestFactoryDispatch:
     def test_compat_backend_without_provider_raises(self) -> None:
         from studyloop.content.generators import get_generator
 
-        with pytest.raises(ValueError, match="requires card_generator.provider"):
+        with pytest.raises(ValueError, match=r"requires card_generator\.provider"):
             get_generator(CardGeneratorConfig(backend="openai_compat"))
 
     def test_provider_adapter_mismatch_raises(self) -> None:

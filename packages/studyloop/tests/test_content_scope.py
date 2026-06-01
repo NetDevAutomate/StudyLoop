@@ -20,7 +20,6 @@ from studyloop.content.scope import (
 )
 from studyloop.settings import ContentConfig, Settings
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -160,9 +159,7 @@ def db_with_progress(tmp_path: Path) -> Path:
             now.isoformat(),
         ),
     ]
-    conn.executemany(
-        "INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows
-    )
+    conn.executemany("INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
     conn.commit()
     conn.close()
     return db
@@ -174,9 +171,7 @@ def db_with_progress(tmp_path: Path) -> Path:
 
 
 class TestCourseScope:
-    def test_resolves_each_lesson_file_into_one_source(
-        self, settings: Settings
-    ) -> None:
+    def test_resolves_each_lesson_file_into_one_source(self, settings: Settings) -> None:
         # A "section" is now an individual lesson file: course scope yields
         # one source per .md file. assets/diagram.png skipped (not source),
         # flashcards/old-deck.json skipped (output dir).
@@ -203,18 +198,14 @@ class TestCourseScope:
         with pytest.raises(ScopeResolutionError, match="no readable lesson markdown"):
             resolve_scope(req, settings)
 
-    def test_three_level_publisher_course_resolves(
-        self, settings: Settings
-    ) -> None:
+    def test_three_level_publisher_course_resolves(self, settings: Settings) -> None:
         # Real 3-level tree: base/<publisher>/<course>/study-notes/*.md
         base = Path(settings.content.base_path)
         notes = base / "CodeWithMosh" / "Complete_SQL_Mastery" / "study-notes"
         notes.mkdir(parents=True)
         (notes / "joins-0102.md").write_text("# Joins\n\nINNER vs OUTER.", encoding="utf-8")
         (notes / "views-0018.md").write_text("# Views\n\nCreating views.", encoding="utf-8")
-        req = ScopeRequest(
-            kind="course", publisher="CodeWithMosh", course="Complete_SQL_Mastery"
-        )
+        req = ScopeRequest(kind="course", publisher="CodeWithMosh", course="Complete_SQL_Mastery")
         sources = resolve_scope(req, settings)
         assert sorted(s.identifier for s in sources) == ["joins-0102", "views-0018"]
 
@@ -227,9 +218,7 @@ class TestCourseScope:
 class TestSectionScope:
     def test_resolves_named_lesson_file(self, settings: Settings) -> None:
         # section = relative path of the lesson file under the course dir.
-        req = ScopeRequest(
-            kind="section", course="DataCamp", section="joins/joins-intro"
-        )
+        req = ScopeRequest(kind="section", course="DataCamp", section="joins/joins-intro")
         sources = resolve_scope(req, settings)
         assert len(sources) == 1
         assert sources[0].identifier == "joins-intro"
@@ -243,9 +232,7 @@ class TestSectionScope:
         assert sources[0].identifier == "chapter-1"
 
     def test_missing_section_raises(self, settings: Settings) -> None:
-        req = ScopeRequest(
-            kind="section", course="DataCamp", section="not-a-real-section"
-        )
+        req = ScopeRequest(kind="section", course="DataCamp", section="not-a-real-section")
         with pytest.raises(ScopeResolutionError, match="not found"):
             resolve_scope(req, settings)
 
@@ -293,9 +280,7 @@ class TestTopicStrugglesScope:
         with pytest.raises(ScopeResolutionError, match="No struggling topics"):
             resolve_scope(req, settings, db_path=db_with_progress)
 
-    def test_invalid_window_days_rejected(
-        self, settings: Settings, db_with_progress: Path
-    ) -> None:
+    def test_invalid_window_days_rejected(self, settings: Settings, db_with_progress: Path) -> None:
         req = ScopeRequest(kind="topic_struggles", course="DataCamp", window_days=0)
         with pytest.raises(ScopeResolutionError, match="window_days must be"):
             resolve_scope(req, settings, db_path=db_with_progress)

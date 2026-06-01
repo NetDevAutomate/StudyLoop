@@ -13,7 +13,7 @@ helper writes/touches under tmp_path.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from studyloop.content.schemas import (
     FlashcardDeck,
@@ -23,6 +23,9 @@ from studyloop.content.schemas import (
     QuizQuestion,
 )
 from studyloop.content.storage import next_unique_path
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
@@ -107,9 +110,9 @@ class TestFlashcardMerge:
 def _quiz_q(question: str, correct_text: str = "yes") -> QuizQuestion:
     return QuizQuestion(
         question=question,
-        answer_options=[
-            QuizOption(text=correct_text, is_correct=True, rationale="ok"),
-            QuizOption(text="wrong", is_correct=False, rationale="no"),
+        answerOptions=[
+            QuizOption(text=correct_text, isCorrect=True, rationale="ok"),
+            QuizOption(text="wrong", isCorrect=False, rationale="no"),
         ],
     )
 

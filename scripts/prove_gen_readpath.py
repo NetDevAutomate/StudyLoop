@@ -62,8 +62,11 @@ def main() -> int:
     print(f"\n[read] resolve_study_dirs() -> {study_dirs}", flush=True)
     courses = discover_directories(study_dirs)
     names = {n for n, _ in courses}
-    print(f"[read] discover_directories found {len(courses)} courses; "
-          f"{COURSE} present: {COURSE in names}", flush=True)
+    print(
+        f"[read] discover_directories found {len(courses)} courses; "
+        f"{COURSE} present: {COURSE in names}",
+        flush=True,
+    )
 
     match = next((p for n, p in courses if n == COURSE), None)
     if match is None:
@@ -80,8 +83,9 @@ def main() -> int:
         print("[FAIL] panels would load empty content", flush=True)
         return 1
 
-    print("\n[PASS] write root and read root reconciled; decks discoverable + loadable.",
-          flush=True)
+    print(
+        "\n[PASS] write root and read root reconciled; decks discoverable + loadable.", flush=True
+    )
     print(f"       sample flashcard front: {flashcards[0].front[:80]!r}", flush=True)
     print(f"       sample quiz question:   {quizzes[0].question[:80]!r}", flush=True)
     return 0

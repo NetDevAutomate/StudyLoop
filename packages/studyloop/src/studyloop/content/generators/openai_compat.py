@@ -214,7 +214,7 @@ class OpenAICompatGenerator:
             }
             resp = self._post_chat_completions(payload)
             tool_payload, assistant_turn = self._extract_tool_payload(resp, tool_name)
-            new_history = list(ctx.history_extension) + [assistant_turn]
+            new_history = [*list(ctx.history_extension), assistant_turn]
             if ctx.last_error is not None:
                 # Mirror the correction turn we appended above.
                 new_history.append(
@@ -238,9 +238,7 @@ class OpenAICompatGenerator:
         try:
             r = self._client.post("/chat/completions", json=payload)
         except httpx.HTTPError as exc:
-            raise CardGenerationError(
-                f"{self._profile.label} request failed: {exc!r}"
-            ) from exc
+            raise CardGenerationError(f"{self._profile.label} request failed: {exc!r}") from exc
 
         if r.status_code >= 400:
             # Truncate body to avoid log spam from providers that echo the
@@ -270,8 +268,7 @@ class OpenAICompatGenerator:
             message = choice["message"]
         except (KeyError, IndexError, TypeError) as exc:
             raise CardGenerationError(
-                f"{self._profile.label} response missing choices/message: "
-                f"{json.dumps(resp)[:300]}"
+                f"{self._profile.label} response missing choices/message: {json.dumps(resp)[:300]}"
             ) from exc
 
         tool_calls = message.get("tool_calls") or []

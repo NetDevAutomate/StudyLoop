@@ -164,9 +164,7 @@ def _emit_permission_request_and_await_response(session_id: str) -> None:
             assert isinstance(outcome, dict), (
                 f"permission response result.outcome must be a dict, got {outcome!r}"
             )
-            assert "outcome" in outcome, (
-                f"outcome dict must have 'outcome' key, got {outcome!r}"
-            )
+            assert "outcome" in outcome, f"outcome dict must have 'outcome' key, got {outcome!r}"
             permission_responses.append(result)
             return
         # Not our response — push back into the dispatch queue.

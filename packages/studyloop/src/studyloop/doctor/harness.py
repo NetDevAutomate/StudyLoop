@@ -27,9 +27,7 @@ from studyloop.doctor.models import CheckResult
 def _steering_result(tool: str) -> CheckResult:
     spec = installers._HARNESS_EXPORT[tool]
     path = spec.steering_path
-    present = path.exists() and installers._MANDATE_SENTINEL in path.read_text(
-        encoding="utf-8"
-    )
+    present = path.exists() and installers._MANDATE_SENTINEL in path.read_text(encoding="utf-8")
     if present:
         return CheckResult(
             category="harness",

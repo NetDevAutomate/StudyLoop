@@ -12,7 +12,7 @@ test monkeypatches ``studyloop.history._connection._connect`` to a tmp DB.
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from click.testing import CliRunner
@@ -25,6 +25,9 @@ from studyloop.extractors.pipeline import (
     pre_filter,
 )
 from studyloop.extractors.stub import extract_struggles as stub_extract
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # study_progress schema — mirrors progress.py (14 columns incl. the v22
 # course/section provenance columns). Kept local so the test does not import
@@ -61,12 +64,8 @@ def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     conn.execute(_STUDY_PROGRESS_DDL)
-    conn.execute(
-        "CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, updated_at TEXT)"
-    )
-    conn.execute(
-        "CREATE TABLE messages (session_id TEXT, role TEXT, content TEXT, seq INTEGER)"
-    )
+    conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, updated_at TEXT)")
+    conn.execute("CREATE TABLE messages (session_id TEXT, role TEXT, content TEXT, seq INTEGER)")
     conn.commit()
     conn.close()
 
