@@ -9,6 +9,10 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 from studyloop.web.routes.content_gen._router import router
+from studyloop.web.services.content_generation import (
+    ProviderAvailabilityInput,
+    provider_is_available,
+)
 
 
 def _content_base():
@@ -103,21 +107,19 @@ async def list_providers() -> list[dict[str, Any]]:
     for slug, profile in PROFILES.items():
         auth_kind = get_auth_kind(slug)
 
-        if slug == "bedrock":
-            # Bearer token (encrypted store / env) OR an AWS profile/SigV4 signal.
-            available = bool(
-                content_gen_pkg.get_secret("bedrock_bearer_token")
-                or content_gen_pkg._bedrock_credentials_available()
+        stored_secret_name = "bedrock_bearer_token" if slug == "bedrock" else slug
+        available = provider_is_available(
+            ProviderAvailabilityInput(
+                slug=slug,
+                auth_env=profile.auth_env,
+                env_value=os.environ.get(profile.auth_env, ""),
+                stored_secret=content_gen_pkg.get_secret(stored_secret_name),
+                bedrock_credentials=content_gen_pkg._bedrock_credentials_available(),
+                ollama_reachable=content_gen_pkg._ollama_reachable(
+                    content_gen_pkg._ollama_base_url()
+                ),
             )
-        elif slug == "ollama":
-            # Local + keyless: available iff the endpoint responds.
-            available = content_gen_pkg._ollama_reachable(content_gen_pkg._ollama_base_url())
-        else:
-            # API-key providers: get_secret already resolves store -> env; the
-            # explicit env check is defensive belt-and-braces.
-            available = bool(
-                content_gen_pkg.get_secret(slug) or os.environ.get(profile.auth_env, "").strip()
-            )
+        )
 
         entry: dict[str, Any] = {
             "slug": slug,
