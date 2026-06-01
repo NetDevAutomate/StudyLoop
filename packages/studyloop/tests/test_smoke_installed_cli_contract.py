@@ -28,7 +28,10 @@ def test_smoke_uv_tool_install_uses_isolated_tool_home_and_runs_cli_smoke() -> N
     assert 'export XDG_CACHE_HOME="$tmp/xdg-cache"' in script_text
     assert 'export XDG_DATA_HOME="$tmp/xdg-data"' in script_text
     assert 'TOOL_BIN="$tmp/bin"' in script_text
-    assert 'uv tool install --force --editable "$ROOT_DIR/packages/studyloop[sessions,web,content]"' in script_text
+    assert (
+        'uv tool install --force --editable "$ROOT_DIR/packages/studyloop[sessions,web,content]"'
+        in script_text
+    )
     assert '--with-editable "$ROOT_DIR/packages/agent-session-tools"' in script_text
     assert 'test -x "$TOOL_BIN/studyloop"' in script_text
     assert 'PATH="$TOOL_BIN:$PATH" "$ROOT_DIR/scripts/smoke-installed-cli.sh"' in script_text
