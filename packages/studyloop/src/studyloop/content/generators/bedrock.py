@@ -158,6 +158,20 @@ class BedrockGenerator:
             retries={"max_attempts": 1, "mode": "standard"},
         )
 
+        # Bearer-token fast-path. When AWS_BEARER_TOKEN_BEDROCK is set (a
+        # Bedrock API key, injected from the encrypted store at generation
+        # time), boto3's credential chain uses it directly — no named profile,
+        # and no STS get_caller_identity precheck (a bearer token is scoped to
+        # bedrock:CallWithBearerToken, not STS, so the precheck would wrongly
+        # fail). An invalid token fails fast on the first Converse call.
+        import os
+
+        if os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "").strip():
+            return (
+                boto3.client("bedrock-runtime", region_name=region, config=boto_config),
+                model,
+            )
+
         profiles: list[str] = [self._bedrock.profile]
         if self._bedrock.profile_fallback and self._bedrock.profile_fallback not in profiles:
             profiles.append(self._bedrock.profile_fallback)

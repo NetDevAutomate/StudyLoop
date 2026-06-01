@@ -426,6 +426,114 @@ main {
 .mode-btn.flashcard:hover { border-color: var(--accent); background: rgba(122,162,247,0.1); }
 .mode-btn.quiz:hover { border-color: var(--yellow); background: rgba(224,175,104,0.1); }
 
+/* --- Scalable course list: search + publisher groups + compact rows --- */
+.course-search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+}
+
+.course-search-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.course-search-input:focus { border-color: var(--accent); }
+.course-search-input::placeholder { color: var(--text-muted); }
+
+.course-empty-search {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px 0;
+  font-size: 0.95rem;
+}
+
+.course-group { margin-bottom: 12px; }
+
+.course-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: inherit;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  text-align: left;
+}
+.course-group-header:hover { color: var(--text); }
+
+.course-group-chevron {
+  display: inline-block;
+  font-size: 0.65rem;
+  transition: transform 0.2s;
+}
+.course-group-chevron.collapsed { transform: rotate(-90deg); }
+
+.course-group-count { margin-left: auto; font-weight: 400; }
+
+.course-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.course-row:last-child { border-bottom: none; }
+
+.course-row-action {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.course-row-action.flashcard:hover { border-color: var(--accent); background: rgba(122,162,247,0.1); }
+.course-row-action.quiz:hover { border-color: var(--yellow); background: rgba(224,175,104,0.1); }
+
+.course-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.course-row-mastered { color: var(--green); }
+
 /* --- Study card --- */
 .study-view {
   width: 100%;
@@ -2681,6 +2789,69 @@ body[data-palette="everforest"] {
 .generate-form .api-key-entry .key-error { color: var(--danger, #e5534b); }
 .generate-form .api-key-entry .key-ok { color: var(--success, #3fb950); }
 .generate-form .api-key-entry .key-hint { color: var(--text-muted); opacity: 0.8; }
+
+/* Global status-text styles (also used by the Settings panel, which is
+   outside .generate-form). The scoped rules above keep the Generate panel
+   unchanged; these provide the same look elsewhere. */
+.key-error { color: var(--danger, #e5534b); font-size: 0.82rem; }
+.key-ok { color: var(--success, #3fb950); font-size: 0.82rem; }
+.key-hint { color: var(--text-muted); opacity: 0.8; font-size: 0.82rem; }
+
+/* Sidebar spacer — pushes the Settings button to the bottom of the column. */
+.sidebar-spacer { flex: 1 1 auto; min-height: 12px; }
+
+/* ---- Settings → LLM Providers panel ---- */
+.settings-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.settings-panel h2 { margin: 0; }
+.settings-section { display: flex; flex-direction: column; gap: 12px; }
+.settings-section h3 { margin: 0 0 2px; font-size: 1.05rem; }
+.settings-blurb { color: var(--text-muted); font-size: 0.88rem; margin: 0; }
+
+.provider-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-card);
+}
+.provider-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.provider-label { font-weight: 600; }
+.provider-status { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.provider-status.status-ok { color: var(--success, #3fb950); }
+.provider-status.status-missing { color: var(--text-muted); }
+
+.provider-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.provider-controls input {
+  flex: 1 1 220px;
+  min-width: 0;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+}
+.provider-controls input:focus { border-color: var(--accent); outline: none; }
+.provider-controls .danger-btn { color: var(--danger, #e5534b); }
+.settings-hint { flex-basis: 100%; color: var(--text-muted); opacity: 0.85; font-size: 0.8rem; }
 
 .generate-banner {
   border-left: 3px solid var(--accent);

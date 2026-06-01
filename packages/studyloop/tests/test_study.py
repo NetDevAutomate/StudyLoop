@@ -193,28 +193,31 @@ class TestStudyEnd:
             result = runner.invoke(study, ["--end"])
             assert "No active session" in result.output
 
-    def test_end_cleans_up(self, runner):
+    def test_end_cleans_up(self, runner, tmp_path):
         state = {
             "study_session_id": "abc123",
             "topic": "Test",
             "tmux_session": "study-test-abc12345",
             "persona_file": "/tmp/nonexistent.md",
         }
+        # Patch the session_state path globals with REAL tmp_path paths, not bare
+        # MagicMocks. A bare MagicMock here leaks a "<MagicMock id=...>" file into
+        # the cwd: the --end path reaches write_session_state(), which does
+        # os.open(str(_lock_file()), O_CREAT) where _lock_file() = SESSION_DIR /
+        # ".session-state.lock". With SESSION_DIR a mock, str(...) becomes the
+        # literal "<MagicMock ...>" and os.open creates a real file. Real paths
+        # keep that write sandboxed inside tmp_path.
         with (
             patch("studyloop.session_state.read_session_state", return_value=state),
-            patch("studyloop.session_state.STATE_FILE") as sf,
-            patch("studyloop.session_state.SESSION_DIR") as sd,
-            patch("studyloop.session_state.TOPICS_FILE") as tf,
-            patch("studyloop.session_state.PARKING_FILE") as pf,
+            patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
+            patch("studyloop.session_state.SESSION_DIR", tmp_path),
+            patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+            patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
             patch("studyloop.history.end_study_session") as end,
             patch("studyloop.session_state._write_file_secure"),
             patch("studyloop.session_state._ensure_session_dir"),
             patch("studyloop.tmux.subprocess.run") as tmux_run,
         ):
-            sf.exists.return_value = True
-            sd.__truediv__ = MagicMock(return_value=MagicMock(exists=MagicMock(return_value=False)))
-            tf.unlink = MagicMock()
-            pf.unlink = MagicMock()
             tmux_run.return_value = MagicMock(returncode=0)
             result = runner.invoke(study, ["--end"])
 

@@ -70,7 +70,7 @@ class ProviderProfile:
 
     slug: str
     label: str
-    adapter: Literal["openai_compat", "anthropic_compat"]
+    adapter: Literal["openai_compat", "anthropic_compat", "bedrock", "ollama"]
     base_url: str
     auth_env: str
     models: list[ModelEntry] = field(default_factory=list)
@@ -200,6 +200,71 @@ PROFILES: dict[str, ProviderProfile] = {
                 id="claude-opus-4-7",
                 label="Claude Opus 4.7",
                 cost_tier="premium",
+            ),
+        ],
+    ),
+    # Bedrock uses boto3 + the Converse API, handled by the separate
+    # BedrockGenerator (not one of the two HTTP adapters). It authenticates
+    # with an AWS profile/SigV4 OR an AWS_BEARER_TOKEN_BEDROCK bearer token —
+    # availability is computed in the providers route, not via auth_env alone.
+    # Model IDs are cross-region inference profiles; verify in the Bedrock
+    # console before relying on them.
+    "bedrock": ProviderProfile(
+        slug="bedrock",
+        label="AWS Bedrock",
+        adapter="bedrock",
+        base_url="",
+        auth_env="AWS_PROFILE",
+        models=[
+            ModelEntry(
+                id="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                label="Claude Haiku 4.5 (Bedrock)",
+                cost_tier="cheap",
+                notes="Cross-region inference profile",
+            ),
+            ModelEntry(
+                id="us.anthropic.claude-sonnet-4-6-20251101-v1:0",
+                label="Claude Sonnet 4.6 (Bedrock)",
+                cost_tier="balanced",
+                notes="Cross-region inference profile",
+            ),
+        ],
+    ),
+    # Ollama is local and keyless. Handled by OllamaGenerator. The model list
+    # is a modest-footprint recommendation for machines without a large
+    # unified-memory GPU; the endpoint is user-editable (stored as the
+    # ``ollama_base_url`` secret). Per-host-profile model suggestions via the
+    # autoagent harness are a future phase.
+    "ollama": ProviderProfile(
+        slug="ollama",
+        label="Ollama (local)",
+        adapter="ollama",
+        base_url="http://localhost:11434",
+        auth_env="",
+        models=[
+            ModelEntry(
+                id="qwen2.5:7b",
+                label="Qwen 2.5 7B",
+                cost_tier="cheap",
+                notes="Default; good structured output",
+            ),
+            ModelEntry(
+                id="llama3.2:3b",
+                label="Llama 3.2 3B",
+                cost_tier="cheap",
+                notes="Fast, low RAM",
+            ),
+            ModelEntry(
+                id="gemma3:4b",
+                label="Gemma 3 4B",
+                cost_tier="cheap",
+                notes="Google; efficient",
+            ),
+            ModelEntry(
+                id="phi3.5:3.8b",
+                label="Phi-3.5 3.8B",
+                cost_tier="cheap",
+                notes="Microsoft; efficient",
             ),
         ],
     ),

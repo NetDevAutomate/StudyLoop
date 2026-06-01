@@ -13,6 +13,7 @@ Tests:
 
 from __future__ import annotations
 
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -119,8 +120,15 @@ class TestTerminalProxyHTTP:
 
     def test_no_upstream_returns_502(self) -> None:
         """If ttyd is not running, the proxy should return 502."""
-        # Port 1 is unused/refused on most systems
-        app = create_app(ttyd_port=1)
+        # Claim an ephemeral port then immediately close it, guaranteeing the
+        # port is closed for the duration of the test. Hardcoding a "probably
+        # unused" port (e.g. 1) is flaky: any stray process bound to it makes
+        # the proxy connect successfully and forward a 200 instead of 502.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(("127.0.0.1", 0))
+            closed_port = probe.getsockname()[1]
+        # `probe` is closed here — nothing is listening on closed_port.
+        app = create_app(ttyd_port=closed_port)
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/terminal/")
         assert resp.status_code == 502

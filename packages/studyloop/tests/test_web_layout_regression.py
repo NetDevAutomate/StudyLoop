@@ -230,7 +230,7 @@ class TestQuizzesConfigNavLayout:
         _stub_sources(page, ["ch1"])
         _goto(page, "quizzes")
         root = '[x-data*="quiz"]'
-        page.locator(f"{root} .course-card .mode-btn.quiz").first.click()
+        page.locator(f"{root} .course-row-action.quiz").first.click()
         page.wait_for_function(
             f"""() => {{ const d = window.Alpine.$data(document.querySelector('{root}'));
                 return d && d.view === 'config'; }}""",
@@ -264,7 +264,7 @@ class TestFlashcardsStudyLayout:
         _stub_cards(page, [_flashcard(i) for i in range(3)])
         _goto(page, "flashcards")
         root = '[x-data*="flashcards"]'
-        page.locator(f"{root} .course-card .mode-btn.flashcard").first.click()
+        page.locator(f"{root} .course-row-action.flashcard").first.click()
         page.locator(f'{root} button:has-text("Start Session")').click()
         page.wait_for_function(
             f"""() => {{ const d = window.Alpine.$data(document.querySelector('{root}'));

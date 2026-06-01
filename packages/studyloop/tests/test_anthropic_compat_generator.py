@@ -238,12 +238,190 @@ class TestRetry:
             assert route.call_count == 2
             second_body = json.loads(route.calls[1].request.content)
             messages = second_body["messages"]
-            assert any(
-                m.get("role") == "user"
-                and isinstance(m.get("content"), str)
-                and "did not validate" in m["content"]
+            # The correction MUST be delivered as a tool_result block (not a
+            # plain-text user turn): Anthropic's protocol requires the user turn
+            # after an assistant tool_use to carry a tool_result for that
+            # tool_use id. MiniMax's shim enforces this strictly (error 2013).
+            corrections = [
+                m
                 for m in messages
+                if m.get("role") == "user" and isinstance(m.get("content"), list)
+            ]
+            assert corrections, "expected a tool_result correction turn"
+            block = corrections[-1]["content"][0]
+            assert block["type"] == "tool_result"
+            assert block["tool_use_id"] == "toolu_1"  # references the prior tool_use
+            assert "did not validate" in block["content"]
+            # Protocol sanity: every assistant tool_use turn is immediately
+            # followed by a user tool_result turn (valid alternation).
+            for i, m in enumerate(messages[:-1]):
+                if m.get("role") == "assistant" and isinstance(m.get("content"), list):
+                    has_tool_use = any(
+                        b.get("type") == "tool_use" for b in m["content"]
+                    )
+                    if has_tool_use:
+                        nxt = messages[i + 1]
+                        assert nxt["role"] == "user"
+                        assert isinstance(nxt["content"], list)
+                        assert nxt["content"][0]["type"] == "tool_result"
+        finally:
+            gen.close()
+
+    @pytest.mark.usefixtures("minimax_key")
+    @respx.mock
+    def test_minimax_retry_sends_tool_result_not_plain_text(self) -> None:
+        # Regression for MiniMax error 2013 ("tool call result does not follow
+        # tool call"): the strict /anthropic shim rejected a plain-text user
+        # turn after an assistant tool_use. The retry must send a tool_result.
+        gen = _make_generator("minimax", "MiniMax-M2.7")
+        try:
+            bad = {"title": "X"}  # missing cards -> validation fails first
+            good = {"title": "X", "cards": [{"front": "Q?", "back": "A."}]}
+            route = respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+                side_effect=[
+                    httpx.Response(
+                        200, json=_tool_use_response("emit_flashcard_deck", bad)
+                    ),
+                    httpx.Response(
+                        200, json=_tool_use_response("emit_flashcard_deck", good)
+                    ),
+                ]
             )
+            deck = gen.generate_flashcards(source="x", title="X")
+            assert deck.title == "X"
+            second_body = json.loads(route.calls[1].request.content)
+            # No plain-text user turn allowed after the tool_use.
+            for m in second_body["messages"]:
+                if m["role"] == "user" and m is not second_body["messages"][0]:
+                    assert isinstance(m["content"], list)
+                    assert m["content"][0]["type"] == "tool_result"
+        finally:
+            gen.close()
+
+
+class TestMiniMaxInlineToolCall:
+    """MiniMax M2.7 intermittently emits the tool call as inline XML markup in a
+    text block (``<minimax:tool_call><invoke ...><parameter ...>``) instead of a
+    native Anthropic ``tool_use`` block. The adapter must parse this fallback so
+    quiz/flashcard generation doesn't fail ~half the time on this provider.
+    """
+
+    @staticmethod
+    def _inline_xml_response(tool_name: str, params: dict) -> dict:
+        # Build the exact shape MiniMax returns: a text block whose text is the
+        # invoke markup. Each param value is rendered as JSON.
+        param_xml = "".join(
+            f'<parameter name="{k}">{json.dumps(v)}</parameter>' for k, v in params.items()
+        )
+        markup = (
+            f"<minimax:tool_call>\n<invoke name=\"{tool_name}\">\n{param_xml}\n"
+            f"</invoke>\n</minimax:tool_call>"
+        )
+        return {
+            "id": "msg_inline",
+            "type": "message",
+            "role": "assistant",
+            "content": [{"type": "text", "text": markup}],
+            "model": "MiniMax-M2.7",
+            "stop_reason": "end_turn",
+        }
+
+    @pytest.mark.usefixtures("minimax_key")
+    @respx.mock
+    def test_inline_xml_quiz_is_parsed(self) -> None:
+        gen = _make_generator("minimax", "MiniMax-M2.7")
+        try:
+            questions = [
+                {
+                    "question": "CHAR vs VARCHAR storage?",
+                    "answerOptions": [
+                        {"text": "CHAR pads", "isCorrect": True, "rationale": "fixed width"},
+                        {"text": "VARCHAR pads", "isCorrect": False, "rationale": "no"},
+                    ],
+                }
+            ]
+            respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+                return_value=httpx.Response(
+                    200,
+                    json=self._inline_xml_response("emit_quiz_deck", {
+                        "title": "DT", "questions": questions,
+                    }),
+                )
+            )
+            deck = gen.generate_quiz(source="src", title="DT")
+            assert isinstance(deck, QuizDeck)
+            assert deck.title == "DT"
+            assert len(deck.questions) == 1
+            assert deck.questions[0].answer_options[0].is_correct is True
+        finally:
+            gen.close()
+
+    @pytest.mark.usefixtures("minimax_key")
+    @respx.mock
+    def test_inline_xml_flashcards_is_parsed(self) -> None:
+        gen = _make_generator("minimax", "MiniMax-M2.7")
+        try:
+            cards = [{"front": "Q?", "back": "A."}, {"front": "Q2?", "back": "A2."}]
+            respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+                return_value=httpx.Response(
+                    200,
+                    json=self._inline_xml_response("emit_flashcard_deck", {
+                        "title": "T", "cards": cards,
+                    }),
+                )
+            )
+            deck = gen.generate_flashcards(source="src", title="T")
+            assert isinstance(deck, FlashcardDeck)
+            assert len(deck.cards) == 2
+        finally:
+            gen.close()
+
+    @pytest.mark.usefixtures("minimax_key")
+    @respx.mock
+    def test_transient_extraction_failure_is_retried(self) -> None:
+        # MiniMax intermittently returns an unparseable response (no tool_use,
+        # no recognisable inline markup). A single bad emission must NOT hard-fail
+        # the whole generation — the adapter retries within its budget and
+        # succeeds on the next, valid response.
+        gen = _make_generator("minimax", "MiniMax-M2.7")  # default max_retries=2
+        try:
+            garbled = {
+                "content": [{"type": "text", "text": "thinking out loud, no tool here"}],
+                "role": "assistant",
+            }
+            good = _tool_use_response(
+                "emit_flashcard_deck", {"title": "T", "cards": [{"front": "Q?", "back": "A."}]}
+            )
+            route = respx.post("https://api.minimax.io/anthropic/v1/messages").mock(
+                side_effect=[
+                    httpx.Response(200, json=garbled),  # transient bad emission
+                    httpx.Response(200, json=good),      # retry succeeds
+                ]
+            )
+            deck = gen.generate_flashcards(source="x", title="T")
+            assert deck.title == "T"
+            assert route.call_count == 2  # proved it retried, didn't hard-fail
+        finally:
+            gen.close()
+
+    @pytest.mark.usefixtures("anthropic_key")
+    @respx.mock
+    def test_genuinely_textonly_still_raises(self) -> None:
+        # A real refusal (no invoke markup) must still raise — the fallback is
+        # narrow and must not swallow genuine no-tool responses.
+        gen = _make_generator("anthropic", "claude-haiku-4-5")
+        try:
+            respx.post("https://api.anthropic.com/v1/messages").mock(
+                return_value=httpx.Response(
+                    200,
+                    json={
+                        "content": [{"type": "text", "text": "I cannot help with that."}],
+                        "role": "assistant",
+                    },
+                )
+            )
+            with pytest.raises(CardGenerationError, match="missing tool_use"):
+                gen.generate_flashcards(source="x", title="X")
         finally:
             gen.close()
 

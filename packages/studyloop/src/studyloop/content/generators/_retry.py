@@ -79,6 +79,7 @@ def call_with_correction(
     """
     history_extension: list[dict[str, Any]] = []
     last_error: str | None = None
+    last_transient: CardGenerationError | None = None
 
     for attempt in range(max_retries + 1):
         ctx = CallContext[T](
@@ -86,7 +87,20 @@ def call_with_correction(
             last_error=last_error,
             history_extension=history_extension,
         )
-        tool_payload, new_history = call_fn(ctx)
+        try:
+            tool_payload, new_history = call_fn(ctx)
+        except CardGenerationError as exc:
+            # Transient call failure (e.g. a flaky provider returned an
+            # unparseable / tool-less response, or a momentary transport blip).
+            # Don't hard-fail the whole generation on a single bad emission —
+            # retry within the same budget. Some providers (MiniMax M2.7) only
+            # emit a valid tool call ~half the time, so one clean retry usually
+            # succeeds. The history is left unchanged (the bad turn is dropped).
+            last_transient = exc
+            last_error = f"Previous attempt failed to produce a usable tool call: {exc}"
+            continue
+
+        last_transient = None
         history_extension = new_history
 
         try:
@@ -94,6 +108,13 @@ def call_with_correction(
         except ValidationError as exc:
             last_error = f"Tool input did not match schema: {exc.errors()!r}"
 
+    # Exhausted the budget. If the last failure was a transient call error,
+    # surface that (it's more actionable than a stale schema error).
+    if last_transient is not None:
+        raise CardGenerationError(
+            f"Generator failed to produce a usable tool call after "
+            f"{max_retries + 1} attempts: {last_transient}"
+        )
     raise CardGenerationError(
         f"Generator returned invalid payload after {max_retries + 1} attempts: {last_error}"
     )

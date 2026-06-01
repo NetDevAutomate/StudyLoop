@@ -27,8 +27,9 @@ class TestRegistryShape:
             assert profile.models, f"profile {slug!r} has no curated models"
 
     def test_every_profile_uses_known_adapter(self) -> None:
+        known = {"openai_compat", "anthropic_compat", "bedrock", "ollama"}
         for profile in PROFILES.values():
-            assert profile.adapter in {"openai_compat", "anthropic_compat"}
+            assert profile.adapter in known
 
     def test_minimax_routes_to_anthropic_adapter(self) -> None:
         # Captures the design decision from the plan: MiniMax exposes an
@@ -104,3 +105,32 @@ class TestDefaultModel:
         )
         with pytest.raises(ProviderProfileError, match="no curated models"):
             default_model(profile)
+
+
+class TestBedrockAndOllamaProfiles:
+    """bedrock and ollama are now first-class registry entries (moved out of
+    the ad-hoc route append)."""
+
+    def test_bedrock_in_profiles(self) -> None:
+        from studyloop.content.generators.provider_profiles import PROFILES
+
+        assert "bedrock" in PROFILES
+        p = PROFILES["bedrock"]
+        assert p.adapter == "bedrock"
+        assert len(p.models) >= 1
+
+    def test_ollama_in_profiles(self) -> None:
+        from studyloop.content.generators.provider_profiles import PROFILES
+
+        assert "ollama" in PROFILES
+        p = PROFILES["ollama"]
+        assert p.adapter == "ollama"
+        assert p.base_url == "http://localhost:11434"
+        assert p.auth_env == ""
+        assert len(p.models) >= 1
+
+    def test_get_profile_resolves_new_slugs(self) -> None:
+        from studyloop.content.generators.provider_profiles import get_profile
+
+        assert get_profile("bedrock").slug == "bedrock"
+        assert get_profile("ollama").slug == "ollama"

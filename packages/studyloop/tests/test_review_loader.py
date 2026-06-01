@@ -154,6 +154,80 @@ class TestDiscoverDirectories:
 
         assert discover_directories(["/nonexistent/path"]) == []
 
+    def test_finds_course_three_levels_deep(self, tmp_path: Path) -> None:
+        # The real vault is base/<publisher>/<course>/flashcards/ — discovery
+        # must descend past the publisher level to find the course.
+        from studyloop.review_loader import discover_directories
+
+        course = tmp_path / "CodeWithMosh" / "Complete_SQL_Mastery"
+        fc_dir = course / "flashcards"
+        fc_dir.mkdir(parents=True)
+        (fc_dir / "getting-started-flashcards.json").write_text(
+            json.dumps({"title": "Getting Started", "cards": [{"front": "Q", "back": "A"}]})
+        )
+
+        courses = discover_directories([str(tmp_path)])
+        assert len(courses) == 1
+        name, path = courses[0]
+        assert name == "Complete_SQL_Mastery"
+        assert path == course
+
+    def test_finds_multiple_courses_under_multiple_publishers(self, tmp_path: Path) -> None:
+        from studyloop.review_loader import discover_directories
+
+        for pub, crs in [
+            ("CodeWithMosh", "Complete_SQL_Mastery"),
+            ("CodeWithMosh", "The_Ultimate_Git_Course"),
+            ("ArjanCodes", "The_Software_Designer_Mindset"),
+        ]:
+            quiz_dir = tmp_path / pub / crs / "quizzes"
+            quiz_dir.mkdir(parents=True)
+            (quiz_dir / f"{crs}-quiz.json").write_text(
+                json.dumps(
+                    {
+                        "title": crs,
+                        "questions": [
+                            {"question": "Q?", "answerOptions": [{"text": "A", "isCorrect": True}]}
+                        ],
+                    }
+                )
+            )
+
+        courses = discover_directories([str(tmp_path)])
+        names = sorted(n for n, _ in courses)
+        assert names == [
+            "Complete_SQL_Mastery",
+            "The_Software_Designer_Mindset",
+            "The_Ultimate_Git_Course",
+        ]
+
+    def test_does_not_descend_into_deck_subdirs(self, tmp_path: Path) -> None:
+        # A content-bearing course is a leaf: its flashcards/ subdir must not
+        # be reported as a separate course.
+        from studyloop.review_loader import discover_directories
+
+        course = tmp_path / "Pub" / "Course"
+        fc_dir = course / "flashcards"
+        fc_dir.mkdir(parents=True)
+        (fc_dir / "x-flashcards.json").write_text(
+            json.dumps({"title": "X", "cards": [{"front": "Q", "back": "A"}]})
+        )
+
+        courses = discover_directories([str(tmp_path)])
+        assert len(courses) == 1
+        assert courses[0][1] == course
+
+    def test_empty_deck_dirs_not_discovered(self, tmp_path: Path) -> None:
+        # get_course_dir eagerly mkdirs flashcards/ + quizzes/; an course with
+        # only empty deck dirs (no JSON yet) must NOT surface as ready content.
+        from studyloop.review_loader import discover_directories
+
+        course = tmp_path / "Pub" / "EmptyCourse"
+        (course / "flashcards").mkdir(parents=True)
+        (course / "quizzes").mkdir(parents=True)
+
+        assert discover_directories([str(tmp_path)]) == []
+
 
 class TestFindContentDirs:
     def test_finds_subdirectories(self, tmp_path: Path) -> None:
