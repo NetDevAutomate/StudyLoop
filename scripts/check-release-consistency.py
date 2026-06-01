@@ -22,6 +22,15 @@ def validate_release_note(repo_root: Path, version: str) -> None:
     release_note_path = repo_root / "releases" / f"v{version}.md"
     if not release_note_path.is_file():
         raise ValueError(f"missing release note: releases/v{version}.md")
+    first_heading = ""
+    for line in release_note_path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("#"):
+            first_heading = line.strip()
+            break
+    if f"v{version}" not in first_heading:
+        raise ValueError(
+            f"release note title must mention v{version}; got {first_heading or '<none>'}"
+        )
 
 
 def read_wheel_metadata_version(wheel_path: Path) -> str | None:
@@ -59,6 +68,12 @@ def validate_wheel_metadata(repo_root: Path, version: str) -> None:
         )
 
 
+def validate_sdist(repo_root: Path, version: str) -> None:
+    sdist_path = repo_root / "dist" / f"studyloop-{version}.tar.gz"
+    if not sdist_path.is_file():
+        raise ValueError(f"missing source distribution: dist/studyloop-{version}.tar.gz")
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Check StudyLoop release notes and wheel metadata match pyproject version.",
@@ -85,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         version = read_studyloop_version(repo_root)
         validate_release_note(repo_root, version)
         if not args.skip_wheel:
+            validate_sdist(repo_root, version)
             validate_wheel_metadata(repo_root, version)
     except (OSError, tomllib.TOMLDecodeError, ValueError, zipfile.BadZipFile) as exc:
         print(f"release consistency failed: {exc}", file=sys.stderr)
