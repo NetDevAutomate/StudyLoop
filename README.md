@@ -231,13 +231,11 @@ sudo apt install ttyd        # Linux (or build from source)
 For local contributor and release workflows, use `just`:
 
 ```bash
-just test
-just lint
-just typecheck
-just docs
-just build-release
+just preflight
 just release-check
 ```
+
+Use `just sync-web`, `just sync-content`, or `just sync-semantic` before optional profile tests when the active `.venv` does not include that dependency set.
 
 Install `just` with:
 

@@ -96,4 +96,6 @@ release-consistency:
 prepare-release version:
     uv run python scripts/prepare-release.py {{version}}
 
-release-check: test lint typecheck docs audit audit-full release-consistency smoke-installed
+preflight: lint typecheck test docs release-consistency
+
+release-check: test lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed
