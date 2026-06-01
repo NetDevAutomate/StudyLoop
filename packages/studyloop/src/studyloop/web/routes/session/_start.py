@@ -20,6 +20,10 @@ from studyloop.web.routes.session._router import router
 from studyloop.web.routes.session._transport import (
     _resolve_transport,
 )
+from studyloop.web.services.session_start import (
+    build_session_state_payload,
+    session_dir_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +129,7 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
         )
 
     # --- Session dir + persona (no tmux) ---
-    slug = body.topic.lower().replace(" ", "-")[:20]
-    short_id = study_id[:8]
-    session_dir = SESSION_DIR / "sessions" / f"pty-{slug}-{short_id}"
+    session_dir = SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id)
 
     from studyloop.agent_launcher import build_canonical_persona
     from studyloop.session.orchestrator import setup_session_dir
@@ -146,25 +148,19 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
 
     # --- Session state (no tmux metadata) ---
     _ensure_session_dir()
-    now = datetime.now(UTC).isoformat()
     write_session_state(
-        {
-            "study_session_id": study_id,
-            "topic": body.topic,
-            "energy": body.energy,
-            "energy_label": energy_label,
-            "mode": "focus",
-            "timer_mode": "energy",
-            "started_at": now,
-            "start_time": now,
-            "paused_at": None,
-            "total_paused_seconds": 0,
-            "persona_file": str(persona_file),
-            "session_dir": str(session_dir),
-            "agent": agent,
-            "persona_hash": persona_hash,
-            "transport": "pty",
-        }
+        build_session_state_payload(
+            study_id=study_id,
+            topic=body.topic,
+            energy=body.energy,
+            energy_label=energy_label,
+            agent=agent,
+            persona_file=str(persona_file),
+            session_dir=str(session_dir),
+            persona_hash=persona_hash,
+            transport="pty",
+            now=datetime.now(UTC),
+        )
     )
     TOPICS_FILE.touch(mode=0o600, exist_ok=True)
     PARKING_FILE.touch(mode=0o600, exist_ok=True)
@@ -302,9 +298,7 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
         )
 
     # --- Session dir (for cwd — no persona/MCP file written) ---
-    slug = body.topic.lower().replace(" ", "-")[:20]
-    short_id = study_id[:8]
-    session_dir = SESSION_DIR / "sessions" / f"acp-{slug}-{short_id}"
+    session_dir = SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id, prefix="acp")
 
     from studyloop.agent_launcher import build_canonical_persona
     from studyloop.session.orchestrator import setup_session_dir
@@ -324,24 +318,18 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
 
     # --- Session state (no tmux, no persona_file path; hash only) ---
     _ensure_session_dir()
-    now = datetime.now(UTC).isoformat()
     write_session_state(
-        {
-            "study_session_id": study_id,
-            "topic": body.topic,
-            "energy": body.energy,
-            "energy_label": energy_label,
-            "mode": "focus",
-            "timer_mode": "energy",
-            "started_at": now,
-            "start_time": now,
-            "paused_at": None,
-            "total_paused_seconds": 0,
-            "session_dir": str(session_dir),
-            "agent": agent,
-            "transport": "acp",
-            "persona_hash": persona_hash,
-        }
+        build_session_state_payload(
+            study_id=study_id,
+            topic=body.topic,
+            energy=body.energy,
+            energy_label=energy_label,
+            agent=agent,
+            session_dir=str(session_dir),
+            persona_hash=persona_hash,
+            transport="acp",
+            now=datetime.now(UTC),
+        )
     )
     TOPICS_FILE.touch(mode=0o600, exist_ok=True)
     PARKING_FILE.touch(mode=0o600, exist_ok=True)
