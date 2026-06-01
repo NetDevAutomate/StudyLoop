@@ -137,6 +137,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: ./scripts/build-release.sh
+      - run: uv run python scripts/check-release-consistency.py
 
   install-smoke:
     runs-on: ubuntu-latest

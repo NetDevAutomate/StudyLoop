@@ -79,4 +79,7 @@ smoke-installed:
 build-release:
     ./scripts/build-release.sh
 
-release-check: test lint typecheck docs audit audit-full smoke-installed
+release-consistency:
+    uv run python scripts/check-release-consistency.py --skip-wheel
+
+release-check: test lint typecheck docs audit audit-full release-consistency smoke-installed
