@@ -220,13 +220,17 @@ PROFILES: dict[str, ProviderProfile] = {
                 id="us.anthropic.claude-haiku-4-5-20251001-v1:0",
                 label="Claude Haiku 4.5 (Bedrock)",
                 cost_tier="cheap",
-                notes="Cross-region inference profile",
+                notes="Cross-region inference profile (verified ACTIVE)",
             ),
             ModelEntry(
-                id="us.anthropic.claude-sonnet-4-6-20251101-v1:0",
+                # Sonnet 4.6's inference profile has NO date/version suffix —
+                # the dated form `...-sonnet-4-6-20251101-v1:0` is not a valid
+                # profile and raises ValidationException. Verified ACTIVE via
+                # `aws bedrock list-inference-profiles` + a live Converse call.
+                id="us.anthropic.claude-sonnet-4-6",
                 label="Claude Sonnet 4.6 (Bedrock)",
                 cost_tier="balanced",
-                notes="Cross-region inference profile",
+                notes="Cross-region inference profile (verified ACTIVE)",
             ),
         ],
     ),
