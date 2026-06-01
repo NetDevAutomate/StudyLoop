@@ -212,6 +212,16 @@ content:
     - ~/Obsidian/Personal/Study
   inter_episode_gap: 30
 
+# Opt-in: write one Markdown note per AI session into the vault.
+# Coexists with the flat `obsidian_base` key above (which is for study sources).
+obsidian:
+  export_enabled: false          # off by default; --obsidian overrides per-run
+  vault_path: ~/Obsidian/Personal # defaults to obsidian_base when omitted
+  memory_dir: AgentMemory         # notes written under <vault>/AgentMemory/
+  moc_dir: AgentMemory/MOC        # per-project index notes
+  backlinks: true                 # inject [[wikilink]]s to matching topic notes
+  granularity: both               # both | session (per-session notes ± MOC index)
+
 topics:
   - name: Python
     slug: python
@@ -451,22 +461,60 @@ Example vault layout:
 ```
 ~/Obsidian/
 ├── Personal/
-│   └── 2-Areas/
-│       └── Study/
-│           ├── Courses/
-│           │   ├── ArjanCodes/       ← Python topic
-│           │   └── DataCamp/         ← SQL topic
-│           ├── Mentoring/
-│           │   ├── Python/           ← AI-generated teaching moments
-│           │   ├── Databases/
-│           │   └── Data-Engineering/
-│           └── Study-Plans/
+│   ├── 2-Areas/
+│   │   └── Study/
+│   │       ├── Courses/
+│   │       │   ├── ArjanCodes/       ← Python topic
+│   │       │   └── DataCamp/         ← SQL topic
+│   │       ├── Mentoring/
+│   │       │   ├── Python/           ← AI-generated teaching moments
+│   │       │   ├── Databases/
+│   │       │   └── Data-Engineering/
+│   │       └── Study-Plans/
+│   └── AgentMemory/                  ← created by `session-export --obsidian`
+│       ├── 2026-06-01-claude-code-myproject-1a2b3c4d.md
+│       └── MOC/
+│           ├── _index.md             ← project index
+│           └── myproject.md          ← per-project session list
 ```
 
 studyloop syncs `.md`, `.pdf`, and `.txt` files. It skips:
 - Files under 100 bytes
 - Obsidian metadata files (`.obsidian/`, index files)
 - Common non-content directories (`node_modules`, `__pycache__`)
+
+### Obsidian session-memory export
+
+`session-export --obsidian` writes one Markdown note per AI coding session into
+`<vault>/AgentMemory/`, in addition to the SQLite export. This is **opt-in** and
+**tool-agnostic** — sessions from Claude Code, Kiro, Gemini, Codex, etc. all flow
+into the same folder, keeping your curated study notes untouched.
+
+Each note carries Dataview-ready frontmatter so vault dashboards pick them up:
+
+```yaml
+---
+type: agent-memory
+id: 2026-06-01-claude-code-myproject-1a2b3c4d
+created: 2026-06-01
+source_tool: claude_code
+source_project: myproject
+session_id: <full id>
+tags: [agent-memory, claude_code]
+date: 2026-06-01
+content_hash: 39fa1138   # drives idempotent re-export
+---
+```
+
+Enable it three ways:
+
+1. **Per-run:** `session-export --obsidian` (or `--obsidian-backfill` for all history).
+2. **Config:** set `obsidian.export_enabled: true` (see the `obsidian:` block under
+   [Manual Configuration](#manual-configuration)).
+3. **Setup wizard:** `studyloop setup` asks whether to enable export at the Obsidian step.
+
+`studyloop doctor` validates the vault path, checks for the `.obsidian/` marker, and
+(when export is enabled) confirms the memory directory is writable.
 
 
 5. Sync and generate audio:
@@ -493,6 +541,10 @@ session-export --sources gemini opencode
 session-export --claude-only
 session-export --kiro-only
 session-export --gemini-only
+
+# Also write Obsidian session-memory notes (see Obsidian Vault Setup above)
+session-export --obsidian
+session-export --obsidian --obsidian-backfill   # one-time: all history
 ```
 
 Supported sources: `claude`, `codex`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`, `pi`, `omp`

@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the MiniMax adapter hardening, and the scalable (mode-split, publisher-grouped, searchable) course-review list.
+> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the MiniMax adapter hardening, the scalable (mode-split, publisher-grouped, searchable) course-review list, and the opt-in Obsidian session-memory export (`session-export --obsidian`).
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -71,6 +71,12 @@ flowchart TB
       DB[("sessions.db<br/>(SQLite + WAL)<br/>──────────<br/>study sessions,<br/>progress, review state.")]
       IPC["~/.config/studyloop/<br/>session-state.json<br/>session-topics.md<br/>session-parking.md"]
       Persona["agents/shared/personas/*<br/>(canonical persona text)"]
+      AgentMemory[("AgentMemory/<br/>(Obsidian vault)<br/>──────────<br/>Markdown notes,<br/>Dataview frontmatter,<br/>[[wikilinks]], MOC index.")]
+    end
+
+    subgraph "agent-session-tools (CLI)"
+      Export["session-export<br/>──────────<br/>Exports agent CLI sessions<br/>to sessions.db (incremental)."]
+      ObsidianWriter["ObsidianWriter<br/>obsidian_writer.py<br/>──────────<br/>--obsidian (opt-in): one note<br/>per session to AgentMemory/.<br/>Idempotent (content-hash skip),<br/>per-project MOC, path-hardened."]
     end
 
     Learner --> PWA
@@ -84,6 +90,10 @@ flowchart TB
     API --> DB
     API --> IPC
     API -->|"build_canonical_persona"| Persona
+    Export --> DB
+    Export -.->|"after commit, if --obsidian"| ObsidianWriter
+    ObsidianWriter --> AgentMemory
+    ObsidianWriter -.->|"reads titles for<br/>[[wikilink]] backlinks"| AgentMemory
 ```
 
 **Key invariants today**:
@@ -229,6 +239,24 @@ All four are gated on a single non-reactive flag `this._suppressStreamingBubble`
 | ACPTransport `_dispatch_frame` | `packages/studyloop/src/studyloop/session/transports/acp.py` | — |
 | Live Kiro Playwright test (regression fence) | `packages/studyloop/tests/test_web_acp_dogfood_kiro.py` | full file |
 | Stub-driven chat-UI e2e | `packages/studyloop/tests/test_web_acp_chat_ui.py` | full file |
+
+---
+
+## Component → file map (for the Obsidian session-memory export)
+
+The export path is a CLI feature in `agent-session-tools`, independent of the web
+surface. It runs after `session-export` commits to `sessions.db`, only when
+`--obsidian` is passed (or `obsidian.export_enabled: true` in config).
+
+| Component | File | Notes |
+|---|---|---|
+| `write_vault_notes` / `write_session_to_vault` / `write_moc` / `build_topic_index` | `packages/agent-session-tools/src/agent_session_tools/obsidian_writer.py` | core writer; idempotent, path-traversal hardened |
+| `--obsidian*` flags + post-commit hook | `packages/agent-session-tools/src/agent_session_tools/export_sessions.py` | `_run_export`: touched-ID diff (incremental) vs all (`--obsidian-backfill`) |
+| `get_obsidian_config` + `obsidian` defaults | `packages/agent-session-tools/src/agent_session_tools/config_loader.py` | reads `obsidian:` section from shared `config.yaml` |
+| `ObsidianConfig` dataclass + `Settings.obsidian` | `packages/studyloop/src/studyloop/settings.py` | studyloop-side view of the same section; `vault_path` defaults to `obsidian_base` |
+| Install prompt (Step 4) | `packages/studyloop/src/studyloop/cli/_setup.py` | `studyloop setup` offers to enable export |
+| `check_obsidian_vault` (+.obsidian/ marker) + `check_obsidian_export` | `packages/studyloop/src/studyloop/doctor/config.py` | `studyloop doctor` health checks |
+| Writer tests | `packages/agent-session-tools/tests/test_obsidian_writer.py` | 54 tests incl. idempotency, backfill-vs-incremental, traversal |
 
 ---
 

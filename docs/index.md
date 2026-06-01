@@ -57,10 +57,13 @@ graph LR
         OMP[omp]
     end
 
+    OBV["Obsidian Vault<br/>AgentMemory/"]
+
     OB -->|study sources| SC
     SRC -->|parse/generate| SC
     SC -->|sessions + review| DB
     AST -->|export sessions| DB
+    AST -.->|"--obsidian (opt-in)"| OBV
     DB -->|query history| SC
     KA -->|Socratic sessions| DB
     CA -->|Socratic sessions| DB
