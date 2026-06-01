@@ -142,7 +142,7 @@ fi
 
 if $TOOLS_ONLY; then
   echo ""
-  printf "${BOLD}${GREEN}Tools installed!${NC}\n"
+  printf '%b\n' "${BOLD}${GREEN}Tools installed!${NC}"
   exit 0
 fi
 
@@ -151,7 +151,7 @@ run_cli install agents
 info "Agent definitions installed"
 
 echo ""
-printf "${BOLD}${GREEN}Installation complete!${NC}\n"
+printf '%b\n' "${BOLD}${GREEN}Installation complete!${NC}"
 echo ""
 
 if ! $NON_INTERACTIVE; then
