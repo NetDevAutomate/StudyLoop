@@ -26,7 +26,7 @@ flowchart TB
     Generate["studyloop content generate-cards"]
     Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI-compat / Anthropic-compat /<br/>Stub"]
     Validate["Pydantic validation<br/>FlashcardDeck / QuizDeck"]
-    Artefacts["content.base_path/course<br/>flashcards + quizzes"]
+    Artefacts["content.base_path/&lt;course&gt;<br/>or &lt;publisher&gt;/&lt;course&gt;<br/>flashcards + quizzes"]
     Web["studyloop web<br/>review + progress"]
 
     MD --> Discover
@@ -261,7 +261,15 @@ card_generator:
 #     - ~/Obsidian/Personal/Study
 ```
 
-> **Write root vs read root.** Generation writes decks under `content.base_path/<publisher>/<course>/{flashcards,quizzes}/`. The review panels discover decks via `review.directories`; when that key is unset, `settings.resolve_study_dirs()` falls back to `content.base_path`, and discovery walks the 3-level `publisher/course` tree. (Earlier, an unset `review.directories` left the panels empty even though decks were on disk — that fallback is now automatic.)
+> **Write root vs read root.** The CLI command `studyloop content generate-cards`
+> writes decks under `content.base_path/<course>/{flashcards,quizzes}/`. The web
+> Generate panel writes under
+> `content.base_path/<publisher>/<course>/{flashcards,quizzes}/` when a publisher
+> is supplied. The review panels discover decks via `review.directories`; when
+> that key is unset, `settings.resolve_study_dirs()` falls back to
+> `content.base_path`, and discovery walks both layouts. (Earlier, an unset
+> `review.directories` left the panels empty even though decks were on disk —
+> that fallback is now automatic.)
 
 ## Target Parser Architecture
 

@@ -27,19 +27,25 @@ Built by a neurodivergent learner transitioning from networking to data engineer
 # Install from source (no PyPI release)
 git clone https://github.com/Hookey-Street-Software/StudyLoop studyloop
 cd studyloop
-uv sync --all-packages
-uv tool install ./packages/studyloop
+./scripts/install.sh
 
 # Configure
 studyloop setup              # Interactive setup wizard (incl. optional Obsidian export)
 studyloop doctor --fix       # Verify and apply safe fixes
 
-# Use
-studyloop content generate-cards SOURCE --course python  # Local quiz + flashcard JSON
-studyloop web                      # Launch flashcard/quiz PWA
-session-export                    # Export AI sessions to SQLite
-session-query search "decorators" # Search across all sessions
+# Core workflow — live Socratic study (tmux + agent, or web Study Session tab)
+studyloop study "Python decorators" --energy 6
+# studyloop web              # Alternative: browser picker + ACP chat
+
+# Supporting workflows
+studyloop resume             # Where you left off (session summary)
+studyloop review             # Spaced repetition due today
+studyloop web                # Flashcards, quizzes, live session dashboard
+session-export               # Export AI sessions to SQLite
+session-query search "decorators"
 ```
+
+See [docs/first-week.md](docs/first-week.md) for a day-by-day onboarding path.
 
 ## Architecture
 
@@ -109,14 +115,21 @@ studyloop content generate-cards DIR --course COURSE  # Generate local quiz/flas
 studyloop content discover           # Preview configured study sources
 studyloop content ingest --dry-run   # Plan course-material ingest
 
-# Review
+# Review & AuDHD progress
 studyloop review                     # Check spaced repetition due dates
 studyloop struggles --days 30        # Find recurring struggle topics
+studyloop wins                       # Learning wins (mastered / confident concepts)
+studyloop resume                     # Where you left off (session summary)
+studyloop streaks                    # Study streak and consistency stats
 studyloop web                        # Launch flashcard/quiz PWA
+
+# Backlog & cleanup
+studyloop backlog list               # Cross-session study backlog
+studyloop clean --dry-run            # Preview orphan session cleanup
 
 # Status/topics
 studyloop status                     # Show sync status
-studyloop topics                     # List configured topics
+studyloop topics                     # List configured course topics (config.yaml)
 
 # Health & metrics
 studyloop doctor                     # Check installation health
@@ -183,9 +196,12 @@ Launch with `studyloop web`. Accessible from any device on the network.
 ## Optional Extras
 
 ```bash
-# Install extras via uv (not PyPI — the studyloop PyPI project was yanked)
+# Repo-local optional dependencies
 uv sync --all-packages --extra web      # FastAPI web UI
 uv sync --all-packages --extra content  # PDF splitting + content pipeline
+
+# Global CLI with the features used in this README
+studyloop install tools
 
 # ttyd — web terminal (enables the terminal panel in the live dashboard)
 brew install ttyd            # macOS
@@ -195,6 +211,7 @@ sudo apt install ttyd        # Linux (or build from source)
 ## Documentation
 
 - [Setup Guide](docs/setup-guide.md) — installation and configuration
+- [Your First Week](docs/first-week.md) — minimal day-by-day onboarding
 - [Architecture](docs/architecture.md) — current and target architecture
 - [Content Pipeline](docs/content-pipeline.md) — local generation of review artefacts
 - [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings

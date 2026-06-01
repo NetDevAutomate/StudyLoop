@@ -42,12 +42,19 @@ studyloop progress --course python        # Summarize one course
 studyloop progress --json                 # Machine-readable progress summary
 studyloop progress CONCEPT -t TOPIC -c confident # Record concept confidence
 studyloop struggles --days 30             # Find recurring struggle topics
+studyloop wins --days 30                  # Concepts mastered / confident (AuDHD wins)
+studyloop resume                          # Where you left off (last session summary)
+studyloop streaks                         # Study streak and consistency stats
+studyloop backlog list                    # Pending study backlog (parked/struggled/manual)
+studyloop bridge list                     # Network→DE (or cross-domain) knowledge bridges
+studyloop clean --dry-run                 # Preview orphan tmux/session cleanup
+studyloop extract-struggles --incremental # Session DB → study_progress (stub or --llm)
 
 # Configuration & health
 studyloop setup                           # Interactive setup wizard
 studyloop install tools                   # Install global CLI entrypoints from repo
 studyloop install agents                  # Install agent definitions for detected tools
-studyloop config init                     # Interactive config (3 questions)
+studyloop config init                     # Advanced/legacy config initializer
 studyloop config show                     # Display current configuration
 studyloop doctor                          # Full health check
 studyloop update                          # Check for available updates
@@ -72,7 +79,7 @@ studyloop study "Spark Internals" --mode co-study       # User-driven co-study
 studyloop study "topic" --timer pomodoro                # Override default timer
 studyloop study "topic" --agent claude --web            # Explicit agent + web dashboard
 studyloop study "topic" --agent codex                  # Explicit Codex CLI session
-studyloop study "topic" --lan                           # Bind to 0.0.0.0, password-protected (implies --web)
+studyloop study "topic" --lan                           # LAN access with password auth (implies --web)
 studyloop study "topic" --lan --password SECRET         # Explicit password for LAN auth
 studyloop study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
 studyloop study "topic" --agent lmstudio                # Local LLM via LM Studio
@@ -91,7 +98,7 @@ Run `studyloop study` without a topic to open the textual picker for body double
 - IPC files for dashboard viewports
 - Optional web dashboard at `/session` via `--web`
 - `--web` auto-opens a browser to the dashboard on startup
-- `--lan` binds the web server and ttyd to `0.0.0.0` with HTTP Basic Auth, prints dashboard URL and password (implies `--web`). Password is auto-generated if not set via `--password` or `lan_password` in config
+- `--lan` exposes the dashboard on your LAN with HTTP Basic Auth, prints usable local/LAN URLs, username, and password (implies `--web`). Password is auto-generated if not set via `--password` or `lan_password` in config
 - `--password SECRET` sets the LAN authentication password (used with `--lan`)
 
 **Session lifecycle:**
@@ -140,7 +147,7 @@ studyloop upgrade --component agents      # Update agent definitions only
 | `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `harness` (session-export wiring), `updates` (PyPI versions).
+**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `harness` (session-export wiring), `updates` (source-install/version metadata).
 
 ### Spaced Repetition Intervals
 
@@ -166,6 +173,72 @@ studyloop progress "list comprehensions" \
 
 The summary includes local source count, unique review cards, due cards, mastered cards, review sessions, and review accuracy. Course filtering uses the course slug, such as `python` or `data-engineering`.
 
+### Wins, resume, and streaks (AuDHD progress)
+
+These commands surface progress without opening the web UI. Agents often run them at session start (see [Session Protocol](session-protocol.md)).
+
+```bash
+studyloop wins                    # Progress overview + recent mastered/confident concepts
+studyloop wins --days 14          # Wins in the last N days (default 30)
+
+studyloop resume                  # Last session source, topics, in-progress concepts, streak
+
+studyloop streaks                 # Current/longest streak, weekly sessions, energy patterns
+```
+
+`studyloop resume` is **not** the same as `studyloop study --resume`: the latter reattaches a tmux/agent session; `studyloop resume` prints a text summary from session history.
+
+### Struggles and extraction
+
+```bash
+studyloop struggles --days 30     # Topics mentioned in 3+ sessions (table)
+
+studyloop extract-struggles --incremental              # Most recent kiro_cli session → study_progress
+studyloop extract-struggles --incremental --session-id ID
+studyloop extract-struggles --full                     # Backfill all kiro_cli sessions
+studyloop extract-struggles --dry-run                  # Show what would be written
+studyloop extract-struggles --llm                      # LLM extractor (requires deps; default is stub)
+```
+
+Used by session-end hooks and reconciliation; default backend is a **stub** (no API cost). `--llm` enables the real extractor when configured.
+
+### Study backlog
+
+Cross-session backlog over parked topics, detected struggles, and manual entries (`parked_topics` store). Distinct from `studyloop topics`, which lists **configured course topics** in `config.yaml`.
+
+```bash
+studyloop backlog list
+studyloop backlog list --tech Python --source struggled
+studyloop backlog list --all                         # Include resolved/dismissed
+
+studyloop backlog add "Python decorators" --tech Python --note "After Ch. 4"
+studyloop backlog resolve 42
+
+studyloop backlog suggest
+studyloop backlog suggest --limit 5 --topic "Python Patterns"
+```
+
+Mid-session parking uses `studyloop park` (writes to the same backlog with source `parked`).
+
+### Knowledge bridges
+
+Record analogies between domains (e.g. networking → data engineering). Stored in the session/review database.
+
+```bash
+studyloop bridge add "ECMP" -s networking "Spark partitions" -t python -m "Both distribute load"
+studyloop bridge list
+studyloop bridge list --source-domain networking --target-domain python
+```
+
+### Session cleanup
+
+```bash
+studyloop clean --dry-run         # Preview zombie tmux sessions, orphan dirs, stale state
+studyloop clean                   # Apply cleanup (respects lock; safe with --resume)
+```
+
+Also runs automatically before `studyloop study` when zombies are detected.
+
 ### Web PWA
 
 `studyloop web` launches a progressive web app for flashcard and quiz review. By default it binds to `127.0.0.1`; use `--lan` to expose it on your network with HTTP Basic Auth.
@@ -173,7 +246,7 @@ The summary includes local source count, unique review cards, due cards, mastere
 ```bash
 studyloop web                    # Serve on 127.0.0.1:8567
 studyloop web --port 9000        # Custom port
-studyloop web --lan              # Bind to 0.0.0.0 with auth
+studyloop web --lan              # LAN access with auth
 studyloop web --lan --password SECRET
 ```
 
