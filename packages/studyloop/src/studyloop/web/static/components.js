@@ -1425,6 +1425,43 @@ function courseExplorer() {
       this.readerHtml = '';
       this.readerError = '';
       this.readerLoading = false; // clear spinner even if fetch was in-flight
+      this.struggleMarked = false;
+      this.struggleError = '';
+    },
+
+    // ---- Phase 5: mark current lesson section as a struggle topic --------
+    // State: struggleMarked (bool, transient confirmation) + struggleError (str).
+    // Guard: only callable when view==='reader' && activeLesson is set.
+    struggleMarked: false,
+    struggleError: '',
+
+    async markStruggle() {
+      if (this.view !== 'reader' || !this.activeLesson) return;
+
+      const lesson = this.activeLesson;
+      // Derive publisher from the course_id prefix ("provider/course" → "provider").
+      const publisher = lesson.course_id ? lesson.course_id.split('/')[0] : null;
+
+      try {
+        const resp = await fetch('/api/history/struggling-topics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            course: lesson.course_id || lesson.id,
+            section: lesson.slug || lesson.id,
+            publisher: publisher,
+            note: null,
+          }),
+        });
+        if (resp.ok) {
+          this.struggleMarked = true;
+          this.struggleError = '';
+        } else {
+          this.struggleError = `Failed to mark struggle (${resp.status})`;
+        }
+      } catch {
+        this.struggleError = 'Network error — could not mark struggle';
+      }
     },
 
   };

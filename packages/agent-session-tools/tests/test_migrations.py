@@ -361,3 +361,71 @@ class TestMigrationV17:
             ).fetchall()
         ]
         assert index_cols == ["study_session_id", "question", "source"]
+
+
+class TestMigrationV22:
+    """Test course/section provenance columns added to study_progress."""
+
+    def test_migrates_to_version_22(self, fresh_db):
+        applied = migrate(fresh_db)
+        assert get_user_version(fresh_db) == 22
+        assert any("v22" in a for a in applied)
+
+    def test_study_progress_has_provenance_columns(self, fresh_db):
+        migrate(fresh_db)
+        cols = {
+            r[1]
+            for r in fresh_db.execute("PRAGMA table_info(study_progress)").fetchall()
+        }
+        assert {
+            "source_course",
+            "source_section",
+            "source_publisher",
+            "created_by",
+        } <= cols
+
+    def test_created_by_defaults_to_agent(self, fresh_db):
+        migrate(fresh_db)
+        fresh_db.execute(
+            "INSERT INTO study_progress "
+            "(id, topic, concept, confidence, first_seen, last_seen, session_count) "
+            "VALUES ('test-id', 'python', 'closures', 'struggling', datetime('now'), datetime('now'), 1)"
+        )
+        row = fresh_db.execute(
+            "SELECT created_by FROM study_progress WHERE id='test-id'"
+        ).fetchone()
+        assert row[0] == "agent"
+
+    def test_idempotent_run_twice(self, fresh_db):
+        """Running migrate() twice must not raise (idempotent ALTER guards)."""
+        migrate(fresh_db)
+        second = migrate(fresh_db)
+        assert second == []
+        cols = {
+            r[1]
+            for r in fresh_db.execute("PRAGMA table_info(study_progress)").fetchall()
+        }
+        assert {
+            "source_course",
+            "source_section",
+            "source_publisher",
+            "created_by",
+        } <= cols
+
+    def test_provenance_columns_nullable(self, fresh_db):
+        """source_course, source_section, source_publisher accept NULL."""
+        migrate(fresh_db)
+        fresh_db.execute(
+            "INSERT INTO study_progress "
+            "(id, topic, concept, confidence, first_seen, last_seen, session_count, "
+            " source_course, source_section, source_publisher) "
+            "VALUES ('null-test', 'sql', 'joins', 'struggling', datetime('now'), datetime('now'), 1, "
+            " NULL, NULL, NULL)"
+        )
+        row = fresh_db.execute(
+            "SELECT source_course, source_section, source_publisher "
+            "FROM study_progress WHERE id='null-test'"
+        ).fetchone()
+        assert row[0] is None
+        assert row[1] is None
+        assert row[2] is None
