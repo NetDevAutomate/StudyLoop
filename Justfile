@@ -48,7 +48,11 @@ test-content:
         packages/studyloop/tests/test_content_storage_merge.py \
         packages/studyloop/tests/test_content_workflow.py
 
+check-semantic-profile:
+    uv run python scripts/check-semantic-profile.py
+
 test-semantic:
+    just check-semantic-profile
     uv run --group dev pytest \
         packages/agent-session-tools/tests/test_embeddings.py \
         packages/agent-session-tools/tests/test_semantic_search.py

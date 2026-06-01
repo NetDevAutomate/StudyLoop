@@ -87,8 +87,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - name: Install just
-        run: sudo apt-get update && sudo apt-get install -y just
+      - uses: extractions/setup-just@v3
       - run: uv sync --all-packages --group dev --extra web
       - run: just test-web
 
@@ -99,8 +98,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - name: Install just
-        run: sudo apt-get update && sudo apt-get install -y just
+      - uses: extractions/setup-just@v3
       - run: uv sync --all-packages --group dev --extra web
       - run: uv run playwright install --with-deps chromium
       - run: just test-browser-smoke
@@ -112,8 +110,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - name: Install just
-        run: sudo apt-get update && sudo apt-get install -y just
+      - uses: extractions/setup-just@v3
       - run: uv sync --all-packages --group dev --extra content
       - run: just test-content
 
@@ -124,8 +121,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - name: Install just
-        run: sudo apt-get update && sudo apt-get install -y just
+      - uses: extractions/setup-just@v3
       - run: uv sync --all-packages --group dev --extra semantic
       - run: just test-semantic
 
