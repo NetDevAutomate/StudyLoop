@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-06-01. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the Anthropic-compat adapter robustness work (MiniMax was trialled then removed for quiz quality), the scalable (mode-split, publisher-grouped, searchable) course-review list, the opt-in Obsidian session-memory export (`session-export --obsidian`), the in-browser neural TTS engine, and the Course Explorer side panel (Phases 1–6).
+> Last updated: 2026-06-02. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the Anthropic-compat adapter robustness work (MiniMax was trialled then removed for quiz quality), the scalable (mode-split, publisher-grouped, searchable) course-review list, the opt-in Obsidian session-memory export (`session-export --obsidian`), the in-browser neural TTS engine, Course Explorer side panel (Phases 1–6), generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, and route-stubbed browser smoke coverage.
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -293,6 +293,38 @@ surface. It runs after `session-export` commits to `sessions.db`, only when
 Sister surface to the chat surface. The Generate panel reuses the existing `content/generators/` package as its producer; the new layer is the orchestrator + the active-generation singleton + the REST + WS endpoints + the sidebar UI. **All shipped on `main` as of 2026-05-29** — backend, HTTP surface, and browser side.
 
 ```mermaid
+C4Component
+  title Component Diagram - Generate Panel And Struggle Scope
+
+  Container(browser, "Browser UI", "Alpine.js", "Generate tab and Course Explorer")
+  Container(api, "FastAPI Web App", "Python", "REST and WebSocket routes")
+  ContainerDb(sessionDb, "sessions.db", "SQLite", "Study progress and struggle provenance")
+  ContainerDb(contentBase, "content.base_path", "Markdown + JSON", "Source lessons and generated decks")
+
+  Component(genRoutes, "content_gen routes", "FastAPI", "Plans jobs and streams progress")
+  Component(activeGen, "active_gen singleton", "Python", "Allows one generation job at a time")
+  Component(scopeResolver, "resolve_scope", "Python", "Resolves course, section, and topic_struggles")
+  Component(jobRunner, "run_job", "Python", "Builds GenerationTask(count) and writes outputs")
+  Component(generator, "CardGenerator adapters", "Python", "Provider prompts, schema validation, and retry")
+  Component(historyRoutes, "history routes", "FastAPI", "Writes struggling-topic provenance")
+
+  Rel(browser, genRoutes, "Starts generation with count_per_source", "JSON/HTTPS")
+  Rel(genRoutes, activeGen, "Acquires active slot")
+  Rel(genRoutes, jobRunner, "Starts async background lifecycle")
+  Rel(jobRunner, activeGen, "Releases slot in background finally block")
+  Rel(jobRunner, scopeResolver, "Resolves selected scope")
+  Rel(scopeResolver, sessionDb, "Reads topic_struggles via study_progress", "SQLite")
+  Rel(jobRunner, generator, "Requests GenerationTask.count per source")
+  Rel(generator, contentBase, "Reads source markdown", "Filesystem")
+  Rel(jobRunner, contentBase, "Writes flashcards/quizzes", "Filesystem")
+  Rel(browser, historyRoutes, "Marks lesson as struggling", "JSON/HTTPS")
+  Rel(historyRoutes, sessionDb, "Writes source_course/source_section", "SQLite")
+```
+
+The dynamic flow below shows the same job from the user's click through REST,
+background execution, provider prompt generation, and WebSocket progress frames.
+
+```mermaid
 flowchart TB
     subgraph Browser["Browser — Generate sidebar tab (U8)"]
       direction TB
@@ -307,11 +339,11 @@ flowchart TB
       Routes["content_gen router<br/>(U5 REST + U7 WS)"]
       Discover["Course / Section /<br/>Topic / Provider lookups<br/>(U9 / U10 / U10.5 +<br/>/api/content/courses)"]
       Single["active_gen singleton<br/>(content/active_gen.py)"]
-      Job["run_job orchestrator<br/>(content/job.py)"]
-      Scope["resolve_scope<br/>(content/scope.py)"]
+      Job["run_job orchestrator<br/>(content/job.py)<br/>builds GenerationTask.count"]
+      Scope["resolve_scope<br/>(content/scope.py)<br/>course / section /<br/>topic_struggles"]
       Runner["generate_concurrently<br/>(generators/runner.py)"]
       Factory["get_generator<br/>(generators/__init__.py)"]
-      Adapters["StubGenerator<br/>OllamaGenerator<br/>BedrockGenerator<br/>OpenAICompatGenerator<br/>AnthropicCompatGenerator"]
+      Adapters["StubGenerator<br/>OllamaGenerator<br/>BedrockGenerator<br/>OpenAICompatGenerator<br/>AnthropicCompatGenerator<br/>provider prompts + validation"]
       Secrets["secrets.get_secret(slug)<br/>──────────<br/>encrypted store → env.<br/>auth_kind: api_key /<br/>bedrock_bearer / local_keyless"]
       Helpers["on-existing helpers<br/>(storage.next_unique_path,<br/>FlashcardDeck.merge_dedupe,<br/>QuizDeck.merge_dedupe)"]
     end
@@ -334,11 +366,12 @@ flowchart TB
     Factory --> Adapters
     Adapters -->|"resolve key/token"| Secrets
     Secrets -.reads.- Store
-    Job --> Runner
+    Scope -.->|"topic_struggles reads"| StudyProgress[("sessions.db<br/>study_progress<br/>source_course/source_section")]
+    Job -->|"GenerationTask(count)"| Runner
     Runner -->|"on_complete callback"| Job
     Job --> Helpers
     Helpers --> Disk
-    Job -->|release| Single
+    Job -->|"release in async background lifecycle"| Single
 
     Disk -->|discovered by| Reviewer
 ```
@@ -359,7 +392,7 @@ sequenceDiagram
     participant WS as WS /content/generate/ws
 
     User->>PWA: pick course/scope/kinds, click Generate
-    PWA->>REST: POST {course, scope, kinds, provider, model, on_existing}
+    PWA->>REST: POST {course, scope, kinds, count_per_source, provider, model, on_existing}
     REST->>Single: acquire(job_id, request)
     alt slot busy
       Single-->>REST: GenerationAlreadyActiveError
@@ -370,7 +403,7 @@ sequenceDiagram
       REST-->>PWA: 202 {job_id, plan}
 
       PWA->>WS: open ?job_id=...
-      WS-->>PWA: started {task_count, sources}
+      WS-->>PWA: started {task_count, sources, kinds, count_per_source, provider, model}
 
       Job->>Scope: resolve_scope(request, settings)
       Scope-->>Job: list[ResolvedSource]
@@ -378,7 +411,7 @@ sequenceDiagram
 
       loop one task per source × kind
         Job->>Runner: generate_concurrently
-        Runner->>Gen: generate_flashcards / generate_quiz
+        Runner->>Gen: generate_flashcards / generate_quiz with GenerationTask.count
         Gen-->>Runner: deck or CardGenerationError
         Runner->>Job: on_complete(result)
         Job->>FS: write_json (apply on_existing policy)
@@ -388,7 +421,7 @@ sequenceDiagram
 
       Job-->>WS: all_done {written, failed}
       WS-->>PWA: all_done frame
-      Job->>Single: release()
+      Job->>Single: release() in background finally block
     end
 ```
 
@@ -568,11 +601,43 @@ flowchart TB
 The Course Explorer is a read-only study-material browser embedded as a third layout column. It shares no reactive state with the session, review, or generate panels; the only write path is the struggle flag via `POST /api/history/struggling-topics`.
 
 ```mermaid
+C4Component
+  title Component Diagram - Course Explorer, Search Cache, And Struggle Provenance
+
+  Container(browser, "Browser UI", "Alpine.js", "Course Explorer reader and Generate tab")
+  Container(api, "FastAPI Web App", "Python", "Explorer and history routes")
+  ContainerDb(contentBase, "content.base_path", "Markdown", "Provider/course/lesson source tree")
+  ContainerDb(explorerFts, "explorer_fts.db", "SQLite FTS5", "Derived lesson search cache")
+  ContainerDb(sessionDb, "sessions.db", "SQLite", "study_progress and provenance columns")
+
+  Component(explorerComponent, "courseExplorer()", "Alpine.js", "Tree, reader, search, and struggle UI")
+  Component(treeRoute, "GET /api/explorer/tree", "FastAPI", "Builds provider/course tree")
+  Component(treeFingerprint, "tree fingerprint", "Python", "Cache key from visible source tree")
+  Component(searchRoute, "GET /api/explorer/search", "FastAPI", "Refreshes and queries derived FTS")
+  Component(historyRoute, "POST /api/history/struggling-topics", "FastAPI", "Writes web struggle provenance")
+  Component(scopeResolver, "resolve_scope topic_struggles", "Python", "Uses provenance when generating targeted decks")
+
+  Rel(browser, explorerComponent, "Opens Courses panel")
+  Rel(explorerComponent, treeRoute, "Loads provider/course tree", "JSON/HTTPS")
+  Rel(treeRoute, treeFingerprint, "Computes cache key")
+  Rel(treeFingerprint, contentBase, "Stats visible providers/courses/source files", "Filesystem")
+  Rel(explorerComponent, searchRoute, "Searches lesson bodies", "JSON/HTTPS")
+  Rel(searchRoute, explorerFts, "Refreshes and queries", "SQLite FTS5")
+  Rel(explorerFts, contentBase, "Indexes source markdown", "Filesystem")
+  Rel(explorerComponent, historyRoute, "Marks lesson as struggling", "JSON/HTTPS")
+  Rel(historyRoute, sessionDb, "Writes source_course/source_section/source_publisher", "SQLite")
+  Rel(scopeResolver, sessionDb, "Reads provenance for topic_struggles", "SQLite")
+```
+
+The dynamic flow below shows the browser component and route-level work in more
+detail.
+
+```mermaid
 flowchart TB
     subgraph Browser["Browser — Alpine `courseExplorer()` component"]
       direction TB
       Toggle["$store.explorer.toggle()<br/>──────────<br/>Opens 3rd column;<br/>adds .explorer-open to .app-layout"]
-      TreeFetch["init() → GET /api/explorer/tree<br/>──────────<br/>Populates providers[]; mtime-cached<br/>server-side. [] on missing base."]
+      TreeFetch["init() → GET /api/explorer/tree<br/>──────────<br/>Populates providers[]; cached by<br/>visible tree fingerprint.<br/>[] on missing base."]
       Carousel["Provider carousel row<br/>──────────<br/>CSS scroll-snap, data-carousel-id;<br/>filteredCourses(provider) per row;<br/>scrollCarousel() via querySelector"]
       LessonFetch["selectCourse(course)<br/>→ GET /api/explorer/courses/{id}/lessons<br/>──────────<br/>Lesson list below carousel"]
       Reader["openLesson(lesson)<br/>→ GET /api/explorer/lesson/{id}/content<br/>──────────<br/>_stripFrontmatter → renderMarkdown<br/>→ x-html (view='reader')"]
@@ -587,13 +652,14 @@ flowchart TB
       TreeRoute["GET /api/explorer/tree<br/>──────────<br/>_build_tree(base); app.state cache;<br/>[] on missing/empty base"]
       LessonsRoute["GET /api/explorer/courses/{course_id:path}/lessons<br/>──────────<br/>rglob walk; skip _OUTPUT_SUBDIRS;<br/>traversal guard (is_relative_to)"]
       ContentRoute["GET /api/explorer/lesson/{lesson_id:path}/content<br/>──────────<br/>Probe .md/.markdown/.txt in order;<br/>path-traversal + suffix allowlist;<br/>returns {content, lesson_id}"]
-      SearchRoute["GET /api/explorer/search?q=&limit=20<br/>──────────<br/>_run_fts_search: lazy-build +<br/>mtime incremental refresh;<br/>bm25 title>body, snippet excerpts"]
+      SearchRoute["GET /api/explorer/search?q=&limit=20<br/>──────────<br/>_run_fts_search: lazy-build +<br/>incremental refresh;<br/>bm25 title>body, snippet excerpts"]
+      TreeKey["_tree_fingerprint(base)<br/>──────────<br/>visible provider/course/source<br/>state; skips dot + output dirs"]
     end
 
     subgraph Stores["Stores"]
       ContentBase[("content.base_path/<br/>source markdown files<br/>(read-only)")]
       FTSDb[("explorer_fts.db<br/>──────────<br/>FTS5 virtual table;<br/>lesson_index_meta for mtimes;<br/>porter unicode61 tokenizer")]
-      SessionDB[("sessions.db<br/>study_progress table")]
+      SessionDB[("sessions.db<br/>study_progress table<br/>source_course/source_section/<br/>source_publisher/created_by")]
     end
 
     Toggle --> TreeFetch
@@ -605,20 +671,23 @@ flowchart TB
     Reader --> StruggleBtn
     Reader --> TTSBtn
 
+    TreeRoute --> TreeKey
+    TreeKey --> ContentBase
     TreeRoute --> ContentBase
     LessonsRoute --> ContentBase
     ContentRoute --> ContentBase
     SearchRoute --> FTSDb
     FTSDb -.->|"indexes"| ContentBase
-    StruggleBtn --> SessionDB
+    StruggleBtn -->|"writes provenance"| SessionDB
 ```
 
 **Key invariants**:
 
 - **Read-only over content.** The explorer API never writes to `content.base_path`. Every content endpoint resolves paths with `is_relative_to(base)` and restricts suffixes to `.md`, `.markdown`, `.txt`.
+- **Tree cache is keyed by visible source state.** `GET /api/explorer/tree` stores the provider/course tree on `app.state` behind `_tree_fingerprint(base)`, which walks visible providers, courses, and source files while skipping dot directories and generated output directories. Adding/deleting nested courses refreshes the tree; writing generated decks does not.
 - **FTS index is a derived cache.** `explorer_fts.db` lives in `<session_db_dir>/` alongside `sessions.db` but is never opened by the session migration system. It can be deleted and will be rebuilt on the next search call. No schema migration is required.
 - **TTS is gated by feature detection.** `ttsAvailable = !!window.ttsEngine`. The "▶ Listen" button is `x-show="ttsAvailable && activeLesson"` — hidden entirely when the `browser-neural-tts` worktree is not merged.
-- **Struggle write reuses the existing pipeline.** `POST /api/history/struggling-topics` calls the same `record_progress()` / `get_struggling_topics()` helpers used by the agent session path. The Generate panel's "Topic I'm struggling on" scope sees the web-flagged rows with no extra plumbing.
+- **Struggle write reuses the existing pipeline.** `POST /api/history/struggling-topics` calls the same `record_progress()` / `get_struggling_topics()` helpers used by the agent session path and writes `source_course`, `source_section`, `source_publisher`, and `created_by='web'`. The Generate panel's "Topic I'm struggling on" scope sees the web-flagged rows with no extra plumbing and can resolve back to the lesson provenance instead of only a generic topic name.
 
 ### Component → file map (Course Explorer)
 
@@ -633,7 +702,7 @@ flowchart TB
 | Courses sidebar button + `$store.explorer` | `index.html` | ~line 225 (button), ~line 1686 (store) |
 | Mermaid + Fuse.js `<script>` tags | `index.html` | ~line 39 (mermaid), ~line 48 (fuse) |
 | `.course-explorer-panel`, `.explorer-*` CSS | `packages/studyloop/src/studyloop/web/static/style.css` | `.app-layout` 3rd column; 0px closed, 320px `.explorer-open`; hidden ≤600px |
-| Explorer API router | `packages/studyloop/src/studyloop/web/routes/explorer.py` | all four endpoints; `_fts_lock` for single-writer FTS |
+| Explorer API router | `packages/studyloop/src/studyloop/web/routes/explorer.py` | all four endpoints; `_tree_fingerprint`; `_fts_lock` for single-writer FTS |
 | Migration v22 | `packages/agent-session-tools/src/agent_session_tools/migrations.py` | ~line 736; adds `source_course`, `source_section`, `source_publisher`, `created_by` to `study_progress` |
 | `record_progress()` (provenance args) | `packages/studyloop/src/studyloop/history/progress.py` | keyword-only provenance args; back-compat |
 | `POST /api/history/struggling-topics` | `packages/studyloop/src/studyloop/web/routes/history.py` | ~line 82; `StruggleRequest` body |
@@ -645,7 +714,6 @@ flowchart TB
 ## What's NOT in this diagram
 
 - **The Pomodoro overlay**, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline. (Voice output is now documented in its own C4 L3 component section above.)
-- **The Generate panel UI surface** — implemented by U8 in the 2026-05-29
-  generation-panel plan. Shipped on `main`.
+- **The Generate panel implementation details beyond the C4 slice above** — provider-specific prompt tuning and deck-quality judging are documented in [Content Pipeline](../content-pipeline.md).
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
 - **Legacy tmux + ttyd** — kept as fallback; documented in [Web UI Guide § Terminal Fallback (ttyd)](../web-ui-guide.md#terminal-fallback-ttyd). Will be retired once ACP + PTY web sessions cover all agents.

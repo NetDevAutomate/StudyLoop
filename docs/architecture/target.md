@@ -116,6 +116,26 @@ flowchart TB
 
 ---
 
+## Current Progress Toward Target
+
+The 2026-06-02 quality waves moved the current implementation closer to this
+target without changing the target direction:
+
+- the Generate panel now exposes the requested `count_per_source`, provider,
+  and model in its job plan/progress contract;
+- Course Explorer tree freshness is based on visible source-state
+  fingerprints, while `explorer_fts.db` remains a derived search cache;
+- web-marked struggles keep `source_course` / `source_section` provenance and
+  feed the existing `topic_struggles` generation scope;
+- browser smoke coverage now exercises the learner path from reading a lesson
+  through struggle marking to the Generate panel.
+
+These are current-architecture hardening steps. The target still keeps the same
+direction: web/PWA first, stable local API, explicit transport contracts, and
+future mid-session deck generation through an agent-side tool surface.
+
+---
+
 ## Decisions still open
 
 - **Plugin protocol**: subprocess + JSON-RPC over stdio (mirrors ACP) vs. embedded Python (faster, less isolation). Leaning toward subprocess parity with ACP for consistency.
