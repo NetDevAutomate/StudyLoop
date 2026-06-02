@@ -23,11 +23,13 @@ MANIFEST_URL = (
 )
 
 TOOL_AGENTS: dict[str, tuple[str, str]] = {
-    "claude": ("claude", "~/.claude/commands/socratic-mentor.md"),
+    "claude": ("claude", "~/.claude/agents/socratic-mentor.md"),
     "codex": ("codex", "{repo_root}/AGENTS.md"),
     "kiro": ("kiro-cli", "~/.kiro/agents/study-mentor.json"),
     "gemini": ("gemini", "~/.gemini/agents/study-mentor.md"),
     "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
+    "pi": ("pi", "~/.pi/agent/AGENTS.md"),
+    "omp": ("omp", "~/.omp/agent/AGENTS.md"),
 }
 
 _SMOKE_TIMEOUT = 5  # seconds

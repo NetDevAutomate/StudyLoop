@@ -108,7 +108,7 @@ class TestAgentSmokeTests:
 class TestAgentDefinitionCheck:
     @pytest.fixture()
     def agent_dir(self, tmp_path: Path) -> Path:
-        agent_file = tmp_path / ".claude" / "commands" / "socratic-mentor.md"
+        agent_file = tmp_path / ".claude" / "agents" / "socratic-mentor.md"
         agent_file.parent.mkdir(parents=True)
         agent_file.write_text("# Socratic Mentor Agent\nTest content")
         return tmp_path
@@ -118,7 +118,7 @@ class TestAgentDefinitionCheck:
 
         from studyloop.doctor.agents import check_agent_definitions
 
-        content = (agent_dir / ".claude" / "commands" / "socratic-mentor.md").read_bytes()
+        content = (agent_dir / ".claude" / "agents" / "socratic-mentor.md").read_bytes()
         expected_hash = hashlib.sha256(content).hexdigest()[:16]
 
         manifest = {
@@ -132,7 +132,7 @@ class TestAgentDefinitionCheck:
             patch("studyloop.doctor.agents._detect_ai_tools", return_value=["claude"]),
             patch(
                 "studyloop.doctor.agents._get_agent_install_path",
-                return_value=agent_dir / ".claude" / "commands" / "socratic-mentor.md",
+                return_value=agent_dir / ".claude" / "agents" / "socratic-mentor.md",
             ),
             patch("studyloop.doctor.agents._fetch_manifest", return_value=manifest),
         ):
@@ -153,7 +153,7 @@ class TestAgentDefinitionCheck:
             patch("studyloop.doctor.agents._detect_ai_tools", return_value=["claude"]),
             patch(
                 "studyloop.doctor.agents._get_agent_install_path",
-                return_value=agent_dir / ".claude" / "commands" / "socratic-mentor.md",
+                return_value=agent_dir / ".claude" / "agents" / "socratic-mentor.md",
             ),
             patch("studyloop.doctor.agents._fetch_manifest", return_value=manifest),
         ):
