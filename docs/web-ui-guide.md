@@ -178,7 +178,7 @@ flowchart LR
 
 5. **Search** — type in the **Search lessons…** box (visible in browser view). Results appear grouped by provider. Two tiers run in parallel:
    - **Fuse.js** (client-side, vendored v7.0.0) — instant fuzzy match over provider/course/lesson titles.
-   - **SQLite FTS5** (server-side, debounced) — full-text search over lesson bodies via `GET /api/explorer/search`. Porter-stemmed, BM25-ranked with title weighted higher than body, returns snippet excerpts with `<mark>` highlights. The FTS index (`explorer_fts.db`) is built lazily on first search and refreshed incrementally (mtime-based) on each call.
+   - **SQLite FTS5** (server-side, debounced) — full-text search over lesson bodies via `GET /api/explorer/search`. Porter-stemmed, BM25-ranked with title weighted higher than body, returns snippet excerpts with `<mark>` highlights. The FTS index (`explorer_fts.db`) is built lazily on first search and refreshed incrementally on each call.
 
    Click any result to open that lesson directly in the reader.
 
@@ -190,13 +190,13 @@ flowchart LR
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/explorer/tree` | Provider→course tree (mtime-cached on server) |
+| `GET /api/explorer/tree` | Provider→course tree (cached by visible tree fingerprint on server) |
 | `GET /api/explorer/courses/{course_id}/lessons` | Lesson list for a course (`course_id` = `provider/course`) |
 | `GET /api/explorer/lesson/{lesson_id}/content` | Raw markdown for a lesson (`lesson_id` = `provider/course/slug`) |
 | `GET /api/explorer/search?q=&limit=20` | FTS5 full-text search over lesson bodies |
 | `POST /api/history/struggling-topics` | Write a struggle flag to `study_progress` |
 
-All content endpoints are path-traversal guarded (resolved path must be a child of `content.base_path`; suffix restricted to `.md`, `.markdown`, `.txt`). The FTS index lives in its own file (`<session_db_dir>/explorer_fts.db`) — it is a derived cache, never touches `sessions.db`, and requires no schema migration.
+All content endpoints are path-traversal guarded (resolved path must be a child of `content.base_path`; suffix restricted to `.md`, `.markdown`, `.txt`). The provider/course tree cache is keyed from the visible source tree, so adding or deleting nested courses refreshes the browser data while generated output folders do not invalidate the tree. The FTS index lives in its own file (`<session_db_dir>/explorer_fts.db`) — it is a derived cache, never touches `sessions.db`, and requires no schema migration.
 
 ---
 
@@ -433,10 +433,12 @@ The content tree is three levels — `content.base_path/<publisher>/<course>/<le
 | **Topic** | `GET /api/history/struggling-topics?days=N` — distinct struggle topics with `confidence='struggling'` in the window; Course Explorer marks use the lesson slug | "all struggling topics in window" |
 | **Window days** | numeric, 1-90 (Topic scope only) | 14 |
 | **Kinds** | Flashcards / Quizzes (multi-select, ≥1 required) | Flashcards |
-| **Count** | 5 / 10 / 15 / 20 / 25 / 50 cards/questions per source; passed through to the generator prompt for every selected source/kind | 10 |
+| **Count** | 5 / 10 / 15 / 20 / 25 / 50 cards/questions per source; sent as `count_per_source` and copied into every `GenerationTask.count` | 10 |
 | **Provider** | `GET /api/content/providers`; providers without an env var are visible but disabled, with tooltip | "stub (offline, free)" |
 | **Model** | curated list per provider, with cost-tier + thinking-model badges | provider's first cheap-tier model |
 | **On existing** | Overwrite / Merge / New suffix | Merge (least destructive) |
+
+`count_per_source` is a requested per-source target, not a post-write quota. The job plan and WebSocket `started` frame show the requested count, provider, and model so you can check what will run before watching task progress. Providers receive the count in their prompt/schema request, then the validated deck is written as returned by that provider. The deterministic Stub backend honours the requested count exactly; external providers can still under- or over-produce if their response fails to follow the prompt, in which case validation and the task status make the failure visible.
 
 > **Why two course endpoints?** `GET /api/courses` lists courses that already have flashcards/quizzes JSON for the reviewer to render. The Generate panel uses `GET /api/content/courses` instead so a *fresh* course (markdown notes, no decks yet) is still a legitimate target.
 
@@ -464,7 +466,9 @@ flowchart TD
     Done --> Reenable
 ```
 
-While the job is in flight, the Generate button is disabled. The progress area shows one row per task with a status icon, the source title, the deck kind, and the elapsed time.
+While the job is in flight, the Generate button is disabled. The progress area shows the planned task/source count, selected kinds, requested count per source, provider, model when known, and one row per task with a status icon, the source title, the deck kind, and the elapsed time.
+
+If generation looks stuck, first check the visible job status in the Generate panel. A `409` banner means another generation job is already active; wait for it to finish. If the local process was killed mid-job and the UI never recovers, restart `studyloop web`. See [Troubleshooting § Generation is busy or stuck](troubleshooting.md#generation-is-busy-or-stuck).
 
 ### `on_existing` policies
 

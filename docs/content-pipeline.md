@@ -40,6 +40,21 @@ flowchart TB
     Artefacts --> Web
 ```
 
+The web Generate panel uses the same producer stack, but the scope is resolved
+from browser form state before any provider call:
+
+```text
+source markdown -> resolve_scope -> GenerationTask(count) -> provider prompt -> flashcards/quizzes -> review surface
+```
+
+`count_per_source` is copied from the browser request into each
+`GenerationTask.count`. The provider adapters include that count in the
+flashcard/quiz prompt and validate the returned JSON before writing. Treat it as
+a requested target per source and per artefact kind: the Stub backend returns the
+exact requested count, while external providers must still follow the prompt and
+schema. The Generate panel reports the requested count, provider, and model in
+the plan/progress view so mismatches are visible during a run.
+
 ## Pluggable Provider Abstraction
 
 Six providers — OpenAI, OpenRouter, Gemini, Anthropic, **AWS Bedrock**, and **Ollama** — plus the test-only Stub backend all share one factory: `studyloop.content.generators.get_generator(config)` and one registry (`provider_profiles.py`). Bedrock and Ollama are now **first-class registry entries** (not ad-hoc paths): the registry drives the Generate panel and the Settings → LLM Providers panel uniformly. Two generic adapter classes carry the HTTP-backed providers; Bedrock keeps its own boto3/Converse generator and Ollama its own local generator:

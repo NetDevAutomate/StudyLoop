@@ -340,3 +340,37 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 - [ ] Tier 2: Autonomous persona optimisation against simulated student evaluations
 - [x] Obsidian session export — `session-export --obsidian` writes `AgentMemory/` vault notes (Dataview frontmatter, `[[wikilinks]]`, per-project MOC); shipped 2026-06-01
 - [ ] Obsidian + session-DB GraphRAG — unified retrieval over vault embeddings + sessions (see `docs/designs/obsidian-graphrag-roadmap.md`)
+
+## v2.4 — Web Quality And Architecture Alignment (2026-06-02)
+
+Quality waves focused on making the current web/content surfaces robust before
+new feature work.
+
+- [x] **Wave 1 — quality gates and install hardening**: profile-specific checks,
+  install/script contracts, and repo gates documented through `just` recipes.
+- [x] **Wave 2A — docs/runtime/security cleanup**: LAN/runtime feedback,
+  route/package cleanup, and documentation alignment from the first review pass.
+- [x] **Wave 2B — generation-control honesty**: `count_per_source` is visible in
+  REST plans, WebSocket progress, and browser plan text; `GenerationTask.count`
+  is covered from request planning through generator execution.
+- [x] **Wave 3 — Course Explorer cache freshness**: provider/course tree caching
+  uses a visible tree fingerprint, refreshes on nested course create/delete, and
+  ignores generated output directories.
+- [x] **Wave 4 — DB/FTS integrity**: migration tests cover FTS NULL transitions,
+  legacy DB compatibility, `study_progress` provenance columns, and foreign-key
+  state.
+- [x] **Wave 5 — browser smoke and accessibility**: route-stubbed Playwright
+  smoke covers app load, Course Explorer reading, struggle marking, Generate
+  panel reachability, Escape close, accessible control names, and visible
+  failure states.
+- [x] **Wave 6 — docs and C4 alignment**: user, troubleshooting, ownership,
+  roadmap, and current/target architecture docs now describe the shipped
+  generation, Explorer cache, DB/FTS, and browser-smoke behavior.
+
+Remaining future work from these waves:
+
+- [ ] Persist per-provider model preferences server-side.
+- [ ] Add an agent-side tool surface for immediate mid-session deck generation
+  from a specific struggle, rather than only date-window `topic_struggles`.
+- [ ] Continue replacing ttyd fallback paths as ACP/PTY web sessions cover all
+  supported agents.
