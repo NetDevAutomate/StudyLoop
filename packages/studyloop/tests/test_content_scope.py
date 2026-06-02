@@ -99,7 +99,11 @@ def db_with_progress(tmp_path: Path) -> Path:
             session_count INTEGER,
             notes TEXT,
             created_at TEXT,
-            updated_at TEXT
+            updated_at TEXT,
+            source_course TEXT,
+            source_section TEXT,
+            source_publisher TEXT,
+            created_by TEXT
         )
         """
     )
@@ -117,6 +121,10 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
         ),
         # struggling, out of window (60 days ago)
         (
@@ -130,6 +138,10 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
         ),
         # learning (not struggling) -- should NOT match
         (
@@ -143,6 +155,10 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
         ),
         # second concept on the same topic, struggling -- should still
         # produce ONE topic row in DISTINCT result
@@ -157,13 +173,17 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
         ),
-        # Web-marked Course Explorer struggle: topic is the lesson slug
-        # used for generation matching, while source_course/source_section
-        # preserve provenance.
+        # Web-marked Course Explorer struggle from the older route shape:
+        # topic is the course, while source_course/source_section preserve
+        # the exact lesson provenance the resolver should prefer.
         (
             "id5",
-            "chapter-1",
+            "DataCamp",
             "advanced-pandas/chapter-1",
             "struggling",
             now.isoformat(),
@@ -172,9 +192,15 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            "DataCamp",
+            "advanced-pandas/chapter-1.md",
+            None,
+            "web",
         ),
     ]
-    conn.executemany("INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+    conn.executemany(
+        "INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows
+    )
     conn.commit()
     conn.close()
     return db
