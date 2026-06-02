@@ -8,6 +8,7 @@ import click
 
 from studyloop.cli._shared import console
 from studyloop.installers import (
+    _AGENT_CHOICES,
     InstallError,
     install_agent_definitions,
     install_workspace_tools,
@@ -58,7 +59,7 @@ def install_tools(repo_root: Path | None, sync: bool, force: bool) -> None:
     "--tool",
     "tools",
     multiple=True,
-    type=click.Choice(["kiro", "claude", "gemini", "opencode", "codex", "amp"]),
+    type=click.Choice(_AGENT_CHOICES),
     help="Install for a specific AI tool. Repeat to install multiple.",
 )
 @click.option("--uninstall", is_flag=True, help="Remove installed agent definitions instead.")
