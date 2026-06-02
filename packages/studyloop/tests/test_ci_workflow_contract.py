@@ -4,17 +4,32 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs.yml"
+WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^[^@]+@[0-9a-f]{40}$")
 
 
 def _workflow() -> dict[str, Any]:
     return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+
+
+def _docs_workflow() -> dict[str, Any]:
+    return yaml.safe_load(DOCS_WORKFLOW.read_text(encoding="utf-8"))
+
+
+def _triggers(data: Mapping[Any, Any]) -> dict[str, Any]:
+    triggers = data.get("on") or data.get(True)
+    assert isinstance(triggers, dict)
+    return triggers
 
 
 def test_ci_has_read_only_default_permissions() -> None:
@@ -65,3 +80,65 @@ def test_build_job_runs_full_artifact_release_consistency() -> None:
     assert "./scripts/build-release.sh" in commands
     assert "uv run python scripts/check-release-consistency.py" in commands
     assert all("--skip-wheel" not in str(command) for command in commands)
+
+
+def test_ci_uv_sync_commands_are_lockfile_enforced() -> None:
+    jobs = _workflow()["jobs"]
+    sync_commands = [
+        step["run"]
+        for job in jobs.values()
+        for step in job["steps"]
+        if isinstance(step, dict)
+        and isinstance(step.get("run"), str)
+        and step["run"].startswith("uv sync")
+    ]
+    assert sync_commands
+    assert all("--locked" in command for command in sync_commands)
+
+
+def test_all_workflow_uv_sync_commands_are_lockfile_enforced() -> None:
+    sync_commands: list[tuple[str, str]] = []
+    for workflow in WORKFLOW_DIR.glob("*.yml"):
+        data = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+        for job in data.get("jobs", {}).values():
+            for step in job.get("steps", []):
+                if (
+                    isinstance(step, dict)
+                    and isinstance(step.get("run"), str)
+                    and step["run"].startswith("uv sync")
+                ):
+                    sync_commands.append((workflow.name, step["run"]))
+
+    assert sync_commands
+    unlocked = [(name, command) for name, command in sync_commands if "--locked" not in command]
+    assert unlocked == []
+
+
+def test_ci_typecheck_matches_just_typecheck() -> None:
+    commands = [
+        step.get("run")
+        for step in _workflow()["jobs"]["typecheck"]["steps"]
+        if isinstance(step, dict)
+    ]
+    assert "just typecheck" in commands
+
+
+def test_docs_workflow_builds_on_pull_request_without_write_permission() -> None:
+    data = _docs_workflow()
+
+    assert "pull_request" in _triggers(data)
+    assert data["permissions"] == {"contents": "read"}
+    assert "build" in data["jobs"]
+    build_commands = [
+        step.get("run") for step in data["jobs"]["build"]["steps"] if isinstance(step, dict)
+    ]
+    assert "uv sync --locked --extra docs" in build_commands
+    assert "uv run --extra docs mkdocs build --strict" in build_commands
+
+
+def test_docs_deploy_job_is_push_only() -> None:
+    data = _docs_workflow()
+
+    deploy = data["jobs"]["deploy"]
+    assert deploy["if"] == "github.event_name == 'push'"
+    assert deploy["permissions"] == {"contents": "write"}

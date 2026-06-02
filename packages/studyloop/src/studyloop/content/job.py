@@ -71,6 +71,7 @@ class JobRequest:
     scope: ScopeRequest
     kinds: tuple[DeckKind, ...]
     publisher: str = ""  # study-tree top level; empty = legacy flat layout
+    count_per_source: int | None = None
     on_existing: OnExisting = "suffix"
     backend: str = ""  # empty = use settings.card_generator.backend
     provider: str = ""
@@ -148,7 +149,7 @@ def run_job(
         # Resolve sources up-front so the user sees "0 sources"
         # before any generator API key cost.
         sources = resolve_scope(request.scope, settings)
-        tasks = _build_tasks(sources, request.kinds)
+        tasks = _build_tasks(sources, request.kinds, request.count_per_source)
         emit(
             {
                 "type": "started",
@@ -216,7 +217,7 @@ def run_job(
 
 
 def _build_tasks(
-    sources: list[ResolvedSource], kinds: tuple[DeckKind, ...]
+    sources: list[ResolvedSource], kinds: tuple[DeckKind, ...], count_per_source: int | None
 ) -> list[GenerationTask]:
     """Cross-product sources x kinds into runner tasks."""
     tasks: list[GenerationTask] = []
@@ -228,6 +229,7 @@ def _build_tasks(
                     kind="flashcards",
                     source=src.markdown_text,
                     title=src.title,
+                    count=count_per_source,
                 )
             )
         if "quizzes" in kinds:
@@ -237,6 +239,7 @@ def _build_tasks(
                     kind="quiz",
                     source=src.markdown_text,
                     title=src.title,
+                    count=count_per_source,
                 )
             )
     if not tasks:

@@ -172,6 +172,65 @@ class TestStrugglingTopicsRoute:
         assert client.get("/api/history/struggling-topics?days=100").status_code == 422
 
 
+def test_post_struggling_topic_records_lesson_slug_as_generation_topic(
+    seeded_db: Path, monkeypatch: MonkeyPatch
+) -> None:
+    setup = sqlite3.connect(seeded_db)
+    try:
+        setup.execute("ALTER TABLE study_progress ADD COLUMN source_course TEXT")
+        setup.execute("ALTER TABLE study_progress ADD COLUMN source_section TEXT")
+        setup.execute("ALTER TABLE study_progress ADD COLUMN source_publisher TEXT")
+        setup.execute("ALTER TABLE study_progress ADD COLUMN created_by TEXT DEFAULT 'agent'")
+        setup.commit()
+    finally:
+        setup.close()
+
+    def _connect_seeded():
+        conn = sqlite3.connect(seeded_db)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    monkeypatch.setattr("studyloop.history._connection._connect", _connect_seeded)
+    client = TestClient(create_app(study_dirs=[]))
+
+    resp = client.post(
+        "/api/history/struggling-topics",
+        json={
+            "course": "DataCamp/Intro_To_SQL",
+            "section": "study-notes/joins",
+            "publisher": "DataCamp",
+            "note": "confused by outer joins",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+
+    conn = sqlite3.connect(seeded_db)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            """
+            SELECT topic, concept, confidence, source_course, source_section,
+                   source_publisher, created_by, notes
+            FROM study_progress
+            WHERE source_section = 'study-notes/joins'
+            """
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert row is not None
+    assert row["topic"] == "joins"
+    assert row["concept"] == "study-notes/joins"
+    assert row["confidence"] == "struggling"
+    assert row["source_course"] == "DataCamp/Intro_To_SQL"
+    assert row["source_section"] == "study-notes/joins"
+    assert row["source_publisher"] == "DataCamp"
+    assert row["created_by"] == "web"
+    assert row["notes"] == "confused by outer joins"
+
+
 # ---------------------------------------------------------------------------
 # Union across all three struggle sources (session-db single source of truth)
 # ---------------------------------------------------------------------------

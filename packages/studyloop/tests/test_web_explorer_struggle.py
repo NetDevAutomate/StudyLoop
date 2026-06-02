@@ -98,7 +98,7 @@ class TestPostStrugglingTopic:
         row = conn.execute(
             "SELECT confidence, source_course, source_section, source_publisher, created_by "
             "FROM study_progress WHERE topic = ? AND concept = ?",
-            ("deeplearning-ai/mlops-course", "intro-to-pipelines"),
+            ("intro-to-pipelines", "intro-to-pipelines"),
         ).fetchone()
         conn.close()
 
@@ -142,7 +142,7 @@ class TestPostStrugglingTopic:
         resp = client.get("/api/history/struggling-topics?days=90")
         assert resp.status_code == 200
         topics = {entry["topic"] for entry in resp.json()}
-        assert "deeplearning-ai/mlops-course" in topics
+        assert "feature-store" in topics
 
     def test_post_missing_required_fields_returns_422(self, client: TestClient) -> None:
         # Missing 'section'.
@@ -172,7 +172,7 @@ class TestPostStrugglingTopic:
         rows = conn.execute(
             "SELECT COUNT(*) AS cnt, MAX(session_count) AS sc "
             "FROM study_progress WHERE topic = ? AND concept = ?",
-            ("fast-ai/practical-dl", "lesson-1-basics"),
+            ("lesson-1-basics", "lesson-1-basics"),
         ).fetchone()
         conn.close()
         # Only one row (upsert on uuid5 id), with session_count = 2.

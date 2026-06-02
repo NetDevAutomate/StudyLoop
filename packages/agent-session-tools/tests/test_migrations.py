@@ -172,6 +172,45 @@ class TestMigrate:
         finally:
             conn.close()
 
+    def test_fts_update_indexes_null_to_text_transition(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+            conn.execute(
+                """
+                INSERT INTO messages (
+                    id, session_id, parent_id, role, content, model, timestamp, metadata
+                ) VALUES (
+                    'null-message', 'legacy-session', NULL, 'assistant',
+                    NULL, NULL, '2026-01-01T00:00:40Z', '{}'
+                )
+                """
+            )
+            conn.execute(
+                "UPDATE messages SET content = ? WHERE id = ?",
+                ("late indexed content", "null-message"),
+            )
+            rows = conn.execute(
+                "SELECT content FROM messages_fts WHERE messages_fts MATCH 'late'"
+            ).fetchall()
+            assert rows == [("late indexed content",)]
+        finally:
+            conn.close()
+
+    def test_fts_update_removes_text_to_null_transition(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+            conn.execute(
+                "UPDATE messages SET content = NULL WHERE id = 'legacy-message'"
+            )
+            rows = conn.execute(
+                "SELECT content FROM messages_fts WHERE messages_fts MATCH 'legacy'"
+            ).fetchall()
+            assert rows == []
+        finally:
+            conn.close()
+
     def test_legacy_v0_database_migration_is_idempotent(self, tmp_path):
         conn = legacy_v0_connection(tmp_path)
         try:
@@ -471,7 +510,7 @@ class TestMigrationV22:
 
     def test_migrates_to_version_22(self, fresh_db):
         applied = migrate(fresh_db)
-        assert get_user_version(fresh_db) == 22
+        assert get_user_version(fresh_db) == CURRENT_VERSION
         assert any("v22" in a for a in applied)
 
     def test_study_progress_has_provenance_columns(self, fresh_db):

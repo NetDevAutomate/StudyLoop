@@ -182,7 +182,7 @@ flowchart LR
 
    Click any result to open that lesson directly in the reader.
 
-6. **Mark a struggle** — while reading a lesson, click the **Struggling?** button in the reader header. This writes a `study_progress` row (`confidence='struggling'`) to the session DB via `POST /api/history/struggling-topics`. The row surfaces in the next Generate session's "Topic I'm struggling on" scope and in `studyloop struggles`.
+6. **Mark a struggle** — while reading a lesson, click the **Struggling?** button in the reader header. This writes a `study_progress` row (`confidence='struggling'`) to the session DB via `POST /api/history/struggling-topics`. The row uses the lesson slug as the generation topic and keeps the original course/section/publisher as provenance, so the next Generate session's "Topic I'm struggling on" scope targets the struggled lesson rather than the whole course. It also surfaces in `studyloop struggles`.
 
 7. **Listen (TTS)** — the **▶ Listen** button appears only when `window.ttsEngine` is present (provided by the `browser-neural-tts` feature branch). When the engine is absent the button is hidden and no-op. When active, click to start reading the lesson aloud; the button becomes **⏹ Stop**.
 
@@ -430,10 +430,10 @@ The content tree is three levels — `content.base_path/<publisher>/<course>/<le
 | **Course** | `GET /api/content/courses?publisher=<P>` (courses under the chosen publisher) | empty — enabled after a publisher is picked |
 | **Scope** | Whole course / One section / Topic I'm struggling on | Whole course |
 | **Section** | `GET /api/courses/<course>/sections?publisher=<P>` — one entry per **lesson file** (a "section" is a single `.md`); output dirs skipped | empty — pick one when scope=section |
-| **Topic** | `GET /api/history/struggling-topics?days=N` — distinct topics with `confidence='struggling'` in the window | "all struggling topics in window" |
+| **Topic** | `GET /api/history/struggling-topics?days=N` — distinct struggle topics with `confidence='struggling'` in the window; Course Explorer marks use the lesson slug | "all struggling topics in window" |
 | **Window days** | numeric, 1-90 (Topic scope only) | 14 |
 | **Kinds** | Flashcards / Quizzes (multi-select, ≥1 required) | Flashcards |
-| **Count** | 5 / 10 / 15 / 20 / 25 / 50 cards-per-source | 10 |
+| **Count** | 5 / 10 / 15 / 20 / 25 / 50 cards/questions per source; passed through to the generator prompt for every selected source/kind | 10 |
 | **Provider** | `GET /api/content/providers`; providers without an env var are visible but disabled, with tooltip | "stub (offline, free)" |
 | **Model** | curated list per provider, with cost-tier + thinking-model badges | provider's first cheap-tier model |
 | **On existing** | Overwrite / Merge / New suffix | Merge (least destructive) |

@@ -28,6 +28,7 @@ def connect_db(db_path: Path | str, *, row_factory: bool = False) -> sqlite3.Con
     conn = sqlite3.connect(str(db_path), timeout=5)
     if row_factory:
         conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     return conn

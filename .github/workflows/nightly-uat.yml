@@ -5,6 +5,9 @@ on:
     - cron: "0 3 * * *"  # 03:00 UTC daily
   workflow_dispatch: {}   # manual trigger
 
+permissions:
+  contents: read
+
 jobs:
   uat:
     runs-on: macos-latest
@@ -20,7 +23,7 @@ jobs:
         run: brew install tmux
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --locked --all-packages --group dev
 
       - name: Verify tmux
         run: tmux -V

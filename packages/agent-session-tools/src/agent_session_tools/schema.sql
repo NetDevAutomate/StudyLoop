@@ -45,13 +45,11 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS messages_fts_update AFTER UPDATE ON messages
-WHEN NEW.content IS NOT NULL
 BEGIN
-    UPDATE messages_fts SET
-        content = NEW.content,
-        session_id = NEW.session_id,
-        role = NEW.role
-    WHERE rowid = NEW.rowid;
+    DELETE FROM messages_fts WHERE rowid = OLD.rowid;
+    INSERT INTO messages_fts(rowid, content, session_id, role)
+    SELECT NEW.rowid, NEW.content, NEW.session_id, NEW.role
+    WHERE NEW.content IS NOT NULL;
 END;
 
 CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages

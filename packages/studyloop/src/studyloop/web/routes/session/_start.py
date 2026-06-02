@@ -60,9 +60,10 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
 
     1. Reject if a session is already active (``active.current()``).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
-    3. Persona + DB + session_state writes (shared with legacy).
+    3. Persona + DB record creation (shared with legacy).
     4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
-    5. Return 201 with ``ws_url`` for the client to open.
+    5. Write IPC session_state only after the transport starts, then return
+       201 with ``ws_url`` for the client to open.
     """
     import os
     import shutil
@@ -70,6 +71,12 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
     from studyloop.agent_launcher import AGENTS, detect_agents
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
+
+    if await session_active.current() is not None:
+        return JSONResponse(
+            {"error": "A session is already active"},
+            status_code=409,
+        )
 
     # --- Agent resolution ---
     agent = body.agent
@@ -146,25 +153,6 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
     if adapter.mcp_setup:
         adapter.mcp_setup(session_dir)
 
-    # --- Session state (no tmux metadata) ---
-    _ensure_session_dir()
-    write_session_state(
-        build_session_state_payload(
-            study_id=study_id,
-            topic=body.topic,
-            energy=body.energy,
-            energy_label=energy_label,
-            agent=agent,
-            persona_file=str(persona_file),
-            session_dir=str(session_dir),
-            persona_hash=persona_hash,
-            transport="pty",
-            now=datetime.now(UTC),
-        )
-    )
-    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-    PARKING_FILE.touch(mode=0o600, exist_ok=True)
-
     # --- Acquire the active-session singleton ---
     config = SessionConfig(
         study_session_id=study_id,
@@ -182,20 +170,59 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
     try:
         await session_active.acquire(config, factory)
     except SessionAlreadyActiveError:
+        from studyloop.history import abort_study_session
+
+        abort_study_session(study_id, "Startup failed: another session is already active")
         return JSONResponse(
             {"error": "A session is already active"},
             status_code=409,
         )
     except FileNotFoundError as exc:
+        from studyloop.history import abort_study_session
+
+        abort_study_session(study_id, f"Startup failed: agent binary not found: {exc}")
         logger.exception("PTY start failed: binary missing")
         return JSONResponse(
             {"error": f"Agent binary not found: {exc}"},
             status_code=503,
         )
     except OSError:
+        from studyloop.history import abort_study_session
+
+        abort_study_session(study_id, "Startup failed: failed to start agent PTY")
         logger.exception("PTY start failed: fork/exec error")
         return JSONResponse(
             {"error": "Failed to start agent PTY"},
+            status_code=500,
+        )
+
+    try:
+        # --- Session state (no tmux metadata) ---
+        _ensure_session_dir()
+        write_session_state(
+            build_session_state_payload(
+                study_id=study_id,
+                topic=body.topic,
+                energy=body.energy,
+                energy_label=energy_label,
+                agent=agent,
+                persona_file=str(persona_file),
+                session_dir=str(session_dir),
+                persona_hash=persona_hash,
+                transport="pty",
+                now=datetime.now(UTC),
+            )
+        )
+        TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+        PARKING_FILE.touch(mode=0o600, exist_ok=True)
+    except OSError:
+        from studyloop.history import abort_study_session
+
+        await session_active.release()
+        abort_study_session(study_id, "Startup failed: failed to finalise session state")
+        logger.exception("PTY start failed: session state finalisation error")
+        return JSONResponse(
+            {"error": "Failed to finalise session state"},
             status_code=500,
         )
 
@@ -223,9 +250,10 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
 
     1. Reject if a session is already active (``active.current()``).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
-    3. DB + session_state writes (no tmux metadata, no persona file).
+    3. DB record creation (no tmux metadata, no persona file).
     4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
-    5. Return 201 with ``ws_url`` for the client to open.
+    5. Write IPC session_state only after the transport starts, then return
+       201 with ``ws_url`` for the client to open.
     """
     import os
     import shutil
@@ -233,6 +261,12 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
     from studyloop.agent_launcher import AGENTS, detect_agents
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
+
+    if await session_active.current() is not None:
+        return JSONResponse(
+            {"error": "A session is already active"},
+            status_code=409,
+        )
 
     # --- Agent resolution ---
     agent = body.agent
@@ -316,24 +350,6 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
 
     update_persona_hash(study_id, persona_hash)
 
-    # --- Session state (no tmux, no persona_file path; hash only) ---
-    _ensure_session_dir()
-    write_session_state(
-        build_session_state_payload(
-            study_id=study_id,
-            topic=body.topic,
-            energy=body.energy,
-            energy_label=energy_label,
-            agent=agent,
-            session_dir=str(session_dir),
-            persona_hash=persona_hash,
-            transport="acp",
-            now=datetime.now(UTC),
-        )
-    )
-    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-    PARKING_FILE.touch(mode=0o600, exist_ok=True)
-
     # --- Acquire the active-session singleton ---
     config = SessionConfig(
         study_session_id=study_id,
@@ -351,20 +367,58 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
     try:
         await session_active.acquire(config, factory)
     except SessionAlreadyActiveError:
+        from studyloop.history import abort_study_session
+
+        abort_study_session(study_id, "Startup failed: another session is already active")
         return JSONResponse(
             {"error": "A session is already active"},
             status_code=409,
         )
     except FileNotFoundError as exc:
+        from studyloop.history import abort_study_session
+
+        abort_study_session(study_id, f"Startup failed: agent binary not found: {exc}")
         logger.exception("ACP start failed: binary missing")
         return JSONResponse(
             {"error": f"Agent binary not found: {exc}"},
             status_code=503,
         )
     except OSError:
+        from studyloop.history import abort_study_session
+
+        abort_study_session(study_id, "Startup failed: failed to start ACP agent")
         logger.exception("ACP start failed: spawn error")
         return JSONResponse(
             {"error": "Failed to start ACP agent"},
+            status_code=500,
+        )
+
+    try:
+        # --- Session state (no tmux, no persona_file path; hash only) ---
+        _ensure_session_dir()
+        write_session_state(
+            build_session_state_payload(
+                study_id=study_id,
+                topic=body.topic,
+                energy=body.energy,
+                energy_label=energy_label,
+                agent=agent,
+                session_dir=str(session_dir),
+                persona_hash=persona_hash,
+                transport="acp",
+                now=datetime.now(UTC),
+            )
+        )
+        TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+        PARKING_FILE.touch(mode=0o600, exist_ok=True)
+    except OSError:
+        from studyloop.history import abort_study_session
+
+        await session_active.release()
+        abort_study_session(study_id, "Startup failed: failed to finalise session state")
+        logger.exception("ACP start failed: session state finalisation error")
+        return JSONResponse(
+            {"error": "Failed to finalise session state"},
             status_code=500,
         )
 

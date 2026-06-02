@@ -22,6 +22,10 @@ from studyloop.content.generators import (
     get_generator,
 )
 from studyloop.content.generators.ollama import OllamaGenerator
+from studyloop.content.generators.prompts import (
+    FLASHCARD_USER_PROMPT_TEMPLATE,
+    QUIZ_USER_PROMPT_TEMPLATE,
+)
 from studyloop.content.schemas import FlashcardDeck, QuizDeck
 from studyloop.settings import CardGeneratorConfig, OllamaBackendConfig
 
@@ -96,6 +100,22 @@ def valid_quiz_json() -> str:
             ],
         }
     )
+
+
+def test_generation_prompts_include_requested_count() -> None:
+    flash_prompt = FLASHCARD_USER_PROMPT_TEMPLATE.format(
+        title="Pandas",
+        source="groupby notes",
+        count=25,
+    )
+    quiz_prompt = QUIZ_USER_PROMPT_TEMPLATE.format(
+        title="Joins",
+        source="join notes",
+        count=5,
+    )
+
+    assert "Produce exactly 25 flashcards" in flash_prompt
+    assert "Produce exactly 5 multiple-choice questions" in quiz_prompt
 
 
 def _ollama_chat_response(content: str) -> dict[str, Any]:

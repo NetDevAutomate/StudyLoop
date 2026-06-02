@@ -18,7 +18,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages --group dev
+      - run: uv sync --locked --all-packages --group dev
       - run: uv run --group dev ruff check .
       - run: uv run --group dev ruff format --check .
 
@@ -30,9 +30,9 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages --group dev
-      - run: cd packages/agent-session-tools && uv run pyright src/
-      - run: cd packages/studyloop && uv run pyright src/
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      - run: uv sync --locked --all-packages --group dev
+      - run: just typecheck
 
   sast:
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages --group dev
+      - run: uv sync --locked --all-packages --group dev
       - name: Run bandit (SAST)
         run: uv run --group dev bandit --recursive --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,B607,B608 packages/
 
@@ -54,7 +54,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages --group dev
+      - run: uv sync --locked --all-packages --group dev
       - name: Audit dependencies for known vulnerabilities
         run: |
           uv --quiet export --all-packages --group dev --no-emit-workspace --format requirements-txt -o /tmp/requirements.txt
@@ -68,7 +68,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages --group dev --all-extras
+      - run: uv sync --locked --all-packages --group dev --all-extras
       - name: Audit full optional dependency surface
         run: |
           uv --quiet export --all-packages --group dev --all-extras --no-emit-workspace --format requirements-txt -o /tmp/requirements-full.txt
@@ -86,7 +86,7 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --all-packages --group dev
+      - run: uv sync --locked --all-packages --group dev
       - run: uv run --group dev pytest --tb=short --cov=packages --cov-report=term-missing
 
   web-profile:
@@ -98,7 +98,7 @@ jobs:
         with:
           python-version: "3.12"
       - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
-      - run: uv sync --all-packages --group dev --extra web
+      - run: uv sync --locked --all-packages --group dev --extra web
       - run: just test-web
 
   browser-smoke:
@@ -110,7 +110,7 @@ jobs:
         with:
           python-version: "3.12"
       - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
-      - run: uv sync --all-packages --group dev --extra web
+      - run: uv sync --locked --all-packages --group dev --extra web
       - run: uv run playwright install --with-deps chromium
       - run: just test-browser-smoke
 
@@ -123,7 +123,7 @@ jobs:
         with:
           python-version: "3.12"
       - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
-      - run: uv sync --all-packages --group dev --extra content
+      - run: uv sync --locked --all-packages --group dev --extra content
       - run: just test-content
 
   semantic-profile:
@@ -135,7 +135,7 @@ jobs:
         with:
           python-version: "3.12"
       - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
-      - run: uv sync --all-packages --group dev --extra semantic
+      - run: uv sync --locked --all-packages --group dev --extra semantic
       - run: just test-semantic
 
   build:
@@ -163,5 +163,5 @@ jobs:
           ./scripts/build-release.sh
           tmp="$(mktemp -d)"
           uv venv "$tmp/venv"
-          uv pip install --python "$tmp/venv/bin/python" dist/studyloop-*.whl
-          PATH="$tmp/venv/bin:$PATH" ./scripts/smoke-installed-cli.sh
+          uv pip install --python "$tmp/venv/bin/python" dist/studyloop-*.whl packages/agent-session-tools
+          STUDYLOOP_EXPECT_BIN_DIR="$tmp/venv/bin" PATH="$tmp/venv/bin:$PATH" ./scripts/smoke-installed-cli.sh

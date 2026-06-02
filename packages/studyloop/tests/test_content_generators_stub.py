@@ -67,6 +67,15 @@ class TestHappyPath:
         assert len(flash.cards) == 3
         assert len(quiz.questions) == 3
 
+    def test_per_call_count_overrides_stub_default(self) -> None:
+        gen = StubGenerator(_config(stub_card_count=3))
+
+        flash = gen.generate_flashcards(source="x", title="t", count=5)
+        quiz = gen.generate_quiz(source="x", title="t", count=7)
+
+        assert len(flash.cards) == 5
+        assert len(quiz.questions) == 7
+
 
 class TestFailureModes:
     def test_always_fail_raises_card_generation_error(self) -> None:

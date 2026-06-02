@@ -233,6 +233,7 @@ For local contributor and release workflows, use `just`:
 ```bash
 just preflight
 just release-check
+just smoke-installed
 ```
 
 Use `just sync-web`, `just sync-content`, or `just sync-semantic` before optional profile tests when the active `.venv` does not include that dependency set.

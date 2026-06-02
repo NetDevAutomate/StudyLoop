@@ -6,13 +6,17 @@ Register with: ``claude mcp add studyloop-mcp``
 
 from __future__ import annotations
 
-import sqlite3
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from mcp.server.fastmcp import FastMCP
 
+from studyloop.db import connect_db
 from studyloop.settings import Settings, get_db_path, load_settings
+
+if TYPE_CHECKING:
+    import sqlite3
 
 
 @dataclass
@@ -28,9 +32,7 @@ async def lifespan(server: FastMCP):
     """Initialize shared DB connection and settings for tool lifetime."""
     db_path = get_db_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(db_path)
-    db.execute("PRAGMA journal_mode=WAL")
-    db.execute("PRAGMA busy_timeout=5000")
+    db = connect_db(db_path)
 
     from studyloop.review_db import ensure_tables
 
