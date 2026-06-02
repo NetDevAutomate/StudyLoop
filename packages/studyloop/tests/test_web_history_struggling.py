@@ -250,6 +250,65 @@ def test_post_struggling_topic_returns_500_when_persistence_fails(
     assert resp.json()["detail"] == "Could not persist struggling topic"
 
 
+def test_get_struggling_topics_uses_section_provenance_for_web_rows(
+    seeded_db: Path, monkeypatch: MonkeyPatch
+) -> None:
+    """A web-marked course/section row should surface as the section, not the course."""
+    now = datetime.now(UTC).isoformat()
+    setup = sqlite3.connect(seeded_db)
+    try:
+        setup.execute("ALTER TABLE study_progress ADD COLUMN source_course TEXT")
+        setup.execute("ALTER TABLE study_progress ADD COLUMN source_section TEXT")
+        setup.execute("ALTER TABLE study_progress ADD COLUMN source_publisher TEXT")
+        setup.execute("ALTER TABLE study_progress ADD COLUMN created_by TEXT DEFAULT 'agent'")
+        setup.execute(
+            """
+            INSERT INTO study_progress (
+                id, topic, concept, confidence, first_seen, last_seen,
+                session_count, notes, created_at, updated_at,
+                source_course, source_section, source_publisher, created_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "web1",
+                "Intro_To_SQL",
+                "study-notes/window-functions.md",
+                "struggling",
+                now,
+                now,
+                1,
+                None,
+                now,
+                now,
+                "Intro_To_SQL",
+                "study-notes/window-functions.md",
+                "DataCamp",
+                "web",
+            ),
+        )
+        setup.commit()
+    finally:
+        setup.close()
+
+    def _connect_seeded():
+        conn = sqlite3.connect(seeded_db)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    monkeypatch.setattr("studyloop.history._connection._connect", _connect_seeded)
+    client = TestClient(create_app(study_dirs=[]))
+
+    resp = client.get("/api/history/struggling-topics?days=90")
+
+    assert resp.status_code == 200
+    lesson = next(entry for entry in resp.json() if entry["topic"] == "window-functions")
+    assert lesson["concept_count"] == 1
+    assert lesson["source_course"] == "Intro_To_SQL"
+    assert lesson["source_section"] == "study-notes/window-functions.md"
+    assert lesson["source_publisher"] == "DataCamp"
+
+
 # ---------------------------------------------------------------------------
 # Union across all three struggle sources (session-db single source of truth)
 # ---------------------------------------------------------------------------
