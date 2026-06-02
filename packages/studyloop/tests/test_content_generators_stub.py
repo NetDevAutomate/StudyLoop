@@ -19,6 +19,10 @@ from studyloop.content.generators import (
     CardGenerator,
     get_generator,
 )
+from studyloop.content.generators.prompts import (
+    FLASHCARD_USER_PROMPT_TEMPLATE,
+    QUIZ_USER_PROMPT_TEMPLATE,
+)
 from studyloop.content.generators.stub import StubGenerator
 from studyloop.content.schemas import FlashcardDeck, QuizDeck
 from studyloop.settings import CardGeneratorConfig
@@ -75,6 +79,26 @@ class TestHappyPath:
 
         assert len(flash.cards) == 5
         assert len(quiz.questions) == 7
+
+
+class TestPromptCounts:
+    def test_shared_flashcard_prompt_includes_requested_count(self) -> None:
+        prompt = FLASHCARD_USER_PROMPT_TEMPLATE.format(
+            title="Pandas",
+            source="groupby notes",
+            count=25,
+        )
+
+        assert "Produce exactly 25 flashcards" in prompt
+
+    def test_shared_quiz_prompt_includes_requested_count(self) -> None:
+        prompt = QUIZ_USER_PROMPT_TEMPLATE.format(
+            title="Joins",
+            source="join notes",
+            count=5,
+        )
+
+        assert "Produce exactly 5 multiple-choice questions" in prompt
 
 
 class TestFailureModes:

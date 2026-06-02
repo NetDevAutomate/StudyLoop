@@ -132,8 +132,42 @@ class TestHappyPath:
         assert data["plan"]["task_count"] == 1
         assert data["plan"]["kinds"] == ["flashcards"]
         assert data["plan"]["backend"] == "stub"
+        assert data["plan"]["count_per_source"] == 5
         assert len(data["plan"]["sources"]) == 1
         assert data["plan"]["sources"][0]["identifier"] == "joins"
+        _wait_for_job_done()
+
+    def test_plan_exposes_requested_count_provider_and_model(self, client: TestClient) -> None:
+        body = _valid_body() | {
+            "count_per_source": 25,
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+        }
+
+        resp = client.post("/api/content/generate", json=body)
+
+        assert resp.status_code == 202, resp.text
+        plan = resp.json()["plan"]
+        assert plan["count_per_source"] == 25
+        assert plan["provider"] == "openai"
+        assert plan["model"] == "gpt-4o-mini"
+        _wait_for_job_done()
+
+    def test_plan_exposes_registry_default_model_when_model_not_sent(
+        self, client: TestClient
+    ) -> None:
+        body = _valid_body() | {
+            "backend": "openai_compat",
+            "provider": "openai",
+        }
+        body.pop("model", None)
+
+        resp = client.post("/api/content/generate", json=body)
+
+        assert resp.status_code == 202, resp.text
+        plan = resp.json()["plan"]
+        assert plan["provider"] == "openai"
+        assert plan["model"] == "gpt-4o-mini"
         _wait_for_job_done()
 
     def test_course_scope_includes_all_lesson_files_in_plan(self, client: TestClient) -> None:
@@ -152,11 +186,20 @@ class TestHappyPath:
 
 
 def test_build_job_request_preserves_count_per_source() -> None:
-    req = GenerateRequest.model_validate(_valid_body() | {"count_per_source": 25})
+    req = GenerateRequest.model_validate(
+        _valid_body()
+        | {
+            "count_per_source": 25,
+            "provider": "anthropic",
+            "model": "claude-haiku-4-5",
+        }
+    )
 
     job_req = _build_job_request(req)
 
     assert job_req.count_per_source == 25
+    assert job_req.provider == "anthropic"
+    assert job_req.model == "claude-haiku-4-5"
 
 
 # ---------------------------------------------------------------------------
