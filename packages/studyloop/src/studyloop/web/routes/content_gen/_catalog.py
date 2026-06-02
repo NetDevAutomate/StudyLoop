@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import BaseModel
 
+from studyloop.content.scope import ScopeResolutionError, resolve_content_path
 from studyloop.web.routes.content_gen._router import router
 from studyloop.web.services.content_generation import (
     ProviderAvailabilityInput,
@@ -67,7 +68,10 @@ async def list_content_courses(publisher: str = "") -> list[dict[str, Any]]:
     base = _content_base()
     if base is None:
         return []
-    parent = base / publisher if publisher else base
+    try:
+        parent = resolve_content_path(base, publisher) if publisher else base.resolve()
+    except ScopeResolutionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not parent.is_dir():
         return []
     return [{"name": name} for name in _listable_subdirs(parent)]

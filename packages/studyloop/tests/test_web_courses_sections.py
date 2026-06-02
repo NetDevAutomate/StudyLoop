@@ -76,3 +76,13 @@ class TestSectionsRoute:
         resp = client.get("/api/courses/NotARealCourse/sections?publisher=CodeWithMosh")
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"].lower()
+
+    def test_rejects_course_path_traversal(self, client: TestClient) -> None:
+        resp = client.get("/api/courses/%2E%2E/sections?publisher=CodeWithMosh")
+        assert resp.status_code == 400
+        assert "must not contain" in resp.json()["detail"]
+
+    def test_rejects_publisher_path_traversal(self, client: TestClient) -> None:
+        resp = client.get("/api/courses/Complete_SQL/sections?publisher=../outside")
+        assert resp.status_code == 400
+        assert "must not contain" in resp.json()["detail"]

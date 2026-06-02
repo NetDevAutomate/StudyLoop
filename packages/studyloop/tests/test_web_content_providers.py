@@ -271,3 +271,17 @@ class TestContentCoursesRoute:
 
         client = TestClient(create_app(study_dirs=[]))
         assert client.get("/api/content/courses").json() == []
+
+    def test_rejects_publisher_path_traversal(self, tmp_path, monkeypatch: MonkeyPatch) -> None:
+        from studyloop.settings import ContentConfig, Settings
+
+        study = tmp_path / "Study"
+        study.mkdir()
+        s = Settings()
+        s.content = ContentConfig(base_path=study)
+        monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+
+        client = TestClient(create_app(study_dirs=[]))
+        resp = client.get("/api/content/courses?publisher=../outside")
+        assert resp.status_code == 400
+        assert "must not contain" in resp.json()["detail"]

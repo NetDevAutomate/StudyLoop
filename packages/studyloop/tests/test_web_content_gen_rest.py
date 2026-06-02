@@ -187,6 +187,13 @@ class TestValidation:
         # FastAPI returns 422 on pydantic constraint violations.
         assert resp.status_code == 422, resp.text
 
+    def test_path_traversal_scope_returns_400(self, client: TestClient) -> None:
+        body = _valid_body()
+        body["scope"]["course"] = "../outside"
+        resp = client.post("/api/content/generate", json=body)
+        assert resp.status_code == 400, resp.text
+        assert "must not contain" in resp.json()["detail"]
+
 
 # ---------------------------------------------------------------------------
 # Concurrency
@@ -215,3 +222,16 @@ class TestSingleton:
         resp2 = client.post("/api/content/generate", json=_valid_body())
         assert resp2.status_code == 202
         _wait_for_job_done()
+
+    def test_singleton_released_after_background_job_exception(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        def fail_run_job(*_args, **_kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr("studyloop.web.routes.content_gen._jobs.run_job", fail_run_job)
+        resp = client.post("/api/content/generate", json=_valid_body())
+        assert resp.status_code == 202
+
+        _wait_for_job_done()
+        assert run_async(active_gen.current()) is None
