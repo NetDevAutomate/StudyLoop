@@ -208,6 +208,22 @@ class TestCourseScope:
         with pytest.raises(ScopeResolutionError, match="Course directory not found"):
             resolve_scope(req, settings)
 
+    def test_rejects_course_path_traversal(self, settings: Settings) -> None:
+        req = ScopeRequest(kind="course", course="../outside")
+        with pytest.raises(ScopeResolutionError, match="must not contain"):
+            resolve_scope(req, settings)
+
+    def test_rejects_symlink_escape(self, settings: Settings, tmp_path: Path) -> None:
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "lesson.md").write_text("# Outside\n\nNope.", encoding="utf-8")
+        link = Path(settings.content.base_path) / "escape"
+        link.symlink_to(outside, target_is_directory=True)
+
+        req = ScopeRequest(kind="course", course="escape")
+        with pytest.raises(ScopeResolutionError, match=r"escapes content\.base_path"):
+            resolve_scope(req, settings)
+
     def test_course_with_only_empty_subdirs_raises(self, settings: Settings) -> None:
         req = ScopeRequest(kind="course", course="ZTM")
         with pytest.raises(ScopeResolutionError, match="no readable lesson markdown"):
@@ -249,6 +265,11 @@ class TestSectionScope:
     def test_missing_section_raises(self, settings: Settings) -> None:
         req = ScopeRequest(kind="section", course="DataCamp", section="not-a-real-section")
         with pytest.raises(ScopeResolutionError, match="not found"):
+            resolve_scope(req, settings)
+
+    def test_rejects_section_path_traversal(self, settings: Settings) -> None:
+        req = ScopeRequest(kind="section", course="DataCamp", section="../outside")
+        with pytest.raises(ScopeResolutionError, match="must not contain"):
             resolve_scope(req, settings)
 
 

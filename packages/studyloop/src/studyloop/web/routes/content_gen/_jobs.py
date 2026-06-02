@@ -18,8 +18,8 @@ Design notes
 - **One queue per job, not a shared bus.** Cheaper than a pub/sub for
   the v1 single-generation invariant, and lets the WS handler drop
   cleanly when the queue is exhausted.
-- **Singleton acquired in the REST handler, released in the
-  orchestrator's ``finally``.** The 409 path never spawns a task and
+- **Singleton acquired in the REST handler, released by the background
+  task's async ``finally``.** The 409 path never spawns a task and
   never touches the queue, so clean-up is symmetric: every successful
   202 is followed by exactly one ``release()``.
 - **The 202 response includes the resolved sources.** The orchestrator
@@ -251,6 +251,8 @@ async def _run_job_background(
     except Exception as exc:
         logger.exception("job %s failed unexpectedly", job_id)
         await queue.put({"type": "transport_error", "message": repr(exc)})
+    finally:
+        await active_gen.release()
 
 
 # ---------------------------------------------------------------------------

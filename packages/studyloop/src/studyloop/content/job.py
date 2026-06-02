@@ -22,7 +22,8 @@ Failure model
   on-existing policy collision) raise out of ``run_job``. The
   caller turns that into a ``transport_error`` frame and a 4xx if
   it happens before the 202 was returned.
-- The singleton is ALWAYS released, even on raise. ``finally`` clause.
+- The HTTP background task releases the singleton on the server event
+  loop after ``run_job`` returns or raises.
 """
 
 from __future__ import annotations
@@ -34,7 +35,6 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from studyloop.content import active_gen
 from studyloop.content.generators import get_generator
 from studyloop.content.generators.runner import (
     GenerationResult,
@@ -132,9 +132,9 @@ def run_job(
         CardGenerationError: generator construction failed (e.g.
             missing API key) before any task ran.
 
-    Note: the singleton is acquired by the *caller* (REST handler in
-    U5) so a 409 can be returned synchronously before the job task
-    spawns. ``run_job`` only releases it.
+    Note: the singleton is acquired and released by the *caller* (REST
+    handler/background task in U5) so a 409 can be returned synchronously
+    before the job task spawns, and release happens on the server event loop.
     """
 
     def emit(event: dict[str, Any]) -> None:
@@ -145,70 +145,63 @@ def run_job(
         except Exception:
             logger.exception("on_event callback raised; continuing")
 
-    try:
-        # Resolve sources up-front so the user sees "0 sources"
-        # before any generator API key cost.
-        sources = resolve_scope(request.scope, settings)
-        tasks = _build_tasks(sources, request.kinds, request.count_per_source)
+    # Resolve sources up-front so the user sees "0 sources"
+    # before any generator API key cost.
+    sources = resolve_scope(request.scope, settings)
+    tasks = _build_tasks(sources, request.kinds, request.count_per_source)
+    emit(
+        {
+            "type": "started",
+            "job_id": job_id,
+            "task_count": len(tasks),
+            "sources": [{"identifier": s.identifier, "title": s.title} for s in sources],
+        }
+    )
+
+    gen_config = _resolve_generator_config(settings, request)
+    course_dir = _course_output_dir(settings, request.publisher, request.course)
+
+    outcomes: list[TaskOutcome] = []
+
+    def on_complete(result: GenerationResult) -> None:
+        outcome = _handle_result(
+            result=result,
+            course_dir=course_dir,
+            on_existing=request.on_existing,
+        )
+        outcomes.append(outcome)
         emit(
             {
-                "type": "started",
-                "job_id": job_id,
-                "task_count": len(tasks),
-                "sources": [{"identifier": s.identifier, "title": s.title} for s in sources],
+                "type": "task_complete",
+                "identifier": outcome.identifier,
+                "kind": outcome.kind,
+                "ok": outcome.ok,
+                "elapsed_s": outcome.elapsed_s,
+                "path": outcome.path,
+                "error": outcome.error,
             }
         )
 
-        gen_config = _resolve_generator_config(settings, request)
-        course_dir = _course_output_dir(settings, request.publisher, request.course)
-
-        outcomes: list[TaskOutcome] = []
-
-        def on_complete(result: GenerationResult) -> None:
-            outcome = _handle_result(
-                result=result,
-                course_dir=course_dir,
-                on_existing=request.on_existing,
+    with _maybe_inject_bearer(gen_config):
+        generator = get_generator(gen_config)
+        try:
+            generate_concurrently(
+                generator,
+                tasks,
+                max_workers=gen_config.max_workers,
+                on_complete=on_complete,
             )
-            outcomes.append(outcome)
-            emit(
-                {
-                    "type": "task_complete",
-                    "identifier": outcome.identifier,
-                    "kind": outcome.kind,
-                    "ok": outcome.ok,
-                    "elapsed_s": outcome.elapsed_s,
-                    "path": outcome.path,
-                    "error": outcome.error,
-                }
-            )
+        finally:
+            close = getattr(generator, "close", None)
+            if close is not None:
+                close()
 
-        with _maybe_inject_bearer(gen_config):
-            generator = get_generator(gen_config)
-            try:
-                generate_concurrently(
-                    generator,
-                    tasks,
-                    max_workers=gen_config.max_workers,
-                    on_complete=on_complete,
-                )
-            finally:
-                close = getattr(generator, "close", None)
-                if close is not None:
-                    close()
-
-        # Stable ordering for downstream consumers (tests, audit logs).
-        outcomes.sort(key=lambda o: (o.identifier, o.kind))
-        written = sum(1 for o in outcomes if o.ok)
-        failed = len(outcomes) - written
-        emit({"type": "all_done", "job_id": job_id, "written": written, "failed": failed})
-        return JobResult(job_id=job_id, written=written, failed=failed, outcomes=outcomes)
-    finally:
-        # Singleton released even on raise. Async-safe pattern: the
-        # caller is in an event loop; we use the running loop to
-        # schedule the release. If we're not in a loop (synchronous
-        # test path), use asyncio.run() defensively.
-        _release_active_gen_safely()
+    # Stable ordering for downstream consumers (tests, audit logs).
+    outcomes.sort(key=lambda o: (o.identifier, o.kind))
+    written = sum(1 for o in outcomes if o.ok)
+    failed = len(outcomes) - written
+    emit({"type": "all_done", "job_id": job_id, "written": written, "failed": failed})
+    return JobResult(job_id=job_id, written=written, failed=failed, outcomes=outcomes)
 
 
 # ---------------------------------------------------------------------------
@@ -451,31 +444,6 @@ def _normalise_kind(runner_kind: str) -> DeckKind:
     if runner_kind == "quiz":
         return "quizzes"
     return "flashcards"
-
-
-def _release_active_gen_safely() -> None:
-    """Release the singleton from sync code.
-
-    The orchestrator runs sync (in a thread executor); the singleton
-    lock is asyncio. We schedule release on whichever loop is
-    available. In tests, ``asyncio.run`` works because no loop is
-    running on the calling thread.
-    """
-    import asyncio
-
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        # No loop in this thread; create one for the release call.
-        try:
-            asyncio.run(active_gen.release())
-        except Exception:
-            logger.exception("active_gen.release failed; slot may be wedged")
-        return
-
-    # We're in an event loop already (production HTTP path); schedule
-    # the release as a task that will run after the current callback.
-    asyncio.run_coroutine_threadsafe(active_gen.release(), loop)
 
 
 __all__ = [

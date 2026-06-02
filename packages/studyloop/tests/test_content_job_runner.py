@@ -229,11 +229,12 @@ class TestErrorPropagation:
         with pytest.raises(ScopeResolutionError):
             run_job("gen-7", request, settings)
 
-    def test_singleton_released_on_raise(self, settings: Settings) -> None:
+    def test_run_job_does_not_release_caller_owned_singleton(self, settings: Settings) -> None:
         from studyloop.content.scope import ScopeResolutionError
 
-        # Simulate a held singleton state, then trigger a job that
-        # raises mid-flight. The finally clause must release it.
+        # The HTTP background task owns active_gen.release() now. The sync
+        # orchestrator may also be reused by future CLI code, so it must not
+        # clear caller-owned singleton state from a fresh event loop.
         asyncio.run(active_gen.acquire("gen-prior", request=None))
         try:
             with pytest.raises(ScopeResolutionError):
@@ -253,10 +254,9 @@ class TestErrorPropagation:
                     settings,
                 )
         finally:
-            # Whether the run raised or not, after run_job returns the
-            # slot must be free.
             current = asyncio.run(active_gen.current())
-            assert current is None
+            assert current is not None
+            assert current.job_id == "gen-prior"
 
 
 class TestMaybeInjectBearer:

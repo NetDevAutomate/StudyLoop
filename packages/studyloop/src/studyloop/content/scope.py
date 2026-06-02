@@ -133,14 +133,10 @@ def resolve_scope(
         ScopeResolutionError: missing course directory, missing
             section, empty matching set, etc.
     """
-    base = Path(settings.content.base_path).expanduser()
+    base = content_base(settings)
     # 3-level tree: base/<publisher>/<course>/. publisher is optional for
     # backwards compatibility with the legacy flat layout (base/<course>).
-    course_dir = (
-        (base / request.publisher / request.course)
-        if request.publisher
-        else (base / request.course)
-    )
+    course_dir = resolve_content_path(base, request.publisher, request.course)
     if not course_dir.is_dir():
         raise ScopeResolutionError(
             f"Course directory not found: {course_dir} "
@@ -166,6 +162,35 @@ def resolve_scope(
             db_path=db_path or settings.session_db,
         )
     raise ScopeResolutionError(f"Unknown scope kind: {request.kind!r}")
+
+
+def content_base(settings: Settings) -> Path:
+    """Return the configured content base as a resolved absolute path."""
+    return Path(settings.content.base_path).expanduser().resolve()
+
+
+def resolve_content_path(base: Path, *parts: str) -> Path:
+    """Resolve user-selected content path parts under ``base``.
+
+    All caller-controlled path segments must remain inside ``base`` after
+    resolution. This blocks ``..`` traversal, absolute paths, and symlink
+    escapes while still allowing normal nested lesson paths.
+    """
+    base = base.expanduser().resolve()
+    path = base
+    for part in parts:
+        if not part:
+            continue
+        raw = Path(part)
+        if raw.is_absolute():
+            raise ScopeResolutionError(f"Content path must be relative: {part!r}")
+        if ".." in raw.parts:
+            raise ScopeResolutionError(f"Content path must not contain '..': {part!r}")
+        path = path / raw
+    resolved = path.resolve()
+    if resolved != base and not resolved.is_relative_to(base):
+        raise ScopeResolutionError(f"Content path escapes content.base_path: {path}")
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +267,7 @@ def _resolve_section(course_dir: Path, section_name: str) -> list[ResolvedSource
     (e.g. ``study-notes/getting-started.md``). For convenience the suffix
     may be omitted and a bare stem is matched against the course's files.
     """
-    candidate = course_dir / section_name
+    candidate = resolve_content_path(course_dir, section_name)
     path: Path | None = None
     if candidate.is_file():
         path = candidate
