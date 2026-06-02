@@ -16,9 +16,9 @@ from unittest.mock import patch
 import pytest
 
 from studyloop.content import active_gen
-from studyloop.content.job import JobRequest, run_job
+from studyloop.content.job import JobRequest, _build_tasks, run_job
 from studyloop.content.schemas import FlashcardDeck
-from studyloop.content.scope import ScopeRequest
+from studyloop.content.scope import ResolvedSource, ScopeRequest
 from studyloop.settings import CardGeneratorConfig, ContentConfig, Settings
 
 # ---------------------------------------------------------------------------
@@ -127,6 +127,54 @@ class TestHappyPath:
         assert result.written == 2  # 1 source x 2 kinds
         kinds_written = sorted(o.kind for o in result.outcomes if o.ok)
         assert kinds_written == ["flashcards", "quizzes"]
+
+    def test_requested_count_controls_written_deck_sizes(
+        self, settings: Settings, vault: Path
+    ) -> None:
+        events: list[dict] = []
+        request = JobRequest(
+            publisher=_PUBLISHER,
+            course=_COURSE,
+            scope=ScopeRequest(
+                kind="section", publisher=_PUBLISHER, course=_COURSE, section="joins"
+            ),
+            kinds=("flashcards", "quizzes"),
+            count_per_source=5,
+        )
+
+        result = run_job("gen-count", request, settings, on_event=events.append)
+
+        assert result.written == 2
+        started = events[0]
+        assert started["type"] == "started"
+        assert started["kinds"] == ["flashcards", "quizzes"]
+        assert started["count_per_source"] == 5
+        assert started["provider"] == "stub"
+        flashcards = json.loads(
+            (vault / _PUBLISHER / _COURSE / "flashcards" / "joins-flashcards.json").read_text()
+        )
+        quizzes = json.loads(
+            (vault / _PUBLISHER / _COURSE / "quizzes" / "joins-quiz.json").read_text()
+        )
+        assert len(flashcards["cards"]) == 5
+        assert len(quizzes["questions"]) == 5
+
+
+def test_build_tasks_uses_count_per_source_for_flashcards_and_quizzes() -> None:
+    sources = [
+        ResolvedSource(
+            identifier="joins",
+            title="Joins",
+            markdown_text="# Joins\n\nINNER and LEFT joins.",
+        )
+    ]
+
+    tasks = _build_tasks(sources, ("flashcards", "quizzes"), count_per_source=25)
+
+    assert [(task.kind, task.count) for task in tasks] == [
+        ("flashcards", 25),
+        ("quiz", 25),
+    ]
 
 
 # ---------------------------------------------------------------------------

@@ -149,16 +149,21 @@ def run_job(
     # before any generator API key cost.
     sources = resolve_scope(request.scope, settings)
     tasks = _build_tasks(sources, request.kinds, request.count_per_source)
+    gen_config = _resolve_generator_config(settings, request)
     emit(
         {
             "type": "started",
             "job_id": job_id,
             "task_count": len(tasks),
+            "kinds": list(request.kinds),
+            "count_per_source": request.count_per_source,
+            "backend": gen_config.backend,
+            "provider": _progress_provider(gen_config),
+            "model": _progress_model(gen_config),
             "sources": [{"identifier": s.identifier, "title": s.title} for s in sources],
         }
     )
 
-    gen_config = _resolve_generator_config(settings, request)
     course_dir = _course_output_dir(settings, request.publisher, request.course)
 
     outcomes: list[TaskOutcome] = []
@@ -258,6 +263,43 @@ def _resolve_generator_config(settings: Settings, request: JobRequest):
     if request.model:
         overrides["model"] = request.model
     return replace(cfg, **overrides) if overrides else cfg
+
+
+def _progress_provider(config: Any) -> str:
+    """Best-effort provider label for progress frames."""
+    provider = getattr(config, "provider", "")
+    if provider:
+        return provider
+    backend = getattr(config, "backend", "")
+    if backend in {"ollama", "bedrock", "stub"}:
+        return backend
+    return ""
+
+
+def _progress_model(config: Any) -> str:
+    """Best-effort model id for progress frames."""
+    model = getattr(config, "model", "")
+    if model:
+        return model
+    backend = getattr(config, "backend", "")
+    if backend == "ollama":
+        return getattr(getattr(config, "ollama", None), "model", "")
+    if backend == "bedrock":
+        return getattr(getattr(config, "bedrock", None), "model", "")
+    provider = getattr(config, "provider", "")
+    if backend in {"openai_compat", "anthropic_compat"} and provider:
+        return _default_profile_model(provider)
+    return ""
+
+
+def _default_profile_model(provider: str) -> str:
+    """Return the registry default model for a provider, or blank if unknown."""
+    from studyloop.content.generators.provider_profiles import default_model, get_profile
+
+    try:
+        return default_model(get_profile(provider)).id
+    except ValueError:
+        return ""
 
 
 @contextlib.contextmanager

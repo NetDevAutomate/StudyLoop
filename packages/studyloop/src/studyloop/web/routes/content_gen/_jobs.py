@@ -145,7 +145,10 @@ class _PlanOut(BaseModel):
     sources: list[_ResolvedSourceOut]
     task_count: int
     kinds: list[str]
+    count_per_source: int
     backend: str
+    provider: str = ""
+    model: str = ""
 
 
 class GenerateResponse(BaseModel):
@@ -197,6 +200,46 @@ def _resolved_backend(settings: Settings, req: GenerateRequest) -> str:
     default so the 202 response is honest about what's running.
     """
     return req.backend or settings.card_generator.backend
+
+
+def _resolved_provider(settings: Settings, req: GenerateRequest) -> str:
+    """Return the provider slug when the selected backend has one."""
+    if req.provider:
+        return req.provider
+    if settings.card_generator.provider:
+        return settings.card_generator.provider
+    backend = _resolved_backend(settings, req)
+    if backend in {"ollama", "bedrock", "stub"}:
+        return backend
+    return ""
+
+
+def _resolved_model(settings: Settings, req: GenerateRequest) -> str:
+    """Return the model id the run will use when it can be known cheaply."""
+    if req.model:
+        return req.model
+    cfg = settings.card_generator
+    if cfg.model:
+        return cfg.model
+    backend = _resolved_backend(settings, req)
+    if backend == "ollama":
+        return cfg.ollama.model
+    if backend == "bedrock":
+        return cfg.bedrock.model
+    provider = _resolved_provider(settings, req)
+    if backend in {"openai_compat", "anthropic_compat"} and provider:
+        return _default_profile_model(provider)
+    return ""
+
+
+def _default_profile_model(provider: str) -> str:
+    """Return the registry default model for a provider, or blank if unknown."""
+    from studyloop.content.generators.provider_profiles import default_model, get_profile
+
+    try:
+        return default_model(get_profile(provider)).id
+    except ValueError:
+        return ""
 
 
 def _expected_task_count(sources: list[ResolvedSource], kinds: list[str]) -> int:
@@ -318,6 +361,9 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
             sources=[_ResolvedSourceOut(identifier=s.identifier, title=s.title) for s in sources],
             task_count=_expected_task_count(sources, list(req.kinds)),
             kinds=list(req.kinds),
+            count_per_source=req.count_per_source,
             backend=_resolved_backend(settings, req),
+            provider=_resolved_provider(settings, req),
+            model=_resolved_model(settings, req),
         ),
     )
