@@ -182,6 +182,7 @@ def _build_job_request(req: GenerateRequest) -> JobRequest:
             window_days=req.scope.window_days,
         ),
         kinds=tuple(req.kinds),
+        count_per_source=req.count_per_source,
         on_existing=req.on_existing,
         backend=req.backend,
         provider=req.provider,

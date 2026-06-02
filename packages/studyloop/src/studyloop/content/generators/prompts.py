@@ -41,9 +41,8 @@ For each flashcard:
   unless that term is the core concept.
 - No duplicates and no near-duplicates.
 
-Produce 6 to 12 cards per source chunk. Fewer is acceptable if the source
-is short; more is acceptable if the source genuinely covers that many
-distinct ideas.
+Produce the requested number of cards unless the source is too short to
+support that many distinct, useful ideas.
 
 Return only the JSON object conforming to the schema. No preamble,
 commentary, markdown fences, or trailing text.
@@ -71,7 +70,8 @@ For each question:
   why it is a distractor. The rationale is what the learner sees after
   they answer, so it must be educational even when they got it right.
 
-Produce 4 to 8 questions per source chunk.
+Produce the requested number of questions unless the source is too short to
+support that many distinct, useful checks.
 
 Return only the JSON object conforming to the schema. No preamble,
 commentary, markdown fences, or trailing text.
@@ -87,7 +87,7 @@ Source material (markdown):
 {source}
 ---
 
-Produce a flashcard deck for this material. Use the exact title above.
+Produce exactly {count} flashcards for this material. Use the exact title above.
 """
 
 
@@ -100,7 +100,7 @@ Source material (markdown):
 {source}
 ---
 
-Produce a multiple-choice quiz for this material. Use the exact title above.
+Produce exactly {count} multiple-choice questions for this material. Use the exact title above.
 """
 
 

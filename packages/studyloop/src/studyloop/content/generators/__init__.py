@@ -52,13 +52,16 @@ class CardGenerator(Protocol):
     :meth:`FlashcardDeck.write_json` / :meth:`QuizDeck.write_json`.
     """
 
-    def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
+    def generate_flashcards(
+        self, source: str, title: str, count: int | None = None
+    ) -> FlashcardDeck:
         """Produce a :class:`FlashcardDeck` from a markdown source chunk.
 
         Args:
             source: Markdown content to turn into flashcards. Typically
                 one chapter or one Obsidian-note section.
             title: Human-readable deck title, e.g. the chapter name.
+            count: Requested number of flashcards for this source.
 
         Returns:
             A validated :class:`FlashcardDeck`. The caller decides
@@ -70,12 +73,13 @@ class CardGenerator(Protocol):
         """
         ...
 
-    def generate_quiz(self, source: str, title: str) -> QuizDeck:
+    def generate_quiz(self, source: str, title: str, count: int | None = None) -> QuizDeck:
         """Produce a :class:`QuizDeck` from a markdown source chunk.
 
         Args:
             source: Markdown content to turn into a multiple-choice quiz.
             title: Human-readable deck title.
+            count: Requested number of quiz questions for this source.
 
         Returns:
             A validated :class:`QuizDeck`.

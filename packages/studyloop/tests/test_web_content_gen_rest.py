@@ -28,6 +28,7 @@ from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImport
 from studyloop.content import active_gen
 from studyloop.web.app import create_app
 from studyloop.web.routes import content_gen as cg_route
+from studyloop.web.routes.content_gen._jobs import GenerateRequest, _build_job_request
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -148,6 +149,14 @@ class TestHappyPath:
         # One source per lesson FILE now.
         assert identifiers == {"advanced-pandas", "joins"}
         _wait_for_job_done()
+
+
+def test_build_job_request_preserves_count_per_source() -> None:
+    req = GenerateRequest.model_validate(_valid_body() | {"count_per_source": 25})
+
+    job_req = _build_job_request(req)
+
+    assert job_req.count_per_source == 25
 
 
 # ---------------------------------------------------------------------------

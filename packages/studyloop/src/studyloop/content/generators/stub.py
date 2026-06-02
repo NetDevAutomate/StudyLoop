@@ -50,10 +50,12 @@ class StubGenerator:
     def __init__(self, config: CardGeneratorConfig) -> None:
         self._config = config
 
-    def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
+    def generate_flashcards(
+        self, source: str, title: str, count: int | None = None
+    ) -> FlashcardDeck:
         self._maybe_sleep()
         self._maybe_fail(title)
-        count = self._card_count()
+        count = self._card_count(count)
         cards = [
             FlashcardItem(
                 front=f"[{title}] stub front {i + 1}",
@@ -63,10 +65,10 @@ class StubGenerator:
         ]
         return FlashcardDeck(title=title, cards=cards)
 
-    def generate_quiz(self, source: str, title: str) -> QuizDeck:
+    def generate_quiz(self, source: str, title: str, count: int | None = None) -> QuizDeck:
         self._maybe_sleep()
         self._maybe_fail(title)
-        count = self._card_count()
+        count = self._card_count(count)
         questions = [
             QuizQuestion(
                 question=f"[{title}] stub question {i + 1}? (source len={len(source)})",
@@ -88,7 +90,9 @@ class StubGenerator:
     # Internals
     # ------------------------------------------------------------------
 
-    def _card_count(self) -> int:
+    def _card_count(self, requested: int | None) -> int:
+        if requested is not None:
+            return requested
         return getattr(self._config, "stub_card_count", _DEFAULT_CARD_COUNT)
 
     def _maybe_sleep(self) -> None:

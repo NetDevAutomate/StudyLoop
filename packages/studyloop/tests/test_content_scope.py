@@ -158,6 +158,21 @@ def db_with_progress(tmp_path: Path) -> Path:
             now.isoformat(),
             now.isoformat(),
         ),
+        # Web-marked Course Explorer struggle: topic is the lesson slug
+        # used for generation matching, while source_course/source_section
+        # preserve provenance.
+        (
+            "id5",
+            "chapter-1",
+            "advanced-pandas/chapter-1",
+            "struggling",
+            now.isoformat(),
+            now.isoformat(),
+            1,
+            None,
+            now.isoformat(),
+            now.isoformat(),
+        ),
     ]
     conn.executemany("INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
     conn.commit()
@@ -249,9 +264,9 @@ class TestTopicStrugglesScope:
         # 'joins' is struggling in window AND matches DataCamp/joins/
         req = ScopeRequest(kind="topic_struggles", course="DataCamp", window_days=14)
         sources = resolve_scope(req, settings, db_path=db_with_progress)
-        # Only joins should resolve -- 'advanced-pandas' is 'learning'
-        # not 'struggling', and 'ancient' is out of window.
-        assert [s.identifier for s in sources] == ["joins"]
+        # Only struggling rows in the window should resolve -- 'advanced-pandas'
+        # is 'learning' and 'ancient' is out of window.
+        assert [s.identifier for s in sources] == ["chapter-1", "joins"]
 
     def test_specific_topic_slug_filter_narrows_result(
         self, settings: Settings, db_with_progress: Path
@@ -264,6 +279,19 @@ class TestTopicStrugglesScope:
         )
         sources = resolve_scope(req, settings, db_path=db_with_progress)
         assert len(sources) == 1
+
+    def test_web_marked_section_slug_resolves_to_lesson_file(
+        self, settings: Settings, db_with_progress: Path
+    ) -> None:
+        req = ScopeRequest(
+            kind="topic_struggles",
+            course="DataCamp",
+            window_days=14,
+            topic_slug="chapter-1",
+        )
+        sources = resolve_scope(req, settings, db_path=db_with_progress)
+        assert [s.identifier for s in sources] == ["chapter-1"]
+        assert "Groupby aggregations" in sources[0].markdown_text
 
     def test_no_struggling_in_window_raises(
         self, settings: Settings, db_with_progress: Path

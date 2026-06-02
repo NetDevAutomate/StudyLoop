@@ -72,7 +72,7 @@ typecheck:
     uv run --group dev pyright
 
 docs:
-    uv run --extra docs mkdocs build --strict
+    NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
 
 audit:
     uv --quiet export --all-packages --group dev --no-emit-workspace --format requirements-txt -o /tmp/studyloop-requirements.txt
@@ -85,7 +85,7 @@ audit-full:
 
 smoke-installed:
     ./scripts/build-release.sh
-    tmp="$(mktemp -d)" && uv venv "$tmp/venv" && uv pip install --python "$tmp/venv/bin/python" dist/studyloop-*.whl && PATH="$tmp/venv/bin:$PATH" ./scripts/smoke-installed-cli.sh
+    tmp="$(mktemp -d)" && uv venv "$tmp/venv" && uv pip install --python "$tmp/venv/bin/python" dist/studyloop-*.whl packages/agent-session-tools && STUDYLOOP_EXPECT_BIN_DIR="$tmp/venv/bin" PATH="$tmp/venv/bin:$PATH" ./scripts/smoke-installed-cli.sh
 
 build-release:
     ./scripts/build-release.sh

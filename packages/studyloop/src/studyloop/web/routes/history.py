@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import sqlite3
+from pathlib import Path
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
+from studyloop.db import connect_db
 from studyloop.history.progress import get_struggling_topics, record_progress
 from studyloop.review_db import ensure_tables, record_session
 from studyloop.settings import get_db_path
@@ -32,9 +33,7 @@ def get_history() -> list[dict]:
         return []
 
     ensure_tables(db_path)
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn = connect_db(db_path)
     try:
         rows = conn.execute(
             "SELECT course, mode, total, correct, duration_seconds, "
@@ -87,8 +86,9 @@ def post_struggling_topic(body: StruggleRequest) -> dict:
     course/section provenance so the row surfaces in GET struggling-topics
     and drives deck generation without any extra plumbing.
     """
+    generation_topic = Path(body.section).stem or body.section
     ok = record_progress(
-        topic=body.course,
+        topic=generation_topic,
         concept=body.section,
         confidence="struggling",
         notes=body.note,
