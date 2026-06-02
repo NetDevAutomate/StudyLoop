@@ -369,6 +369,7 @@ class TestStrugglingTopicsDropdownShape:
 
         # The label row containing the topic select must now be visible.
         topic_label = page.locator('.generate-form label:has(select[x-model="form.topic_slug"])')
+        topic_label.wait_for(state="visible", timeout=5000)
         assert topic_label.is_visible(), (
             "topic select label row is not visible after clicking topic_struggles radio"
         )
