@@ -48,11 +48,21 @@ def _reset_active_state():
 @pytest.fixture(autouse=True)
 def _isolate_session_dir(tmp_path, monkeypatch):
     from studyloop import session_state as ss
+    from studyloop.web.routes.session import _start
 
     monkeypatch.setattr(ss, "SESSION_DIR", tmp_path)
     monkeypatch.setattr(ss, "STATE_FILE", tmp_path / "session-state.json")
     monkeypatch.setattr(ss, "TOPICS_FILE", tmp_path / "session-topics.md")
     monkeypatch.setattr(ss, "PARKING_FILE", tmp_path / "session-parking.md")
+    monkeypatch.setattr(_start, "SESSION_DIR", tmp_path)
+    monkeypatch.setattr(_start, "TOPICS_FILE", tmp_path / "session-topics.md")
+    monkeypatch.setattr(_start, "PARKING_FILE", tmp_path / "session-parking.md")
+
+
+def _assert_no_runtime_session_state() -> None:
+    from studyloop.session_state import read_session_state
+
+    assert read_session_state() == {}
 
 
 @pytest.fixture()
@@ -262,6 +272,7 @@ class TestPtyStartSingleSession:
         assert resp.status_code == 409
         mock_abort.assert_called_once()
         assert mock_abort.call_args.args[0] == "study-pty-1"
+        _assert_no_runtime_session_state()
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +369,7 @@ class TestPtyStartAcquireFailureRollback:
         mock_abort.assert_called_once()
         assert mock_abort.call_args.args[0] == "study-pty-1"
         assert run_async(active.current()) is None
+        _assert_no_runtime_session_state()
 
 
 # ---------------------------------------------------------------------------
