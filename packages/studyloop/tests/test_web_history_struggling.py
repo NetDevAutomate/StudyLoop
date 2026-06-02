@@ -231,6 +231,25 @@ def test_post_struggling_topic_records_lesson_slug_as_generation_topic(
     assert row["notes"] == "confused by outer joins"
 
 
+def test_post_struggling_topic_returns_500_when_persistence_fails(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("studyloop.web.routes.history.record_progress", lambda **_: False)
+    client = TestClient(create_app(study_dirs=[]))
+
+    resp = client.post(
+        "/api/history/struggling-topics",
+        json={
+            "course": "DataCamp/Intro_To_SQL",
+            "section": "study-notes/joins",
+            "publisher": "DataCamp",
+        },
+    )
+
+    assert resp.status_code == 500
+    assert resp.json()["detail"] == "Could not persist struggling topic"
+
+
 # ---------------------------------------------------------------------------
 # Union across all three struggle sources (session-db single source of truth)
 # ---------------------------------------------------------------------------
