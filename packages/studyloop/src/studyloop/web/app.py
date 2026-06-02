@@ -61,7 +61,7 @@ def create_app(
     app.state.dev_mode = dev_mode
     app.state.agent_session_manager = AgentSessionManager()
     app.state.explorer_tree_cache = None
-    app.state.explorer_tree_mtime = 0.0
+    app.state.explorer_tree_fingerprint = None
 
     # Optional password protection (LAN mode)
     if password:
