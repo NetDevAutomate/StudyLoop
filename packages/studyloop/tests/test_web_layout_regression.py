@@ -469,30 +469,55 @@ class TestCourseExplorerLayout:
         page.wait_for_timeout(300)
         assert_scroll_reachable(page, ".explorer-course-card:last-child", ".explorer-carousel")
 
-    def test_panel_hidden_at_mobile(self, web_page: Page) -> None:
-        # At 375px the @media(max-width:600px) rule applies display:none !important
-        # to .course-explorer-panel so it never intrudes on the single-column
-        # mobile layout.
+    def test_courses_button_opens_full_screen_drawer_at_mobile(self, web_page: Page) -> None:
         web_page.set_viewport_size({"width": 375, "height": 812})
         _stub_explorer_tree(web_page)
         _stub_courses(web_page, [])
         _stub_session_state(web_page)
         _stub_stats(web_page)
         _goto(web_page, "flashcards")
-        # Toggle the panel open — it should still be invisible.
-        web_page.evaluate("window.Alpine.store('explorer').toggle()")
+
+        web_page.click('.sidebar-btn:has-text("Courses")')
+        web_page.wait_for_function(
+            "() => window.Alpine.store('explorer').open === true",
+            timeout=3000,
+        )
         web_page.wait_for_timeout(400)
-        display = web_page.evaluate(
+
+        state = web_page.evaluate(
             """() => {
                 const el = document.querySelector('.course-explorer-panel');
-                if (!el) return '__absent__';
-                return getComputedStyle(el).display;
+                if (!el) return null;
+                const style = getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                return {
+                    display: style.display,
+                    position: style.position,
+                    left: rect.left,
+                    top: rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                };
             }"""
         )
-        assert display != "__absent__", ".course-explorer-panel not found in DOM"
-        assert display == "none", (
-            f".course-explorer-panel should be display:none at 375px mobile, "
-            f"but computed display={display!r}"
+        assert state is not None, ".course-explorer-panel not found in DOM"
+        assert state["display"] != "none"
+        assert state["position"] == "fixed"
+        assert state["left"] == pytest.approx(0, abs=1)
+        assert state["top"] == pytest.approx(0, abs=1)
+        assert state["width"] == pytest.approx(375, abs=1)
+        assert state["height"] == pytest.approx(812, abs=1)
+
+        web_page.click(".explorer-close-btn")
+        web_page.wait_for_function(
+            "() => window.Alpine.store('explorer').open === false",
+            timeout=3000,
+        )
+        web_page.wait_for_function(
+            "() => getComputedStyle("
+            "document.querySelector('.course-explorer-panel')"
+            ").display === 'none'",
+            timeout=3000,
         )
 
 
@@ -622,6 +647,42 @@ class TestLessonReadingViewLayout:
             f"Last child of .explorer-reader-prose not visible after scrolling to bottom: "
             f"lastBottom={reachable['lastBottom']:.1f} contBottom={reachable['contBottom']:.1f}"
         )
+
+    def test_struggle_marking_ok_false_does_not_show_success(self, web_page: Page) -> None:
+        web_page.route(
+            "**/api/history/struggling-topics",
+            lambda r: _fulfill(r, {"ok": False}, status=200),
+        )
+        self._goto_with_lesson_open(web_page)
+
+        web_page.click(".explorer-struggle-btn")
+        web_page.wait_for_function(
+            """() => {
+                const el = document.querySelector('.course-explorer-panel');
+                const d = el && window.Alpine.$data(el);
+                return d && d.struggleError;
+            }""",
+            timeout=3000,
+        )
+        state = web_page.evaluate(
+            """() => {
+                const d = window.Alpine.$data(
+                    document.querySelector('.course-explorer-panel'));
+                const btn = document.querySelector('.explorer-struggle-btn');
+                return {
+                    marked: d.struggleMarked,
+                    error: d.struggleError,
+                    pressed: btn ? btn.getAttribute('aria-pressed') : null,
+                    disabled: btn ? btn.disabled : null,
+                    text: btn ? btn.textContent.trim() : null,
+                };
+            }"""
+        )
+        assert state["marked"] is False
+        assert state["pressed"] == "false"
+        assert state["disabled"] is False
+        assert state["text"] == "Struggling?"
+        assert "Failed to mark struggle" in state["error"]
 
 
 class TestCourseExplorerTtsGating:

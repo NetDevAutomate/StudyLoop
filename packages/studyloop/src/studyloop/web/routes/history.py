@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from studyloop.db import connect_db
@@ -97,6 +97,8 @@ def post_struggling_topic(body: StruggleRequest) -> dict:
         source_publisher=body.publisher,
         created_by="web",
     )
+    if not ok:
+        raise HTTPException(status_code=500, detail="Could not persist struggling topic")
     return {"ok": ok}
 
 
