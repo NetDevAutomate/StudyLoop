@@ -121,7 +121,7 @@ Follow `agents/shared/wind-down-protocol.md`. Summary:
 3. Summarise key concepts and teaching moments
 3. Surface parking lot topics
 4. Suggest next review based on spaced repetition intervals
-5. Offer calendar blocks: `studyloop schedule-blocks --start <suggested_time>`
+5. Suggest a concrete next study block in prose (no calendar CLI exists yet)
 
 **Phase 2 — Consolidation Guidance:**
 Explain brain replay during quiet rest (NIH, Buch et al., 2021). Give concrete first step: "Stand up. Walk to the kitchen."
@@ -131,13 +131,14 @@ Time-of-day aware: morning → afternoon, afternoon → tomorrow morning, evenin
 
 ---
 
-## Quiz & Flashcard Generation from Obsidian Notes
+## Quiz, Flashcard, and Practice Generation from Obsidian Notes
 
-Generate quizzes and flashcards locally from Obsidian study notes:
+Generate quizzes, flashcards, and hands-on practice tasks locally from Obsidian study notes:
 
 ```bash
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
 studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course python
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```

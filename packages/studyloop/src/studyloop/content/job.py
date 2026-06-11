@@ -32,7 +32,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from studyloop.content import active_gen
 from studyloop.content.generators import get_generator
@@ -45,7 +45,7 @@ from studyloop.content.schemas import FlashcardDeck, QuizDeck
 from studyloop.content.scope import ResolvedSource, ScopeRequest, resolve_scope
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
     from studyloop.settings import Settings
@@ -79,7 +79,7 @@ class JobRequest:
 
 @dataclass(frozen=True, slots=True)
 class TaskOutcome:
-    """One source × one deck-kind result."""
+    """One source x one deck-kind result."""
 
     identifier: str
     kind: DeckKind
@@ -141,7 +141,7 @@ def run_job(
             return
         try:
             on_event(event)
-        except Exception:  # noqa: BLE001 -- consumer error must not stop job
+        except Exception:
             logger.exception("on_event callback raised; continuing")
 
     try:
@@ -220,7 +220,7 @@ def run_job(
 def _build_tasks(
     sources: list[ResolvedSource], kinds: tuple[DeckKind, ...]
 ) -> list[GenerationTask]:
-    """Cross-product sources × kinds into runner tasks."""
+    """Cross-product sources x kinds into runner tasks."""
     tasks: list[GenerationTask] = []
     for src in sources:
         if "flashcards" in kinds:
@@ -354,15 +354,16 @@ def _handle_result(
     base_path = target_dir / f"{stem}{stem_suffix}"
 
     try:
+        deck = cast("FlashcardDeck | QuizDeck", result.deck)
         write_path = _write_with_policy(
-            deck=result.deck,
+            deck=deck,
             base_path=base_path,
             target_dir=target_dir,
             stem=stem,
             stem_suffix=stem_suffix,
             on_existing=on_existing,
         )
-    except Exception as exc:  # noqa: BLE001 -- aggregate any write-time failure
+    except Exception as exc:
         return TaskOutcome(
             identifier=task.identifier,
             kind=_normalise_kind(task.kind),

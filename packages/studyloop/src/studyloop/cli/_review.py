@@ -26,6 +26,8 @@ def review() -> None:
 
     table = Table(title="Spaced Repetition \u2014 Due for Review")
     table.add_column("Topic", style="bold cyan")
+    table.add_column("Concept")
+    table.add_column("Confidence")
     table.add_column("Last Studied")
     table.add_column("Days Ago", justify="right")
     table.add_column("Review Type", style="yellow")
@@ -33,7 +35,14 @@ def review() -> None:
     for item in due:
         days = str(item["days_ago"]) if item["days_ago"] is not None else "never"
         last = item["last_studied"] or "never"
-        table.add_row(item["topic"], last, days, item["review_type"])
+        table.add_row(
+            item["topic"],
+            item.get("concept") or "-",
+            item.get("confidence") or "-",
+            last,
+            days,
+            item["review_type"],
+        )
 
     console.print(table)
 

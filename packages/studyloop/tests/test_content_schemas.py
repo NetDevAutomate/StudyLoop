@@ -26,10 +26,13 @@ from pydantic import ValidationError  # noqa: E402
 from studyloop.content.schemas import (  # noqa: E402
     FlashcardDeck,
     FlashcardItem,
+    PracticeDeck,
+    PracticeTask,
     QuizDeck,
     QuizOption,
     QuizQuestion,
     flashcard_deck_json_schema,
+    practice_deck_json_schema,
     quiz_deck_json_schema,
 )
 from studyloop.review_loader import load_flashcards, load_quizzes  # noqa: E402
@@ -89,6 +92,31 @@ def test_quiz_deck_valid_payload_parses(valid_quiz_payload: dict) -> None:
     correct = [o for o in q.answer_options if o.is_correct]
     assert len(correct) == 1
     assert correct[0].text == "deque"
+
+
+def test_practice_deck_valid_payload_parses() -> None:
+    deck = PracticeDeck.model_validate(
+        {
+            "title": "SQL Joins",
+            "tasks": [
+                {
+                    "taskType": "debug",
+                    "prompt": "Fix the LEFT JOIN that accidentally filters null matches.",
+                    "setup": (
+                        "SELECT * FROM orders LEFT JOIN customers "
+                        "... WHERE customers.region = 'EU'"
+                    ),
+                    "successCriteria": ["Unmatched orders remain in the result"],
+                    "hint": "Move the right-table filter into the join condition.",
+                    "expectedLearningOutcome": "Preserve outer join semantics under filtering.",
+                }
+            ],
+        }
+    )
+
+    assert deck.title == "SQL Joins"
+    assert deck.tasks[0].task_type == "debug"
+    assert deck.tasks[0].success_criteria == ["Unmatched orders remain in the result"]
 
 
 def test_flashcard_roundtrip_through_json(valid_flashcard_payload: dict) -> None:
@@ -171,6 +199,23 @@ def test_quiz_deck_rejects_empty_questions() -> None:
         QuizDeck.model_validate({"title": "Empty", "questions": []})
 
 
+def test_practice_task_rejects_invalid_task_type() -> None:
+    with pytest.raises(ValidationError):
+        PracticeTask.model_validate(
+            {
+                "taskType": "essay",
+                "prompt": "Reflect on joins.",
+                "successCriteria": ["A concrete answer exists"],
+                "expectedLearningOutcome": "Know joins.",
+            }
+        )
+
+
+def test_practice_deck_rejects_empty_tasks() -> None:
+    with pytest.raises(ValidationError):
+        PracticeDeck.model_validate({"title": "Empty", "tasks": []})
+
+
 # ---------------------------------------------------------------------------
 # On-disk output + review_loader compat
 # ---------------------------------------------------------------------------
@@ -198,6 +243,30 @@ def test_quiz_write_json_glob_friendly(tmp_path: Path, valid_quiz_payload: dict)
     matches_loose = list(tmp_path.glob("*quiz.json"))
     assert [p.name for p in matches_strict] == ["python-collections-quiz.json"]
     assert [p.name for p in matches_loose] == ["python-collections-quiz.json"]
+
+
+def test_practice_write_json_glob_friendly(tmp_path: Path) -> None:
+    deck = PracticeDeck.model_validate(
+        {
+            "title": "Spark Partitioning",
+            "tasks": [
+                {
+                    "taskType": "trace",
+                    "prompt": "Trace which partition each key lands in.",
+                    "setup": "keys = [1, 2, 3]",
+                    "successCriteria": ["Each key has a partition assignment"],
+                    "expectedLearningOutcome": "Understand hash partition distribution.",
+                }
+            ],
+        }
+    )
+    written = deck.write_json(tmp_path, slug="spark-partitioning")
+    assert written.name == "spark-partitioning-practice.json"
+    assert written.exists()
+
+    payload = json.loads(written.read_text(encoding="utf-8"))
+    assert payload["tasks"][0]["taskType"] == "trace"
+    assert payload["tasks"][0]["successCriteria"] == ["Each key has a partition assignment"]
 
 
 def test_flashcard_written_file_loads_via_review_loader(
@@ -256,6 +325,14 @@ def test_write_json_emits_utf8_unicode(tmp_path: Path) -> None:
     assert "π" in text
     assert "≈" in text
     assert "\\u" not in text
+
+
+def test_practice_deck_json_schema_contains_hands_on_fields() -> None:
+    schema = practice_deck_json_schema()
+    task_props = schema["$defs"]["PracticeTask"]["properties"]
+    assert "taskType" in task_props
+    assert "successCriteria" in task_props
+    assert "expectedLearningOutcome" in task_props
 
 
 # ---------------------------------------------------------------------------

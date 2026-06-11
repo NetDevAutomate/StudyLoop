@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
@@ -152,3 +153,106 @@ def test_session_end(session_env: Path) -> None:
     assert result.exit_code == 0
     assert "Session Complete" in result.output
     assert "WINS" in result.output
+
+    conn = sqlite3.connect(str(session_env / "test.db"))
+    row = conn.execute("SELECT win_count, struggle_count FROM study_sessions").fetchone()
+    conn.close()
+    assert row == (1, 1)
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_confidence"),
+    [
+        ("struggling", "struggling"),
+        ("win", "confident"),
+        ("insight", "confident"),
+    ],
+)
+def test_topic_cmd_records_outcome_progress(
+    session_env: Path,
+    status: str,
+    expected_confidence: str,
+) -> None:
+    """topic command records durable progress for outcome statuses."""
+    from studyloop.cli._session import session_group, topic_cmd
+
+    runner = CliRunner()
+    runner.invoke(session_group, ["start", "--topic", "Spark", "--energy", "7"])
+
+    with patch("studyloop.history.record_progress", return_value=True) as mock_progress:
+        result = runner.invoke(
+            topic_cmd,
+            ["Spark partitioning", "--status", status, "--note", "Got it"],
+        )
+
+    assert result.exit_code == 0
+    assert "Spark partitioning" in result.output
+    mock_progress.assert_called_once_with(
+        topic="Spark",
+        concept="Spark partitioning",
+        confidence=expected_confidence,
+        notes="Got it",
+        source_course="Spark",
+    )
+
+
+def test_topic_cmd_leaves_learning_as_live_feed_only(session_env: Path) -> None:
+    """learning remains a live session feed update, not durable progress."""
+    from studyloop.cli._session import session_group, topic_cmd
+
+    runner = CliRunner()
+    runner.invoke(session_group, ["start", "--topic", "Spark", "--energy", "7"])
+
+    with patch("studyloop.history.record_progress", return_value=True) as mock_progress:
+        result = runner.invoke(
+            topic_cmd,
+            ["Spark partitioning", "--status", "learning", "--note", "Still exploring"],
+        )
+
+    assert result.exit_code == 0
+    assert "Spark partitioning" in result.output
+    mock_progress.assert_not_called()
+
+
+def test_topic_cmd_progress_falls_back_to_concept_when_session_topic_missing(
+    session_env: Path,
+) -> None:
+    """If state lacks a topic/course, the concept itself is the progress bucket."""
+    from studyloop.cli._session import topic_cmd
+
+    runner = CliRunner()
+    with (
+        patch(
+            "studyloop.session_state.read_session_state",
+            return_value={"study_session_id": "s1"},
+        ),
+        patch("studyloop.session_state.append_topic"),
+        patch("studyloop.history.record_progress", return_value=True) as mock_progress,
+    ):
+        result = runner.invoke(topic_cmd, ["Spark partitioning", "--status", "win"])
+
+    assert result.exit_code == 0
+    mock_progress.assert_called_once_with(
+        topic="Spark partitioning",
+        concept="Spark partitioning",
+        confidence="confident",
+        notes=None,
+        source_course=None,
+    )
+
+
+def test_topic_cmd_no_active_session_does_not_record_progress(session_env: Path) -> None:
+    """The active-session guard still prevents feed and progress writes."""
+    from studyloop.cli._session import topic_cmd
+
+    runner = CliRunner()
+    with (
+        patch("studyloop.session_state.append_topic") as mock_append,
+        patch("studyloop.history.record_progress", return_value=True) as mock_progress,
+    ):
+        result = runner.invoke(topic_cmd, ["Spark partitioning", "--status", "win"])
+
+    assert result.exit_code == 0
+    assert "No active session" in result.output
+    mock_append.assert_not_called()
+    mock_progress.assert_not_called()

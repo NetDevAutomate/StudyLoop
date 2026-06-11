@@ -22,7 +22,7 @@ from studyloop.content.generators import (  # noqa: E402
     get_generator,
 )
 from studyloop.content.generators.ollama import OllamaGenerator  # noqa: E402
-from studyloop.content.schemas import FlashcardDeck, QuizDeck  # noqa: E402
+from studyloop.content.schemas import FlashcardDeck, PracticeDeck, QuizDeck  # noqa: E402
 from studyloop.settings import CardGeneratorConfig, OllamaBackendConfig  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -92,6 +92,25 @@ def valid_quiz_json() -> str:
                             "rationale": "sets are unordered.",
                         },
                     ],
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def valid_practice_json() -> str:
+    return json.dumps(
+        {
+            "title": "Python Collections",
+            "tasks": [
+                {
+                    "taskType": "build",
+                    "prompt": "Implement a queue with deque.",
+                    "setup": "from collections import deque",
+                    "successCriteria": ["append and popleft both work"],
+                    "hint": "Use append for enqueue and popleft for dequeue.",
+                    "expectedLearningOutcome": "Use deque for O(1) queue operations.",
                 }
             ],
         }
@@ -247,6 +266,34 @@ class TestGenerateQuizHappyPath:
         # Quiz uses the quiz system prompt, not the flashcard one.
         req = captured_requests[0]
         assert "quiz" in req["messages"][0]["content"].lower()
+
+
+class TestGeneratePracticeHappyPath:
+    def test_valid_response_produces_practice_deck(
+        self,
+        config: CardGeneratorConfig,
+        valid_practice_json: str,
+    ) -> None:
+        captured_requests: list[dict[str, Any]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured_requests.append(json.loads(request.content))
+            return httpx.Response(200, json=_ollama_chat_response(valid_practice_json))
+
+        gen = _make_generator(config, httpx.MockTransport(handler))
+        try:
+            deck = gen.generate_practice(source="Source", title="Python Collections")
+        finally:
+            gen.close()
+
+        assert isinstance(deck, PracticeDeck)
+        assert len(deck.tasks) == 1
+        assert deck.tasks[0].task_type == "build"
+        assert deck.tasks[0].success_criteria == ["append and popleft both work"]
+
+        req = captured_requests[0]
+        assert "hands-on" in req["messages"][0]["content"].lower()
+        assert isinstance(req["format"], dict)
 
 
 # ---------------------------------------------------------------------------

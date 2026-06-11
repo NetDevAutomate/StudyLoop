@@ -90,13 +90,16 @@ studyloop schedule list           # Show active jobs
 studyloop schedule install        # Install all default jobs
 ```
 
-## Quiz & Flashcard Generation from Obsidian Notes
+## Quiz, Flashcard, and Practice Generation from Obsidian Notes
 
-Generate quizzes and flashcards directly from Obsidian study notes using `studyloop content generate-cards`. It writes the same JSON format consumed by `studyloop web`.
+Generate quizzes and flashcards directly from Obsidian study notes using `studyloop content generate-cards`. Generate hands-on practice tasks using `studyloop content generate-practice`.
 
 ```bash
 # Full local pipeline: notes -> quiz + flashcards
 studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+
+# Hands-on practice tasks for build/debug/diagram/application work
+studyloop content generate-practice ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
 
 # Skip quiz or flashcards individually
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
@@ -136,7 +139,7 @@ When a session is ending (student signals or 90+ min elapsed), follow `wind-down
 3. **Surface parking lot** items; offer to schedule them
 4. **Consolidation guidance**: Explain brain replay science (first time) or brief reminder (subsequent). Give concrete first step: "Stand up. Walk to the kitchen."
 5. **Next session suggestion**: Time-of-day aware, reference upcoming spaced repetition reviews
-6. **Offer calendar blocks**: `studyloop schedule-blocks --start <time>`
+6. **Suggest a concrete next study block** in prose; no calendar CLI exists yet.
 
 ## Session End: Struggle Extraction
 

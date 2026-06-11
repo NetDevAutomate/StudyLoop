@@ -101,6 +101,7 @@ graph LR
 - **[CLI Reference](cli-reference.md)** — Full command reference for `studyloop` and `session-query`
 - **[Repository Standards](standards/repo-standards.md)** — naming, doc, and structure standards
 - **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents
+- **[AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md)** — How teach-back, evidence scheduling, due review, and hands-on practice turn notes into learning
 - **[Network Bridges](network-bridges.md)** — Network→Data Engineering analogies for infrastructure people
 - **[Roadmap](roadmap.md)** — What's coming next
 

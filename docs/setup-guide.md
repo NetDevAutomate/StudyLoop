@@ -558,7 +558,7 @@ session-query search "python"    # Search across all sessions
 
 ## Content Pipeline
 
-The content pipeline converts local study sources into review artefacts that support interactive study sessions. The primary path is local quiz/flashcard generation.
+The content pipeline converts local study sources into review artefacts that support interactive study sessions. The primary path is local quiz, flashcard, and hands-on practice generation.
 
 ### Install content dependencies
 
@@ -585,8 +585,9 @@ content:
 # 1. Preview available sources
 studyloop content discover
 
-# 2. Generate local flashcards and quizzes
+# 2. Generate local flashcards, quizzes, and hands-on practice
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course python
 
 # 3. Review
 studyloop web

@@ -133,7 +133,7 @@ The wind-down phase is the ideal moment to set expectations for the next review:
 
 1. Name the concepts covered and their review schedule
 2. Suggest specific times based on the schedule
-3. Offer calendar blocks: `studyloop schedule-blocks --start <time>`
+3. Suggest a concrete next study block in prose; no calendar CLI exists yet.
 4. Frame the next session as a continuation, not a restart: *"Next time we'll build on [concept] — the hard part is done."*
 
 ## Key Research References

@@ -2,6 +2,10 @@
 
 The thinking behind how this toolkit teaches — and why it works differently.
 
+For the product-level wiring of this philosophy into teach-back scoring,
+evidence-based scheduling, due-card priority, and hands-on practice generation,
+see [AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md).
+
 ## Table of Contents
 
 - [Why This Exists](#why-this-exists)
@@ -322,7 +326,7 @@ The agents support multiple session types (deep study, light review, body doubli
 
 ### Tune spaced repetition intervals
 
-The 1/3/7/14/30 day schedule is a starting point. If you find concepts fading faster, tighten the early intervals. The schedule is defined in `packages/studyloop/src/studyloop/history/progress.py`.
+The 1/3/7/14/30 day schedule is a starting point. If you find concepts fading faster, tighten the early intervals. Concept-level review scheduling is defined in `packages/studyloop/src/studyloop/history/progress.py`; flashcard SM-2 scheduling is defined in `packages/studyloop/src/studyloop/review_db.py`.
 
 ### Add study topics
 

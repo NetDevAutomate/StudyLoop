@@ -47,26 +47,31 @@ from studyloop.content.generators import CardGenerationError
 from studyloop.content.generators.prompts import (
     FLASHCARD_SYSTEM_PROMPT,
     FLASHCARD_USER_PROMPT_TEMPLATE,
+    PRACTICE_SYSTEM_PROMPT,
+    PRACTICE_USER_PROMPT_TEMPLATE,
     QUIZ_SYSTEM_PROMPT,
     QUIZ_USER_PROMPT_TEMPLATE,
 )
 from studyloop.content.schemas import (
     FlashcardDeck,
+    PracticeDeck,
     QuizDeck,
     flashcard_deck_json_schema,
+    practice_deck_json_schema,
     quiz_deck_json_schema,
 )
 
 if TYPE_CHECKING:
     from studyloop.settings import CardGeneratorConfig
 
-_DECK_MODELS = FlashcardDeck | QuizDeck
+_DECK_MODELS = FlashcardDeck | QuizDeck | PracticeDeck
 
 # Tool names the model must invoke. Exposed as constants so tests can
 # stub the Converse response without hard-coding these strings in two
 # places.
 _FLASHCARD_TOOL_NAME = "emit_flashcard_deck"
 _QUIZ_TOOL_NAME = "emit_quiz_deck"
+_PRACTICE_TOOL_NAME = "emit_practice_deck"
 
 
 class BedrockGenerator:
@@ -244,6 +249,20 @@ class BedrockGenerator:
             ),
             schema=quiz_deck_json_schema(),
             model_cls=QuizDeck,
+        )
+        if deck.title != title:
+            deck = deck.model_copy(update={"title": title})
+        return deck
+
+    def generate_practice(self, source: str, title: str) -> PracticeDeck:
+        user_prompt = PRACTICE_USER_PROMPT_TEMPLATE.format(title=title, source=source)
+        deck = self._generate(
+            system_prompt=PRACTICE_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            tool_name=_PRACTICE_TOOL_NAME,
+            tool_description=("Emit a hands-on practice deck matching the provided JSON schema."),
+            schema=practice_deck_json_schema(),
+            model_cls=PracticeDeck,
         )
         if deck.title != title:
             deck = deck.model_copy(update={"title": title})

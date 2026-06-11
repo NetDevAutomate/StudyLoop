@@ -6,10 +6,11 @@ The primary path is local:
 
 ```bash
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course python
 studyloop web
 ```
 
-NotebookLM is not required for flashcards, quizzes, study sessions, review, or session history.
+NotebookLM is not required for flashcards, quizzes, practice tasks, study sessions, review, or session history.
 
 ## Current Flow
 
@@ -24,9 +25,10 @@ flowchart TB
 
     Discover["studyloop content discover"]
     Generate["studyloop content generate-cards"]
+    Practice["studyloop content generate-practice"]
     Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI-compat / Anthropic-compat /<br/>Stub"]
-    Validate["Pydantic validation<br/>FlashcardDeck / QuizDeck"]
-    Artefacts["content.base_path/course<br/>flashcards + quizzes"]
+    Validate["Pydantic validation<br/>FlashcardDeck / QuizDeck / PracticeDeck"]
+    Artefacts["content.base_path/course<br/>flashcards + quizzes + practice"]
     Web["studyloop web<br/>review + progress"]
 
     MD --> Discover
@@ -34,7 +36,9 @@ flowchart TB
     PDF --> Discover
     OBS --> Discover
     Discover --> Generate
+    Discover --> Practice
     Generate --> Backend
+    Practice --> Backend
     Backend --> Validate
     Validate --> Artefacts
     Artefacts --> Web
@@ -180,6 +184,14 @@ studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course pytho
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
 ```
 
+### Generate Hands-On Practice Tasks
+
+```bash
+studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course python
+```
+
+Practice decks are written to `content.base_path/<course>/practice/` as `*-practice.json`.
+
 ### Split PDFs
 
 ```bash
@@ -261,7 +273,7 @@ card_generator:
 #     - ~/Obsidian/Personal/Study
 ```
 
-> **Write root vs read root.** Generation writes decks under `content.base_path/<publisher>/<course>/{flashcards,quizzes}/`. The review panels discover decks via `review.directories`; when that key is unset, `settings.resolve_study_dirs()` falls back to `content.base_path`, and discovery walks the 3-level `publisher/course` tree. (Earlier, an unset `review.directories` left the panels empty even though decks were on disk — that fallback is now automatic.)
+> **Write root vs read root.** Generation writes decks under `content.base_path/<publisher>/<course>/{flashcards,quizzes,practice}/`. The review panels discover review decks via `review.directories`; when that key is unset, `settings.resolve_study_dirs()` falls back to `content.base_path`, and discovery walks the 3-level `publisher/course` tree. (Earlier, an unset `review.directories` left the panels empty even though decks were on disk — that fallback is now automatic.)
 
 ## Target Parser Architecture
 

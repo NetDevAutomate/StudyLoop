@@ -36,6 +36,9 @@ from studyloop.cli._lazy import LazyGroup
         "resume": "studyloop.cli._review:resume",
         "streaks": "studyloop.cli._review:streaks",
         "bridge": "studyloop.cli._review:bridge_group",
+        # _teachback.py — teach-back assessment scoring
+        "teachback": "studyloop.cli._teachback:teachback",
+        "teachback-history": "studyloop.cli._teachback:teachback_history",
         # _content.py — content pipeline (pdf splitting, NotebookLM, syllabus)
         "content": "studyloop.cli._content:content_group",
         # _web.py — web UI

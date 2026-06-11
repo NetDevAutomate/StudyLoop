@@ -68,6 +68,7 @@ nav:
   - Learning:
     - Content Pipeline: content-pipeline.md
     - AuDHD Philosophy: audhd-learning-philosophy.md
+    - Learning Loop Implementation: audhd-learning-loop-implementation.md
     - Session Protocol: session-protocol.md
   - Reference:
     - CLI Reference: cli-reference.md

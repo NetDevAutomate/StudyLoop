@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from studyloop.content.generators import CardGenerator
-    from studyloop.content.schemas import FlashcardDeck, QuizDeck
+    from studyloop.content.schemas import FlashcardDeck, PracticeDeck, QuizDeck
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +68,7 @@ class GenerationTask:
     """
 
     identifier: str
-    kind: Literal["flashcards", "quiz"]
+    kind: Literal["flashcards", "quiz", "practice"]
     source: str
     title: str
 
@@ -78,7 +78,7 @@ class GenerationResult:
     """Outcome of one task. Exactly one of ``deck`` or ``error`` is set."""
 
     task: GenerationTask
-    deck: FlashcardDeck | QuizDeck | None
+    deck: FlashcardDeck | QuizDeck | PracticeDeck | None
     error: CardGenerationError | None
     elapsed_s: float
 
@@ -135,8 +135,10 @@ def generate_concurrently(
         try:
             if task.kind == "flashcards":
                 deck = generator.generate_flashcards(source=task.source, title=task.title)
-            else:
+            elif task.kind == "quiz":
                 deck = generator.generate_quiz(source=task.source, title=task.title)
+            else:
+                deck = generator.generate_practice(source=task.source, title=task.title)
             elapsed = time.monotonic() - t0
             return idx, GenerationResult(task=task, deck=deck, error=None, elapsed_s=elapsed)
         except CardGenerationError as exc:

@@ -22,6 +22,7 @@ studyloop session effectiveness           # Persona effectiveness metrics
 # Content pipeline
 studyloop content split SOURCE            # Split PDF by chapters
 studyloop content generate-cards DIR --course COURSE # Local quiz/flashcard JSON
+studyloop content generate-practice DIR --course COURSE # Local hands-on practice JSON
 studyloop content discover                # Preview configured study sources
 studyloop content ingest --dry-run        # Plan source ingest
 studyloop content import-review DIR --course COURSE  # Import existing JSON artefacts
@@ -41,6 +42,8 @@ studyloop progress                        # Summarize local course progress
 studyloop progress --course python        # Summarize one course
 studyloop progress --json                 # Machine-readable progress summary
 studyloop progress CONCEPT -t TOPIC -c confident # Record concept confidence
+studyloop teachback CONCEPT -t TOPIC --score 3,3,4,3,2 --type structured
+studyloop teachback-history CONCEPT [-t TOPIC]
 studyloop struggles --days 30             # Find recurring struggle topics
 
 # Configuration & health
@@ -146,7 +149,7 @@ studyloop upgrade --component agents      # Update agent definitions only
 
 Review schedule: **1 → 3 → 7 → 14 → 30 days**
 
-`studyloop review` shows what's due based on when you last recorded progress.
+`studyloop review` shows what's due based on active learning evidence in `study_progress`, such as recorded concept progress and teach-back scores.
 
 ### Progress
 

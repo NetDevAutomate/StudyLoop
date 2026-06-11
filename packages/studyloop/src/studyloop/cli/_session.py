@@ -2,9 +2,19 @@
 
 from __future__ import annotations
 
+import logging
+
 import click
 
 from studyloop.cli._shared import console
+
+logger = logging.getLogger(__name__)
+
+OUTCOME_CONFIDENCE = {
+    "struggling": "struggling",
+    "win": "confident",
+    "insight": "confident",
+}
 
 
 @click.group("session")
@@ -113,7 +123,12 @@ def session_end(notes: str) -> None:
         )
 
     # End the DB session
-    end_study_session(study_id, notes=notes or None)
+    end_study_session(
+        study_id,
+        notes=notes or None,
+        win_count=len(wins),
+        struggle_count=len(struggles),
+    )
 
     # Signal dashboard to show summary view
     write_session_state({"mode": "ended"})
@@ -266,6 +281,7 @@ def topic_cmd(name: str, status: str, note: str) -> None:
     """
     from datetime import datetime
 
+    from studyloop.history import record_progress
     from studyloop.session_state import append_topic, read_session_state
 
     state = read_session_state()
@@ -275,6 +291,26 @@ def topic_cmd(name: str, status: str, note: str) -> None:
 
     time_str = datetime.now().strftime("%H:%M")
     append_topic(time_str, name, status, note)
+
+    confidence = OUTCOME_CONFIDENCE.get(status)
+    if confidence is not None:
+        progress_topic = str(state.get("topic") or name).strip() or name
+        source_course = state.get("topic_slug") or state.get("topic")
+        source_course = source_course.strip() or None if isinstance(source_course, str) else None
+        try:
+            record_progress(
+                topic=progress_topic,
+                concept=name,
+                confidence=confidence,
+                notes=note or None,
+                source_course=source_course,
+            )
+        except Exception:
+            logger.exception(
+                "topic_cmd: record_progress failed for topic=%r status=%r",
+                name,
+                status,
+            )
 
     shapes = {
         "win": "\u2713",
