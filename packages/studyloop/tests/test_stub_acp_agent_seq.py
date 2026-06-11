@@ -187,7 +187,7 @@ class TestBackCompat:
         )
         texts = _extract_notif_texts(frames)
         assert texts == ["always-this", "always-this", "always-this"], (
-            f"Back-compat: expected same text 3×, got {texts!r}"
+            f"Back-compat: expected same text 3x, got {texts!r}"
         )
 
 
@@ -246,9 +246,7 @@ class TestSeqWinsOverFlat:
             },
         )
         texts = _extract_notif_texts(frames)
-        assert texts == ["seq-wins"], (
-            f"Expected _SEQ to win, got {texts!r}"
-        )
+        assert texts == ["seq-wins"], f"Expected _SEQ to win, got {texts!r}"
 
     def test_seq_wins_across_multiple_turns(self) -> None:
         """_SEQ wins even for a second turn when both vars are set."""
@@ -271,9 +269,7 @@ class TestSeqWinsOverFlat:
             },
         )
         texts = _extract_notif_texts(frames)
-        assert texts == ["seq-a", "seq-b"], (
-            f"Expected seq-a, seq-b (not flat), got {texts!r}"
-        )
+        assert texts == ["seq-a", "seq-b"], f"Expected seq-a, seq-b (not flat), got {texts!r}"
 
 
 # ---------------------------------------------------------------------------

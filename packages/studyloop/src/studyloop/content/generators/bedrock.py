@@ -224,8 +224,14 @@ class BedrockGenerator:
     # Public Protocol surface
     # ------------------------------------------------------------------
 
-    def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
-        user_prompt = FLASHCARD_USER_PROMPT_TEMPLATE.format(title=title, source=source)
+    def generate_flashcards(
+        self, source: str, title: str, count: int | None = None
+    ) -> FlashcardDeck:
+        user_prompt = FLASHCARD_USER_PROMPT_TEMPLATE.format(
+            title=title,
+            source=source,
+            count=count or 10,
+        )
         deck = self._generate(
             system_prompt=FLASHCARD_SYSTEM_PROMPT,
             user_prompt=user_prompt,
@@ -238,8 +244,12 @@ class BedrockGenerator:
             deck = deck.model_copy(update={"title": title})
         return deck
 
-    def generate_quiz(self, source: str, title: str) -> QuizDeck:
-        user_prompt = QUIZ_USER_PROMPT_TEMPLATE.format(title=title, source=source)
+    def generate_quiz(self, source: str, title: str, count: int | None = None) -> QuizDeck:
+        user_prompt = QUIZ_USER_PROMPT_TEMPLATE.format(
+            title=title,
+            source=source,
+            count=count or 10,
+        )
         deck = self._generate(
             system_prompt=QUIZ_SYSTEM_PROMPT,
             user_prompt=user_prompt,

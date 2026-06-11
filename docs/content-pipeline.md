@@ -28,7 +28,8 @@ flowchart TB
     Practice["studyloop content generate-practice"]
     Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI-compat / Anthropic-compat /<br/>Stub"]
     Validate["Pydantic validation<br/>FlashcardDeck / QuizDeck / PracticeDeck"]
-    Artefacts["content.base_path/course<br/>flashcards + quizzes + practice"]
+    Artefacts["content.base_path/&lt;course&gt;<br/>or &lt;publisher&gt;/&lt;course&gt;<br/>flashcards + quizzes"]
+    PracticeArtefacts["content.base_path/&lt;course&gt;<br/>practice tasks"]
     Web["studyloop web<br/>review + progress"]
 
     MD --> Discover
@@ -41,8 +42,24 @@ flowchart TB
     Practice --> Backend
     Backend --> Validate
     Validate --> Artefacts
+    Validate --> PracticeArtefacts
     Artefacts --> Web
 ```
+
+The web Generate panel uses the same producer stack, but the scope is resolved
+from browser form state before any provider call:
+
+```text
+source markdown -> resolve_scope -> GenerationTask(count) -> provider prompt -> flashcards/quizzes -> review surface
+```
+
+`count_per_source` is copied from the browser request into each
+`GenerationTask.count`. The provider adapters include that count in the
+flashcard/quiz prompt and validate the returned JSON before writing. Treat it as
+a requested target per source and per artefact kind: the Stub backend returns the
+exact requested count, while external providers must still follow the prompt and
+schema. The Generate panel reports the requested count, provider, and model in
+the plan/progress view so mismatches are visible during a run.
 
 ## Pluggable Provider Abstraction
 
@@ -273,7 +290,17 @@ card_generator:
 #     - ~/Obsidian/Personal/Study
 ```
 
-> **Write root vs read root.** Generation writes decks under `content.base_path/<publisher>/<course>/{flashcards,quizzes,practice}/`. The review panels discover review decks via `review.directories`; when that key is unset, `settings.resolve_study_dirs()` falls back to `content.base_path`, and discovery walks the 3-level `publisher/course` tree. (Earlier, an unset `review.directories` left the panels empty even though decks were on disk — that fallback is now automatic.)
+> **Write root vs read root.** The CLI command `studyloop content generate-cards`
+> writes decks under `content.base_path/<course>/{flashcards,quizzes}/`. The web
+> Generate panel writes under
+> `content.base_path/<publisher>/<course>/{flashcards,quizzes}/` when a publisher
+> is supplied. The CLI command `studyloop content generate-practice` writes
+> hands-on practice decks under `content.base_path/<course>/practice/`. The
+> review panels discover flashcards and quizzes via `review.directories`; when
+> that key is unset, `settings.resolve_study_dirs()` falls back to
+> `content.base_path`, and discovery walks both layouts. (Earlier, an unset
+> `review.directories` left the panels empty even though decks were on disk —
+> that fallback is now automatic.)
 
 ## Target Parser Architecture
 

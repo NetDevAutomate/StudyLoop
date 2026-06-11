@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1a1b26">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -303,6 +303,7 @@
     <aside class="course-explorer-panel"
            x-data="courseExplorer()"
            x-show="$store.explorer.open"
+           @keydown.escape.window="$store.explorer.open && close()"
            x-cloak
            aria-label="Course explorer">
 
@@ -1253,7 +1254,12 @@
             <div class="generate-plan" x-show="plan">
               <span x-text="(plan?.task_count ?? 0)"></span> task<span x-show="(plan?.task_count ?? 0) !== 1">s</span>
               across <span x-text="(plan?.sources?.length ?? 0)"></span> source<span x-show="(plan?.sources?.length ?? 0) !== 1">s</span>
-              · backend <code x-text="plan?.backend"></code>
+              · <span x-text="(plan?.kinds || []).join(' + ')"></span>
+              · <span x-text="plan?.count_per_source"></span> per source
+              · provider <code x-text="plan?.provider || plan?.backend"></code>
+              <template x-if="plan?.model">
+                <span>· model <code x-text="plan.model"></code></span>
+              </template>
             </div>
             <div class="generate-progress-bar" x-show="plan">
               <div class="generate-progress-fill" :style="`width: ${progressPct()}%`"></div>
@@ -2075,7 +2081,15 @@
           if (frame.type === 'started') {
             // Server's started frame has an authoritative task_count;
             // our 202 plan was an estimate. Reconcile.
-            if (this.plan) this.plan.task_count = frame.task_count;
+            if (this.plan) {
+              this.plan.task_count = frame.task_count;
+              if (frame.sources) this.plan.sources = frame.sources;
+              if (frame.kinds) this.plan.kinds = frame.kinds;
+              if (frame.count_per_source) this.plan.count_per_source = frame.count_per_source;
+              if (frame.backend) this.plan.backend = frame.backend;
+              if (frame.provider) this.plan.provider = frame.provider;
+              if (frame.model) this.plan.model = frame.model;
+            }
           } else if (frame.type === 'task_complete') {
             this.tasks.push(frame);
           } else if (frame.type === 'all_done') {

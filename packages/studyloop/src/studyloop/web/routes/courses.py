@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 
+from studyloop.content.scope import ScopeResolutionError, resolve_content_path
 from studyloop.review_loader import (
     discover_directories,
     find_content_dirs,
@@ -100,8 +101,11 @@ def list_course_sections(course: str, publisher: str = "") -> list[dict]:
     from studyloop.settings import load_settings
 
     settings = load_settings()
-    base = Path(settings.content.base_path).expanduser()
-    course_dir = (base / publisher / course) if publisher else (base / course)
+    base = Path(settings.content.base_path).expanduser().resolve()
+    try:
+        course_dir = resolve_content_path(base, publisher, course)
+    except ScopeResolutionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not course_dir.is_dir():
         raise HTTPException(status_code=404, detail=f"Course not found: {course}")
 

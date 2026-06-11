@@ -289,9 +289,7 @@ def get_profile(slug: str) -> ProviderProfile:
     profile = PROFILES.get(slug)
     if profile is None:
         available = ", ".join(sorted(PROFILES))
-        raise ProviderProfileError(
-            f"Unknown provider slug {slug!r}. Available: {available}."
-        )
+        raise ProviderProfileError(f"Unknown provider slug {slug!r}. Available: {available}.")
     return profile
 
 
@@ -306,8 +304,7 @@ def get_model(profile: ProviderProfile, model_id: str) -> ModelEntry:
             return entry
     available = ", ".join(m.id for m in profile.models)
     raise ProviderProfileError(
-        f"Unknown model {model_id!r} for provider {profile.slug!r}. "
-        f"Available: {available}."
+        f"Unknown model {model_id!r} for provider {profile.slug!r}. Available: {available}."
     )
 
 

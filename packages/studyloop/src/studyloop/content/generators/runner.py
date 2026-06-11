@@ -71,6 +71,7 @@ class GenerationTask:
     kind: Literal["flashcards", "quiz", "practice"]
     source: str
     title: str
+    count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,9 +135,23 @@ def generate_concurrently(
         t0 = time.monotonic()
         try:
             if task.kind == "flashcards":
-                deck = generator.generate_flashcards(source=task.source, title=task.title)
+                if task.count is None:
+                    deck = generator.generate_flashcards(source=task.source, title=task.title)
+                else:
+                    deck = generator.generate_flashcards(
+                        source=task.source,
+                        title=task.title,
+                        count=task.count,
+                    )
             elif task.kind == "quiz":
-                deck = generator.generate_quiz(source=task.source, title=task.title)
+                if task.count is None:
+                    deck = generator.generate_quiz(source=task.source, title=task.title)
+                else:
+                    deck = generator.generate_quiz(
+                        source=task.source,
+                        title=task.title,
+                        count=task.count,
+                    )
             else:
                 deck = generator.generate_practice(source=task.source, title=task.title)
             elapsed = time.monotonic() - t0

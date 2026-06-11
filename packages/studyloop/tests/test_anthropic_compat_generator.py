@@ -11,7 +11,7 @@ that any Anthropic-compat shim relies on.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import httpx
 import pytest
@@ -22,6 +22,9 @@ from studyloop.content.generators.anthropic_compat import AnthropicCompatGenerat
 from studyloop.content.generators.provider_profiles import get_model, get_profile
 from studyloop.content.schemas import FlashcardDeck, QuizDeck
 from studyloop.settings import CardGeneratorConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @pytest.fixture
@@ -190,12 +193,8 @@ class TestRetry:
             good = {"title": "X", "cards": [{"front": "Q?", "back": "A."}]}
             route = respx.post("https://api.anthropic.com/v1/messages").mock(
                 side_effect=[
-                    httpx.Response(
-                        200, json=_tool_use_response("emit_flashcard_deck", bad)
-                    ),
-                    httpx.Response(
-                        200, json=_tool_use_response("emit_flashcard_deck", good)
-                    ),
+                    httpx.Response(200, json=_tool_use_response("emit_flashcard_deck", bad)),
+                    httpx.Response(200, json=_tool_use_response("emit_flashcard_deck", good)),
                 ]
             )
             deck = gen.generate_flashcards(source="x", title="X")
@@ -221,9 +220,7 @@ class TestRetry:
             # followed by a user tool_result turn (valid alternation).
             for i, m in enumerate(messages[:-1]):
                 if m.get("role") == "assistant" and isinstance(m.get("content"), list):
-                    has_tool_use = any(
-                        b.get("type") == "tool_use" for b in m["content"]
-                    )
+                    has_tool_use = any(b.get("type") == "tool_use" for b in m["content"])
                     if has_tool_use:
                         nxt = messages[i + 1]
                         assert nxt["role"] == "user"
@@ -246,12 +243,8 @@ class TestRetry:
             good = {"title": "X", "cards": [{"front": "Q?", "back": "A."}]}
             route = respx.post("https://api.anthropic.com/v1/messages").mock(
                 side_effect=[
-                    httpx.Response(
-                        200, json=_tool_use_response("emit_flashcard_deck", bad)
-                    ),
-                    httpx.Response(
-                        200, json=_tool_use_response("emit_flashcard_deck", good)
-                    ),
+                    httpx.Response(200, json=_tool_use_response("emit_flashcard_deck", bad)),
+                    httpx.Response(200, json=_tool_use_response("emit_flashcard_deck", good)),
                 ]
             )
             deck = gen.generate_flashcards(source="x", title="X")
@@ -280,10 +273,7 @@ class TestInlineToolCallFallback:
         param_xml = "".join(
             f'<parameter name="{k}">{json.dumps(v)}</parameter>' for k, v in params.items()
         )
-        markup = (
-            f"<tool_call>\n<invoke name=\"{tool_name}\">\n{param_xml}\n"
-            f"</invoke>\n</tool_call>"
-        )
+        markup = f'<tool_call>\n<invoke name="{tool_name}">\n{param_xml}\n</invoke>\n</tool_call>'
         return {
             "id": "msg_inline",
             "type": "message",
@@ -310,9 +300,13 @@ class TestInlineToolCallFallback:
             respx.post("https://api.anthropic.com/v1/messages").mock(
                 return_value=httpx.Response(
                     200,
-                    json=self._inline_xml_response("emit_quiz_deck", {
-                        "title": "DT", "questions": questions,
-                    }),
+                    json=self._inline_xml_response(
+                        "emit_quiz_deck",
+                        {
+                            "title": "DT",
+                            "questions": questions,
+                        },
+                    ),
                 )
             )
             deck = gen.generate_quiz(source="src", title="DT")
@@ -332,9 +326,13 @@ class TestInlineToolCallFallback:
             respx.post("https://api.anthropic.com/v1/messages").mock(
                 return_value=httpx.Response(
                     200,
-                    json=self._inline_xml_response("emit_flashcard_deck", {
-                        "title": "T", "cards": cards,
-                    }),
+                    json=self._inline_xml_response(
+                        "emit_flashcard_deck",
+                        {
+                            "title": "T",
+                            "cards": cards,
+                        },
+                    ),
                 )
             )
             deck = gen.generate_flashcards(source="src", title="T")
@@ -362,7 +360,7 @@ class TestInlineToolCallFallback:
             route = respx.post("https://api.anthropic.com/v1/messages").mock(
                 side_effect=[
                     httpx.Response(200, json=garbled),  # transient bad emission
-                    httpx.Response(200, json=good),      # retry succeeds
+                    httpx.Response(200, json=good),  # retry succeeds
                 ]
             )
             deck = gen.generate_flashcards(source="x", title="T")
@@ -457,6 +455,7 @@ class TestFactoryDispatch:
             )
         )
         try:
+            assert isinstance(gen, AnthropicCompatGenerator)
             assert gen._model.cost_tier == "cheap"
         finally:
             gen.close()

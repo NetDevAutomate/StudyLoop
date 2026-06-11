@@ -108,9 +108,7 @@ def test_bedrock_bearer(token: str, region: str = "us-east-1") -> tuple[bool, st
 
     try:
         with _with_bearer_env(token):
-            client = boto3.client(
-                "bedrock-runtime", region_name=region, config=boto_config
-            )
+            client = boto3.client("bedrock-runtime", region_name=region, config=boto_config)
             client.converse(
                 modelId=BEDROCK_TEST_MODEL,
                 messages=[{"role": "user", "content": [{"text": "ping"}]}],

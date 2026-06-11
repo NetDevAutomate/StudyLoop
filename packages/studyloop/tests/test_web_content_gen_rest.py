@@ -28,6 +28,7 @@ from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImport
 from studyloop.content import active_gen
 from studyloop.web.app import create_app
 from studyloop.web.routes import content_gen as cg_route
+from studyloop.web.routes.content_gen._jobs import GenerateRequest, _build_job_request
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -131,8 +132,42 @@ class TestHappyPath:
         assert data["plan"]["task_count"] == 1
         assert data["plan"]["kinds"] == ["flashcards"]
         assert data["plan"]["backend"] == "stub"
+        assert data["plan"]["count_per_source"] == 5
         assert len(data["plan"]["sources"]) == 1
         assert data["plan"]["sources"][0]["identifier"] == "joins"
+        _wait_for_job_done()
+
+    def test_plan_exposes_requested_count_provider_and_model(self, client: TestClient) -> None:
+        body = _valid_body() | {
+            "count_per_source": 25,
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+        }
+
+        resp = client.post("/api/content/generate", json=body)
+
+        assert resp.status_code == 202, resp.text
+        plan = resp.json()["plan"]
+        assert plan["count_per_source"] == 25
+        assert plan["provider"] == "openai"
+        assert plan["model"] == "gpt-4o-mini"
+        _wait_for_job_done()
+
+    def test_plan_exposes_registry_default_model_when_model_not_sent(
+        self, client: TestClient
+    ) -> None:
+        body = _valid_body() | {
+            "backend": "openai_compat",
+            "provider": "openai",
+        }
+        body.pop("model", None)
+
+        resp = client.post("/api/content/generate", json=body)
+
+        assert resp.status_code == 202, resp.text
+        plan = resp.json()["plan"]
+        assert plan["provider"] == "openai"
+        assert plan["model"] == "gpt-4o-mini"
         _wait_for_job_done()
 
     def test_course_scope_includes_all_lesson_files_in_plan(self, client: TestClient) -> None:
@@ -148,6 +183,23 @@ class TestHappyPath:
         # One source per lesson FILE now.
         assert identifiers == {"advanced-pandas", "joins"}
         _wait_for_job_done()
+
+
+def test_build_job_request_preserves_count_per_source() -> None:
+    req = GenerateRequest.model_validate(
+        _valid_body()
+        | {
+            "count_per_source": 25,
+            "provider": "anthropic",
+            "model": "claude-haiku-4-5",
+        }
+    )
+
+    job_req = _build_job_request(req)
+
+    assert job_req.count_per_source == 25
+    assert job_req.provider == "anthropic"
+    assert job_req.model == "claude-haiku-4-5"
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +230,13 @@ class TestValidation:
         # FastAPI returns 422 on pydantic constraint violations.
         assert resp.status_code == 422, resp.text
 
+    def test_path_traversal_scope_returns_400(self, client: TestClient) -> None:
+        body = _valid_body()
+        body["scope"]["course"] = "../outside"
+        resp = client.post("/api/content/generate", json=body)
+        assert resp.status_code == 400, resp.text
+        assert "must not contain" in resp.json()["detail"]
+
 
 # ---------------------------------------------------------------------------
 # Concurrency
@@ -206,3 +265,16 @@ class TestSingleton:
         resp2 = client.post("/api/content/generate", json=_valid_body())
         assert resp2.status_code == 202
         _wait_for_job_done()
+
+    def test_singleton_released_after_background_job_exception(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        def fail_run_job(*_args, **_kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr("studyloop.web.routes.content_gen._jobs.run_job", fail_run_job)
+        resp = client.post("/api/content/generate", json=_valid_body())
+        assert resp.status_code == 202
+
+        _wait_for_job_done()
+        assert run_async(active_gen.current()) is None

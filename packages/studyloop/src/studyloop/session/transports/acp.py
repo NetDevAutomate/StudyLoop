@@ -502,12 +502,7 @@ class ACPTransport:
         """
         # -- Inbound request from agent (e.g. session/request_permission) ----
         # id present + method present + no result/error → it's a request.
-        if (
-            "id" in frame
-            and "method" in frame
-            and "result" not in frame
-            and "error" not in frame
-        ):
+        if "id" in frame and "method" in frame and "result" not in frame and "error" not in frame:
             method = frame.get("method")
             params = frame.get("params") or {}
             req_id = frame["id"]
@@ -523,9 +518,7 @@ class ACPTransport:
                         queue.get_nowait()
                     queue.put_nowait(msg)
             else:
-                logger.debug(
-                    "ACP: unhandled inbound request method=%r id=%r", method, req_id
-                )
+                logger.debug("ACP: unhandled inbound request method=%r id=%r", method, req_id)
             return
 
         # -- Response to one of our outbound requests -------------------------

@@ -3,10 +3,32 @@
 from __future__ import annotations
 
 import contextlib
+import socket
+from typing import TYPE_CHECKING
 
 import click
 
 from studyloop.cli._shared import console
+from studyloop.web.runtime_feedback import (
+    LanCredentialFeedback,
+    build_web_access_info,
+    format_lan_credential_lines,
+    format_web_access_lines,
+)
+
+if TYPE_CHECKING:
+    from types import FrameType as _FrameType
+
+
+def _candidate_lan_hosts() -> tuple[str, ...]:
+    """Best-effort LAN address discovery for runtime feedback."""
+    hosts: list[str] = []
+    with contextlib.suppress(OSError), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.connect(("8.8.8.8", 80))
+        hosts.append(sock.getsockname()[0])
+    with contextlib.suppress(OSError):
+        hosts.append(socket.gethostbyname(socket.gethostname()))
+    return tuple(hosts)
 
 
 @click.command()
@@ -49,6 +71,7 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
 
     # Resolve credentials: always read username from config; password from CLI > config > auto
     username = "study"
+    password_generated = False
     try:
         from studyloop.settings import load_settings
 
@@ -61,14 +84,17 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
 
     if lan and not password:
         password = secrets.token_urlsafe(16)
-        console.print(
-            f"[bold yellow]LAN credentials:[/bold yellow] "
-            f"[green]{username}[/green] / [green]{password}[/green]"
-        )
-        console.print(
-            "[dim]Set lan_username and lan_password in config.yaml "
-            "to avoid auto-generated passwords.[/dim]"
-        )
+        password_generated = True
+
+    if lan and password:
+        for line in format_lan_credential_lines(
+            LanCredentialFeedback(
+                username=username,
+                password=password,
+                password_generated=password_generated,
+            )
+        ):
+            console.print(line)
 
     if not ttyd_port:
         from studyloop.settings import load_settings as _ls
@@ -93,9 +119,14 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
         password=password,
         dev_mode=dev,
     )
-    console.print(f"[bold]Study PWA at http://{host}:{port}[/bold]")
-    if not lan:
-        console.print("[dim]Use --lan to expose to network[/dim]")
+    access_info = build_web_access_info(
+        bind_host=host,
+        port=port,
+        lan_enabled=lan,
+        lan_hosts=_candidate_lan_hosts() if lan else (),
+    )
+    for line in format_web_access_lines(access_info):
+        console.print(line)
     # loop="asyncio" is required for PTYTransport: uvloop reserves SIGCHLD
     # for its own subprocess tracking and refuses to install a user handler,
     # which our PTY child-exit detection depends on. The standard asyncio
@@ -112,7 +143,6 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
     import os as _os
     import threading as _threading
     import time as _time
-    from types import FrameType as _FrameType
 
     class _StudyLoopServer(uvicorn.Server):
         _watchdog_started: bool = False
@@ -120,9 +150,7 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
         def handle_exit(self, sig: int, frame: _FrameType | None) -> None:
             if not self._watchdog_started:
                 self._watchdog_started = True
-                console.print(
-                    "\n[yellow]Shutting down… (Ctrl-C again to force)[/yellow]"
-                )
+                console.print("\n[yellow]Shutting down… (Ctrl-C again to force)[/yellow]")
                 _threading.Thread(
                     target=_force_exit_watchdog,
                     args=(5.0,),
@@ -132,9 +160,7 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
 
     def _force_exit_watchdog(grace: float) -> None:
         _time.sleep(grace)
-        console.print(
-            "\n[red]Force-exiting after %.0fs (uvicorn shutdown hung).[/red]" % grace
-        )
+        console.print(f"\n[red]Force-exiting after {grace:.0f}s (uvicorn shutdown hung).[/red]")
         _os._exit(130)
 
     config = uvicorn.Config(

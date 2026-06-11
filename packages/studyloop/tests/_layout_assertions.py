@@ -156,9 +156,7 @@ def assert_scroll_reachable(page: Page, selector: str, container: str) -> None:
         }""",
         [selector, container],
     )
-    assert reachable is not None, (
-        f"element or container not found: {selector!r} / {container!r}"
-    )
+    assert reachable is not None, f"element or container not found: {selector!r} / {container!r}"
     assert reachable, (
         f"{selector!r} is not reachable by scrolling {container!r} — it is "
         f"clipped rather than scrollable"
@@ -213,14 +211,11 @@ def assert_nonzero_size(page: Page, selector: str) -> None:
         selector,
     )
     assert not bad, (
-        f"{selector!r} has {len(bad)} zero-size element(s) that still occupy "
-        f"a layout slot: {bad!r}"
+        f"{selector!r} has {len(bad)} zero-size element(s) that still occupy a layout slot: {bad!r}"
     )
 
 
-def assert_centered_in(
-    page: Page, child: str, container: str, *, tolerance_px: float = 4
-) -> None:
+def assert_centered_in(page: Page, child: str, container: str, *, tolerance_px: float = 4) -> None:
     """Assert ``child``'s horizontal midpoint is within tolerance of ``container``'s.
 
     Catches the off-centre class: the Quizzes config nav title was ~18px

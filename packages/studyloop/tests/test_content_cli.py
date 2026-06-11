@@ -358,13 +358,7 @@ def test_generate_practice_writes_hands_on_tasks_without_notebooklm(
     )
 
     assert result.exit_code == 0, result.output
-    practice = (
-        tmp_path
-        / "materials"
-        / "data-engineering"
-        / "practice"
-        / "lesson-practice.json"
-    )
+    practice = tmp_path / "materials" / "data-engineering" / "practice" / "lesson-practice.json"
     assert practice.exists()
     payload = json.loads(practice.read_text())
     assert payload["tasks"][0]["taskType"] == "debug"

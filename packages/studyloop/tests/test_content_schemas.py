@@ -103,8 +103,7 @@ def test_practice_deck_valid_payload_parses() -> None:
                     "taskType": "debug",
                     "prompt": "Fix the LEFT JOIN that accidentally filters null matches.",
                     "setup": (
-                        "SELECT * FROM orders LEFT JOIN customers "
-                        "... WHERE customers.region = 'EU'"
+                        "SELECT * FROM orders LEFT JOIN customers ... WHERE customers.region = 'EU'"
                     ),
                     "successCriteria": ["Unmatched orders remain in the result"],
                     "hint": "Move the right-table filter into the join condition.",

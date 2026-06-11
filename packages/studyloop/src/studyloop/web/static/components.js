@@ -1614,7 +1614,13 @@ function courseExplorer() {
             note: null,
           }),
         });
-        if (resp.ok) {
+        let data = null;
+        try {
+          data = await resp.json();
+        } catch {
+          data = null;
+        }
+        if (resp.ok && data && data.ok === true) {
           this.struggleMarked = true;
           this.struggleError = '';
         } else {

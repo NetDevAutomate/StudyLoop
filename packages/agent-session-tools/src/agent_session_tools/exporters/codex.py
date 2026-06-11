@@ -58,7 +58,9 @@ def _parse_timestamp(ts: str | int | float | None) -> str | None:
     return str(ts)
 
 
-def _flatten_content(content: str | list | None, text_fallback: str | None) -> str | None:
+def _flatten_content(
+    content: str | list | None, text_fallback: str | None
+) -> str | None:
     """Flatten a content value to plain text.
 
     Handles three shapes:

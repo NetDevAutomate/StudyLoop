@@ -95,9 +95,7 @@ _DEFAULT_MAX_TOKENS = 4096
 # Each <parameter> value is the JSON encoding of that key's value. We reassemble
 # them into the tool-input dict the schema expects.
 _INVOKE_RE = re.compile(r'<invoke\s+name="(?P<name>[^"]+)"\s*>(?P<body>.*?)</invoke>', re.DOTALL)
-_PARAM_RE = re.compile(
-    r'<parameter\s+name="(?P<key>[^"]+)"\s*>(?P<val>.*?)</parameter>', re.DOTALL
-)
+_PARAM_RE = re.compile(r'<parameter\s+name="(?P<key>[^"]+)"\s*>(?P<val>.*?)</parameter>', re.DOTALL)
 
 
 def _parse_inline_tool_call(text: str, expected_tool_name: str) -> dict[str, Any] | None:
@@ -171,10 +169,16 @@ class AnthropicCompatGenerator:
     # CardGenerator Protocol
     # ------------------------------------------------------------------
 
-    def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
+    def generate_flashcards(
+        self, source: str, title: str, count: int | None = None
+    ) -> FlashcardDeck:
         deck = self._generate(
             system_prompt=FLASHCARD_SYSTEM_PROMPT,
-            user_prompt=FLASHCARD_USER_PROMPT_TEMPLATE.format(title=title, source=source),
+            user_prompt=FLASHCARD_USER_PROMPT_TEMPLATE.format(
+                title=title,
+                source=source,
+                count=count or 10,
+            ),
             tool_name=_FLASHCARD_TOOL_NAME,
             tool_description="Emit a flashcard deck matching the provided JSON schema.",
             schema=flashcard_deck_json_schema(),
@@ -184,10 +188,14 @@ class AnthropicCompatGenerator:
             deck = deck.model_copy(update={"title": title})
         return deck
 
-    def generate_quiz(self, source: str, title: str) -> QuizDeck:
+    def generate_quiz(self, source: str, title: str, count: int | None = None) -> QuizDeck:
         deck = self._generate(
             system_prompt=QUIZ_SYSTEM_PROMPT,
-            user_prompt=QUIZ_USER_PROMPT_TEMPLATE.format(title=title, source=source),
+            user_prompt=QUIZ_USER_PROMPT_TEMPLATE.format(
+                title=title,
+                source=source,
+                count=count or 10,
+            ),
             tool_name=_QUIZ_TOOL_NAME,
             tool_description="Emit a multiple-choice quiz deck matching the provided JSON schema.",
             schema=quiz_deck_json_schema(),
@@ -299,9 +307,7 @@ class AnthropicCompatGenerator:
                 }
 
             resp = self._post_messages(payload)
-            tool_payload, assistant_turn, tool_use_id = self._extract_tool_payload(
-                resp, tool_name
-            )
+            tool_payload, assistant_turn, tool_use_id = self._extract_tool_payload(resp, tool_name)
             # Append the assistant's tool_use turn followed immediately by a
             # placeholder tool_result so the history stays protocol-valid. If
             # validation fails, the NEXT attempt overwrites the placeholder
@@ -332,9 +338,7 @@ class AnthropicCompatGenerator:
         try:
             r = self._client.post("/v1/messages", json=payload)
         except httpx.HTTPError as exc:
-            raise CardGenerationError(
-                f"{self._profile.label} request failed: {exc!r}"
-            ) from exc
+            raise CardGenerationError(f"{self._profile.label} request failed: {exc!r}") from exc
 
         if r.status_code >= 400:
             body = r.text[:500]
@@ -366,8 +370,7 @@ class AnthropicCompatGenerator:
         content = resp.get("content")
         if not isinstance(content, list) or not content:
             raise CardGenerationError(
-                f"{self._profile.label} response missing content blocks: "
-                f"{json.dumps(resp)[:300]}"
+                f"{self._profile.label} response missing content blocks: {json.dumps(resp)[:300]}"
             )
 
         tool_use_block = None
@@ -401,13 +404,10 @@ class AnthropicCompatGenerator:
 
         args = tool_use_block.get("input")
         if args is None:
-            raise CardGenerationError(
-                f"{self._profile.label} tool_use missing input field"
-            )
+            raise CardGenerationError(f"{self._profile.label} tool_use missing input field")
         if not isinstance(args, dict):
             raise CardGenerationError(
-                f"{self._profile.label} tool_use input is not an object: "
-                f"{type(args).__name__}"
+                f"{self._profile.label} tool_use input is not an object: {type(args).__name__}"
             )
 
         assistant_turn = {"role": "assistant", "content": content}

@@ -189,6 +189,7 @@ class TestExtractText:
             ],
         }
         result = _extract_text(msg)
+        assert result is not None
         assert "Part one." in result
         assert "Part two." in result
 

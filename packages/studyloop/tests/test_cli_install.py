@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import click
 import pytest
 from click.testing import CliRunner
 
 from studyloop.cli import cli
+from studyloop.installers import _AGENT_CHOICES
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,3 +53,32 @@ class TestInstallAgents:
         assert result.exit_code == 0, result.output
         mock_install.assert_called_once_with(tmp_path, tools=["codex"], uninstall=False)
         assert "Updated agent definitions" in result.output
+
+    @pytest.mark.parametrize("tool", ["pi", "omp"])
+    def test_install_agents_accepts_pi_and_omp(
+        self, runner: CliRunner, tmp_path: Path, tool: str
+    ) -> None:
+        with (
+            patch("studyloop.cli._install.require_repo_root", return_value=tmp_path),
+            patch(
+                "studyloop.cli._install.install_agent_definitions",
+                return_value={"shared": 1, tool: 1},
+            ) as mock_install,
+        ):
+            result = runner.invoke(
+                cli, ["install", "agents", "--repo-root", str(tmp_path), "--tool", tool]
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_install.assert_called_once_with(tmp_path, tools=[tool], uninstall=False)
+
+    def test_install_agents_click_choices_match_installer_choices(self) -> None:
+        from studyloop.cli._install import install_agents
+
+        tool_options = [
+            param for param in install_agents.params if getattr(param, "name", None) == "tools"
+        ]
+        assert len(tool_options) == 1
+        param_type = tool_options[0].type
+        assert isinstance(param_type, click.Choice)
+        assert tuple(param_type.choices) == _AGENT_CHOICES

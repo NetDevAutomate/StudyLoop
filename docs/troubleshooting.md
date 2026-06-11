@@ -1,0 +1,163 @@
+# Troubleshooting
+
+## Install Checks
+
+Run the lightweight self-test first:
+
+```bash
+studyloop self-test
+studyloop self-test --json
+```
+
+Then run the deeper environment checks:
+
+```bash
+studyloop doctor
+studyloop doctor --json
+```
+
+`studyloop self-test` is safe immediately after installation. It does not run
+`doctor --fix`, start services, contact providers, or write agent files.
+
+## uv Environment Drift
+
+When a local checkout behaves differently from CI, resync the lean development
+profile and rerun the core gates:
+
+```bash
+just sync-dev
+just lint
+just typecheck
+just test
+```
+
+Use `just sync-full` only when validating optional extras. The full profile
+pulls heavier optional stacks such as semantic search and TTS dependencies.
+
+## Optional Profiles
+
+Use profile checks when a change touches a specific optional surface:
+
+```bash
+just test-web
+just test-content
+just test-semantic
+```
+
+If `test-semantic` skips because `numpy` or embedding dependencies are missing,
+run:
+
+```bash
+just sync-semantic
+just test-semantic
+```
+
+## Web And LAN Access
+
+For local-only use:
+
+```bash
+studyloop web
+```
+
+For LAN use:
+
+```bash
+studyloop web --lan
+```
+
+Configured LAN passwords are not printed. Generated one-time passwords are
+printed once. If a phone or tablet cannot connect, check that the shown LAN URL
+uses the host's real LAN address and that the device is on the same network.
+
+## Provider Credentials
+
+Use the web Settings panel or environment variables for provider keys. Raw
+provider keys must never appear in logs, screenshots, or issue reports.
+
+For provider checks:
+
+```bash
+studyloop self-test
+studyloop doctor --category deps
+```
+
+`studyloop self-test` only verifies that the web module imports. It does not
+call OpenAI, OpenRouter, Gemini, Anthropic, Bedrock, Ollama, or other providers.
+
+## Generation Is Busy Or Stuck
+
+The Generate panel runs one content-generation job at a time. If another job is
+active, `POST /api/content/generate` returns `409` and the browser shows a
+visible busy/conflict banner.
+
+Use this order:
+
+1. Check the Generate panel status and progress rows.
+2. Wait for the active job to finish if the panel says another job is running.
+3. If the local process was killed mid-job and the UI never clears, restart
+   `studyloop web`.
+4. Rerun generation from the same course/scope. The default **Merge** policy
+   de-duplicates existing cards/questions and is the least destructive retry.
+
+## Generated Too Many Or Too Few Cards
+
+The **Cards / questions per source** field is sent as `count_per_source`. It is
+copied into each `GenerationTask.count` and included in the provider prompt for
+every selected source and kind.
+
+This is a target, not a filesystem quota. The Stub backend returns the exact
+requested count. External providers can still under- or over-produce if they do
+not follow the prompt; invalid shapes fail validation and show as task errors.
+Use the Generate panel plan/progress line to confirm the requested count,
+provider, and model before comparing output files.
+
+## Course Explorer Looks Stale
+
+The Course Explorer provider/course tree is cached by a visible tree
+fingerprint, not only the top-level directory timestamp. Adding or deleting
+nested source courses should refresh on the next tree request, while generated
+output folders such as `flashcards/` and `quizzes/` intentionally do not
+invalidate the visible tree.
+
+If the panel looks stale:
+
+1. Refresh the browser.
+2. Confirm the source file lives under `content.base_path`.
+3. Confirm the source file has an allowed suffix: `.md`, `.markdown`, or `.txt`.
+4. Restart `studyloop web` if the process has been running through manual file
+   moves or external sync conflicts.
+
+Do not delete `explorer_fts.db` for a stale provider/course list. That file is
+only the derived search index.
+
+## Search Results Are Stale
+
+Course Explorer search uses the derived SQLite FTS cache at
+`<session_db_dir>/explorer_fts.db`. The cache is built lazily on first search and
+refreshed from source lesson metadata on subsequent searches.
+
+If search results are stale but the course tree is correct:
+
+1. Search again after saving the source file.
+2. Restart `studyloop web` if the process was interrupted during indexing.
+3. Delete `explorer_fts.db` only for search-index issues; it will be rebuilt on
+   the next search and is not part of `sessions.db` migrations.
+
+## Progress Or Struggles Missing
+
+Struggles and progress live in `sessions.db` and are surfaced through
+`study_progress`. Course Explorer writes web-marked struggles through
+`POST /api/history/struggling-topics`, including provenance columns such as
+`source_course` and `source_section`.
+
+Run:
+
+```bash
+studyloop self-test
+studyloop doctor --category database
+```
+
+If the database check fails, fix that first. If it passes but the Generate
+panel's **Topic I'm struggling on** list is empty, confirm that the relevant
+struggle is inside the selected window and has `confidence='struggling'`.

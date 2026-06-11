@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-import studyloop.installers as I
+import studyloop.installers as installers
 from studyloop.installers import _HarnessExport
 
 # ---------------------------------------------------------------------------
@@ -24,29 +24,29 @@ from studyloop.installers import _HarnessExport
 
 
 def test_agent_choices_includes_pi_and_omp() -> None:
-    assert "pi" in I._AGENT_CHOICES
-    assert "omp" in I._AGENT_CHOICES
+    assert "pi" in installers._AGENT_CHOICES
+    assert "omp" in installers._AGENT_CHOICES
 
 
 def test_harness_export_has_pi_with_correct_flag() -> None:
-    assert "pi" in I._HARNESS_EXPORT
-    assert I._HARNESS_EXPORT["pi"].export_flag == "pi-only"
+    assert "pi" in installers._HARNESS_EXPORT
+    assert installers._HARNESS_EXPORT["pi"].export_flag == "pi-only"
 
 
 def test_harness_export_has_omp_with_correct_flag() -> None:
-    assert "omp" in I._HARNESS_EXPORT
-    assert I._HARNESS_EXPORT["omp"].export_flag == "omp-only"
+    assert "omp" in installers._HARNESS_EXPORT
+    assert installers._HARNESS_EXPORT["omp"].export_flag == "omp-only"
 
 
 def test_harness_export_pi_steering_path_ends_correctly() -> None:
-    path = I._HARNESS_EXPORT["pi"].steering_path
+    path = installers._HARNESS_EXPORT["pi"].steering_path
     assert path.parts[-1] == "session-db.md"
     assert ".pi" in path.parts
     assert "agent" in path.parts
 
 
 def test_harness_export_omp_steering_path_ends_correctly() -> None:
-    path = I._HARNESS_EXPORT["omp"].steering_path
+    path = installers._HARNESS_EXPORT["omp"].steering_path
     assert path.parts[-1] == "session-db.md"
     assert ".omp" in path.parts
     assert "agent" in path.parts
@@ -76,8 +76,8 @@ def home_pi_omp(tmp_path: Path):
         "omp": _HarnessExport(omp_steer, "omp-only"),
     }
     with (
-        patch.object(I, "_HOME", tmp_path),
-        patch.object(I, "_HARNESS_EXPORT", harness_map),
+        patch.object(installers, "_HOME", tmp_path),
+        patch.object(installers, "_HARNESS_EXPORT", harness_map),
     ):
         yield tmp_path
 
@@ -91,33 +91,33 @@ class TestMandatePiOmp:
     def test_writes_pi_mandate_with_flag_and_sentinel(
         self, repo_root: Path, home_pi_omp: Path
     ) -> None:
-        result = I.install_session_db_mandate(repo_root, tools=["pi"])
+        result = installers.install_session_db_mandate(repo_root, tools=["pi"])
         assert result == {"pi": 1}
         text = (home_pi_omp / ".pi/agent/session-db.md").read_text()
         assert "session-export --pi-only" in text
-        assert I._MANDATE_SENTINEL in text
+        assert installers._MANDATE_SENTINEL in text
 
     def test_writes_omp_mandate_with_flag_and_sentinel(
         self, repo_root: Path, home_pi_omp: Path
     ) -> None:
-        result = I.install_session_db_mandate(repo_root, tools=["omp"])
+        result = installers.install_session_db_mandate(repo_root, tools=["omp"])
         assert result == {"omp": 1}
         text = (home_pi_omp / ".omp/agent/session-db.md").read_text()
         assert "session-export --omp-only" in text
-        assert I._MANDATE_SENTINEL in text
+        assert installers._MANDATE_SENTINEL in text
 
     def test_idempotent_pi(self, repo_root: Path, home_pi_omp: Path) -> None:
-        I.install_session_db_mandate(repo_root, tools=["pi"])
-        again = I.install_session_db_mandate(repo_root, tools=["pi"])
+        installers.install_session_db_mandate(repo_root, tools=["pi"])
+        again = installers.install_session_db_mandate(repo_root, tools=["pi"])
         assert again == {"pi": 0}
 
     def test_idempotent_omp(self, repo_root: Path, home_pi_omp: Path) -> None:
-        I.install_session_db_mandate(repo_root, tools=["omp"])
-        again = I.install_session_db_mandate(repo_root, tools=["omp"])
+        installers.install_session_db_mandate(repo_root, tools=["omp"])
+        again = installers.install_session_db_mandate(repo_root, tools=["omp"])
         assert again == {"omp": 0}
 
     def test_writes_both_pi_and_omp(self, repo_root: Path, home_pi_omp: Path) -> None:
-        result = I.install_session_db_mandate(repo_root, tools=["pi", "omp"])
+        result = installers.install_session_db_mandate(repo_root, tools=["pi", "omp"])
         assert result == {"pi": 1, "omp": 1}
 
 
@@ -129,31 +129,31 @@ class TestMandatePiOmp:
 class TestDetectPiOmp:
     def test_pi_detected_when_dot_pi_exists(self, tmp_path: Path) -> None:
         (tmp_path / ".pi").mkdir()
-        with patch.object(I, "_HOME", tmp_path):
-            detected = I.detect_available_agent_tools()
+        with patch.object(installers, "_HOME", tmp_path):
+            detected = installers.detect_available_agent_tools()
         assert "pi" in detected
 
     def test_omp_detected_when_dot_omp_exists(self, tmp_path: Path) -> None:
         (tmp_path / ".omp").mkdir()
-        with patch.object(I, "_HOME", tmp_path):
-            detected = I.detect_available_agent_tools()
+        with patch.object(installers, "_HOME", tmp_path):
+            detected = installers.detect_available_agent_tools()
         assert "omp" in detected
 
     def test_pi_absent_when_dot_pi_missing(self, tmp_path: Path) -> None:
-        with patch.object(I, "_HOME", tmp_path):
-            detected = I.detect_available_agent_tools()
+        with patch.object(installers, "_HOME", tmp_path):
+            detected = installers.detect_available_agent_tools()
         assert "pi" not in detected
 
     def test_omp_absent_when_dot_omp_missing(self, tmp_path: Path) -> None:
-        with patch.object(I, "_HOME", tmp_path):
-            detected = I.detect_available_agent_tools()
+        with patch.object(installers, "_HOME", tmp_path):
+            detected = installers.detect_available_agent_tools()
         assert "omp" not in detected
 
     def test_both_detected_together(self, tmp_path: Path) -> None:
         (tmp_path / ".pi").mkdir()
         (tmp_path / ".omp").mkdir()
-        with patch.object(I, "_HOME", tmp_path):
-            detected = I.detect_available_agent_tools()
+        with patch.object(installers, "_HOME", tmp_path):
+            detected = installers.detect_available_agent_tools()
         assert "pi" in detected
         assert "omp" in detected
 
@@ -169,15 +169,15 @@ class TestDoctorPiOmp:
     ) -> None:
         from studyloop.doctor.harness import check_harness_export
 
-        with patch.object(I, "detect_available_agent_tools", return_value=["pi", "omp"]):
+        with patch.object(installers, "detect_available_agent_tools", return_value=["pi", "omp"]):
             before = {r.name: r.status for r in check_harness_export()}
 
         assert before["export_mandate_pi"] == "warn"
         assert before["export_mandate_omp"] == "warn"
 
-        I.install_session_db_mandate(repo_root, tools=["pi", "omp"])
+        installers.install_session_db_mandate(repo_root, tools=["pi", "omp"])
 
-        with patch.object(I, "detect_available_agent_tools", return_value=["pi", "omp"]):
+        with patch.object(installers, "detect_available_agent_tools", return_value=["pi", "omp"]):
             after = {r.name: r.status for r in check_harness_export()}
 
         assert after["export_mandate_pi"] == "pass"
@@ -186,7 +186,7 @@ class TestDoctorPiOmp:
     def test_pi_check_is_auto_fixable_warn(self, home_pi_omp: Path) -> None:
         from studyloop.doctor.harness import check_harness_export
 
-        with patch.object(I, "detect_available_agent_tools", return_value=["pi"]):
+        with patch.object(installers, "detect_available_agent_tools", return_value=["pi"]):
             results = check_harness_export()
 
         assert results
@@ -198,7 +198,7 @@ class TestDoctorPiOmp:
     def test_omp_check_is_auto_fixable_warn(self, home_pi_omp: Path) -> None:
         from studyloop.doctor.harness import check_harness_export
 
-        with patch.object(I, "detect_available_agent_tools", return_value=["omp"]):
+        with patch.object(installers, "detect_available_agent_tools", return_value=["omp"]):
             results = check_harness_export()
 
         assert results

@@ -15,6 +15,7 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
+from shutil import rmtree
 from typing import TYPE_CHECKING
 
 import pytest
@@ -84,6 +85,23 @@ def client(vault: Path, monkeypatch: MonkeyPatch) -> TestClient:
     s.content = ContentConfig(base_path=vault)
     monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
     return TestClient(create_app(study_dirs=[]))
+
+
+def _make_tree_client(base: Path, monkeypatch: MonkeyPatch) -> TestClient:
+    from studyloop.settings import ContentConfig, Settings
+
+    s = Settings()
+    s.content = ContentConfig(base_path=base)
+    monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+    return TestClient(create_app(study_dirs=[]))
+
+
+def _tree_course_ids(response_body: list[dict[str, object]]) -> set[str]:
+    course_ids: set[str] = set()
+    for provider in response_body:
+        for course in provider["courses"]:  # type: ignore[index]
+            course_ids.add(course["id"])
+    return course_ids
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +175,65 @@ class TestExplorerTree:
         r1 = client.get("/api/explorer/tree").json()
         r2 = client.get("/api/explorer/tree").json()
         assert r1 == r2
+
+    def test_cache_refreshes_when_nested_course_is_added(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch
+    ) -> None:
+        first_course = tmp_path / "Provider" / "Course_One"
+        first_course.mkdir(parents=True)
+        (first_course / "intro.md").write_text("# Intro", encoding="utf-8")
+        client = _make_tree_client(tmp_path, monkeypatch)
+
+        before = client.get("/api/explorer/tree").json()
+        assert _tree_course_ids(before) == {"Provider/Course_One"}
+
+        second_course = tmp_path / "Provider" / "Course_Two"
+        second_course.mkdir()
+        (second_course / "lesson.md").write_text("# Lesson", encoding="utf-8")
+
+        after = client.get("/api/explorer/tree").json()
+        assert _tree_course_ids(after) == {"Provider/Course_One", "Provider/Course_Two"}
+
+    def test_cache_refreshes_when_nested_course_is_deleted(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch
+    ) -> None:
+        first_course = tmp_path / "Provider" / "Course_One"
+        second_course = tmp_path / "Provider" / "Course_Two"
+        first_course.mkdir(parents=True)
+        second_course.mkdir()
+        (first_course / "intro.md").write_text("# Intro", encoding="utf-8")
+        (second_course / "lesson.md").write_text("# Lesson", encoding="utf-8")
+        client = _make_tree_client(tmp_path, monkeypatch)
+
+        before = client.get("/api/explorer/tree").json()
+        assert _tree_course_ids(before) == {"Provider/Course_One", "Provider/Course_Two"}
+
+        rmtree(second_course)
+
+        after = client.get("/api/explorer/tree").json()
+        assert _tree_course_ids(after) == {"Provider/Course_One"}
+
+    def test_output_dirs_do_not_change_tree_fingerprint(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch
+    ) -> None:
+        from studyloop.web.routes.explorer import _tree_fingerprint
+
+        course = tmp_path / "Provider" / "Course_One"
+        course.mkdir(parents=True)
+        (course / "intro.md").write_text("# Intro", encoding="utf-8")
+        client = _make_tree_client(tmp_path, monkeypatch)
+
+        before = client.get("/api/explorer/tree").json()
+        before_fingerprint = _tree_fingerprint(tmp_path)
+        assert _tree_course_ids(before) == {"Provider/Course_One"}
+
+        flashcards = course / "flashcards"
+        flashcards.mkdir()
+        (flashcards / "generated.md").write_text("# Generated", encoding="utf-8")
+
+        after = client.get("/api/explorer/tree").json()
+        assert _tree_fingerprint(tmp_path) == before_fingerprint
+        assert after == before
 
 
 # ---------------------------------------------------------------------------

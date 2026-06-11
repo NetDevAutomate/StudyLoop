@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import os
 import stat
-from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest import MonkeyPatch
 
 
@@ -155,7 +156,7 @@ class TestResolutionOrder:
         for provider, env_var in env_map.items():
             monkeypatch.setenv(env_var, f"test-key-{provider}")
 
-        for provider, env_var in env_map.items():
+        for provider, _env_var in env_map.items():
             assert get_secret(provider) == f"test-key-{provider}"
 
 
@@ -361,36 +362,36 @@ class TestProviderAuthMocked:
     def test_anthropic_success(self, mock_anthropic_success: object) -> None:
         from studyloop.secrets import test_provider_auth
 
-        ok, msg = test_provider_auth("anthropic", "sk-ant-test")
+        ok, _msg = test_provider_auth("anthropic", "sk-ant-test")
         assert ok is True
 
     def test_anthropic_failure(self, mock_anthropic_failure: object) -> None:
         from studyloop.secrets import test_provider_auth
 
-        ok, msg = test_provider_auth("anthropic", "sk-ant-bad")
+        ok, _msg = test_provider_auth("anthropic", "sk-ant-bad")
         assert ok is False
 
     # --- OpenRouter ---
     def test_openrouter_success(self, mock_openrouter_success: object) -> None:
         from studyloop.secrets import test_provider_auth
 
-        ok, msg = test_provider_auth("openrouter", "sk-or-test")
+        ok, _msg = test_provider_auth("openrouter", "sk-or-test")
         assert ok is True
 
     # --- Gemini ---
     def test_gemini_success(self, mock_gemini_success: object) -> None:
         from studyloop.secrets import test_provider_auth
 
-        ok, msg = test_provider_auth("gemini", "AIzaTest")
+        ok, _msg = test_provider_auth("gemini", "AIzaTest")
         assert ok is True
 
     def test_gemini_failure(self, mock_gemini_failure: object) -> None:
         from studyloop.secrets import test_provider_auth
 
-        ok, msg = test_provider_auth("gemini", "AIzaBad")
+        ok, _msg = test_provider_auth("gemini", "AIzaBad")
         assert ok is False
 
-    def test_gemini_key_travels_in_header_not_url(self, mock_gemini_success: object) -> None:
+    def test_gemini_key_travels_in_header_not_url(self, mock_gemini_success: Any) -> None:
         """The Gemini key must NOT appear in the request URL.
 
         Google accepts the key via the ``x-goog-api-key`` header. Passing it as
@@ -487,9 +488,10 @@ class TestBedrockBearerToken:
         monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "tok-from-env")
         assert get_secret("bedrock_bearer_token") == "tok-from-env"
 
-    def test_delete_bearer_token(self) -> None:
+    def test_delete_bearer_token(self, monkeypatch: MonkeyPatch) -> None:
         from studyloop.secrets import delete_secret, get_secret, set_secret
 
+        monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
         set_secret("bedrock_bearer_token", "tok-xyz")
         delete_secret("bedrock_bearer_token")
         assert get_secret("bedrock_bearer_token") is None
@@ -546,5 +548,5 @@ class TestEmptyKeyGuard:
     def test_whitespace_key_returns_false(self) -> None:
         from studyloop.secrets import test_provider_auth
 
-        ok, msg = test_provider_auth("openai", "   ")
+        ok, _msg = test_provider_auth("openai", "   ")
         assert ok is False

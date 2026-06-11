@@ -73,8 +73,10 @@ class TestBedrockBearer:
 
         mock_client = MagicMock()
         mock_client.converse.return_value = {"output": {}}
-        with patch.object(provider_auth, "_with_bearer_env"), \
-                patch("boto3.client", return_value=mock_client):
+        with (
+            patch.object(provider_auth, "_with_bearer_env"),
+            patch("boto3.client", return_value=mock_client),
+        ):
             ok, _msg = provider_auth.test_bedrock_bearer("tok-valid")
         assert ok is True
         mock_client.converse.assert_called_once()
@@ -160,9 +162,7 @@ class TestOllamaGenerate:
     def _deck(self, n_cards: int):
         from studyloop.content.schemas import FlashcardDeck, FlashcardItem
 
-        cards = [
-            FlashcardItem(front=f"Q{i}", back=f"A{i}") for i in range(n_cards)
-        ]
+        cards = [FlashcardItem(front=f"Q{i}", back=f"A{i}") for i in range(n_cards)]
         return FlashcardDeck(title="Test", cards=cards) if cards else None
 
     def test_success_with_valid_deck(self) -> None:
@@ -207,11 +207,12 @@ class TestOllamaGenerate:
                 gen.generate_flashcards.return_value = self._deck(2)
             return gen
 
-        with patch.object(
-            provider_auth, "list_ollama_models", return_value=discovered
-        ), patch(
-            "studyloop.content.generators.ollama.OllamaGenerator",
-            side_effect=make_gen,
+        with (
+            patch.object(provider_auth, "list_ollama_models", return_value=discovered),
+            patch(
+                "studyloop.content.generators.ollama.OllamaGenerator",
+                side_effect=make_gen,
+            ),
         ):
             ok, _ = provider_auth.test_ollama_generate()
         assert ok is True
@@ -228,7 +229,8 @@ class TestOllamaDiscovery:
 
         payload = {"models": [{"name": "gemma4:latest"}, {"name": "qwen3-embedding:0.6b"}]}
         with patch.object(
-            httpx, "get",
+            httpx,
+            "get",
             return_value=httpx.Response(200, json=payload, request=httpx.Request("GET", "x")),
         ):
             names = provider_auth.list_ollama_models("http://localhost:11434")
@@ -248,19 +250,21 @@ class TestOllamaDiscovery:
 
         used: list[str] = []
 
-        def make_gen(config):  # noqa: ANN001
+        def make_gen(config):
             used.append(config.ollama.model)
             gen = MagicMock()
             gen.generate_flashcards.return_value = self._deck(2)
             return gen
 
-        with patch.object(
-            provider_auth, "list_ollama_models",
-            return_value=["qwen3-embedding:0.6b", "gemma4:latest"],
-        ), patch(
-            "studyloop.content.generators.ollama.OllamaGenerator", side_effect=make_gen
+        with (
+            patch.object(
+                provider_auth,
+                "list_ollama_models",
+                return_value=["qwen3-embedding:0.6b", "gemma4:latest"],
+            ),
+            patch("studyloop.content.generators.ollama.OllamaGenerator", side_effect=make_gen),
         ):
-            ok, msg = provider_auth.test_ollama_generate()
+            ok, _msg = provider_auth.test_ollama_generate()
         assert ok is True
         # Embedding model skipped; the real model was used.
         assert used == ["gemma4:latest"]
@@ -275,8 +279,10 @@ class TestOllamaDiscovery:
     def test_generate_no_models_installed_message(self) -> None:
         from studyloop import provider_auth
 
-        with patch.object(provider_auth, "list_ollama_models", return_value=[]), \
-                patch.object(provider_auth, "OLLAMA_RECOMMENDED_MODELS", ()):
+        with (
+            patch.object(provider_auth, "list_ollama_models", return_value=[]),
+            patch.object(provider_auth, "OLLAMA_RECOMMENDED_MODELS", ()),
+        ):
             ok, msg = provider_auth.test_ollama_generate()
         assert ok is False
         assert "no ollama models installed" in msg.lower()

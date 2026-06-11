@@ -111,6 +111,15 @@ class ScopeRequest:
     window_days: int = 14
 
 
+@dataclass(frozen=True, slots=True)
+class _StrugglingTopicRow:
+    topic: str
+    concept: str
+    source_course: str | None = None
+    source_section: str | None = None
+    source_publisher: str | None = None
+
+
 def resolve_scope(
     request: ScopeRequest, settings: Settings, db_path: Path | None = None
 ) -> list[ResolvedSource]:
@@ -133,14 +142,10 @@ def resolve_scope(
         ScopeResolutionError: missing course directory, missing
             section, empty matching set, etc.
     """
-    base = Path(settings.content.base_path).expanduser()
+    base = content_base(settings)
     # 3-level tree: base/<publisher>/<course>/. publisher is optional for
     # backwards compatibility with the legacy flat layout (base/<course>).
-    course_dir = (
-        (base / request.publisher / request.course)
-        if request.publisher
-        else (base / request.course)
-    )
+    course_dir = resolve_content_path(base, request.publisher, request.course)
     if not course_dir.is_dir():
         raise ScopeResolutionError(
             f"Course directory not found: {course_dir} "
@@ -161,11 +166,42 @@ def resolve_scope(
     if request.kind == "topic_struggles":
         return _resolve_topic_struggles(
             course_dir=course_dir,
+            publisher=request.publisher,
+            course=request.course,
             window_days=request.window_days,
             topic_slug=request.topic_slug or None,
             db_path=db_path or settings.session_db,
         )
     raise ScopeResolutionError(f"Unknown scope kind: {request.kind!r}")
+
+
+def content_base(settings: Settings) -> Path:
+    """Return the configured content base as a resolved absolute path."""
+    return Path(settings.content.base_path).expanduser().resolve()
+
+
+def resolve_content_path(base: Path, *parts: str) -> Path:
+    """Resolve user-selected content path parts under ``base``.
+
+    All caller-controlled path segments must remain inside ``base`` after
+    resolution. This blocks ``..`` traversal, absolute paths, and symlink
+    escapes while still allowing normal nested lesson paths.
+    """
+    base = base.expanduser().resolve()
+    path = base
+    for part in parts:
+        if not part:
+            continue
+        raw = Path(part)
+        if raw.is_absolute():
+            raise ScopeResolutionError(f"Content path must be relative: {part!r}")
+        if ".." in raw.parts:
+            raise ScopeResolutionError(f"Content path must not contain '..': {part!r}")
+        path = path / raw
+    resolved = path.resolve()
+    if resolved != base and not resolved.is_relative_to(base):
+        raise ScopeResolutionError(f"Content path escapes content.base_path: {path}")
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -231,9 +267,7 @@ def _resolve_course(course_dir: Path) -> list[ResolvedSource]:
         if src is not None:
             sources.append(src)
     if not sources:
-        raise ScopeResolutionError(
-            f"Course {course_dir.name!r} has no readable lesson markdown."
-        )
+        raise ScopeResolutionError(f"Course {course_dir.name!r} has no readable lesson markdown.")
     return sources
 
 
@@ -244,7 +278,7 @@ def _resolve_section(course_dir: Path, section_name: str) -> list[ResolvedSource
     (e.g. ``study-notes/getting-started.md``). For convenience the suffix
     may be omitted and a bare stem is matched against the course's files.
     """
-    candidate = course_dir / section_name
+    candidate = resolve_content_path(course_dir, section_name)
     path: Path | None = None
     if candidate.is_file():
         path = candidate
@@ -260,13 +294,10 @@ def _resolve_section(course_dir: Path, section_name: str) -> list[ResolvedSource
                 break
     if path is None or not path.is_file():
         raise ScopeResolutionError(
-            f"Section (lesson file) not found: {section_name!r} "
-            f"under course {course_dir.name!r}"
+            f"Section (lesson file) not found: {section_name!r} under course {course_dir.name!r}"
         )
     if any(part in _OUTPUT_SUBDIRS for part in path.relative_to(course_dir).parts):
-        raise ScopeResolutionError(
-            f"Section {section_name!r} is inside a reserved output dir."
-        )
+        raise ScopeResolutionError(f"Section {section_name!r} is inside a reserved output dir.")
     src = _file_source(course_dir, path, set())
     if src is None:
         raise ScopeResolutionError(f"Section file {path} has no readable markdown.")
@@ -276,6 +307,8 @@ def _resolve_section(course_dir: Path, section_name: str) -> list[ResolvedSource
 def _resolve_topic_struggles(
     *,
     course_dir: Path,
+    publisher: str,
+    course: str,
     window_days: int,
     topic_slug: str | None,
     db_path: Path,
@@ -291,38 +324,32 @@ def _resolve_topic_struggles(
     overall).
     """
     if window_days < 1 or window_days > 90:
-        raise ScopeResolutionError(
-            f"window_days must be in [1, 90], got {window_days}"
-        )
+        raise ScopeResolutionError(f"window_days must be in [1, 90], got {window_days}")
     cutoff = (datetime.now(UTC) - timedelta(days=window_days)).isoformat()
-    topics = _query_struggling_topics(db_path, cutoff, topic_slug)
-    if not topics:
+    rows = _query_struggling_topics(db_path, cutoff, topic_slug)
+    if not rows:
         raise ScopeResolutionError(
             f"No struggling topics found in last {window_days} day(s) "
             f"(filter: topic_slug={topic_slug!r})."
         )
 
     sources: list[ResolvedSource] = []
-    for topic in topics:
-        match = _find_markdown_for_topic(course_dir, topic)
-        if match is None:
-            continue
-        markdown_text = _concatenate_markdown(match) if match.is_dir() else match.read_text(
-            encoding="utf-8"
+    seen_identifiers: set[str] = set()
+    for row in rows:
+        source = _resolve_struggling_topic_row(
+            course_dir=course_dir,
+            publisher=publisher,
+            course=course,
+            row=row,
         )
-        if not markdown_text:
+        if source is None or source.identifier in seen_identifiers:
             continue
-        sources.append(
-            ResolvedSource(
-                identifier=_slugify(topic),
-                title=_humanise(topic),
-                markdown_text=markdown_text,
-            )
-        )
+        seen_identifiers.add(source.identifier)
+        sources.append(source)
     if not sources:
         raise ScopeResolutionError(
-            f"Found {len(topics)} struggling topic(s) but none had matching "
-            f"source markdown under {course_dir}. Topics: {topics!r}"
+            f"Found {len(rows)} struggling topic(s) but none had matching "
+            f"source markdown under {course_dir}. Topics: {[r.topic for r in rows]!r}"
         )
     return sources
 
@@ -384,10 +411,73 @@ def _find_markdown_for_topic(course_dir: Path, topic: str) -> Path | None:
     return None
 
 
+def _resolve_struggling_topic_row(
+    *,
+    course_dir: Path,
+    publisher: str,
+    course: str,
+    row: _StrugglingTopicRow,
+) -> ResolvedSource | None:
+    """Resolve one struggle row, preferring exact course/section provenance."""
+    if row.source_course or row.source_publisher or row.source_section:
+        if not _provenance_matches_scope(row, publisher=publisher, course=course):
+            return None
+        if row.source_section:
+            try:
+                return _resolve_section(course_dir, row.source_section)[0]
+            except ScopeResolutionError:
+                return None
+
+    match = _find_markdown_for_topic(course_dir, row.topic)
+    if match is None:
+        return None
+    markdown_text = (
+        _concatenate_markdown(match) if match.is_dir() else match.read_text(encoding="utf-8")
+    )
+    if not markdown_text:
+        return None
+    return ResolvedSource(
+        identifier=_slugify(row.topic),
+        title=_humanise(row.topic),
+        markdown_text=markdown_text,
+    )
+
+
+def _provenance_matches_scope(row: _StrugglingTopicRow, *, publisher: str, course: str) -> bool:
+    """Return whether row-level provenance belongs to the requested course scope."""
+    if row.source_publisher and publisher and _slugify(row.source_publisher) != _slugify(publisher):
+        return False
+    if row.source_course:
+        course_slug = _slugify(course)
+        full_slug = _slugify(f"{publisher}/{course}") if publisher else course_slug
+        source_slug = _slugify(row.source_course)
+        if source_slug not in {course_slug, full_slug}:
+            return False
+    return True
+
+
+def _row_matches_topic_slug(row: _StrugglingTopicRow, topic_slug: str | None) -> bool:
+    """Match current topic filters against either legacy topic or section provenance."""
+    if not topic_slug:
+        return True
+    wanted = _slugify(topic_slug)
+    candidates = [row.topic, row.concept]
+    if row.source_section:
+        candidates.extend([row.source_section, Path(row.source_section).stem])
+    return any(_slugify(candidate) == wanted for candidate in candidates if candidate)
+
+
+def _study_progress_columns(conn: sqlite3.Connection) -> set[str]:
+    try:
+        return {r["name"] for r in conn.execute("PRAGMA table_info(study_progress)")}
+    except sqlite3.OperationalError:
+        return set()
+
+
 def _query_struggling_topics(
     db_path: Path, cutoff_iso: str, topic_slug: str | None
-) -> list[str]:
-    """Return distinct ``topic`` strings from ``study_progress`` matching the filter.
+) -> list[_StrugglingTopicRow]:
+    """Return struggling ``study_progress`` rows matching the filter.
 
     Uses ``confidence='struggling'`` (matches the filter at
     ``history/sessions.py:244-249`` which also includes 'learning';
@@ -399,33 +489,42 @@ def _query_struggling_topics(
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        if topic_slug:
-            # Topic stored lowercase per progress.py:86. Match exactly.
-            rows = conn.execute(
-                """
-                SELECT DISTINCT topic FROM study_progress
-                WHERE confidence = 'struggling'
-                  AND last_seen > ?
-                  AND topic = ?
-                ORDER BY topic
-                """,
-                (cutoff_iso, topic_slug.lower().strip()),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT DISTINCT topic FROM study_progress
-                WHERE confidence = 'struggling'
-                  AND last_seen > ?
-                ORDER BY topic
-                """,
-                (cutoff_iso,),
-            ).fetchall()
+        columns = _study_progress_columns(conn)
+        optional_source_cols = [
+            col for col in ("source_course", "source_section", "source_publisher") if col in columns
+        ]
+        select_cols = ["topic", "concept", *optional_source_cols]
+        rows = conn.execute(
+            f"""
+            SELECT {", ".join(select_cols)}
+            FROM study_progress
+            WHERE confidence = 'struggling'
+              AND last_seen > ?
+            ORDER BY lower(topic), lower(concept)
+            """,
+            (cutoff_iso,),
+        ).fetchall()
     except sqlite3.OperationalError:
         return []
     finally:
         conn.close()
-    return [r["topic"] for r in rows]
+    struggle_rows = []
+    for r in rows:
+        source_course = r["source_course"] if "source_course" in optional_source_cols else None
+        source_section = r["source_section"] if "source_section" in optional_source_cols else None
+        source_publisher = (
+            r["source_publisher"] if "source_publisher" in optional_source_cols else None
+        )
+        struggle_rows.append(
+            _StrugglingTopicRow(
+                topic=r["topic"],
+                concept=r["concept"],
+                source_course=source_course,
+                source_section=source_section,
+                source_publisher=source_publisher,
+            )
+        )
+    return [row for row in struggle_rows if _row_matches_topic_slug(row, topic_slug)]
 
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")

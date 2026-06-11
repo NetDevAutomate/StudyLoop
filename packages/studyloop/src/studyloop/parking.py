@@ -89,6 +89,27 @@ def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _ensure_reference_rows(
+    conn: sqlite3.Connection,
+    *,
+    study_session_id: str | None,
+    session_id: str | None,
+) -> None:
+    """Create minimal FK parent rows for externally supplied session IDs."""
+    if session_id:
+        conn.execute(
+            """INSERT OR IGNORE INTO sessions (id, source, created_at, updated_at)
+               VALUES (?, 'studyloop', datetime('now'), datetime('now'))""",
+            (session_id,),
+        )
+    if study_session_id:
+        conn.execute(
+            """INSERT OR IGNORE INTO study_sessions (id, started_at)
+               VALUES (?, datetime('now'))""",
+            (study_session_id,),
+        )
+
+
 def park_topic(
     question: str,
     topic_tag: str | None = None,
@@ -111,6 +132,11 @@ def park_topic(
     try:
         conn = _connect()
         try:
+            _ensure_reference_rows(
+                conn,
+                study_session_id=study_session_id,
+                session_id=session_id,
+            )
             cursor = conn.execute(
                 """INSERT OR IGNORE INTO parked_topics
                    (study_session_id, session_id, topic_tag, question,

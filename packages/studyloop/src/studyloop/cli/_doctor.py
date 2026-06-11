@@ -167,9 +167,7 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
         repo_root = require_repo_root()
         mandate = sum(install_session_db_mandate(repo_root).values())
         hook = install_claude_stop_hook()
-        actions.append(
-            f"wired session-export ({mandate} steering mandate(s), {hook} Claude hook)"
-        )
+        actions.append(f"wired session-export ({mandate} steering mandate(s), {hook} Claude hook)")
 
     if any(
         r.category == "updates" and r.status in ("warn", "fail") and r.fix_auto for r in results

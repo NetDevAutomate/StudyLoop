@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from _helpers import run_async
@@ -24,14 +24,14 @@ pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
 from studyloop.session import active
-from studyloop.session.transport import Started
+from studyloop.session.transport import SessionAlreadyActiveError, Started
 from studyloop.web.app import create_app
 
 _tests_dir = str(Path(__file__).parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from conftest import StubTransport  # noqa: E402
+from conftest import StubTransport  # noqa: E402  # pyright: ignore[reportAttributeAccessIssue]
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -48,11 +48,21 @@ def _reset_active_state():
 @pytest.fixture(autouse=True)
 def _isolate_session_dir(tmp_path, monkeypatch):
     from studyloop import session_state as ss
+    from studyloop.web.routes.session import _start
 
     monkeypatch.setattr(ss, "SESSION_DIR", tmp_path)
     monkeypatch.setattr(ss, "STATE_FILE", tmp_path / "session-state.json")
     monkeypatch.setattr(ss, "TOPICS_FILE", tmp_path / "session-topics.md")
     monkeypatch.setattr(ss, "PARKING_FILE", tmp_path / "session-parking.md")
+    monkeypatch.setattr(_start, "SESSION_DIR", tmp_path)
+    monkeypatch.setattr(_start, "TOPICS_FILE", tmp_path / "session-topics.md")
+    monkeypatch.setattr(_start, "PARKING_FILE", tmp_path / "session-parking.md")
+
+
+def _assert_no_runtime_session_state() -> None:
+    from studyloop.session_state import read_session_state
+
+    assert read_session_state() == {}
 
 
 @pytest.fixture()
@@ -196,7 +206,7 @@ class TestPtyStartSingleSession:
         _mock_agent_available,
         _stub_db,
     ) -> None:
-        """active.acquire raises SessionAlreadyActiveError → 409."""
+        """Existing active session is rejected before side effects."""
         from studyloop.session.transport import SessionConfig
 
         pre_stub = StubTransport(events=[Started(agent="claude")])
@@ -215,13 +225,54 @@ class TestPtyStartSingleSession:
             )
         )
 
-        with patch("studyloop.web.routes.session.is_session_active", return_value=True):
+        with (
+            patch("studyloop.web.routes.session.is_session_active", return_value=True),
+            patch(
+                "studyloop.history.start_study_session",
+                side_effect=AssertionError("must not create DB row on 409"),
+            ) as mock_start,
+            patch(
+                "studyloop.web.routes.session._start.write_session_state",
+                side_effect=AssertionError("must not overwrite IPC state on 409"),
+            ) as mock_write_state,
+        ):
             resp = client.post(
                 "/api/session/start",
                 json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
             )
         assert resp.status_code == 409
         assert "already active" in resp.json()["error"]
+        mock_start.assert_not_called()
+        mock_write_state.assert_not_called()
+
+    def test_pty_start_aborts_db_record_when_acquire_loses_race(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+    ) -> None:
+        """A concurrent starter can still win between current() and acquire()."""
+        with (
+            patch("studyloop.session.active.current", new=AsyncMock(return_value=None)),
+            patch(
+                "studyloop.session.active.acquire",
+                new=AsyncMock(side_effect=SessionAlreadyActiveError("lost race")),
+            ),
+            patch("studyloop.history.abort_study_session") as mock_abort,
+            patch(
+                "studyloop.web.routes.session._start.write_session_state",
+                side_effect=AssertionError("must not write full IPC state after lost race"),
+            ),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
+            )
+
+        assert resp.status_code == 409
+        mock_abort.assert_called_once()
+        assert mock_abort.call_args.args[0] == "study-pty-1"
+        _assert_no_runtime_session_state()
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +301,75 @@ class TestPtyStartBinaryMissing:
         assert "gemini" in body["error"]
         assert "install_hint" in body
         assert body["install_hint"]  # non-empty string
+
+
+class TestPtyStartAcquireFailureRollback:
+    def test_pty_start_aborts_db_record_when_transport_start_fails(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        monkeypatch,
+    ) -> None:
+        from studyloop.session.transport import SessionConfig
+
+        class FailingStartTransport(StubTransport):
+            async def start(self, config: SessionConfig) -> None:
+                await super().start(config)
+                raise FileNotFoundError("missing-agent")
+
+        monkeypatch.setattr(
+            "studyloop.web.routes.session._build_pty_transport",
+            lambda config: lambda: FailingStartTransport(),
+            raising=False,
+        )
+
+        with (
+            patch("studyloop.web.routes.session.is_session_active", return_value=False),
+            patch("studyloop.history.start_study_session", return_value="study-pty-failed"),
+            patch("studyloop.history.sessions.update_persona_hash", return_value=None),
+            patch("studyloop.history.abort_study_session") as mock_abort,
+            patch(
+                "studyloop.web.routes.session._start.write_session_state",
+                side_effect=AssertionError("must not write full IPC state after failed acquire"),
+            ),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
+            )
+
+        assert resp.status_code == 503
+        mock_abort.assert_called_once()
+        assert mock_abort.call_args.args[0] == "study-pty-failed"
+        assert run_async(active.current()) is None
+
+    def test_pty_start_releases_active_session_when_ipc_state_write_fails(
+        self,
+        _mock_agent_available,
+        _stub_db,
+    ) -> None:
+        app = create_app(study_dirs=[])
+        client = TestClient(app, raise_server_exceptions=False)
+
+        with (
+            patch("studyloop.web.routes.session.is_session_active", return_value=False),
+            patch("studyloop.history.abort_study_session") as mock_abort,
+            patch(
+                "studyloop.web.routes.session._start.write_session_state",
+                side_effect=OSError("disk full"),
+            ),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
+            )
+
+        assert resp.status_code == 500
+        assert "Failed to finalise session state" in resp.json()["error"]
+        mock_abort.assert_called_once()
+        assert mock_abort.call_args.args[0] == "study-pty-1"
+        assert run_async(active.current()) is None
+        _assert_no_runtime_session_state()
 
 
 # ---------------------------------------------------------------------------

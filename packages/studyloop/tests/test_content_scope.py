@@ -20,7 +20,6 @@ from studyloop.content.scope import (
 )
 from studyloop.settings import ContentConfig, Settings
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -100,7 +99,11 @@ def db_with_progress(tmp_path: Path) -> Path:
             session_count INTEGER,
             notes TEXT,
             created_at TEXT,
-            updated_at TEXT
+            updated_at TEXT,
+            source_course TEXT,
+            source_section TEXT,
+            source_publisher TEXT,
+            created_by TEXT
         )
         """
     )
@@ -118,6 +121,10 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
         ),
         # struggling, out of window (60 days ago)
         (
@@ -131,6 +138,10 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
         ),
         # learning (not struggling) -- should NOT match
         (
@@ -144,6 +155,10 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
         ),
         # second concept on the same topic, struggling -- should still
         # produce ONE topic row in DISTINCT result
@@ -158,10 +173,33 @@ def db_with_progress(tmp_path: Path) -> Path:
             None,
             now.isoformat(),
             now.isoformat(),
+            None,
+            None,
+            None,
+            "agent",
+        ),
+        # Web-marked Course Explorer struggle from the older route shape:
+        # topic is the course, while source_course/source_section preserve
+        # the exact lesson provenance the resolver should prefer.
+        (
+            "id5",
+            "DataCamp",
+            "advanced-pandas/chapter-1",
+            "struggling",
+            now.isoformat(),
+            now.isoformat(),
+            1,
+            None,
+            now.isoformat(),
+            now.isoformat(),
+            "DataCamp",
+            "advanced-pandas/chapter-1.md",
+            None,
+            "web",
         ),
     ]
     conn.executemany(
-        "INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows
+        "INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows
     )
     conn.commit()
     conn.close()
@@ -174,9 +212,7 @@ def db_with_progress(tmp_path: Path) -> Path:
 
 
 class TestCourseScope:
-    def test_resolves_each_lesson_file_into_one_source(
-        self, settings: Settings
-    ) -> None:
+    def test_resolves_each_lesson_file_into_one_source(self, settings: Settings) -> None:
         # A "section" is now an individual lesson file: course scope yields
         # one source per .md file. assets/diagram.png skipped (not source),
         # flashcards/old-deck.json skipped (output dir).
@@ -198,23 +234,35 @@ class TestCourseScope:
         with pytest.raises(ScopeResolutionError, match="Course directory not found"):
             resolve_scope(req, settings)
 
+    def test_rejects_course_path_traversal(self, settings: Settings) -> None:
+        req = ScopeRequest(kind="course", course="../outside")
+        with pytest.raises(ScopeResolutionError, match="must not contain"):
+            resolve_scope(req, settings)
+
+    def test_rejects_symlink_escape(self, settings: Settings, tmp_path: Path) -> None:
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "lesson.md").write_text("# Outside\n\nNope.", encoding="utf-8")
+        link = Path(settings.content.base_path) / "escape"
+        link.symlink_to(outside, target_is_directory=True)
+
+        req = ScopeRequest(kind="course", course="escape")
+        with pytest.raises(ScopeResolutionError, match=r"escapes content\.base_path"):
+            resolve_scope(req, settings)
+
     def test_course_with_only_empty_subdirs_raises(self, settings: Settings) -> None:
         req = ScopeRequest(kind="course", course="ZTM")
         with pytest.raises(ScopeResolutionError, match="no readable lesson markdown"):
             resolve_scope(req, settings)
 
-    def test_three_level_publisher_course_resolves(
-        self, settings: Settings
-    ) -> None:
+    def test_three_level_publisher_course_resolves(self, settings: Settings) -> None:
         # Real 3-level tree: base/<publisher>/<course>/study-notes/*.md
         base = Path(settings.content.base_path)
         notes = base / "CodeWithMosh" / "Complete_SQL_Mastery" / "study-notes"
         notes.mkdir(parents=True)
         (notes / "joins-0102.md").write_text("# Joins\n\nINNER vs OUTER.", encoding="utf-8")
         (notes / "views-0018.md").write_text("# Views\n\nCreating views.", encoding="utf-8")
-        req = ScopeRequest(
-            kind="course", publisher="CodeWithMosh", course="Complete_SQL_Mastery"
-        )
+        req = ScopeRequest(kind="course", publisher="CodeWithMosh", course="Complete_SQL_Mastery")
         sources = resolve_scope(req, settings)
         assert sorted(s.identifier for s in sources) == ["joins-0102", "views-0018"]
 
@@ -227,9 +275,7 @@ class TestCourseScope:
 class TestSectionScope:
     def test_resolves_named_lesson_file(self, settings: Settings) -> None:
         # section = relative path of the lesson file under the course dir.
-        req = ScopeRequest(
-            kind="section", course="DataCamp", section="joins/joins-intro"
-        )
+        req = ScopeRequest(kind="section", course="DataCamp", section="joins/joins-intro")
         sources = resolve_scope(req, settings)
         assert len(sources) == 1
         assert sources[0].identifier == "joins-intro"
@@ -243,10 +289,13 @@ class TestSectionScope:
         assert sources[0].identifier == "chapter-1"
 
     def test_missing_section_raises(self, settings: Settings) -> None:
-        req = ScopeRequest(
-            kind="section", course="DataCamp", section="not-a-real-section"
-        )
+        req = ScopeRequest(kind="section", course="DataCamp", section="not-a-real-section")
         with pytest.raises(ScopeResolutionError, match="not found"):
+            resolve_scope(req, settings)
+
+    def test_rejects_section_path_traversal(self, settings: Settings) -> None:
+        req = ScopeRequest(kind="section", course="DataCamp", section="../outside")
+        with pytest.raises(ScopeResolutionError, match="must not contain"):
             resolve_scope(req, settings)
 
 
@@ -262,9 +311,9 @@ class TestTopicStrugglesScope:
         # 'joins' is struggling in window AND matches DataCamp/joins/
         req = ScopeRequest(kind="topic_struggles", course="DataCamp", window_days=14)
         sources = resolve_scope(req, settings, db_path=db_with_progress)
-        # Only joins should resolve -- 'advanced-pandas' is 'learning'
-        # not 'struggling', and 'ancient' is out of window.
-        assert [s.identifier for s in sources] == ["joins"]
+        # Only struggling rows in the window should resolve -- 'advanced-pandas'
+        # is 'learning' and 'ancient' is out of window.
+        assert [s.identifier for s in sources] == ["chapter-1", "joins"]
 
     def test_specific_topic_slug_filter_narrows_result(
         self, settings: Settings, db_with_progress: Path
@@ -277,6 +326,19 @@ class TestTopicStrugglesScope:
         )
         sources = resolve_scope(req, settings, db_path=db_with_progress)
         assert len(sources) == 1
+
+    def test_web_marked_section_slug_resolves_to_lesson_file(
+        self, settings: Settings, db_with_progress: Path
+    ) -> None:
+        req = ScopeRequest(
+            kind="topic_struggles",
+            course="DataCamp",
+            window_days=14,
+            topic_slug="chapter-1",
+        )
+        sources = resolve_scope(req, settings, db_path=db_with_progress)
+        assert [s.identifier for s in sources] == ["chapter-1"]
+        assert "Groupby aggregations" in sources[0].markdown_text
 
     def test_no_struggling_in_window_raises(
         self, settings: Settings, db_with_progress: Path
@@ -293,9 +355,7 @@ class TestTopicStrugglesScope:
         with pytest.raises(ScopeResolutionError, match="No struggling topics"):
             resolve_scope(req, settings, db_path=db_with_progress)
 
-    def test_invalid_window_days_rejected(
-        self, settings: Settings, db_with_progress: Path
-    ) -> None:
+    def test_invalid_window_days_rejected(self, settings: Settings, db_with_progress: Path) -> None:
         req = ScopeRequest(kind="topic_struggles", course="DataCamp", window_days=0)
         with pytest.raises(ScopeResolutionError, match="window_days must be"):
             resolve_scope(req, settings, db_path=db_with_progress)
