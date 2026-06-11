@@ -23,8 +23,13 @@ import pytest
 
 pytest.importorskip("fastapi")
 
+from _helpers import run_async
 from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
+from starlette.websockets import WebSocketDisconnect
 
+from conftest import StubTransport  # pyright: ignore[reportAttributeAccessIssue]
+from studyloop.session import active
+from studyloop.session.transport import SessionConfig, Started
 from studyloop.web.app import create_app
 
 # ---------------------------------------------------------------------------
@@ -36,6 +41,48 @@ def _basic_auth_header(username: str, password: str) -> dict[str, str]:
     """Encode HTTP Basic Auth credentials as a header dict."""
     token = base64.b64encode(f"{username}:{password}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+def _session_config(tmp_path) -> SessionConfig:
+    return SessionConfig(
+        study_session_id="study-1",
+        agent="claude",
+        persona_file=str(tmp_path / "persona.md"),
+        cwd=str(tmp_path),
+        env={},
+        cols=80,
+        rows=24,
+    )
+
+
+@pytest.fixture(autouse=True)
+def _reset_active_session():
+    run_async(active.release())
+    yield
+    run_async(active.release())
+
+
+# ---------------------------------------------------------------------------
+# WebSocket origin helper
+# ---------------------------------------------------------------------------
+
+
+class TestWebSocketOriginHelper:
+    def test_allows_origin_matching_request_host(self) -> None:
+        from studyloop.web.ws_origin import origin_allowed
+
+        assert origin_allowed(
+            origin="http://192.168.1.20:8567",
+            host="192.168.1.20:8567",
+        )
+
+    def test_rejects_cross_origin_lan_request(self) -> None:
+        from studyloop.web.ws_origin import origin_allowed
+
+        assert not origin_allowed(
+            origin="https://evil.example.com",
+            host="192.168.1.20:8567",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +149,62 @@ class TestPasswordProtection:
     def test_terminal_proxy_returns_401_without_auth(self, protected_client: TestClient) -> None:
         resp = protected_client.get("/terminal/")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Password set -> WebSocket scopes are protected too
+# ---------------------------------------------------------------------------
+
+
+class TestWebSocketPasswordProtection:
+    """The LAN password middleware must run for WebSocket scopes, not just HTTP."""
+
+    @pytest.fixture()
+    def protected_client(self) -> TestClient:
+        app = create_app(password="s3cr3t")
+        return TestClient(app, raise_server_exceptions=False)
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/api/session/ws?study_session_id=study-1",
+            "/api/content/generate/ws?job_id=gen-x",
+            "/terminal/ws",
+        ],
+    )
+    def test_websocket_without_auth_closes_1008(
+        self, protected_client: TestClient, path: str
+    ) -> None:
+        with (
+            pytest.raises(WebSocketDisconnect) as exc_info,
+            protected_client.websocket_connect(
+                path,
+                headers={
+                    "Host": "192.168.1.42:8567",
+                    "Origin": "http://192.168.1.42:8567",
+                },
+            ) as ws,
+        ):
+            ws.receive_json()
+        assert exc_info.value.code == 1008
+
+    def test_websocket_with_valid_auth_and_lan_origin_reaches_session_route(
+        self, tmp_path, protected_client: TestClient
+    ) -> None:
+        config = _session_config(tmp_path)
+        stub = StubTransport(events=[Started(agent="claude")])
+        run_async(active.acquire(config, lambda: stub))
+
+        headers = {
+            **_basic_auth_header("study", "s3cr3t"),
+            "Host": "192.168.1.42:8567",
+            "Origin": "http://192.168.1.42:8567",
+        }
+        with protected_client.websocket_connect(
+            "/api/session/ws?study_session_id=study-1",
+            headers=headers,
+        ) as ws:
+            assert ws.receive_json() == {"type": "started", "agent": "claude"}
 
 
 # ---------------------------------------------------------------------------
@@ -237,10 +340,8 @@ class TestBasicAuthMiddlewareExists:
 
         assert BasicAuthMiddleware is not None
 
-    def test_middleware_is_starlette_compatible(self) -> None:
-        """BasicAuthMiddleware should be a Starlette BaseHTTPMiddleware subclass."""
-        from starlette.middleware.base import BaseHTTPMiddleware
-
+    def test_middleware_is_asgi_compatible(self) -> None:
+        """BasicAuthMiddleware should be callable ASGI middleware."""
         from studyloop.web.auth import BasicAuthMiddleware
 
-        assert issubclass(BasicAuthMiddleware, BaseHTTPMiddleware)
+        assert callable(BasicAuthMiddleware)

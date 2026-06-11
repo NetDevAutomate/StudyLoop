@@ -4,7 +4,7 @@ Four endpoints:
 
 - ``GET /api/explorer/tree``
   Two-level walk of ``content.base_path``:  provider → courses.
-  Response is cached on ``app.state`` keyed by the directory mtime.
+  Response is cached on ``app.state`` keyed by a cheap tree fingerprint.
 
 - ``GET /api/explorer/courses/{course_id:path}/lessons``
   Walk a single course dir and return every source markdown file
@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import stat
 import threading
 from pathlib import Path
 from typing import Any
@@ -107,12 +108,83 @@ def _build_tree(base: Path) -> list[dict[str, Any]]:
     return providers
 
 
-def _base_mtime(base: Path) -> float:
-    """Return mtime of *base* directory (0.0 if missing)."""
+def _tree_fingerprint(base: Path) -> tuple[int, float]:
+    """Return a cheap fingerprint for visible course tree inputs.
+
+    The fingerprint includes visible provider directories, course directories,
+    and source files inside courses. Generated output dirs and dot-dirs are
+    skipped, matching the tree and lesson-listing visibility rules.
+    """
     try:
-        return os.stat(base).st_mtime
+        base_stat = os.stat(base)
     except OSError:
-        return 0.0
+        return (0, 0.0)
+    if not stat.S_ISDIR(base_stat.st_mode):
+        return (0, 0.0)
+
+    entry_count = 0
+    newest_mtime = 0.0
+    seen_dirs: set[tuple[int, int]] = set()
+
+    def safe_stat(path: Path) -> os.stat_result | None:
+        try:
+            return os.stat(path)
+        except OSError:
+            return None
+
+    def record(path_stat: os.stat_result, *, include_mtime: bool) -> None:
+        nonlocal entry_count, newest_mtime
+        entry_count += 1
+        if include_mtime:
+            newest_mtime = max(newest_mtime, path_stat.st_mtime)
+
+    def visible_dir(path: Path) -> bool:
+        name = path.name
+        return not name.startswith(".") and name not in _OUTPUT_SUBDIRS
+
+    for provider_dir in sorted(base.iterdir()):
+        if not visible_dir(provider_dir):
+            continue
+        provider_stat = safe_stat(provider_dir)
+        if provider_stat is None or not stat.S_ISDIR(provider_stat.st_mode):
+            continue
+        record(provider_stat, include_mtime=True)
+
+        for course_dir in sorted(provider_dir.iterdir()):
+            if not visible_dir(course_dir):
+                continue
+            course_stat = safe_stat(course_dir)
+            if course_stat is None or not stat.S_ISDIR(course_stat.st_mode):
+                continue
+            record(course_stat, include_mtime=False)
+            seen_dirs.add((course_stat.st_dev, course_stat.st_ino))
+
+            pending = [course_dir]
+            while pending:
+                current = pending.pop()
+                try:
+                    children = sorted(current.iterdir())
+                except OSError:
+                    continue
+                for child in children:
+                    if child.name.startswith(".") or child.name in _OUTPUT_SUBDIRS:
+                        continue
+                    child_stat = safe_stat(child)
+                    if child_stat is None:
+                        continue
+                    if stat.S_ISDIR(child_stat.st_mode):
+                        dir_key = (child_stat.st_dev, child_stat.st_ino)
+                        if dir_key not in seen_dirs:
+                            seen_dirs.add(dir_key)
+                            pending.append(child)
+                        continue
+                    if (
+                        stat.S_ISREG(child_stat.st_mode)
+                        and child.suffix.lower() in _SOURCE_SUFFIXES
+                    ):
+                        record(child_stat, include_mtime=True)
+
+    return (entry_count, newest_mtime)
 
 
 # ---------------------------------------------------------------------------
@@ -342,7 +414,7 @@ def _run_fts_search(db_path: Path, base: Path, q: str, limit: int) -> list[dict[
 def explorer_tree(request: Request) -> list[dict[str, Any]]:
     """Return the two-level provider→course tree.
 
-    Cached on ``app.state`` keyed by the mtime of ``content.base_path``.
+    Cached on ``app.state`` keyed by a cheap tree fingerprint.
     Returns ``[]`` when the base path is missing or empty — never 404/500.
     """
     from studyloop.settings import load_settings
@@ -350,18 +422,18 @@ def explorer_tree(request: Request) -> list[dict[str, Any]]:
     settings = load_settings()
     base = Path(settings.content.base_path).expanduser()
 
-    current_mtime = _base_mtime(base)
+    current_fingerprint = _tree_fingerprint(base)
 
-    # Cache hit: return if base hasn't changed since last call.
+    # Cache hit: return if visible tree inputs haven't changed since last call.
     if (
         getattr(request.app.state, "explorer_tree_cache", None) is not None
-        and getattr(request.app.state, "explorer_tree_mtime", -1.0) == current_mtime
+        and getattr(request.app.state, "explorer_tree_fingerprint", None) == current_fingerprint
     ):
         return request.app.state.explorer_tree_cache  # type: ignore[return-value]
 
     tree = _build_tree(base)
     request.app.state.explorer_tree_cache = tree
-    request.app.state.explorer_tree_mtime = current_mtime
+    request.app.state.explorer_tree_fingerprint = current_fingerprint
     return tree
 
 

@@ -2,12 +2,16 @@
   "version": 1,
   "agents": {
     "claude/socratic-mentor.md": {
-      "hash": "1622131d8c4ce11a",
-      "updated": "2026-05-31"
+      "hash": "93f844100b6ba0b9",
+      "updated": "2026-06-11"
+    },
+    "codex/AGENTS.md": {
+      "hash": "b16914c00e11f269",
+      "updated": "2026-06-02"
     },
     "gemini/study-mentor.md": {
-      "hash": "ef9aedbcb02a4d54",
-      "updated": "2026-05-31"
+      "hash": "1c5304b43d58f298",
+      "updated": "2026-06-11"
     },
     "kiro/study-mentor.json": {
       "hash": "c9f2302ebc8d3c39",
@@ -18,8 +22,8 @@
       "updated": "2026-05-31"
     },
     "opencode/study-mentor.md": {
-      "hash": "1b47ae4dec5ba96a",
-      "updated": "2026-05-31"
+      "hash": "9c6014483e09c845",
+      "updated": "2026-06-11"
     },
     "pi/AGENTS.md": {
       "hash": "2938d63517e5b284",
@@ -42,8 +46,8 @@
       "updated": "2026-05-31"
     },
     "shared/session-protocol.md": {
-      "hash": "86c6390a18f8e6ba",
-      "updated": "2026-05-31"
+      "hash": "6eed599a13093002",
+      "updated": "2026-06-11"
     },
     "shared/socratic-engine.md": {
       "hash": "42738fba9479ec14",
@@ -54,8 +58,8 @@
       "updated": "2026-05-31"
     },
     "shared/wind-down-protocol.md": {
-      "hash": "5626c7ef8636e9d5",
-      "updated": "2026-05-31"
+      "hash": "065bef2cc196fe9b",
+      "updated": "2026-06-11"
     }
   }
 }

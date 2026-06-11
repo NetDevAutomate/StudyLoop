@@ -8,7 +8,9 @@
 
 ```bash
 # 1. Install and configure
-brew install Hookey-Street-Software/studyloop/studyloop
+git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+cd studyloop
+./scripts/install.sh
 studyloop setup
 studyloop doctor --fix
 
@@ -27,7 +29,7 @@ studyloop review
 ```
 
 !!! tip "First time?"
-    Head to the [Setup Guide](setup-guide.md) for full installation details, then [Agent Installation](agent-install.md) to configure your AI tools.
+    Head to the [Setup Guide](setup-guide.md), then follow [Your First Week](first-week.md) for a minimal daily path. Configure agents via [Agent Installation](agent-install.md) when you are ready to go deeper.
 
 ---
 
@@ -92,6 +94,7 @@ graph LR
 
 ## Key Sections
 
+- **[Your First Week](first-week.md)** — day-by-day path: live study first, then review and export
 - **[Content Pipeline](content-pipeline.md)** — local review artefact generation from study sources
 - **[Architecture](architecture.md)** — current and target architecture docs
 - **[Target Architecture](architecture/target.md)** — plugin architecture, ACP/PTY live sessions, macOS/iOS direction

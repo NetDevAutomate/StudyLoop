@@ -24,9 +24,7 @@ from studyloop.extractors import ExtractorResult
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-_FIXTURE_PATH = (
-    Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "stub_responses.yaml"
-)
+_FIXTURE_PATH = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "stub_responses.yaml"
 
 
 @lru_cache(maxsize=1)
@@ -40,7 +38,7 @@ def _load_fixture() -> dict[str, list[dict[str, Any]]]:
 
 
 def extract_struggles(
-    messages: Sequence[dict[str, Any]],  # noqa: ARG001 — stub ignores content by design
+    messages: Sequence[dict[str, Any]],
     session_id: str,
 ) -> list[ExtractorResult]:
     """Return the fixture results for ``session_id`` (or the ``default`` list).

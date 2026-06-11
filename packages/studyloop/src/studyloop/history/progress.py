@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 from . import _connection, search
 
@@ -287,7 +288,17 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
     # topic -> aggregated dict, merged across sources (case-insensitive key).
     merged: dict[str, dict] = {}
 
-    def _merge(topic: str, concept_count: int, session_count: int, last_seen: str) -> None:
+    def _merge(
+        topic: str,
+        concept_count: int,
+        session_count: int,
+        last_seen: str,
+        *,
+        concept: str | None = None,
+        source_course: str | None = None,
+        source_section: str | None = None,
+        source_publisher: str | None = None,
+    ) -> None:
         if not topic or not topic.strip():
             return
         key = topic.strip().lower()
@@ -298,29 +309,85 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
                 "concept_count": concept_count,
                 "session_count": session_count,
                 "last_seen": last_seen,
+                "source_course": source_course,
+                "source_section": source_section,
+                "source_publisher": source_publisher,
+                "_concepts": {concept} if concept else set(),
             }
             return
-        cur["concept_count"] += concept_count
+        if concept:
+            cur["_concepts"].add(concept)
+            cur["concept_count"] = len(cur["_concepts"])
+        else:
+            cur["concept_count"] += concept_count
         cur["session_count"] += session_count
         if last_seen and last_seen > (cur["last_seen"] or ""):
             cur["last_seen"] = last_seen
+        for field, value in (
+            ("source_course", source_course),
+            ("source_section", source_section),
+            ("source_publisher", source_publisher),
+        ):
+            if not value:
+                continue
+            if cur.get(field) in (None, value):
+                cur[field] = value
+            else:
+                # Multiple provenance values merged under one display topic:
+                # keep the row useful, but avoid claiming a single exact source.
+                cur[field] = None
+
+    def _progress_columns() -> set[str]:
+        try:
+            return {r["name"] for r in conn.execute("PRAGMA table_info(study_progress)")}
+        except sqlite3.OperationalError:
+            return set()
+
+    def _display_topic(topic: str, source_section: str | None) -> str:
+        if source_section and source_section.strip():
+            section_stem = Path(source_section).stem
+            if section_stem:
+                return section_stem
+        return topic
 
     try:
         # Source 1: study_progress (authoritative).
         try:
+            columns = _progress_columns()
+            optional_source_cols = [
+                col
+                for col in ("source_course", "source_section", "source_publisher")
+                if col in columns
+            ]
+            select_cols = ["topic", "concept", "session_count", "last_seen", *optional_source_cols]
             for r in conn.execute(
-                """
-                SELECT topic,
-                       COUNT(DISTINCT concept) AS concept_count,
-                       SUM(session_count)      AS session_count,
-                       MAX(last_seen)          AS last_seen
+                f"""
+                SELECT {", ".join(select_cols)}
                 FROM study_progress
                 WHERE confidence = 'struggling' AND last_seen > datetime('now', ?)
-                GROUP BY topic
+                ORDER BY last_seen DESC
                 """,
                 cutoff,
             ).fetchall():
-                _merge(r["topic"], r["concept_count"] or 0, r["session_count"] or 0, r["last_seen"])
+                source_section = (
+                    r["source_section"] if "source_section" in optional_source_cols else None
+                )
+                source_course = (
+                    r["source_course"] if "source_course" in optional_source_cols else None
+                )
+                source_publisher = (
+                    r["source_publisher"] if "source_publisher" in optional_source_cols else None
+                )
+                _merge(
+                    _display_topic(r["topic"], source_section),
+                    1,
+                    r["session_count"] or 0,
+                    r["last_seen"],
+                    concept=r["concept"],
+                    source_course=source_course,
+                    source_section=source_section,
+                    source_publisher=source_publisher,
+                )
         except sqlite3.OperationalError:
             pass
 
@@ -364,7 +431,11 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
     finally:
         conn.close()
 
-    return sorted(merged.values(), key=lambda d: d["last_seen"] or "", reverse=True)
+    results = []
+    for item in merged.values():
+        item.pop("_concepts", None)
+        results.append(item)
+    return sorted(results, key=lambda d: d["last_seen"] or "", reverse=True)
 
 
 def get_progress_for_map() -> list[dict]:

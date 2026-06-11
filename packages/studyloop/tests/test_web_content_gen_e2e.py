@@ -16,7 +16,6 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,6 +26,7 @@ pytest.importorskip("uvicorn")
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from pathlib import Path
 
     from playwright.sync_api import Browser, Page
 
@@ -56,9 +56,7 @@ def vault(tmp_path: Path) -> Path:
     (notes / "advanced-pandas.md").write_text(
         "# Pandas\n\nGroupby and pivot tables.", encoding="utf-8"
     )
-    (notes / "joins.md").write_text(
-        "# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8"
-    )
+    (notes / "joins.md").write_text("# Joins\n\nINNER, LEFT, RIGHT.", encoding="utf-8")
     return study
 
 
@@ -105,9 +103,7 @@ def server(stub_config: Path) -> Generator[subprocess.Popen, None, None]:
         "--port",
         str(WEB_PORT),
     ]
-    proc = subprocess.Popen(
-        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
-    )
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     for _ in range(40):
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
@@ -148,9 +144,7 @@ def _goto_generate(page: Page) -> None:
     page.goto(f"http://127.0.0.1:{WEB_PORT}/#generate")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_function("() => !!window.Alpine", timeout=5000)
-    page.wait_for_function(
-        "() => window.Alpine.store('nav').current === 'generate'", timeout=3000
-    )
+    page.wait_for_function("() => window.Alpine.store('nav').current === 'generate'", timeout=3000)
 
 
 # ---------------------------------------------------------------------------
@@ -229,7 +223,7 @@ class TestFormHappyPath:
         page.wait_for_selector(".generate-summary", timeout=10000)
         summary = page.text_content(".generate-summary") or ""
         assert "Done" in summary
-        # 2 lesson files × 1 kind (flashcards default) = 2 tasks done.
+        # 2 lesson files x 1 kind (flashcards default) = 2 tasks done.
         assert "2 written" in summary or "1 written" in summary or "written" in summary
 
 
@@ -374,7 +368,7 @@ class TestQuizzesGeneration:
         _submit(page)
         summary = _read_summary(page)
         assert "Done" in summary
-        # 2 sources × quizzes = 2 written.
+        # 2 sources x quizzes = 2 written.
         assert "2 written" in summary, f"expected 2 written, got {summary!r}"
 
 
@@ -416,9 +410,7 @@ class TestSectionScopeGeneration:
             }""",
             timeout=5000,
         )
-        page.select_option(
-            'select[x-model="form.section"]', value="study-notes/advanced-pandas"
-        )
+        page.select_option('select[x-model="form.section"]', value="study-notes/advanced-pandas")
         _check_only_kind(page, "flashcards")
         _submit(page)
         summary = _read_summary(page)
@@ -445,9 +437,7 @@ class TestGeneratedArtifactsUsable:
         # The reviewer side must now see the course with flashcards. The
         # reviewer keys on the course dir name (Intro_To_Pandas), not the
         # publisher.
-        courses = page.evaluate(
-            "async () => (await fetch('/api/courses')).json()"
-        )
+        courses = page.evaluate("async () => (await fetch('/api/courses')).json()")
         dc = next((c for c in courses if c["name"] == _COURSE), None)
         assert dc is not None, f"{_COURSE} missing from /api/courses: {courses!r}"
         assert dc["flashcard_count"] > 0, f"no flashcards counted: {dc!r}"

@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 22
+CURRENT_VERSION = 23
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -44,6 +44,20 @@ def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
 def set_user_version(conn: sqlite3.Connection, version: int) -> None:
     """Set database schema version."""
     conn.execute(f"PRAGMA user_version = {version}")
+
+
+def _install_messages_fts_update_trigger(conn: sqlite3.Connection) -> None:
+    """Install the FTS update trigger with NULL transition handling."""
+    conn.execute("DROP TRIGGER IF EXISTS messages_fts_update")
+    conn.execute("""
+        CREATE TRIGGER messages_fts_update AFTER UPDATE ON messages
+        BEGIN
+            DELETE FROM messages_fts WHERE rowid = OLD.rowid;
+            INSERT INTO messages_fts(rowid, content, session_id, role)
+            SELECT NEW.rowid, NEW.content, NEW.session_id, NEW.role
+            WHERE NEW.content IS NOT NULL;
+        END
+    """)
 
 
 def migrate(conn: sqlite3.Connection) -> list[str]:
@@ -243,17 +257,7 @@ def migrate_v5(conn: sqlite3.Connection) -> None:
         END
     """)
 
-    conn.execute("""
-        CREATE TRIGGER messages_fts_update AFTER UPDATE ON messages
-        WHEN NEW.content IS NOT NULL
-        BEGIN
-            UPDATE messages_fts SET
-                content = NEW.content,
-                session_id = NEW.session_id,
-                role = NEW.role
-            WHERE rowid = NEW.rowid;
-        END
-    """)
+    _install_messages_fts_update_trigger(conn)
 
     conn.execute("""
         CREATE TRIGGER messages_fts_delete AFTER DELETE ON messages
@@ -748,6 +752,12 @@ def migrate_v22(conn: sqlite3.Connection) -> None:
         if col not in existing:
             default = " DEFAULT 'agent'" if col == "created_by" else ""
             conn.execute(f"ALTER TABLE study_progress ADD COLUMN {col} TEXT{default}")
+
+
+@migration(23, "Fix messages FTS update trigger NULL transitions")
+def migrate_v23(conn: sqlite3.Connection) -> None:
+    """Ensure message content updates keep FTS in sync across NULL transitions."""
+    _install_messages_fts_update_trigger(conn)
 
 
 def check_migration_status(db_path: Path) -> dict:

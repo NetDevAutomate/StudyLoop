@@ -73,9 +73,7 @@ def record_teachback(
         total = sum(scores)
         topic_key = topic.lower().strip()
         concept_key = concept.lower().strip()
-        progress_id = str(
-            uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic_key}:{concept_key}")
-        )
+        progress_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic_key}:{concept_key}"))
         now = datetime.now(UTC).isoformat()
         confidence = _confidence_from_teachback(total, review_type)
 

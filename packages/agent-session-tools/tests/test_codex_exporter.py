@@ -151,10 +151,19 @@ class TestCodexExportAll:
 
         lines = [
             _session_start("/home/user/my-project"),
-            _msg(role="user", content="Explain async/await.", msg_id="m-001",
-                 timestamp="2025-01-15T12:00:00Z"),
-            _msg(role="assistant", content="Sure! async/await allows...", msg_id="m-002",
-                 timestamp="2025-01-15T12:00:05Z", model="o4-mini"),
+            _msg(
+                role="user",
+                content="Explain async/await.",
+                msg_id="m-001",
+                timestamp="2025-01-15T12:00:00Z",
+            ),
+            _msg(
+                role="assistant",
+                content="Sure! async/await allows...",
+                msg_id="m-002",
+                timestamp="2025-01-15T12:00:05Z",
+                model="o4-mini",
+            ),
         ]
         _write_rollout(sessions_dir / "abc123.jsonl", lines)
 
@@ -325,7 +334,11 @@ class TestCodexContentFlattening:
     def test_text_field_fallback(self, sessions_dir, migrated_db):
         """If 'content' is absent, 'text' field is used as fallback."""
         conn, _ = migrated_db
-        line = {"role": "assistant", "text": "fallback text", "timestamp": "2025-01-01T00:00:00Z"}
+        line = {
+            "role": "assistant",
+            "text": "fallback text",
+            "timestamp": "2025-01-01T00:00:00Z",
+        }
         _write_rollout(sessions_dir / "fb.jsonl", [line])
         CodexExporter(sessions_dir=sessions_dir).export_all(conn)
 
@@ -419,7 +432,9 @@ class TestCodexEdgeCases:
         count = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
         assert count == 1
 
-    def test_fingerprint_stored_in_import_fingerprint_column(self, sessions_dir, migrated_db):
+    def test_fingerprint_stored_in_import_fingerprint_column(
+        self, sessions_dir, migrated_db
+    ):
         conn, _ = migrated_db
         _write_rollout(sessions_dir / "fp.jsonl", [_msg()])
         CodexExporter(sessions_dir=sessions_dir).export_all(conn)

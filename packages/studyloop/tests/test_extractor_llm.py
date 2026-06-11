@@ -91,13 +91,16 @@ def test_invalid_confidence_dropped_not_crash() -> None:
         _converse_response(
             [
                 {"topic": "python", "concept": "abc", "confidence": "BOGUS", "evidence_quote": "x"},
-                {"topic": "sql", "concept": "joins", "confidence": "struggling", "evidence_quote": "y"},
+                {
+                    "topic": "sql",
+                    "concept": "joins",
+                    "confidence": "struggling",
+                    "evidence_quote": "y",
+                },
             ]
         )
     )
-    results = extract_struggles(
-        [{"role": "user", "content": "q"}], "sess-2", client=client
-    )
+    results = extract_struggles([{"role": "user", "content": "q"}], "sess-2", client=client)
     assert len(results) == 1
     assert results[0].topic == "sql"
 
@@ -107,13 +110,16 @@ def test_empty_topic_entry_dropped() -> None:
         _converse_response(
             [
                 {"topic": "", "concept": "abc", "confidence": "struggling", "evidence_quote": "x"},
-                {"topic": "python", "concept": "decorators", "confidence": "learning", "evidence_quote": "y"},
+                {
+                    "topic": "python",
+                    "concept": "decorators",
+                    "confidence": "learning",
+                    "evidence_quote": "y",
+                },
             ]
         )
     )
-    results = extract_struggles(
-        [{"role": "user", "content": "q"}], "sess-3", client=client
-    )
+    results = extract_struggles([{"role": "user", "content": "q"}], "sess-3", client=client)
     assert len(results) == 1
     assert results[0].concept == "decorators"
 
@@ -127,9 +133,7 @@ def test_model_skips_tool_returns_empty() -> None:
             "usage": {"inputTokens": 10, "outputTokens": 5},
         }
     )
-    results = extract_struggles(
-        [{"role": "user", "content": "q"}], "sess-4", client=client
-    )
+    results = extract_struggles([{"role": "user", "content": "q"}], "sess-4", client=client)
     assert results == []
 
 

@@ -58,16 +58,13 @@ def _fetch_messages(conn, session_id: str) -> list[dict[str, Any]]:
 
 
 def _session_source(conn, session_id: str) -> str | None:
-    row = conn.execute(
-        "SELECT source FROM sessions WHERE id = ?", (session_id,)
-    ).fetchone()
+    row = conn.execute("SELECT source FROM sessions WHERE id = ?", (session_id,)).fetchone()
     return row["source"] if row else None
 
 
 def _most_recent_kiro_session(conn) -> str | None:
     row = conn.execute(
-        "SELECT id FROM sessions WHERE source = 'kiro_cli' "
-        "ORDER BY updated_at DESC LIMIT 1"
+        "SELECT id FROM sessions WHERE source = 'kiro_cli' ORDER BY updated_at DESC LIMIT 1"
     ).fetchone()
     return row["id"] if row else None
 
@@ -79,9 +76,7 @@ def _unprocessed_kiro_sessions(conn, limit: int | None) -> list[str]:
     is approximated as: every kiro_cli session.  Idempotent upsert makes
     re-processing safe, so the worst case is redundant (cheap, deduped) work.
     """
-    sql = (
-        "SELECT id FROM sessions WHERE source = 'kiro_cli' ORDER BY updated_at DESC"
-    )
+    sql = "SELECT id FROM sessions WHERE source = 'kiro_cli' ORDER BY updated_at DESC"
     if limit is not None:
         sql += f" LIMIT {int(limit)}"
     return [r["id"] for r in conn.execute(sql).fetchall()]

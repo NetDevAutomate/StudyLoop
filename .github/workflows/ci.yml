@@ -6,53 +6,78 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
+      - run: uv sync --locked --all-packages --group dev
+      - run: uv run --group dev ruff check .
+      - run: uv run --group dev ruff format --check .
 
   typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages
-      - run: cd packages/agent-session-tools && uv run pyright src/
-      - run: cd packages/studyloop && uv run pyright src/
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      - run: uv sync --locked --all-packages --group dev
+      - run: just typecheck
 
   sast:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages
+      - run: uv sync --locked --all-packages --group dev
       - name: Run bandit (SAST)
-        run: uv run bandit --recursive --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,B607,B608 packages/
+        run: uv run --group dev bandit --recursive --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,B607,B608 packages/
 
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages
+      - run: uv sync --locked --all-packages --group dev
       - name: Audit dependencies for known vulnerabilities
-        run: uv audit
+        run: |
+          uv --quiet export --all-packages --group dev --no-emit-workspace --format requirements-txt -o /tmp/requirements.txt
+          uv tool run pip-audit -r /tmp/requirements.txt --strict --no-deps --disable-pip
+
+  audit-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --all-packages --group dev --all-extras
+      - name: Audit full optional dependency surface
+        run: |
+          uv --quiet export --all-packages --group dev --all-extras --no-emit-workspace --format requirements-txt -o /tmp/requirements-full.txt
+          # Torch has no fixed release for PYSEC-2026-139 yet; keep the ignore explicit.
+          uv tool run pip-audit -r /tmp/requirements-full.txt --strict --no-deps --disable-pip --ignore-vuln PYSEC-2026-139
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       matrix:
         python-version: ["3.12", "3.13"]
@@ -61,32 +86,82 @@ jobs:
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --all-packages --group dev
-      - run: uv run pytest --tb=short -m "not integration and not e2e" --cov=packages --cov-report=term-missing
+      - run: uv sync --locked --all-packages --group dev
+      - run: uv run --group dev pytest --tb=short --cov=packages --cov-report=term-missing
+
+  web-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      - run: uv sync --locked --all-packages --group dev --extra web
+      - run: just test-web
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      - run: uv sync --locked --all-packages --group dev --extra web
+      - run: uv run playwright install --with-deps chromium
+      - run: just test-browser-smoke
+
+  content-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      - run: uv sync --locked --all-packages --group dev --extra content
+      - run: just test-content
+
+  semantic-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          python-version: "3.12"
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      - run: uv sync --locked --all-packages --group dev --extra semantic
+      - run: just test-semantic
 
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
       - run: ./scripts/build-release.sh
+      - run: uv run python scripts/check-release-consistency.py
 
   install-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: "3.12"
-      - run: ./scripts/build-release.sh
-      - name: Install built wheel without optional extras
+      - name: Build and smoke-test installed wheel
         run: |
-          uv venv /tmp/studyloop-smoke
-          uv pip install --python /tmp/studyloop-smoke/bin/python dist/studyloop-*.whl
-      - name: Smoke-test installed CLI entry points
-        run: |
-          export PATH="/tmp/studyloop-smoke/bin:$PATH"
-          ./scripts/smoke-installed-cli.sh
+          ./scripts/build-release.sh
+          tmp="$(mktemp -d)"
+          uv venv "$tmp/venv"
+          uv pip install --python "$tmp/venv/bin/python" dist/studyloop-*.whl packages/agent-session-tools
+          STUDYLOOP_EXPECT_BIN_DIR="$tmp/venv/bin" PATH="$tmp/venv/bin:$PATH" ./scripts/smoke-installed-cli.sh

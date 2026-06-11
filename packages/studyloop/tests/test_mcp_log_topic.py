@@ -7,9 +7,8 @@ monkeypatched so the test never touches real filesystem or DB.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 mcp_mod = __import__("pytest").importorskip("mcp")
 
@@ -80,9 +79,9 @@ class TestLogTopicStruggling:
         tool = _get_tool("log_topic")
 
         with (
-            patch("studyloop.mcp.tools.log_topic.__wrapped__") if False else patch(
-                "studyloop.session_state.append_topic"
-            ) as mock_append,
+            patch("studyloop.mcp.tools.log_topic.__wrapped__")
+            if False
+            else patch("studyloop.session_state.append_topic") as mock_append,
             patch("studyloop.history.record_progress") as mock_progress,
         ):
             # We need to patch at the import site used by the closure.
@@ -92,12 +91,8 @@ class TestLogTopicStruggling:
 
         # Re-patch at the module level the closure actually imports from
         with (
-            patch(
-                "studyloop.session_state.append_topic", autospec=True
-            ) as mock_append,
-            patch(
-                "studyloop.history.record_progress", return_value=True
-            ) as mock_progress,
+            patch("studyloop.session_state.append_topic", autospec=True) as mock_append,
+            patch("studyloop.history.record_progress", return_value=True) as mock_progress,
         ):
             result = tool("async/await", "struggling", "confused about event loop")
 
@@ -131,6 +126,7 @@ class TestLogTopicStruggling:
 
         assert len(captured_time) == 1
         import re
+
         assert re.fullmatch(r"\d{2}:\d{2}", captured_time[0]), (
             f"Expected HH:MM, got {captured_time[0]!r}"
         )
@@ -150,9 +146,7 @@ class TestLogTopicLearningAndWin:
 
         with (
             patch("studyloop.session_state.append_topic"),
-            patch(
-                "studyloop.history.record_progress", return_value=True
-            ) as mock_progress,
+            patch("studyloop.history.record_progress", return_value=True) as mock_progress,
         ):
             result = tool("list comprehensions", status, "note text")
 
@@ -173,9 +167,7 @@ class TestLogTopicParked:
 
         with (
             patch("studyloop.session_state.append_topic") as mock_append,
-            patch(
-                "studyloop.history.record_progress", return_value=True
-            ) as mock_progress,
+            patch("studyloop.history.record_progress", return_value=True) as mock_progress,
         ):
             result = tool("metaclasses", "parked", "come back later")
 
@@ -192,9 +184,7 @@ class TestLogTopicEmptyNote:
 
         with (
             patch("studyloop.session_state.append_topic"),
-            patch(
-                "studyloop.history.record_progress", return_value=True
-            ) as mock_progress,
+            patch("studyloop.history.record_progress", return_value=True) as mock_progress,
         ):
             tool("typing module", "learning")
 

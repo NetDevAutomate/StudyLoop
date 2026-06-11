@@ -23,7 +23,7 @@ git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
 cd studyloop
 
 # Install all packages with dev dependencies
-uv sync --all-packages --extra dev --extra test
+uv sync --all-packages --group dev --all-extras
 
 # Install pre-commit hooks
 uv run pre-commit install

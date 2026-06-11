@@ -82,10 +82,7 @@ def _stub_cards(
     wrong: list[str] | None = None,
 ) -> None:
     page.route("**/api/cards/**", lambda route: _fulfill(route, cards))
-    due_payload = [
-        {"card_hash": item} if isinstance(item, str) else item
-        for item in (due or [])
-    ]
+    due_payload = [{"card_hash": item} if isinstance(item, str) else item for item in (due or [])]
     page.route("**/api/due/**", lambda route: _fulfill(route, due_payload))
     page.route("**/api/wrong/**", lambda route: _fulfill(route, wrong or []))
 

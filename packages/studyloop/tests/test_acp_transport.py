@@ -443,7 +443,6 @@ class TestSendPermissionResponse:
         - has NO 'method' key (it's a response, not a new request)
         """
         import asyncio
-        import json as _json
 
         # Use a raw pipe approach: start the stub, send a fake permission
         # request from our side, call send_permission_response, and read
@@ -532,24 +531,18 @@ class TestSendPermissionResponse:
                     request_permission_event = evt
                     request_id = evt.payload["_request_id"]
                     # Use a cancelled outcome to verify shape flexibility.
-                    await transport.send_permission_response(
-                        request_id, {"outcome": "cancelled"}
-                    )
+                    await transport.send_permission_response(request_id, {"outcome": "cancelled"})
                 elif isinstance(evt, AgentMessage) and evt.kind == "turn_end":
                     break
             except (TimeoutError, StopAsyncIteration):
                 break
 
-        assert request_permission_event is not None, (
-            "Expected a request_permission event from stub"
-        )
+        assert request_permission_event is not None, "Expected a request_permission event from stub"
         # No TransportError means the stub accepted the response (no -32601).
         await transport.end()
 
     @pytest.mark.asyncio
-    async def test_send_permission_response_noop_when_not_started(
-        self, tmp_path, _reset_env
-    ):
+    async def test_send_permission_response_noop_when_not_started(self, tmp_path, _reset_env):
         """send_permission_response before start() is a silent no-op."""
         transport = ACPTransport(
             resolve_binary=_stub_resolve_binary,
@@ -559,9 +552,7 @@ class TestSendPermissionResponse:
         await transport.send_permission_response(42, {"outcome": "selected", "optionId": "opt-1"})
 
     @pytest.mark.asyncio
-    async def test_send_permission_response_noop_after_end(
-        self, tmp_path, monkeypatch, _reset_env
-    ):
+    async def test_send_permission_response_noop_after_end(self, tmp_path, monkeypatch, _reset_env):
         """send_permission_response after end() is a silent no-op."""
         transport = ACPTransport(
             resolve_binary=_stub_resolve_binary,

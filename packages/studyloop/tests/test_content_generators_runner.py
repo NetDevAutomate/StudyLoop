@@ -50,14 +50,17 @@ class _FakeGenerator:
         self.delay = delay
         self.fail_titles = fail_titles or set()
         self.thread_ids: list[int] = []
+        self.flashcard_counts: list[int] = []
+        self.quiz_counts: list[int] = []
         self._lock = threading.Lock()
 
     def _record_thread(self) -> None:
         with self._lock:
             self.thread_ids.append(threading.get_ident())
 
-    def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
+    def generate_flashcards(self, source: str, title: str, count: int = 10) -> FlashcardDeck:
         self._record_thread()
+        self.flashcard_counts.append(count)
         if title in self.fail_titles:
             raise CardGenerationError(f"forced failure for {title}")
         if self.delay:
@@ -67,8 +70,9 @@ class _FakeGenerator:
             cards=[FlashcardItem(front=f"Q:{title}", back=f"A:{source[:20]}")],
         )
 
-    def generate_quiz(self, source: str, title: str) -> QuizDeck:
+    def generate_quiz(self, source: str, title: str, count: int = 10) -> QuizDeck:
         self._record_thread()
+        self.quiz_counts.append(count)
         if title in self.fail_titles:
             raise CardGenerationError(f"forced failure for {title}")
         if self.delay:
@@ -78,9 +82,9 @@ class _FakeGenerator:
             questions=[
                 QuizQuestion(
                     question="Q?",
-                    answer_options=[
-                        QuizOption(text="a", is_correct=True, rationale="right"),
-                        QuizOption(text="b", is_correct=False, rationale="wrong"),
+                    answerOptions=[
+                        QuizOption(text="a", isCorrect=True, rationale="right"),
+                        QuizOption(text="b", isCorrect=False, rationale="wrong"),
                     ],
                 )
             ],
@@ -113,6 +117,7 @@ def _make_tasks(n: int, kind: str = "flashcards") -> list[GenerationTask]:
             kind=kind,  # type: ignore[arg-type]
             source=f"source-{i}",
             title=f"title-{i}",
+            count=7,
         )
         for i in range(n)
     ]
@@ -148,6 +153,18 @@ class TestResultOrdering:
         assert isinstance(results[0].deck, FlashcardDeck)
         assert isinstance(results[1].deck, QuizDeck)
         assert isinstance(results[2].deck, PracticeDeck)
+
+    def test_task_count_is_passed_to_generator_methods(self) -> None:
+        gen = _FakeGenerator()
+        tasks = [
+            GenerationTask(identifier="fc", kind="flashcards", source="s", title="t-fc", count=25),
+            GenerationTask(identifier="qz", kind="quiz", source="s", title="t-qz", count=5),
+        ]
+
+        generate_concurrently(gen, tasks, max_workers=1)  # type: ignore[arg-type]
+
+        assert gen.flashcard_counts == [25]
+        assert gen.quiz_counts == [5]
 
 
 # ---------------------------------------------------------------------------

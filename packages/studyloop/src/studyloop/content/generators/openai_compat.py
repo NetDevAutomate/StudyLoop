@@ -119,10 +119,16 @@ class OpenAICompatGenerator:
     # CardGenerator Protocol
     # ------------------------------------------------------------------
 
-    def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
+    def generate_flashcards(
+        self, source: str, title: str, count: int | None = None
+    ) -> FlashcardDeck:
         deck = self._generate(
             system_prompt=FLASHCARD_SYSTEM_PROMPT,
-            user_prompt=FLASHCARD_USER_PROMPT_TEMPLATE.format(title=title, source=source),
+            user_prompt=FLASHCARD_USER_PROMPT_TEMPLATE.format(
+                title=title,
+                source=source,
+                count=count or 10,
+            ),
             tool_name=_FLASHCARD_TOOL_NAME,
             tool_description="Emit a flashcard deck matching the provided JSON schema.",
             schema=flashcard_deck_json_schema(),
@@ -132,10 +138,14 @@ class OpenAICompatGenerator:
             deck = deck.model_copy(update={"title": title})
         return deck
 
-    def generate_quiz(self, source: str, title: str) -> QuizDeck:
+    def generate_quiz(self, source: str, title: str, count: int | None = None) -> QuizDeck:
         deck = self._generate(
             system_prompt=QUIZ_SYSTEM_PROMPT,
-            user_prompt=QUIZ_USER_PROMPT_TEMPLATE.format(title=title, source=source),
+            user_prompt=QUIZ_USER_PROMPT_TEMPLATE.format(
+                title=title,
+                source=source,
+                count=count or 10,
+            ),
             tool_name=_QUIZ_TOOL_NAME,
             tool_description="Emit a multiple-choice quiz deck matching the provided JSON schema.",
             schema=quiz_deck_json_schema(),
@@ -256,9 +266,7 @@ class OpenAICompatGenerator:
         try:
             r = self._client.post("/chat/completions", json=payload)
         except httpx.HTTPError as exc:
-            raise CardGenerationError(
-                f"{self._profile.label} request failed: {exc!r}"
-            ) from exc
+            raise CardGenerationError(f"{self._profile.label} request failed: {exc!r}") from exc
 
         if r.status_code >= 400:
             # Truncate body to avoid log spam from providers that echo the
@@ -288,8 +296,7 @@ class OpenAICompatGenerator:
             message = choice["message"]
         except (KeyError, IndexError, TypeError) as exc:
             raise CardGenerationError(
-                f"{self._profile.label} response missing choices/message: "
-                f"{json.dumps(resp)[:300]}"
+                f"{self._profile.label} response missing choices/message: {json.dumps(resp)[:300]}"
             ) from exc
 
         tool_calls = message.get("tool_calls") or []

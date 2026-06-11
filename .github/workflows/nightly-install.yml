@@ -5,6 +5,9 @@ on:
     - cron: "30 3 * * *"  # 03:30 UTC daily (30 min after UAT)
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+
 jobs:
   fresh-install:
     strategy:
@@ -14,14 +17,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install from source
-        run: uv sync --all-packages --extra dev --extra test
+        run: uv sync --locked --all-packages --group dev
 
       - name: Run studyloop doctor
         run: |

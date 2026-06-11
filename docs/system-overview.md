@@ -20,7 +20,7 @@ flowchart TB
     end
 
     subgraph "Core Tools"
-        Studyctl["studyloop"]
+        StudyLoop["studyloop"]
         AST["agent-session-tools"]
         DB[("SQLite<br/>sessions + review")]
     end
@@ -44,22 +44,22 @@ flowchart TB
         AgentMemory["AgentMemory/<br/>(Obsidian vault notes)<br/>Dataview frontmatter +<br/>[[wikilinks]] + MOC index"]
     end
 
-    Obsidian --> Studyctl
-    PDF --> Studyctl
-    Text --> Studyctl
-    Studyctl --> Picker
+    Obsidian --> StudyLoop
+    PDF --> StudyLoop
+    Text --> StudyLoop
+    StudyLoop --> Picker
     Picker --> Tmux
     Tmux --> Agent
-    Studyctl --> Web
-    Web --> TTYD
+    StudyLoop --> Web
+        Web --> TTYD
     Web --> Explorer
     Explorer -->|"reads source material"| Obsidian
-    Explorer -->|"writes struggle flags"| DB
+    Explorer -->|"writes struggle flags<br/>with lesson provenance"| DB
     TTYD --> Tmux
     Agent --> DB
     AST --> DB
     AST -.->|"--obsidian (opt-in)<br/>obsidian_writer"| AgentMemory
-    Studyctl --> Generator
+    StudyLoop --> Generator
     Generator --> JSON
     JSON --> Review
     Review --> DB
@@ -73,17 +73,17 @@ The main workflow is live interaction with a mentor agent.
 ```mermaid
 sequenceDiagram
     actor User
-    participant Studyctl
+    participant StudyLoop
     participant DB as Shared DB
     participant Agent as Assistant
     participant UI as Web/tmux UI
 
-    User->>Studyctl: studyloop study
-    Studyctl-->>User: picker: body double/topic/vendor/course
-    User->>Studyctl: select session type
-    Studyctl->>DB: create session
-    Studyctl->>Agent: launch selected assistant
-    Studyctl->>UI: show live state
+    User->>StudyLoop: studyloop study
+    StudyLoop-->>User: picker: body double/topic/vendor/course
+    User->>StudyLoop: select session type
+    StudyLoop->>DB: create session
+    StudyLoop->>Agent: launch selected assistant
+    StudyLoop->>UI: show live state
     User->>Agent: ask questions / explain confusion
     Agent->>DB: query struggles, wins, history
     Agent-->>User: Socratic question or targeted explanation
@@ -112,16 +112,21 @@ studyloop web
 ```mermaid
 flowchart LR
     Source["Markdown/text source"]
+    Struggles["study_progress<br/>struggling topics +<br/>source_section provenance"]
+    Resolve["resolve_scope<br/>course / section /<br/>topic_struggles"]
+    Task["GenerationTask(count)<br/>from count_per_source"]
     Generate["studyloop content generate-cards<br/>or Generate panel<br/>(WebUI)"]
     Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic / Stub"]
     Schema["Pydantic validation"]
     Artefacts["course/flashcards<br/>course/quizzes"]
     PWA["Web review"]
 
-    Source --> Generate --> Backend --> Schema --> Artefacts --> PWA
+    Source --> Resolve
+    Struggles -.->|"topic_struggles"| Resolve
+    Resolve --> Task --> Generate --> Backend --> Schema --> Artefacts --> PWA
 ```
 
-The producer side is **pluggable**: a `ProviderProfile` registry plus two generic HTTP adapters (OpenAI Chat Completions and Anthropic Messages), with Bedrock and Ollama as first-class registry entries, cover six providers via registry rows. Adding a new provider is a registry edit, not new code. Auth credentials resolve **encrypted store first** (`~/.config/studyloop/secrets.bin`, written by the **Settings → LLM Providers** panel after a live verification), then a project-root `.env` (auto-loaded via `python-dotenv`); models are curated per-provider with cost-tier and thinking-flag annotations. See [Content Pipeline § Pluggable Provider Abstraction](content-pipeline.md#pluggable-provider-abstraction).
+The producer side is **pluggable**: a `ProviderProfile` registry plus two generic HTTP adapters (OpenAI Chat Completions and Anthropic Messages), with Bedrock and Ollama as first-class registry entries, cover six providers via registry rows. Adding a new provider is a registry edit, not new code. Auth credentials resolve **encrypted store first** (`~/.config/studyloop/secrets.bin`, written by the **Settings → LLM Providers** panel after a live verification), then a project-root `.env` (auto-loaded via `python-dotenv`); models are curated per-provider with cost-tier and thinking-flag annotations. The web Generate panel reports the requested `count_per_source`, resolved provider, and model in the job plan/progress view. See [Content Pipeline § Pluggable Provider Abstraction](content-pipeline.md#pluggable-provider-abstraction).
 
 NotebookLM is not required for this workflow.
 

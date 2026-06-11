@@ -17,6 +17,13 @@ SCHEMA_PATH = (
     Path(__file__).parent.parent / "src" / "agent_session_tools" / "schema.sql"
 )
 
+# Schema ownership notes:
+# - agent-session-tools owns the base sessions.db schema and forward migrations.
+# - studyloop.history.progress consumes study_progress and must tolerate DBs
+#   created before the v22 provenance-column migration.
+# - explorer_fts.db is a derived web cache; it is rebuilt/refreshed by
+#   StudyLoop web routes and is intentionally not migrated here.
+
 
 @pytest.fixture
 def fresh_db(tmp_path):
@@ -27,6 +34,139 @@ def fresh_db(tmp_path):
     conn.commit()
     yield conn
     conn.close()
+
+
+def legacy_v0_connection(tmp_path: Path) -> sqlite3.Connection:
+    """Create a minimal pre-migration DB with user data."""
+    db_path = tmp_path / "legacy-v0.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE sessions (
+            id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            project_path TEXT,
+            git_branch TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            metadata JSON
+        );
+
+        CREATE TABLE messages (
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL REFERENCES sessions(id),
+            parent_id TEXT,
+            role TEXT NOT NULL,
+            content TEXT,
+            model TEXT,
+            timestamp TEXT,
+            metadata JSON
+        );
+
+        CREATE INDEX idx_messages_session ON messages(session_id);
+        CREATE INDEX idx_messages_timestamp ON messages(timestamp);
+        CREATE INDEX idx_sessions_source ON sessions(source);
+        CREATE INDEX idx_sessions_project ON sessions(project_path);
+
+        CREATE VIRTUAL TABLE messages_fts USING fts5(
+            content,
+            session_id UNINDEXED,
+            role UNINDEXED,
+            tokenize='porter unicode61'
+        );
+
+        CREATE TRIGGER messages_fts_insert AFTER INSERT ON messages
+        WHEN NEW.content IS NOT NULL
+        BEGIN
+            INSERT INTO messages_fts(rowid, content, session_id, role)
+            VALUES (NEW.rowid, NEW.content, NEW.session_id, NEW.role);
+        END;
+
+        INSERT INTO sessions (
+            id, source, project_path, git_branch, created_at, updated_at, metadata
+        ) VALUES (
+            'legacy-session', 'claude_code', '/tmp/studyloop', 'main',
+            '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', '{}'
+        );
+
+        INSERT INTO messages (
+            id, session_id, parent_id, role, content, model, timestamp, metadata
+        ) VALUES (
+            'legacy-message', 'legacy-session', NULL, 'user',
+            'legacy migration smoke content', NULL,
+            '2026-01-01T00:00:30Z', '{}'
+        );
+        """
+    )
+    conn.commit()
+    return conn
+
+
+def legacy_nullable_message_metadata_connection(tmp_path: Path) -> sqlite3.Connection:
+    """Create a pre-migration DB with nullable message metadata columns."""
+    db_path = tmp_path / "legacy-nullable-message-metadata.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE sessions (
+            id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            project_path TEXT,
+            git_branch TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            metadata JSON
+        );
+
+        CREATE TABLE messages (
+            id TEXT PRIMARY KEY,
+            session_id TEXT,
+            parent_id TEXT,
+            role TEXT,
+            content TEXT,
+            model TEXT,
+            timestamp TEXT,
+            metadata JSON
+        );
+
+        CREATE VIRTUAL TABLE messages_fts USING fts5(
+            content,
+            session_id UNINDEXED,
+            role UNINDEXED,
+            tokenize='porter unicode61'
+        );
+
+        CREATE TRIGGER messages_fts_insert AFTER INSERT ON messages
+        WHEN NEW.content IS NOT NULL
+        BEGIN
+            INSERT INTO messages_fts(rowid, content, session_id, role)
+            VALUES (NEW.rowid, NEW.content, NEW.session_id, NEW.role);
+        END;
+
+        INSERT INTO sessions (
+            id, source, project_path, git_branch, created_at, updated_at, metadata
+        ) VALUES (
+            'session-1', 'claude_code', '/tmp/studyloop', 'main',
+            '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', '{}'
+        );
+
+        INSERT INTO messages (
+            id, session_id, parent_id, role, content, model, timestamp, metadata
+        ) VALUES
+            (
+                'null-role-message', 'session-1', NULL, NULL,
+                'metadata transition role content', NULL,
+                '2026-01-01T00:00:30Z', '{}'
+            ),
+            (
+                'null-session-message', NULL, NULL, 'assistant',
+                'metadata transition session content', NULL,
+                '2026-01-01T00:00:40Z', '{}'
+            );
+        """
+    )
+    conn.commit()
+    return conn
 
 
 class TestGetUserVersion:
@@ -79,6 +219,159 @@ class TestMigrate:
             "session_notes",
         ):
             assert expected in tables, f"Table {expected} missing after migration"
+
+    def test_legacy_v0_database_migrates_to_current_version(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            applied = migrate(conn)
+
+            assert applied
+            assert get_user_version(conn) == CURRENT_VERSION
+            row = conn.execute(
+                "SELECT content FROM messages WHERE id = 'legacy-message'"
+            ).fetchone()
+            assert row == ("legacy migration smoke content",)
+        finally:
+            conn.close()
+
+    def test_legacy_v0_database_keeps_fts_readable_after_migration(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+
+            rows = conn.execute(
+                "SELECT content FROM messages_fts WHERE messages_fts MATCH 'legacy'"
+            ).fetchall()
+            assert rows == [("legacy migration smoke content",)]
+        finally:
+            conn.close()
+
+    def test_legacy_v0_database_has_study_progress_provenance_after_migration(
+        self, tmp_path
+    ):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+
+            cols = {
+                r[1]
+                for r in conn.execute("PRAGMA table_info(study_progress)").fetchall()
+            }
+            assert {
+                "source_course",
+                "source_section",
+                "source_publisher",
+                "created_by",
+            } <= cols
+        finally:
+            conn.close()
+
+    def test_legacy_v0_database_keeps_foreign_keys_enabled_after_migration(
+        self, tmp_path
+    ):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+
+            assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        finally:
+            conn.close()
+
+    def test_fts_update_indexes_null_to_text_transition(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+            conn.execute(
+                """
+                INSERT INTO messages (
+                    id, session_id, parent_id, role, content, model, timestamp, metadata
+                ) VALUES (
+                    'null-message', 'legacy-session', NULL, 'assistant',
+                    NULL, NULL, '2026-01-01T00:00:40Z', '{}'
+                )
+                """
+            )
+            conn.execute(
+                "UPDATE messages SET content = ? WHERE id = ?",
+                ("late indexed content", "null-message"),
+            )
+            rows = conn.execute(
+                "SELECT content FROM messages_fts WHERE messages_fts MATCH 'late'"
+            ).fetchall()
+            assert rows == [("late indexed content",)]
+        finally:
+            conn.close()
+
+    def test_fts_update_removes_text_to_null_transition(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+            conn.execute(
+                "UPDATE messages SET content = NULL WHERE id = 'legacy-message'"
+            )
+            rows = conn.execute(
+                "SELECT content FROM messages_fts WHERE messages_fts MATCH 'legacy'"
+            ).fetchall()
+            assert rows == []
+        finally:
+            conn.close()
+
+    def test_fts_update_handles_role_null_to_value_transition(self, tmp_path):
+        conn = legacy_nullable_message_metadata_connection(tmp_path)
+        try:
+            migrate(conn)
+
+            conn.execute(
+                "UPDATE messages SET role = ? WHERE id = ?",
+                ("assistant", "null-role-message"),
+            )
+            row = conn.execute(
+                """
+                SELECT role
+                FROM messages_fts
+                WHERE messages_fts MATCH 'metadata'
+                  AND rowid = (
+                      SELECT rowid FROM messages WHERE id = 'null-role-message'
+                  )
+                """
+            ).fetchone()
+            assert row == ("assistant",)
+        finally:
+            conn.close()
+
+    def test_fts_update_handles_session_id_null_to_value_transition(self, tmp_path):
+        conn = legacy_nullable_message_metadata_connection(tmp_path)
+        try:
+            migrate(conn)
+
+            conn.execute(
+                "UPDATE messages SET session_id = ? WHERE id = ?",
+                ("session-1", "null-session-message"),
+            )
+            row = conn.execute(
+                """
+                SELECT session_id
+                FROM messages_fts
+                WHERE messages_fts MATCH 'metadata'
+                  AND rowid = (
+                      SELECT rowid FROM messages WHERE id = 'null-session-message'
+                  )
+                """
+            ).fetchone()
+            assert row == ("session-1",)
+        finally:
+            conn.close()
+
+    def test_legacy_v0_database_migration_is_idempotent(self, tmp_path):
+        conn = legacy_v0_connection(tmp_path)
+        try:
+            migrate(conn)
+            second = migrate(conn)
+
+            assert second == []
+            assert get_user_version(conn) == CURRENT_VERSION
+        finally:
+            conn.close()
 
 
 class TestMigrationV12:
@@ -368,7 +661,7 @@ class TestMigrationV22:
 
     def test_migrates_to_version_22(self, fresh_db):
         applied = migrate(fresh_db)
-        assert get_user_version(fresh_db) == 22
+        assert get_user_version(fresh_db) == CURRENT_VERSION
         assert any("v22" in a for a in applied)
 
     def test_study_progress_has_provenance_columns(self, fresh_db):

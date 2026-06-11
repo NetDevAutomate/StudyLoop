@@ -14,9 +14,9 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
-from studyloop.web.app import create_app  # noqa: E402
+from studyloop.web.app import create_app
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,9 +51,7 @@ def client(vault: Path, monkeypatch: MonkeyPatch) -> TestClient:
 
 class TestSectionsRoute:
     def test_returns_one_entry_per_lesson_file(self, client: TestClient) -> None:
-        resp = client.get(
-            "/api/courses/Complete_SQL/sections?publisher=CodeWithMosh"
-        )
+        resp = client.get("/api/courses/Complete_SQL/sections?publisher=CodeWithMosh")
         assert resp.status_code == 200
         data = resp.json()
         # slug = lesson file path relative to the course dir (suffix stripped).
@@ -68,17 +66,23 @@ class TestSectionsRoute:
             assert "name" in entry
 
     def test_skips_output_dirs_and_dot_dirs(self, client: TestClient) -> None:
-        data = client.get(
-            "/api/courses/Complete_SQL/sections?publisher=CodeWithMosh"
-        ).json()
+        data = client.get("/api/courses/Complete_SQL/sections?publisher=CodeWithMosh").json()
         slugs = {entry["slug"] for entry in data}
         assert not any("flashcards" in s for s in slugs)
         assert not any(".obsidian" in s for s in slugs)
         assert not any("old-deck" in s for s in slugs)
 
     def test_missing_course_returns_404(self, client: TestClient) -> None:
-        resp = client.get(
-            "/api/courses/NotARealCourse/sections?publisher=CodeWithMosh"
-        )
+        resp = client.get("/api/courses/NotARealCourse/sections?publisher=CodeWithMosh")
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"].lower()
+
+    def test_rejects_course_path_traversal(self, client: TestClient) -> None:
+        resp = client.get("/api/courses/%2E%2E/sections?publisher=CodeWithMosh")
+        assert resp.status_code == 400
+        assert "must not contain" in resp.json()["detail"]
+
+    def test_rejects_publisher_path_traversal(self, client: TestClient) -> None:
+        resp = client.get("/api/courses/Complete_SQL/sections?publisher=../outside")
+        assert resp.status_code == 400
+        assert "must not contain" in resp.json()["detail"]

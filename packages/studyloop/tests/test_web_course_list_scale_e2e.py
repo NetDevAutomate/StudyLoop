@@ -81,10 +81,10 @@ def _course(name: str, publisher: str, fc: int, qz: int) -> dict:
 # Two publishers; a mix of flashcard-only, quiz-only, and mixed decks so the
 # mode split is exercised in both directions.
 _COURSES = [
-    _course("Mosh_SQL_Basics", "CodeWithMosh", fc=5, qz=5),   # mixed
-    _course("Mosh_SQL_FcOnly", "CodeWithMosh", fc=5, qz=0),   # flashcards only
-    _course("Mosh_SQL_QzOnly", "CodeWithMosh", fc=0, qz=5),   # quiz only
-    _course("Arjan_Patterns", "ArjanCodes", fc=4, qz=4),      # mixed, other publisher
+    _course("Mosh_SQL_Basics", "CodeWithMosh", fc=5, qz=5),  # mixed
+    _course("Mosh_SQL_FcOnly", "CodeWithMosh", fc=5, qz=0),  # flashcards only
+    _course("Mosh_SQL_QzOnly", "CodeWithMosh", fc=0, qz=5),  # quiz only
+    _course("Arjan_Patterns", "ArjanCodes", fc=4, qz=4),  # mixed, other publisher
 ]
 
 
@@ -137,10 +137,10 @@ class TestModeSplit:
         _stub_misc(web_page)
         _goto(web_page, "flashcards")
         names = _visible_row_names(web_page, "flashcards")
-        assert "Mosh_SQL_Basics" in names      # mixed → shown
-        assert "Mosh_SQL_FcOnly" in names       # fc-only → shown
-        assert "Arjan_Patterns" in names        # mixed → shown
-        assert "Mosh_SQL_QzOnly" not in names   # quiz-only → hidden
+        assert "Mosh_SQL_Basics" in names  # mixed → shown
+        assert "Mosh_SQL_FcOnly" in names  # fc-only → shown
+        assert "Arjan_Patterns" in names  # mixed → shown
+        assert "Mosh_SQL_QzOnly" not in names  # quiz-only → hidden
 
     def test_flashcards_panel_has_no_quiz_buttons(self, web_page: Page) -> None:
         _stub_courses(web_page)
@@ -158,7 +158,7 @@ class TestModeSplit:
         assert "Mosh_SQL_Basics" in names
         assert "Mosh_SQL_QzOnly" in names
         assert "Arjan_Patterns" in names
-        assert "Mosh_SQL_FcOnly" not in names   # flashcard-only → hidden
+        assert "Mosh_SQL_FcOnly" not in names  # flashcard-only → hidden
 
     def test_quizzes_panel_has_no_flashcard_buttons(self, web_page: Page) -> None:
         _stub_courses(web_page)
@@ -204,8 +204,8 @@ class TestGrouping:
         )
         web_page.wait_for_timeout(150)
         names = _visible_row_names(web_page, "flashcards")
-        assert "Arjan_Patterns" in names          # other group stays visible
-        assert "Mosh_SQL_Basics" not in names      # collapsed group hidden
+        assert "Arjan_Patterns" in names  # other group stays visible
+        assert "Mosh_SQL_Basics" not in names  # collapsed group hidden
         assert "Mosh_SQL_FcOnly" not in names
 
     def test_expanding_restores_rows(self, web_page: Page) -> None:
@@ -309,9 +309,7 @@ class TestCompactRowLayout:
         web_page.set_viewport_size({"width": 768, "height": 1024})
         _goto(web_page, "flashcards")
         # Each row's name must not wrap to a second line (ellipsis truncation ok).
-        assert_single_line(
-            web_page, '[x-data*="flashcards"] .course-row', ".course-row-name"
-        )
+        assert_single_line(web_page, '[x-data*="flashcards"] .course-row', ".course-row-name")
 
 
 # ---------------------------------------------------------------------------
@@ -324,9 +322,7 @@ class TestHeatmapPlacement:
         _stub_courses(web_page)
         _stub_misc(web_page)
         _goto(web_page, "flashcards")
-        assert (
-            web_page.locator('[x-data*="flashcards"] .heatmap-section').count() == 1
-        )
+        assert web_page.locator('[x-data*="flashcards"] .heatmap-section').count() == 1
 
     def test_heatmap_absent_from_quizzes_panel(self, web_page: Page) -> None:
         _stub_courses(web_page)

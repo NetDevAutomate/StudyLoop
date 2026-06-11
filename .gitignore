@@ -454,6 +454,7 @@ GEMINI.md
 !/GEMINI.md
 # pi/omp harness steering files — shipped with the repo, installed into
 # ~/.pi/agent/ and ~/.omp/agent/ by `studyloop install agents --tool pi|omp`.
+!agents/codex/AGENTS.md
 !agents/pi/AGENTS.md
 !agents/omp/AGENTS.md
 agents/cowork/

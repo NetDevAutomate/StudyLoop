@@ -12,7 +12,7 @@ Step-by-step installation and configuration for StudyLoop.
 - [Session Database](#session-database)
 - [Content Pipeline](#content-pipeline)
 - [Cross-Machine Sync](#cross-machine-sync)
-- [Scheduling](#scheduling)
+- [Scheduling Status](#scheduling-status)
 - [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
@@ -62,47 +62,77 @@ tmux-resurrect and warns if the restore hook is not detected.
 
 ### User Install (recommended)
 
-Install from a source checkout with `uv`. The PyPI/Homebrew distribution
-was yanked; source install is the current supported path.
-
-```bash
-git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
-cd studyloop
-uv sync --all-packages
-# The [sessions] extra pulls in agent-session-tools (the cross-harness
-# session DB) so `studyloop doctor` can see it. Without it, doctor reports
-# "agent-session-tools not installed" and the sessions DB is unavailable.
-uv tool install './packages/studyloop[sessions]'
-studyloop setup
-studyloop doctor --fix
-```
-
-> If `studyloop doctor` reports `agent-session-tools not installed`, run
-> `studyloop install tools` — it reinstalls the workspace tools with
-> agent-session-tools wired into the studyloop tool venv.
-
-### Repo Bootstrap
+Install from a source checkout. The PyPI/Homebrew distribution was yanked;
+source install is the current supported path, and `scripts/install.sh` is the
+primary installer because it installs both `studyloop` and the
+`agent-session-tools` console scripts used by the session database workflow.
 
 ```bash
 git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
 cd studyloop
 ./scripts/install.sh
+studyloop self-test
+studyloop setup
+studyloop doctor --fix
 ```
 
-This will:
+`studyloop self-test` is the fastest post-install confidence check. It verifies
+that the CLI imports, config is readable if present, the sessions database path
+is usable, and the web module imports. A warning exit (`1`) is acceptable before
+first setup if `config.yaml` does not exist yet.
+
+> If `studyloop doctor` reports `agent-session-tools not installed`, run
+> `studyloop install tools` — it reinstalls the workspace tools with
+> agent-session-tools wired into the studyloop tool venv.
+
+### What the installer does
+
+`./scripts/install.sh` will:
 1. Verify Python 3.12+ is installed
 2. Install `uv` if not already available
 3. Run `uv sync`
 4. Delegate to `studyloop install tools`
 5. Delegate to `studyloop install agents`
+6. Run lightweight installed CLI smoke checks
 
-The shell script is now only a bootstrap wrapper. The real install surface lives in typed CLI commands:
+The typed CLI commands are available when you need to refresh one side of the
+install:
 
 ```bash
 studyloop install tools
 studyloop install agents
+studyloop self-test
 studyloop doctor --fix
 ```
+
+### Advanced Manual Tool Install
+
+You can install the `studyloop` tool venv manually, but this only exposes the
+`studyloop` entry point. Dependency console scripts from `agent-session-tools`
+such as `session-export`, `session-query`, and `session-sync` may not appear on
+`PATH` unless `agent-session-tools` is installed as its own tool.
+
+```bash
+uv sync --all-packages
+uv tool install './packages/studyloop[sessions,web,content]'
+uv tool install './packages/agent-session-tools[tts]'
+```
+
+Prefer `./scripts/install.sh` or `studyloop install tools` for normal source
+checkout installs because they keep the two tool venvs wired together.
+
+### Optional Extras
+
+| Extra | Use |
+|-------|-----|
+| `content` | PDF splitting and local content processing |
+| `bedrock` | AWS Bedrock generator support |
+| `notebooklm` | NotebookLM API workflow |
+| `tui` | terminal UI dependencies |
+| `web` | FastAPI web UI |
+| `mcp` | MCP server integration |
+| `sessions` | `agent-session-tools` import/session DB integration |
+| `all` | all StudyLoop package extras |
 
 ### Developer Install
 
@@ -121,6 +151,7 @@ For contributor setups, the cleanest flow is usually:
 ```bash
 uv sync
 uv run studyloop install agents
+uv run studyloop self-test
 uv run studyloop doctor --fix
 ```
 
@@ -141,6 +172,9 @@ cd studyloop
 
 # Just reinstall agent definitions
 ./scripts/install.sh --agents-only
+
+# Skip installed CLI smoke checks
+./scripts/install.sh --no-smoke
 
 # Direct typed commands
 studyloop install tools
@@ -175,7 +209,7 @@ For **Ansible playbooks**, clone the repo then run the install script:
 Run the interactive wizard to configure your study environment:
 
 ```bash
-studyloop config init
+studyloop setup
 ```
 
 This walks you through three core questions:
@@ -185,6 +219,10 @@ This walks you through three core questions:
 3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Personal`).
 
 The wizard creates or updates `~/.config/studyloop/config.yaml` with your choices. You can re-run it at any time to change settings.
+
+`studyloop config init` is the older low-level config initializer. Prefer
+`studyloop setup` for first-run setup because it also covers current install,
+agent, and Obsidian export checks.
 
 ### Manual Configuration
 
@@ -288,14 +326,16 @@ Use `--lan` to make the web dashboard and terminal accessible from any device on
 ```bash
 studyloop study "Python Decorators" --energy 7 --lan
 # Auto-generates password and saves LAN info to session state:
-#   Dashboard: http://192.168.1.42:8567/session
-#   Password:  <auto-generated>
+#   Local:    http://127.0.0.1:8567/session
+#   LAN:      http://192.168.1.42:8567/session
+#   Username: study
+#   Password: <auto-generated>
 
 # Or set a known password:
 studyloop study "Python Decorators" --energy 7 --lan --password mysecret
 ```
 
-Access the live dashboard and embedded terminal from your iPad at `http://<mac-ip>:8567/session`. Enter any username and the displayed password when prompted. The terminal panel (ttyd iframe) is proxied through the web server on the same origin, so pop-out/return works seamlessly. ttyd must be installed for the terminal panel to work (`brew install ttyd`).
+Access the live dashboard and embedded terminal from your iPad at `http://<mac-ip>:8567/session`. Use username `study` and the displayed password when prompted. The terminal panel (ttyd iframe) is proxied through the web server on the same origin, so pop-out/return works seamlessly. ttyd must be installed for the terminal panel to work (`brew install ttyd`).
 
 **Password sources** (checked in order):
 1. `--password` CLI flag
@@ -516,11 +556,9 @@ Enable it three ways:
 (when export is enabled) confirms the memory directory is writable.
 
 
-5. Sync and generate audio:
-   ```bash
-   studyloop sync python          # Upload changed notes
-   studyloop audio python         # Generate audio overview
-   ```
+Legacy NotebookLM sync/audio commands are not part of the current session-memory
+export path. Use `session-export --obsidian` for Obsidian memory notes and the
+local content pipeline for flashcards and quizzes.
 
 ## Session Database
 
@@ -563,8 +601,11 @@ The content pipeline converts local study sources into review artefacts that sup
 ### Install content dependencies
 
 ```bash
-# PDF splitting and local content processing
-uv pip install studyloop[content]
+# Repo-local PDF splitting and local content processing
+uv sync --all-packages --extra content
+
+# Or refresh the global CLI with the documented feature set
+studyloop install tools
 ```
 
 ### Configure study sources
@@ -610,25 +651,10 @@ session-sync endpoints           # List all configured remote hosts
 
 Both commands read host definitions from `~/.config/studyloop/config.yaml` (the `hosts` section). See [Host Configuration](#host-configuration) below for the schema. Delta sync transfers only new sessions, not the entire database.
 
-## Scheduling
+## Scheduling Status
 
-Set up automatic sync so your notes and sessions stay current.
-
-```bash
-# Install all default scheduled jobs
-studyloop schedule install
-
-# List active jobs
-studyloop schedule list
-
-# Remove all jobs
-studyloop schedule remove
-
-# Add a custom job
-studyloop schedule add my-sync "studyloop sync --all" "daily 3am"
-```
-
-On macOS, this creates launchd plists. On Linux, it uses cron.
+Scheduled sync is not currently shipped. Use system cron/launchd manually if
+needed, or track scheduling in the roadmap.
 
 ## Windows (WSL2)
 
@@ -705,9 +731,9 @@ This checks Python version, installed packages, config validity, databases, opti
 If issues are found:
 
 ```bash
-studyloop doctor --fix         # Apply safe auto-fixes first
+studyloop doctor --fix         # Apply safe local repairs first
+studyloop upgrade --dry-run    # Preview package/database/agent upgrades
 studyloop upgrade              # Apply package/database/agent upgrades
-studyloop upgrade --dry-run    # Preview changes first
 ```
 
 For machine-readable output (used by CI pipelines and AI agents):
@@ -737,8 +763,9 @@ Before investigating specific issues, always start with the health check:
 studyloop doctor
 ```
 
-This will identify most common problems and tell you how to fix them. If auto-fixable issues are found, run `studyloop upgrade` to resolve them.
-This will identify most common problems and tell you how to fix them. Start with `studyloop doctor --fix` for safe local repairs, then use `studyloop upgrade` for package-level updates.
+This will identify most common problems and tell you how to fix them. Run
+`studyloop doctor --fix` first for safe local repairs. Use
+`studyloop upgrade --dry-run` before package/database/agent upgrades.
 
 ### `studyloop: command not found`
 
