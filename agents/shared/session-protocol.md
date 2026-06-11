@@ -305,7 +305,7 @@ Ask the learner: "How confident do you feel about [concept]? (struggling/learnin
 
 **Suggest Next Review** — based on spaced repetition intervals (1/3/7/14/30 days):
 - "You should review [concept] again in 3 days."
-- Offer calendar block: `studyloop schedule-blocks --start <time>`
+- Suggest a concrete next study block in prose; no calendar CLI exists yet.
 
 ### Phase 2: Consolidation Guidance
 

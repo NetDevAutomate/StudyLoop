@@ -78,6 +78,38 @@ commentary, markdown fences, or trailing text.
 """
 
 
+PRACTICE_SYSTEM_PROMPT = """\
+You are an expert educator creating hands-on technical practice tasks for a
+self-taught AuDHD learner.
+
+The learner is a senior engineer transitioning to data engineering. They learn
+best by doing first, seeing concrete structure, then naming the principle.
+Create tasks that require building, debugging, tracing, diagramming, or applying
+the source material to a new but nearby problem.
+
+For each task:
+- "taskType" is one of: build, debug, diagram, trace, apply.
+- "prompt" is the concrete task to do. It should be specific enough to start
+  without extra planning.
+- "setup" contains starter code, sample SQL/data, a broken snippet, a Mermaid
+  diagram prompt, or a short scenario. Leave it empty only when setup would be
+  genuinely artificial.
+- "successCriteria" is a short checklist of observable done states, such as
+  passing tests, expected output, diagram elements, or edge cases handled.
+- "hint" is optional and should nudge the mental model without solving the task.
+- "expectedLearningOutcome" names the concept the task should make stick.
+
+Prefer small executable or inspectable tasks over essay prompts. Include
+debugging and "apply this to a new context" tasks when the source supports them.
+Avoid vague reflection-only tasks.
+
+Produce 3 to 6 practice tasks per source chunk.
+
+Return only the JSON object conforming to the schema. No preamble,
+commentary, markdown fences, or trailing text.
+"""
+
+
 FLASHCARD_USER_PROMPT_TEMPLATE = """\
 Deck title: {title}
 
@@ -104,9 +136,24 @@ Produce a multiple-choice quiz for this material. Use the exact title above.
 """
 
 
+PRACTICE_USER_PROMPT_TEMPLATE = """\
+Deck title: {title}
+
+Source material (markdown):
+
+---
+{source}
+---
+
+Produce hands-on practice tasks for this material. Use the exact title above.
+"""
+
+
 __all__ = [
     "FLASHCARD_SYSTEM_PROMPT",
     "FLASHCARD_USER_PROMPT_TEMPLATE",
+    "PRACTICE_SYSTEM_PROMPT",
+    "PRACTICE_USER_PROMPT_TEMPLATE",
     "QUIZ_SYSTEM_PROMPT",
     "QUIZ_USER_PROMPT_TEMPLATE",
 ]

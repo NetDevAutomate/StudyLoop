@@ -28,6 +28,8 @@ from studyloop.content.generators import CardGenerationError
 from studyloop.content.schemas import (
     FlashcardDeck,
     FlashcardItem,
+    PracticeDeck,
+    PracticeTask,
     QuizDeck,
     QuizOption,
     QuizQuestion,
@@ -71,15 +73,35 @@ class StubGenerator:
             QuizQuestion(
                 question=f"[{title}] stub question {i + 1}? (source len={len(source)})",
                 hint="",
-                answer_options=[
-                    QuizOption(text="Correct option", is_correct=True, rationale="stub correct"),
-                    QuizOption(text="Wrong option A", is_correct=False, rationale="stub wrong A"),
-                    QuizOption(text="Wrong option B", is_correct=False, rationale="stub wrong B"),
+                answerOptions=[
+                    QuizOption(text="Correct option", isCorrect=True, rationale="stub correct"),
+                    QuizOption(text="Wrong option A", isCorrect=False, rationale="stub wrong A"),
+                    QuizOption(text="Wrong option B", isCorrect=False, rationale="stub wrong B"),
                 ],
             )
             for i in range(count)
         ]
         return QuizDeck(title=title, questions=questions)
+
+    def generate_practice(self, source: str, title: str) -> PracticeDeck:
+        self._maybe_sleep()
+        self._maybe_fail(title)
+        count = min(self._card_count(), 6)
+        tasks = [
+            PracticeTask(
+                taskType="debug" if i % 2 else "build",
+                prompt=f"[{title}] stub practice task {i + 1}",
+                setup=f"Use this source excerpt length as input: {len(source)}",
+                successCriteria=[
+                    "A concrete attempt exists",
+                    "The expected output or explanation is checked",
+                ],
+                hint="Start with the smallest runnable version.",
+                expectedLearningOutcome=f"Apply {title} concept {i + 1} hands-on.",
+            )
+            for i in range(count)
+        ]
+        return PracticeDeck(title=title, tasks=tasks)
 
     def close(self) -> None:
         """No-op; present for parity with HTTP-backed generators."""

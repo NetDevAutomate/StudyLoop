@@ -75,8 +75,19 @@ def _stub_sources(page: Page, sources: list[str]) -> None:
     page.route("**/api/sources/**", lambda route: _fulfill(route, sources))
 
 
-def _stub_cards(page: Page, cards: list[dict]) -> None:
+def _stub_cards(
+    page: Page,
+    cards: list[dict],
+    due: list[str | dict] | None = None,
+    wrong: list[str] | None = None,
+) -> None:
     page.route("**/api/cards/**", lambda route: _fulfill(route, cards))
+    due_payload = [
+        {"card_hash": item} if isinstance(item, str) else item
+        for item in (due or [])
+    ]
+    page.route("**/api/due/**", lambda route: _fulfill(route, due_payload))
+    page.route("**/api/wrong/**", lambda route: _fulfill(route, wrong or []))
 
 
 def _stub_post_review(page: Page) -> None:
@@ -233,6 +244,66 @@ class TestFlashcardsStudyFlow:
             }}""",
             timeout=5000,
         )
+
+    def test_start_session_prioritizes_due_then_wrong_then_remaining_after_source_filter(
+        self, web_page: Page
+    ) -> None:
+        cards = [
+            _flashcard("new-1", "New 1", "A1", source="ch1"),
+            _flashcard("wrong-1", "Wrong", "A2", source="ch1"),
+            _flashcard("due-other-source", "Other", "A3", source="ch2"),
+            _flashcard("due-1", "Due", "A4", source="ch1"),
+            _flashcard("new-2", "New 2", "A5", source="ch1"),
+        ]
+        _stub_courses(
+            web_page,
+            [
+                {
+                    "name": "Math",
+                    "flashcard_count": 5,
+                    "quiz_count": 0,
+                    "total_reviews": 0,
+                    "mastered": 0,
+                    "due_count": 2,
+                }
+            ],
+        )
+        _stub_session_state(web_page)
+        _stub_stats(web_page, {"total_reviews": 0, "unique_cards": 0, "mastered": 0})
+        _stub_sources(web_page, ["ch1", "ch2"])
+        _stub_cards(
+            web_page,
+            cards,
+            due=["due-other-source", "due-1"],
+            wrong=["wrong-1"],
+        )
+        _stub_post_review(web_page)
+        _goto_review(web_page, "flashcards")
+
+        root = '[x-data*="flashcards"]'
+        web_page.locator(f"{root} .course-row-action.flashcard").first.click()
+        web_page.wait_for_function(
+            f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'config'",
+            timeout=5000,
+        )
+
+        state = web_page.evaluate(
+            f"""async () => {{
+              const d = window.Alpine.$data(document.querySelector('{root}'));
+              await d.startSession('ch1', 3);
+              return {{
+                view: d.view,
+                hashes: d.cards.map(c => c.hash),
+                sources: d.cards.map(c => c.source),
+              }};
+            }}"""
+        )
+
+        assert state["view"] == "study"
+        assert state["hashes"][:2] == ["due-1", "wrong-1"]
+        assert "due-other-source" not in state["hashes"]
+        assert len(state["hashes"]) == 3
+        assert set(state["sources"]) == {"ch1"}
 
     def test_flip_card_reveals_answer(self, web_page: Page) -> None:
         cards = [_flashcard("h1", "What is 2+2?", "Four")]
@@ -414,6 +485,50 @@ class TestFlashcardsStudyFlow:
 
 
 class TestQuizStudyFlow:
+    def test_quiz_mode_ignores_unmatched_due_hashes_and_uses_wrong_priority(
+        self, web_page: Page
+    ) -> None:
+        cards = [
+            _quiz_card("q-new", "New quiz?", correct_idx=1),
+            _quiz_card("q-wrong", "Retry quiz?", correct_idx=2),
+        ]
+        _stub_courses(
+            web_page,
+            [
+                {
+                    "name": "Math",
+                    "flashcard_count": 0,
+                    "quiz_count": 2,
+                    "total_reviews": 0,
+                    "mastered": 0,
+                    "due_count": 1,
+                }
+            ],
+        )
+        _stub_session_state(web_page)
+        _stub_stats(web_page, {"total_reviews": 0, "unique_cards": 0, "mastered": 0})
+        _stub_sources(web_page, ["ch1"])
+        _stub_cards(web_page, cards, due=["flashcard-only"], wrong=["q-wrong"])
+        _stub_post_review(web_page)
+        _goto_review(web_page, "quizzes")
+
+        root = '[x-data*="quiz"]'
+        web_page.locator(f"{root} .course-row-action.quiz").first.click()
+        web_page.wait_for_function(
+            f"() => window.Alpine.$data(document.querySelector('{root}')).view === 'config'",
+            timeout=5000,
+        )
+
+        hashes = web_page.evaluate(
+            f"""async () => {{
+              const d = window.Alpine.$data(document.querySelector('{root}'));
+              await d.startSession('all', 2);
+              return d.cards.map(c => c.hash);
+            }}"""
+        )
+
+        assert hashes == ["q-wrong", "q-new"]
+
     def test_quiz_select_correct_answer_increments_counter(self, web_page: Page) -> None:
         cards = [_quiz_card("q1", "Which is prime?", correct_idx=2)]
         _stub_courses(

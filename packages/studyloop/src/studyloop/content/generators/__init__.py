@@ -28,7 +28,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from studyloop.content.schemas import FlashcardDeck, QuizDeck
+    from studyloop.content.schemas import FlashcardDeck, PracticeDeck, QuizDeck
     from studyloop.settings import CardGeneratorConfig
 
 
@@ -82,6 +82,14 @@ class CardGenerator(Protocol):
 
         Raises:
             CardGenerationError: As for :meth:`generate_flashcards`.
+        """
+        ...
+
+    def generate_practice(self, source: str, title: str) -> PracticeDeck:
+        """Produce a :class:`PracticeDeck` from a markdown source chunk.
+
+        Practice tasks are hands-on exercises: build, debug, trace, diagram,
+        or transfer prompts that create active evidence of understanding.
         """
         ...
 

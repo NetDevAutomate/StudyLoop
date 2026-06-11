@@ -16,7 +16,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-COURSE_SUBDIRS = ("chapters", "audio", "flashcards", "quizzes", "video", "slides")
+COURSE_SUBDIRS = ("chapters", "audio", "flashcards", "quizzes", "practice", "video", "slides")
 
 
 def get_course_dir(base_path: Path, slug: str) -> Path:

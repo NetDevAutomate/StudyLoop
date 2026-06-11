@@ -807,22 +807,14 @@ function reviewApp(defaultMode) {
         );
         if (!res.ok) return;
         let cards = await res.json();
+        const { dueHashes, wrongHashes } = await this._loadPriorityHashes();
 
         // Filter by source
         if (source && source !== 'all') {
           cards = cards.filter(c => c.source === source);
         }
 
-        // Shuffle
-        for (let i = cards.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [cards[i], cards[j]] = [cards[j], cards[i]];
-        }
-
-        // Limit
-        if (limit && limit > 0) {
-          cards = cards.slice(0, limit);
-        }
+        cards = this._prioritizeSessionCards(cards, dueHashes, wrongHashes, limit);
 
         if (!cards.length) return;
 
@@ -837,6 +829,75 @@ function reviewApp(defaultMode) {
         this.sessionStartTime = Date.now();
         this.view = 'study';
       } catch { /* load failed */ }
+    },
+
+    async _loadPriorityHashes() {
+      const course = encodeURIComponent(this.course);
+      const fetchJson = async (url) => {
+        try {
+          const res = await fetch(url);
+          return res.ok ? await res.json() : [];
+        } catch {
+          return [];
+        }
+      };
+
+      const [dueCards, wrongCards] = await Promise.all([
+        fetchJson('/api/due/' + course),
+        fetchJson('/api/wrong/' + course),
+      ]);
+
+      return {
+        dueHashes: this._uniqueHashes(
+          Array.isArray(dueCards)
+            ? dueCards.map(c => typeof c === 'string' ? c : c?.card_hash)
+            : []
+        ),
+        wrongHashes: this._uniqueHashes(Array.isArray(wrongCards) ? wrongCards : []),
+      };
+    },
+
+    _prioritizeSessionCards(cards, dueHashes, wrongHashes, limit) {
+      const byHash = new Map();
+      for (const card of cards) {
+        if (card.hash && !byHash.has(card.hash)) byHash.set(card.hash, card);
+      }
+
+      const picked = new Set();
+      const ordered = [];
+      const addByHash = (hash) => {
+        const card = byHash.get(hash);
+        if (!card || picked.has(card.hash)) return;
+        picked.add(card.hash);
+        ordered.push(card);
+      };
+
+      dueHashes.forEach(addByHash);
+      wrongHashes.forEach(addByHash);
+
+      const remaining = cards.filter(c => !c.hash || !picked.has(c.hash));
+      ordered.push(...this._shuffleCards(remaining));
+
+      return limit && limit > 0 ? ordered.slice(0, limit) : ordered;
+    },
+
+    _uniqueHashes(hashes) {
+      const seen = new Set();
+      const unique = [];
+      for (const hash of hashes) {
+        if (!hash || seen.has(hash)) continue;
+        seen.add(hash);
+        unique.push(hash);
+      }
+      return unique;
+    },
+
+    _shuffleCards(cards) {
+      for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cards[i], cards[j]] = [cards[j], cards[i]];
+      }
+      return cards;
     },
 
     restartSession() {

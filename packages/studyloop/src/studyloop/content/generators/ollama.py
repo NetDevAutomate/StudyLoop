@@ -39,13 +39,17 @@ from studyloop.content.generators import CardGenerationError
 from studyloop.content.generators.prompts import (
     FLASHCARD_SYSTEM_PROMPT,
     FLASHCARD_USER_PROMPT_TEMPLATE,
+    PRACTICE_SYSTEM_PROMPT,
+    PRACTICE_USER_PROMPT_TEMPLATE,
     QUIZ_SYSTEM_PROMPT,
     QUIZ_USER_PROMPT_TEMPLATE,
 )
 from studyloop.content.schemas import (
     FlashcardDeck,
+    PracticeDeck,
     QuizDeck,
     flashcard_deck_json_schema,
+    practice_deck_json_schema,
     quiz_deck_json_schema,
 )
 
@@ -54,7 +58,7 @@ if TYPE_CHECKING:
 
 
 # Type alias for either deck type; keeps the generic helper type-clean.
-_DECK_MODELS = FlashcardDeck | QuizDeck
+_DECK_MODELS = FlashcardDeck | QuizDeck | PracticeDeck
 
 
 class OllamaGenerator:
@@ -108,6 +112,18 @@ class OllamaGenerator:
             user_prompt=user_prompt,
             schema=quiz_deck_json_schema(),
             model_cls=QuizDeck,
+        )
+        if deck.title != title:
+            deck = deck.model_copy(update={"title": title})
+        return deck
+
+    def generate_practice(self, source: str, title: str) -> PracticeDeck:
+        user_prompt = PRACTICE_USER_PROMPT_TEMPLATE.format(title=title, source=source)
+        deck = self._generate(
+            system_prompt=PRACTICE_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            schema=practice_deck_json_schema(),
+            model_cls=PracticeDeck,
         )
         if deck.title != title:
             deck = deck.model_copy(update={"title": title})

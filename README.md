@@ -15,7 +15,7 @@
 Four things:
 
 1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
-2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes and flashcards locally, without requiring external notebook services.
+2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes, flashcards, and hands-on practice tasks locally, without requiring external notebook services.
 3. **Flashcard review** — Spaced repetition (SM-2) via a PWA web app. Works on phone, tablet, laptop.
 4. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
 
@@ -36,6 +36,7 @@ studyloop doctor --fix       # Verify and apply safe fixes
 
 # Use
 studyloop content generate-cards SOURCE --course python  # Local quiz + flashcard JSON
+studyloop content generate-practice SOURCE --course python # Local hands-on practice JSON
 studyloop web                      # Launch flashcard/quiz PWA
 session-export                    # Export AI sessions to SQLite
 session-query search "decorators" # Search across all sessions
@@ -106,6 +107,7 @@ studyloop park "question"               # Park tangential topic
 # Content pipeline
 studyloop content split SOURCE       # Split PDF by chapters
 studyloop content generate-cards DIR --course COURSE  # Generate local quiz/flashcard JSON
+studyloop content generate-practice DIR --course COURSE  # Generate local hands-on practice JSON
 studyloop content discover           # Preview configured study sources
 studyloop content ingest --dry-run   # Plan course-material ingest
 
@@ -203,6 +205,7 @@ sudo apt install ttyd        # Linux (or build from source)
 - [System Overview](docs/system-overview.md) — architecture and data flow diagrams
 - [Repository Standards](docs/standards/repo-standards.md)
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
+- [AuDHD Learning Loop Implementation](docs/audhd-learning-loop-implementation.md)
 - [Voice Output Guide](docs/voice-output.md)
 - [Contributing](CONTRIBUTING.md)
 

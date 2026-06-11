@@ -59,7 +59,7 @@ translation when parsing.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -265,6 +265,47 @@ class QuizDeck(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Hands-on practice schemas
+# ---------------------------------------------------------------------------
+
+
+class PracticeTask(BaseModel):
+    """A concrete hands-on exercise for active technical practice."""
+
+    task_type: Literal["build", "debug", "diagram", "trace", "apply"] = Field(alias="taskType")
+    prompt: NonEmptyStr
+    setup: str = ""
+    success_criteria: list[NonEmptyStr] = Field(min_length=1, alias="successCriteria")
+    hint: str = ""
+    expected_learning_outcome: NonEmptyStr = Field(alias="expectedLearningOutcome")
+
+    model_config = {"extra": "forbid", "populate_by_name": True}
+
+
+class PracticeDeck(BaseModel):
+    """A deck of hands-on practice tasks for a single chapter / study note."""
+
+    title: NonEmptyStr
+    tasks: list[PracticeTask] = Field(min_length=1)
+
+    model_config = {"extra": "forbid"}
+
+    def write_json(self, directory: Path, slug: str) -> Path:
+        """Write this deck to ``directory/<slug>-practice.json``."""
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{slug}-practice.json"
+        path.write_text(
+            json.dumps(
+                self.model_dump(mode="json", by_alias=True),
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        return path
+
+
+# ---------------------------------------------------------------------------
 # JSON-schema helpers for LLM prompting (used by D2)
 # ---------------------------------------------------------------------------
 
@@ -283,3 +324,8 @@ def flashcard_deck_json_schema() -> dict:
 def quiz_deck_json_schema() -> dict:
     """Return the JSON schema for ``QuizDeck``. See ``flashcard_deck_json_schema``."""
     return QuizDeck.model_json_schema()
+
+
+def practice_deck_json_schema() -> dict:
+    """Return the JSON schema for ``PracticeDeck``."""
+    return PracticeDeck.model_json_schema()

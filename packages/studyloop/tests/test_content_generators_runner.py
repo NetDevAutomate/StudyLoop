@@ -24,6 +24,8 @@ from studyloop.content.generators.runner import (  # noqa: E402
 from studyloop.content.schemas import (  # noqa: E402
     FlashcardDeck,
     FlashcardItem,
+    PracticeDeck,
+    PracticeTask,
     QuizDeck,
     QuizOption,
     QuizQuestion,
@@ -84,6 +86,25 @@ class _FakeGenerator:
             ],
         )
 
+    def generate_practice(self, source: str, title: str) -> PracticeDeck:
+        self._record_thread()
+        if title in self.fail_titles:
+            raise CardGenerationError(f"forced failure for {title}")
+        if self.delay:
+            time.sleep(self.delay)
+        return PracticeDeck(
+            title=title,
+            tasks=[
+                PracticeTask(
+                    taskType="build",
+                    prompt=f"Build from {title}",
+                    setup=source,
+                    successCriteria=["A concrete output exists"],
+                    expectedLearningOutcome="Practice active recall through doing.",
+                )
+            ],
+        )
+
 
 def _make_tasks(n: int, kind: str = "flashcards") -> list[GenerationTask]:
     return [
@@ -120,11 +141,13 @@ class TestResultOrdering:
         tasks = [
             GenerationTask(identifier="fc", kind="flashcards", source="s", title="t-fc"),
             GenerationTask(identifier="qz", kind="quiz", source="s", title="t-qz"),
+            GenerationTask(identifier="pr", kind="practice", source="s", title="t-pr"),
         ]
-        results = generate_concurrently(gen, tasks, max_workers=2)  # type: ignore[arg-type]
+        results = generate_concurrently(gen, tasks, max_workers=3)  # type: ignore[arg-type]
         # First result is the flashcard, second is the quiz (order preserved).
         assert isinstance(results[0].deck, FlashcardDeck)
         assert isinstance(results[1].deck, QuizDeck)
+        assert isinstance(results[2].deck, PracticeDeck)
 
 
 # ---------------------------------------------------------------------------

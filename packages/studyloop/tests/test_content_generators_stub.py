@@ -14,14 +14,14 @@ import pytest
 
 pytest.importorskip("pydantic")
 
-from studyloop.content.generators import (  # noqa: E402
+from studyloop.content.generators import (
     CardGenerationError,
     CardGenerator,
     get_generator,
 )
-from studyloop.content.generators.stub import StubGenerator  # noqa: E402
-from studyloop.content.schemas import FlashcardDeck, QuizDeck  # noqa: E402
-from studyloop.settings import CardGeneratorConfig  # noqa: E402
+from studyloop.content.generators.stub import StubGenerator
+from studyloop.content.schemas import FlashcardDeck, PracticeDeck, QuizDeck
+from studyloop.settings import CardGeneratorConfig
 
 
 def _config(**overrides: object) -> CardGeneratorConfig:
@@ -60,6 +60,15 @@ class TestHappyPath:
             correct = sum(1 for opt in q.answer_options if opt.is_correct)
             assert correct == 1, f"question {q.question!r} has {correct} correct"
 
+    def test_practice_tasks_are_hands_on(self) -> None:
+        gen = StubGenerator(_config(stub_card_count=3))
+        deck = gen.generate_practice(source="src", title="SQL Joins")
+
+        assert isinstance(deck, PracticeDeck)
+        assert len(deck.tasks) == 3
+        assert deck.tasks[0].prompt.startswith("[SQL Joins]")
+        assert deck.tasks[0].success_criteria
+
     def test_card_count_override_respected(self) -> None:
         gen = StubGenerator(_config(stub_card_count=3))
         flash = gen.generate_flashcards(source="x", title="t")
@@ -75,6 +84,8 @@ class TestFailureModes:
             gen.generate_flashcards(source="x", title="any-title")
         with pytest.raises(CardGenerationError, match="always fail"):
             gen.generate_quiz(source="x", title="any-title")
+        with pytest.raises(CardGenerationError, match="always fail"):
+            gen.generate_practice(source="x", title="any-title")
 
     def test_fail_titles_only_targets_named_titles(self) -> None:
         gen = StubGenerator(

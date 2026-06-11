@@ -15,60 +15,152 @@ def last_studied(topic_keywords: list[str]) -> str | None:
     return results[0]["timestamp"] if results else None
 
 
+REVIEW_INTERVALS: tuple[tuple[int, str], ...] = (
+    (1, "5-min recall quiz"),
+    (3, "10-min Socratic review"),
+    (7, "15-min deep review"),
+    (14, "Apply to new problem"),
+    (30, "Teach-back session"),
+)
+
+
+def _parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def _review_type_for(confidence: str | None, days_ago: int) -> str | None:
+    if confidence == "struggling":
+        return "Guided repair + tiny practice"
+
+    review_type = None
+    for interval, label in REVIEW_INTERVALS:
+        if days_ago >= interval:
+            review_type = label
+    return review_type
+
+
+def _study_progress_columns(conn: sqlite3.Connection) -> set[str]:
+    return {row["name"] for row in conn.execute("PRAGMA table_info(study_progress)").fetchall()}
+
+
+def _progress_review_due(now: datetime) -> tuple[list[dict], set[str]]:
+    conn = _connection._connect()
+    if not conn:
+        return [], set()
+    try:
+        tables = {
+            row["name"]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+        if "study_progress" not in tables:
+            return [], set()
+
+        columns = _study_progress_columns(conn)
+        teachback_expr = (
+            "last_teachback_score"
+            if "last_teachback_score" in columns
+            else "NULL AS last_teachback_score"
+        )
+        rows = conn.execute(
+            f"""
+            SELECT topic, concept, confidence, last_seen, session_count, {teachback_expr}
+            FROM study_progress
+            WHERE topic IS NOT NULL
+              AND concept IS NOT NULL
+            ORDER BY last_seen DESC
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return [], set()
+    finally:
+        conn.close()
+
+    due = []
+    topics_with_progress = set()
+    for row in rows:
+        if row["topic"]:
+            topics_with_progress.add(row["topic"].lower())
+        last_dt = _parse_timestamp(row["last_seen"])
+        if last_dt is None:
+            continue
+
+        days_ago = max((now - last_dt).days, 0)
+        review_type = _review_type_for(row["confidence"], days_ago)
+        if not review_type:
+            continue
+
+        due.append(
+            {
+                "topic": row["topic"],
+                "concept": row["concept"],
+                "confidence": row["confidence"],
+                "last_studied": row["last_seen"][:10],
+                "days_ago": days_ago,
+                "review_type": review_type,
+                "evidence": "study_progress",
+                "session_count": row["session_count"],
+                "last_teachback_score": row["last_teachback_score"],
+            }
+        )
+
+    priority = {"struggling": 0, "learning": 1, "confident": 2, "mastered": 3}
+
+    def sort_key(item: dict) -> tuple[int, int]:
+        confidence = str(item.get("confidence") or "")
+        return (priority.get(confidence, 9), -(item.get("days_ago") or 0))
+
+    return (
+        sorted(
+            due,
+            key=sort_key,
+        ),
+        topics_with_progress,
+    )
+
+
 def spaced_repetition_due(topic_keywords_map: dict[str, list[str]]) -> list[dict]:
-    """Check which topics are due for spaced review.
+    """Check which concepts are due for spaced review.
 
     Args:
         topic_keywords_map: {"python": ["python", "pattern", "dataclass"], ...}
 
     Returns:
-        List of {topic, last_studied, days_ago, review_type}
+        List of {topic, concept, last_studied, days_ago, review_type}
     """
-    due = []
     now = datetime.now(UTC)
-    intervals = [
-        (1, "5-min recall quiz"),
-        (3, "10-min Socratic review"),
-        (7, "15-min deep review"),
-        (14, "Apply to new problem"),
-        (30, "Teach-back session"),
-    ]
 
-    for topic, keywords in topic_keywords_map.items():
-        last = last_studied(keywords)
-        if not last:
-            due.append(
+    progress_due, topics_with_progress = _progress_review_due(now)
+
+    new_topics = []
+    for topic in topic_keywords_map:
+        if topic.lower() not in topics_with_progress:
+            new_topics.append(
                 {
                     "topic": topic,
+                    "concept": None,
+                    "confidence": None,
                     "last_studied": None,
                     "days_ago": None,
                     "review_type": "New topic -- start fresh",
-                }
-            )
-            continue
-
-        try:
-            last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
-            continue
-
-        days_ago = (now - last_dt).days
-        review_type = None
-        for interval, rtype in intervals:
-            if days_ago >= interval:
-                review_type = rtype
-
-        if review_type:
-            due.append(
-                {
-                    "topic": topic,
-                    "last_studied": last[:10],
-                    "days_ago": days_ago,
-                    "review_type": review_type,
+                    "evidence": "configured_topic",
                 }
             )
 
-    return sorted(due, key=lambda x: x.get("days_ago") or 999, reverse=True)
+    if progress_due:
+        return [*progress_due, *new_topics]
+
+    # Fresh installs have no active-learning evidence yet, so new_topics is
+    # the full configured list. Once a topic has progress evidence, it is only
+    # shown when a concept is actually due.
+    return new_topics
 
 
 def record_progress(

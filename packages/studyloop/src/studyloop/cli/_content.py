@@ -336,6 +336,74 @@ def generate_cards(
     console.print(f"[green]\u2713[/green] Generated {written} deck(s) for {course_slug}.")
 
 
+@content_group.command("generate-practice")
+@click.argument("sources", nargs=-1, type=click.Path(exists=True, path_type=Path))
+@click.option("--course", required=True, help="Course slug/name to write practice artefacts under.")
+@click.option(
+    "--max-workers",
+    type=int,
+    default=None,
+    help="Override practice generation concurrency.",
+)
+def generate_practice(
+    sources: tuple[Path, ...],
+    course: str,
+    max_workers: int | None,
+) -> None:
+    """Generate local hands-on practice task JSON from markdown or text sources."""
+    from studyloop.content.generators import get_generator
+    from studyloop.content.generators.runner import GenerationTask, generate_concurrently
+    from studyloop.content.storage import get_course_dir, slugify
+    from studyloop.settings import load_settings
+
+    files = _resolve_card_sources(list(sources))
+    if not files:
+        raise click.ClickException("No markdown or text sources found.")
+
+    settings = load_settings()
+    course_slug = slugify(course) or "course"
+    course_dir = get_course_dir(settings.content.base_path, course_slug)
+    tasks = [
+        GenerationTask(
+            identifier=slugify(source.stem) or f"source-{idx}",
+            kind="practice",
+            source=source.read_text(encoding="utf-8"),
+            title=source.stem.replace("_", " ").replace("-", " ").title(),
+        )
+        for idx, source in enumerate(files, start=1)
+    ]
+
+    workers = max_workers if max_workers is not None else settings.card_generator.max_workers
+    generator = get_generator(settings.card_generator)
+    try:
+        results = generate_concurrently(generator, tasks, max_workers=workers)
+    finally:
+        close = getattr(generator, "close", None)
+        if close is not None:
+            close()
+
+    failures = 0
+    written = 0
+    for result in results:
+        if result.error:
+            failures += 1
+            console.print(f"[red]x[/red] {result.task.title} practice: {result.error}")
+            continue
+        if result.deck is None:
+            failures += 1
+            console.print(f"[red]x[/red] {result.task.title} practice: no deck returned")
+            continue
+        path = result.deck.write_json(course_dir / "practice", result.task.identifier)
+        written += 1
+        console.print(f"[green]\u2713[/green] Wrote {path}")
+
+    if failures:
+        raise click.ClickException(
+            f"Generated {written} practice deck(s), {failures} failed. See messages above."
+        )
+    console.print(f"[green]\u2713[/green] Generated {written} practice deck(s) for {course_slug}.")
+
+
 def _resolve_card_sources(sources: list[Path]) -> list[Path]:
     """Resolve files/directories into markdown/text files for local card generation."""
     allowed = {".md", ".markdown", ".txt"}

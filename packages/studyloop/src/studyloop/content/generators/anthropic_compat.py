@@ -41,13 +41,17 @@ from studyloop.content.generators._retry import CallContext, call_with_correctio
 from studyloop.content.generators.prompts import (
     FLASHCARD_SYSTEM_PROMPT,
     FLASHCARD_USER_PROMPT_TEMPLATE,
+    PRACTICE_SYSTEM_PROMPT,
+    PRACTICE_USER_PROMPT_TEMPLATE,
     QUIZ_SYSTEM_PROMPT,
     QUIZ_USER_PROMPT_TEMPLATE,
 )
 from studyloop.content.schemas import (
     FlashcardDeck,
+    PracticeDeck,
     QuizDeck,
     flashcard_deck_json_schema,
+    practice_deck_json_schema,
     quiz_deck_json_schema,
 )
 
@@ -61,6 +65,7 @@ if TYPE_CHECKING:
 
 _FLASHCARD_TOOL_NAME = "emit_flashcard_deck"
 _QUIZ_TOOL_NAME = "emit_quiz_deck"
+_PRACTICE_TOOL_NAME = "emit_practice_deck"
 
 # Anthropic's API requires an api-version header; this is the stable
 # value at the time of writing. Update only if the user sees breaking
@@ -192,6 +197,19 @@ class AnthropicCompatGenerator:
             deck = deck.model_copy(update={"title": title})
         return deck
 
+    def generate_practice(self, source: str, title: str) -> PracticeDeck:
+        deck = self._generate(
+            system_prompt=PRACTICE_SYSTEM_PROMPT,
+            user_prompt=PRACTICE_USER_PROMPT_TEMPLATE.format(title=title, source=source),
+            tool_name=_PRACTICE_TOOL_NAME,
+            tool_description="Emit a hands-on practice deck matching the provided JSON schema.",
+            schema=practice_deck_json_schema(),
+            model_cls=PracticeDeck,
+        )
+        if deck.title != title:
+            deck = deck.model_copy(update={"title": title})
+        return deck
+
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
@@ -223,7 +241,7 @@ class AnthropicCompatGenerator:
         tool_name: str,
         tool_description: str,
         schema: dict[str, Any],
-        model_cls: type[FlashcardDeck] | type[QuizDeck],
+        model_cls: type[FlashcardDeck] | type[QuizDeck] | type[PracticeDeck],
     ) -> Any:
         # Anthropic puts system prompt in a top-level field, not in the
         # messages array. Different from OpenAI -- this is one of the

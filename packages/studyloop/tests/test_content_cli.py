@@ -15,6 +15,8 @@ from studyloop.cli import cli
 from studyloop.content.schemas import (
     FlashcardDeck,
     FlashcardItem,
+    PracticeDeck,
+    PracticeTask,
     QuizDeck,
     QuizOption,
     QuizQuestion,
@@ -316,3 +318,54 @@ def test_generate_cards_writes_flashcards_and_quiz_without_notebooklm(
     assert quiz.exists()
     assert json.loads(flashcards.read_text())["cards"][0]["front"] == "Why use ETL?"
     assert json.loads(quiz.read_text())["questions"][0]["answerOptions"][0]["isCorrect"] is True
+
+
+def test_generate_practice_writes_hands_on_tasks_without_notebooklm(
+    runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = tmp_path / "lesson.md"
+    source.write_text("# Lesson\n\nA LEFT JOIN keeps unmatched left rows.\n")
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump({"content": {"base_path": str(tmp_path / "materials")}}))
+    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+
+    class FakeGenerator:
+        def generate_practice(self, source: str, title: str) -> PracticeDeck:
+            return PracticeDeck(
+                title=title,
+                tasks=[
+                    PracticeTask(
+                        taskType="debug",
+                        prompt="Fix a LEFT JOIN filter bug.",
+                        setup="SELECT * FROM orders LEFT JOIN customers ...",
+                        successCriteria=["Unmatched orders still appear"],
+                        hint="Look at where the filter belongs.",
+                        expectedLearningOutcome="Preserve outer join semantics.",
+                    )
+                ],
+            )
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(
+        "studyloop.content.generators.get_generator", lambda config: FakeGenerator()
+    )
+
+    result = runner.invoke(
+        cli,
+        ["content", "generate-practice", str(source), "--course", "Data Engineering"],
+    )
+
+    assert result.exit_code == 0, result.output
+    practice = (
+        tmp_path
+        / "materials"
+        / "data-engineering"
+        / "practice"
+        / "lesson-practice.json"
+    )
+    assert practice.exists()
+    payload = json.loads(practice.read_text())
+    assert payload["tasks"][0]["taskType"] == "debug"
+    assert payload["tasks"][0]["successCriteria"] == ["Unmatched orders still appear"]

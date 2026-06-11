@@ -5,8 +5,19 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from datetime import UTC, datetime
 
 from . import _connection
+
+
+def _confidence_from_teachback(total: int, review_type: str) -> str:
+    if total < 9:
+        return "struggling"
+    if total <= 13:
+        return "learning"
+    if total <= 17:
+        return "confident"
+    return "mastered" if review_type == "full" else "confident"
 
 
 def record_teachback(
@@ -57,11 +68,16 @@ def record_teachback(
             ),
         )
 
-        # Update study_progress with latest teach-back score and angle
+        # Upsert study_progress so teach-back evidence feeds review scheduling
+        # even when the concept was not explicitly recorded beforehand.
         total = sum(scores)
+        topic_key = topic.lower().strip()
+        concept_key = concept.lower().strip()
         progress_id = str(
-            uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic.lower().strip()}:{concept.lower().strip()}")
+            uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic_key}:{concept_key}")
         )
+        now = datetime.now(UTC).isoformat()
+        confidence = _confidence_from_teachback(total, review_type)
 
         # Get existing angles_used and append
         existing = conn.execute(
@@ -76,13 +92,30 @@ def record_teachback(
 
         conn.execute(
             """
-            UPDATE study_progress
-            SET last_teachback_score = ?,
-                angles_used = ?,
+            INSERT INTO study_progress
+                (id, topic, concept, confidence, first_seen, last_seen, session_count,
+                 notes, last_teachback_score, angles_used)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                confidence = excluded.confidence,
+                last_seen = excluded.last_seen,
+                session_count = session_count + 1,
+                notes = COALESCE(excluded.notes, notes),
+                last_teachback_score = excluded.last_teachback_score,
+                angles_used = excluded.angles_used,
                 updated_at = datetime('now')
-            WHERE id = ?
             """,
-            (total, json.dumps(angles), progress_id),
+            (
+                progress_id,
+                topic_key,
+                concept_key,
+                confidence,
+                now,
+                now,
+                notes,
+                total,
+                json.dumps(angles),
+            ),
         )
 
         conn.commit()

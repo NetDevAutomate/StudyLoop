@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 
@@ -28,6 +30,56 @@ def _make_db(tmp_path: Path) -> Path:
             source_section TEXT,
             source_publisher TEXT,
             created_by TEXT DEFAULT 'agent'
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def _make_teachback_db(tmp_path: Path) -> Path:
+    db_path = tmp_path / "sessions.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE teach_back_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            concept TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            session_id TEXT,
+            score_accuracy INTEGER,
+            score_own_words INTEGER,
+            score_structure INTEGER,
+            score_depth INTEGER,
+            score_transfer INTEGER,
+            total_score INTEGER GENERATED ALWAYS AS (
+                COALESCE(score_accuracy, 0) + COALESCE(score_own_words, 0)
+                + COALESCE(score_structure, 0) + COALESCE(score_depth, 0)
+                + COALESCE(score_transfer, 0)
+            ) STORED,
+            review_type TEXT NOT NULL,
+            question_angle TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE study_progress (
+            id TEXT PRIMARY KEY,
+            topic TEXT,
+            concept TEXT,
+            confidence TEXT,
+            first_seen TEXT,
+            last_seen TEXT,
+            session_count INTEGER,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            last_teachback_score INTEGER,
+            angles_used TEXT
         )
         """
     )
@@ -84,6 +136,152 @@ class TestRecordProgressCaseNormalisation:
         conn.close()
 
         assert len(rows) == 1
+
+
+class TestSpacedRepetitionDue:
+    def test_uses_study_progress_evidence_not_message_mentions(self, tmp_path, monkeypatch):
+        db_path = _make_db(tmp_path)
+        last_seen = (datetime.now(UTC) - timedelta(days=15)).isoformat()
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            INSERT INTO study_progress
+                (id, topic, concept, confidence, first_seen, last_seen, session_count, notes)
+            VALUES ('p1', 'python', 'decorators', 'learning', ?, ?, 2, NULL)
+            """,
+            (last_seen, last_seen),
+        )
+        conn.commit()
+        conn.close()
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+        import studyloop.history.search as search_mod
+
+        def fail_topic_frequency(*args, **kwargs):
+            raise AssertionError("keyword search used")
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+        monkeypatch.setattr(search_mod, "topic_frequency", fail_topic_frequency)
+
+        due = hist.spaced_repetition_due({"python": ["python"], "sql": ["sql"]})
+
+        assert due[0]["topic"] == "python"
+        assert due[0]["concept"] == "decorators"
+        assert due[0]["evidence"] == "study_progress"
+        assert due[0]["review_type"] == "Apply to new problem"
+        assert due[-1]["topic"] == "sql"
+        assert due[-1]["review_type"] == "New topic -- start fresh"
+
+    def test_struggling_concepts_are_due_immediately(self, tmp_path, monkeypatch):
+        db_path = _make_db(tmp_path)
+        now = datetime.now(UTC).isoformat()
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            INSERT INTO study_progress
+                (id, topic, concept, confidence, first_seen, last_seen, session_count, notes)
+            VALUES ('p1', 'spark', 'partition skew', 'struggling', ?, ?, 1, NULL)
+            """,
+            (now, now),
+        )
+        conn.commit()
+        conn.close()
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+        due = hist.spaced_repetition_due({"spark": ["spark"]})
+
+        assert len(due) == 1
+        assert due[0]["concept"] == "partition skew"
+        assert due[0]["review_type"] == "Guided repair + tiny practice"
+
+    def test_recent_progress_is_not_reported_as_new_topic(self, tmp_path, monkeypatch):
+        db_path = _make_db(tmp_path)
+        now = datetime.now(UTC).isoformat()
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            INSERT INTO study_progress
+                (id, topic, concept, confidence, first_seen, last_seen, session_count, notes)
+            VALUES ('p1', 'python', 'decorators', 'learning', ?, ?, 1, NULL)
+            """,
+            (now, now),
+        )
+        conn.commit()
+        conn.close()
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+        due = hist.spaced_repetition_due({"python": ["python"], "sql": ["sql"]})
+
+        assert [item["topic"] for item in due] == ["sql"]
+        assert due[0]["review_type"] == "New topic -- start fresh"
+
+
+class TestTeachbackProgressEvidence:
+    def test_record_teachback_creates_progress_evidence(self, tmp_path, monkeypatch):
+        db_path = _make_teachback_db(tmp_path)
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+        ok = hist.record_teachback(
+            concept="Decorators",
+            topic="Python",
+            scores=(4, 4, 4, 4, 4),
+            review_type="full",
+            angle="bloom_apply",
+            notes="Clear transfer.",
+        )
+
+        assert ok is True
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        score = conn.execute("SELECT concept, topic, total_score FROM teach_back_scores").fetchone()
+        progress = conn.execute(
+            """
+            SELECT topic, concept, confidence, last_teachback_score, angles_used, notes
+            FROM study_progress
+            """
+        ).fetchone()
+        conn.close()
+
+        assert dict(score) == {"concept": "Decorators", "topic": "Python", "total_score": 20}
+        assert progress["topic"] == "python"
+        assert progress["concept"] == "decorators"
+        assert progress["confidence"] == "mastered"
+        assert progress["last_teachback_score"] == 20
+        assert json.loads(progress["angles_used"]) == ["bloom_apply"]
+        assert progress["notes"] == "Clear transfer."
 
 
 class TestGetStudyTerms:
