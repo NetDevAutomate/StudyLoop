@@ -113,13 +113,15 @@ flowchart TB
 | Card / quiz generation is CLI-only (`studyloop content generate-cards`) | Generate panel exposes the existing pipeline over HTTP+WS with a sidebar UI; provider registry covers **six** providers — OpenAI/OpenRouter/Gemini/Anthropic via two adapter classes, plus **Bedrock and Ollama as first-class registry entries** (shipped 2026-06-01; MiniMax trialled then removed for quiz quality) | Mid-session "mark this concept for review" → instant deck targeted at the marked concepts (v2 of the generation panel; needs new MCP tool calls from the agent) |
 | Provider API keys are `.env`-only, edited by hand | **Settings → LLM Providers panel** (shipped 2026-06-01): per-provider rows by auth-kind, keys verified with a live call then stored **encrypted** (`~/.config/studyloop/secrets.bin`); resolution is encrypted-store-first, env fallback | Per-provider model selection persisted server-side; key rotation UI |
 | Flashcard/quiz review is a flat grid of cards, both actions per card | **Mode-split, publisher-grouped, searchable, compact review list** (shipped 2026-06-01): each panel shows only its own decks; scales to 100+ sets | Cross-device review state + a unified content browser (see Course Explorer, in flight) |
+| The learner manually chooses from notes, due cards, and practice ideas | **Active-learning decision loop** (shipped 2026-06-12): `studyloop now` + `/api/now`, note companion prompt packs, practice verification, daily recap, mastery graph, adaptive interleaving | In-app conversational note companion and visual mastery graph surfaces |
 
 ---
 
 ## Current Progress Toward Target
 
-The 2026-06-02 quality waves moved the current implementation closer to this
-target without changing the target direction:
+The 2026-06-02 quality waves and the 2026-06-12 active-learning slice moved the
+current implementation closer to this target without changing the target
+direction:
 
 - the Generate panel now exposes the requested `count_per_source`, provider,
   and model in its job plan/progress contract;
@@ -129,10 +131,20 @@ target without changing the target direction:
   feed the existing `topic_struggles` generation scope;
 - browser smoke coverage now exercises the learner path from reading a lesson
   through struggle marking to the Generate panel.
+- `studyloop now` and `/api/now` provide a shared recommendation contract for
+  one next action based on due reviews, struggles, weak links, energy, modality,
+  and available time;
+- `chat-note` and the Web Explorer **Discuss** action turn source notes into
+  Socratic context packs without creating a separate chat backend yet;
+- `practice verify`, `recap today`, and `mastery` write or read durable
+  learning evidence through `study_progress`, `practice_attempts`, and
+  `concept_dependencies`.
 
 These are current-architecture hardening steps. The target still keeps the same
 direction: web/PWA first, stable local API, explicit transport contracts, and
-future mid-session deck generation through an agent-side tool surface.
+future mid-session deck generation through an agent-side tool surface. The
+active-learning target is to make those currently separate CLI/context-pack
+loops feel native inside the web session surface.
 
 ---
 
@@ -144,6 +156,10 @@ future mid-session deck generation through an agent-side tool surface.
 - **Resume on the ACP path**: the PTY path passes `previous_notes` into `build_canonical_persona`. The ACP path doesn't yet — a resumed ACP session gets a bare persona. Need a decision on whether to pull recent struggles/wins from `sessions.db` and embed them in the persona text.
 - **Theme persistence across devices**: today the palette selector is `localStorage`-only. If the PWA is installed on multiple devices the user re-picks every time. Sync would require a server-side preferences store.
 - **Mid-session deck generation (v2 of the Generate panel)**: today the Generate panel's `topic_struggles` scope queries `study_progress.confidence='struggling'` over a date window. v2 would let the agent mark *specific concepts* mid-session via an MCP tool call ("the user is stuck on outer joins -- queue a deck"), bypassing the date-window query for an immediately-targeted deck. Needs a new agent-side tool surface; tracked separately, not blocking v1.
+- **In-app note companion**: today `chat-note` and Web Discuss produce a
+  Socratic prompt/context pack. The target needs a native turn-by-turn note
+  companion in the web session surface that still records evidence through the
+  same `study_progress` / teach-back / practice pathways.
 
 ---
 
