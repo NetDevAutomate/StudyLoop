@@ -227,6 +227,7 @@ sudo apt install ttyd        # Linux (or build from source)
 - [Repository Standards](docs/standards/repo-standards.md)
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
 - [AuDHD Learning Loop Implementation](docs/audhd-learning-loop-implementation.md)
+- [AuDHD Deep Technical Learning Roadmap](docs/audhd-deep-technical-learning-roadmap.md)
 - [Voice Output Guide](docs/voice-output.md)
 - [Contributing](CONTRIBUTING.md)
 

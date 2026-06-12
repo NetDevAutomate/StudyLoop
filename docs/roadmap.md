@@ -2,6 +2,18 @@
 
 > **Current direction (May 2026)**: the core product is interactive Socratic study and body-doubling with shared session intelligence. Local quiz/flashcard generation supports that workflow. NotebookLM is not a core dependency and any remaining NotebookLM workflows should become optional plugins or archived legacy paths.
 
+## vNext — AuDHD Deep Technical Learning Loops
+
+These are the next six high-impact improvements for turning Obsidian notes into active learning. See [AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md) for the detailed implementation plan.
+
+- [ ] **What Should I Study Now?** — one next action based on due reviews, struggles, energy, modality, and available time.
+- [ ] **Conversational Obsidian note companion** — ask questions from a note, trace code, inspect diagrams, and finish with evidence.
+- [ ] **Practice-task verification** — make hands-on tasks checkable through tests, output, diagrams, traces, or rubrics.
+- [ ] **Daily audio recap** — speak one win, one repair target, and one next action through the configured local voice path.
+- [ ] **Mastery graph** — show concept dependencies, weak links, due concepts, and bridge concepts visually.
+- [ ] **Interleaving mode** — mix old, weak, current, and transfer material without overwhelming low-energy sessions.
+- [x] **OpenVox optional CLI voice backend** — `study-speak -b openvox` calls the local OpenVox API for terminal/MCP sessions and falls back gracefully.
+
 ## v1.0 — Foundation
 
 - [x] Monorepo with studyloop + agent-session-tools

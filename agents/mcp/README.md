@@ -38,11 +38,26 @@ uv tool install "./packages/agent-session-tools[tts]" --force
 
 ```yaml
 tts:
-  backend: kokoro        # kokoro | qwen3 | macos
+  backend: kokoro        # kokoro | openvox | qwen3 | macos
   voice: am_michael      # kokoro voices: am_michael, af_heart, bf_emma, etc.
   speed: 1.0             # 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast
   macos_voice: Samantha  # fallback voice for macOS say
 ```
+
+Optional OpenVox profile:
+
+```yaml
+tts:
+  backend: openvox
+  openvox_base_url: http://127.0.0.1:8000/v1
+  openvox_model: kokoro
+  openvox_voice: af_bella
+  openvox_language: en
+  openvox_response_format: wav
+  openvox_timeout: 30
+```
+
+OpenVox is optional and works best for terminal/MCP voice when its Local API is enabled. If its local API server is not running or is busy, `study-speak` falls back to the existing Kokoro/macOS path.
 
 **Toggle during a session:**
 

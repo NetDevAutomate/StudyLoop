@@ -105,6 +105,7 @@ graph LR
 - **[Repository Standards](standards/repo-standards.md)** — naming, doc, and structure standards
 - **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents
 - **[AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md)** — How teach-back, evidence scheduling, due review, and hands-on practice turn notes into learning
+- **[AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md)** — Six next improvements for decision support, note conversation, verification, audio recap, mastery graphs, and interleaving
 - **[Network Bridges](network-bridges.md)** — Network→Data Engineering analogies for infrastructure people
 - **[Roadmap](roadmap.md)** — What's coming next
 

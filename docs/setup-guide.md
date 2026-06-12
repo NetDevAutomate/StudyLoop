@@ -23,6 +23,7 @@ Step-by-step installation and configuration for StudyLoop.
 - **Obsidian** — for study notes (any vault structure works)
 - **Optional**: `sentence-transformers` for semantic search
 - **Optional**: `ttyd` — enables web terminal access from browser or iPad (`brew install ttyd` on macOS, `apt install ttyd` on Linux)
+- **Optional**: [OpenVox](https://openvoxai.com/) — local macOS voice API for terminal/MCP `study-speak` output when its Local API is enabled
 
 > **tmux-resurrect / tmux-continuum users**: studyloop automatically cleans up
 > zombie sessions on startup, so resurrect-restored sessions are handled
@@ -485,11 +486,39 @@ lan_password: ""     # persistent LAN password (auto-generated per session if em
 
 ```yaml
 tts:
+  backend: kokoro        # kokoro | openvox | qwen3 | macos
   voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
   speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
   pause: 0.0             # seconds between sentences
-  backend: kokoro        # kokoro | qwen3 | macos
+  macos_voice: Samantha
 ```
+
+Optional OpenVox terminal/MCP profile:
+
+```yaml
+tts:
+  backend: openvox
+  openvox_base_url: http://127.0.0.1:8000/v1
+  openvox_model: kokoro
+  openvox_voice: af_bella
+  openvox_language: en
+  openvox_response_format: wav
+  openvox_timeout: 30
+
+  # Kokoro/Qwen/macOS fallback settings still apply.
+  voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
+  speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
+  pause: 0.0             # seconds between sentences
+  macos_voice: Samantha
+```
+
+Test OpenVox voice:
+
+```bash
+study-speak "StudyLoop is speaking through OpenVox." -b openvox
+```
+
+If OpenVox is not running, its Local API toggle is off, or it is busy, StudyLoop falls back to the existing local voice path so the study session can continue.
 
 ## Obsidian Vault Setup
 
