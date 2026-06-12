@@ -52,11 +52,7 @@ def build_daily_recap() -> DailyRecap:
         if wins
         else "You kept the loop alive by checking in"
     )
-    repair = (
-        f"{struggles[0]['topic']}"
-        if struggles
-        else plan.primary.concept
-    )
+    repair = f"{struggles[0]['topic']}" if struggles else plan.primary.concept
     due_item = (
         f"{due[0].get('concept') or due[0].get('topic')} ({due[0].get('review_type')})"
         if due

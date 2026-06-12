@@ -29,6 +29,10 @@ class PracticeVerificationResult:
     duration_seconds: float = 0.0
     expected_artifacts: list[str] | None = None
     missing_artifacts: list[str] | None = None
+    rubric: list[str] | None = None
+    evidence_prompts: list[str] | None = None
+    setup_command: str = ""
+    timeout_seconds: int = 60
     progress_recorded: bool = False
 
     def to_json_dict(self) -> dict:
@@ -79,6 +83,32 @@ def _verification_command(task: PracticeTask) -> str | None:
     return None
 
 
+def _verification_rubric(task: PracticeTask) -> list[str]:
+    if task.verification and task.verification.rubric:
+        return list(task.verification.rubric)
+    return []
+
+
+def _verification_evidence_prompts(task: PracticeTask) -> list[str]:
+    if task.verification and task.verification.evidence_prompts:
+        return list(task.verification.evidence_prompts)
+    return []
+
+
+def _verification_setup_command(task: PracticeTask) -> str:
+    if task.verification and task.verification.setup_command:
+        return task.verification.setup_command
+    return ""
+
+
+def _verification_timeout(task: PracticeTask, override: int | None) -> int:
+    if override is not None:
+        return override
+    if task.verification:
+        return task.verification.timeout_seconds
+    return 60
+
+
 def _record_attempt(result: PracticeVerificationResult, workdir: Path) -> None:
     conn = _connection._connect()
     if not conn:
@@ -124,7 +154,7 @@ def verify_practice_task(
     workdir: Path | None = None,
     run_command: bool = False,
     notes: str = "",
-    timeout_seconds: int = 60,
+    timeout_seconds: int | None = None,
 ) -> PracticeVerificationResult:
     """Verify one practice task and record the attempt."""
     resolved = practice_path.expanduser().resolve()
@@ -134,6 +164,10 @@ def verify_practice_task(
     kind = _verification_kind(task)
     command = _verification_command(task)
     artifacts = _expected_artifacts(task)
+    rubric = _verification_rubric(task)
+    evidence_prompts = _verification_evidence_prompts(task)
+    setup_command = _verification_setup_command(task)
+    effective_timeout = _verification_timeout(task, timeout_seconds)
     missing = _missing_artifacts(artifacts, wd)
     started = time.monotonic()
     stdout = ""
@@ -154,7 +188,7 @@ def verify_practice_task(
                 cwd=wd,
                 text=True,
                 capture_output=True,
-                timeout=timeout_seconds,
+                timeout=effective_timeout,
                 check=False,
             )
             exit_code = completed.returncode
@@ -192,6 +226,10 @@ def verify_practice_task(
         duration_seconds=round(duration, 3),
         expected_artifacts=artifacts,
         missing_artifacts=missing,
+        rubric=rubric,
+        evidence_prompts=evidence_prompts,
+        setup_command=setup_command,
+        timeout_seconds=effective_timeout,
         progress_recorded=progress_recorded,
     )
     _record_attempt(result, wd)
