@@ -210,6 +210,47 @@ flowchart TB
     Mastery -->|"seeds from notes"| Content
 ```
 
+### Dynamic Flow — Final Active-Learning Refinements
+
+```mermaid
+flowchart LR
+    subgraph Browser["Browser PWA"]
+      Lesson["Loaded lesson text"]
+      Companion["Course Explorer companion<br/>mode + retrieval attempt"]
+      MasteryTab["Mastery tab<br/>bounded graph render"]
+    end
+
+    subgraph CLI["CLI"]
+      PracticeVerify["practice verify<br/>rubric, artifacts, command timeout"]
+      RecapAudio["recap today --audio-file"]
+    end
+
+    subgraph API["FastAPI routes"]
+      MasteryAPI["GET /api/mastery/graph<br/>GET /api/mastery/weak-links"]
+    end
+
+    subgraph Learning["studyloop.learning"]
+      Practice["practice.py"]
+      MasterySvc["mastery.py"]
+      Voice["voice.py"]
+    end
+
+    Stores[("sessions.db<br/>study_progress, practice_attempts, concept_dependencies")]
+    Content[("content.base_path<br/>practice decks and source markdown")]
+
+    Lesson --> Companion
+    Companion -->|"learner runs copied evidence command"| Stores
+    PracticeVerify --> Practice
+    Practice -->|"reads verification metadata"| Content
+    Practice -->|"records pass/fail evidence"| Stores
+    MasteryTab --> MasteryAPI
+    MasteryAPI --> MasterySvc
+    MasterySvc -->|"bounded edges + weak links"| MasteryTab
+    MasterySvc --> Stores
+    RecapAudio --> Voice
+    Voice -->|"OpenVox bytes or macOS say"| RecapAudio
+```
+
 **Key invariants**:
 
 - **One primary recommendation.** `studyloop now` and `/api/now` return one
