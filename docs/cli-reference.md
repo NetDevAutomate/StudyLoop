@@ -43,9 +43,10 @@ studyloop now --modality hands-on --interleave adaptive
 studyloop chat-note NOTE.md --mode recall      # Build a Socratic context pack
 studyloop chat-note NOTE.md --mode diagram --voice
 studyloop practice verify TASKS.json --task 1 --notes "what passed"
-studyloop practice verify TASKS.json --task 1 --run-command --workdir .
+studyloop practice verify TASKS.json --task 1 --run-command --workdir . --timeout 120
 studyloop recap today                    # One win, repair target, due item, next action
 studyloop recap today --speak            # Speak through study-speak
+studyloop recap today --audio-file recap.wav
 studyloop mastery graph --topic python   # Mermaid concept graph
 studyloop mastery graph --topic python --format json
 studyloop mastery weak-links --topic python
@@ -216,22 +217,26 @@ studyloop chat-note NOTE.md --mode trace --json
 
 Modes are `recall`, `diagram`, `trace`, `teachback`, and `repair`. The command validates that the note is inside configured vault/content roots, chunks by headings and code blocks, and ends with a suggested `studyloop progress` or `studyloop teachback` command.
 
-`studyloop practice verify` records an attempt against a generated practice deck. Command verification only runs when `--run-command` is explicit; non-command tasks use notes plus expected-artifact checks as a rubric.
+`studyloop practice verify` records an attempt against a generated practice deck. Command verification only runs when `--run-command` is explicit; non-command tasks use notes plus expected-artifact checks as a rubric. Newer generated decks can also carry rubric items, evidence prompts, setup commands, and per-task command timeouts.
 
 ```bash
 studyloop practice verify course-practice.json --task 1 --notes "diagram matched"
-studyloop practice verify course-practice.json --task 2 --run-command --workdir .
+studyloop practice verify course-practice.json --task 2 --run-command --workdir . --timeout 120
 ```
 
-`studyloop recap today` compresses the day into one win, one repair target, one due item, and one next action. `--speak` calls `study-speak`, so Kokoro/OpenVox/macOS backend configuration is inherited.
+`studyloop recap today` compresses the day into one win, one repair target, one due item, and one next action. `--speak` calls `study-speak`, so Kokoro/OpenVox/macOS backend configuration is inherited. `--audio-file` saves the same recap as a local audio file, preferring OpenVox when configured and falling back to macOS `say`.
 
 ```bash
 studyloop recap today
 studyloop recap today --json
 studyloop recap today --speak
+studyloop recap today --audio-file ~/Desktop/studyloop-recap.wav
 ```
 
-`studyloop mastery` exposes concept dependencies and blockers.
+`studyloop mastery` exposes concept dependencies and blockers. The Web UI's
+**Mastery** tab uses the same data through `GET /api/mastery/graph` and
+`GET /api/mastery/weak-links`; those web endpoints accept `limit` so broad
+topics stay fast to render in Mermaid.
 
 ```bash
 studyloop mastery graph --topic python

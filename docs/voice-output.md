@@ -112,7 +112,12 @@ Smoke test:
 
 ```bash
 study-speak "Explain this back in your own words." -b openvox
+studyloop recap today --audio-file recap.wav
 ```
+
+`studyloop recap today --audio-file` saves the same compact daily recap that
+`--speak` reads aloud. It prefers OpenVox when `tts.backend: openvox` is
+configured, and falls back to macOS `say` when OpenVox is unavailable.
 
 Manual API check:
 

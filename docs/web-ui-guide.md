@@ -186,7 +186,7 @@ flowchart LR
 
 6. **Mark a struggle** — while reading a lesson, click the **Struggling?** button in the reader header. This writes a `study_progress` row (`confidence='struggling'`) to the session DB via `POST /api/history/struggling-topics`. The row uses the lesson slug as the generation topic and keeps the original course/section/publisher as provenance, so the next Generate session's "Topic I'm struggling on" scope targets the struggled lesson rather than the whole course. It also surfaces in `studyloop struggles`.
 
-7. **Discuss the lesson** — click **Discuss** to copy a Socratic prompt built from the current lesson text. Paste it into your active mentor/chat session to turn the note into active recall, diagram repair, tracing, or teach-back. This is intentionally clipboard-based in V1; it does not send lesson text to a separate chat backend.
+7. **Discuss the lesson** — click **Discuss** to open the in-app note companion. Pick recall, diagram, trace, teach-back, or repair mode; write a rough retrieval attempt; then use **Next nudge** or copy the mentor prompt/evidence command. This stays browser-local and does not send lesson text to a separate chat backend.
 
 8. **Listen (TTS)** — the **▶ Listen** button appears only when `window.ttsEngine` is present. When the engine is absent the button is hidden and no-op. When active, click to start reading the lesson aloud; the button becomes **⏹ Stop**.
 
@@ -200,9 +200,51 @@ flowchart LR
 | `GET /api/explorer/search?q=&limit=20` | FTS5 full-text search over lesson bodies |
 | `POST /api/history/struggling-topics` | Write a struggle flag to `study_progress` |
 
-The **Discuss** action does not call a backend endpoint; it builds the prompt in the browser from the already-loaded lesson and writes it to the clipboard.
+The **Discuss** action does not call a backend endpoint; it builds the prompt in the browser from the already-loaded lesson and writes only to the clipboard when you click a copy button.
 
 All content endpoints are path-traversal guarded (resolved path must be a child of `content.base_path`; suffix restricted to `.md`, `.markdown`, `.txt`). The provider/course tree cache is keyed from the visible source tree, so adding or deleting nested courses refreshes the browser data while generated output folders do not invalidate the tree. The FTS index lives in its own file (`<session_db_dir>/explorer_fts.db`) — it is a derived cache, never touches `sessions.db`, and requires no schema migration.
+
+### From Lesson To Evidence
+
+```mermaid
+flowchart LR
+    Lesson["Open lesson<br/>markdown, diagrams, code"]
+    Discuss["Discuss<br/>browser-local companion"]
+    Retrieval["Rough retrieval attempt<br/>recall, diagram, trace, teach-back, repair"]
+    Nudge["Next nudge<br/>small repair prompt"]
+    Evidence["Copy evidence command<br/>studyloop progress ..."]
+    Now["studyloop now<br/>next best action"]
+    Mastery["Mastery tab<br/>bounded graph + weak links"]
+
+    Lesson --> Discuss
+    Discuss --> Retrieval
+    Retrieval --> Nudge
+    Nudge --> Evidence
+    Evidence --> Now
+    Evidence --> Mastery
+```
+
+---
+
+## Mastery
+
+The **Mastery** tab renders the same concept dependency data as `studyloop mastery`.
+
+1. Enter a topic, such as `python`, `sql`, or `data-engineering`.
+2. Click **Refresh** to load `/api/mastery/graph` and `/api/mastery/weak-links`.
+3. Inspect the Mermaid graph, weak-link cards, and summary counts.
+4. Use **Copy Mermaid** when you want to paste the graph into Obsidian.
+
+The Web UI requests a bounded JSON graph by default (`limit=80`) and builds the
+Mermaid source locally, so broad topics such as `python` stay readable and do
+not trigger duplicate graph API calls. The summary shows when the browser is
+displaying a subset.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/mastery/graph?topic=python&limit=80` | JSON graph with nodes, edges, and total/limited metadata |
+| `GET /api/mastery/graph?topic=python&format=mermaid&limit=80` | Mermaid graph source for the bounded graph |
+| `GET /api/mastery/weak-links?topic=python&limit=12` | Struggling or low-score prerequisites with total/limited metadata |
 
 ---
 

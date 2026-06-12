@@ -118,6 +118,41 @@ def test_practice_deck_valid_payload_parses() -> None:
     assert deck.tasks[0].success_criteria == ["Unmatched orders remain in the result"]
 
 
+def test_practice_verification_metadata_parses() -> None:
+    deck = PracticeDeck.model_validate(
+        {
+            "title": "Decorators",
+            "tasks": [
+                {
+                    "taskType": "build",
+                    "prompt": "Build a decorator and prove it preserves metadata.",
+                    "setup": "Create decorator.py and test_decorator.py.",
+                    "successCriteria": ["Tests pass"],
+                    "hint": "Use functools.wraps.",
+                    "expectedLearningOutcome": "Use wraps to preserve function metadata.",
+                    "verification": {
+                        "kind": "command",
+                        "successCriteria": ["pytest exits 0"],
+                        "command": "pytest -q",
+                        "expectedArtifacts": ["test_decorator.py"],
+                        "rubric": ["Includes the failure case", "Explains why wraps matters"],
+                        "evidencePrompts": ["What broke before wraps?"],
+                        "setupCommand": "python -m venv .venv",
+                        "timeoutSeconds": 120,
+                    },
+                }
+            ],
+        }
+    )
+
+    verification = deck.tasks[0].verification
+    assert verification is not None
+    assert verification.kind == "command"
+    assert verification.expected_artifacts == ["test_decorator.py"]
+    assert verification.evidence_prompts == ["What broke before wraps?"]
+    assert verification.timeout_seconds == 120
+
+
 def test_flashcard_roundtrip_through_json(valid_flashcard_payload: dict) -> None:
     deck = FlashcardDeck.model_validate(valid_flashcard_payload)
     serialised = deck.model_dump(mode="json")

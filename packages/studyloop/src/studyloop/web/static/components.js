@@ -1080,6 +1080,33 @@ function reviewApp(defaultMode) {
  *   render markdown inside .explorer-reader-view.
  * - backToBrowser(): returns from reader to browser view.
  * ====================================================================== */
+
+const COMPANION_MODE_INSTRUCTIONS = {
+  recall: 'Start with one active-recall question. Keep the first turn answerable without rereading.',
+  diagram: 'Ask for a tiny diagram repair: one missing edge, label, or direction to fix.',
+  trace: 'Ask the learner to trace one concrete example through the note step by step.',
+  teachback: 'Ask for a 90-second teach-back, then probe for one gap or assumption.',
+  repair: 'Find the likely fragile point and ask a small repair question.',
+};
+
+const COMPANION_MODE_LABELS = {
+  recall: 'Recall',
+  diagram: 'Diagram',
+  trace: 'Trace',
+  teachback: 'Teach-back',
+  repair: 'Repair',
+};
+
+function _commandSafe(value) {
+  return String(value || 'study').replace(/["\\]/g, '').trim() || 'study';
+}
+
+function _lessonEvidenceCommand(lesson, title) {
+  const concept = _commandSafe(String(title || 'lesson').toLowerCase());
+  const topic = _commandSafe(lesson && lesson.course_id ? lesson.course_id : 'study');
+  return `studyloop progress "${concept}" -t "${topic}" -c learning`;
+}
+
 function courseExplorer() {
   return {
     // ---- View state — 'browser' = carousels, 'reader' = M3 lesson view
@@ -1106,6 +1133,15 @@ function courseExplorer() {
     readerText: '',        // frontmatter-stripped markdown source, for TTS (Phase 6)
     readerLoading: false,
     readerError: '',
+
+    // ---- In-app note companion (browser-local context pack)
+    companionOpen: false,
+    companionMode: 'recall',
+    companionPrompt: '',
+    companionAnswer: '',
+    companionFollowup: '',
+    companionCopied: false,
+    companionEvidenceCopied: false,
 
     // --- Phase 6: TTS read-aloud (gated on the browser-neural-tts worktree) ---
     // window.ttsEngine only exists once that worktree merges; all uses below
@@ -1479,6 +1515,7 @@ function courseExplorer() {
       this.readerHtml = '';
       this.readerText = '';
       this.readerError = '';
+      this._resetCompanion();
       this.readerLoading = true;
       this.view = 'reader';
       this.stopReading();   // halt any TTS playback from a previous lesson
@@ -1553,6 +1590,7 @@ function courseExplorer() {
       this.struggleError = '';
       this.discussionCopied = false;
       this.discussionError = '';
+      this._resetCompanion();
     },
 
     // ---- Phase 6: TTS read-aloud (GATED on the browser-neural-tts worktree) ----
@@ -1636,29 +1674,273 @@ function courseExplorer() {
     },
 
     async discussLesson() {
+      this.openCompanion();
+      await this.copyCompanionPrompt();
+    },
+
+    _resetCompanion() {
+      this.companionOpen = false;
+      this.companionPrompt = '';
+      this.companionAnswer = '';
+      this.companionFollowup = '';
+      this.companionCopied = false;
+      this.companionEvidenceCopied = false;
+    },
+
+    openCompanion() {
       if (this.view !== 'reader' || !this.activeLesson || !this.readerText) return;
+      this.companionOpen = true;
+      this.companionPrompt = this.buildCompanionPrompt();
+      this.companionFollowup = '';
+      this.companionCopied = false;
+      this.companionEvidenceCopied = false;
+    },
+
+    setCompanionMode(mode) {
+      if (!Object.prototype.hasOwnProperty.call(COMPANION_MODE_INSTRUCTIONS, mode)) return;
+      this.companionMode = mode;
+      if (this.companionOpen) this.companionPrompt = this.buildCompanionPrompt();
+    },
+
+    companionModeLabel(mode) {
+      return COMPANION_MODE_LABELS[mode] || mode;
+    },
+
+    buildCompanionPrompt() {
+      if (!this.activeLesson || !this.readerText) return '';
       const lesson = this.activeLesson;
       const title = lesson.name || lesson.slug || 'this lesson';
-      const excerpt = _mdToPlainText(this.readerText).slice(0, 2400);
-      const prompt = [
+      const excerpt = _mdToPlainText(this.readerText).slice(0, 3200);
+      return [
         "You are StudyLoop's AuDHD-aware Socratic mentor.",
         `Lesson: ${title}`,
+        `Mode: ${this.companionMode}`,
         '',
-        'Use this lesson as context. Start with one active-recall question, then guide a short teach-back or diagram repair loop.',
+        COMPANION_MODE_INSTRUCTIONS[this.companionMode],
+        'Use the lesson only as context. Ask one question at a time and keep the loop small.',
         '',
         excerpt,
         '',
-        `End by suggesting: studyloop progress "${String(title).toLowerCase()}" -t "${lesson.course_id || 'study'}" -c learning`,
+        `End by suggesting: ${_lessonEvidenceCommand(lesson, title)}`,
       ].join('\n');
+    },
+
+    buildCompanionFollowup() {
+      const answer = this.companionAnswer.trim();
+      if (!answer) {
+        this.companionFollowup = 'Try one rough answer first. A messy retrieval attempt is enough to create a useful next question.';
+        return;
+      }
+      const title = this.activeLesson ? (this.activeLesson.name || this.activeLesson.slug) : 'this lesson';
+      const opener = {
+        recall: 'Now compare your answer against the note and name one missing detail.',
+        diagram: 'Now identify one node or edge in your diagram that carries the most meaning.',
+        trace: 'Now point to the exact step where state, data, or control changed.',
+        teachback: 'Now rate the teach-back from 1-5 and repair the weakest sentence.',
+        repair: 'Now rewrite the fragile part as one test, rule, or example.',
+      }[this.companionMode] || 'Now make one small repair.';
+      this.companionFollowup = [
+        opener,
+        '',
+        `Lesson: ${title}`,
+        'Your answer:',
+        answer.slice(0, 1200),
+        '',
+        `Evidence command: ${this.companionEvidenceCommand()}`,
+      ].join('\n');
+    },
+
+    companionEvidenceCommand() {
+      if (!this.activeLesson) return 'studyloop progress "study" -t "study" -c learning';
+      const title = this.activeLesson.name || this.activeLesson.slug || 'lesson';
+      return _lessonEvidenceCommand(this.activeLesson, title);
+    },
+
+    async _copyText(text, onOk) {
+      if (!text) return;
       try {
-        await navigator.clipboard.writeText(prompt);
-        this.discussionCopied = true;
+        await navigator.clipboard.writeText(text);
+        onOk();
         this.discussionError = '';
       } catch {
-        this.discussionCopied = false;
         this.discussionError = 'Could not copy discussion prompt';
       }
     },
 
+    async copyCompanionPrompt() {
+      if (!this.companionPrompt) this.companionPrompt = this.buildCompanionPrompt();
+      await this._copyText(this.companionPrompt, () => {
+        this.discussionCopied = true;
+        this.companionCopied = true;
+      });
+    },
+
+    async copyCompanionEvidence() {
+      await this._copyText(this.companionEvidenceCommand(), () => {
+        this.companionEvidenceCopied = true;
+      });
+    },
+
+  };
+}
+
+/* ======================================================================
+ * Mastery graph panel
+ * ====================================================================== */
+function _masteryMermaidId(name, used) {
+  let ident = String(name || 'concept').replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+|_+$/g, '') || 'concept';
+  if (/^\d/.test(ident)) ident = `concept_${ident}`;
+  let unique = ident;
+  let suffix = 2;
+  while (used.has(unique)) {
+    unique = `${ident}_${suffix}`;
+    suffix += 1;
+  }
+  used.add(unique);
+  return unique;
+}
+
+function _masteryMermaidLabel(name) {
+  return String(name || '')
+    .replace(/"/g, "'")
+    .replace(/`/g, "'")
+    .replace(/\[/g, '(')
+    .replace(/\]/g, ')')
+    .replace(/\n/g, ' ');
+}
+
+function _masteryMermaidFromGraph(graph) {
+  const topic = graph && graph.topic ? graph.topic : 'topic';
+  const edges = graph && Array.isArray(graph.edges) ? graph.edges : [];
+  if (!edges.length) return `flowchart LR\n  empty["No mastery edges found for ${_masteryMermaidLabel(topic)} yet"]`;
+
+  const nodes = graph && Array.isArray(graph.nodes) ? graph.nodes : [];
+  const used = new Set();
+  const ids = {};
+  const lines = ['flowchart LR'];
+  nodes.forEach((node) => {
+    const id = _masteryMermaidId(node, used);
+    ids[node] = id;
+    lines.push(`  ${id}["${_masteryMermaidLabel(node)}"]`);
+  });
+  edges.forEach((edge) => {
+    if (!ids[edge.source_concept] || !ids[edge.target_concept]) return;
+    lines.push(
+      `  ${ids[edge.source_concept]} -->|"${_masteryMermaidLabel(edge.relation_type)}"| ${ids[edge.target_concept]}`
+    );
+  });
+  return lines.join('\n');
+}
+
+function masteryPanel() {
+  return {
+    topic: localStorage.getItem('masteryTopic') || 'python',
+    loading: false,
+    error: '',
+    graph: null,
+    weakLinks: [],
+    mermaidSource: '',
+    copyStatus: '',
+    graphLimit: 80,
+    weakLinkTotal: 0,
+    hasLoaded: false,
+
+    maybeLoad() {
+      if (this.hasLoaded || this.loading) return;
+      this.load();
+    },
+
+    async load() {
+      const topic = this.topic.trim();
+      if (!topic) return;
+      this.hasLoaded = true;
+      localStorage.setItem('masteryTopic', topic);
+      this.loading = true;
+      this.error = '';
+      this.graph = null;
+      this.weakLinks = [];
+      this.mermaidSource = '';
+      this.copyStatus = '';
+      this.weakLinkTotal = 0;
+      try {
+        const qs = new URLSearchParams({ topic, limit: String(this.graphLimit) });
+        const graphResp = await fetch('/api/mastery/graph?' + qs.toString());
+        if (!graphResp.ok) {
+          this.error = 'Could not load mastery graph';
+          return;
+        }
+        this.graph = await graphResp.json();
+        this.mermaidSource = _masteryMermaidFromGraph(this.graph);
+        this.loading = false;
+        await this.$nextTick();
+        await this.renderGraph();
+        this.loadWeakLinks(topic);
+      } catch (err) {
+        this.error = 'Network error loading mastery graph';
+        console.error('[Mastery] load error:', err);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async loadWeakLinks(topic) {
+      try {
+        const weakQs = new URLSearchParams({ topic, limit: '12' });
+        const weakResp = await fetch('/api/mastery/weak-links?' + weakQs.toString());
+        if (!weakResp.ok) return;
+        const weak = await weakResp.json();
+        this.weakLinks = weak.weak_links || [];
+        this.weakLinkTotal = weak.weak_link_count_total || this.weakLinks.length;
+      } catch {
+        // Keep the graph usable; weak links are advisory and can be refreshed.
+      }
+    },
+
+    async renderGraph() {
+      const el = this.$refs.graphCanvas;
+      if (!el || !this.mermaidSource) return;
+      if (!window.mermaid) {
+        el.textContent = this.mermaidSource;
+        return;
+      }
+      try {
+        const id = 'mastery-graph-' + Date.now();
+        const { svg } = await window.mermaid.render(id, this.mermaidSource);
+        el.innerHTML = svg;
+      } catch (err) {
+        console.warn('[Mastery] mermaid.render failed:', err);
+        el.textContent = this.mermaidSource;
+      }
+    },
+
+    get nodeCount() {
+      return this.graph && this.graph.nodes ? this.graph.nodes.length : 0;
+    },
+
+    get edgeCount() {
+      return this.graph && this.graph.edges ? this.graph.edges.length : 0;
+    },
+
+    get edgeCountTotal() {
+      return this.graph && this.graph.edge_count_total ? this.graph.edge_count_total : this.edgeCount;
+    },
+
+    get graphLimited() {
+      return Boolean(this.graph && this.graph.limited);
+    },
+
+    get weakLinksLimited() {
+      return this.weakLinkTotal > this.weakLinks.length;
+    },
+
+    async copyMermaid() {
+      if (!this.mermaidSource) return;
+      try {
+        await navigator.clipboard.writeText(this.mermaidSource);
+        this.copyStatus = 'Copied';
+      } catch {
+        this.copyStatus = 'Copy unavailable';
+      }
+    },
   };
 }

@@ -208,6 +208,9 @@ studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course py
 ```
 
 Practice decks are written to `content.base_path/<course>/practice/` as `*-practice.json`.
+Generated tasks can include verification metadata for `studyloop practice verify`:
+command/rubric/checklist kind, success criteria, expected artifacts, rubric
+checks, evidence prompts, setup command, and timeout.
 
 ### Split PDFs
 

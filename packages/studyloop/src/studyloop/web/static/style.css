@@ -3339,6 +3339,109 @@ body[data-palette="everforest"] {
   background: var(--bg-card);
 }
 
+.note-companion-panel {
+  margin: 10px 12px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 80%, var(--accent) 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.note-companion-header,
+.note-companion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-companion-header span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.note-companion-modes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.note-companion-modes button {
+  min-width: 0;
+  padding: 4px 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.65rem;
+}
+
+.note-companion-modes button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.note-companion-prompt,
+.note-companion-followup {
+  max-height: 145px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-muted);
+  padding: 8px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.note-companion-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.note-companion-answer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 78px;
+  max-height: 180px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 8px;
+}
+
+.note-companion-answer textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.note-companion-evidence {
+  display: block;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-muted);
+  padding: 8px;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
 /* Phase 6: read-aloud button — sits beside the struggle button in the reader
    header. Hidden via x-show unless the TTS engine is present. Does NOT take
    margin-left:auto (the struggle button already does, pushing both right). */
@@ -3364,6 +3467,147 @@ body[data-palette="everforest"] {
 .explorer-tts-btn[aria-pressed="true"] {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ---- Mastery graph view ---- */
+.mastery-panel {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.mastery-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+
+.mastery-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.mastery-toolbar input {
+  min-width: 240px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.mastery-toolbar input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.mastery-copy-status {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  min-width: 96px;
+}
+
+.mastery-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mastery-summary div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 12px;
+}
+
+.mastery-summary strong {
+  display: block;
+  color: var(--accent);
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.mastery-summary span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.mastery-summary small {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  margin-left: 4px;
+}
+
+.mastery-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.mastery-graph-card,
+.mastery-weak-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 14px;
+}
+
+.mastery-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.mastery-graph-canvas {
+  min-height: 320px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--bg);
+  padding: 12px;
+  color: var(--text-muted);
+  white-space: pre;
+}
+
+.mastery-graph-canvas svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mastery-weak-link {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  padding: 9px;
+  margin-bottom: 8px;
+}
+
+.mastery-weak-link strong {
+  color: var(--text);
+}
+
+.mastery-weak-link small {
+  display: block;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .mastery-layout,
+  .mastery-summary {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Reader prose container: scrollable, padded, readable line-length. */

@@ -274,6 +274,10 @@ class PracticeVerification(BaseModel):
     success_criteria: list[NonEmptyStr] = Field(min_length=1, alias="successCriteria")
     command: str = ""
     expected_artifacts: list[NonEmptyStr] = Field(default_factory=list, alias="expectedArtifacts")
+    rubric: list[NonEmptyStr] = Field(default_factory=list)
+    evidence_prompts: list[NonEmptyStr] = Field(default_factory=list, alias="evidencePrompts")
+    setup_command: str = Field(default="", alias="setupCommand")
+    timeout_seconds: int = Field(default=60, ge=1, le=600, alias="timeoutSeconds")
 
     model_config = {"extra": "forbid", "populate_by_name": True}
 

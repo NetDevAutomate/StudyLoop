@@ -255,6 +255,12 @@
         <span>Generate</span>
       </button>
       <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('mastery') }"
+              @click="$store.nav.go('mastery')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M6.7 10.5l3.6-3.8M13.7 6.7l3.6 3.8M17.3 13.5l-3.6 3.8M10.3 17.3l-3.6-3.8"/></svg>
+        <span>Mastery</span>
+      </button>
+      <button class="sidebar-btn"
               :class="{ active: $store.nav.is('body-double') }"
               @click="$store.nav.go('body-double')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -509,10 +515,10 @@
             </button>
             <button class="explorer-discuss-btn"
                     x-show="activeLesson"
-                    @click="discussLesson()"
-                    :title="discussionCopied ? 'Prompt copied' : 'Copy Socratic discussion prompt'"
+                    @click="openCompanion()"
+                    :title="companionOpen ? 'Note companion open' : 'Open note companion'"
                     aria-label="Discuss this lesson">
-              <span x-text="discussionCopied ? '✓ Copied' : 'Discuss'"></span>
+              <span x-text="companionOpen ? 'Companion' : 'Discuss'"></span>
             </button>
             <!-- Phase 6: read-aloud. Hidden unless the TTS engine is present
                  (provided by the browser-neural-tts worktree). Toggles play/stop
@@ -535,6 +541,39 @@
                class="explorer-error"
                style="padding:2px 12px 4px;font-size:0.75rem;"
                x-text="discussionError"></div>
+
+          <section x-show="companionOpen"
+                   x-cloak
+                   class="note-companion-panel"
+                   aria-label="Note companion">
+            <div class="note-companion-header">
+              <span>Note Companion</span>
+              <button type="button" class="link-btn" @click="copyCompanionPrompt()"
+                      x-text="companionCopied ? 'Copied' : 'Copy prompt'"></button>
+            </div>
+            <div class="note-companion-modes" role="group" aria-label="Companion mode">
+              <template x-for="mode in ['recall', 'diagram', 'trace', 'teachback', 'repair']" :key="mode">
+                <button type="button"
+                        :class="{ active: companionMode === mode }"
+                        @click="setCompanionMode(mode)"
+                        x-text="companionModeLabel(mode)"></button>
+              </template>
+            </div>
+            <div class="note-companion-prompt" x-text="companionPrompt || buildCompanionPrompt()"></div>
+            <label class="note-companion-answer">
+              <span>Your retrieval attempt</span>
+              <textarea x-model="companionAnswer"
+                        rows="4"
+                        placeholder="Try a rough answer, trace, diagram description, or teach-back here."></textarea>
+            </label>
+            <div class="note-companion-actions">
+              <button type="button" class="toggle-btn" @click="buildCompanionFollowup()">Next nudge</button>
+              <button type="button" class="link-btn" @click="copyCompanionEvidence()"
+                      x-text="companionEvidenceCopied ? 'Evidence copied' : 'Copy evidence command'"></button>
+            </div>
+            <code class="note-companion-evidence" x-text="companionEvidenceCommand()"></code>
+            <pre x-show="companionFollowup" class="note-companion-followup" x-text="companionFollowup"></pre>
+          </section>
 
           <!-- Loading state -->
           <div x-show="readerLoading" class="explorer-loading">
@@ -709,7 +748,7 @@
                 </div>
 
                 <!-- FLASHCARD -->
-                <template x-if="currentCard.type === 'flashcard'">
+                <template x-if="currentCard && currentCard.type === 'flashcard'">
                   <div>
                     <div class="card" :class="{ revealed }" @click="flipCard()">
                       <div class="card-header">
@@ -730,7 +769,7 @@
                 </template>
 
                 <!-- QUIZ -->
-                <template x-if="currentCard.type === 'quiz'">
+                <template x-if="currentCard && currentCard.type === 'quiz'">
                   <div>
                     <div class="card">
                       <div class="card-header">
@@ -930,7 +969,7 @@
                   <div class="progress-track"><div class="progress-fill" :style="'width:' + progressPct + '%'"></div></div>
                   <span x-text="scoreText"></span>
                 </div>
-                <template x-if="currentCard.type === 'flashcard'">
+                <template x-if="currentCard && currentCard.type === 'flashcard'">
                   <div>
                     <div class="card" :class="{ revealed }" @click="flipCard()">
                       <div class="card-header">
@@ -949,7 +988,7 @@
                     </div>
                   </div>
                 </template>
-                <template x-if="currentCard.type === 'quiz'">
+                <template x-if="currentCard && currentCard.type === 'quiz'">
                   <div>
                     <div class="card">
                       <div class="card-header">
@@ -1288,6 +1327,72 @@
             </ol>
             <p x-show="finishedSummary" x-text="finishedSummary" class="generate-summary"></p>
             <button class="link-btn" @click="reset()" x-show="finishedSummary" type="button">Run another</button>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- MASTERY VIEW — visual concept dependencies and weak links    -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('mastery')" x-cloak
+           x-data="masteryPanel()"
+           x-effect="$store.nav.is('mastery') && maybeLoad()">
+        <div class="mastery-panel">
+          <header class="body-double-header">
+            <h2>Mastery</h2>
+            <p class="text-muted">
+              Inspect concept dependencies, weak links, and Mermaid graph output from your learning evidence.
+            </p>
+          </header>
+
+          <form class="mastery-toolbar" @submit.prevent="load()">
+            <label>
+              <span>Topic</span>
+              <input type="text" x-model="topic" autocomplete="off" spellcheck="false">
+            </label>
+            <button class="toggle-btn" type="submit" :disabled="loading"
+                    x-text="loading ? 'Loading…' : 'Refresh'"></button>
+            <button class="link-btn" type="button" @click="copyMermaid()"
+                    :disabled="!mermaidSource">Copy Mermaid</button>
+            <span class="mastery-copy-status" x-text="copyStatus"></span>
+          </form>
+
+          <div x-show="error" class="form-error" x-text="error"></div>
+
+          <div class="mastery-summary">
+            <div><strong x-text="nodeCount"></strong><span> concepts</span></div>
+            <div>
+              <strong x-text="edgeCount"></strong><span> links</span>
+              <small x-show="graphLimited" x-text="'of ' + edgeCountTotal"></small>
+            </div>
+            <div>
+              <strong x-text="weakLinks.length"></strong><span> weak links</span>
+              <small x-show="weakLinksLimited" x-text="'of ' + weakLinkTotal"></small>
+            </div>
+          </div>
+
+          <section class="mastery-layout">
+            <div class="mastery-graph-card">
+              <div class="mastery-section-title">Graph</div>
+              <div x-ref="graphCanvas" class="mastery-graph-canvas"></div>
+            </div>
+
+            <div class="mastery-weak-card">
+              <div class="mastery-section-title">Weak Links</div>
+              <template x-if="weakLinks.length === 0">
+                <p class="text-muted">No weak links found for this topic yet.</p>
+              </template>
+              <template x-for="link in weakLinks" :key="link.concept + '->' + link.dependency">
+                <div class="mastery-weak-link">
+                  <div>
+                    <strong x-text="link.concept"></strong>
+                    <span> → </span>
+                    <span x-text="link.dependency"></span>
+                  </div>
+                  <small x-text="link.reason"></small>
+                </div>
+              </template>
+            </div>
           </section>
         </div>
       </div>
@@ -1781,7 +1886,7 @@
 
       init() {
         const hash = window.location.hash.slice(1);
-        const valid = ['flashcards', 'quizzes', 'generate', 'body-double', 'study-session', 'settings', 'course-reader'];
+        const valid = ['flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'settings', 'course-reader'];
         if (hash && valid.includes(hash)) this.current = hash;
       },
 

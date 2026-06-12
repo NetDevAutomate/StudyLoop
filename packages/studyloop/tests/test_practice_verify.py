@@ -95,6 +95,30 @@ def test_checklist_verification_records_attempt(monkeypatch, tmp_path: Path) -> 
     assert count == 1
 
 
+def test_verification_metadata_surfaces_in_result(monkeypatch, tmp_path: Path) -> None:
+    db = _attempt_db(tmp_path)
+    _patch_db(monkeypatch, db)
+    monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
+    deck = _practice_file(
+        tmp_path,
+        {
+            "kind": "rubric",
+            "successCriteria": ["The wrapper runs."],
+            "rubric": ["Names the trade-off"],
+            "evidencePrompts": ["What proved it worked?"],
+            "setupCommand": "python -m pytest",
+            "timeoutSeconds": 45,
+        },
+    )
+
+    result = practice.verify_practice_task(deck, task_index=1, notes="I ran it manually.")
+
+    assert result.rubric == ["Names the trade-off"]
+    assert result.evidence_prompts == ["What proved it worked?"]
+    assert result.setup_command == "python -m pytest"
+    assert result.timeout_seconds == 45
+
+
 def test_command_verification_requires_explicit_run_command(monkeypatch, tmp_path: Path) -> None:
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
