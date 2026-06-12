@@ -35,6 +35,12 @@ flowchart TB
     end
 
     subgraph "Review Support"
+        Now["studyloop now<br/>one next action"]
+        Companion["chat-note / Discuss<br/>Socratic context pack"]
+        Verify["practice verify<br/>attempt evidence"]
+        Recap["recap today<br/>win + repair + next action"]
+        Mastery["mastery graph<br/>weak links"]
+        EvidenceCmd["progress / teachback<br/>follow-up command"]
         Generator["Card generator<br/>(pluggable: Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic / Stub)"]
         JSON["Flashcard/quiz JSON"]
         Review["SM-2 review"]
@@ -55,14 +61,26 @@ flowchart TB
     Web --> Explorer
     Explorer -->|"reads source material"| Obsidian
     Explorer -->|"writes struggle flags<br/>with lesson provenance"| DB
+    Explorer -->|"copies Socratic<br/>discussion prompt"| Companion
     TTYD --> Tmux
     Agent --> DB
     AST --> DB
     AST -.->|"--obsidian (opt-in)<br/>obsidian_writer"| AgentMemory
     StudyLoop --> Generator
+    StudyLoop --> Now
+    StudyLoop --> Companion
+    StudyLoop --> Verify
+    StudyLoop --> Recap
+    StudyLoop --> Mastery
     Generator --> JSON
     JSON --> Review
-    Review --> DB
+    Review -->|"reads/writes review"| DB
+    Now -->|"reads signals"| DB
+    Companion --> EvidenceCmd
+    EvidenceCmd -->|"writes progress"| DB
+    Verify -->|"writes attempts + progress"| DB
+    Recap -->|"reads"| DB
+    Mastery -->|"reads/writes edges"| DB
     Web --> DB
 ```
 
@@ -99,6 +117,46 @@ The shared DB matters because it lets the agent adapt using evidence:
 - wins and progress
 - spaced repetition state
 - parked topics
+
+## Supporting Workflow: Active Learning Decisions
+
+The fastest path from "I have notes" to "I am learning" is the active-learning
+loop. `studyloop now` chooses one useful action; the companion and practice
+commands help record evidence; recap and mastery make the evidence visible
+again.
+
+```bash
+studyloop now --energy medium --time 20
+studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode trace
+studyloop practice verify decorators-practice.json --task 1 --notes "what passed"
+studyloop recap today --speak
+studyloop mastery weak-links --topic python
+```
+
+```mermaid
+flowchart LR
+    Evidence[("sessions.db<br/>study_progress,<br/>practice_attempts,<br/>concept_dependencies")]
+    Now["studyloop now<br/>or GET /api/now"]
+    Note["chat-note<br/>or Web Explorer Discuss"]
+    Practice["practice verify"]
+    EvidenceCmd["progress / teachback<br/>follow-up"]
+    Recap["recap today"]
+    Graph["mastery graph<br/>weak-links"]
+
+    Evidence --> Now
+    Now --> Note
+    Note --> EvidenceCmd
+    Note --> Practice
+    EvidenceCmd --> Evidence
+    Practice --> Evidence
+    Evidence --> Recap
+    Evidence --> Graph
+    Graph --> Now
+```
+
+This is deliberately small. The recommendation engine returns one primary
+action plus at most two alternates, so it supports task initiation rather than
+creating another menu to manage.
 
 ## Supporting Workflow: Local Review Artefacts
 
@@ -174,7 +232,7 @@ flowchart TD
 
 | Store | Purpose |
 |---|---|
-| SQLite `sessions.db` | study sessions, progress, review state, imported assistant sessions |
+| SQLite `sessions.db` | study sessions, `study_progress`, review state, `practice_attempts`, `concept_dependencies`, imported assistant sessions |
 | SQLite `explorer_fts.db` | derived lesson full-text index (rebuildable cache, separate from `sessions.db`, no migration) |
 | IPC files | current live session state for sidebar/dashboard |
 | `content.base_path` | source study material (markdown/text) + generated flashcard and quiz JSON |

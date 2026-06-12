@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-06-02. Reflects the ACP chat-UI feature (2026-05-27) + dogfood hotfix (`bfe9210`), the Settings → LLM Providers panel with first-class Bedrock/Ollama + an encrypted secret store, the Anthropic-compat adapter robustness work (MiniMax was trialled then removed for quiz quality), the scalable (mode-split, publisher-grouped, searchable) course-review list, the opt-in Obsidian session-memory export (`session-export --obsidian`), the in-browser neural TTS engine, Course Explorer side panel (Phases 1–6), generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, and route-stubbed browser smoke coverage.
+> Last updated: 2026-06-12. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, in-browser neural TTS engine, Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, optional OpenVox terminal voice, and the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving).
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -91,7 +91,8 @@ flowchart TB
     end
 
     subgraph "Local stores"
-      DB[("sessions.db<br/>(SQLite + WAL)<br/>──────────<br/>study sessions,<br/>progress, review state.")]
+      DB[("sessions.db<br/>(SQLite + WAL)<br/>──────────<br/>study sessions,<br/>study_progress,<br/>practice_attempts,<br/>concept_dependencies,<br/>review state.")]
+      ContentBase[("content.base_path<br/>──────────<br/>source markdown,<br/>generated cards/quizzes,<br/>practice decks.")]
       FTS[("explorer_fts.db<br/>(SQLite FTS5)<br/>──────────<br/>derived lesson index;<br/>rebuildable cache,<br/>no migration.")]
       IPC["~/.config/studyloop/<br/>session-state.json<br/>session-topics.md<br/>session-parking.md"]
       Persona["agents/shared/personas/*<br/>(canonical persona text)"]
@@ -103,8 +104,15 @@ flowchart TB
       ObsidianWriter["ObsidianWriter<br/>obsidian_writer.py<br/>──────────<br/>--obsidian (opt-in): one note<br/>per session to AgentMemory/.<br/>Idempotent (content-hash skip),<br/>per-project MOC, path-hardened."]
     end
 
+    subgraph "Active-learning services"
+      NowCLI["studyloop now<br/>──────────<br/>One next action from<br/>due work, struggles,<br/>energy, modality, time."]
+      LearningServices["studyloop.learning/*<br/>──────────<br/>decision, note_companion,<br/>practice, recap, mastery,<br/>voice wrappers."]
+      NowAPI["GET /api/now<br/>──────────<br/>Same contract as<br/>studyloop now --json."]
+    end
+
     Learner --> PWA
     PWA -->|"HTTP /api/*"| API
+    PWA -->|"HTTP /api/now"| NowAPI
     PWA <-->|"WebSocket /api/session/ws"| API
     PWA -->|"HTTP /api/explorer/*<br/>/api/history/struggling-topics"| ExplorerAPI
     API --> Runtime
@@ -118,6 +126,10 @@ flowchart TB
     ExplorerAPI -->|"reads source markdown"| Persona
     ExplorerAPI --> FTS
     ExplorerAPI --> DB
+    NowCLI --> LearningServices
+    NowAPI --> LearningServices
+    LearningServices --> DB
+    LearningServices --> ContentBase
     Export --> DB
     Export -.->|"after commit, if --obsidian"| ObsidianWriter
     ObsidianWriter --> AgentMemory
@@ -131,6 +143,105 @@ flowchart TB
 - **Persona text never reaches the wire on the PTY path** — it's written to a temp file, the agent's launch command embeds the path, and the agent reads it at startup.
 - **Persona text DOES travel on the wire on the ACP path** — added 2026-05-28 in commit `bfe9210`. `/api/session/start` returns `persona_text` inline in the JSON body; the browser ships it as the first invisible `session/prompt` after WS open. Hidden client-side: not pushed to `acpMessages`.
 - **The PWA owns chat-surface state.** The server never sends server-rendered HTML for chat bubbles — only raw ACP events. Markdown rendering, sanitisation, syntax highlighting, theme palette: all in the browser.
+
+---
+
+## C4 Level 3 — Component (zoomed into the active-learning loop)
+
+This slice turns source notes, review state, and session evidence into one
+recommended learning action, then records whether the learner retrieved,
+explained, applied, or verified the concept.
+
+```mermaid
+flowchart TB
+    subgraph Surfaces["CLI and Web Surfaces"]
+      NowCLI["studyloop now<br/>--energy --time --modality<br/>--interleave --json --speak"]
+      NowAPI["GET /api/now<br/>same JSON contract"]
+      ChatNote["studyloop chat-note<br/>markdown/text note → Socratic prompt"]
+      WebDiscuss["Course Explorer Discuss<br/>browser clipboard prompt"]
+      PracticeCLI["studyloop practice verify<br/>checklist/rubric/command attempt"]
+      RecapCLI["studyloop recap today<br/>win, repair, due, next action"]
+      MasteryCLI["studyloop mastery<br/>graph + weak-links"]
+      ReviewCLI["studyloop review<br/>--interleave adaptive"]
+    end
+
+    subgraph Services["studyloop.learning package"]
+      Decision["decision.py<br/>candidate collection + scoring"]
+      NoteCompanion["note_companion.py<br/>path guard + heading/code chunks"]
+      Practice["practice.py<br/>verification + attempt recording"]
+      Recap["recap.py<br/>daily synthesis"]
+      Mastery["mastery.py<br/>edge seeding + Mermaid graph"]
+      Voice["voice.py<br/>study-speak wrapper"]
+    end
+
+    subgraph BrowserLocal["Browser-local helpers"]
+      DiscussPrompt["components.js discussLesson()<br/>prompt from loaded readerText"]
+    end
+
+    subgraph Stores["Local Stores"]
+      SessionDB[("sessions.db<br/>study_progress<br/>practice_attempts<br/>concept_dependencies")]
+      Content[("content.base_path<br/>practice decks + source markdown")]
+      Vault[("Obsidian / study paths<br/>markdown notes")]
+      LoadedLesson["Loaded lesson text<br/>(browser memory)"]
+    end
+
+    NowCLI --> Decision
+    NowAPI --> Decision
+    ChatNote --> NoteCompanion
+    WebDiscuss --> DiscussPrompt
+    PracticeCLI --> Practice
+    RecapCLI --> Recap
+    MasteryCLI --> Mastery
+    ReviewCLI --> Decision
+    RecapCLI --> Voice
+    NowCLI --> Voice
+    ChatNote --> Voice
+
+    Decision -->|"reads"| SessionDB
+    Decision -->|"reads"| Content
+    NoteCompanion -->|"reads"| Vault
+    DiscussPrompt --> LoadedLesson
+    Practice -->|"reads deck"| Content
+    Practice -->|"writes attempts + progress"| SessionDB
+    Recap -->|"reads"| SessionDB
+    Mastery -->|"reads/writes edges"| SessionDB
+    Mastery -->|"seeds from notes"| Content
+```
+
+**Key invariants**:
+
+- **One primary recommendation.** `studyloop now` and `/api/now` return one
+  primary recommendation plus up to two alternates. This is an executive
+  function affordance, not a content browser.
+- **Conversation is a context pack in V1.** `chat-note` validates an explicit
+  note path inside configured study/vault roots, chunks headings and code
+  blocks, and prints or speaks a mentor prompt. It does not host an independent
+  chat backend.
+- **Command verification is opt-in.** Practice tasks can carry a verification
+  command, but it only runs when `--run-command` is passed. Checklist/rubric
+  tasks record notes and expected-artifact status without shell execution.
+- **Evidence writes back into scheduling.** Passing practice attempts record
+  `confident` progress; failing attempts record `struggling` progress.
+  Teach-back/progress records and weak links feed the next `studyloop now`
+  decision.
+- **Voice is optional.** `--speak` surfaces shell out through `study-speak`.
+  Kokoro/OpenVox/macOS backend choice belongs to the terminal/MCP voice path;
+  the Web PWA keeps browser-local TTS.
+
+### Component → file map (active-learning loop)
+
+| Component | File | Notes |
+|---|---|---|
+| Decision engine | `packages/studyloop/src/studyloop/learning/decision.py` | candidate sources, scoring, interleaving ratios, JSON contract |
+| `studyloop now` | `packages/studyloop/src/studyloop/cli/_now.py` | rich/JSON/speak output |
+| `/api/now` | `packages/studyloop/src/studyloop/web/routes/now.py` | web API using the same decision contract |
+| Note companion | `packages/studyloop/src/studyloop/learning/note_companion.py` + `cli/_chat_note.py` | safe note loading, prompt packing, `--mode` variants |
+| Web Discuss | `packages/studyloop/src/studyloop/web/static/components.js`, `index.html`, `style.css` | clipboard prompt from loaded lesson text |
+| Practice verification | `packages/studyloop/src/studyloop/learning/practice.py` + `cli/_practice.py` | attempt recording and progress updates |
+| Daily recap | `packages/studyloop/src/studyloop/learning/recap.py` + `cli/_recap.py` | one win, repair target, due item, next action |
+| Mastery graph | `packages/studyloop/src/studyloop/learning/mastery.py` + `cli/_mastery.py` | dependency seeding, Mermaid output, weak links |
+| Voice doctor | `packages/studyloop/src/studyloop/doctor/voice.py` | Kokoro files, `afplay`, optional OpenVox reachability |
+| DB migration v24 | `packages/agent-session-tools/src/agent_session_tools/migrations.py` | `practice_attempts`, `concept_dependencies` |
 
 ---
 
@@ -598,11 +709,16 @@ flowchart TB
 
 ## C4 Level 3 — Component (zoomed into the Course Explorer)
 
-The Course Explorer is a read-only study-material browser embedded as a third layout column. It shares no reactive state with the session, review, or generate panels; the only write path is the struggle flag via `POST /api/history/struggling-topics`.
+The Course Explorer is a study-material browser embedded as a third layout
+column. It shares no reactive state with the session, review, or generate
+panels. Server-side content access is read-only except for the explicit
+struggle flag via `POST /api/history/struggling-topics`; the **Discuss** action
+is browser-local and copies a Socratic prompt from the already-loaded lesson to
+the clipboard.
 
 ```mermaid
 C4Component
-  title Component Diagram - Course Explorer, Search Cache, And Struggle Provenance
+  title Component Diagram - Course Explorer, Search Cache, Struggle Provenance, And Discuss Prompt
 
   Container(browser, "Browser UI", "Alpine.js", "Course Explorer reader and Generate tab")
   Container(api, "FastAPI Web App", "Python", "Explorer and history routes")
@@ -615,6 +731,7 @@ C4Component
   Component(treeFingerprint, "tree fingerprint", "Python", "Cache key from visible source tree")
   Component(searchRoute, "GET /api/explorer/search", "FastAPI", "Refreshes and queries derived FTS")
   Component(historyRoute, "POST /api/history/struggling-topics", "FastAPI", "Writes web struggle provenance")
+  Component(discussPrompt, "discussLesson()", "Alpine.js", "Builds Socratic prompt from loaded lesson text and copies to clipboard")
   Component(scopeResolver, "resolve_scope topic_struggles", "Python", "Uses provenance when generating targeted decks")
 
   Rel(browser, explorerComponent, "Opens Courses panel")
@@ -626,6 +743,7 @@ C4Component
   Rel(explorerFts, contentBase, "Indexes source markdown", "Filesystem")
   Rel(explorerComponent, historyRoute, "Marks lesson as struggling", "JSON/HTTPS")
   Rel(historyRoute, sessionDb, "Writes source_course/source_section/source_publisher", "SQLite")
+  Rel(explorerComponent, discussPrompt, "Copies active-recall prompt", "Clipboard")
   Rel(scopeResolver, sessionDb, "Reads provenance for topic_struggles", "SQLite")
 ```
 
@@ -644,6 +762,7 @@ flowchart TB
       MermaidPass["_renderMermaidPlaceholders(rootEl)<br/>──────────<br/>Second $nextTick pass;<br/>mermaid.render() per placeholder div"]
       SearchBox["onSearchInput() (debounced)<br/>──────────<br/>Fuse.js instant over titles +<br/>GET /api/explorer/search (FTS5 bodies);<br/>results grouped by provider"]
       StruggleBtn["markStruggle()<br/>→ POST /api/history/struggling-topics<br/>──────────<br/>confidence='struggling', created_by='web';<br/>surfaces in next deck gen scope"]
+      DiscussBtn["discussLesson()<br/>──────────<br/>_mdToPlainText(readerText);<br/>copies Socratic prompt to clipboard;<br/>no backend call"]
       TTSBtn["readAloud() / stopReading()<br/>──────────<br/>Gated: ttsAvailable = !!window.ttsEngine;<br/>button hidden when engine absent"]
     end
 
@@ -669,6 +788,7 @@ flowchart TB
     Reader --> MermaidPass
     SearchBox --> TreeFetch
     Reader --> StruggleBtn
+    Reader --> DiscussBtn
     Reader --> TTSBtn
 
     TreeRoute --> TreeKey
@@ -684,6 +804,10 @@ flowchart TB
 **Key invariants**:
 
 - **Read-only over content.** The explorer API never writes to `content.base_path`. Every content endpoint resolves paths with `is_relative_to(base)` and restricts suffixes to `.md`, `.markdown`, `.txt`.
+- **Discuss is clipboard-only in V1.** `discussLesson()` builds the prompt in
+  the browser from `readerText` that was already fetched for display. It writes
+  to `navigator.clipboard`, never calls a backend chat endpoint, and does not
+  mutate `sessions.db`.
 - **Tree cache is keyed by visible source state.** `GET /api/explorer/tree` stores the provider/course tree on `app.state` behind `_tree_fingerprint(base)`, which walks visible providers, courses, and source files while skipping dot directories and generated output directories. Adding/deleting nested courses refreshes the tree; writing generated decks does not.
 - **FTS index is a derived cache.** `explorer_fts.db` lives in `<session_db_dir>/` alongside `sessions.db` but is never opened by the session migration system. It can be deleted and will be rebuilt on the next search call. No schema migration is required.
 - **TTS is gated by feature detection.** `ttsAvailable = !!window.ttsEngine`. The "▶ Listen" button is `x-show="ttsAvailable && activeLesson"` — hidden entirely when the `browser-neural-tts` worktree is not merged.
@@ -698,6 +822,7 @@ flowchart TB
 | `_stripFrontmatter()` | `components.js` | ~line 107; strips YAML front matter before render |
 | `_renderMermaidPlaceholders()` | `components.js` | ~line 171; second-pass mermaid.render() after `$nextTick` |
 | `_mdToPlainText()` | `components.js` | ~line 129; strips markdown to plain text for TTS |
+| `discussLesson()` | `components.js` | copies Socratic active-recall prompt from the current lesson to clipboard |
 | `<aside class="course-explorer-panel">` | `packages/studyloop/src/studyloop/web/static/index.html` | ~line 248; browser + reader views |
 | Courses sidebar button + `$store.explorer` | `index.html` | ~line 225 (button), ~line 1686 (store) |
 | Mermaid + Fuse.js `<script>` tags | `index.html` | ~line 39 (mermaid), ~line 48 (fuse) |

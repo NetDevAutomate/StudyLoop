@@ -23,7 +23,9 @@ studyloop study "Python" --mode co-study
 # claude      # then /agent socratic-mentor
 # codex       # in the project root with AGENTS.md present
 
-# 3. Optional: generate and review flashcards/quizzes
+# 3. Ask for one active next step, then optionally generate review artefacts
+studyloop now --energy medium --time 20
+studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode recall
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
 studyloop review
 ```

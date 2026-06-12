@@ -154,6 +154,7 @@ flowchart LR
     Read["Lesson reader<br/>(markdown + mermaid + code)"]
     Search["Global search<br/>(titles instant + bodies FTS)"]
     Struggle["Struggling? button<br/>→ session DB"]
+    Discuss["Discuss button<br/>→ Socratic prompt clipboard"]
     Listen["▶ Listen<br/>(TTS, if installed)"]
 
     Open --> Browse
@@ -163,6 +164,7 @@ flowchart LR
     Open --> Search
     Search --> Read
     Read --> Struggle
+    Read --> Discuss
     Read --> Listen
 ```
 
@@ -184,7 +186,9 @@ flowchart LR
 
 6. **Mark a struggle** — while reading a lesson, click the **Struggling?** button in the reader header. This writes a `study_progress` row (`confidence='struggling'`) to the session DB via `POST /api/history/struggling-topics`. The row uses the lesson slug as the generation topic and keeps the original course/section/publisher as provenance, so the next Generate session's "Topic I'm struggling on" scope targets the struggled lesson rather than the whole course. It also surfaces in `studyloop struggles`.
 
-7. **Listen (TTS)** — the **▶ Listen** button appears only when `window.ttsEngine` is present (provided by the `browser-neural-tts` feature branch). When the engine is absent the button is hidden and no-op. When active, click to start reading the lesson aloud; the button becomes **⏹ Stop**.
+7. **Discuss the lesson** — click **Discuss** to copy a Socratic prompt built from the current lesson text. Paste it into your active mentor/chat session to turn the note into active recall, diagram repair, tracing, or teach-back. This is intentionally clipboard-based in V1; it does not send lesson text to a separate chat backend.
+
+8. **Listen (TTS)** — the **▶ Listen** button appears only when `window.ttsEngine` is present. When the engine is absent the button is hidden and no-op. When active, click to start reading the lesson aloud; the button becomes **⏹ Stop**.
 
 ### Endpoints called
 
@@ -195,6 +199,8 @@ flowchart LR
 | `GET /api/explorer/lesson/{lesson_id}/content` | Raw markdown for a lesson (`lesson_id` = `provider/course/slug`) |
 | `GET /api/explorer/search?q=&limit=20` | FTS5 full-text search over lesson bodies |
 | `POST /api/history/struggling-topics` | Write a struggle flag to `study_progress` |
+
+The **Discuss** action does not call a backend endpoint; it builds the prompt in the browser from the already-loaded lesson and writes it to the clipboard.
 
 All content endpoints are path-traversal guarded (resolved path must be a child of `content.base_path`; suffix restricted to `.md`, `.markdown`, `.txt`). The provider/course tree cache is keyed from the visible source tree, so adding or deleting nested courses refreshes the browser data while generated output folders do not invalidate the tree. The FTS index lives in its own file (`<session_db_dir>/explorer_fts.db`) — it is a derived cache, never touches `sessions.db`, and requires no schema migration.
 

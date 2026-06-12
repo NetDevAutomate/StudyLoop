@@ -14,11 +14,11 @@ This is the entry point for architecture documentation.
 
 The project is moving toward a local-first, pluggable study platform.
 
-The core workflow is not flashcards or quizzes. The core workflow is live interactive study with an assistant that understands the learner's history, recurring struggles, wins, and progress through the shared database.
+The core workflow is not flashcards or quizzes. The core workflow is live interactive study with an assistant and active-learning services that understand the learner's history, recurring struggles, wins, practice evidence, weak links, and progress through the shared database.
 
 ```mermaid
 flowchart LR
-    Current["Current<br/>CLI + tmux + web + ttyd<br/>+ ACP chat (Kiro/Gemini)"]
+    Current["Current<br/>CLI + tmux + web + ttyd<br/>+ ACP chat (Kiro/Gemini)<br/>+ active learning loop"]
     Hybrid["Near-term<br/>ACP-first web sessions<br/>PTY fallback over WS<br/>(no ttyd)"]
     Target["Target<br/>plugin architecture<br/>macOS/iOS ready"]
 
@@ -34,6 +34,7 @@ flowchart LR
 | [pi / omp Harness Integration](architecture/pi-omp-harness-integration.md) | How `@earendil-works/pi-coding-agent` (pi) and `@oh-my-pi/pi-coding-agent` (omp) plug into the session export pipeline, installer, and doctor. Includes C4 L1+L2 diagrams and end-of-session sequence. |
 | [System Overview](system-overview.md) | User-facing explanation of how the pieces connect. |
 | [Web UI Guide](web-ui-guide.md) | Web UI walkthrough, ACP chat mode, theme palettes, ttyd fallback. |
+| [AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md) | Product and data-flow details for `studyloop now`, note companion prompts, verification, recap, mastery graphs, and interleaving. |
 | [Session Protocol](session-protocol.md) | The transport-agnostic study protocol every agent follows. |
 | [MCP Integrations](mcp.md) | Agent/tool integration details. |
 | [Standards](standards/repo-standards.md) | Repository and naming standards. |

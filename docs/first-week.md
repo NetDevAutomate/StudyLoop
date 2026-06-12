@@ -44,7 +44,24 @@ studyloop doctor --fix
    studyloop resume
    ```
 
-## Day 2 — Session memory and wins
+## Day 2 — Let StudyLoop choose one next action
+
+1. Ask for one useful next action instead of picking from the whole vault:
+
+   ```bash
+   studyloop now --energy medium --time 20
+   ```
+
+2. Open the source note it points at, or pick one note from your current course:
+
+   ```bash
+   studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode recall
+   ```
+
+3. End with a small evidence record. Use the command printed by `studyloop now`
+   or `chat-note`, usually `studyloop progress` or `studyloop teachback`.
+
+## Day 3 — Session memory and wins
 
 1. Export recent agent sessions into the shared database (from any tool you already use):
 
@@ -59,6 +76,7 @@ studyloop doctor --fix
    studyloop wins
    studyloop streaks
    studyloop review
+   studyloop recap today
    ```
 
 3. If you use Kiro and want struggle signals in progress tracking:
@@ -67,21 +85,22 @@ studyloop doctor --fix
    studyloop extract-struggles --incremental --dry-run
    ```
 
-## Day 3 — Review support (optional)
+## Day 4 — Review support and source notes
 
 If you have markdown notes or a course folder:
 
 ```bash
 studyloop content discover
 studyloop content generate-cards ~/path/to/course-notes --course my-course
+studyloop content generate-practice ~/path/to/course-notes --course my-course
 studyloop web
 ```
 
-Use **Flashcards** or **Quizzes** in the PWA. You do not need NotebookLM for this path.
+Use **Flashcards** or **Quizzes** in the PWA. In the **Course Explorer**, open a lesson and use **Discuss** to copy a Socratic prompt from the current note; use **Struggling?** when the lesson should feed future repair work. You do not need NotebookLM for this path.
 
 For generation, configure **one** provider in the web **Settings → LLM Providers** panel (Ollama locally or Bedrock/OpenAI if you already have keys). See [Content Pipeline](content-pipeline.md).
 
-## Day 4 — Agents and backlog
+## Day 5 — Agents and backlog
 
 1. Install agent definitions for your tool:
 
@@ -98,7 +117,19 @@ For generation, configure **one** provider in the web **Settings → LLM Provide
 
 3. Re-read [Session Protocol](session-protocol.md) so your agent runs `studyloop resume` and `studyloop review` at session start.
 
-## Day 5 — Hardening habits
+## Day 6 — Visualise weak links
+
+Use the mastery commands once you have a few progress records:
+
+```bash
+studyloop mastery graph --topic python
+studyloop mastery weak-links --topic python
+studyloop review --interleave adaptive --energy low
+```
+
+The graph is Mermaid by default, so it can be pasted into Obsidian.
+
+## Day 7 — Hardening habits
 
 - Run `studyloop clean --dry-run` if tmux study sessions ever feel “stuck”.
 - Set `studyloop backup` before big config experiments.

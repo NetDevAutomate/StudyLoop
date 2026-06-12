@@ -65,6 +65,7 @@ graph LR
 
     subgraph "CLI Tools"
         SC[studyloop]
+        LEARN["Active learning services<br/>now, chat-note,<br/>practice verify,<br/>recap, mastery"]
         AST[agent-session-tools]
         DB[(SQLite DB)]
     end
@@ -88,7 +89,9 @@ graph LR
 
     OB -->|study source| SC
     SRC -->|parse/generate| SC
+    SC --> LEARN
     SC -->|sessions + review| DB
+    LEARN -->|recommend + record evidence| DB
     AST -->|export sessions| DB
     AST -.->|"--obsidian (opt-in)"| OBV
     CA -->|Socratic sessions| DB
@@ -199,7 +202,7 @@ Launch with `studyloop web`. Accessible from any device on the network.
 - Click a course to list its lessons; click a lesson to read rendered markdown + mermaid diagrams + syntax-highlighted code
 - Global fuzzy search (Fuse.js, instant over titles) + full-text search (SQLite FTS5, over lesson bodies)
 - "Struggling?" button in the reader flags a lesson to the session DB; surfaces in next study session and deck generation
-- "Discuss" opens the current lesson as a note-companion prompt so the reader becomes an active recall or diagram session
+- "Discuss" copies a Socratic prompt from the current lesson so the reader becomes an active recall or diagram session without a separate chat backend
 - "▶ Listen" TTS read-aloud button (appears only when the `browser-neural-tts` feature is installed)
 
 **Live session dashboard** (`/session`):
