@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 23
+CURRENT_VERSION = 24
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -758,6 +758,71 @@ def migrate_v22(conn: sqlite3.Connection) -> None:
 def migrate_v23(conn: sqlite3.Connection) -> None:
     """Ensure message content updates keep FTS in sync across NULL transitions."""
     _install_messages_fts_update_trigger(conn)
+
+
+@migration(24, "Add practice attempts and explicit concept dependencies")
+def migrate_v24(conn: sqlite3.Connection) -> None:
+    """Add active-learning evidence tables for practice and mastery graph features."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS practice_attempts (
+            id TEXT PRIMARY KEY,
+            practice_path TEXT NOT NULL,
+            task_index INTEGER NOT NULL,
+            task_prompt TEXT NOT NULL,
+            verification_kind TEXT NOT NULL,
+            passed INTEGER NOT NULL CHECK(passed IN (0, 1)),
+            notes TEXT,
+            command TEXT,
+            exit_code INTEGER,
+            stdout TEXT,
+            stderr TEXT,
+            duration_seconds REAL,
+            expected_artifacts TEXT,
+            missing_artifacts TEXT,
+            workdir TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_practice_attempts_path "
+        "ON practice_attempts(practice_path, task_index)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_practice_attempts_created "
+        "ON practice_attempts(created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_practice_attempts_passed "
+        "ON practice_attempts(passed)"
+    )
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS concept_dependencies (
+            id TEXT PRIMARY KEY,
+            topic TEXT NOT NULL,
+            source_concept TEXT NOT NULL,
+            target_concept TEXT NOT NULL,
+            relation_type TEXT NOT NULL DEFAULT 'prerequisite',
+            evidence TEXT,
+            source_type TEXT NOT NULL DEFAULT 'explicit',
+            confidence REAL NOT NULL DEFAULT 0.5,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(topic, source_concept, target_concept, relation_type)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_concept_dependencies_topic "
+        "ON concept_dependencies(topic)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_concept_dependencies_source "
+        "ON concept_dependencies(topic, source_concept)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_concept_dependencies_target "
+        "ON concept_dependencies(topic, target_concept)"
+    )
 
 
 def check_migration_status(db_path: Path) -> dict:

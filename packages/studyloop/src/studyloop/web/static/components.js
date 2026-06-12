@@ -1551,6 +1551,8 @@ function courseExplorer() {
       this.readerLoading = false; // clear spinner even if fetch was in-flight
       this.struggleMarked = false;
       this.struggleError = '';
+      this.discussionCopied = false;
+      this.discussionError = '';
     },
 
     // ---- Phase 6: TTS read-aloud (GATED on the browser-neural-tts worktree) ----
@@ -1595,6 +1597,8 @@ function courseExplorer() {
     // Guard: only callable when view==='reader' && activeLesson is set.
     struggleMarked: false,
     struggleError: '',
+    discussionCopied: false,
+    discussionError: '',
 
     async markStruggle() {
       if (this.view !== 'reader' || !this.activeLesson) return;
@@ -1628,6 +1632,31 @@ function courseExplorer() {
         }
       } catch {
         this.struggleError = 'Network error — could not mark struggle';
+      }
+    },
+
+    async discussLesson() {
+      if (this.view !== 'reader' || !this.activeLesson || !this.readerText) return;
+      const lesson = this.activeLesson;
+      const title = lesson.name || lesson.slug || 'this lesson';
+      const excerpt = _mdToPlainText(this.readerText).slice(0, 2400);
+      const prompt = [
+        "You are StudyLoop's AuDHD-aware Socratic mentor.",
+        `Lesson: ${title}`,
+        '',
+        'Use this lesson as context. Start with one active-recall question, then guide a short teach-back or diagram repair loop.',
+        '',
+        excerpt,
+        '',
+        `End by suggesting: studyloop progress "${String(title).toLowerCase()}" -t "${lesson.course_id || 'study'}" -c learning`,
+      ].join('\n');
+      try {
+        await navigator.clipboard.writeText(prompt);
+        this.discussionCopied = true;
+        this.discussionError = '';
+      } catch {
+        this.discussionCopied = false;
+        this.discussionError = 'Could not copy discussion prompt';
       }
     },
 
