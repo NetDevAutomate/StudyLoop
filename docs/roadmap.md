@@ -14,12 +14,12 @@ These six high-impact improvements for turning Obsidian notes into active learni
 - [x] **Interleaving mode** — `studyloop now --interleave adaptive` and `studyloop review --interleave adaptive` apply energy-based mixes.
 - [x] **OpenVox optional CLI voice backend** — `study-speak -b openvox` calls the local OpenVox API for terminal/MCP sessions and falls back gracefully.
 
-Follow-up refinements:
+Final refinement slice:
 
-- [ ] Promote note companion prompts into an in-app conversational UI.
-- [ ] Add richer mastery graph styling in the Web UI.
-- [ ] Add optional recap audio-file export.
-- [ ] Expand generated practice decks with more command/artifact verification metadata.
+- [x] **In-app note companion** — Course Explorer now opens a browser-local companion panel with mode switching, retrieval space, next nudge generation, prompt copy, and evidence-command copy.
+- [x] **Mastery graph Web UI** — the Web app has a Mastery tab backed by `/api/mastery/graph` and `/api/mastery/weak-links`, with Mermaid rendering and weak-link cards.
+- [x] **Recap audio-file export** — `studyloop recap today --audio-file recap.wav` saves a local audio recap through OpenVox when configured, with macOS `say` fallback.
+- [x] **Deeper practice verification metadata** — generated practice decks can include rubric, evidence prompts, setup command, timeout, command, and expected-artifact metadata.
 
 ## v1.0 — Foundation
 

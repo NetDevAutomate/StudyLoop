@@ -166,8 +166,7 @@ def build_note_companion_pack(path: Path, *, mode: CompanionMode = "recall") -> 
     concept = title.lower()
     topic = resolved.parent.name.lower().replace(" ", "-") or "study"
     suggested = (
-        f'studyloop teachback "{concept}" -t "{topic}" --score "3,3,3,3,3" '
-        "--type structured"
+        f'studyloop teachback "{concept}" -t "{topic}" --score "3,3,3,3,3" --type structured'
         if mode == "teachback"
         else f'studyloop progress "{concept}" -t "{topic}" -c learning'
     )

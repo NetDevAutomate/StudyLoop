@@ -135,10 +135,13 @@ direction:
   one next action based on due reviews, struggles, weak links, energy, modality,
   and available time;
 - `chat-note` and the Web Explorer **Discuss** action turn source notes into
-  Socratic context packs without creating a separate chat backend yet;
+  Socratic context packs; the Web companion now keeps the first guided
+  retrieval/nudge loop in-app without creating a separate chat backend;
 - `practice verify`, `recap today`, and `mastery` write or read durable
   learning evidence through `study_progress`, `practice_attempts`, and
   `concept_dependencies`.
+- the Web **Mastery** tab renders bounded Mermaid graph output and weak-link
+  cards from the same API contract used by CLI mastery commands.
 
 These are current-architecture hardening steps. The target still keeps the same
 direction: web/PWA first, stable local API, explicit transport contracts, and
@@ -156,10 +159,6 @@ loops feel native inside the web session surface.
 - **Resume on the ACP path**: the PTY path passes `previous_notes` into `build_canonical_persona`. The ACP path doesn't yet — a resumed ACP session gets a bare persona. Need a decision on whether to pull recent struggles/wins from `sessions.db` and embed them in the persona text.
 - **Theme persistence across devices**: today the palette selector is `localStorage`-only. If the PWA is installed on multiple devices the user re-picks every time. Sync would require a server-side preferences store.
 - **Mid-session deck generation (v2 of the Generate panel)**: today the Generate panel's `topic_struggles` scope queries `study_progress.confidence='struggling'` over a date window. v2 would let the agent mark *specific concepts* mid-session via an MCP tool call ("the user is stuck on outer joins -- queue a deck"), bypassing the date-window query for an immediately-targeted deck. Needs a new agent-side tool surface; tracked separately, not blocking v1.
-- **In-app note companion**: today `chat-note` and Web Discuss produce a
-  Socratic prompt/context pack. The target needs a native turn-by-turn note
-  companion in the web session surface that still records evidence through the
-  same `study_progress` / teach-back / practice pathways.
 
 ---
 

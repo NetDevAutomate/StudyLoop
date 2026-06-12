@@ -129,7 +129,7 @@ again.
 studyloop now --energy medium --time 20
 studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode trace
 studyloop practice verify decorators-practice.json --task 1 --notes "what passed"
-studyloop recap today --speak
+studyloop recap today --speak --audio-file recap.wav
 studyloop mastery weak-links --topic python
 ```
 

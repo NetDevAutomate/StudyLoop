@@ -47,6 +47,7 @@ studyloop content generate-practice SOURCE --course python  # Local hands-on pra
 studyloop resume             # Where you left off (session summary)
 studyloop review             # Spaced repetition due today
 studyloop recap today        # One win, one repair target, one due item, one next action
+studyloop recap today --audio-file recap.wav  # Save a local audio recap
 studyloop web                # Flashcards, quizzes, live session dashboard
 session-export               # Export AI sessions to SQLite
 session-query search "decorators"
@@ -132,6 +133,7 @@ studyloop now --energy low --time 15 # Smaller, lower-switching recommendation
 studyloop chat-note NOTE.md --mode diagram  # Socratic prompt from a note
 studyloop practice verify TASKS.json --task 1 --notes "what passed"
 studyloop recap today --speak        # Daily audio recap through study-speak
+studyloop recap today --audio-file recap.wav
 studyloop mastery graph --topic python  # Mermaid concept dependency graph
 studyloop mastery weak-links --topic python
 studyloop review                     # Check spaced repetition due dates

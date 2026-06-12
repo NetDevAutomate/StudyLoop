@@ -98,6 +98,17 @@ For each task:
   passing tests, expected output, diagram elements, or edge cases handled.
 - "hint" is optional and should nudge the mental model without solving the task.
 - "expectedLearningOutcome" names the concept the task should make stick.
+- Add "verification" metadata for every task:
+  - "kind" is "command" only when a safe local command is obvious from the
+    setup; otherwise use "checklist" or "rubric".
+  - "successCriteria" repeats the observable done states that prove the task is
+    complete.
+  - "expectedArtifacts" names files, diagrams, outputs, or snippets the learner
+    should produce when applicable.
+  - "rubric" gives 2-4 quality checks for conceptual or diagram tasks.
+  - "evidencePrompts" gives 1-3 short questions the learner can answer as proof.
+  - "timeoutSeconds" is a realistic command timeout between 10 and 300 seconds.
+  - "setupCommand" is optional and only present when setup is safe and local.
 
 Prefer small executable or inspectable tasks over essay prompts. Include
 debugging and "apply this to a new context" tasks when the source supports them.

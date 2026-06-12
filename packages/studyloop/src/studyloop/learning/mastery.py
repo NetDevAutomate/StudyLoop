@@ -63,10 +63,12 @@ def upsert_dependency(edge: ConceptDependency) -> bool:
                 updated_at = datetime('now')
             """,
             (
-                str(uuid.uuid5(
-                    uuid.NAMESPACE_DNS,
-                    f"{edge.topic}:{edge.source_concept}:{edge.target_concept}:{edge.relation_type}",
-                )),
+                str(
+                    uuid.uuid5(
+                        uuid.NAMESPACE_DNS,
+                        f"{edge.topic}:{edge.source_concept}:{edge.target_concept}:{edge.relation_type}",
+                    )
+                ),
                 edge.topic,
                 edge.source_concept,
                 edge.target_concept,
@@ -110,9 +112,11 @@ def _seed_from_markdown(topic: str, *, max_files: int = 75) -> int:
         files = sorted(root.rglob("*.md"))[:max_files]
         for path in files:
             path_text = str(path).lower()
-            if topic_key not in path_text and topic_key not in path.read_text(
-                encoding="utf-8", errors="ignore"
-            ).lower()[:8000]:
+            if (
+                topic_key not in path_text
+                and topic_key
+                not in path.read_text(encoding="utf-8", errors="ignore").lower()[:8000]
+            ):
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
             headings = [m.group(2).strip() for m in _HEADING_RE.finditer(text)]
@@ -226,8 +230,7 @@ def seed_inferred_dependencies(topic: str) -> int:
     return count
 
 
-def list_dependencies(topic: str) -> list[ConceptDependency]:
-    seed_inferred_dependencies(topic)
+def _fetch_dependencies(topic: str) -> list[ConceptDependency]:
     conn = _connect()
     if not conn:
         return []
@@ -260,24 +263,49 @@ def list_dependencies(topic: str) -> list[ConceptDependency]:
         conn.close()
 
 
-def mastery_graph_json(topic: str) -> dict:
+def list_dependencies(topic: str) -> list[ConceptDependency]:
+    edges = _fetch_dependencies(topic)
+    if edges:
+        return edges
+    seed_inferred_dependencies(topic)
+    return _fetch_dependencies(topic)
+
+
+def mastery_graph_json(topic: str, *, max_edges: int | None = None) -> dict:
     edges = list_dependencies(topic)
+    selected_edges = edges[:max_edges] if max_edges is not None else edges
     nodes = sorted(
-        {edge.source_concept for edge in edges} | {edge.target_concept for edge in edges}
+        {edge.source_concept for edge in selected_edges}
+        | {edge.target_concept for edge in selected_edges}
     )
     return {
         "topic": topic,
         "nodes": nodes,
-        "edges": [edge.to_json_dict() for edge in edges],
+        "edges": [edge.to_json_dict() for edge in selected_edges],
+        "edge_count_total": len(edges),
+        "limited": len(selected_edges) < len(edges),
     }
 
 
 def _mermaid_id(name: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_]", "_", name).strip("_") or "concept"
+    ident = re.sub(r"[^A-Za-z0-9_]", "_", name).strip("_") or "concept"
+    if ident[0].isdigit():
+        ident = f"concept_{ident}"
+    return ident
 
 
-def mastery_graph_mermaid(topic: str) -> str:
-    graph = mastery_graph_json(topic)
+def _mermaid_label(name: str) -> str:
+    return (
+        name.replace('"', "'")
+        .replace("`", "'")
+        .replace("[", "(")
+        .replace("]", ")")
+        .replace("\n", " ")
+    )
+
+
+def mastery_graph_mermaid(topic: str, *, max_edges: int | None = None) -> str:
+    graph = mastery_graph_json(topic, max_edges=max_edges)
     lines = ["flowchart LR"]
     if not graph["edges"]:
         lines.append(f'  empty["No mastery edges found for {topic} yet"]')
@@ -291,7 +319,7 @@ def mastery_graph_mermaid(topic: str) -> str:
             ident = f"{base}_{suffix}"
             suffix += 1
         ids[node] = ident
-        label = node.replace('"', "'")
+        label = _mermaid_label(node)
         lines.append(f'  {ident}["{label}"]')
     for edge in graph["edges"]:
         source = ids[edge["source_concept"]]

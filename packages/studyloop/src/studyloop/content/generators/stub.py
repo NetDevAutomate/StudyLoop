@@ -30,6 +30,7 @@ from studyloop.content.schemas import (
     FlashcardItem,
     PracticeDeck,
     PracticeTask,
+    PracticeVerification,
     QuizDeck,
     QuizOption,
     QuizQuestion,
@@ -100,6 +101,23 @@ class StubGenerator:
                 ],
                 hint="Start with the smallest runnable version.",
                 expectedLearningOutcome=f"Apply {title} concept {i + 1} hands-on.",
+                verification=PracticeVerification(
+                    kind="rubric",
+                    successCriteria=[
+                        "A concrete attempt exists",
+                        "The expected output or explanation is checked",
+                    ],
+                    expectedArtifacts=[],
+                    rubric=[
+                        "Names the concept being practised",
+                        "Includes one edge case or failure mode",
+                    ],
+                    evidencePrompts=[
+                        "What changed after the hands-on attempt?",
+                        "What would fail if this concept was misunderstood?",
+                    ],
+                    timeoutSeconds=60,
+                ),
             )
             for i in range(count)
         ]
