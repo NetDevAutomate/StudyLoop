@@ -23,6 +23,13 @@ def practice_group() -> None:
 @click.option("--workdir", type=click.Path(file_okay=False, path_type=Path), default=None)
 @click.option("--run-command", is_flag=True, help="Allow command verification to execute.")
 @click.option("--notes", default="", help="Notes/evidence from the practice attempt.")
+@click.option(
+    "--timeout",
+    "timeout_seconds",
+    type=int,
+    default=None,
+    help="Command timeout in seconds.",
+)
 @click.option("--json", "json_output", is_flag=True, help="Output attempt result as JSON.")
 def practice_verify(
     practice_json: Path,
@@ -30,6 +37,7 @@ def practice_verify(
     workdir: Path | None,
     run_command: bool,
     notes: str,
+    timeout_seconds: int | None,
     json_output: bool,
 ) -> None:
     """Verify a practice task and record the attempt."""
@@ -40,6 +48,7 @@ def practice_verify(
             workdir=workdir,
             run_command=run_command,
             notes=notes,
+            timeout_seconds=timeout_seconds,
         )
     except (PermissionError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
@@ -60,5 +69,7 @@ def practice_verify(
         table.add_row("Exit code", str(result.exit_code))
     if result.missing_artifacts:
         table.add_row("Missing artifacts", ", ".join(result.missing_artifacts))
+    if result.evidence_prompts:
+        table.add_row("Evidence prompts", " | ".join(result.evidence_prompts))
     table.add_row("Progress recorded", "yes" if result.progress_recorded else "no")
     console.print(table)

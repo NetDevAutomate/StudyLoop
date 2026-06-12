@@ -158,10 +158,11 @@ flowchart TB
       NowCLI["studyloop now<br/>--energy --time --modality<br/>--interleave --json --speak"]
       NowAPI["GET /api/now<br/>same JSON contract"]
       ChatNote["studyloop chat-note<br/>markdown/text note → Socratic prompt"]
-      WebDiscuss["Course Explorer Discuss<br/>browser clipboard prompt"]
+      WebDiscuss["Course Explorer Discuss<br/>browser note companion"]
       PracticeCLI["studyloop practice verify<br/>checklist/rubric/command attempt"]
-      RecapCLI["studyloop recap today<br/>win, repair, due, next action"]
+      RecapCLI["studyloop recap today<br/>win, repair, due, next action<br/>optional audio file"]
       MasteryCLI["studyloop mastery<br/>graph + weak-links"]
+      MasteryWeb["Web Mastery tab<br/>bounded Mermaid graph + weak-link cards"]
       ReviewCLI["studyloop review<br/>--interleave adaptive"]
     end
 
@@ -171,11 +172,11 @@ flowchart TB
       Practice["practice.py<br/>verification + attempt recording"]
       Recap["recap.py<br/>daily synthesis"]
       Mastery["mastery.py<br/>edge seeding + Mermaid graph"]
-      Voice["voice.py<br/>study-speak wrapper"]
+      Voice["voice.py<br/>study-speak wrapper + audio export"]
     end
 
     subgraph BrowserLocal["Browser-local helpers"]
-      DiscussPrompt["components.js discussLesson()<br/>prompt from loaded readerText"]
+      DiscussPrompt["components.js note companion<br/>mode switch, next nudge,<br/>clipboard evidence command"]
     end
 
     subgraph Stores["Local Stores"]
@@ -192,6 +193,7 @@ flowchart TB
     PracticeCLI --> Practice
     RecapCLI --> Recap
     MasteryCLI --> Mastery
+    MasteryWeb --> Mastery
     ReviewCLI --> Decision
     RecapCLI --> Voice
     NowCLI --> Voice
@@ -213,10 +215,11 @@ flowchart TB
 - **One primary recommendation.** `studyloop now` and `/api/now` return one
   primary recommendation plus up to two alternates. This is an executive
   function affordance, not a content browser.
-- **Conversation is a context pack in V1.** `chat-note` validates an explicit
+- **Conversation starts as a context pack.** `chat-note` validates an explicit
   note path inside configured study/vault roots, chunks headings and code
-  blocks, and prints or speaks a mentor prompt. It does not host an independent
-  chat backend.
+  blocks, and prints or speaks a mentor prompt. Web Discuss keeps a browser-local
+  guided retrieval/nudge loop in the Course Explorer; it still does not host an
+  independent chat backend.
 - **Command verification is opt-in.** Practice tasks can carry a verification
   command, but it only runs when `--run-command` is passed. Checklist/rubric
   tasks record notes and expected-artifact status without shell execution.
@@ -225,8 +228,13 @@ flowchart TB
   Teach-back/progress records and weak links feed the next `studyloop now`
   decision.
 - **Voice is optional.** `--speak` surfaces shell out through `study-speak`.
-  Kokoro/OpenVox/macOS backend choice belongs to the terminal/MCP voice path;
-  the Web PWA keeps browser-local TTS.
+  `--audio-file` writes a recap file through OpenVox or macOS `say`. The Web PWA
+  keeps browser-local TTS for in-browser reading.
+- **Web graph rendering is bounded.** CLI mastery commands can print the full
+  graph, while `/api/mastery/graph` and `/api/mastery/weak-links` accept
+  `limit` parameters so the Web tab stays responsive on broad topics. The Web
+  tab builds Mermaid from the bounded JSON graph locally rather than issuing a
+  second graph request.
 
 ### Component → file map (active-learning loop)
 
@@ -236,10 +244,10 @@ flowchart TB
 | `studyloop now` | `packages/studyloop/src/studyloop/cli/_now.py` | rich/JSON/speak output |
 | `/api/now` | `packages/studyloop/src/studyloop/web/routes/now.py` | web API using the same decision contract |
 | Note companion | `packages/studyloop/src/studyloop/learning/note_companion.py` + `cli/_chat_note.py` | safe note loading, prompt packing, `--mode` variants |
-| Web Discuss | `packages/studyloop/src/studyloop/web/static/components.js`, `index.html`, `style.css` | clipboard prompt from loaded lesson text |
-| Practice verification | `packages/studyloop/src/studyloop/learning/practice.py` + `cli/_practice.py` | attempt recording and progress updates |
-| Daily recap | `packages/studyloop/src/studyloop/learning/recap.py` + `cli/_recap.py` | one win, repair target, due item, next action |
-| Mastery graph | `packages/studyloop/src/studyloop/learning/mastery.py` + `cli/_mastery.py` | dependency seeding, Mermaid output, weak links |
+| Web Discuss | `packages/studyloop/src/studyloop/web/static/components.js`, `index.html`, `style.css` | in-panel note companion, mode switching, prompt/evidence copy |
+| Practice verification | `packages/studyloop/src/studyloop/learning/practice.py` + `cli/_practice.py` | attempt recording, metadata surfacing, progress updates |
+| Daily recap | `packages/studyloop/src/studyloop/learning/recap.py` + `cli/_recap.py` | one win, repair target, due item, next action, optional audio file |
+| Mastery graph | `packages/studyloop/src/studyloop/learning/mastery.py` + `cli/_mastery.py` + `web/routes/mastery.py` | dependency seeding, Mermaid output, weak links, bounded Web UI API |
 | Voice doctor | `packages/studyloop/src/studyloop/doctor/voice.py` | Kokoro files, `afplay`, optional OpenVox reachability |
 | DB migration v24 | `packages/agent-session-tools/src/agent_session_tools/migrations.py` | `practice_attempts`, `concept_dependencies` |
 
@@ -713,12 +721,13 @@ The Course Explorer is a study-material browser embedded as a third layout
 column. It shares no reactive state with the session, review, or generate
 panels. Server-side content access is read-only except for the explicit
 struggle flag via `POST /api/history/struggling-topics`; the **Discuss** action
-is browser-local and copies a Socratic prompt from the already-loaded lesson to
-the clipboard.
+opens a browser-local note companion from the already-loaded lesson. The
+companion can copy prompts and evidence commands to the clipboard, but it does
+not call a backend chat endpoint.
 
 ```mermaid
 C4Component
-  title Component Diagram - Course Explorer, Search Cache, Struggle Provenance, And Discuss Prompt
+  title Component Diagram - Course Explorer, Search Cache, Struggle Provenance, And Note Companion
 
   Container(browser, "Browser UI", "Alpine.js", "Course Explorer reader and Generate tab")
   Container(api, "FastAPI Web App", "Python", "Explorer and history routes")
@@ -731,7 +740,7 @@ C4Component
   Component(treeFingerprint, "tree fingerprint", "Python", "Cache key from visible source tree")
   Component(searchRoute, "GET /api/explorer/search", "FastAPI", "Refreshes and queries derived FTS")
   Component(historyRoute, "POST /api/history/struggling-topics", "FastAPI", "Writes web struggle provenance")
-  Component(discussPrompt, "discussLesson()", "Alpine.js", "Builds Socratic prompt from loaded lesson text and copies to clipboard")
+  Component(discussPrompt, "openCompanion() / buildCompanionPrompt()", "Alpine.js", "Builds browser-local Socratic prompt, nudge, and evidence command from loaded lesson text")
   Component(scopeResolver, "resolve_scope topic_struggles", "Python", "Uses provenance when generating targeted decks")
 
   Rel(browser, explorerComponent, "Opens Courses panel")
@@ -743,7 +752,7 @@ C4Component
   Rel(explorerFts, contentBase, "Indexes source markdown", "Filesystem")
   Rel(explorerComponent, historyRoute, "Marks lesson as struggling", "JSON/HTTPS")
   Rel(historyRoute, sessionDb, "Writes source_course/source_section/source_publisher", "SQLite")
-  Rel(explorerComponent, discussPrompt, "Copies active-recall prompt", "Clipboard")
+  Rel(explorerComponent, discussPrompt, "Opens local note companion; copies prompt/evidence on request", "Browser state + Clipboard")
   Rel(scopeResolver, sessionDb, "Reads provenance for topic_struggles", "SQLite")
 ```
 
@@ -762,7 +771,7 @@ flowchart TB
       MermaidPass["_renderMermaidPlaceholders(rootEl)<br/>──────────<br/>Second $nextTick pass;<br/>mermaid.render() per placeholder div"]
       SearchBox["onSearchInput() (debounced)<br/>──────────<br/>Fuse.js instant over titles +<br/>GET /api/explorer/search (FTS5 bodies);<br/>results grouped by provider"]
       StruggleBtn["markStruggle()<br/>→ POST /api/history/struggling-topics<br/>──────────<br/>confidence='struggling', created_by='web';<br/>surfaces in next deck gen scope"]
-      DiscussBtn["discussLesson()<br/>──────────<br/>_mdToPlainText(readerText);<br/>copies Socratic prompt to clipboard;<br/>no backend call"]
+      DiscussBtn["openCompanion()<br/>──────────<br/>buildCompanionPrompt();<br/>mode switch + next nudge;<br/>copy prompt/evidence on request;<br/>no backend call"]
       TTSBtn["readAloud() / stopReading()<br/>──────────<br/>Gated: ttsAvailable = !!window.ttsEngine;<br/>button hidden when engine absent"]
     end
 
@@ -804,10 +813,12 @@ flowchart TB
 **Key invariants**:
 
 - **Read-only over content.** The explorer API never writes to `content.base_path`. Every content endpoint resolves paths with `is_relative_to(base)` and restricts suffixes to `.md`, `.markdown`, `.txt`.
-- **Discuss is clipboard-only in V1.** `discussLesson()` builds the prompt in
-  the browser from `readerText` that was already fetched for display. It writes
-  to `navigator.clipboard`, never calls a backend chat endpoint, and does not
-  mutate `sessions.db`.
+- **Discuss is browser-local in V1.** `openCompanion()` builds a guided note
+  companion in the browser from `readerText` that was already fetched for
+  display. `buildCompanionPrompt()` and `buildCompanionFollowup()` provide the
+  prompt, mode-specific nudge, and evidence command. Clipboard writes only
+  happen when the learner chooses a copy action, and the flow never calls a
+  backend chat endpoint or mutates `sessions.db`.
 - **Tree cache is keyed by visible source state.** `GET /api/explorer/tree` stores the provider/course tree on `app.state` behind `_tree_fingerprint(base)`, which walks visible providers, courses, and source files while skipping dot directories and generated output directories. Adding/deleting nested courses refreshes the tree; writing generated decks does not.
 - **FTS index is a derived cache.** `explorer_fts.db` lives in `<session_db_dir>/` alongside `sessions.db` but is never opened by the session migration system. It can be deleted and will be rebuilt on the next search call. No schema migration is required.
 - **TTS is gated by feature detection.** `ttsAvailable = !!window.ttsEngine`. The "▶ Listen" button is `x-show="ttsAvailable && activeLesson"` — hidden entirely when the `browser-neural-tts` worktree is not merged.
@@ -822,7 +833,7 @@ flowchart TB
 | `_stripFrontmatter()` | `components.js` | ~line 107; strips YAML front matter before render |
 | `_renderMermaidPlaceholders()` | `components.js` | ~line 171; second-pass mermaid.render() after `$nextTick` |
 | `_mdToPlainText()` | `components.js` | ~line 129; strips markdown to plain text for TTS |
-| `discussLesson()` | `components.js` | copies Socratic active-recall prompt from the current lesson to clipboard |
+| `openCompanion()` / `buildCompanionPrompt()` / `buildCompanionFollowup()` | `components.js` | opens the in-panel Socratic companion, builds mode-specific prompts and next nudges, and exposes copy actions |
 | `<aside class="course-explorer-panel">` | `packages/studyloop/src/studyloop/web/static/index.html` | ~line 248; browser + reader views |
 | Courses sidebar button + `$store.explorer` | `index.html` | ~line 225 (button), ~line 1686 (store) |
 | Mermaid + Fuse.js `<script>` tags | `index.html` | ~line 39 (mermaid), ~line 48 (fuse) |
