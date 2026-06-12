@@ -204,6 +204,26 @@ The **Discuss** action does not call a backend endpoint; it builds the prompt in
 
 All content endpoints are path-traversal guarded (resolved path must be a child of `content.base_path`; suffix restricted to `.md`, `.markdown`, `.txt`). The provider/course tree cache is keyed from the visible source tree, so adding or deleting nested courses refreshes the browser data while generated output folders do not invalidate the tree. The FTS index lives in its own file (`<session_db_dir>/explorer_fts.db`) — it is a derived cache, never touches `sessions.db`, and requires no schema migration.
 
+### From Lesson To Evidence
+
+```mermaid
+flowchart LR
+    Lesson["Open lesson<br/>markdown, diagrams, code"]
+    Discuss["Discuss<br/>browser-local companion"]
+    Retrieval["Rough retrieval attempt<br/>recall, diagram, trace, teach-back, repair"]
+    Nudge["Next nudge<br/>small repair prompt"]
+    Evidence["Copy evidence command<br/>studyloop progress ..."]
+    Now["studyloop now<br/>next best action"]
+    Mastery["Mastery tab<br/>bounded graph + weak links"]
+
+    Lesson --> Discuss
+    Discuss --> Retrieval
+    Retrieval --> Nudge
+    Nudge --> Evidence
+    Evidence --> Now
+    Evidence --> Mastery
+```
+
 ---
 
 ## Mastery
