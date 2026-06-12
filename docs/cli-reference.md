@@ -324,7 +324,8 @@ session-query context SESSION_ID         # Generate context for resuming
 session-query stats                      # Database statistics
 session-sync push|pull|sync REMOTE       # Sync database across machines
 session-maint vacuum|reindex|schema|archive  # Database maintenance
-study-speak "text" [-v VOICE] [-s SPEED] # Speak text aloud using TTS
+study-speak "text" [-b openvox|kokoro|qwen3|macos] [-v VOICE] [-s SPEED]
+                                          # Speak text aloud using local TTS
 ```
 
 ### Supported Sources

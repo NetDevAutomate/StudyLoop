@@ -1,11 +1,11 @@
 # Voice Output
 
-StudyLoop has two complementary neural-TTS paths, both built on Kokoro-82M for natural voice quality (designed for AuDHD learners who benefit from auditory reinforcement alongside visual text):
+StudyLoop has two complementary neural-TTS paths for AuDHD learners who benefit from auditory reinforcement alongside visual text:
 
-- **`study-speak` CLI** (this page, below) — speaks agent responses aloud during terminal sessions via `kokoro-onnx` (server-side, on CPU).
+- **`study-speak` CLI** (this page, below) — speaks agent responses aloud during terminal sessions via OpenVox, `kokoro-onnx`, Qwen3/ltts, or macOS `say`.
 - **Web PWA in-browser TTS** ([jump to section](#web-pwa-voice-in-browser-neural-tts)) — synthesises speech entirely in the browser via WebGPU/WASM, no remote API. Same model, runs on-device.
 
-`study-speak` is a TTS CLI tool that speaks agent responses aloud using kokoro-onnx — an 82M parameter model with the `am_michael` voice.
+`study-speak` is a TTS CLI tool that speaks agent responses aloud. Kokoro remains the safest default because it is controlled directly by StudyLoop; OpenVox is an optional terminal/agent backend when you already have its local API enabled.
 
 ---
 
@@ -80,11 +80,57 @@ When enabled, the agent speaks core questions, answers, key principles, and teac
 
 ```yaml
 tts:
-  backend: kokoro        # kokoro | qwen3 | macos
+  backend: kokoro        # kokoro | openvox | qwen3 | macos
   voice: am_michael      # kokoro voices: am_michael, af_heart, bf_emma, etc.
   speed: 1.0             # 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast
   macos_voice: Samantha  # fallback voice for macOS say
 ```
+
+Optional OpenVox profile:
+
+```yaml
+tts:
+  backend: openvox
+  openvox_base_url: http://127.0.0.1:8000/v1
+  openvox_model: kokoro
+  openvox_voice: af_bella
+  openvox_language: en
+  openvox_response_format: wav
+  openvox_timeout: 30
+
+  # Existing fallback settings still apply.
+  voice: am_michael      # kokoro voices: am_michael, af_heart, bf_emma, etc.
+  speed: 1.0             # 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast
+  macos_voice: Samantha  # fallback voice for macOS say
+```
+
+### OpenVox Local API Backend
+
+[OpenVox](https://openvoxai.com/) runs a local macOS API server with low-latency voices. This is best treated as an optional backend for terminal/MCP sessions, not as the primary Web PWA voice engine. StudyLoop calls the documented local endpoint at `http://127.0.0.1:8000/v1/audio/speech`, saves the returned WAV to a temporary file, plays it with `afplay`, and then removes the temporary file.
+
+Smoke test:
+
+```bash
+study-speak "Explain this back in your own words." -b openvox
+```
+
+Manual API check:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/v1/audio/speech" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "kokoro",
+    "input": "StudyLoop is speaking through OpenVox.",
+    "language": "en",
+    "voice": "af_bella",
+    "response_format": "wav"
+  }' \
+  --output openvox-test.wav
+afplay openvox-test.wav
+```
+
+If OpenVox is closed, busy, unreachable, or its Local API toggle is off, `study-speak` continues through the existing fallback chain instead of blocking the study session.
 
 ### Available Kokoro Voices
 
@@ -177,6 +223,7 @@ study-speak "text"                                        # Speak text
 study-speak -                                              # Read from stdin
 study-speak "text" -v af_heart                            # Different voice
 study-speak "text" -s 1.2                                 # Faster speed
+study-speak "text" -b openvox -v af_bella                 # Use OpenVox local API
 study-speak "text" -b macos                               # Force macOS fallback
 study-speak "text" -b qwen3 --instruct "speak warmly"    # Qwen3 with emotion
 ```
@@ -187,7 +234,8 @@ study-speak "text" -b qwen3 --instruct "speak warmly"    # Qwen3 with emotion
 
 | Backend | Model Size | Latency | Notes |
 |---------|-----------|---------|-------|
-| `kokoro` (default) | 82M params | ~1.5s | ONNX runtime on CPU. Best balance of quality and speed. |
+| `kokoro` (default) | 82M params | ~1.5s | ONNX runtime on CPU. Best balance of quality, speed, and StudyLoop-controlled reliability. |
+| `openvox` | Depends on selected OpenVox model | Low | Optional local macOS API backend for terminal/MCP voice when the OpenVox Local API is enabled. Falls back gracefully if unavailable. |
 | `qwen3` (via ltts) | 1.7B params | 30–60s | Highest quality. Emotional control via `--instruct`. Apple Silicon MPS. Only use when quality matters more than speed. |
 | `macos` (say) | Built-in | Instant | Low quality. Last resort fallback. |
 
@@ -203,6 +251,9 @@ study-speak "text" -b qwen3 --instruct "speak warmly"    # Qwen3 with emotion
 
 **No sound**
 :   Check for errors: `study-speak "test" 2>&1`. Verify models exist in `~/.cache/kokoro-onnx/`.
+
+**OpenVox does not speak**
+:   Start the OpenVox app/local API server, then run `study-speak "test" -b openvox`. If OpenVox returns `429`, it is already generating or preloading a model; wait a moment and retry. StudyLoop will fall back automatically for normal agent sessions.
 
 **AirPlay latency**
 :   Short clips (<2s) may not play through AirPlay due to buffer timing. Use longer text or switch to local speakers.
