@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import click
 from rich.table import Table
@@ -17,11 +18,27 @@ from studyloop.history import (
 
 
 @click.command()
-def review() -> None:
+@click.option(
+    "--interleave",
+    type=click.Choice(["off", "adaptive"]),
+    default="off",
+    show_default=True,
+    help="Show adaptive interleaving guidance after due items.",
+)
+@click.option(
+    "--energy",
+    type=click.Choice(["low", "medium", "high"]),
+    default="medium",
+    show_default=True,
+    help="Energy level for adaptive interleaving guidance.",
+)
+def review(interleave: str, energy: str) -> None:
     """Check what's due for spaced repetition review."""
     due = spaced_repetition_due(TOPIC_KEYWORDS)
     if not due:
         console.print("[green]Nothing due for review[/green]")
+        if interleave == "adaptive":
+            _print_interleave_guidance(energy)
         return
 
     table = Table(title="Spaced Repetition \u2014 Due for Review")
@@ -45,6 +62,21 @@ def review() -> None:
         )
 
     console.print(table)
+    if interleave == "adaptive":
+        _print_interleave_guidance(energy)
+
+
+def _print_interleave_guidance(energy: str) -> None:
+    from studyloop.learning.decision import INTERLEAVE_RATIOS, EnergyLevel
+
+    energy_key = cast("EnergyLevel", energy if energy in INTERLEAVE_RATIOS else "medium")
+    ratio = INTERLEAVE_RATIOS[energy_key]
+    parts = " | ".join(f"{name}: {pct}%" for name, pct in ratio.items())
+    console.print(f"\n[bold]Adaptive interleave mix:[/bold] {parts}")
+    if energy == "low":
+        console.print(
+            "[dim]Low energy: keep transfer gentle and stay close to current/due repair.[/dim]"
+        )
 
 
 @click.command()

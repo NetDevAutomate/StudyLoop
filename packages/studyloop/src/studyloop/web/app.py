@@ -80,12 +80,14 @@ def create_app(
         courses,
         explorer,
         history,
+        now,
         session,
     )
 
     app.include_router(courses.router, prefix="/api")
     app.include_router(cards.router, prefix="/api")
     app.include_router(history.router, prefix="/api")
+    app.include_router(now.router, prefix="/api")
     app.include_router(session.router, prefix="/api")
     app.include_router(content_gen.router, prefix="/api")
     app.include_router(explorer.router, prefix="/api")

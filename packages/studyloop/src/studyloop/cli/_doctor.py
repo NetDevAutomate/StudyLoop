@@ -45,6 +45,7 @@ def _get_registry():
     from studyloop.doctor.deps import check_optional_deps, check_system_binaries
     from studyloop.doctor.harness import check_harness_export
     from studyloop.doctor.updates import check_pypi_versions
+    from studyloop.doctor.voice import check_voice_readiness
 
     registry = CheckerRegistry()
     for fn in [
@@ -71,6 +72,7 @@ def _get_registry():
     registry.register("agents")(check_local_llm_servers)
     registry.register("harness")(check_harness_export)
     registry.register("updates")(check_pypi_versions)
+    registry.register("voice")(check_voice_readiness)
     return registry
 
 

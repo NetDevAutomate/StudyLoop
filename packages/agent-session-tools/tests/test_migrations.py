@@ -722,3 +722,45 @@ class TestMigrationV22:
         assert row[0] is None
         assert row[1] is None
         assert row[2] is None
+
+
+class TestMigrationV24:
+    """Test active-learning tables for practice attempts and mastery graph edges."""
+
+    def test_creates_practice_attempts_table(self, fresh_db):
+        migrate(fresh_db)
+        tables = {
+            r[0]
+            for r in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        assert "practice_attempts" in tables
+
+    def test_creates_concept_dependencies_table(self, fresh_db):
+        migrate(fresh_db)
+        tables = {
+            r[0]
+            for r in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        assert "concept_dependencies" in tables
+
+    def test_concept_dependencies_unique_edge_constraint(self, fresh_db):
+        migrate(fresh_db)
+        fresh_db.execute(
+            """
+            INSERT INTO concept_dependencies
+                (id, topic, source_concept, target_concept, relation_type)
+            VALUES ('1', 'python', 'decorators', 'closures', 'prerequisite')
+            """
+        )
+        with pytest.raises(sqlite3.IntegrityError):
+            fresh_db.execute(
+                """
+                INSERT INTO concept_dependencies
+                    (id, topic, source_concept, target_concept, relation_type)
+                VALUES ('2', 'python', 'decorators', 'closures', 'prerequisite')
+                """
+            )
