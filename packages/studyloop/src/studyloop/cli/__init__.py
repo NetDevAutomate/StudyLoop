@@ -20,6 +20,10 @@ from studyloop.cli._lazy import LazyGroup
         "audio": "studyloop.cli._sync:audio",
         "topics": "studyloop.cli._sync:topics",
         "dedup": "studyloop.cli._sync:dedup",
+        # _now.py — shared learning-decision engine
+        "now": "studyloop.cli._now:now",
+        # _chat_note.py — Socratic note companion context packs
+        "chat-note": "studyloop.cli._chat_note:chat_note",
         # _setup.py — first-run setup wizard
         "setup": "studyloop.cli._setup:setup",
         # _install.py — typed installation helpers
@@ -36,11 +40,14 @@ from studyloop.cli._lazy import LazyGroup
         "resume": "studyloop.cli._review:resume",
         "streaks": "studyloop.cli._review:streaks",
         "bridge": "studyloop.cli._review:bridge_group",
+        "recap": "studyloop.cli._recap:recap_group",
+        "mastery": "studyloop.cli._mastery:mastery_group",
         # _teachback.py — teach-back assessment scoring
         "teachback": "studyloop.cli._teachback:teachback",
         "teachback-history": "studyloop.cli._teachback:teachback_history",
         # _content.py — content pipeline (pdf splitting, NotebookLM, syllabus)
         "content": "studyloop.cli._content:content_group",
+        "practice": "studyloop.cli._practice:practice_group",
         # _web.py — web UI
         "web": "studyloop.cli._web:web",
         # _session.py — live study session management

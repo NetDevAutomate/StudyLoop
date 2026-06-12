@@ -507,6 +507,13 @@
                     aria-label="Mark as struggling">
               <span x-text="struggleMarked ? '✓ Marked' : 'Struggling?'"></span>
             </button>
+            <button class="explorer-discuss-btn"
+                    x-show="activeLesson"
+                    @click="discussLesson()"
+                    :title="discussionCopied ? 'Prompt copied' : 'Copy Socratic discussion prompt'"
+                    aria-label="Discuss this lesson">
+              <span x-text="discussionCopied ? '✓ Copied' : 'Discuss'"></span>
+            </button>
             <!-- Phase 6: read-aloud. Hidden unless the TTS engine is present
                  (provided by the browser-neural-tts worktree). Toggles play/stop
                  from isReading, which the tts:state-change listener drives. -->
@@ -524,6 +531,10 @@
                class="explorer-error"
                style="padding:2px 12px 4px;font-size:0.75rem;"
                x-text="struggleError"></div>
+          <div x-show="discussionError"
+               class="explorer-error"
+               style="padding:2px 12px 4px;font-size:0.75rem;"
+               x-text="discussionError"></div>
 
           <!-- Loading state -->
           <div x-show="readerLoading" class="explorer-loading">

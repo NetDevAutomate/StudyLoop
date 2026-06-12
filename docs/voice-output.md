@@ -253,7 +253,7 @@ study-speak "text" -b qwen3 --instruct "speak warmly"    # Qwen3 with emotion
 :   Check for errors: `study-speak "test" 2>&1`. Verify models exist in `~/.cache/kokoro-onnx/`.
 
 **OpenVox does not speak**
-:   Start the OpenVox app/local API server, then run `study-speak "test" -b openvox`. If OpenVox returns `429`, it is already generating or preloading a model; wait a moment and retry. StudyLoop will fall back automatically for normal agent sessions.
+:   Start the OpenVox app/local API server, then run `studyloop doctor --category voice` and `study-speak "test" -b openvox`. If OpenVox returns `429`, it is already generating or preloading a model; wait a moment and retry. StudyLoop will fall back automatically for normal agent sessions.
 
 **AirPlay latency**
 :   Short clips (<2s) may not play through AirPlay due to buffer timing. Use longer text or switch to local speakers.

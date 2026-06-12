@@ -516,6 +516,7 @@ Test OpenVox voice:
 
 ```bash
 study-speak "StudyLoop is speaking through OpenVox." -b openvox
+studyloop doctor --category voice
 ```
 
 If OpenVox is not running, its Local API toggle is off, or it is busy, StudyLoop falls back to the existing local voice path so the study session can continue.

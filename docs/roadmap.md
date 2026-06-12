@@ -4,15 +4,22 @@
 
 ## vNext — AuDHD Deep Technical Learning Loops
 
-These are the next six high-impact improvements for turning Obsidian notes into active learning. See [AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md) for the detailed implementation plan.
+These six high-impact improvements for turning Obsidian notes into active learning now have a first vertical slice. See [AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md) for the detailed implementation notes and follow-up boundaries.
 
-- [ ] **What Should I Study Now?** — one next action based on due reviews, struggles, energy, modality, and available time.
-- [ ] **Conversational Obsidian note companion** — ask questions from a note, trace code, inspect diagrams, and finish with evidence.
-- [ ] **Practice-task verification** — make hands-on tasks checkable through tests, output, diagrams, traces, or rubrics.
-- [ ] **Daily audio recap** — speak one win, one repair target, and one next action through the configured local voice path.
-- [ ] **Mastery graph** — show concept dependencies, weak links, due concepts, and bridge concepts visually.
-- [ ] **Interleaving mode** — mix old, weak, current, and transfer material without overwhelming low-energy sessions.
+- [x] **What Should I Study Now?** — `studyloop now` recommends one next action based on due reviews, struggles, energy, modality, and available time.
+- [x] **Conversational Obsidian note companion** — `studyloop chat-note` builds a Socratic context pack from a note, including diagram/trace/teach-back modes.
+- [x] **Practice-task verification** — `studyloop practice verify` records checklist/rubric or explicit command verification attempts.
+- [x] **Daily audio recap** — `studyloop recap today --speak` speaks one win, one repair target, one due item, and one next action through `study-speak`.
+- [x] **Mastery graph** — `studyloop mastery graph` and `studyloop mastery weak-links` expose concept dependencies and blockers.
+- [x] **Interleaving mode** — `studyloop now --interleave adaptive` and `studyloop review --interleave adaptive` apply energy-based mixes.
 - [x] **OpenVox optional CLI voice backend** — `study-speak -b openvox` calls the local OpenVox API for terminal/MCP sessions and falls back gracefully.
+
+Follow-up refinements:
+
+- [ ] Promote note companion prompts into an in-app conversational UI.
+- [ ] Add richer mastery graph styling in the Web UI.
+- [ ] Add optional recap audio-file export.
+- [ ] Expand generated practice decks with more command/artifact verification metadata.
 
 ## v1.0 — Foundation
 
