@@ -12,12 +12,13 @@
 
 ## What Does It Do?
 
-Four things:
+Five things:
 
 1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
 2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes, flashcards, and hands-on practice tasks locally, without requiring external notebook services.
-3. **Flashcard review** — Spaced repetition (SM-2) via a PWA web app. Works on phone, tablet, laptop.
-4. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
+3. **Active learning decisions** — `studyloop now` chooses one useful next action from due reviews, weak concepts, practice tasks, energy, modality, and time available.
+4. **Flashcard review** — Spaced repetition (SM-2) via a PWA web app. Works on phone, tablet, laptop.
+5. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
 
 Built by a neurodivergent learner transitioning from networking to data engineering. If you're self-teaching and AuDHD, this might help.
 
@@ -39,10 +40,13 @@ studyloop study "Python decorators" --energy 6
 # studyloop web              # Alternative: browser picker + ACP chat
 
 # Supporting workflows
+studyloop now                # One recommended study action for your energy/time
+studyloop chat-note NOTE.md  # Turn one note into a Socratic context pack
 studyloop content generate-cards SOURCE --course python     # Local quiz + flashcard JSON
 studyloop content generate-practice SOURCE --course python  # Local hands-on practice JSON
 studyloop resume             # Where you left off (session summary)
 studyloop review             # Spaced repetition due today
+studyloop recap today        # One win, one repair target, one due item, one next action
 studyloop web                # Flashcards, quizzes, live session dashboard
 session-export               # Export AI sessions to SQLite
 session-query search "decorators"
@@ -120,7 +124,15 @@ studyloop content discover           # Preview configured study sources
 studyloop content ingest --dry-run   # Plan course-material ingest
 
 # Review & AuDHD progress
+studyloop now                        # Recommend one next study action
+studyloop now --energy low --time 15 # Smaller, lower-switching recommendation
+studyloop chat-note NOTE.md --mode diagram  # Socratic prompt from a note
+studyloop practice verify TASKS.json --task 1 --notes "what passed"
+studyloop recap today --speak        # Daily audio recap through study-speak
+studyloop mastery graph --topic python  # Mermaid concept dependency graph
+studyloop mastery weak-links --topic python
 studyloop review                     # Check spaced repetition due dates
+studyloop review --interleave adaptive --energy medium
 studyloop struggles --days 30        # Find recurring struggle topics
 studyloop wins                       # Learning wins (mastered / confident concepts)
 studyloop resume                     # Where you left off (session summary)
@@ -187,6 +199,7 @@ Launch with `studyloop web`. Accessible from any device on the network.
 - Click a course to list its lessons; click a lesson to read rendered markdown + mermaid diagrams + syntax-highlighted code
 - Global fuzzy search (Fuse.js, instant over titles) + full-text search (SQLite FTS5, over lesson bodies)
 - "Struggling?" button in the reader flags a lesson to the session DB; surfaces in next study session and deck generation
+- "Discuss" opens the current lesson as a note-companion prompt so the reader becomes an active recall or diagram session
 - "▶ Listen" TTS read-aloud button (appears only when the `browser-neural-tts` feature is installed)
 
 **Live session dashboard** (`/session`):
@@ -226,8 +239,8 @@ sudo apt install ttyd        # Linux (or build from source)
 - [System Overview](docs/system-overview.md) — architecture and data flow diagrams
 - [Repository Standards](docs/standards/repo-standards.md)
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
-- [AuDHD Learning Loop Implementation](docs/audhd-learning-loop-implementation.md)
-- [AuDHD Deep Technical Learning Roadmap](docs/audhd-deep-technical-learning-roadmap.md)
+- [AuDHD Learning Loop Implementation](docs/audhd-learning-loop-implementation.md) — how notes become recall, practice, verification, recap, and mastery evidence
+- [AuDHD Deep Technical Learning Roadmap](docs/audhd-deep-technical-learning-roadmap.md) — implementation status and next refinements for the six active-learning features
 - [Voice Output Guide](docs/voice-output.md)
 - [Contributing](CONTRIBUTING.md)
 

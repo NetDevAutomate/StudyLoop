@@ -37,7 +37,20 @@ studyloop audio TOPIC                     # Legacy optional audio overview
 studyloop dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
 
 # Review
+studyloop now                            # Recommend one next study action
+studyloop now --energy low --time 15     # Smaller, lower-switching recommendation
+studyloop now --modality hands-on --interleave adaptive
+studyloop chat-note NOTE.md --mode recall      # Build a Socratic context pack
+studyloop chat-note NOTE.md --mode diagram --voice
+studyloop practice verify TASKS.json --task 1 --notes "what passed"
+studyloop practice verify TASKS.json --task 1 --run-command --workdir .
+studyloop recap today                    # One win, repair target, due item, next action
+studyloop recap today --speak            # Speak through study-speak
+studyloop mastery graph --topic python   # Mermaid concept graph
+studyloop mastery graph --topic python --format json
+studyloop mastery weak-links --topic python
 studyloop review                          # Check spaced repetition due dates
+studyloop review --interleave adaptive --energy medium
 studyloop progress                        # Summarize local course progress
 studyloop progress --course python        # Summarize one course
 studyloop progress --json                 # Machine-readable progress summary
@@ -138,6 +151,7 @@ studyloop doctor                          # Full health check (Rich table)
 studyloop doctor --json                   # JSON output (for AI agents and CI)
 studyloop doctor --quiet                  # One-line summary
 studyloop doctor --category core          # Check specific category only
+studyloop doctor --category voice         # Check Kokoro, afplay, and optional OpenVox
 studyloop doctor --fix                    # Apply safe automatic fixes
 studyloop update --json                   # Machine-readable update info
 studyloop upgrade --dry-run               # Preview what would change
@@ -168,13 +182,64 @@ agent/harness files.
 | `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `harness` (session-export wiring), `updates` (source-install/version metadata).
+**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `voice` (Kokoro model files, `afplay`, and OpenVox reachability when configured), `harness` (session-export wiring), `updates` (source-install/version metadata).
 
 ### Spaced Repetition Intervals
 
 Review schedule: **1 → 3 → 7 → 14 → 30 days**
 
 `studyloop review` shows what's due based on active learning evidence in `study_progress`, such as recorded concept progress and teach-back scores.
+
+Use `studyloop review --interleave adaptive --energy low|medium|high` when you want review to show the active interleaving mix. Low energy keeps the mix close to current or due repair; medium and high energy allow more transfer and weak-link work.
+
+### Active learning decision loop
+
+`studyloop now` is the shared recommendation engine for the CLI and web API (`GET /api/now`). It returns one primary recommendation and up to two alternates. Each recommendation includes the concept, topic or course, reason, action type, estimated minutes, source, score, and the command to record evidence when done.
+
+```bash
+studyloop now
+studyloop now --energy low --time 15
+studyloop now --modality hands-on --interleave adaptive
+studyloop now --json
+studyloop now --speak
+```
+
+Default ranking is due review first, then struggling or low teach-back score, then active-course continuity, then modality match. Low energy suppresses hard context switching.
+
+`studyloop chat-note` turns one markdown/text note into a compact Socratic context pack. V1 prints or speaks the mentor prompt; it does not run a separate chat backend.
+
+```bash
+studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md
+studyloop chat-note NOTE.md --mode diagram
+studyloop chat-note NOTE.md --mode trace --json
+```
+
+Modes are `recall`, `diagram`, `trace`, `teachback`, and `repair`. The command validates that the note is inside configured vault/content roots, chunks by headings and code blocks, and ends with a suggested `studyloop progress` or `studyloop teachback` command.
+
+`studyloop practice verify` records an attempt against a generated practice deck. Command verification only runs when `--run-command` is explicit; non-command tasks use notes plus expected-artifact checks as a rubric.
+
+```bash
+studyloop practice verify course-practice.json --task 1 --notes "diagram matched"
+studyloop practice verify course-practice.json --task 2 --run-command --workdir .
+```
+
+`studyloop recap today` compresses the day into one win, one repair target, one due item, and one next action. `--speak` calls `study-speak`, so Kokoro/OpenVox/macOS backend configuration is inherited.
+
+```bash
+studyloop recap today
+studyloop recap today --json
+studyloop recap today --speak
+```
+
+`studyloop mastery` exposes concept dependencies and blockers.
+
+```bash
+studyloop mastery graph --topic python
+studyloop mastery graph --topic python --format json
+studyloop mastery weak-links --topic python
+```
+
+The graph seeds lightweight concept edges from headings, tags, backlinks, existing concept relations, and knowledge bridges, then renders Mermaid by default.
 
 ### Progress
 

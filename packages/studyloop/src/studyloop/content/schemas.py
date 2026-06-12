@@ -267,6 +267,17 @@ class QuizDeck(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class PracticeVerification(BaseModel):
+    """Optional machine/self-verification metadata for a practice task."""
+
+    kind: Literal["checklist", "rubric", "command"]
+    success_criteria: list[NonEmptyStr] = Field(min_length=1, alias="successCriteria")
+    command: str = ""
+    expected_artifacts: list[NonEmptyStr] = Field(default_factory=list, alias="expectedArtifacts")
+
+    model_config = {"extra": "forbid", "populate_by_name": True}
+
+
 class PracticeTask(BaseModel):
     """A concrete hands-on exercise for active technical practice."""
 
@@ -276,6 +287,7 @@ class PracticeTask(BaseModel):
     success_criteria: list[NonEmptyStr] = Field(min_length=1, alias="successCriteria")
     hint: str = ""
     expected_learning_outcome: NonEmptyStr = Field(alias="expectedLearningOutcome")
+    verification: PracticeVerification | None = None
 
     model_config = {"extra": "forbid", "populate_by_name": True}
 
