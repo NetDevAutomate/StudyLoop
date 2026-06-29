@@ -6,6 +6,7 @@ from .bedrock import BedrockProxyExporter
 from .claude import ClaudeCodeExporter
 from .codex import CodexExporter
 from .gemini import GeminiCliExporter
+from .grok import GrokExporter
 from .kiro import KiroCliExporter
 from .litellm import LitellmExporter
 from .opencode import OpenCodeExporter
@@ -18,6 +19,7 @@ __all__ = [
     "commit_batch",
     "ClaudeCodeExporter",
     "CodexExporter",
+    "GrokExporter",
     "KiroCliExporter",
     "GeminiCliExporter",
     "AiderExporter",
@@ -34,6 +36,7 @@ __all__ = [
 EXPORTERS = {
     "claude": ClaudeCodeExporter(),
     "codex": CodexExporter(),
+    "grok": GrokExporter(),
     "kiro": KiroCliExporter(),
     "gemini": GeminiCliExporter(),
     "opencode": OpenCodeExporter(),

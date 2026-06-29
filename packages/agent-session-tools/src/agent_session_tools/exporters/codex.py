@@ -1,75 +1,77 @@
 """OpenAI Codex CLI session exporter.
 
 Codex CLI (github.com/openai/codex) stores conversation rollouts as JSONL files
-under ``~/.codex/sessions/``.  Each file represents one session and is named
-``<session-id>.jsonl`` (the filename stem is used as the stable session ID).
+under a **date-nested** tree::
 
-**Assumed on-disk format** (no live data available on this machine — see note below)
-====================================================================================
-Each line is a JSON object representing one conversation event.  The fields we
-consume are:
+    ~/.codex/sessions/YYYY/MM/DD/rollout-<ISO-ts>-<uuid>.jsonl
 
-    {
-        "id":        "<uuid>",          # optional — random UUID generated if absent
-        "role":      "user" | "assistant" | "system",
-        "content":   "<message text>",  # primary text field
-        "text":      "<message text>",  # fallback if 'content' is absent
-        "timestamp": "<ISO-8601 or unix-float>",  # optional
-        "model":     "<model-id>"       # optional, typically on assistant turns
-    }
+Each file is one session.  Lines are tagged events; we consume two shapes:
 
-Content may alternatively be an array of ``{"type": "text", "text": "…"}`` objects
-(matching the OpenAI Chat Completions content-part format); these are flattened to
-plain text separated by newlines.
+``session_meta`` (first line) — session-level metadata::
 
-Session-level metadata may appear in the first line as a ``type: "session_start"``
-object with a ``project_path`` field; this is extracted when present but is not
-required.
+    {"timestamp": "...", "type": "session_meta",
+     "payload": {"id": "<uuid>", "cwd": "/path/to/project",
+                 "git": {"branch": "main", "commit_hash": "...", ...},
+                 "model_provider": "...", ...}}
 
-**Why these assumptions?**
-The Codex CLI source (as of the May 2026 release) shows its logging module writing
-one JSON object per line in this shape.  If real sessions use different field names
-(e.g. ``"message"`` instead of ``"content"``), update ``_parse_line()`` — the rest
-of the exporter is unaffected.
+``response_item`` with ``payload.type == "message"`` — a conversation turn::
 
-**Deduplication**: fingerprint-skip (``mtime:size``) matching ``claude.py``.
+    {"timestamp": "...", "type": "response_item",
+     "payload": {"type": "message", "role": "user" | "assistant" | "developer",
+                 "content": [{"type": "input_text" | "output_text", "text": "..."}],
+                 "model": "<model-id>" | null}}
+
+Other ``response_item`` payload types (``reasoning``, ``function_call``,
+``function_call_output``, ``custom_tool_call*``) and other top-level types
+(``event_msg``, ``turn_context``) are skipped — only real message turns are
+stored.  The ``developer`` role is the injected system prompt (large, noise for
+a learning corpus) and is skipped; only ``user`` and ``assistant`` are kept.
+
+The per-message timestamp lives on the **envelope** (``obj["timestamp"]``), not
+the payload.
+
+**Deduplication**: fingerprint-skip (``mtime:size``) like ``claude.py``.  Real
+rollouts carry no stable per-message id, so message ids are derived as
+``<session_id>-<seq>`` (deterministic + idempotent) and existing messages are
+deleted before a changed file is re-imported, so a re-import never duplicates
+or strands rows.
 """
 
 import json
 import sqlite3
-import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ..utils import file_fingerprint
 from .base import ExportStats, commit_batch
 
-# Codex CLI session directory
+# Codex CLI session directory (rollout files live in a YYYY/MM/DD subtree)
 CODEX_SESSIONS_DIR = Path.home() / ".codex" / "sessions"
+
+# Roles worth storing — the injected "developer"/"system" prompt is dropped.
+_STORED_ROLES = {"user", "assistant"}
 
 
 def _parse_timestamp(ts: str | int | float | None) -> str | None:
-    """Normalise a timestamp to ISO-8601 string, or return None."""
+    """Normalise a timestamp to an ISO-8601 string, or return None."""
     if ts is None:
         return None
     if isinstance(ts, (int, float)):
-        from datetime import datetime, timezone
-
         return datetime.fromtimestamp(float(ts), tz=timezone.utc).isoformat()
     return str(ts)
 
 
-def _flatten_content(
-    content: str | list | None, text_fallback: str | None
-) -> str | None:
-    """Flatten a content value to plain text.
+def _flatten_content(content: object) -> str | None:
+    """Flatten a Codex message ``content`` value to plain text.
 
-    Handles three shapes:
-    - str  — returned as-is
-    - list of {"type":"text","text":"…"} parts — joined with newlines
-    - None — falls back to text_fallback, then returns None
+    ``content`` is an untrusted JSON value. Handles:
+    - str — returned as-is
+    - list of content parts — any part carrying a ``text`` key (``input_text``,
+      ``output_text``, ``text``) contributes its text; other parts (tool calls,
+      images) become ``[tool:<name>]`` markers when a name is present.
+    - None — returns None
+    - anything else — coerced to ``str`` (defensive against malformed rollouts)
     """
-    if content is None:
-        content = text_fallback
     if content is None:
         return None
     if isinstance(content, str):
@@ -78,51 +80,23 @@ def _flatten_content(
         parts: list[str] = []
         for item in content:
             if isinstance(item, dict):
-                if item.get("type") == "text":
-                    parts.append(item.get("text", ""))
+                if "text" in item and isinstance(item["text"], str):
+                    parts.append(item["text"])
                 else:
-                    # Preserve tool_call / function markers as readable tokens
                     name = item.get("name") or item.get("function", {}).get("name", "")
                     if name:
                         parts.append(f"[tool:{name}]")
             elif isinstance(item, str):
                 parts.append(item)
         return "\n".join(parts) if parts else None
-    # Unexpected type — coerce to string
     return str(content)
-
-
-def _parse_line(raw: dict) -> dict | None:
-    """Parse one JSONL line into a normalised message dict.
-
-    Returns None for lines that are metadata-only (e.g. session_start events)
-    and should not be stored as messages.
-    """
-    # Skip non-message event types
-    event_type = raw.get("type")
-    if event_type in ("session_start", "session_end", "metadata"):
-        return None
-
-    role = raw.get("role")
-    if not role:
-        return None
-
-    content = _flatten_content(raw.get("content"), raw.get("text"))
-
-    return {
-        "id": raw.get("id") or str(uuid.uuid4()),
-        "role": role,
-        "content": content,
-        "model": raw.get("model"),
-        "timestamp": _parse_timestamp(raw.get("timestamp")),
-    }
 
 
 class CodexExporter:
     """Exporter for OpenAI Codex CLI JSONL session rollouts.
 
-    Mirrors the ``ClaudeCodeExporter`` pattern: fingerprint-based incremental
-    deduplication, batched commits, silent per-line error tolerance.
+    Mirrors ``ClaudeCodeExporter``: fingerprint-based incremental dedup, batched
+    commits, silent per-line/per-file error tolerance.
     """
 
     source_name = "codex"
@@ -143,10 +117,10 @@ class CodexExporter:
     def export_all(
         self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
     ) -> ExportStats:
-        """Export all rollout files found under ``sessions_dir``.
+        """Export every rollout file found anywhere under ``sessions_dir``.
 
-        Each ``.jsonl`` file is treated as one session.  Files are processed in
-        filesystem order; batch commits fire every ``batch_size`` sessions.
+        Rollout files live in a ``YYYY/MM/DD`` subtree, so discovery is
+        recursive.  Batch commits fire every ``batch_size`` sessions.
         """
         if not self.is_available():
             return ExportStats()
@@ -155,7 +129,7 @@ class CodexExporter:
         batch: list[dict] = []
         batch_messages: list[dict] = []
 
-        for rollout_file in sorted(self.sessions_dir.glob("*.jsonl")):
+        for rollout_file in sorted(self.sessions_dir.rglob("rollout-*.jsonl")):
             try:
                 session_data, msgs, reason = self._process_rollout(
                     conn, rollout_file, incremental
@@ -185,11 +159,11 @@ class CodexExporter:
         rollout_file: Path,
         incremental: bool,
     ) -> tuple[dict | None, list[dict], str | None]:
-        """Parse one rollout JSONL file and return ``(session, messages, reason)``.
+        """Parse one rollout JSONL file → ``(session, messages, reason)``.
 
         ``reason`` explains a ``None`` session: ``"skipped"`` (fingerprint match)
-        or ``"empty"`` (no parseable messages). It is ``None`` when a session is
-        returned for import.
+        or ``"empty"`` (no parseable message turns). It is ``None`` when a
+        session is returned for import.
         """
         session_id = f"codex_{rollout_file.stem}"
         fingerprint = file_fingerprint(rollout_file)
@@ -205,6 +179,7 @@ class CodexExporter:
         first_ts: str | None = None
         last_ts: str | None = None
         project_path: str | None = None
+        git_branch: str | None = None
 
         with open(rollout_file, encoding="utf-8") as fh:
             for raw_line in fh:
@@ -216,22 +191,45 @@ class CodexExporter:
                 except json.JSONDecodeError:
                     continue
 
-                # Extract session-level metadata from a session_start event
-                if obj.get("type") == "session_start":
-                    project_path = obj.get("project_path") or project_path
+                otype = obj.get("type")
+
+                if otype == "session_meta":
+                    payload = obj.get("payload", {}) or {}
+                    project_path = payload.get("cwd") or project_path
+                    git = payload.get("git") or {}
+                    if isinstance(git, dict):
+                        git_branch = git.get("branch") or git_branch
                     continue
 
-                msg = _parse_line(obj)
-                if msg is None:
+                if otype != "response_item":
                     continue
 
-                ts = msg["timestamp"]
+                payload = obj.get("payload", {}) or {}
+                if payload.get("type") != "message":
+                    continue
+
+                role = payload.get("role")
+                if role not in _STORED_ROLES:
+                    continue
+
+                content = _flatten_content(payload.get("content"))
+                if not content:
+                    continue
+
+                ts = _parse_timestamp(obj.get("timestamp"))
                 if ts:
                     if first_ts is None:
                         first_ts = ts
                     last_ts = ts
 
-                messages.append(msg)
+                messages.append(
+                    {
+                        "role": role,
+                        "content": content,
+                        "model": payload.get("model"),
+                        "timestamp": ts,
+                    }
+                )
 
         if not messages:
             return None, [], "empty"
@@ -239,12 +237,16 @@ class CodexExporter:
         is_update = conn.execute(
             "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
         ).fetchone()
+        if is_update:
+            # Message ids are positional; drop the old set so a shrunk or
+            # rewritten rollout cannot strand stale rows.
+            conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
 
         session_data: dict = {
             "id": session_id,
             "source": "codex",
             "project_path": project_path or str(rollout_file.parent),
-            "git_branch": None,
+            "git_branch": git_branch,
             "created_at": first_ts,
             "updated_at": last_ts,
             "import_fingerprint": fingerprint,
@@ -256,7 +258,7 @@ class CodexExporter:
 
         message_rows = [
             {
-                "id": m["id"],
+                "id": f"{session_id}-{idx + 1}",
                 "session_id": session_id,
                 "role": m["role"],
                 "content": m["content"],

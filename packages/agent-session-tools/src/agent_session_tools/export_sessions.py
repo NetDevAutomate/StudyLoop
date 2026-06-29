@@ -129,6 +129,7 @@ SOURCE_CHOICES = [
     "claude",
     "codex",
     "gemini",
+    "grok",
     "kilocode",
     "kiro",
     "omp",
@@ -324,6 +325,9 @@ def export(
     gemini_only: Annotated[
         bool, typer.Option("--gemini-only", help="Only export Gemini CLI")
     ] = False,
+    grok_only: Annotated[
+        bool, typer.Option("--grok-only", help="Only export Grok CLI")
+    ] = False,
     kilocode_only: Annotated[
         bool, typer.Option("--kilocode-only", help="Only export Kilocode CLI")
     ] = False,
@@ -403,6 +407,7 @@ def export(
     - claude_code: Claude Code (~/.claude/projects/)
     - kiro_cli: Kiro CLI (~/Library/Application Support/kiro-cli/)
     - gemini_cli: Gemini CLI (~/.gemini/tmp/)
+    - grok: Grok CLI (~/.grok/sessions/)
     - kilocode_cli: Kilocode CLI (~/.kilocode/cli/)
     - opencode: OpenCode CLI (~/.local/share/opencode/storage/)
     - repoprompt: RepoPrompt (~/Library/Application Support/RepoPrompt/)
@@ -436,6 +441,7 @@ def export(
         "codex": codex_only,
         "kiro": kiro_only,
         "gemini": gemini_only,
+        "grok": grok_only,
         "kilocode": kilocode_only,
         "pi": pi_only,
         "omp": omp_only,
