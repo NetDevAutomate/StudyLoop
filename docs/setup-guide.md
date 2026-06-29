@@ -614,7 +614,7 @@ session-export --obsidian
 session-export --obsidian --obsidian-backfill   # one-time: all history
 ```
 
-Supported sources: `claude`, `codex`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`, `pi`, `omp`
+Supported sources: `claude`, `codex`, `grok`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`, `pi`, `omp`
 
 ### Verify it's working
 
