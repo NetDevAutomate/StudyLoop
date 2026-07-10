@@ -535,3 +535,12 @@ extractor_candidate.py
 .codegraph/
 .understand-anything/
 graphify-out/
+.kirograph/
+.graphify_detect.json
+.graphify_python
+.qdrant-initialized
+.codex/
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json
