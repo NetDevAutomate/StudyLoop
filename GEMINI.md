@@ -1,1 +1,1 @@
-/Users/user/code/personal/tools/studyloop/agents/gemini/GEMINI.md
+agents/gemini/GEMINI.md

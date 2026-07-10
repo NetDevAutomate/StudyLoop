@@ -260,33 +260,43 @@ def _render_target(template: str, repo_root: Path) -> Path:
     return Path(template.format(repo_root=repo_root)).expanduser()
 
 
+def _points_to(target: Path, source: Path) -> bool:
+    """True if symlink ``target`` points at ``source`` (relative or absolute form)."""
+    current = Path(os.readlink(target))
+    if not current.is_absolute():
+        current = target.parent / current
+    return current.resolve() == source.resolve()
+
+
 def _link_paths(repo_root: Path, specs: tuple[LinkSpec, ...], *, uninstall: bool) -> int:
     changed = 0
     for spec in specs:
         source = repo_root / spec.source
         target = _render_target(spec.target, repo_root)
+        # In-repo targets use relative links so they survive repo moves and
+        # syncing between machines with different absolute paths.
+        in_repo = "{repo_root}" in spec.target
+        link_value = Path(os.path.relpath(source, target.parent)) if in_repo else source
         target.parent.mkdir(parents=True, exist_ok=True)
         if uninstall:
-            if target.is_symlink():
-                current = Path(os.readlink(target))
-                if current == source:
-                    target.unlink()
-                    changed += 1
+            if target.is_symlink() and _points_to(target, source):
+                target.unlink()
+                changed += 1
             continue
 
         if not source.exists():
             raise InstallError(f"Missing install asset: {source}")
 
         if target.is_symlink():
-            current = Path(os.readlink(target))
-            if current == source:
+            if os.readlink(target) == str(link_value):
                 continue
+            # Legacy absolute (or otherwise stale) link — replace below.
             target.unlink()
         elif target.exists():
             backup = target.with_name(f"{target.name}.bak")
             shutil.move(str(target), str(backup))
 
-        target.symlink_to(source)
+        target.symlink_to(link_value)
         changed += 1
     return changed
 
