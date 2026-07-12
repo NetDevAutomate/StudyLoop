@@ -88,6 +88,35 @@ without losing events already queued for it.
   `task_complete`/`all_done` frames from the per-job queue rather than
   missing events emitted during the gap
 
+### Requirement: Session picker vendors are content sources, not study topics
+`GET /api/session/options` SHALL list a directory as a Course Vendor only
+when it is a child of a courses root AND is not a configured topic's
+`obsidian_path` (topics are session *targets*, never vendors). Vendors
+sharing a name across multiple course roots SHALL render once in the
+picker, while course discovery SHALL walk every same-name vendor
+directory so no courses are lost.
+
+#### Scenario: Topic directories live at vendor level under a study root
+- **WHEN** configured topics (e.g. `Python`, `DevOps`) have note dirs
+  directly under a study root that also holds vendor dirs
+- **THEN** the `vendors` list contains only real vendors — no topic names,
+  no duplicate entries — and `courses` includes courses from every
+  same-name vendor directory across roots
+
+### Requirement: Ending a session is confirmed in-page, never via native dialogs
+The session stop control SHALL open an in-page confirm dialog
+(`.end-confirm-overlay`) rather than a native `confirm()`; only the
+explicit confirm action POSTs `/api/session/end`. Native dialogs are
+banned on this path because Chrome auto-dismisses them in some focus
+states (e.g. while the embedded ttyd terminal iframe holds focus), which
+previously made agent sessions impossible to end.
+
+#### Scenario: User cancels the end-session dialog
+- **WHEN** the user clicks the stop button and then "Keep going" (or
+  presses Escape)
+- **THEN** no request is sent to `/api/session/end` and the session
+  remains active
+
 ### Requirement: Review list mode-splits Flashcards and Quizzes from one shared component
 The `reviewApp('flashcards' | 'quiz')` Alpine factory SHALL be
 instantiated once per mode; `filteredCourses` gates the list on the
