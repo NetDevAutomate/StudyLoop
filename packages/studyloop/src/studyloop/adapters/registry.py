@@ -50,9 +50,14 @@ def _discover_builtins() -> dict[str, AgentAdapter]:
             log.warning("Failed to import adapter module %s: %s", full_name, exc)
             continue
 
-        adapter = getattr(module, "ADAPTER", None)
-        if adapter is None:
+        if not hasattr(module, "ADAPTER"):
             log.warning("Adapter module %s has no ADAPTER attribute — skipped", full_name)
+            continue
+        adapter = module.ADAPTER
+        if adapter is None:
+            # Explicit opt-out (e.g. the 'fake' harness adapter gates itself
+            # behind STUDYLOOP_TEST_AGENT) — intentional, not a warning.
+            log.debug("Adapter module %s opted out (ADAPTER=None)", full_name)
             continue
 
         if not isinstance(adapter, AgentAdapter):

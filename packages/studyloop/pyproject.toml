@@ -45,6 +45,9 @@ agent-session-tools = { workspace = true }
 [project.scripts]
 studyloop = "studyloop.cli:cli"
 studyloop-mcp = "studyloop.mcp.server:main"
+# e2e-harness stand-in agent; inert unless STUDYLOOP_TEST_AGENT=1 registers
+# the 'fake' adapter that launches it.
+studyloop-fake-agent = "studyloop.testing.fake_agent:main"
 
 [project.urls]
 Homepage = "https://github.com/Hookey-Street-Software/StudyLoop"

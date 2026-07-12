@@ -30,14 +30,20 @@ TOPICS_FILE = CONFIG_DIR / "session-topics.md"
 PARKING_FILE = CONFIG_DIR / "session-parking.md"
 
 
-def start_web_server(port: int) -> subprocess.Popen:
+def start_web_server(port: int, extra_env: dict[str, str] | None = None) -> subprocess.Popen:
     """Spin up ``studyloop web`` on the given port. Returns the proc.
 
     Blocks until the server responds on ``/`` (or returns 401 when
     password protection is configured — still "up").
+
+    ``extra_env`` is merged over the inherited environment — used by the
+    journey to enable the fake harness agent (STUDYLOOP_TEST_AGENT=1).
     """
+    import os
+
+    env = {**os.environ, **(extra_env or {})}
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     for _ in range(40):
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)

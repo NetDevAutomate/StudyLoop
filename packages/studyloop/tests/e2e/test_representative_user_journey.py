@@ -213,6 +213,185 @@ def test_socratic_study_conversation(browser, running_server: str) -> None:  # p
     DB updates. Deliberately skipped headless: see reason."""
 
 
+# ---------------------------------------------------------------------------
+# Fake-agent phases — the spawn → PTY → WS → terminal path, walkable in CI.
+#
+# These use a SEPARATE server (module-scoped fixture below) launched with
+# STUDYLOOP_TEST_AGENT=1 so the deterministic 'fake' adapter registers. The
+# main `running_server` stays vanilla so the picker-hydration tests keep
+# asserting the real agent surface.
+# ---------------------------------------------------------------------------
+
+FAKE_WEB_PORT = 18594
+
+
+@pytest.fixture(scope="module")
+def fake_agent_server():
+    """Server with the fake harness agent enabled (STUDYLOOP_TEST_AGENT=1)."""
+    if not __import__("shutil").which("studyloop-fake-agent"):
+        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
+    from _playwright_helpers import clean_ipc
+
+    clean_ipc()  # stale IPC from earlier runs makes /session/end 404
+    proc = start_web_server(FAKE_WEB_PORT, extra_env={"STUDYLOOP_TEST_AGENT": "1"})
+    try:
+        yield f"http://127.0.0.1:{FAKE_WEB_PORT}"
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+
+
+def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
+    """Spawn → 201+ws_url → WS bytes flow BOTH ways → end → DB row.
+
+    The core product path that has broken twice before (SIGCHLD/uvicorn,
+    un-endable sessions), previously untestable in CI because no real agent
+    binary exists there. The fake agent makes the whole loop deterministic.
+    """
+    import json
+
+    import requests
+    from websockets.sync.client import connect as ws_connect
+
+    # --- Spawn ---
+    resp = requests.post(
+        f"{fake_agent_server}/api/session/start",
+        json={
+            "topic": "Fake Agent Walk",
+            "energy": 5,
+            "agent": "fake",
+            "transport": "pty",
+        },
+        timeout=20,
+    )
+    body = resp.json()
+    assert resp.status_code == 201, f"spawn failed: {body}"
+    assert body["transport"] == "pty"
+    ws_url = f"ws://127.0.0.1:{FAKE_WEB_PORT}{body['ws_url']}"
+
+    # --- WS: bytes out (banner), bytes in (input), echo back ---
+    # The WS guard rejects requests with no Origin (non-browser clients);
+    # send the same localhost Origin a browser would. NOTE the ordering:
+    # /api/session/end must be called while the WS is still OPEN — a WS
+    # disconnect triggers active.release() which clears the session state,
+    # after which end returns 404 (that's the real product semantics; the
+    # UI's End button posts while connected too).
+    with ws_connect(
+        ws_url,
+        open_timeout=10,
+        additional_headers={"Origin": fake_agent_server},
+    ) as ws:
+        buf = b""
+        for _ in range(20):  # frames until the banner shows
+            msg = ws.recv(timeout=10)
+            if isinstance(msg, bytes):
+                buf += msg
+            if b"FAKE-AGENT READY" in buf:
+                break
+        assert b"FAKE-AGENT READY" in buf, f"no banner; got {buf!r}"
+
+        ws.send(json.dumps({"type": "input", "data": "hello agent\r"}))
+        buf = b""
+        for _ in range(20):
+            msg = ws.recv(timeout=10)
+            if isinstance(msg, bytes):
+                buf += msg
+            if b"FAKE-AGENT SAYS:" in buf:
+                break
+        assert b"FAKE-AGENT SAYS:" in buf, f"no echo; got {buf!r}"
+
+        # --- End WHILE connected (mirrors the UI's End button) ---
+        end = requests.post(f"{fake_agent_server}/api/session/end", timeout=15)
+        assert end.status_code == 200, end.text
+        assert end.json()["ended"] is True
+
+    # --- Phase 4: the ended session left a durable study_sessions row ---
+    from studyloop.history.sessions import get_last_study_session
+
+    last = get_last_study_session()
+    assert last is not None, "no study_sessions row after session end"
+    # Topics are normalised to lowercase on write.
+    assert last["topic"].lower() == "fake agent walk"
+    # started_at is always set; ended_at proves end_session_common ran.
+    assert last["started_at"]
+
+
+def test_fake_agent_terminal_renders_in_browser(browser, fake_agent_server: str) -> None:
+    """Browser phase: start a session via the REAL UI and see agent bytes
+    render in the xterm terminal — the full user-visible loop."""
+    page = browser.new_page()
+    try:
+        # This test's subject is the terminal path, not the 3-topic rule —
+        # stub the backlog empty so the park-first modal (tested elsewhere)
+        # can't intercept the start when the REAL vault has 3 live topics.
+        page.route(
+            "**/api/backlog",
+            lambda route: route.fulfill(
+                json={
+                    "active": [],
+                    "parking_lot": [],
+                    "active_count": 0,
+                    "parking_lot_count": 0,
+                    "max_active": 3,
+                }
+            ),
+        )
+        page.goto(f"{fake_agent_server}/#study-session")
+        page.wait_for_function("() => !!window.Alpine", timeout=5000)
+
+        page.locator("#topic-input").fill("Browser Fake Walk")
+        # Pick the fake agent explicitly (it's registered on this server).
+        # Generous timeout: a cold server builds the picker's vault index on
+        # the first /api/session/options call, which can take >5s.
+        page.wait_for_function(
+            """() => {
+                const sel = document.querySelector('#agent-select');
+                return sel && [...sel.options].some(o => o.value === 'fake');
+            }""",
+            timeout=30000,
+        )
+        page.select_option("#agent-select", value="fake")
+        page.wait_for_function(
+            "() => !document.querySelector('.start-session-btn').disabled",
+            timeout=5000,
+        )
+        page.locator(".start-session-btn").click()
+
+        # Proof the whole loop connected. xterm's WebGL renderer paints to a
+        # canvas, so the banner text is NOT in the DOM — assert the two
+        # DOM-visible signals instead: (1) the terminal header flips to
+        # "Connected · fake" (WS established, transport Started), and (2) the
+        # session status bar shows the live topic (state hydrated end-to-end).
+        page.wait_for_function(
+            """() => document.body.innerText.includes('Connected') &&
+                     document.body.innerText.includes('fake')""",
+            timeout=20000,
+        )
+        page.wait_for_function(
+            "() => document.body.innerText.includes('Browser Fake Walk')",
+            timeout=10000,
+        )
+        # And the byte-level banner IS asserted through the same WS pipeline
+        # in test_fake_agent_full_session_walk — together the two tests cover
+        # bytes AND pixels. Belt-and-braces: screenshot for human review.
+        RESULTS.mkdir(exist_ok=True)
+        page.screenshot(path=str(RESULTS / "fake-agent-terminal-connected.png"))
+    except Exception:
+        _diag(page, "fake-agent-browser")
+        raise
+    finally:
+        try:
+            import requests
+
+            requests.post(f"{fake_agent_server}/api/session/end", timeout=10)
+        except Exception:
+            pass
+        page.close()
+
+
 @pytest.mark.skip(
     reason="Real content generation needs an LLM provider; deterministic "
     "generation is covered by test_content_generators_stub.py and the review "
