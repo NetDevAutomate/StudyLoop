@@ -764,3 +764,40 @@ class TestMigrationV24:
                 VALUES ('2', 'python', 'decorators', 'closures', 'prerequisite')
                 """
             )
+
+
+class TestV25CascadeOnMessageDelete:
+    """v25: deleting a message must cascade to scrub_log + file_references."""
+
+    def _seed(self, conn):
+        migrate(conn)
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(
+            "INSERT INTO sessions (id, source) VALUES ('s1', 'test')"
+        )
+        conn.execute(
+            "INSERT INTO messages (id, session_id, role, content, seq) "
+            "VALUES ('m1', 's1', 'user', 'hi', 1)"
+        )
+        conn.execute(
+            "INSERT INTO scrub_log (session_id, message_id, entity_type, placeholder) "
+            "VALUES ('s1', 'm1', 'aws_secret_key', '<AWS_SECRET>')"
+        )
+        conn.execute(
+            "INSERT INTO file_references "
+            "(session_id, message_id, file_path, tool_name) "
+            "VALUES ('s1', 'm1', '/x/y.py', 'read')"
+        )
+        conn.commit()
+
+    def test_deleting_message_cascades_dependent_rows(self, fresh_db):
+        self._seed(fresh_db)
+        # The exporter update path does exactly this — must not raise even
+        # when the message has scrub_log + file_references rows (the FK
+        # violation the bare-except exporters used to swallow).
+        fresh_db.execute("DELETE FROM messages WHERE session_id = 's1'")
+        fresh_db.commit()
+        assert fresh_db.execute("SELECT COUNT(*) FROM scrub_log").fetchone()[0] == 0
+        assert (
+            fresh_db.execute("SELECT COUNT(*) FROM file_references").fetchone()[0] == 0
+        )

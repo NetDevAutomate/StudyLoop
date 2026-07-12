@@ -131,6 +131,13 @@ class AiderExporter:
             ).fetchone()
             if existing and existing[0] == file_mtime:
                 return {"id": session_id, "status": "skipped"}, []
+            if existing:
+                # File changed: messages get fresh uuids each run, so without
+                # this delete the re-export would ACCUMULATE duplicates rather
+                # than replace (matches kiro/gemini update behaviour).
+                conn.execute(
+                    "DELETE FROM messages WHERE session_id = ?", (session_id,)
+                )
 
         try:
             content = history_file.read_text()

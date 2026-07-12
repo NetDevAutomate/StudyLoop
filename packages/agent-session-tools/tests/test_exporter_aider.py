@@ -211,6 +211,42 @@ class TestExportAll:
         assert stats_second.skipped == 1
         assert stats_second.added == 0
 
+    def test_reexport_after_change_does_not_duplicate_messages(
+        self, migrated_db, aider_tree: Path, monkeypatch
+    ):
+        """Re-exporting a CHANGED aider file must replace, not accumulate, messages.
+
+        aider mints a fresh uuid per message each run, so without a
+        delete-on-update the INSERT OR REPLACE keyed on message id can only
+        append — doubling the message count on every re-export.
+        """
+        import os
+        import time
+
+        conn, _ = migrated_db
+        monkeypatch.setattr(
+            "agent_session_tools.exporters.aider.load_config",
+            lambda: {"excluded_dirs": []},
+        )
+        exporter = AiderExporter(search_paths=[aider_tree])
+
+        assert exporter.export_all(conn, incremental=True).added == 1
+        first = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+
+        # Mutate the file (new mtime + a third message) so it re-exports.
+        hist = next(aider_tree.rglob(".aider.chat.history.md"))
+        hist.write_text(
+            "#### user message\nQ1\n#### assistant response\nA1\n"
+            "#### user message\nQ2 follow-up\n"
+        )
+        os.utime(hist, (time.time() + 5, time.time() + 5))
+
+        exporter.export_all(conn, incremental=True)
+        after = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+
+        # New content has 3 messages; the total must equal that, not first+3.
+        assert after == 3, f"expected 3 messages after re-export, got {after} (first run had {first})"
+
     def test_empty_directory_produces_zero_stats(
         self, migrated_db, tmp_path: Path, monkeypatch
     ):

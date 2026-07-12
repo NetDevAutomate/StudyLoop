@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 24
+CURRENT_VERSION = 25
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -822,6 +822,84 @@ def migrate_v24(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_concept_dependencies_target "
         "ON concept_dependencies(topic, target_concept)"
+    )
+
+
+@migration(
+    25, "Add ON DELETE CASCADE to scrub_log/file_references message_id FKs"
+)
+def migrate_v25(conn: sqlite3.Connection) -> None:
+    """Rebuild scrub_log and file_references so deleting a message cascades.
+
+    The v18 scrub_log and v19 file_references FKs on ``message_id`` (and
+    scrub_log's ``session_id``) lacked ``ON DELETE CASCADE`` — every other FK
+    in the schema has it. With ``PRAGMA foreign_keys=ON`` (set on the export
+    path), an exporter's update-path ``DELETE FROM messages WHERE session_id``
+    hit a FK violation once any message had a scrub_log/file_references row.
+    Gemini's bare ``except`` swallowed it (aborting the rest of the export);
+    kiro surfaced it as an error. Rebuild both tables with cascading FKs.
+
+    SQLite cannot ALTER a constraint, so this is the create-new / copy /
+    drop / rename dance. No FK toggle is needed: nothing REFERENCES these two
+    tables, and their own outward FKs (to sessions/messages) aren't violated
+    by copying existing rows. (A ``PRAGMA foreign_keys`` change is a no-op
+    inside a transaction anyway, and migrate() runs inside one.)
+    """
+    # scrub_log — cascade on both session_id and message_id.
+    conn.execute("""
+        CREATE TABLE scrub_log_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT,
+            message_id TEXT,
+            entity_type TEXT NOT NULL,
+            placeholder TEXT NOT NULL,
+            scrubbed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+            FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+        )
+    """)
+    conn.execute("""
+        INSERT INTO scrub_log_new
+            (id, session_id, message_id, entity_type, placeholder, scrubbed_at)
+        SELECT id, session_id, message_id, entity_type, placeholder, scrubbed_at
+        FROM scrub_log
+    """)
+    conn.execute("DROP TABLE scrub_log")
+    conn.execute("ALTER TABLE scrub_log_new RENAME TO scrub_log")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_scrub_log_session ON scrub_log(session_id)"
+    )
+
+    # file_references — cascade on both session_id and message_id.
+    conn.execute("""
+        CREATE TABLE file_references_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            message_id TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            tool_name TEXT NOT NULL,
+            timestamp TEXT,
+            UNIQUE(message_id, file_path, tool_name),
+            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+            FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+        )
+    """)
+    conn.execute("""
+        INSERT INTO file_references_new
+            (id, session_id, message_id, file_path, tool_name, timestamp)
+        SELECT id, session_id, message_id, file_path, tool_name, timestamp
+        FROM file_references
+    """)
+    conn.execute("DROP TABLE file_references")
+    conn.execute("ALTER TABLE file_references_new RENAME TO file_references")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_file_refs_path ON file_references(file_path)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_file_refs_session ON file_references(session_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_file_refs_tool ON file_references(tool_name)"
     )
 
 

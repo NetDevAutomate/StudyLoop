@@ -311,6 +311,73 @@ class TestExportAll:
         assert len(messages) == 2
         assert messages[1]["content"] == "Updated answer"
 
+    def test_reimport_succeeds_when_message_has_scrub_log_row(
+        self, migrated_db, tmp_path, monkeypatch
+    ):
+        """Re-importing an updated session must not be silently lost to a FK error.
+
+        The update path DELETEs old messages. If a message has a scrub_log row
+        and its FK lacks ON DELETE CASCADE, that DELETE raises under
+        foreign_keys=ON — which the exporter's bare `except` swallowed,
+        dropping the whole session. v25 makes the FK cascade; assert the
+        re-import actually succeeds end-to-end through the real exporter.
+        """
+        conn, _ = migrated_db
+        conn.execute("PRAGMA foreign_keys=ON")  # the real export path sets this
+
+        gemini_tmp = tmp_path / "gemini_scrub"
+        chats = gemini_tmp / "proj" / "chats"
+        chats.mkdir(parents=True)
+        monkeypatch.setattr(gemini_mod, "GEMINI_DIR", gemini_tmp)
+
+        session_file = chats / "session-scrub-test.json"
+
+        def _write(last_updated: str, content: str) -> None:
+            session_file.write_text(
+                json.dumps(
+                    {
+                        "sessionId": "scrub-test",
+                        "projectHash": "proj",
+                        "startTime": "2025-01-01T00:00:00",
+                        "lastUpdated": last_updated,
+                        "messages": [
+                            {
+                                "id": "m1",
+                                "type": "user",
+                                "content": content,
+                                "timestamp": 1717236000000,
+                            }
+                        ],
+                    }
+                )
+            )
+
+        exporter = GeminiCliExporter()
+        _write("2025-01-01T01:00:00", "First")
+        assert exporter.export_all(conn, incremental=True).added == 1
+
+        # Attach a scrub_log row to the imported message — this is what makes
+        # the update-path DELETE trip the FK on un-migrated schemas.
+        msg_id = conn.execute(
+            "SELECT id FROM messages WHERE session_id = 'gemini_scrub-test'"
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO scrub_log (session_id, message_id, entity_type, placeholder) "
+            "VALUES ('gemini_scrub-test', ?, 'aws_secret_key', '<AWS_SECRET>')",
+            (msg_id,),
+        )
+        conn.commit()
+
+        # Update + re-import: must be counted as updated, not errored/lost.
+        _write("2025-01-01T02:00:00", "Second")
+        stats = exporter.export_all(conn, incremental=True)
+        assert stats.updated == 1, f"re-import lost the session: {stats}"
+        assert stats.errors == 0
+        remaining = conn.execute(
+            "SELECT content FROM messages WHERE session_id = 'gemini_scrub-test'"
+        ).fetchall()
+        assert [r[0] for r in remaining] == ["Second"]
+
     def test_empty_messages_session_skipped(self, migrated_db, tmp_path, monkeypatch):
         """A session file with zero messages is counted as empty, not error."""
         gemini_tmp = tmp_path / "gemini_empty_msg"
