@@ -194,7 +194,7 @@ There is **no COOP/COEP requirement** — the engine forces single-thread WASM (
 
 ### First-run download
 
-On first use the model downloads **once** (~92 MB: the q8-quantised Kokoro weights + tokenizer + voice embeddings) from Hugging Face, with a progress indicator in the header. It is then cached in the browser's **Cache Storage** (`transformers-cache`) and reused on every subsequent load — **subsequent loads are offline and fast** (init drops from ~30 s to ~4 s). The PWA service worker is specifically configured to spare this cache when it clears app-shell assets.
+On first use the model downloads **once** (~92 MB: the q8-quantised Kokoro weights + tokenizer + voice embeddings) from Hugging Face, with a progress indicator in the header. The compiled model is cached in the browser's **IndexedDB** (by ONNX Runtime Web) and the voice embeddings in **Cache Storage** (`kokoro-voices`), and reused on every subsequent load — **subsequent loads are offline and fast** (init drops from ~30 s to ~4 s). This caching is managed by the TTS libraries directly and needs no service worker.
 
 > **First run needs internet** to fetch the weights. After that, voice works fully offline.
 

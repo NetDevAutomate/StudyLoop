@@ -65,11 +65,13 @@ The ttyd iframe blast radius is therefore zero — the existing X-Frame-Options:
 
 One optional addition that does NOT affect ttyd: if the team later wants to enable the multi-threaded WASM path (for performance on high-end devices), the correct approach is to add COOP/COEP only to the /api/tts/* namespace via a separate middleware that checks request.url.path.startswith('/api/tts') — not to the global SecurityHeadersMiddleware. This is documented as a future option in tts-engine.js comments but is not part of the current implementation.
 
-## SW Changes
+## Service Worker (removed)
 
-sw.js: The self-destruct block (lines 1-13) must NOT be reversed — it is intentional for development. The model weight caching strategy deliberately bypasses Cache Storage entirely.
-
-The only required SW change: in the fetch handler (line 43 onwards, currently dead because the return on line 13 exits the worker), when the SW is eventually re-enabled, add a rule to never intercept requests to HuggingFace CDN or ONNX weight files. Specifically, skip caching for URLs matching `/\.onnx$/`, `/\.bin$/`, and hostname 'huggingface.co' or 'cdn-lfs.huggingface.co'.
+**There is no PWA service worker.** `sw.js` was deleted (2026-07-12, see
+[audit 2026-07-11 §0.1](audit/2026-07-11-comprehensive-review.md)): it was never
+registered by any page, contained a top-level `return` syntax error, and offline
+PWA support was judged low-value for a local-server-backed app. TTS caching does not
+depend on it.
 
 The active caching path for model weights is IndexedDB, managed by ONNX Runtime Web's built-in cache layer. tts-engine.js sets this up with:
 
@@ -82,7 +84,7 @@ env.localModelPath = null;   // no local file serving
 // weights in 'onnxruntime-web' IndexedDB store automatically.
 ```
 
-This means: first run downloads ~91 MB (kokoro-v1.0.onnx ~82 MB + voices-v1.0.bin ~6 MB + ort WASM ~3 MB). On all subsequent page loads, ORT Web reads from IndexedDB — the SW nuke has no effect.
+This means: first run downloads ~91 MB (kokoro-v1.0.onnx ~82 MB + voices-v1.0.bin ~6 MB + ort WASM ~3 MB). On all subsequent page loads, ORT Web reads from IndexedDB.
 
 ## Stop Button Design
 
@@ -184,14 +186,10 @@ e. While audio is playing, the stop button (square icon) should be visible
 f. Click stop button — audio stops immediately, stop button disappears, isSpeaking resets to false
 g. Reload page — model loads from IndexedDB, no network requests for .onnx/.bin files (verify in Network tab: no HF CDN requests)
 
-### 3. SW self-destruct regression
-
-Verify that after sw.js activates (clears Cache Storage), the model is still loaded from IndexedDB on next synthesise call. This is the critical regression that would catch any accidental use of Cache Storage for weights.
-
-### 4. ttyd iframe regression
+### 3. ttyd iframe regression
 
 Load the terminal panel while audio is playing, verify it renders and is interactive. Confirm no COOP/COEP headers in response headers (DevTools > Network > index.html response headers).
 
-### 5. Slow-device fallback test
+### 4. Slow-device fallback test
 
 In tts-engine.js, add a test-only hook to force warmup_ratio > 3. Verify tier falls back to 'web-speech' and the voice-select dropdown becomes visible.
