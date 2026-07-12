@@ -265,63 +265,94 @@ def _topic_options() -> list[SessionOption]:
     return options
 
 
-def _vendor_options() -> list[SessionOption]:
-    vendors: list[SessionOption] = []
+def _topic_dir_paths() -> set[Path]:
+    """Resolved configured-topic note dirs — study targets, never course vendors."""
+    try:
+        from studyloop.settings import load_settings
+
+        return {
+            Path(topic.obsidian_path).expanduser().resolve()
+            for topic in getattr(load_settings(), "topics", [])
+        }
+    except Exception:
+        return set()
+
+
+def _vendor_dirs() -> list[tuple[str, Path]]:
+    """Every vendor directory across all course roots.
+
+    Names may repeat when the same vendor exists under multiple roots
+    (e.g. ``Study/Udemy`` and ``2-Areas/Study/Courses/Udemy``) — callers
+    that render a picker dedupe by name, while course discovery walks all
+    directories so no courses are lost. Configured topic dirs (Python,
+    DevOps, …) live at the same level as vendors under a study root and
+    are excluded: they are session *targets*, not content sources.
+    """
+    dirs: list[tuple[str, Path]] = []
     seen: set[Path] = set()
+    topic_paths = _topic_dir_paths()
     for courses_root in _courses_roots():
-        for vendor in sorted(courses_root.iterdir(), key=lambda p: p.name.lower()):
+        for vendor in _visible_child_dirs(courses_root):
             resolved = vendor.resolve()
-            if resolved in seen or not vendor.is_dir() or vendor.name.startswith("."):
+            if resolved in seen or resolved in topic_paths:
                 continue
             seen.add(resolved)
-            vendors.append(
-                SessionOption(
-                    label=vendor.name.replace("_", " "),
-                    value=vendor.name,
-                    kind="vendor",
-                    path=str(vendor),
-                )
+            dirs.append((vendor.name, vendor))
+    return dirs
+
+
+def _vendor_options() -> list[SessionOption]:
+    vendors: list[SessionOption] = []
+    seen_names: set[str] = set()
+    for name, path in _vendor_dirs():
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        vendors.append(
+            SessionOption(
+                label=name.replace("_", " "),
+                value=name,
+                kind="vendor",
+                path=str(path),
             )
+        )
     return vendors
 
 
 def _course_options() -> list[SessionOption]:
     courses: list[SessionOption] = []
-    for vendor in _vendor_options():
-        vendor_path = Path(vendor.path or "")
-        if not vendor_path.exists():
-            continue
-        for course in sorted(vendor_path.iterdir(), key=lambda p: p.name.lower()):
-            if course.is_dir() and not course.name.startswith("."):
-                courses.append(
-                    SessionOption(
-                        label=course.name.replace("_", " "),
-                        value=f"{vendor.value}/{course.name}",
-                        kind="course",
-                        path=str(course),
-                        parent=vendor.value,
-                    )
+    seen_values: set[str] = set()
+    for vendor_name, vendor_path in _vendor_dirs():
+        for course in _visible_child_dirs(vendor_path):
+            value = f"{vendor_name}/{course.name}"
+            if value in seen_values:
+                continue
+            seen_values.add(value)
+            courses.append(
+                SessionOption(
+                    label=course.name.replace("_", " "),
+                    value=value,
+                    kind="course",
+                    path=str(course),
+                    parent=vendor_name,
                 )
+            )
     return courses
 
 
 def _lesson_options() -> list[SessionOption]:
     lessons: list[SessionOption] = []
     for course in _course_options():
-        course_path = Path(course.path or "")
-        if not course_path.exists():
-            continue
-        for lesson in sorted(course_path.iterdir(), key=lambda p: p.name.lower()):
-            if lesson.is_dir() and not lesson.name.startswith("."):
-                lessons.append(
-                    SessionOption(
-                        label=lesson.name.replace("_", " "),
-                        value=f"{course.value}/{lesson.name}",
-                        kind="lesson",
-                        path=str(lesson),
-                        parent=course.value,
-                    )
+        for lesson in _visible_child_dirs(Path(course.path or "")):
+            lessons.append(
+                SessionOption(
+                    label=lesson.name.replace("_", " "),
+                    value=f"{course.value}/{lesson.name}",
+                    kind="lesson",
+                    path=str(lesson),
+                    parent=course.value,
                 )
+            )
     return lessons
 
 

@@ -119,6 +119,53 @@ def test_session_options_lists_vendors_directly_under_study_root(
     assert any(lesson_["label"] == "Module 01" for lesson_ in body["lessons"])
 
 
+def test_session_options_excludes_topic_dirs_and_dedupes_vendors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Configured topic dirs are not vendors; same-name vendors render once.
+
+    Regression (user report 2026-07-12): the Course Vendor picker listed
+    every configured topic (Python, DevOps, …) because topic obsidian_paths
+    join ``_study_roots()`` and each study root doubles as a courses root.
+    It also listed ArjanCodes/Udemy twice — once per courses root — because
+    dedup was by resolved path, not name. Courses from BOTH same-name vendor
+    dirs must still be discovered.
+    """
+    study_root = tmp_path / "Study"
+    (study_root / "Udemy" / "Course_A").mkdir(parents=True)
+    (study_root / "Python").mkdir()  # configured topic dir at vendor level
+    second_root = tmp_path / "2-Areas" / "Study" / "Courses"
+    (second_root / "Udemy" / "Course_B").mkdir(parents=True)
+
+    class Topic:
+        name = "Python"
+        slug = "python"
+        obsidian_path = study_root / "Python"
+
+    class Content:
+        def __init__(self) -> None:
+            self.study_paths = [study_root, tmp_path / "2-Areas" / "Study"]
+
+    class Settings:
+        def __init__(self) -> None:
+            self.content = Content()
+            self.topics = [Topic()]
+            # Without obsidian_base, _study_roots() raises and falls back to
+            # scanning the REAL ~/Obsidian vault, breaking test isolation.
+            self.obsidian_base = tmp_path
+
+    monkeypatch.setattr("studyloop.settings.load_settings", Settings)
+
+    client = TestClient(create_app())
+    body = client.get("/api/session/options").json()
+
+    vendor_values = [v["value"] for v in body["vendors"]]
+    assert vendor_values.count("Udemy") == 1
+    assert "Python" not in vendor_values
+    course_values = {c["value"] for c in body["courses"]}
+    assert {"Udemy/Course_A", "Udemy/Course_B"} <= course_values
+
+
 def test_session_options_uses_index_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     from studyloop.web.routes.session import _options
 
