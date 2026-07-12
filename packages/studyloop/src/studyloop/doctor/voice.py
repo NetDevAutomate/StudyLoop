@@ -86,7 +86,8 @@ def check_voice_readiness() -> list[CheckResult]:
                 f"OpenVox API reachable at {base_url}"
                 if reachable
                 else f"OpenVox API is not reachable at {base_url}",
-                "Start OpenVox and enable its local API, or set tts.backend: kokoro",
+                "Start OpenVox and enable its local API, or set backend: kokoro "
+                "under the tts: section",
                 False,
             )
         )
@@ -97,7 +98,12 @@ def check_voice_readiness() -> list[CheckResult]:
                 "openvox_api",
                 "info",
                 f"OpenVox reachability skipped because tts.backend is {backend}",
-                "Set tts.backend: openvox to enable this check",
+                # Phrase the repair as nested YAML — the previous flat
+                # "tts.backend: openvox" hint taught users to write a single
+                # dotted top-level key, which YAML does NOT nest (the loader
+                # now normalises that form too, but the nested one is canonical).
+                "Set backend: openvox under the tts: section of config.yaml "
+                "to enable this check",
                 False,
             )
         )

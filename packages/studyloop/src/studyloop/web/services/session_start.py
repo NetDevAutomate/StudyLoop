@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
@@ -9,11 +10,32 @@ if TYPE_CHECKING:
 
 TransportName = Literal["pty", "acp", "ttyd"]
 
+# Agents that speak the Agent Client Protocol. Single source of truth shared by
+# the session-start ACP guard and the options endpoint (_options.py). Claude
+# Code and Codex are PTY-only; only these three have an ACP transport.
+ACP_CAPABLE_AGENTS: frozenset[str] = frozenset({"kiro", "gemini", "grok"})
+
+
+def slug_session_dir(topic: str) -> str:
+    """Return a filesystem-safe slug for a user-supplied topic.
+
+    The topic is attacker-controlled (POST body), and the slug becomes a path
+    segment under ``SESSION_DIR/sessions``. Collapse everything outside
+    ``[a-z0-9]`` to ``-`` so path-traversal vectors (``/``, ``\\``, ``..``)
+    cannot escape the sessions directory. Falls back to ``"session"`` when the
+    topic slugs to nothing (e.g. all punctuation).
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", topic.lower()).strip("-")
+    return slug[:20] or "session"
+
 
 def session_dir_name(topic: str, study_id: str, *, prefix: str = "pty") -> str:
-    """Return the stable session directory name used by web-started sessions."""
-    slug = topic.lower().replace(" ", "-")[:20]
-    return f"{prefix}-{slug}-{study_id[:8]}"
+    """Return the stable session directory name used by web-started sessions.
+
+    ``topic`` is user-controlled; :func:`slug_session_dir` guarantees the
+    returned name is a single safe path segment (no ``/``, ``\\`` or ``..``).
+    """
+    return f"{prefix}-{slug_session_dir(topic)}-{study_id[:8]}"
 
 
 def build_session_state_payload(
