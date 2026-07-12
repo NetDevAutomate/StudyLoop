@@ -29,6 +29,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   total.
 
 ### Fixed
+- **Security (LAN auth divergence):** `studyloop web --lan --password X` (with
+  X not persisted to config) protected the FastAPI app but left the ttyd
+  terminal side-channel unauthenticated — the ttyd start path re-read
+  `lan_password` from config.yaml (empty) instead of the CLI-resolved value.
+  `create_app` now stores the resolved `(lan_username, lan_password)` on
+  `app.state` as the single source of truth, and the ttyd start path reads
+  from there via `_ttyd_credentials`, failing closed (500) if app.state is
+  unreadable rather than spawning an unauthenticated PTY on the LAN.
 - **Session-export data integrity (root cause):** `scrub_log` (v18) and
   `file_references` (v19) had `message_id`/`session_id` foreign keys with no
   `ON DELETE CASCADE` (every other FK in the schema has it). With

@@ -6,6 +6,7 @@ import hashlib
 import logging
 from datetime import UTC, datetime
 
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from studyloop.session_state import (
@@ -28,8 +29,31 @@ from studyloop.web.services.session_start import (
 logger = logging.getLogger(__name__)
 
 
+def _ttyd_credentials(request: Request | None) -> tuple[str, str]:
+    """Resolve ttyd Basic-Auth creds from the app's single source of truth.
+
+    Reads ``(lan_username, lan_password)`` off ``request.app.state`` — the same
+    values ``create_app`` used to install ``BasicAuthMiddleware``. Fails closed:
+    if app.state is unreadable (no request wired through), refuse rather than
+    guess, because a wrong guess spawns an unauthenticated PTY on the LAN.
+    """
+    state = getattr(getattr(request, "app", None), "state", None)
+    if state is None:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Cannot start ttyd: LAN credentials unavailable from app state "
+                "(auth divergence guard)."
+            ),
+        )
+    return (
+        getattr(state, "lan_username", "") or "",
+        getattr(state, "lan_password", "") or "",
+    )
+
+
 @router.post("/session/start")
-async def start_session(body: StartSessionRequest) -> JSONResponse:
+async def start_session(body: StartSessionRequest, request: Request) -> JSONResponse:
     """Start a new study session from the web UI.
 
     Two transports are supported:
@@ -52,7 +76,7 @@ async def start_session(body: StartSessionRequest) -> JSONResponse:
         return await _start_pty_session(body)
     if transport == "acp":
         return await _start_acp_session(body)
-    return _start_ttyd_session(body)
+    return _start_ttyd_session(body, request)
 
 
 async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
@@ -461,11 +485,17 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
     )
 
 
-def _start_ttyd_session(body: StartSessionRequest) -> JSONResponse:
+def _start_ttyd_session(
+    body: StartSessionRequest, request: Request | None = None
+) -> JSONResponse:
     """Legacy tmux+ttyd start path (plan §1.9 emergency fallback).
 
     Kept as-is to guarantee a deprecation window. New development should
     target the PTY path above.
+
+    ``request`` carries ``app.state`` so ttyd's Basic-Auth credentials come
+    from the SAME resolved source as the app's middleware (see the fail-closed
+    guard below). It is optional only so the legacy CLI caller keeps working.
     """
     import os
     import shutil
@@ -649,17 +679,12 @@ def _start_ttyd_session(body: StartSessionRequest) -> JSONResponse:
         state_update["topic_config_name"] = topic_config.name
     write_session_state(state_update)
 
-    # Start ttyd for terminal access (with auth from config if available)
-    ttyd_username = ""
-    ttyd_password = ""
-    try:
-        from studyloop.settings import load_settings as _ls_ttyd
-
-        _ttyd_settings = _ls_ttyd()
-        ttyd_username = _ttyd_settings.lan_username or ""
-        ttyd_password = _ttyd_settings.lan_password or ""
-    except Exception:
-        pass
+    # Credentials come from app.state (the single source of truth the app's
+    # BasicAuthMiddleware was built from), NOT a fresh config.yaml read — the
+    # two used to diverge, leaving ttyd unauthenticated when --password was
+    # passed on the CLI but not persisted. Fails closed if app.state is
+    # unreadable (see _ttyd_credentials).
+    ttyd_username, ttyd_password = _ttyd_credentials(request)
     start_ttyd_background(session_name, username=ttyd_username, password=ttyd_password)
 
     return JSONResponse(
