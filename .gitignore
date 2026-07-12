@@ -549,3 +549,8 @@ test-results/
 
 # Stray MagicMock dirs from tests that mock a path-typed setting (defense-in-depth)
 MagicMock/
+# Tavily skill installs dropped by harness plugins (tool artefacts, not project content)
+.agents/
+.pi/
+agent/
+skills-lock.json
