@@ -115,11 +115,11 @@ def mock_db_path(mcp_db):
 
 def _get_tools():
     """Import tool functions from the MCP server."""
-    import asyncio
-
     from agent_session_tools.mcp_server import mcp
 
-    tools = asyncio.run(mcp._list_tools())
+    from _helpers import run_async
+
+    tools = run_async(mcp._list_tools())
     return {tool.name: tool.fn for tool in tools}  # type: ignore[attr-defined]
 
 
@@ -243,11 +243,11 @@ class TestServerCreation:
         assert mcp.name == "session-db"
 
     def test_server_has_all_tools(self):
-        import asyncio
-
         from agent_session_tools.mcp_server import mcp
 
-        tools = asyncio.run(mcp._list_tools())
+        from _helpers import run_async
+
+        tools = run_async(mcp._list_tools())
         tool_names = {t.name for t in tools}
         expected = {
             "session_search",

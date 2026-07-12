@@ -7,13 +7,13 @@ builds a fresh fixture so singleton state never leaks.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from _helpers import run_async
 
 from studyloop.content import active_gen
 from studyloop.content.job import JobRequest, _build_tasks, run_job
@@ -29,9 +29,9 @@ from studyloop.settings import CardGeneratorConfig, ContentConfig, Settings
 @pytest.fixture(autouse=True)
 def _release_singleton():
     """Singleton is shared module state; release before AND after every test."""
-    asyncio.run(active_gen.release())
+    run_async(active_gen.release())
     yield
-    asyncio.run(active_gen.release())
+    run_async(active_gen.release())
 
 
 @pytest.fixture
@@ -283,7 +283,7 @@ class TestErrorPropagation:
         # The HTTP background task owns active_gen.release() now. The sync
         # orchestrator may also be reused by future CLI code, so it must not
         # clear caller-owned singleton state from a fresh event loop.
-        asyncio.run(active_gen.acquire("gen-prior", request=None))
+        run_async(active_gen.acquire("gen-prior", request=None))
         try:
             with pytest.raises(ScopeResolutionError):
                 run_job(
@@ -302,7 +302,7 @@ class TestErrorPropagation:
                     settings,
                 )
         finally:
-            current = asyncio.run(active_gen.current())
+            current = run_async(active_gen.current())
             assert current is not None
             assert current.job_id == "gen-prior"
 
