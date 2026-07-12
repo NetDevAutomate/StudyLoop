@@ -13,6 +13,7 @@ from fastapi import Request  # noqa: TC002 - FastAPI needs Request at runtime fo
 from studyloop.settings import MAX_ACTIVE_TOPICS
 from studyloop.web.routes.session._models import SessionOption
 from studyloop.web.routes.session._router import router
+from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
 
 _SESSION_OPTION_INDEX_VERSION = 1
 _SESSION_OPTION_INDEX_LOCK = threading.Lock()
@@ -370,7 +371,7 @@ def _agent_options() -> list[dict[str, object]]:
                 "label": _agent_label(name),
                 "value": name,
                 "available": name in detected,
-                "supports_acp": name in {"kiro", "gemini", "grok"},
+                "supports_acp": name in ACP_CAPABLE_AGENTS,
                 "acp_ready": False,
                 "recommended_transport": "ttyd",
                 "binary": adapter.binary,
@@ -384,7 +385,7 @@ def _agent_options() -> list[dict[str, object]]:
                 "label": _agent_label(name),
                 "value": name,
                 "available": False,
-                "supports_acp": name in {"kiro", "gemini", "grok"},
+                "supports_acp": name in ACP_CAPABLE_AGENTS,
                 "acp_ready": False,
                 "recommended_transport": "ttyd",
                 "binary": _AGENT_FALLBACK_BINARIES[name],
