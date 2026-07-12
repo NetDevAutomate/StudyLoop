@@ -1,5 +1,10 @@
 # Session Handoff — Post Fan-Out State + Remaining Work (2026-07-12, evening)
 
+> **SUPERSEDED by `2026-07-12-session-handoff-closeout.md`** — the branch is
+> merged to main, both user-reported defects are fixed, and the openspec
+> change is archived. Read the close-out doc first; this one remains for the
+> corrections list (§2) and original root-cause narratives.
+
 **For:** the next Claude session (fresh context). This supersedes
 `2026-07-12-session-handoff-e2e-harness.md` — that mission is **complete**;
 read this doc first, then only dip into the old one if you need the original
