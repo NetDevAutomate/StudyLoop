@@ -201,6 +201,41 @@ class TestExtractText:
     def test_empty_entry(self):
         assert _extract_text({}) == []
 
+    # -- list-shaped entries (the real kiro-cli on-disk format) ------------
+
+    def test_list_entry_user_and_assistant_tooluse(self):
+        """Real kiro history entries are 2-element lists [user_turn, asst_turn]."""
+        entry = [
+            {"content": {"Prompt": {"prompt": "what is my next meeting?"}}},
+            {"ToolUse": {"message_id": "x", "content": "Let me check Outlook."}},
+        ]
+        results = _extract_text(entry)
+        assert [(r, t) for r, t, _ in results] == [
+            ("user", "what is my next meeting?"),
+            ("assistant", "Let me check Outlook."),
+        ]
+
+    def test_list_entry_assistant_response_shape(self):
+        """Assistant turns can use Response.content instead of ToolUse.content."""
+        entry = [
+            {"content": {"Prompt": {"prompt": "hi"}}},
+            {"Response": {"message_id": "y", "content": "Hello!"}},
+        ]
+        results = _extract_text(entry)
+        assert [(r, t) for r, t, _ in results] == [
+            ("user", "hi"),
+            ("assistant", "Hello!"),
+        ]
+
+    def test_list_entry_tool_result_turn_yields_no_text(self):
+        """A user-side ToolUseResults turn carries no prose and must be skipped."""
+        entry = [
+            {"content": {"ToolUseResults": {"tool_use_results": []}}},
+            {"Response": {"content": "done"}},
+        ]
+        results = _extract_text(entry)
+        assert [(r, t) for r, t, _ in results] == [("assistant", "done")]
+
 
 # ---------------------------------------------------------------------------
 # is_available

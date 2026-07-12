@@ -25,11 +25,50 @@ from .base import ExportStats, commit_batch
 KIRO_DB = Path.home() / "Library/Application Support/kiro-cli/data.sqlite3"
 
 
-def _extract_text(msg: dict) -> list[tuple[str, str, str | None]]:
-    """Extract (role, text, timestamp_iso) tuples from a Kiro history entry."""
+def _extract_turn(turn: dict) -> tuple[str, str] | None:
+    """Extract one (role, text) from a single kiro turn dict, or None.
+
+    Handles the on-disk list-entry turn shapes:
+    - user turn:      ``{"content": {"Prompt": {"prompt": "..."}}}``
+    - assistant turn: ``{"ToolUse": {"content": "..."}}`` or
+                      ``{"Response": {"content": "..."}}``
+    Tool-result / cancelled turns carry no prose and yield None.
+    """
+    content = turn.get("content")
+    if isinstance(content, dict):
+        prompt = content.get("Prompt")
+        if isinstance(prompt, dict) and prompt.get("prompt"):
+            return ("user", prompt["prompt"])
+    for key in ("ToolUse", "Response"):
+        block = turn.get(key)
+        if isinstance(block, dict) and block.get("content"):
+            return ("assistant", block["content"])
+    return None
+
+
+def _extract_text(msg: object) -> list[tuple[str, str, str | None]]:
+    """Extract (role, text, timestamp_iso) tuples from a Kiro history entry.
+
+    Kiro entries come in two shapes: the real on-disk format is a *list* of
+    turn dicts (``[user_turn, assistant_turn, ...]``); an older/normalised
+    dict form uses top-level ``user``/``assistant`` keys. Both are handled;
+    anything else yields no text.
+    """
     results: list[tuple[str, str, str | None]] = []
 
-    # User message
+    if isinstance(msg, list):
+        # Real on-disk format: a sequence of turn dicts.
+        for turn in msg:
+            if isinstance(turn, dict):
+                extracted = _extract_turn(turn)
+                if extracted:
+                    results.append((extracted[0], extracted[1], None))
+        return results
+
+    if not isinstance(msg, dict):
+        return results
+
+    # Legacy dict shape: top-level user/assistant blocks.
     user = msg.get("user")
     if isinstance(user, dict):
         content = user.get("content", {})
@@ -38,23 +77,20 @@ def _extract_text(msg: dict) -> list[tuple[str, str, str | None]]:
             if isinstance(prompt, dict) and prompt.get("prompt"):
                 results.append(("user", prompt["prompt"], None))
 
-    # Assistant message — text is inside ToolUse.content
     assistant = msg.get("assistant")
     if isinstance(assistant, dict):
         tool_use = assistant.get("ToolUse")
         if isinstance(tool_use, dict) and tool_use.get("content"):
             results.append(("assistant", tool_use["content"], None))
-        # Fall back to top-level content if present and non-empty
         elif assistant.get("content") and isinstance(assistant["content"], str):
             results.append(("assistant", assistant["content"], None))
 
-    # Extract timestamp from request_metadata if available
+    # Extract timestamp from request_metadata if available (dict form only).
     meta = msg.get("request_metadata", {})
     if isinstance(meta, dict) and meta.get("request_start_timestamp_ms"):
         ts_ms = meta["request_start_timestamp_ms"]
         try:
             ts_iso = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).isoformat()
-            # Back-fill timestamp onto results from this entry
             results = [(r, t, ts_iso if ts is None else ts) for r, t, ts in results]
         except (ValueError, OSError):
             pass
@@ -155,7 +191,9 @@ class KiroCliExporter:
                 messages = []
                 seq = 0
                 for entry in history:
-                    if not isinstance(entry, dict):
+                    # Entries are list-shaped (real format) or dict (legacy);
+                    # _extract_text handles both. Skip other scalar junk.
+                    if not isinstance(entry, (list, dict)):
                         continue
                     for role, text, timestamp in _extract_text(entry):
                         seq += 1

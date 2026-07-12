@@ -29,6 +29,24 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   total.
 
 ### Fixed
+- **Session-export data integrity (root cause):** `scrub_log` (v18) and
+  `file_references` (v19) had `message_id`/`session_id` foreign keys with no
+  `ON DELETE CASCADE` (every other FK in the schema has it). With
+  `PRAGMA foreign_keys=ON` (set on the export path), an exporter's update-path
+  `DELETE FROM messages` raised a FK violation once a message had a scrub_log
+  row — which gemini's bare `except` swallowed, silently dropping the whole
+  session. Migration 25 rebuilds both tables with cascading FKs; an
+  end-to-end gemini re-import test proves the session survives.
+- **Kiro exporter dropped >half of history:** real kiro entries are 2-element
+  lists `[user_turn, assistant_turn]`, but the extractor only handled a dict
+  shape and the loop skipped non-dict entries — losing 2759 of 4794 entries
+  on the real vault. `_extract_text` now handles both shapes (extraction
+  1369 → 3419 messages).
+- **Aider exporter duplicated messages on re-export:** aider mints a fresh
+  uuid per message each run and never deleted old messages on the updated
+  path, so `INSERT OR REPLACE` (keyed on id) accumulated duplicates. Now
+  deletes prior messages for the session before re-inserting (matches
+  kiro/gemini).
 - **Settings shape-hardening:** a bare `review:` key (YAML `None`) no longer
   crashes `resolve_study_dirs()` with `AttributeError`; a scalar
   `review.directories` or `content.study_paths` string is treated as a single
