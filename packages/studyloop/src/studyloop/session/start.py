@@ -358,7 +358,12 @@ def start_session(
         session_dir = Path(resume_session_dir)
         is_resuming = True
     else:
-        slug = topic.lower().replace(" ", "-")[:20]
+        # slug_session_dir strips path traversal from the user-controlled topic
+        # (this dir is later rmtree'd on failure, so an unsanitised "../.." is a
+        # real escape vector — shared with the web session-start paths).
+        from studyloop.web.services.session_start import slug_session_dir
+
+        slug = slug_session_dir(topic)
         short_id = study_id[:8] if study_id else "unknown"
         session_name = f"study-{slug}-{short_id}"
         session_dir = SESSION_DIR / "sessions" / session_name
