@@ -341,8 +341,46 @@ def get_config_dir() -> Path:
     return get_config_path().parent
 
 
+def _expand_dotted_keys(raw: dict[str, Any]) -> dict[str, Any]:
+    """Expand top-level dotted keys into nested mappings.
+
+    In YAML, ``tts.backend: openvox`` is a single flat key named
+    ``"tts.backend"`` — NOT ``tts: {backend: openvox}``. Real user configs
+    contain the flat form (the doctor's repair hints used to suggest it
+    verbatim), and every consumer reads the nested shape, so the flat key was
+    silently ignored. Normalising here fixes all consumers at once.
+
+    Rules: dotted keys merge into the nested tree; on conflict an explicit
+    nested value wins over a dotted one (the nested form is authoritative);
+    non-dict intermediate values are left alone rather than clobbered.
+    """
+    result: dict[str, Any] = {k: v for k, v in raw.items() if "." not in str(k)}
+    for key, value in raw.items():
+        if "." not in str(key):
+            continue
+        parts = str(key).split(".")
+        node = result
+        for part in parts[:-1]:
+            child = node.get(part)
+            if not isinstance(child, dict):
+                if part in node:
+                    # An existing non-dict value occupies this path — the
+                    # explicit key wins; drop the dotted variant.
+                    break
+                child = {}
+                node[part] = child
+            node = child
+        else:
+            node.setdefault(parts[-1], value)
+    return result
+
+
 def load_raw_config() -> dict[str, Any]:
-    """Load the raw YAML config from the active config path."""
+    """Load the raw YAML config from the active config path.
+
+    Top-level dotted keys (``tts.backend: x``) are expanded to nested
+    mappings (``tts: {backend: x}``); explicit nested values win on conflict.
+    """
     _maybe_migrate_legacy_config()
     config_path = get_config_path()
     if not config_path.exists():
@@ -360,7 +398,7 @@ def load_raw_config() -> dict[str, Any]:
         raise ConfigError(
             f"Invalid config in {config_path}: expected a YAML mapping at the top level."
         )
-    return loaded
+    return _expand_dotted_keys(loaded)
 
 
 def resolve_study_dirs() -> list[str]:
