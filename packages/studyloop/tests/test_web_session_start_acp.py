@@ -188,6 +188,43 @@ class TestAcpStartHappyPath:
 # ---------------------------------------------------------------------------
 
 
+class TestAcpCapabilityGuard:
+    """A PTY-only agent (Claude Code, Codex) requesting ACP fails fast (400)."""
+
+    @pytest.mark.parametrize("agent", ["claude", "codex"])
+    def test_acp_start_rejects_pty_only_agent(
+        self,
+        client: TestClient,
+        _stub_db,
+        agent: str,
+    ) -> None:
+        with (
+            patch("studyloop.web.routes.session.is_session_active", return_value=False),
+            patch(
+                "studyloop.session.active.acquire",
+                side_effect=AssertionError("must not spawn a transport for a PTY-only agent"),
+            ),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": agent, "transport": "acp"},
+            )
+
+        assert resp.status_code == 400, resp.text
+        body = resp.json()
+        assert agent in body["error"]
+        assert "ACP" in body["error"]
+        assert "repair" in body
+        assert run_async(active.current()) is None
+
+    @pytest.mark.parametrize("agent", ["kiro", "gemini", "grok"])
+    def test_acp_capable_agents_pass_the_guard(self, agent: str) -> None:
+        """The guard admits exactly the ACP-capable set (contract lock)."""
+        from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
+
+        assert agent in ACP_CAPABLE_AGENTS
+
+
 class TestAcpStartSingleSession:
     def test_acp_start_refuses_when_session_already_active(
         self,

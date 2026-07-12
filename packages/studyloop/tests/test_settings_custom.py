@@ -620,3 +620,68 @@ def test_obsidian_section_partial_override_uses_defaults(tmp_path):
     assert s.obsidian.moc_dir == "AgentMemory/MOC"
     assert s.obsidian.backlinks is True
     assert s.obsidian.granularity == "both"
+
+
+# ---------------------------------------------------------------------------
+# Dotted top-level keys (user-reported: `tts.backend: openvox` at top level)
+# ---------------------------------------------------------------------------
+
+
+def _load_raw(config_path):
+    from studyloop.settings import load_raw_config
+
+    with patch("studyloop.settings._CONFIG_PATH", config_path):
+        return load_raw_config()
+
+
+def test_dotted_top_level_key_expands_to_nested(tmp_path):
+    """`tts.backend: openvox` at YAML top level must behave as tts: {backend: openvox}.
+
+    The doctor's own repair message used to suggest exactly this flat form,
+    so real user configs contain it.
+    """
+    p = _write_config(tmp_path, {"tts.backend": "openvox"})
+    raw = _load_raw(p)
+    assert raw.get("tts", {}).get("backend") == "openvox"
+    assert "tts.backend" not in raw
+
+
+def test_nested_tts_key_still_works(tmp_path):
+    p = _write_config(tmp_path, {"tts": {"backend": "openvox"}})
+    raw = _load_raw(p)
+    assert raw["tts"]["backend"] == "openvox"
+
+
+def test_nested_wins_over_dotted_on_conflict(tmp_path):
+    """When both forms are present, the explicit nested mapping is authoritative."""
+    p = _write_config(
+        tmp_path, {"tts": {"backend": "kokoro"}, "tts.backend": "openvox"}
+    )
+    raw = _load_raw(p)
+    assert raw["tts"]["backend"] == "kokoro"
+
+
+def test_dotted_key_merges_into_existing_section(tmp_path):
+    """A dotted key for a NEW leaf merges into an existing nested section."""
+    p = _write_config(
+        tmp_path, {"tts": {"voice": "af_bella"}, "tts.backend": "openvox"}
+    )
+    raw = _load_raw(p)
+    assert raw["tts"]["backend"] == "openvox"
+    assert raw["tts"]["voice"] == "af_bella"
+
+
+def test_multi_segment_dotted_key(tmp_path):
+    p = _write_config(tmp_path, {"review.export.enabled": True})
+    raw = _load_raw(p)
+    assert raw["review"]["export"]["enabled"] is True
+
+
+def test_doctor_voice_honors_flat_tts_backend(tmp_path, monkeypatch):
+    """End-to-end: the doctor must see openvox from the flat key (the user's bug)."""
+    p = _write_config(tmp_path, {"tts.backend": "openvox"})
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(p))
+
+    from studyloop.doctor.voice import _tts_config
+
+    assert _tts_config().get("backend") == "openvox"

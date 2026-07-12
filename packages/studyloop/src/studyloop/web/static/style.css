@@ -965,6 +965,49 @@ body.dyslexic .card-content {
 .history-item .hi-score { color: var(--green); }
 .history-item .hi-date { color: var(--text-muted); }
 
+/* --- End-session confirm overlay --- */
+.end-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300; /* above pomodoro (100) and the ttyd iframe */
+}
+
+.end-confirm-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  max-width: 320px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.end-confirm-dialog p { margin: 0 0 16px; }
+
+.end-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.end-confirm-btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+  background: var(--bg-card);
+  color: inherit;
+  cursor: pointer;
+}
+
+.end-confirm-yes {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
 /* --- Pomodoro timer --- */
 .pomodoro {
   position: fixed;

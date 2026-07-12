@@ -281,6 +281,26 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
             )
         agent = available[0]
 
+    # --- ACP capability guard ---
+    # Fail early (before spawn) if the resolved agent has no ACP transport.
+    # Claude Code and Codex are PTY-only; forcing ACP on them dead-ends in a
+    # spawn failure with an opaque message. Surface the cause + repair instead.
+    from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
+
+    if agent not in ACP_CAPABLE_AGENTS:
+        return JSONResponse(
+            {
+                "error": f"Agent '{agent}' does not support the ACP transport.",
+                "agent": agent,
+                "supported_agents": sorted(ACP_CAPABLE_AGENTS),
+                "repair": (
+                    f"Use transport 'pty' for {agent}, or pick an ACP-capable "
+                    f"agent ({', '.join(sorted(ACP_CAPABLE_AGENTS))})."
+                ),
+            },
+            status_code=400,
+        )
+
     adapter = AGENTS[agent]
     # STUDYLOOP_TEST_ACP_CMD bypasses the binary check entirely — the test
     # stub (tests/_stub_acp_agent.py) is the argv we spawn, so the real
@@ -558,8 +578,12 @@ def _start_ttyd_session(body: StartSessionRequest) -> JSONResponse:
     PARKING_FILE.touch(mode=0o600, exist_ok=True)
 
     # --- Session directory + tmux ---
+    # slug_session_dir strips path-traversal from the user-controlled topic;
+    # this session_name becomes a path segment (and is later rmtree'd on
+    # cleanup), so an unsanitised "../.." here is a real escape vector.
+    from studyloop.web.services.session_start import slug_session_dir
 
-    slug = body.topic.lower().replace(" ", "-")[:20]
+    slug = slug_session_dir(body.topic)
     short_id = study_id[:8]
     session_name = f"study-{slug}-{short_id}"
     session_dir = SESSION_DIR / "sessions" / session_name

@@ -1,0 +1,61 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+context: |
+  StudyLoop is an AuDHD-aware Socratic study mentor: a uv workspace with two
+  packages — `packages/studyloop` (FastAPI + Alpine.js/HTMX web UI with no
+  build step, Typer/Click CLI, FastMCP server at `mcp/tools.py`) and
+  `packages/agent-session-tools` (cross-agent session export/import into a
+  shared SQLite `sessions.db`, plus a separate `session-db-mcp` server).
+
+  Tech: Python 3.13, FastAPI/uvicorn, SQLite (WAL mode, `connect_db()`
+  everywhere), Pydantic schemas for generated content, pytest, ruff,
+  pyright, `uv` for dependency management (never pip/poetry).
+
+  Conventions: conventional commits; pytest markers `e2e`, `integration`,
+  `live_kiro`, `live_provider` are deselected by default
+  (`-m 'not integration and not e2e and not live_kiro and not live_provider'`);
+  FCIS-style separation (pure `logic/`, thin route/CLI shell); reuse
+  existing shared helpers (e.g. `content.storage.slugify`,
+  `services/review.py`) rather than re-implementing per call site —
+  several confirmed bugs trace back to the same defect being hand-rolled
+  in three places instead of shared once.
+
+  Two agent-CLI transports exist for live study sessions: ACP (JSON-RPC
+  over stdio; Kiro, Gemini) and PTY (raw bytes; Claude Code, Codex,
+  OpenCode). Docs worth reading before touching either surface:
+  `docs/architecture/current.md` (C4 diagrams), `docs/mcp.md`,
+  `docs/audit/2026-07-11-comprehensive-review.md` (verified findings +
+  remediation plan). Treat "done" claims in docs/handoffs as unverified
+  until checked against the actual checkout — this codebase has a
+  documented history of stale-branch and hallucinated-completion drift.
+
+  MANDATORY: Invoke the 'openspec-plus-apply' skill immediately when openspec-apply-change is invoked
+
+rules:
+  proposal:
+    - "MANDATORY: Invoke the 'openspec-plus-proposal' skill BEFORE writing the proposal."
+  specs:
+    - "MANDATORY: Invoke the 'openspec-plus-spec' skill BEFORE writing any specification."
+  design:
+    - "MANDATORY: Invoke the 'openspec-plus-design' skill BEFORE writing the design document."
+  tasks:
+    - "MANDATORY: Invoke the 'openspec-plus-tasks' skill BEFORE writing the tasks file."
