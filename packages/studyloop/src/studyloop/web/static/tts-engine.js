@@ -177,6 +177,13 @@ class TTSEngine {
     this._audioCtx = null;
     this._currentSource = null;
     this._stopped = false;
+    // Monotonic speak-generation counter. Each speak() claims a new
+    // generation; older chunk loops see the mismatch and exit. The shared
+    // _stopped boolean alone can't do this: speak() B resets it to false
+    // while speak() A's loop is suspended in an await, so A's next
+    // between-chunk check passes and BOTH loops feed the AudioContext
+    // (the "two voices talking over each other" bug).
+    this._generation = 0;
     this._initPromise = null;
     this._voiceId = DEFAULT_VOICE;
     this._speed = DEFAULT_SPEED;
@@ -240,6 +247,16 @@ class TTSEngine {
       console.warn('[tts-engine] Neural init failed, falling back to Web Speech API:', err.message);
       this._initWebSpeech();
     }
+
+    // Restore the persisted voice into the ENGINE, not just the settings
+    // dropdown. Without this every page load spoke with DEFAULT_VOICE
+    // (am_michael) regardless of the saved preference — the dropdown showed
+    // the right voice while the engine used the wrong one.
+    if (this._tier === 'neural-webgpu' || this._tier === 'neural-wasm') {
+      const saved = localStorage.getItem('neuralVoiceId');
+      if (saved && KOKORO_VOICES[saved]) this._voiceId = saved;
+    }
+    // WSA restores per-utterance from localStorage 'voiceName' in _speakWSA.
 
     this._setState('ready');
   }
@@ -389,7 +406,7 @@ class TTSEngine {
    * @param {boolean} play — if true, play and return; if false, return duration only
    * @returns {Promise<number>} audio duration in seconds
    */
-  async _synthesiseChunk(text, play = true) {
+  async _synthesiseChunk(text, play = true, gen = null) {
     if (!this._kokoroModel || !this._tokenizer || !this._Tensor) {
       throw new Error('Neural model not loaded');
     }
@@ -432,7 +449,14 @@ class TTSEngine {
     buffer.copyToChannel(pcm, 0);
 
     return new Promise((resolve, reject) => {
-      if (this._stopped) { resolve(duration); return; }
+      // Playback gate. The between-chunk generation check can't catch a chunk
+      // that was already awaiting the (seconds-long) forward pass when a newer
+      // speak() arrived — by then _stopped is false again. Re-check the
+      // generation HERE, at the moment audio would actually start.
+      if (this._stopped || (gen !== null && gen !== this._generation)) {
+        resolve(duration);
+        return;
+      }
 
       const source = ctx.createBufferSource();
       source.buffer = buffer;
@@ -468,34 +492,39 @@ class TTSEngine {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    // Stop current speech before starting new
+    // Stop current speech before starting new, and claim a new generation.
+    // The generation is this call's identity: any older _speakNeural loop
+    // still in flight sees this._generation move past its own and exits,
+    // even though the _stopped flag below is reset for the new call.
     this.stop();
     this._stopped = false;
+    const gen = ++this._generation;
 
     // Ensure engine is initialised
     if (!this._tier) await this.init();
+    if (gen !== this._generation) return; // superseded while initialising
 
     this._setState('speaking');
 
     if (this._tier === 'neural-webgpu' || this._tier === 'neural-wasm') {
-      await this._speakNeural(trimmed);
+      await this._speakNeural(trimmed, gen);
     } else if (this._tier === 'web-speech') {
       this._speakWSA(trimmed);
     }
     // 'silent' tier: no-op
 
-    if (!this._stopped) this._setState('idle');
+    if (!this._stopped && gen === this._generation) this._setState('idle');
   }
 
-  async _speakNeural(text) {
+  async _speakNeural(text, gen) {
     const normalized = _normaliseText(text);
     const chunks = _splitSentences(normalized);
 
     for (const chunk of chunks) {
-      if (this._stopped) break;
+      if (this._stopped || gen !== this._generation) break;
       if (!chunk.trim()) continue;
       try {
-        await this._synthesiseChunk(chunk, /* play= */ true);
+        await this._synthesiseChunk(chunk, /* play= */ true, gen);
       } catch (err) {
         console.error('[tts-engine] Synthesis chunk failed:', err.message, '— chunk:', chunk);
         // Don't break on a single chunk failure; continue with next chunk

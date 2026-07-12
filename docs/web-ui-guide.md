@@ -20,6 +20,37 @@ Open your browser to `http://localhost:8567`. The PWA is installable; add it to 
 
 ---
 
+## The Today View (default landing)
+
+The app opens on **Today** — a single next-action card so you never have to
+decide "what now" unaided (the AuDHD one-next-thing principle):
+
+- **Your one next action** — the top recommendation from the shared decision
+  engine (`/api/now`): concept, time estimate, action type, and *why*. One
+  **Start** button jumps straight to the right view.
+- **Context-aware resume** — if a session is live you get **Rejoin session**;
+  otherwise **Resume: \<last topic\>** (pre-fills the study-session form), or
+  **Resume deck** for your last review course.
+- **Not now?** — a collapsed alternates list if the primary doesn't fit your
+  current energy.
+- **Parked thoughts** — one-tap chips to pick up something you parked earlier.
+
+### Quick-park a thought (protect your flow)
+
+A tangent popping up mid-study is the classic focus-killer. Hit the floating
+**＋ Park a thought** button (or press `p` anywhere outside an input), type
+the thought, Enter — it lands in the parking lot and you stay exactly where
+you were. A toast confirms the save.
+
+### The 3-topic rule (park-first friction)
+
+Starting a **4th** topic while three are active opens an in-page dialog:
+pick one active topic to park (it moves to the back of the parking lot) or
+keep all three and don't start. This is deliberate friction — the limit is
+what keeps the active set workable.
+
+---
+
 ## Flashcard Review
 
 ```mermaid

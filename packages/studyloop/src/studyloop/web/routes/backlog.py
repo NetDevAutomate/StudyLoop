@@ -9,9 +9,10 @@ list.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
-from studyloop.parking import get_parked_topics
+from studyloop.parking import demote_parked_topic, get_parked_topics, park_topic
 from studyloop.settings import MAX_ACTIVE_TOPICS
 
 router = APIRouter()
@@ -35,3 +36,51 @@ def get_backlog() -> dict:
         "parking_lot_count": len(parking_lot),
         "max_active": MAX_ACTIVE_TOPICS,
     }
+
+
+class ParkRequest(BaseModel):
+    """POST /api/backlog/park request body."""
+
+    question: str = Field(min_length=1, max_length=500)
+    tech_area: str | None = None
+    context: str | None = None
+
+
+@router.post("/backlog/park")
+def post_park(body: ParkRequest) -> dict:
+    """Park a topic/thought for later — the quick-park brain-dump.
+
+    Serves both the global "park a thought" capture (protects flow: the
+    learner dumps a tangent without leaving the current task) and the
+    park-first friction modal's "park one to free a slot" action.
+    """
+    row_id = park_topic(
+        body.question.strip(),
+        tech_area=body.tech_area,
+        context=body.context,
+        created_by="web",
+        source="parked",
+    )
+    if row_id is None:
+        raise HTTPException(status_code=500, detail="Could not park topic")
+    return {"ok": True, "id": row_id}
+
+
+class DemoteRequest(BaseModel):
+    """POST /api/backlog/demote request body."""
+
+    id: int
+
+
+@router.post("/backlog/demote")
+def post_demote(body: DemoteRequest) -> dict:
+    """Move an ACTIVE topic into the parking lot (frees a 3-topic slot).
+
+    The active/parking split is recency-ordered, so demoting = making the
+    row the oldest pending entry. Re-parking the same question via
+    /backlog/park would be an INSERT OR IGNORE no-op and would NOT free the
+    slot — the park-first friction modal must call this instead.
+    """
+    if not demote_parked_topic(body.id):
+        raise HTTPException(status_code=500, detail="Could not demote topic")
+    return {"ok": True}

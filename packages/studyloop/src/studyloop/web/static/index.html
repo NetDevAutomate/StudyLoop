@@ -82,7 +82,7 @@
 </head>
 <body x-data x-init="$store.nav.init()">
   <header>
-    <a class="brand" href="#flashcards" @click.prevent="$store.nav.go('flashcards')"
+    <a class="brand" href="#today" @click.prevent="$store.nav.go('today')"
        title="StudyLoop — home">
       <!-- Inline so the loop + centre spark can pick up `currentColor` and
            re-theme automatically across all four palettes. The pulses keep
@@ -230,12 +230,18 @@
            uses a lightweight currentColor-themed mark; the sidebar gets the
            proper "app icon" treatment so it stands out as a brand element.
            Same SVG that ships as the favicon / app icon / 256/512 PNGs. -->
-      <a class="sidebar-brand" href="#flashcards"
-         @click.prevent="$store.nav.go('flashcards')"
+      <a class="sidebar-brand" href="#today"
+         @click.prevent="$store.nav.go('today')"
          title="StudyLoop — home">
         <img src="/icons/studyloop.svg" alt="StudyLoop" width="64" height="64">
       </a>
       <hr class="sidebar-divider" aria-hidden="true">
+      <button class="sidebar-btn"
+              :class="{ active: $store.nav.is('today') }"
+              @click="$store.nav.go('today')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        <span>Today</span>
+      </button>
       <button class="sidebar-btn"
               :class="{ active: $store.nav.is('flashcards') }"
               @click="$store.nav.go('flashcards')">
@@ -602,6 +608,76 @@
     <div class="content-area">
 
       <!-- ============================================================ -->
+      <!-- TODAY VIEW — "one next action" landing (AuDHD: no re-deciding)-->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('today')" x-cloak
+           x-data="todayPanel()" x-init="init()">
+        <section class="today-panel">
+          <h2 class="today-heading">Today</h2>
+
+          <!-- Loading -->
+          <div x-show="loading" class="today-loading">Checking your content and progress…</div>
+
+          <!-- Context-aware resume strip -->
+          <div x-show="!loading && resumeKind" class="today-resume">
+            <button class="toggle-btn today-resume-btn" @click="resumeAction()">
+              <span x-show="resumeKind === 'rejoin'">Rejoin session: <strong x-text="resumeLabel"></strong></span>
+              <span x-show="resumeKind === 'session'">Resume: <strong x-text="resumeLabel"></strong></span>
+              <span x-show="resumeKind === 'deck'">Resume deck: <strong x-text="resumeLabel"></strong></span>
+            </button>
+          </div>
+
+          <!-- Starter state: nothing to review yet -->
+          <div x-show="!loading && plan && plan.starter" class="today-card today-starter">
+            <h3>Let's get you started</h3>
+            <p>No decks or progress yet — generate your first flashcards from a course.</p>
+            <button class="toggle-btn" @click="$store.nav.go('generate')">Generate content →</button>
+          </div>
+
+          <!-- The ONE next action -->
+          <div x-show="!loading && plan && !plan.starter && plan.primary" class="today-card">
+            <p class="today-kicker">Your one next action</p>
+            <h3 class="today-concept" x-text="plan?.primary?.concept"></h3>
+            <p class="today-meta">
+              <span x-text="'~' + (plan?.primary?.estimated_minutes ?? 15) + ' min'"></span>
+              · <span x-text="plan?.primary?.action_type"></span>
+            </p>
+            <p class="today-reason">Why: <span x-text="plan?.primary?.reason"></span></p>
+            <button class="toggle-btn today-start-btn" @click="startPrimary()">Start →</button>
+          </div>
+
+          <!-- Alternates, collapsed by default -->
+          <div x-show="!loading && plan && !plan.starter && (plan.alternates || []).length > 0"
+               class="today-alternates">
+            <button class="today-alt-toggle" @click="showAlternates = !showAlternates">
+              Not now? See <span x-text="(plan?.alternates || []).length"></span> alternates
+              <span x-text="showAlternates ? '▴' : '▾'"></span>
+            </button>
+            <ul x-show="showAlternates" x-transition class="today-alt-list">
+              <template x-for="(alt, i) in (plan?.alternates || [])" :key="i">
+                <li class="today-alt-item">
+                  <button class="today-alt-btn" @click="startAction(alt)">
+                    <span x-text="alt.concept"></span>
+                    <span class="today-alt-meta" x-text="'~' + alt.estimated_minutes + ' min · ' + alt.action_type"></span>
+                  </button>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <!-- Parked-topic chips: one-tap pickup -->
+          <div x-show="!loading && parked.length > 0" class="today-parked">
+            <p class="today-parked-label">Parked thoughts you could pick up:</p>
+            <div class="today-parked-chips">
+              <template x-for="p in parked.slice(0, 5)" :key="p.id">
+                <button class="today-chip" @click="pickUpParked(p)" x-text="p.question"></button>
+              </template>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================================================ -->
       <!-- FLASHCARDS VIEW                                              -->
       <!-- ============================================================ -->
       <div x-show="$store.nav.is('flashcards')" x-cloak
@@ -628,7 +704,10 @@
                          autocomplete="off" spellcheck="false" />
                 </div>
                 <!-- No courses at all -->
-                <div x-show="courses.length === 0" style="text-align:center;color:var(--text-muted)">
+                <div x-show="coursesLoading" style="text-align:center;color:var(--text-muted)">
+                  <p>Checking your content and progress…</p>
+                </div>
+                <div x-show="!coursesLoading && courses.length === 0" style="text-align:center;color:var(--text-muted)">
                   <h2 style="margin-bottom:12px">No courses found</h2>
                   <p>Add flashcard/quiz JSON files to your review directories.</p>
                 </div>
@@ -875,7 +954,10 @@
                          autocomplete="off" spellcheck="false" />
                 </div>
                 <!-- No courses at all -->
-                <div x-show="courses.length === 0" style="text-align:center;color:var(--text-muted)">
+                <div x-show="coursesLoading" style="text-align:center;color:var(--text-muted)">
+                  <p>Checking your content and progress…</p>
+                </div>
+                <div x-show="!coursesLoading && courses.length === 0" style="text-align:center;color:var(--text-muted)">
                   <h2 style="margin-bottom:12px">No courses found</h2>
                   <p>Add flashcard/quiz JSON files to your review directories.</p>
                 </div>
@@ -1403,6 +1485,28 @@
       <div x-show="$store.nav.is('study-session')" x-cloak
            x-data="sessionTimer()" x-init="init()">
 
+        <!-- Park-first friction: 4th topic requires parking one (3-topic rule).
+             Sits OUTSIDE the sessionActive/picker branches — it must show while
+             NO session is active (that's exactly when starting is blocked). -->
+        <div class="park-first-overlay" x-show="confirmingParkFirst" x-transition.opacity x-cloak
+             @keydown.escape.window="cancelParkFirst()">
+          <div class="park-first-dialog" role="alertdialog" aria-label="Park a topic first">
+            <h3>You already have <span x-text="parkFirstTopics.length"></span> live topics</h3>
+            <p>The 3-topic rule keeps focus manageable. Park one to make room:</p>
+            <ul class="park-first-list">
+              <template x-for="t in parkFirstTopics" :key="t.id">
+                <li class="park-first-item">
+                  <button @click="parkAndProceed(t)" x-text="'Park: ' + t.question"></button>
+                </li>
+              </template>
+            </ul>
+            <div class="end-confirm-actions">
+              <button class="end-confirm-btn end-confirm-cancel"
+                      @click="cancelParkFirst()">Keep all — don't start</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Start Session Picker (no active session) ── -->
         <div x-show="!sessionActive && !starting" class="session-start-picker" x-transition>
           <h2>Start a Study Session</h2>
@@ -1895,11 +1999,11 @@
      * Navigation store — drives sidebar + view switching
      * ---------------------------------------------------------------- */
     Alpine.store('nav', {
-      current: 'flashcards',
+      current: 'today',
 
       init() {
         const hash = window.location.hash.slice(1);
-        const valid = ['flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'settings', 'course-reader'];
+        const valid = ['today', 'flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'settings', 'course-reader'];
         if (hash && valid.includes(hash)) this.current = hash;
       },
 
@@ -2375,6 +2479,10 @@
       messageTimeout: null,
       sessionActive: false,
       confirmingEnd: false,
+      // Park-first friction modal (3-topic rule)
+      confirmingParkFirst: false,
+      parkFirstTopics: [],
+      _parkFirstChecked: false,
       paused: false,
       pausedAt: 0,
 
@@ -2401,6 +2509,18 @@
       },
 
       async init() {
+        // Today-panel resume handoff. init() runs ONCE at page load (x-init),
+        // while the resume click happens LATER on the Today tab — so this is
+        // an event, not a sessionStorage read at init time.
+        window.addEventListener('today-resume', (e) => {
+          this.topicInput = e.detail.topic || '';
+          this.selectedTopic = '';
+          if (e.detail.energy) {
+            const bands = { low: 3, medium: 5, high: 8 };
+            this.energy = bands[e.detail.energy] || 5;
+          }
+        });
+
         const optionsPromise = fetch('/api/session/options')
           .then((res) => res.ok ? res.json() : null)
           .catch(() => null);
@@ -2445,6 +2565,26 @@
       async startSession() {
         const topic = this.resolvedTopic().trim();
         if (!topic) return;
+
+        // Park-first friction (AuDHD 3-topic rule): starting a NEW topic
+        // while MAX_ACTIVE_TOPICS are already live requires parking one
+        // first. In-page overlay — native dialogs are banned by spec.
+        if (!this._parkFirstChecked) {
+          try {
+            const bl = await fetch('/api/backlog').then((r) => r.ok ? r.json() : null);
+            if (bl && bl.active_count >= bl.max_active) {
+              const isActive = (bl.active || []).some(
+                (t) => (t.question || '').toLowerCase() === topic.toLowerCase());
+              if (!isActive) {
+                this.parkFirstTopics = bl.active;
+                this.confirmingParkFirst = true;
+                return;
+              }
+            }
+          } catch { /* backlog unavailable — don't block starting */ }
+        }
+        this._parkFirstChecked = false;
+
         this.starting = true;
         this.startError = '';
         let startedSession = null;
@@ -2517,6 +2657,35 @@
         // focus, which made agent sessions impossible to end.
         if (!this.sessionActive) return;
         this.confirmingEnd = true;
+      },
+
+      // Park-first modal: demote the chosen active topic (re-parking the
+      // same question is an INSERT OR IGNORE no-op that would NOT free the
+      // slot — demote makes it the oldest pending row), then retry the start.
+      async parkAndProceed(topicRow) {
+        try {
+          const res = await fetch('/api/backlog/demote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: topicRow.id }),
+          });
+          if (!res.ok) {
+            Alpine.store('toast').show('Could not park — try again');
+            return;
+          }
+        } catch {
+          Alpine.store('toast').show('Could not park — offline?');
+          return;
+        }
+        Alpine.store('toast').show('Parked ✓ — starting session');
+        this.confirmingParkFirst = false;
+        this._parkFirstChecked = true; // skip the re-check on retry
+        await this.startSession();
+      },
+
+      cancelParkFirst() {
+        this.confirmingParkFirst = false;
+        this.parkFirstTopics = [];
       },
 
       async confirmEndSession() {
@@ -3592,6 +3761,40 @@
     };
   }
   </script>
+
+  <!-- Toast — shared feedback primitive ($store.toast) -->
+  <div class="toast" x-data x-show="$store.toast.visible" x-transition.opacity x-cloak
+       role="status" aria-live="polite">
+    <span x-text="$store.toast.message"></span>
+  </div>
+
+  <!-- Quick-park brain-dump — capture a tangent without leaving the task.
+       Floating button + 'p' shortcut; in-page overlay (native dialogs banned). -->
+  <div x-data
+       @keydown.window="($event.key === 'p' && !$event.metaKey && !$event.ctrlKey && !$event.altKey && !['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName) && !$store.quickPark.open) ? ($event.preventDefault(), $store.quickPark.show()) : null">
+    <button class="quick-park-btn" @click="$store.quickPark.show()"
+            title="Park a thought for later (P)">＋ Park a thought</button>
+
+    <div class="quick-park-overlay" x-show="$store.quickPark.open" x-transition.opacity x-cloak
+         @click.self="$store.quickPark.hide()"
+         @keydown.escape.window="$store.quickPark.hide()">
+      <div class="quick-park-dialog" role="dialog" aria-label="Park a thought">
+        <h3>Park a thought</h3>
+        <input class="quick-park-input" type="text" maxlength="500"
+               placeholder="The tangent that just popped up…"
+               x-model="$store.quickPark.text"
+               @keydown.enter="$store.quickPark.save()"
+               x-effect="if ($store.quickPark.open) $nextTick(() => $el.focus())">
+        <div class="end-confirm-actions">
+          <button class="end-confirm-btn end-confirm-cancel"
+                  @click="$store.quickPark.hide()">Cancel</button>
+          <button class="end-confirm-btn end-confirm-yes"
+                  :disabled="$store.quickPark.saving"
+                  @click="$store.quickPark.save()">Park it</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Alpine review engine + settings store + Pomodoro (replaces app.js) -->
   <script src="/components.js"></script>

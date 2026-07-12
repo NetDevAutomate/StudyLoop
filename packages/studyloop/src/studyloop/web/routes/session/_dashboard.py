@@ -26,6 +26,18 @@ def get_session_state() -> dict:
     return _get_full_state()
 
 
+@router.get("/session/last")
+def get_last_session() -> dict:
+    """Most recent study session (topic/energy/times), or {} when none.
+
+    Powers the Today panel's "Resume: <topic>" shortcut when no session is
+    currently live — start-again-same-topic, not tmux reattach.
+    """
+    from studyloop.history.sessions import get_last_study_session
+
+    return get_last_study_session() or {}
+
+
 @router.get("/session/stream")
 async def session_stream(request: Request) -> StreamingResponse:
     """SSE endpoint for live session updates.

@@ -208,3 +208,41 @@ def test_dismiss_only_pending(parking_db: Path) -> None:
     schedule_parked_topic(row_id, "2026-04-01")
     # Can't dismiss a scheduled topic
     assert dismiss_parked_topic(row_id) is False
+
+
+def test_demote_parked_topic_moves_to_back(parking_db: Path) -> None:
+    """Demote makes the row the OLDEST pending entry (frees an active slot)."""
+
+    from studyloop.parking import demote_parked_topic, get_parked_topics, park_topic
+
+    ids = []
+    for i, q in enumerate(["first", "second", "third", "fourth"]):
+        row_id = park_topic(q)
+        assert row_id is not None
+        # parked_at has 1s resolution — force distinct timestamps
+        import sqlite3
+
+        conn = sqlite3.connect(str(parking_db))
+        conn.execute(
+            "UPDATE parked_topics SET parked_at = datetime('now', ?) WHERE id = ?",
+            (f"-{40 - i * 10} seconds", row_id),
+        )
+        conn.commit()
+        conn.close()
+        ids.append(row_id)
+
+    # Most-recent-first: 'fourth' leads
+    before = [t["question"] for t in get_parked_topics(status="pending")]
+    assert before[0] == "fourth"
+
+    # Demote 'fourth' → it must drop to the very back
+    assert demote_parked_topic(ids[3]) is True
+    after = [t["question"] for t in get_parked_topics(status="pending")]
+    assert after[-1] == "fourth"
+    assert after[0] == "third"
+
+
+def test_demote_nonexistent_returns_false(parking_db: Path) -> None:
+    from studyloop.parking import demote_parked_topic
+
+    assert demote_parked_topic(99999) is False

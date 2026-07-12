@@ -225,6 +225,52 @@ function _pomoNotify(title, body) {
  * ==================================================================== */
 
 document.addEventListener("alpine:init", () => {
+  // Minimal shared toast — $store.toast.show('Parked ✓'). Auto-dismisses.
+  Alpine.store("toast", {
+    visible: false,
+    message: "",
+    _timer: null,
+    show(msg, ms = 2000) {
+      this.message = msg;
+      this.visible = true;
+      if (this._timer) clearTimeout(this._timer);
+      this._timer = setTimeout(() => { this.visible = false; }, ms);
+    },
+  });
+
+  // Quick-park brain-dump — capture a tangent WITHOUT leaving the current
+  // view (AuDHD flow protection). Opened by the floating button or the 'p'
+  // key (outside inputs); posts to /api/backlog/park.
+  Alpine.store("quickPark", {
+    open: false,
+    text: "",
+    saving: false,
+    show() { this.open = true; this.text = ""; },
+    hide() { this.open = false; },
+    async save() {
+      const q = this.text.trim();
+      if (!q || this.saving) return;
+      this.saving = true;
+      try {
+        const res = await fetch("/api/backlog/park", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: q }),
+        });
+        if (res.ok) {
+          Alpine.store("toast").show("Parked ✓");
+          this.open = false;
+        } else {
+          Alpine.store("toast").show("Could not park — try again");
+        }
+      } catch {
+        Alpine.store("toast").show("Could not park — offline?");
+      } finally {
+        this.saving = false;
+      }
+    },
+  });
+
   Alpine.store("settings", {
     voiceOn: localStorage.getItem("voice") === "true",
     dyslexic: localStorage.getItem("dyslexic") === "true",
@@ -559,6 +605,7 @@ function reviewApp(defaultMode) {
 
     // Course listing
     courses: [],
+    coursesLoading: true,
     liveSession: null,
     heatmapDays: [],
     history: [],
@@ -700,6 +747,10 @@ function reviewApp(defaultMode) {
     },
 
     async _loadCourses() {
+      // Tri-state: while loading, the UI shows "Checking your content…"
+      // instead of flashing the "No courses found" empty state (which used
+      // to render instantly on pane switch, then get replaced seconds later).
+      this.coursesLoading = true;
       try {
         const res = await fetch('/api/courses');
         if (res.ok) {
@@ -708,6 +759,7 @@ function reviewApp(defaultMode) {
           this._buildHeatmap();
         }
       } catch { /* courses unavailable */ }
+      finally { this.coursesLoading = false; }
     },
 
     async _loadLiveSession() {
@@ -1941,6 +1993,102 @@ function masteryPanel() {
       } catch {
         this.copyStatus = 'Copy unavailable';
       }
+    },
+  };
+}
+
+/* ------------------------------------------------------------------
+ * Today panel — "one next action" landing view (AuDHD-first).
+ *
+ * Fetches all four sources in parallel and renders exactly ONE primary
+ * recommendation (from the shared decision engine via /api/now), a
+ * context-aware resume shortcut, and parked-topic pickup chips.
+ * Resume precedence: live session (rejoin) > last study session
+ * (start-again-same-topic) > last review deck.
+ * ------------------------------------------------------------------ */
+function todayPanel() {
+  return {
+    loading: true,
+    plan: null,          // /api/now NowPlan
+    parked: [],          // /api/backlog parking_lot
+    resumeKind: null,    // 'rejoin' | 'session' | 'deck' | null
+    resumeLabel: '',
+    _resumePayload: null,
+    showAlternates: false,
+
+    async init() {
+      const get = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const [plan, backlog, state, last, history] = await Promise.all([
+        get('/api/now'),
+        get('/api/backlog'),
+        get('/api/session/state'),
+        get('/api/session/last'),
+        get('/api/history'),
+      ]);
+
+      this.plan = plan;
+      this.parked = (backlog && backlog.parking_lot) || [];
+
+      if (state && state.study_session_id && state.mode !== 'ended') {
+        this.resumeKind = 'rejoin';
+        this.resumeLabel = state.topic_config_name || state.topic || 'active session';
+      } else if (last && last.topic) {
+        this.resumeKind = 'session';
+        this.resumeLabel = last.topic;
+        this._resumePayload = last;
+      } else if (Array.isArray(history) && history.length > 0) {
+        this.resumeKind = 'deck';
+        this.resumeLabel = history[0].course;
+      }
+
+      this.loading = false;
+    },
+
+    resumeAction() {
+      if (this.resumeKind === 'rejoin') {
+        Alpine.store('nav').go('study-session');
+      } else if (this.resumeKind === 'session') {
+        // Hand the topic to the study-session picker (start-again-same-topic).
+        // sessionTimer.init() already ran at page load, so this is an event.
+        window.dispatchEvent(new CustomEvent('today-resume', {
+          detail: {
+            topic: this._resumePayload.topic,
+            energy: this._resumePayload.energy_level || null,
+          },
+        }));
+        Alpine.store('nav').go('study-session');
+      } else if (this.resumeKind === 'deck') {
+        Alpine.store('nav').go('flashcards');
+      }
+    },
+
+    // Map the decision engine's action_type to the view that hosts it.
+    _viewFor(actionType) {
+      const map = {
+        review: 'flashcards',
+        recall: 'flashcards',
+        quiz: 'quizzes',
+        conversation: 'study-session',
+        teach_back: 'study-session',
+        generate: 'generate',
+        'hands-on': 'study-session',
+      };
+      return map[actionType] || 'flashcards';
+    },
+
+    startPrimary() {
+      if (this.plan && this.plan.primary) this.startAction(this.plan.primary);
+    },
+
+    startAction(rec) {
+      Alpine.store('nav').go(this._viewFor(rec.action_type));
+    },
+
+    pickUpParked(p) {
+      window.dispatchEvent(new CustomEvent('today-resume', {
+        detail: { topic: p.question, energy: null },
+      }));
+      Alpine.store('nav').go('study-session');
     },
   };
 }

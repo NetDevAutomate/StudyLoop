@@ -203,6 +203,32 @@ def get_energy_session_data(days: int = 30) -> list[dict]:
         conn.close()
 
 
+def get_last_study_session() -> dict | None:
+    """Most recent study_sessions row, for the web "Resume: <topic>" shortcut.
+
+    Distinct from ``get_last_session_summary`` (which reads the agent-session
+    ``sessions`` table): this is the learner's last STUDY session — topic +
+    energy — so the Today panel can offer start-again-same-topic.
+    """
+    conn = _connection._connect()
+    if not conn:
+        return None
+    try:
+        row = conn.execute(
+            """
+            SELECT topic, topic_slug, energy_level, started_at, ended_at
+            FROM study_sessions
+            ORDER BY started_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        return dict(row) if row else None
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        conn.close()
+
+
 def get_last_session_summary() -> dict | None:
     """Get a summary of the most recent study session for auto-resume.
 
