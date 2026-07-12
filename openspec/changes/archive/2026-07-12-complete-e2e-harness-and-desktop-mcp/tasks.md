@@ -177,7 +177,7 @@
       Fixed in a follow-up commit (Literal validation + `ToolError` on
       invalid values + regression tests); `pyright mcp/tools.py` now
       reports 0 errors.*
-- [ ] 6.4 `openspec validate --all` clean; archive this change once merged.
+- [x] 6.4 `openspec validate --all` clean (9/9); merged to main f76a4fa; archived.
       *Validate passes now (9/9, see below) but archiving is a post-merge
       step per the OpenSpec workflow — this branch has not merged, so
       leaving unchecked is correct, not a gap.*

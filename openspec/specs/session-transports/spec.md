@@ -5,9 +5,7 @@ Gemini, Codex, OpenCode) as a child process and streaming its output to the
 web UI in real time. StudyLoop supports two wire protocols to the agent
 (ACP JSON-RPC over stdio, and a raw PTY), selected per-agent, plus a legacy
 tmux+ttyd fallback. Exactly one session may be active at a time.
-
 ## Requirements
-
 ### Requirement: Transport selection is per-agent, not user-chosen
 The system SHALL route each agent to the transport it actually supports:
 Kiro, Gemini, and Grok via ACP (`ACP_CAPABLE_AGENTS` in
@@ -90,22 +88,26 @@ content SHALL NOT be sent as a runtime message on the PTY path.
   references that file path as an argument
 
 ### Requirement: Session directory naming is path-traversal-safe
-The system SHALL derive every session directory name from the shared
-`slug_session_dir()` helper (`web/services/session_start.py`), which
-collapses all characters outside `[a-z0-9]` to `-` (stripping `/`, `\`,
-and `..`) and falls back to `"session"` when the topic slugs to nothing.
-All four session-start paths (web PTY, web ACP, web ttyd, CLI
-`session/start.py`) route through it — the directory is later `rmtree`'d
-on startup failure, so an unsanitised topic was an escape-and-delete
-vector (fixed in `a5113ea`; previously a confirmed defect).
+The system SHALL derive session directory names via a shared
+`session_dir_slug()` helper built on `content.storage.slugify()`, applied
+identically across the PTY, ACP, and ttyd start paths in
+`web/services/session_start.py` and `web/routes/session/_start.py`. The
+helper SHALL reject or strip `/`, `\`, `..`, empty, and overlong inputs
+before any directory is created.
 
 #### Scenario: Topic containing path-traversal sequences
 - **WHEN** `POST /api/session/start` is called with
-  `topic: "../../../etc"`
-- **THEN** the computed session directory name is a single safe path
-  segment containing no `/`, `\`, or `..`, and the session directory is
-  created inside `SESSION_DIR/sessions` (locked by parametrized traversal
-  tests in `tests/test_web_session_start_service.py`)
+  `topic: "../../../etc"` on any of the three transports
+- **THEN** the resulting session directory name contains no `../`
+  sequence and the session directory is created inside `SESSION_DIR`
+
+#### Scenario: Regression test posts a hostile topic to each transport
+- **WHEN** the added regression test posts `topic="../../../etc"` to
+  `/api/session/start` for `transport: "pty"`, `"acp"`, and `"ttyd"` in
+  turn
+- **THEN** all three requests either reject the topic or produce a
+  contained, non-traversing session directory — the same guarantee holds
+  for every transport, not just one
 
 ### Requirement: Legacy ttyd fallback remains available
 The system SHALL support a `transport: "ttyd"` path that starts a tmux
@@ -118,3 +120,4 @@ cannot be forced via env var).
 - **WHEN** `STUDYLOOP_TRANSPORT=ttyd` is set in the server environment
 - **THEN** session starts use the ttyd transport regardless of the
   request body's `transport` field
+
