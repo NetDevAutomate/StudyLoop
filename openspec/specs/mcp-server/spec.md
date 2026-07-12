@@ -10,20 +10,43 @@ separate and out of scope for this capability.
 ## Requirements
 
 ### Requirement: studyloop-mcp registers a fixed set of study tools
-The system SHALL register the following 13 tools via
-`register_tools(mcp)` (`mcp/tools.py:38`): `list_courses`,
+The system SHALL register the following 18 tools via
+`register_tools(mcp)` (`mcp/tools.py`): `list_courses`,
 `get_study_context`, `record_study_progress`, `generate_flashcards`,
 `generate_quiz`, `get_chapter_text`, `get_study_backlog`,
 `get_topic_suggestions`, `get_study_history`, `list_session_options`,
-`end_session`, `record_topic_progress`, `log_topic`.
+`end_session`, `record_topic_progress`, `log_topic`, plus the review-loop
+and lifecycle parity tools added in `e3070be`: `get_due_cards`,
+`log_review_outcome`, `get_next_action`, `get_active_topics`,
+`log_struggle`.
 
 #### Scenario: Client lists available tools
 - **WHEN** an MCP client connects to the `studyloop-mcp` stdio server and
   requests its tool list
-- **THEN** exactly these 13 tools are returned (this is a stricter count
-  than `docs/mcp.md`, which as of `61a15fc` documents zero of them and only
-  describes the separate `session-db-mcp` server — a documentation gap, not
-  a code gap)
+- **THEN** exactly these 18 tools are returned, matching the table in
+  `docs/mcp.md` (verified 2026-07-12; the earlier state where `docs/mcp.md`
+  documented only the separate `session-db-mcp` server was closed in
+  `4f7bf6f`). The full stdio handshake + tools/list + tools/call round-trip
+  is locked by `tests/test_mcp_stdio_smoke.py` (integration-marked)
+
+### Requirement: Review-loop tools enable a complete quiz cycle without the browser
+`get_due_cards(course=None, limit=20)` SHALL return real serialized
+`CardProgress` entries (per-course via `get_due(course)`, or aggregated
+across `list_course_summaries()` when no course is given);
+`log_review_outcome(course, card_type, card_hash, correct, ...)` SHALL
+delegate to `record_review()` and reject `card_type` outside
+`{"flashcard","quiz"}` with `ToolError`; `get_next_action(...)` SHALL
+delegate to `learning.decision.build_now_plan()` (the same engine as
+`/api/now`); `get_active_topics()` SHALL split pending backlog items at
+`MAX_ACTIVE_TOPICS`; `log_struggle(...)` SHALL park with
+`source="struggled"`.
+
+#### Scenario: Desktop client runs a full review loop
+- **WHEN** an MCP client calls `get_due_cards` → presents cards →
+  `log_review_outcome` per answer → `get_next_action`
+- **THEN** each outcome is persisted through the same SM-2 path the web UI
+  uses, and the next-action recommendation comes from the shared decision
+  engine, not a hardcoded string
 
 ### Requirement: Course paths are validated against traversal
 The system SHALL resolve any tool-supplied `course` argument through

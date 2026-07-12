@@ -89,20 +89,23 @@ content SHALL NOT be sent as a runtime message on the PTY path.
   temp file before the agent process is forked, and the launch command
   references that file path as an argument
 
-### Requirement: Session directory naming is not path-traversal-safe
-The system's `session_dir_name()` helper (`web/services/session_start.py:13`)
-SHALL derive a directory name from `topic.lower().replace(" ", "-")[:20]`.
-This transform does not strip `/`, `\`, or `..` sequences, and the same
-unsafe transform is duplicated at `web/routes/session/_start.py:562`.
+### Requirement: Session directory naming is path-traversal-safe
+The system SHALL derive every session directory name from the shared
+`slug_session_dir()` helper (`web/services/session_start.py`), which
+collapses all characters outside `[a-z0-9]` to `-` (stripping `/`, `\`,
+and `..`) and falls back to `"session"` when the topic slugs to nothing.
+All four session-start paths (web PTY, web ACP, web ttyd, CLI
+`session/start.py`) route through it — the directory is later `rmtree`'d
+on startup failure, so an unsanitised topic was an escape-and-delete
+vector (fixed in `a5113ea`; previously a confirmed defect).
 
 #### Scenario: Topic containing path-traversal sequences
 - **WHEN** `POST /api/session/start` is called with
   `topic: "../../../etc"`
-- **THEN** the computed session directory name contains the un-sanitized
-  `../` sequence and the session directory may be created outside
-  `SESSION_DIR` (confirmed defect; not yet fixed as of `61a15fc` — the
-  `content.storage.slugify()` helper exists and strips unsafe characters
-  but is not reused here)
+- **THEN** the computed session directory name is a single safe path
+  segment containing no `/`, `\`, or `..`, and the session directory is
+  created inside `SESSION_DIR/sessions` (locked by parametrized traversal
+  tests in `tests/test_web_session_start_service.py`)
 
 ### Requirement: Legacy ttyd fallback remains available
 The system SHALL support a `transport: "ttyd"` path that starts a tmux
