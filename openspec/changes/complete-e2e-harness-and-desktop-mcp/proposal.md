@@ -17,9 +17,11 @@ drive the same loop without a browser. Both are currently unverified.
   (main-thread-owned event loop), satisfying the `SIGCHLD` constraint, and
   fix the frontend's non-JSON-500 handling so future backend errors surface
   their real cause instead of a generic "network error".
-- Extract one shared `session_dir_slug()` (built on `content.storage.slugify`)
-  and route all three session-start transports (PTY, ACP, ttyd) through it,
-  closing the topic→path-traversal defect.
+- Extract one shared `slug_session_dir()` (a standalone regex allowlist in
+  `web/services/session_start.py`, not built on `content.storage.slugify`
+  as originally planned — no such storage helper was reused) and route all
+  four session-start paths (web PTY, web ACP, web ttyd, CLI
+  `session/start.py`) through it, closing the topic→path-traversal defect.
 - Complete the representative user journey: real question generation (Stub
   provider for determinism, one `live_provider`-marked variant with real
   questions), study blocks, break, flashcard/quiz review, Socratic-steering
@@ -41,12 +43,16 @@ drive the same loop without a browser. Both are currently unverified.
   LLM-judge assertion.
 
 ### Modified Capabilities
-- `session-transports`: adds `session_dir_slug()` shared across PTY/ACP/ttyd
-  start paths, closing the path-traversal requirement gap documented in
-  the current spec.
-- `mcp-server`: adds `get_due_cards`, `submit_card_answer`,
-  `get_lesson_tree`, `read_lesson`, `search_lessons` tools; documents the
-  desktop-app registration contract (tools-only today).
+- `session-transports`: adds `slug_session_dir()` shared across all four
+  session-start paths, closing the path-traversal requirement gap
+  documented in the current spec.
+- `mcp-server`: adds `get_due_cards`, `log_review_outcome` (renamed from
+  the originally planned `submit_card_answer`), plus `get_next_action`,
+  `get_active_topics`, and `log_struggle` (not originally scoped here,
+  landed alongside as the review-loop/lifecycle parity set — 13→18
+  tools); documents the desktop-app registration contract (tools-only
+  today). `get_lesson_tree`, `read_lesson`, `search_lessons` (Course
+  Explorer read-parity) were NOT added — still open.
 
 ## Impact
 
