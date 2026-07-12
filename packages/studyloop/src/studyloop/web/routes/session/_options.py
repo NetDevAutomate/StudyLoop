@@ -153,7 +153,13 @@ def _target_index_path() -> Path | None:
     try:
         from studyloop.settings import load_settings
 
-        path = Path(load_settings().state_dir) / "session-options-index.json"
+        state_dir = load_settings().state_dir
+        # Guard against a non-path state_dir (e.g. a MagicMock in tests): building
+        # Path(str(mock)) and mkdir-ing it would create a stray "MagicMock/…" dir
+        # on disk. Only proceed for real string/PathLike values.
+        if not isinstance(state_dir, (str, Path)):
+            return None
+        path = Path(state_dir) / "session-options-index.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
     except Exception:
