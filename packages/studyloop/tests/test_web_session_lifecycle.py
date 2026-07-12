@@ -532,11 +532,9 @@ class TestEndSession:
                 route.continue_()
 
         web_page.route("**/api/session/end", end_handler)
-        # Auto-accept the confirm() dialog.
-        web_page.on("dialog", lambda dialog: dialog.accept())
 
         _goto_picker(web_page)
-        # Simulate an active session.
+        # Simulate an active session, then click stop.
         web_page.evaluate(
             """() => {
               const root = document.querySelector('[x-data="sessionTimer()"]');
@@ -546,7 +544,42 @@ class TestEndSession:
               d.endSession();
             }"""
         )
-        web_page.wait_for_function("() => window.__endHit || true", timeout=1000)
-        # Assert the POST landed.
+        # The in-page confirm dialog appears (no native confirm() — Chrome
+        # auto-dismisses those while the ttyd iframe holds focus).
+        dialog = web_page.locator(".end-confirm-dialog")
+        dialog.wait_for(state="visible", timeout=3000)
+        web_page.locator(".end-confirm-yes").click()
+        # Assert the POST landed and the dialog is gone.
         web_page.wait_for_timeout(200)
         assert any("/api/session/end" in c["url"] for c in calls)
+        assert not dialog.is_visible()
+
+    def test_end_confirm_cancel_keeps_session(self, web_page: Page) -> None:
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+
+        calls: list[dict] = []
+        web_page.route(
+            "**/api/session/end",
+            lambda route: (calls.append({}), _fulfill(route, {"ended": True})),
+        )
+
+        _goto_picker(web_page)
+        web_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="sessionTimer()"]');
+              const d = window.Alpine.$data(root);
+              d.sessionActive = true;
+              d.topic = 'Python';
+              d.endSession();
+            }"""
+        )
+        web_page.locator(".end-confirm-dialog").wait_for(state="visible", timeout=3000)
+        web_page.locator(".end-confirm-cancel").click()
+        web_page.wait_for_timeout(200)
+        assert not calls
+        assert web_page.evaluate(
+            """() => window.Alpine.$data(
+              document.querySelector('[x-data="sessionTimer()"]')).sessionActive"""
+        )

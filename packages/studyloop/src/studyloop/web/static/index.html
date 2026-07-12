@@ -1753,6 +1753,19 @@
               <button class="status-btn" @click="resetTimer()" title="Reset">&#8634;</button>
               <button class="status-btn end-btn" @click="endSession()" title="End session">&#9632;</button>
             </div>
+            <!-- In-page end-session confirm (replaces native confirm()) -->
+            <div class="end-confirm-overlay" x-show="confirmingEnd" x-transition.opacity
+                 @keydown.escape.window="confirmingEnd = false">
+              <div class="end-confirm-dialog" role="alertdialog" aria-label="End session confirmation">
+                <p>End the current study session?</p>
+                <div class="end-confirm-actions">
+                  <button class="end-confirm-btn end-confirm-cancel"
+                          @click="confirmingEnd = false">Keep going</button>
+                  <button class="end-confirm-btn end-confirm-yes"
+                          @click="confirmEndSession()">End session</button>
+                </div>
+              </div>
+            </div>
             <span class="status-topic" x-text="topic"></span>
             <span class="status-energy">&#9889;<span x-text="energy"></span></span>
             <div class="status-counters">
@@ -2361,6 +2374,7 @@
       message: '',
       messageTimeout: null,
       sessionActive: false,
+      confirmingEnd: false,
       paused: false,
       pausedAt: 0,
 
@@ -2497,9 +2511,17 @@
         });
       },
 
-      async endSession() {
+      endSession() {
+        // In-page confirm, NOT native confirm(): Chrome can auto-dismiss
+        // native dialogs while the embedded ttyd terminal iframe holds
+        // focus, which made agent sessions impossible to end.
         if (!this.sessionActive) return;
-        if (!confirm('End the current study session?')) return;
+        this.confirmingEnd = true;
+      },
+
+      async confirmEndSession() {
+        this.confirmingEnd = false;
+        if (!this.sessionActive) return;
         try {
           await fetch('/api/session/end', { method: 'POST' });
         } catch { /* best effort */ }
