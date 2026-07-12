@@ -108,6 +108,33 @@ mission-scoped e2e green (32 passed, 2 honest live-only skips).
   (fails on clean HEAD too — root-cause it). CI has no e2e job at all
   (audit P0 #3).
 
+### User-reported defects (2026-07-12 evening, manual testing — NOT yet fixed)
+- **Vendor picker pollution + duplicates**: the "Course Vendor" dropdown lists
+  the user's configured topics of interest (Python, DevOps, LangChain,
+  Software Development…) alongside real vendors, plus duplicate entries
+  (ArjanCodes/SkillsBuilder/Udemy appear twice). Root cause in
+  `web/routes/session/_options.py`: `_study_roots()` includes every
+  `settings.topics[*].obsidian_path`, and `_courses_roots()` uses each study
+  root **directly** when it has no `Courses/` child — so topic directories at
+  the study-root level surface as "vendors", and each topic dir is ALSO its
+  own courses root, so any vendor dir nested inside a topic dir appears a
+  second time (dedup is by resolved path, not by name, so same-name vendors
+  at different paths both render). Fix direction: vendors should come only
+  from dedicated course roots (the ContentIndex knows the real
+  provider/course/lesson tree — 12 providers), not from topic dirs; dedupe
+  by value as a backstop.
+- **Cannot end a Kiro (ttyd) session — confirm() flash**: clicking the stop
+  icon during a Kiro CLI study session shows a popup in Chrome that vanishes
+  before it can be read, and the session never ends. `endSession()` in
+  `index.html` (~L2502) gates on native `confirm('End the current study
+  session?')`; if `confirm` returns false (Chrome is known to auto-dismiss
+  native dialogs in some focus states — the embedded ttyd iframe holding
+  focus is the leading HYPOTHESIS, not yet reproduced), `endSession()`
+  silently bails and the user is stuck. Whatever the trigger, a native
+  `confirm()` as the only exit gate is fragile here. Fix direction: replace
+  it with an in-page Alpine modal; reproduce with a live Kiro/ttyd session
+  to confirm the focus theory.
+
 ### Known-open defects (documented in openspec/specs/, re-verified at handoff)
 - `resolve_study_dirs()` bare `review:` crash + `study_paths` scalar
   explosion — the settings shape-hardening P0 remainder (plan Task 1).
