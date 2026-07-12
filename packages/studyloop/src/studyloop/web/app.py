@@ -59,6 +59,12 @@ def create_app(
     app.state.study_dirs = study_dirs or []
     app.state.ttyd_port = ttyd_port
     app.state.dev_mode = dev_mode
+    # Single source of truth for LAN Basic-Auth credentials. The ttyd start
+    # path reads these instead of independently re-loading config.yaml, so the
+    # app's auth and ttyd's auth can never silently diverge (a CLI --password
+    # that was never written to config used to leave ttyd unauthenticated).
+    app.state.lan_username = username
+    app.state.lan_password = password
     app.state.agent_session_manager = AgentSessionManager()
     app.state.explorer_tree_cache = None
     app.state.explorer_tree_fingerprint = None
