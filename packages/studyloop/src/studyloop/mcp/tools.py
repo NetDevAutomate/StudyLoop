@@ -6,6 +6,7 @@ lifespan AppState for shared DB/settings access.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 from datetime import datetime
@@ -498,3 +499,125 @@ def register_tools(mcp: FastMCP) -> None:
                 )
 
         return {"logged": "true", "topic": topic, "status": status}
+
+    # ── Review loop + lifecycle parity ───────────────────────────
+
+    @mcp.tool()
+    def get_due_cards(course: str | None = None, limit: int = 20) -> dict[str, Any]:
+        """Get cards due for spaced-repetition review.
+
+        If ``course`` is given, returns due cards for that course only.
+        Otherwise aggregates due cards across every discovered course
+        (via list_courses' underlying summary logic).
+
+        Args:
+            course: Course name. Omit to aggregate across all courses.
+            limit: Maximum cards to return.
+        """
+        from studyloop.services.review import list_course_summaries
+        from studyloop.settings import resolve_study_dirs
+
+        if course is not None:
+            due = get_due(course)
+            cards = [{"course": course, **dataclasses.asdict(c)} for c in due]
+        else:
+            cards = []
+            for summary in list_course_summaries(resolve_study_dirs()):
+                name = summary["name"]
+                cards.extend({"course": name, **dataclasses.asdict(c)} for c in get_due(name))
+
+        cards = cards[:limit]
+        return {"due_cards": cards, "count": len(cards)}
+
+    @mcp.tool()
+    def log_review_outcome(
+        course: str,
+        card_type: str,
+        card_hash: str,
+        correct: bool,
+        response_time_ms: int | None = None,
+    ) -> dict[str, Any]:
+        """Record the outcome of reviewing a single card.
+
+        Args:
+            course: Course name.
+            card_type: Either "flashcard" or "quiz".
+            card_hash: The card's hash identifier (from get_due_cards).
+            correct: Whether the student answered correctly.
+            response_time_ms: Optional response time in milliseconds.
+        """
+        if card_type not in {"flashcard", "quiz"}:
+            raise ToolError(f"card_type must be 'flashcard' or 'quiz', got {card_type!r}")
+
+        record_review(
+            course=course,
+            card_type=card_type,
+            card_hash=card_hash,
+            correct=correct,
+            response_time_ms=response_time_ms,
+        )
+        return {
+            "status": "logged",
+            "course": course,
+            "card_hash": card_hash,
+            "correct": correct,
+        }
+
+    @mcp.tool()
+    def get_next_action(
+        energy: str = "medium",
+        time_minutes: int = 25,
+        modality: str = "recall",
+    ) -> dict[str, Any]:
+        """Get the recommended next study action ("what should I do now?").
+
+        Delegates to the same decision engine the web ``/api/now`` endpoint
+        uses, so agents and the browser get identical recommendations.
+
+        Args:
+            energy: "low", "medium", or "high".
+            time_minutes: Minutes available for this study action.
+            modality: "recall", "conversation", "hands-on", "visual", or "audio".
+        """
+        from studyloop.learning.decision import build_now_plan
+
+        plan = build_now_plan(energy=energy, time_minutes=time_minutes, modality=modality)
+        return plan.to_json_dict()
+
+    @mcp.tool()
+    def get_active_topics() -> dict[str, Any]:
+        """Get the active study backlog topics, capped at the AuDHD 3-topic limit.
+
+        Splits the pending backlog into an "active" set (the first
+        ``MAX_ACTIVE_TOPICS`` items) and the remaining "backlog", matching
+        the same active-topic rule enforced by ``studyloop doctor``.
+        """
+        from studyloop.parking import get_parked_topics
+        from studyloop.settings import MAX_ACTIVE_TOPICS
+
+        pending = get_parked_topics(status="pending")
+        active = pending[:MAX_ACTIVE_TOPICS]
+        return {
+            "active": active,
+            "active_count": len(active),
+            "backlog_count": max(0, len(pending) - MAX_ACTIVE_TOPICS),
+            "max_active": MAX_ACTIVE_TOPICS,
+        }
+
+    @mcp.tool()
+    def log_struggle(
+        question: str,
+        topic_tag: str | None = None,
+        context: str | None = None,
+    ) -> dict[str, Any]:
+        """Record a topic the student struggled with, for later study.
+
+        Args:
+            question: The question or concept the student struggled with.
+            topic_tag: Optional short tag for the topic.
+            context: Optional free-text context about the struggle.
+        """
+        from studyloop.parking import park_topic
+
+        row_id = park_topic(question, topic_tag=topic_tag, context=context, source="struggled")
+        return {"status": "logged", "id": row_id}
