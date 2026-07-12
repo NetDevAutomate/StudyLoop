@@ -182,12 +182,13 @@ def _select_stubbed_generate_course(page: Page) -> None:
     page.select_option('select[x-model="form.course"]', value="Python_Pro")
 
 
-def test_app_loads_with_flashcards_nav_default(web_page: Page) -> None:
+def test_app_loads_with_today_nav_default(web_page: Page) -> None:
     _goto(web_page)
 
     current = web_page.evaluate("() => window.Alpine.store('nav').current")
-    assert current == "flashcards"
+    assert current == "today"
     assert web_page.locator(".brand").is_visible()
+    assert web_page.locator('.sidebar-btn:has-text("Today")').is_visible()
     assert web_page.locator('.sidebar-btn:has-text("Flashcards")').is_visible()
 
 
@@ -292,6 +293,7 @@ def test_main_controls_have_accessible_button_names(web_page: Page) -> None:
     _goto(web_page)
 
     for name in (
+        "Today",
         "Flashcards",
         "Quizzes",
         "Generate",
@@ -334,3 +336,213 @@ def test_generate_busy_response_shows_visible_conflict_state(web_page: Page) -> 
     )
     banner.wait_for(state="visible", timeout=5000)
     assert not web_page.locator(".generate-form .form-error").is_visible()
+
+
+# ---------------------------------------------------------------------------
+# Today landing view + quick-park + park-first friction (learner-first UX)
+# ---------------------------------------------------------------------------
+
+_NOW_PLAN = {
+    "energy": "medium",
+    "time_minutes": 25,
+    "modality": "recall",
+    "interleave": "off",
+    "generated_at": "2026-07-12T20:00:00Z",
+    "starter": False,
+    "interleave_ratio": {},
+    "primary": {
+        "concept": "Python closures",
+        "topic": "python",
+        "reason": "6 cards due today",
+        "action_type": "review",
+        "estimated_minutes": 15,
+        "source": "srs",
+        "evidence_command": "",
+        "score": 0.9,
+        "course": None,
+        "metadata": {},
+    },
+    "alternates": [
+        {
+            "concept": "SQL window functions",
+            "topic": "sql",
+            "reason": "struggled last week",
+            "action_type": "quiz",
+            "estimated_minutes": 10,
+            "source": "struggles",
+            "evidence_command": "",
+            "score": 0.7,
+            "course": None,
+            "metadata": {},
+        }
+    ],
+}
+
+
+def _stub_today_routes(
+    page: Page,
+    *,
+    backlog: dict | None = None,
+    last_session: dict | None = None,
+) -> None:
+    page.route("**/api/now**", lambda route: route.fulfill(json=_NOW_PLAN))
+    page.route(
+        "**/api/backlog",
+        lambda route: route.fulfill(
+            json=backlog
+            or {
+                "active": [],
+                "parking_lot": [{"id": 9, "question": "What is MVCC?"}],
+                "active_count": 0,
+                "parking_lot_count": 1,
+                "max_active": 3,
+            }
+        ),
+    )
+    page.route(
+        "**/api/session/last",
+        lambda route: route.fulfill(json=last_session or {}),
+    )
+
+
+def test_today_view_shows_one_next_action(web_page: Page) -> None:
+    _stub_today_routes(web_page)
+
+    _goto(web_page)
+    card = web_page.locator(".today-card:not(.today-starter)")
+    card.wait_for(state="visible", timeout=5000)
+    assert web_page.locator(".today-concept").inner_text() == "Python closures"
+    assert "6 cards due today" in web_page.locator(".today-reason").inner_text()
+    # Alternates collapsed by default; toggle reveals them.
+    assert not web_page.locator(".today-alt-list").is_visible()
+    web_page.locator(".today-alt-toggle").click()
+    web_page.locator(".today-alt-list").wait_for(state="visible", timeout=3000)
+    # Parked chip is offered for one-tap pickup.
+    assert web_page.locator(".today-chip", has_text="What is MVCC?").is_visible()
+
+
+def test_today_start_navigates_to_action_view(web_page: Page) -> None:
+    _stub_today_routes(web_page)
+
+    _goto(web_page)
+    web_page.locator(".today-start-btn").click()
+    web_page.wait_for_function(
+        "() => window.Alpine.store('nav').current === 'flashcards'", timeout=3000
+    )
+
+
+def test_today_resume_last_session(web_page: Page) -> None:
+    """A past study session surfaces as 'Resume: <topic>' and pre-fills the form."""
+    _stub_today_routes(
+        web_page,
+        last_session={
+            "topic": "Python decorators",
+            "topic_slug": "python",
+            "energy_level": "high",
+            "started_at": "2026-07-12T10:00:00",
+            "ended_at": "2026-07-12T10:45:00",
+        },
+    )
+
+    _goto(web_page)
+    resume = web_page.locator(".today-resume-btn")
+    resume.wait_for(state="visible", timeout=5000)
+    assert "Python decorators" in resume.inner_text()
+    resume.click()
+    web_page.wait_for_function(
+        "() => window.Alpine.store('nav').current === 'study-session'", timeout=3000
+    )
+    web_page.wait_for_function(
+        "() => document.querySelector('#topic-input') && "
+        "document.querySelector('#topic-input').value === 'Python decorators'",
+        timeout=3000,
+    )
+
+
+def test_quick_park_saves_without_leaving_view(web_page: Page) -> None:
+    """Quick-park posts the thought and does NOT change the current view."""
+    _stub_today_routes(web_page)
+    parked: list[dict[str, object]] = []
+
+    def _park(route: Route) -> None:
+        parked.append(cast("dict[str, object]", route.request.post_data_json or {}))
+        route.fulfill(json={"ok": True, "id": 1})
+
+    web_page.route("**/api/backlog/park", _park)
+
+    _goto(web_page)
+    web_page.locator(".quick-park-btn").click()
+    web_page.locator(".quick-park-input").fill("tangent: how do generators pause?")
+    web_page.locator(".quick-park-dialog button", has_text="Park it").click()
+
+    web_page.locator(".toast", has_text="Parked").wait_for(state="visible", timeout=5000)
+    assert parked and parked[0]["question"] == "tangent: how do generators pause?"
+    # Flow protection: still on the Today view.
+    assert web_page.evaluate("() => window.Alpine.store('nav').current") == "today"
+
+
+def test_park_first_modal_blocks_fourth_topic(web_page: Page) -> None:
+    """3 active topics + starting a NEW one → in-page park-first overlay."""
+    full_backlog = {
+        "active": [
+            {"id": 1, "question": "Topic A"},
+            {"id": 2, "question": "Topic B"},
+            {"id": 3, "question": "Topic C"},
+        ],
+        "parking_lot": [],
+        "active_count": 3,
+        "parking_lot_count": 0,
+        "max_active": 3,
+    }
+    _stub_today_routes(web_page, backlog=full_backlog)
+    web_page.route(
+        "**/api/session/options",
+        lambda route: route.fulfill(
+            json={
+                "session_types": [],
+                "topics": [],
+                "vendors": [],
+                "courses": [],
+                "lessons": [],
+                # An available agent so the Start button enables.
+                "agents": [{"label": "Claude", "value": "claude", "available": True}],
+            }
+        ),
+    )
+
+    _goto(web_page, "study-session")
+    web_page.locator("#topic-input").fill("Brand new fourth topic")
+    web_page.wait_for_function(
+        "() => !document.querySelector('.start-session-btn').disabled", timeout=3000
+    )
+    web_page.get_by_role("button", name="Start Session").click()
+
+    overlay = web_page.locator(".park-first-overlay")
+    overlay.wait_for(state="visible", timeout=5000)
+    # It's an in-page overlay (native dialogs are banned) listing the 3 topics.
+    assert web_page.locator(".park-first-item").count() == 3
+    # Escape cancels without starting.
+    web_page.keyboard.press("Escape")
+    overlay.wait_for(state="hidden", timeout=3000)
+
+
+def test_course_list_no_false_empty_flash(web_page: Page) -> None:
+    """While /api/courses is in flight the UI says 'Checking…', never 'No courses found'."""
+    _stub_today_routes(web_page)
+
+    def _slow_courses(route: Route) -> None:
+        web_page.wait_for_timeout(1500)
+        route.fulfill(json=[])
+
+    web_page.route("**/api/courses", _slow_courses)
+
+    _goto(web_page, "flashcards")
+    # Scope to the flashcards view: the (hidden) Today panel carries the same
+    # loading copy, and an unscoped text locator resolves to that first.
+    fc_view = web_page.locator('.content-area > div[x-show*="flashcards"]')
+    fc_view.locator("text=Checking your content").wait_for(state="visible", timeout=3000)
+    assert not fc_view.locator("h2", has_text="No courses found").is_visible()
+    # After the fetch resolves empty, the true empty state appears.
+    fc_view.locator("h2", has_text="No courses found").wait_for(
+        state="visible", timeout=5000
+    )

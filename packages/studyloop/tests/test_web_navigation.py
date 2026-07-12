@@ -54,9 +54,15 @@ def _goto(page: Page, hash_: str = "") -> None:
 
 
 class TestNavStore:
-    def test_default_view_is_flashcards(self, web_page: Page) -> None:
-        """No hash → the app lands on the flashcards tab."""
+    def test_default_view_is_today(self, web_page: Page) -> None:
+        """No hash → the app lands on the Today (one-next-action) view."""
         _goto(web_page)
+        current = web_page.evaluate("() => window.Alpine.store('nav').current")
+        assert current == "today"
+
+    def test_hash_flashcards_sets_view(self, web_page: Page) -> None:
+        """Existing #flashcards links keep working after the default change."""
+        _goto(web_page, "flashcards")
         current = web_page.evaluate("() => window.Alpine.store('nav').current")
         assert current == "flashcards"
 
@@ -79,7 +85,7 @@ class TestNavStore:
         """Unknown hash shouldn't crash — nav.init() keeps the default."""
         _goto(web_page, "not-a-real-view")
         current = web_page.evaluate("() => window.Alpine.store('nav').current")
-        assert current == "flashcards"
+        assert current == "today"
 
 
 class TestNavButtons:

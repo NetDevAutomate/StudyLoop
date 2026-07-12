@@ -250,6 +250,35 @@ def schedule_parked_topic(parked_id: int, scheduled_for: str) -> bool:
         conn.close()
 
 
+def demote_parked_topic(parked_id: int) -> bool:
+    """Push a pending topic out of the active window into the parking lot.
+
+    The active/parking split is purely recency-ordered (``parked_at DESC``),
+    so "park one to free a slot" = make this row the OLDEST pending entry.
+    Re-parking the same question is an INSERT OR IGNORE no-op and would NOT
+    move it — this explicit demote is the only correct lever.
+    """
+    try:
+        conn = _connect()
+        try:
+            cursor = conn.execute(
+                """UPDATE parked_topics
+                   SET parked_at = (
+                       SELECT datetime(MIN(parked_at), '-1 second')
+                       FROM parked_topics WHERE status = 'pending'
+                   )
+                   WHERE id = ? AND status = 'pending'""",
+                (parked_id,),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        logger.exception("Failed to demote parked topic id=%s", parked_id)
+        return False
+
+
 def resolve_parked_topic(parked_id: int) -> bool:
     """Mark a parked topic as resolved/covered."""
     conn = _connect()

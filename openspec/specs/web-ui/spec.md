@@ -143,3 +143,56 @@ call; Bedrock: AWS-cred check; Ollama: real generation call).
 - **WHEN** a user submits an invalid API key and clicks Test & Save
 - **THEN** the live verification call fails and the key is never written
   to `secrets.bin`
+
+### Requirement: The app lands on the Today one-next-action view
+The nav store's default view SHALL be `today`, rendering exactly one
+primary recommendation from `GET /api/now` (concept, estimated minutes,
+action type, reason, one Start button), a collapsible alternates list, a
+context-aware resume shortcut (live-session rejoin > `GET /api/session/last`
+topic > last review deck from `GET /api/history`), and parked-topic pickup
+chips from `GET /api/backlog`. Hash links to other views (`#flashcards`,
+`#quizzes`, …) SHALL keep working via `nav.init()`.
+
+#### Scenario: Open the app with no hash
+- **WHEN** the learner opens `/` with no location hash
+- **THEN** `Alpine.store('nav').current` is `today` and one next-action
+  card is visible — the learner never has to decide "what now" unaided
+
+### Requirement: Starting a 4th topic requires parking one first
+When `GET /api/backlog` reports `active_count >= max_active` and the
+learner starts a session on a topic NOT in the active set, the start SHALL
+be intercepted by an in-page `.park-first-overlay` (never a native dialog)
+listing the active topics; choosing one calls `POST /api/backlog/demote`
+(which makes the row the oldest pending entry — re-parking the same
+question is an INSERT OR IGNORE no-op and would not free the slot) and then
+proceeds with the start. Escape or "Keep all" cancels without starting.
+
+#### Scenario: Fourth topic blocked until one is parked
+- **WHEN** three topics are active and the learner starts a new, fourth
+  topic from the study-session picker
+- **THEN** the park-first overlay appears in-page, and the session only
+  starts after one active topic is demoted to the parking lot
+
+### Requirement: Quick-park captures a tangent without leaving the current view
+A globally visible "Park a thought" control (and the `p` shortcut outside
+input fields) SHALL open an in-page input overlay that POSTs to
+`/api/backlog/park` and confirms via the shared toast; `nav.current` SHALL
+NOT change (flow protection).
+
+#### Scenario: Parking a tangent mid-review
+- **WHEN** the learner quick-parks "how do generators pause?" while on the
+  flashcards view
+- **THEN** the thought lands in the parking lot, a toast confirms it, and
+  the flashcards view stays active
+
+### Requirement: Course lists never flash a false empty state
+The review course list SHALL render a loading indicator ("Checking your
+content…") while `/api/courses` is in flight and SHALL only show "No
+courses found" after the fetch resolves empty (`coursesLoading` tri-state
+in `reviewApp()`).
+
+#### Scenario: Switching to Flashcards with slow content discovery
+- **WHEN** the learner switches to the Flashcards tab while the course scan
+  is still running
+- **THEN** they see the loading line, never a transient "No courses found"
+  that self-replaces seconds later

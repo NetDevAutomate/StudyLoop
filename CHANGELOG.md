@@ -8,6 +8,22 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 ## [Unreleased]
 
 ### Added
+- **"Today" landing view** — the app now opens on a one-next-action card
+  driven by the shared decision engine (`GET /api/now`): concept, time
+  estimate, reason, one Start button, collapsible alternates, and a
+  context-aware resume shortcut (rejoin live session > resume last study
+  topic > resume last review deck). Parked-topic chips offer one-tap pickup.
+- **Quick-park brain-dump** — a global "＋ Park a thought" button (and `p`
+  shortcut) captures a tangent to the parking lot via the new
+  `POST /api/backlog/park` without leaving the current view; confirmation
+  via a new minimal toast primitive.
+- **Park-first friction modal** — starting a 4th topic while
+  `MAX_ACTIVE_TOPICS` are live opens an in-page overlay that requires
+  parking one first (`POST /api/backlog/demote` makes it the oldest pending
+  row — re-parking the same question would be an INSERT OR IGNORE no-op).
+- `GET /api/session/last` — most recent study session (topic/energy), powers
+  the Resume shortcut; fixes "no way to resume a stopped session" in the web
+  UI (start-again-same-topic; tmux reattach remains CLI-only).
 - Fast incremental `ContentIndex` (SQLite mtime-fingerprint index over
   providers → courses → lessons + quiz/flashcard artefacts) and a
   `studyloop content index [--provider] [--force] [--artefacts]` CLI command.
@@ -29,6 +45,19 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   total.
 
 ### Fixed
+- **TTS voice ignored + overlapping playback:** the engine never restored the
+  saved `neuralVoiceId`, so every page load spoke as the `am_michael` default
+  regardless of the Settings selection (the dropdown showed the right voice;
+  the engine used the wrong one). And rapid speak() calls overlapped: the
+  shared `_stopped` flag was reset by the newer call while the older chunk
+  loop was suspended in an await, so both fed the AudioContext at once ("two
+  voices talking nonsense"). Voice now restored in init(); a monotonic
+  generation counter kills superseded chunk loops, re-checked at the moment
+  audio would start.
+- **False "No courses found" flash:** switching to Flashcards/Quizzes showed
+  the empty state instantly, then swapped in content when the fetch landed.
+  A `coursesLoading` tri-state now shows "Checking your content…" until the
+  fetch resolves.
 - **Security (LAN auth divergence):** `studyloop web --lan --password X` (with
   X not persisted to config) protected the FastAPI app but left the ttyd
   terminal side-channel unauthenticated — the ttyd start path re-read
