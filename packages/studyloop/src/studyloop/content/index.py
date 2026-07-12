@@ -13,13 +13,14 @@ from __future__ import annotations
 import json
 import sqlite3
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from studyloop.content.storage import list_courses, slugify
 from studyloop.content.scope import content_base
+from studyloop.content.storage import list_courses, slugify
 from studyloop.settings import load_settings
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @dataclass
@@ -92,7 +93,8 @@ class ContentIndex:
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT provider, MAX(mtime) as max_mtime, COUNT(*) as cnt FROM courses GROUP BY provider"
+                    "SELECT provider, MAX(mtime) as max_mtime, COUNT(*) as cnt "
+                    "FROM courses GROUP BY provider"
                 ).fetchall()
 
             return {
@@ -110,7 +112,9 @@ class ContentIndex:
         stats = IndexStats()
         base = content_base(load_settings())
 
-        providers_to_index = [provider] if provider else [p.name for p in base.iterdir() if p.is_dir()]
+        providers_to_index = (
+            [provider] if provider else [p.name for p in base.iterdir() if p.is_dir()]
+        )
 
         for prov in providers_to_index:
             prov_path = base / prov
@@ -137,7 +141,14 @@ class ContentIndex:
                         """INSERT OR REPLACE INTO courses
                            (provider, slug, title, path, mtime, lesson_count)
                            VALUES (?, ?, ?, ?, ?, ?)""",
-                        (prov, slugify(course_name), course_name, str(course_dir), mtime, len(md_files)),
+                        (
+                            prov,
+                            slugify(course_name),
+                            course_name,
+                            str(course_dir),
+                            mtime,
+                            len(md_files),
+                        ),
                     )
 
                 stats.courses += 1
