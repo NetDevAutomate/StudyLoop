@@ -473,6 +473,34 @@ def process(source: Path, output_dir: Path, level: int, notebook_id: str | None)
         )
 
 
+@content_group.command("index")
+@click.option("--provider", "-p", help="Only index this provider (e.g. ArjanCodes)")
+@click.option("--force", is_flag=True, help="Force full re-index (ignore mtimes)")
+@click.option("--artefacts", is_flag=True, help="Also index quizzes and flashcards JSON")
+def index_cmd(provider: str | None, force: bool, artefacts: bool) -> None:
+    """Build or refresh the fast content index (incremental by default).
+
+    Use this after adding new courses or when the explorer feels slow.
+    The index is used by the web UI, CLI review flows, and MCP tools.
+    """
+    from studyloop.content.index import ContentIndex
+
+    idx = ContentIndex()
+    console.print("[dim]Checking content fingerprint...[/dim]")
+    if idx.needs_refresh(provider) or force:
+        console.print("[yellow]Refreshing index...[/yellow]")
+        stats = idx.refresh(provider=provider, force=force)
+        console.print(
+            f"[green]Indexed[/green] {stats.providers} providers, "
+            f"{stats.courses} courses, {stats.lessons} lessons, {stats.artefacts} artefacts."
+        )
+    else:
+        console.print("[green]Index is up to date[/green] (fingerprint match).")
+
+    if artefacts:
+        console.print("[dim]Artefact indexing is included in refresh when files exist.[/dim]")
+
+
 @content_group.command("list")
 @click.option("-n", "--notebook-id", envvar="NOTEBOOK_ID", default=None)
 def list_cmd(notebook_id: str | None) -> None:
