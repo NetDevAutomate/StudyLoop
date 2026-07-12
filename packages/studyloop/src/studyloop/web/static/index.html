@@ -2445,18 +2445,29 @@
               transport: this.transport,
             }),
           });
-          const data = await res.json();
+          /* Parse defensively: a 500 with an HTML/plain body must NOT masquerade
+             as a network error. Read text, then try JSON — a non-JSON body on a
+             failed response is a real server error, surfaced with its status. */
+          const raw = await res.text();
+          let data = {};
+          try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
           if (!res.ok) {
-            /* §1.5b returns structured 503 with install_hint; surface it verbatim. */
-            this.startError = data.install_hint
-              ? `${data.error} · ${data.install_hint}`
-              : (data.error || 'Failed to start session');
+            /* §1.5b returns structured 503 with install_hint; surface it verbatim.
+               For a non-JSON error body, fall back to the HTTP status + snippet. */
+            if (data.install_hint) {
+              this.startError = `${data.error} · ${data.install_hint}`;
+            } else if (data.error) {
+              this.startError = data.error;
+            } else {
+              const snippet = raw.trim().slice(0, 200);
+              this.startError = `Server error (HTTP ${res.status})` + (snippet ? `: ${snippet}` : '');
+            }
             this.starting = false;
             return;
           }
           startedSession = data;
         } catch {
-          this.startError = 'Network error — could not start session';
+          this.startError = 'Network error — could not reach the server';
           this.starting = false;
           return;
         }
