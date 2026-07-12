@@ -77,6 +77,7 @@ def create_app(
     # Register API routes
     from studyloop.web.routes import (
         artefacts,
+        backlog,
         cards,
         content_gen,
         courses,
@@ -91,6 +92,7 @@ def create_app(
     app.include_router(cards.router, prefix="/api")
     app.include_router(history.router, prefix="/api")
     app.include_router(now.router, prefix="/api")
+    app.include_router(backlog.router, prefix="/api")
     app.include_router(mastery.router, prefix="/api")
     app.include_router(session.router, prefix="/api")
     app.include_router(content_gen.router, prefix="/api")
