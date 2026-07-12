@@ -544,3 +544,6 @@ graphify-out/
 # MemPalace per-project files (issue #185)
 mempalace.yaml
 entities.json
+
+# Playwright/e2e failure artifacts
+test-results/
