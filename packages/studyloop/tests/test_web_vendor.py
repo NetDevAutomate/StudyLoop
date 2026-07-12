@@ -1,4 +1,4 @@
-"""Tests for vendored static assets — offline PWA support."""
+"""Tests for vendored static assets — local-first, no-CDN serving."""
 
 from __future__ import annotations
 
@@ -79,23 +79,9 @@ class TestNoCdnReferences:
             assert "./files/" in content
 
 
-class TestServiceWorkerCache:
-    def test_sw_caches_vendor_assets(self):
-        content = (STATIC_DIR / "sw.js").read_text()
-        assert "/vendor/js/htmx-2.0.4.min.js" in content
-        assert "/vendor/js/alpine-3.14.8.min.js" in content
-        assert "/vendor/css/opendyslexic-400.css" in content
-
-    def test_sw_caches_inter_font(self):
-        content = (STATIC_DIR / "sw.js").read_text()
-        assert "/vendor/css/inter.css" in content
-        assert "/vendor/css/files/inter-latin.woff2" in content
-
-    def test_sw_self_destruct_or_cache_version(self):
-        """SW should either be in self-destruct mode or have a cache version."""
-        content = (STATIC_DIR / "sw.js").read_text()
-        has_self_destruct = "Self-destruct" in content and "skipWaiting" in content
-        has_cache_version = "studyloop-v" in content
-        assert has_self_destruct or has_cache_version, (
-            "sw.js must be in self-destruct mode or have a studyloop-vN cache version"
-        )
+class TestNoServiceWorker:
+    def test_sw_js_stays_deleted(self):
+        """PWA offline was removed (audit 2026-07-11 §0.1): sw.js was never
+        registered and must not silently return without that decision being
+        revisited."""
+        assert not (STATIC_DIR / "sw.js").exists()

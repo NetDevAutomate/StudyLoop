@@ -28,15 +28,13 @@
  *
  * No COOP/COEP headers required. numThreads is forced to 1 before model load.
  * IndexedDB caching: ORT Web ≥1.18 stores compiled WASM modules in 'onnxruntime-web'
- * IndexedDB automatically. The sw.js self-destruct (Cache Storage wipe) has zero effect
- * on this path.
+ * IndexedDB automatically, so the model survives reloads without any service worker.
  *
  * Voice file caching: per-voice .bin files are fetched from HuggingFace CDN and
- * stored in Cache Storage under 'kokoro-voices'. This is separate from the SW nuke
- * target ('studyloop-v12'). On SW self-destruct the voice cache MAY be cleared (sw.js
- * calls caches.keys() + caches.delete() on all caches). If so, the ~300KB voice bin
- * re-downloads on next synthesis — acceptable because the main 82MB ONNX model is safe
- * in IndexedDB. A future improvement would move voice bins to IndexedDB too.
+ * stored in Cache Storage under 'kokoro-voices'. If that cache is ever cleared the
+ * ~300KB voice bin re-downloads on next synthesis — cheap, and the main 82MB ONNX
+ * model is safe in IndexedDB regardless. A future improvement would move voice bins
+ * to IndexedDB too. (There is no PWA service worker — see docs/audit/2026-07-11 §0.1.)
  *
  * Design notes:
  *   - All synthesis runs in the main thread (single-thread WASM, or WebGPU shader dispatch).
@@ -286,8 +284,6 @@ class TTSEngine {
     // to document intent. The earlier `= false` here was a bug: it disabled the
     // ONLY store that holds the weights (ORT's IndexedDB caches compiled WASM
     // kernels, NOT model weights), so every page load re-fetched 92 MB from HF.
-    // The self-destruct sw.js is patched to spare 'transformers-cache' so a
-    // lingering dev service worker can't wipe the model.
     env.useBrowserCache = true;
 
     // Device is selected per-call via from_pretrained({ device }) below — NOT via

@@ -707,7 +707,7 @@ flowchart TB
       Kokoro["Kokoro-82M via transformers.js<br/>StyleTextToSpeech2Model<br/>+ AutoTokenizer + phonemizer"]
       ORT["onnxruntime-web<br/>wasmPaths → /vendor/js/<br/>(jsep WASM: webgpu + wasm)"]
       Audio["WebAudio<br/>──────────<br/>AudioBufferSourceNode;<br/>stop() halts source +<br/>settles play promise"]
-      Cache[("Cache Storage<br/>'transformers-cache' (~92 MB)<br/>'kokoro-voices'<br/>──────────<br/>spared by sw.js self-destruct")]
+      Cache[("IndexedDB (model, ~92 MB)<br/>+ Cache Storage ('kokoro-voices')<br/>──────────<br/>managed by ORT Web / transformers.js<br/>(no service worker)")]
     end
 
     subgraph Server["studyloop web (FastAPI StaticFiles)"]
@@ -734,7 +734,7 @@ flowchart TB
 
 - **No COOP/COEP headers.** `env.backends.onnx.wasm.numThreads = 1` + WebGPU preference means `SharedArrayBuffer` is never requested, so `SecurityHeadersMiddleware` is untouched and the same-origin ttyd iframe (which relies on `X-Frame-Options: SAMEORIGIN`) keeps working. This is a deliberate engine-choice constraint, not an oversight.
 - **ORT WASM is pinned to vendored files.** `wasmPaths = '/vendor/js/'` stops transformers.js falling back to the jsdelivr CDN — which both breaks offline use and triggers a JS-glue/WASM version mismatch (`_OrtGetInputName is not a function`). The vendored `ort-wasm-simd-threaded.jsep.wasm` (23 MB, stored via Git LFS) serves both the webgpu and wasm execution providers.
-- **Model persists across reloads.** `env.useBrowserCache = true` (the library default) stores the ~92 MB q8 model in Cache Storage. The PWA service worker's self-destruct handler explicitly spares `transformers-cache` and `kokoro-voices`, so a code-asset refresh never forces a re-download.
+- **Model persists across reloads.** ONNX Runtime Web stores the compiled ~92 MB q8 model in IndexedDB and transformers.js caches voice embeddings in Cache Storage (`kokoro-voices`) — both managed by the libraries themselves, so a code-asset refresh never forces a re-download. There is no PWA service worker (`sw.js` was removed 2026-07-12; it was never registered).
 - **`stop()` is unified across tiers.** It halts the neural `AudioBufferSourceNode` (`.stop()` + `disconnect()`) AND settles the in-flight playback promise *before* suspending the AudioContext — a suspended context freezes the clock so `onended` never fires. Web-speech tier delegates to `speechSynthesis.cancel()`.
 - **Browser → Hugging Face is TTS egress only.** First-run model fetch is the
   single direct browser-to-internet call for voice; optional content providers
@@ -750,7 +750,6 @@ flowchart TB
 | Settings store TTS wiring (speak / stopSpeaking / isSpeaking / download progress) | `packages/studyloop/src/studyloop/web/static/components.js` | ~44–200 |
 | `reviewApp.speakCurrentCard()` | `components.js` | ~590 |
 | Importmap + module load + stop button + progress bar | `index.html` | head (importmap) + header controls |
-| Service-worker model-cache preservation | `packages/studyloop/src/studyloop/web/static/sw.js` | self-destruct handler |
 | Vendored libs (LFS for `*.wasm`) | `packages/studyloop/src/studyloop/web/static/vendor/js/` | — |
 | TTS contract + stop-control tests | `packages/studyloop/tests/test_web_tts.py` | full file |
 
