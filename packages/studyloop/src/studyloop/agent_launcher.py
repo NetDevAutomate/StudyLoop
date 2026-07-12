@@ -26,6 +26,7 @@ from studyloop.adapters._strategies import cli_flag_setup as _claude_setup
 from studyloop.adapters.claude import _claude_launch
 from studyloop.adapters.codex import _codex_launch, _codex_setup
 from studyloop.adapters.gemini import _gemini_launch, _gemini_setup
+from studyloop.adapters.grok import _grok_launch, _grok_setup
 from studyloop.adapters.kiro import _KIRO_BACKUP_SUFFIX, KIRO_AGENT_NAME
 from studyloop.adapters.lmstudio import _lmstudio_launch
 from studyloop.adapters.opencode import _opencode_launch, _opencode_setup
@@ -49,6 +50,8 @@ __all__ = [
     "_gemini_mcp",
     "_gemini_setup",
     "_get_local_llm_config",
+    "_grok_launch",
+    "_grok_setup",
     "_kiro_launch",
     "_kiro_setup",
     "_kiro_teardown",

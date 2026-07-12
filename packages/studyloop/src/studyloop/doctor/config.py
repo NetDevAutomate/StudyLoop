@@ -111,6 +111,46 @@ def check_review_directories() -> list[CheckResult]:
     return results
 
 
+def check_active_topic_limit() -> list[CheckResult]:
+    """Warn when config exceeds the AuDHD-friendly active-topic limit."""
+    try:
+        from studyloop.settings import MAX_ACTIVE_TOPICS, load_raw_config
+
+        raw = load_raw_config()
+    except Exception:
+        return []
+
+    topics = raw.get("topics", [])
+    if topics is None:
+        return []
+    if not isinstance(topics, list):
+        return [
+            CheckResult(
+                "config",
+                "active_topic_limit",
+                "fail",
+                "Invalid topics config: expected a list",
+                "Fix config.yaml so 'topics' is a list of topic names or topic mappings.",
+                False,
+            )
+        ]
+
+    if len(topics) <= MAX_ACTIVE_TOPICS:
+        return []
+
+    return [
+        CheckResult(
+            "config",
+            "active_topic_limit",
+            "warn",
+            f"{len(topics)} study topics configured; StudyLoop activates the first "
+            f"{MAX_ACTIVE_TOPICS}",
+            "Move extra study ideas to the backlog with: studyloop backlog add \"topic\"",
+            False,
+        )
+    ]
+
+
 def check_pandoc() -> list[CheckResult]:
     """Check that pandoc is available on PATH."""
     if shutil.which("pandoc"):

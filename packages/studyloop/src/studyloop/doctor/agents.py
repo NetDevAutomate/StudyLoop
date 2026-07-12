@@ -25,6 +25,7 @@ MANIFEST_URL = (
 TOOL_AGENTS: dict[str, tuple[str, str]] = {
     "claude": ("claude", "~/.claude/agents/socratic-mentor.md"),
     "codex": ("codex", "{repo_root}/AGENTS.md"),
+    "grok": ("grok", "{repo_root}/AGENTS.md"),
     "kiro": ("kiro-cli", "~/.kiro/agents/study-mentor.json"),
     "gemini": ("gemini", "~/.gemini/agents/study-mentor.md"),
     "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),

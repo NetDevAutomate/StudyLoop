@@ -7,6 +7,7 @@ All configuration types, topic mapping, and path resolution live here.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ import yaml
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
 LEGACY_CONFIG_DIR = Path.home() / ".config" / "studyctl"
 DEFAULT_DB = CONFIG_DIR / "sessions.db"
+MAX_ACTIVE_TOPICS = 3
 
 _CONFIG_PATH = Path(os.environ.get("STUDYLOOP_CONFIG", CONFIG_DIR / "config.yaml"))
 _MIGRATION_CHECKED = False
@@ -271,6 +273,7 @@ class AgentsConfig:
             "gemini",
             "opencode",
             "codex",
+            "grok",
             "ollama",
             "lmstudio",
         ]
@@ -410,6 +413,77 @@ _SCALAR_FIELDS: list[tuple[str, object]] = [
 ]
 
 
+def _slugify_topic_name(name: str) -> str:
+    """Create a stable slug for legacy topic names."""
+    slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+    return slug or "topic"
+
+
+def _topic_tags(raw: object) -> list[str]:
+    """Normalize a topic's tag field to a list of strings."""
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [str(tag) for tag in raw]
+    return [str(raw)]
+
+
+def _default_topic_path(settings: Settings, name: str) -> Path:
+    """Default path for legacy/minimal topics."""
+    personal_vault_study = settings.obsidian_base / "Study" / name
+    nested_personal_study = settings.obsidian_base / "Personal" / "Study" / name
+    if personal_vault_study.exists():
+        return personal_vault_study
+    if nested_personal_study.exists():
+        return nested_personal_study
+    if settings.obsidian_base.name.lower() == "personal":
+        return personal_vault_study
+    return nested_personal_study
+
+
+def _topic_from_raw(raw: object, settings: Settings, position: int) -> TopicConfig | None:
+    """Parse one raw topic entry.
+
+    The modern schema is a mapping. Older configs used bare strings such as
+    ``topics: [Python, SQL]``; support them so config loading does not crash.
+    """
+    if isinstance(raw, str):
+        name = raw.strip()
+        if not name:
+            return None
+        slug = _slugify_topic_name(name)
+        return TopicConfig(
+            name=name,
+            slug=slug,
+            obsidian_path=_default_topic_path(settings, name),
+            tags=[slug],
+        )
+
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            f"Invalid topic at position {position}: expected a mapping or topic name."
+        )
+
+    raw_name = raw.get("name", "")
+    name = str(raw_name).strip()
+    if not name:
+        raise ConfigError(f"Invalid topic at position {position}: missing 'name'.")
+
+    slug = str(raw.get("slug") or _slugify_topic_name(name))
+    raw_obsidian_path = raw.get("obsidian_path") or f"Personal/Study/{name}"
+    obsidian_path = Path(str(raw_obsidian_path)).expanduser()
+    if not obsidian_path.is_absolute():
+        obsidian_path = settings.obsidian_base / str(raw_obsidian_path)
+
+    return TopicConfig(
+        name=name,
+        slug=slug,
+        obsidian_path=obsidian_path,
+        notebook_id=str(raw.get("notebook_id", "")),
+        tags=_topic_tags(raw.get("tags", [])),
+    )
+
+
 def _local_llm(raw: dict, default_model: str, default_base_url: str) -> LocalLLMConfig:
     """Build a LocalLLMConfig from a raw dict, falling back to explicit defaults."""
     return LocalLLMConfig(
@@ -430,20 +504,16 @@ def load_settings() -> Settings:
         if key in raw:
             setattr(settings, key, coerce(raw[key]))  # type: ignore[operator]
 
-    # --- topics (bespoke: path resolution relative to obsidian_base) ---------
-    for t in raw.get("topics", []):
-        obsidian_path = Path(t.get("obsidian_path", "")).expanduser()
-        if not obsidian_path.is_absolute():
-            obsidian_path = settings.obsidian_base / t.get("obsidian_path", "")
-        settings.topics.append(
-            TopicConfig(
-                name=t["name"],
-                slug=t["slug"],
-                obsidian_path=obsidian_path,
-                notebook_id=t.get("notebook_id", ""),
-                tags=t.get("tags", []),
-            )
-        )
+    # --- topics (bespoke: legacy support + path resolution) -----------------
+    raw_topics = raw.get("topics", [])
+    if raw_topics is None:
+        raw_topics = []
+    if not isinstance(raw_topics, list):
+        raise ConfigError("Invalid config: 'topics' must be a list.")
+    for index, raw_topic in enumerate(raw_topics[:MAX_ACTIVE_TOPICS], start=1):
+        topic = _topic_from_raw(raw_topic, settings, index)
+        if topic is not None:
+            settings.topics.append(topic)
 
     # --- knowledge_domains (bespoke: nested KnowledgeDomain list) ------------
     kd = raw.get("knowledge_domains", {})
@@ -506,7 +576,16 @@ def load_settings() -> Settings:
 
     ag = raw.get("agents", {})
     if ag:
-        default_priority = ["claude", "kiro", "gemini", "opencode", "codex", "ollama", "lmstudio"]
+        default_priority = [
+            "claude",
+            "kiro",
+            "gemini",
+            "opencode",
+            "codex",
+            "grok",
+            "ollama",
+            "lmstudio",
+        ]
         settings.agents = AgentsConfig(
             priority=ag.get("priority", default_priority),
             ollama=_local_llm(ag.get("ollama", {}), "qwen3-coder", "http://localhost:4000"),
@@ -601,7 +680,9 @@ state_dir: ~/.local/share/studyloop
 # sync_user: your-username
 
 # Study topics
-# Each topic maps to an Obsidian directory and optionally a NotebookLM notebook
+# Keep active topics to three or fewer. Put extra ideas in the study backlog
+# with: studyloop backlog add "topic to revisit"
+# Each active topic maps to an Obsidian directory and optionally a NotebookLM notebook.
 topics:
   - name: Python
     slug: python
@@ -619,17 +700,12 @@ topics:
     obsidian_path: 2-Areas/Study/Data-Engineering
     tags: [data-engineering, spark, glue]
 
-  - name: AWS Analytics
-    slug: aws-analytics
-    obsidian_path: 2-Areas/Study/AWS-Analytics
-    tags: [aws, analytics, redshift, athena]
-
 # AI agent configuration
 # Priority order for auto-detection (first installed agent wins)
 # Override per-session with: studyloop study "topic" --agent gemini
 # Override via env var: STUDYLOOP_AGENT=gemini
 # agents:
-#   priority: [codex, claude, kiro, gemini, opencode, ollama, lmstudio]
+#   priority: [codex, grok, claude, kiro, gemini, opencode, ollama, lmstudio]
 #   ollama:
 #     model: qwen3-coder                # Model name from 'ollama list'
 #     # base_url: http://localhost:4000   # LiteLLM proxy (Ollama needs a translation layer)

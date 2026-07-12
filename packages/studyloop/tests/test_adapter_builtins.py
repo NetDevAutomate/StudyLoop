@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-BUILTIN_ADAPTERS = ["claude", "codex", "gemini", "kiro", "opencode", "ollama", "lmstudio"]
+BUILTIN_ADAPTERS = ["claude", "codex", "gemini", "grok", "kiro", "opencode", "ollama", "lmstudio"]
 
 
 class TestBuiltinAdapters:
@@ -31,7 +31,7 @@ class TestBuiltinAdapters:
         assert callable(adapter.setup)
         assert callable(adapter.launch_cmd)
 
-    @pytest.mark.parametrize("name", ["codex", "gemini", "opencode"])
+    @pytest.mark.parametrize("name", ["codex", "grok", "gemini", "opencode"])
     def test_setup_creates_file_in_session_dir(self, name, tmp_path):
         import importlib
 
@@ -75,7 +75,7 @@ class TestBuiltinAdapters:
 
         reset_registry()
         adapters = get_all_adapters()
-        expected = {"claude", "codex", "gemini", "kiro", "opencode", "ollama", "lmstudio"}
+        expected = {"claude", "codex", "gemini", "grok", "kiro", "opencode", "ollama", "lmstudio"}
         assert set(adapters.keys()) >= expected
 
 
@@ -99,6 +99,28 @@ class TestCodexAdapter:
 
         cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
         assert cmd.endswith("codex --resume")
+
+
+class TestGrokAdapter:
+    def test_grok_setup_writes_agents_md(self, tmp_path):
+        from studyloop.adapters.grok import _grok_setup
+
+        path = _grok_setup("# Grok Persona", tmp_path)
+        assert path == tmp_path / "AGENTS.md"
+        assert path.exists()
+        assert path.read_text() == "# Grok Persona"
+
+    def test_grok_launch_new_session(self):
+        from studyloop.adapters.grok import _grok_launch
+
+        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=False)
+        assert cmd.endswith("grok")
+
+    def test_grok_launch_resume(self):
+        from studyloop.adapters.grok import _grok_launch
+
+        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=True)
+        assert cmd.endswith("grok --resume")
 
 
 class TestKiroAdapter:

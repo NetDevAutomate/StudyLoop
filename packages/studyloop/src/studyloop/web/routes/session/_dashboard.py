@@ -6,6 +6,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
+from fastapi import Request  # noqa: TC002 - FastAPI needs Request at runtime for injection.
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from studyloop.session_state import PARKING_FILE, STATE_FILE, TOPICS_FILE
@@ -15,8 +16,6 @@ from studyloop.web.routes.session._router import router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-
-    from fastapi import Request
 
 logger = logging.getLogger(__name__)
 

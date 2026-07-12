@@ -62,6 +62,8 @@ def create_app(
     app.state.agent_session_manager = AgentSessionManager()
     app.state.explorer_tree_cache = None
     app.state.explorer_tree_fingerprint = None
+    app.state.session_options_targets_cache = None
+    app.state.session_options_targets_fingerprint = None
 
     # Optional password protection (LAN mode)
     if password:
@@ -94,6 +96,13 @@ def create_app(
     app.include_router(content_gen.router, prefix="/api")
     app.include_router(explorer.router, prefix="/api")
     app.include_router(artefacts.router)
+
+    try:
+        from studyloop.web.routes.session._options import warm_session_options_index
+
+        warm_session_options_index(app)
+    except Exception:
+        pass
 
     # Pomodoro config endpoint — serves configured durations for the slider
     @app.get("/api/config/pomodoro")

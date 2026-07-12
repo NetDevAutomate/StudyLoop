@@ -383,23 +383,11 @@ def register_tools(mcp: FastMCP) -> None:
         """
         from studyloop.web.routes.session import (
             _agent_options,
-            _course_options,
-            _lesson_options,
-            _topic_options,
-            _vendor_options,
         )
+        from studyloop.web.routes.session._options import _get_indexed_target_options
 
-        return {
-            "session_types": [
-                {"label": "Study Session", "value": "study", "kind": "session_type"},
-                {"label": "Body Double", "value": "body_double", "kind": "session_type"},
-            ],
-            "topics": [option.model_dump() for option in _topic_options()],
-            "vendors": [option.model_dump() for option in _vendor_options()],
-            "courses": [option.model_dump() for option in _course_options()],
-            "lessons": [option.model_dump() for option in _lesson_options()],
-            "agents": _agent_options(),
-        }
+        targets = _get_indexed_target_options()
+        return {**targets, "agents": _agent_options()}
 
     @mcp.tool()
     def end_session() -> dict[str, Any]:

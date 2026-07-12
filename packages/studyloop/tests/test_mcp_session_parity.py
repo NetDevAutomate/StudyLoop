@@ -36,20 +36,16 @@ class TestListSessionOptions:
         tool = _get_tool("list_session_options")
         with (
             patch(
-                "studyloop.web.routes.session._topic_options",
-                return_value=[],
-            ),
-            patch(
-                "studyloop.web.routes.session._vendor_options",
-                return_value=[],
-            ),
-            patch(
-                "studyloop.web.routes.session._course_options",
-                return_value=[],
-            ),
-            patch(
-                "studyloop.web.routes.session._lesson_options",
-                return_value=[],
+                "studyloop.web.routes.session._options._get_indexed_target_options",
+                return_value={
+                    "session_types": [
+                        {"label": "Study Session", "value": "study", "kind": "session_type"}
+                    ],
+                    "topics": [],
+                    "vendors": [],
+                    "courses": [],
+                    "lessons": [],
+                },
             ),
             patch(
                 "studyloop.web.routes.session._agent_options",

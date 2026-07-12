@@ -276,6 +276,66 @@ def test_topic_optional_fields_have_defaults(tmp_path):
     assert s.topics[0].tags == []
 
 
+def test_legacy_string_topics_are_parsed_and_limited(tmp_path):
+    config_path = _write_config(
+        tmp_path,
+        {
+            "obsidian_base": str(tmp_path / "vault"),
+            "topics": ["Python", "SQL", "Data Engineering", "AWS Analytics"],
+        },
+    )
+    s = _load(config_path)
+
+    assert [topic.name for topic in s.topics] == ["Python", "SQL", "Data Engineering"]
+    assert [topic.slug for topic in s.topics] == ["python", "sql", "data-engineering"]
+    assert s.topics[0].obsidian_path == tmp_path / "vault" / "Personal" / "Study" / "Python"
+    assert s.topics[0].tags == ["python"]
+
+
+def test_legacy_string_topics_use_personal_vault_study_dir(tmp_path):
+    vault = tmp_path / "Obsidian" / "Personal"
+    (vault / "Study" / "Python").mkdir(parents=True)
+    config_path = _write_config(
+        tmp_path,
+        {
+            "obsidian_base": str(vault),
+            "topics": ["Python"],
+        },
+    )
+    s = _load(config_path)
+
+    assert s.topics[0].obsidian_path == vault / "Study" / "Python"
+
+
+def test_topics_are_limited_to_three_active_entries(tmp_path):
+    config_path = _write_config(
+        tmp_path,
+        {
+            "topics": [
+                {"name": "Python", "slug": "python", "obsidian_path": "Study/Python"},
+                {"name": "SQL", "slug": "sql", "obsidian_path": "Study/SQL"},
+                {
+                    "name": "Data Engineering",
+                    "slug": "data-engineering",
+                    "obsidian_path": "Study/Data-Engineering",
+                },
+                {"name": "AWS Analytics", "slug": "aws", "obsidian_path": "Study/AWS"},
+            ],
+        },
+    )
+    s = _load(config_path)
+
+    assert [topic.slug for topic in s.topics] == ["python", "sql", "data-engineering"]
+
+
+def test_default_config_keeps_active_topics_to_three():
+    from studyloop.settings import MAX_ACTIVE_TOPICS, generate_default_config
+
+    parsed = yaml.safe_load(generate_default_config())
+
+    assert len(parsed["topics"]) == MAX_ACTIVE_TOPICS
+
+
 # ---------------------------------------------------------------------------
 # NotebookLM config
 # ---------------------------------------------------------------------------
@@ -369,7 +429,7 @@ def test_agents_priority_parsed(tmp_path):
     assert s.agents.priority == ["gemini", "claude"]
 
 
-def test_agents_default_priority_includes_codex():
+def test_agents_default_priority_includes_codex_and_grok():
     from studyloop.settings import Settings
 
     s = Settings()
@@ -379,6 +439,7 @@ def test_agents_default_priority_includes_codex():
         "gemini",
         "opencode",
         "codex",
+        "grok",
         "ollama",
         "lmstudio",
     ]

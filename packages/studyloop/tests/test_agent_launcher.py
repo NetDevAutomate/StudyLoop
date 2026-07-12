@@ -17,13 +17,14 @@ import pytest
 
 
 class TestAgentRegistry:
-    def test_seven_agents_registered(self):
+    def test_eight_agents_registered(self):
         from studyloop.agent_launcher import AGENTS
 
         assert set(AGENTS.keys()) == {
             "claude",
             "codex",
             "gemini",
+            "grok",
             "kiro",
             "opencode",
             "ollama",
@@ -54,7 +55,7 @@ class TestAgentRegistry:
     def test_all_agents_are_wired(self, tmp_path):
         from studyloop.agent_launcher import AGENTS
 
-        for name in ("codex", "gemini", "opencode"):
+        for name in ("codex", "grok", "gemini", "opencode"):
             # These write to session_dir — should not raise
             path = AGENTS[name].setup("# test content", tmp_path)
             assert path.exists()
@@ -543,6 +544,28 @@ class TestCodexAdapter:
 
         cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
         assert cmd.endswith("codex --resume")
+
+
+class TestGrokAdapter:
+    def test_setup_writes_agents_md(self, tmp_path):
+        from studyloop.agent_launcher import _grok_setup
+
+        path = _grok_setup("# Grok Persona", tmp_path)
+        assert path == tmp_path / "AGENTS.md"
+        assert path.exists()
+        assert path.read_text() == "# Grok Persona"
+
+    def test_launch_new_session(self):
+        from studyloop.agent_launcher import _grok_launch
+
+        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=False)
+        assert cmd.endswith("grok")
+
+    def test_launch_resume(self):
+        from studyloop.agent_launcher import _grok_launch
+
+        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=True)
+        assert cmd.endswith("grok --resume")
 
 
 # ---------------------------------------------------------------------------

@@ -2,15 +2,89 @@
 
 from __future__ import annotations
 
+import json
+import threading
+import time
 from pathlib import Path
+from typing import Any
 
+from fastapi import Request  # noqa: TC002 - FastAPI needs Request at runtime for injection.
+
+from studyloop.settings import MAX_ACTIVE_TOPICS
 from studyloop.web.routes.session._models import SessionOption
 from studyloop.web.routes.session._router import router
 
+_SESSION_OPTION_INDEX_VERSION = 1
+_SESSION_OPTION_INDEX_LOCK = threading.Lock()
+_OUTPUT_DIR_NAMES = {"flashcards", "quizzes"}
+_AGENT_FALLBACK_BINARIES = {
+    "claude": "claude",
+    "codex": "codex",
+    "gemini": "gemini",
+    "grok": "grok",
+    "kiro": "kiro-cli",
+    "opencode": "opencode",
+}
+
 
 @router.get("/session/options")
-def get_session_options() -> dict[str, list[dict]]:
+def get_session_options(request: Request, refresh: bool = False) -> dict[str, list[dict]]:
     """Return local study choices for the web session picker."""
+    targets = _get_indexed_target_options(request.app.state, force=refresh)
+    return {**targets, "agents": _agent_options()}
+
+
+def warm_session_options_index(app: object) -> None:
+    """Pre-index the filesystem-backed picker options in the background."""
+
+    def _warm() -> None:
+        try:
+            state = getattr(app, "state", app)
+            _get_indexed_target_options(state)
+        except Exception:
+            return
+
+    thread = threading.Thread(target=_warm, name="studyloop-session-options-index", daemon=True)
+    thread.start()
+
+
+def _get_indexed_target_options(
+    state: Any | None = None, *, force: bool = False
+) -> dict[str, list[dict[str, Any]]]:
+    """Return topic/vendor/course/lesson options from memory, disk, or a fresh scan."""
+    fingerprint = _target_fingerprint()
+
+    if not force and state is not None:
+        cached = getattr(state, "session_options_targets_cache", None)
+        cached_fingerprint = getattr(state, "session_options_targets_fingerprint", None)
+        if cached is not None and cached_fingerprint == fingerprint:
+            return cached
+
+    with _SESSION_OPTION_INDEX_LOCK:
+        if not force and state is not None:
+            cached = getattr(state, "session_options_targets_cache", None)
+            cached_fingerprint = getattr(state, "session_options_targets_fingerprint", None)
+            if cached is not None and cached_fingerprint == fingerprint:
+                return cached
+
+        if not force:
+            disk_targets = _read_target_index(fingerprint)
+            if disk_targets is not None:
+                if state is not None:
+                    state.session_options_targets_cache = disk_targets
+                    state.session_options_targets_fingerprint = fingerprint
+                return disk_targets
+
+        targets = _target_options_snapshot()
+        _write_target_index(fingerprint, targets)
+        if state is not None:
+            state.session_options_targets_cache = targets
+            state.session_options_targets_fingerprint = fingerprint
+        return targets
+
+
+def _target_options_snapshot() -> dict[str, list[dict[str, Any]]]:
+    """Build the filesystem-backed part of the session picker."""
     return {
         "session_types": [
             {"label": "Study Session", "value": "study", "kind": "session_type"},
@@ -20,8 +94,107 @@ def get_session_options() -> dict[str, list[dict]]:
         "vendors": [option.model_dump() for option in _vendor_options()],
         "courses": [option.model_dump() for option in _course_options()],
         "lessons": [option.model_dump() for option in _lesson_options()],
-        "agents": _agent_options(),
     }
+
+
+def _target_fingerprint() -> dict[str, Any]:
+    """Cheap fingerprint for picker inputs so runtime re-indexes are fast."""
+    records: list[list[Any]] = []
+    for root in [*_study_roots(), *_courses_roots()]:
+        _record_dir(records, root, depth=0)
+        for vendor_dir in _visible_child_dirs(root):
+            _record_dir(records, vendor_dir, depth=1)
+            for course_dir in _visible_child_dirs(vendor_dir):
+                _record_dir(records, course_dir, depth=2)
+                for lesson_dir in _visible_child_dirs(course_dir):
+                    _record_dir(records, lesson_dir, depth=3)
+
+    config_record: list[Any] = []
+    try:
+        from studyloop.settings import get_config_path
+
+        config_path = get_config_path()
+        config_stat = config_path.stat()
+        config_record = [str(config_path), config_stat.st_mtime_ns, config_stat.st_size]
+    except OSError:
+        config_record = []
+
+    records.sort()
+    return {
+        "version": _SESSION_OPTION_INDEX_VERSION,
+        "config": config_record,
+        "records": records,
+    }
+
+
+def _record_dir(records: list[list[Any]], path: Path, *, depth: int) -> None:
+    try:
+        stat = path.stat()
+        resolved = path.resolve()
+    except OSError:
+        return
+    records.append([depth, str(resolved), stat.st_mtime_ns, stat.st_ino, stat.st_dev])
+
+
+def _visible_child_dirs(parent: Path) -> list[Path]:
+    try:
+        children = sorted(parent.iterdir(), key=lambda p: p.name.lower())
+    except OSError:
+        return []
+    return [
+        child
+        for child in children
+        if child.is_dir() and not child.name.startswith(".") and child.name not in _OUTPUT_DIR_NAMES
+    ]
+
+
+def _target_index_path() -> Path | None:
+    try:
+        from studyloop.settings import load_settings
+
+        path = Path(load_settings().state_dir) / "session-options-index.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+    except Exception:
+        return None
+
+
+def _read_target_index(fingerprint: dict[str, Any]) -> dict[str, list[dict[str, Any]]] | None:
+    path = _target_index_path()
+    if path is None or not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if payload.get("version") != _SESSION_OPTION_INDEX_VERSION:
+        return None
+    if payload.get("fingerprint") != fingerprint:
+        return None
+    targets = payload.get("targets")
+    if not isinstance(targets, dict):
+        return None
+    return targets
+
+
+def _write_target_index(
+    fingerprint: dict[str, Any], targets: dict[str, list[dict[str, Any]]]
+) -> None:
+    path = _target_index_path()
+    if path is None:
+        return
+    payload = {
+        "version": _SESSION_OPTION_INDEX_VERSION,
+        "built_at": time.time(),
+        "fingerprint": fingerprint,
+        "targets": targets,
+    }
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        tmp_path.write_text(json.dumps(payload, indent=2))
+        tmp_path.replace(path)
+    except OSError:
+        return
 
 
 def _study_roots() -> list[Path]:
@@ -50,6 +223,23 @@ def _study_roots() -> list[Path]:
 
 def _topic_options() -> list[SessionOption]:
     options: list[SessionOption] = []
+    try:
+        from studyloop.settings import load_settings
+
+        configured_topics = getattr(load_settings(), "topics", [])
+        for topic in configured_topics[:MAX_ACTIVE_TOPICS]:
+            options.append(
+                SessionOption(
+                    label=topic.name,
+                    value=topic.slug,
+                    kind="topic",
+                    path=str(topic.obsidian_path),
+                )
+            )
+        if options:
+            return options
+    except Exception:
+        pass
     for root in _study_roots():
         if not root.exists():
             continue
@@ -63,6 +253,8 @@ def _topic_options() -> list[SessionOption]:
                         path=str(child),
                     )
                 )
+                if len(options) >= MAX_ACTIVE_TOPICS:
+                    return options
     return options
 
 
@@ -168,6 +360,7 @@ def _existing_unique_dirs(paths: list[Path]) -> list[Path]:
 
 
 def _agent_options() -> list[dict[str, object]]:
+    names = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
     try:
         from studyloop.agent_launcher import AGENTS, detect_agents
 
@@ -177,16 +370,27 @@ def _agent_options() -> list[dict[str, object]]:
                 "label": _agent_label(name),
                 "value": name,
                 "available": name in detected,
-                "supports_acp": name in {"kiro", "gemini"},
+                "supports_acp": name in {"kiro", "gemini", "grok"},
                 "acp_ready": False,
                 "recommended_transport": "ttyd",
                 "binary": adapter.binary,
             }
             for name, adapter in AGENTS.items()
-            if name in {"codex", "claude", "gemini", "kiro", "opencode"}
+            if name in names
         ]
     except Exception:
-        return []
+        return [
+            {
+                "label": _agent_label(name),
+                "value": name,
+                "available": False,
+                "supports_acp": name in {"kiro", "gemini", "grok"},
+                "acp_ready": False,
+                "recommended_transport": "ttyd",
+                "binary": _AGENT_FALLBACK_BINARIES[name],
+            }
+            for name in names
+        ]
 
 
 def _agent_label(name: str) -> str:
@@ -194,6 +398,7 @@ def _agent_label(name: str) -> str:
         "claude": "Claude Code",
         "codex": "Codex",
         "gemini": "Gemini",
+        "grok": "Grok",
         "kiro": "Kiro",
         "opencode": "OpenCode",
     }.get(name, name)

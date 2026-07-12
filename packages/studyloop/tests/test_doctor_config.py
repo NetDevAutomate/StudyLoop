@@ -104,6 +104,32 @@ class TestReviewDirectoriesCheck:
         assert results[0].status == "info"
 
 
+class TestActiveTopicLimitCheck:
+    def test_warns_when_more_than_three_topics_configured(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        from studyloop.doctor.config import check_active_topic_limit
+
+        config = tmp_path / "config.yaml"
+        config.write_text("topics: [Python, SQL, Data Engineering, AWS Analytics]\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+
+        results = check_active_topic_limit()
+
+        assert len(results) == 1
+        assert results[0].status == "warn"
+        assert "first 3" in results[0].message
+
+    def test_no_warning_at_three_topics(self, tmp_path: Path, monkeypatch) -> None:
+        from studyloop.doctor.config import check_active_topic_limit
+
+        config = tmp_path / "config.yaml"
+        config.write_text("topics: [Python, SQL, Data Engineering]\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+
+        assert check_active_topic_limit() == []
+
+
 class TestPandocCheck:
     def test_pandoc_available(self):
         from studyloop.doctor.config import check_pandoc

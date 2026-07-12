@@ -2,7 +2,7 @@
 
 Exercises the full start-session → WebSocket-handshake → Started-event
 path end-to-end for each registered agent (``claude``, ``codex``,
-``gemini``, ``kiro``, ``opencode``). Real agent binaries are not
+``gemini``, ``grok``, ``kiro``, ``opencode``). Real agent binaries are not
 required: the ``STUDYLOOP_TEST_AGENT_CMD`` env var stubs the PTY child
 with a tiny shell snippet that prints a banner then sleeps.
 
@@ -57,7 +57,7 @@ WEB_PORT = 18574
 # appear here. The stub command doesn't care which agent is selected —
 # the point is that each agent's launch path is driven uniformly
 # through ``_build_pty_transport`` without the real binary.
-AGENTS = ["claude", "codex", "gemini", "kiro", "opencode"]
+AGENTS = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
 
 
 # ---------------------------------------------------------------------------

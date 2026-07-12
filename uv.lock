@@ -2975,8 +2975,10 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "kokoro-onnx" },
     { name = "pexpect" },
     { name = "pyyaml" },
+    { name = "sentence-transformers" },
 ]
 
 [package.optional-dependencies]
@@ -3009,11 +3011,13 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.135.1" },
+    { name = "kokoro-onnx", specifier = ">=0.5.0" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6,<2" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5,<10" },
     { name = "pexpect", specifier = ">=4.9.0" },
     { name = "pymdown-extensions", marker = "extra == 'docs'", specifier = ">=10" },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "sentence-transformers", specifier = ">=5.2.3" },
 ]
 provides-extras = ["docs"]
 

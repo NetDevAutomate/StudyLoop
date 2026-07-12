@@ -1099,7 +1099,7 @@
                 </div>
               </div>
               <div class="terminal-content">
-                <iframe :src="ttydUrl" class="terminal-iframe"
+                <iframe :src="activeTtydUrl || 'about:blank'" class="terminal-iframe"
                         :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
                         allow="clipboard-read; clipboard-write"></iframe>
                 <div x-show="!connected && unavailableMessage" class="terminal-unavailable">
@@ -1498,10 +1498,10 @@
             </select>
           </div>
           <p class="picker-hint" x-show="transport === 'pty'">
-            Native browser terminal via xterm.js — the default. Works with Claude Code, Codex, Gemini, Kiro, and OpenCode.
+            Native browser terminal via xterm.js — the default. Works with Claude Code, Codex, Grok, Gemini, Kiro, and OpenCode.
           </p>
           <p class="picker-hint" x-show="transport === 'acp'">
-            Structured ACP events (no raw terminal). Works with Kiro and Gemini. Assumes <code>gemini</code> auth is already completed; run <code>gemini</code> interactively once before enabling this transport.
+            Structured ACP events (no raw terminal). Works with Kiro, Gemini, and Grok. Assumes tool auth is already completed; run the selected agent interactively once before enabling this transport.
           </p>
           <p class="picker-hint" x-show="transport === 'ttyd'">
             Legacy tmux+ttyd fallback. Use only if the xterm.js terminal misbehaves; we plan to remove this after one deprecation window.
@@ -2387,29 +2387,30 @@
       },
 
       async init() {
-        try {
-          // Load topics list for picker
-          const topicsRes = await fetch('/api/session/topics');
-          if (topicsRes.ok) this.topics = await topicsRes.json();
-        } catch { /* topics list unavailable — free-text still works */ }
+        const optionsPromise = fetch('/api/session/options')
+          .then((res) => res.ok ? res.json() : null)
+          .catch(() => null);
+        const statePromise = fetch('/api/session/state')
+          .then((res) => res.ok ? res.json() : {})
+          .catch(() => ({}));
 
         try {
-          const optionsRes = await fetch('/api/session/options');
-          if (optionsRes.ok) {
-            this.studyOptions = await optionsRes.json();
-            // Pre-select the first detected-available agent so the user
-            // sees an explicit choice rather than the previous "Auto"
-            // default that silently fell back to Claude.
-            if (!this.agent) {
-              const firstAvailable = (this.studyOptions.agents || []).find((a) => a.available);
-              if (firstAvailable) this.agent = firstAvailable.value;
-            }
+          const options = await optionsPromise;
+          if (options) {
+            this.studyOptions = options;
+            this.topics = options.topics || [];
+          }
+          // Pre-select the first detected-available agent so the user
+          // sees an explicit choice rather than the previous "Auto"
+          // default that silently fell back to Claude.
+          if (!this.agent) {
+            const firstAvailable = (this.studyOptions.agents || []).find((a) => a.available);
+            if (firstAvailable) this.agent = firstAvailable.value;
           }
         } catch { /* enhanced picker unavailable — free-text still works */ }
 
         try {
-          const res = await fetch('/api/session/state');
-          const state = await res.json();
+          const state = await statePromise;
           if (state.study_session_id && state.mode !== 'ended') {
             this.energy = state.energy || 5;
             this.topic = state.topic || 'Study Session';
@@ -2535,8 +2536,14 @@
         if (this.targetKind === 'lesson' && this.selectedLesson) {
           return this.selectedLesson;
         }
+        if (this.targetKind === 'lesson') {
+          return '';
+        }
         if (this.targetKind === 'course' && this.selectedCourse) {
           return this.selectedCourse;
+        }
+        if (this.targetKind === 'course') {
+          return '';
         }
         if (this.targetKind === 'vendor') {
           if (this.selectedCourse) return this.selectedCourse;

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast, get_type_hints
 
 pytest = __import__("pytest")
 pytest.importorskip("fastapi")
 
 from unittest.mock import patch  # noqa: E402
 
+from fastapi import Request  # noqa: E402  # pyright: ignore[reportMissingImports]
+from fastapi.routing import APIRoute  # noqa: E402  # pyright: ignore[reportMissingImports]
 from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 from studyloop.session_state import TopicEntry  # noqa: E402
@@ -33,6 +36,22 @@ class TestSessionPage:
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
         assert "session-dashboard" in resp.text
+
+
+class TestSessionStaticUI:
+    def test_course_and_lesson_targets_require_specific_selection(self) -> None:
+        """Course/lesson targets must not fall back to the vendor label."""
+        html = (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "studyloop"
+            / "web"
+            / "static"
+            / "index.html"
+        ).read_text()
+
+        assert "if (this.targetKind === 'lesson') {\n          return '';" in html
+        assert "if (this.targetKind === 'course') {\n          return '';" in html
 
 
 class TestSessionStateAPI:
@@ -97,6 +116,22 @@ class TestSessionSSE:
     we test the rendering pipeline directly — the SSE endpoint is a thin
     wrapper that polls files and yields render output.
     """
+
+    def test_sse_endpoint_accepts_request_injection(self, client: TestClient) -> None:
+        """Regression: Request must be imported at runtime, or FastAPI returns 422."""
+        from studyloop.web.routes.session._dashboard import session_stream
+
+        hints = get_type_hints(session_stream)
+        assert hints["request"] is Request
+
+        app = cast("Any", client.app)
+        route = next(
+            route
+            for route in app.routes
+            if isinstance(route, APIRoute) and route.path == "/api/session/stream"
+        )
+        query_param_names = {param.name for param in route.dependant.query_params}
+        assert "request" not in query_param_names
 
     def test_sse_render_produces_valid_sse_format(self) -> None:
         """Verify the render pipeline produces valid SSE event format."""

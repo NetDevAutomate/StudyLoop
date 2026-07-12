@@ -50,6 +50,16 @@ class TestAgentToolDetection:
             tools = _detect_ai_tools()
         assert "codex" in tools
 
+    def test_detect_grok(self):
+        from studyloop.doctor.agents import _detect_ai_tools
+
+        def _which(binary: str) -> str | None:
+            return "/usr/local/bin/grok" if binary == "grok" else None
+
+        with patch("shutil.which", side_effect=_which):
+            tools = _detect_ai_tools()
+        assert "grok" in tools
+
 
 class TestAgentSmokeTests:
     def test_smoke_test_success(self):
@@ -112,6 +122,12 @@ class TestAgentDefinitionCheck:
         agent_file.parent.mkdir(parents=True)
         agent_file.write_text("# Socratic Mentor Agent\nTest content")
         return tmp_path
+
+    def test_grok_definition_uses_repo_agents_md(self, tmp_path: Path):
+        from studyloop.doctor.agents import _get_agent_install_path
+
+        with patch("studyloop.doctor.agents.find_repo_root", return_value=tmp_path):
+            assert _get_agent_install_path("grok") == tmp_path / "AGENTS.md"
 
     def test_agent_installed_and_current(self, agent_dir: Path):
         import hashlib
