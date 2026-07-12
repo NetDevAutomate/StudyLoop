@@ -22,6 +22,7 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_representative_user_
 from __future__ import annotations
 
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -31,7 +32,14 @@ import pytest
 pytest.importorskip("playwright")
 pytest.importorskip("requests")
 
-from _playwright_helpers import start_web_server
+# Shared helpers live in the parent tests/ dir. Add it to sys.path inline
+# (matching the precedent in test_active_session.py etc.) — a conftest.py here
+# would collide with the parent tests/conftest.py module name.
+_tests_dir = str(Path(__file__).resolve().parent.parent)
+if _tests_dir not in sys.path:
+    sys.path.insert(0, _tests_dir)
+
+from _playwright_helpers import start_web_server  # noqa: E402
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
