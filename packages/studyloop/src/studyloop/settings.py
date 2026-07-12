@@ -420,7 +420,10 @@ def resolve_study_dirs() -> list[str]:
     nothing is configured) so the panels have a root to scan on a fresh install.
     """
     raw = load_raw_config()
-    review_dirs = raw.get("review", {}).get("directories") or []
+    # A bare ``review:`` key parses to None, not {} — guard with ``or {}``.
+    review_dirs = (raw.get("review") or {}).get("directories") or []
+    if isinstance(review_dirs, str):
+        review_dirs = [review_dirs]  # scalar → single dir, not per-char explosion
     if review_dirs:
         return [str(d) for d in review_dirs]
     base_path = load_settings().content.base_path
@@ -596,10 +599,14 @@ def load_settings() -> Settings:
         # No obsidian: section at all — still align vault_path with obsidian_base
         settings.obsidian = ObsidianConfig(vault_path=settings.obsidian_base)
 
-    ct = raw.get("content", {})
+    ct = raw.get("content") or {}
     if ct:
         content_defaults = ContentConfig()
         raw_study_paths = ct.get("study_paths", content_defaults.study_paths)
+        # A scalar study_paths (single path string) must not be iterated
+        # per-character — coerce to a one-element list first.
+        if isinstance(raw_study_paths, str):
+            raw_study_paths = [raw_study_paths]
         settings.content = ContentConfig(
             base_path=_path(ct.get("base_path", "~/study-materials")),
             study_paths=[

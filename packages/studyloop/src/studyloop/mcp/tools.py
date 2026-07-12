@@ -204,7 +204,10 @@ def register_tools(mcp: FastMCP) -> None:
         if not matches:
             # Try broader match
             all_pdfs = sorted(chapters_dir.glob("*.pdf"))
-            if chapter <= len(all_pdfs):
+            # Guard the lower bound: chapter is 1-indexed, so 0/negatives must
+            # NOT fall through to all_pdfs[chapter-1] (Python negative indexing
+            # would silently return a chapter counted from the end).
+            if 1 <= chapter <= len(all_pdfs):
                 matches = [all_pdfs[chapter - 1]]
             else:
                 raise ToolError(

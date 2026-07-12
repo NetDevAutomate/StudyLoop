@@ -62,6 +62,17 @@ class TestSecretPatterns:
     def test_aws_secret_key(self):
         assert SECRET_PATTERNS["aws_secret_key"].search(AWS_SECRET_KEY_TEXT)
 
+    def test_aws_secret_key_unquoted(self):
+        # The common .env / CLI-export shape has NO quotes around the value.
+        unquoted = (
+            "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"  # pragma: allowlist secret
+        )
+        assert SECRET_PATTERNS["aws_secret_key"].search(unquoted)
+
+    def test_aws_secret_key_no_false_positive_on_short_value(self):
+        # A 12-char token after 'key =' must NOT trip the 40-char pattern.
+        assert not SECRET_PATTERNS["aws_secret_key"].search("aws region key = us-east-1a")
+
     def test_github_pat(self):
         assert SECRET_PATTERNS["github_pat"].search(GITHUB_PAT)
 
