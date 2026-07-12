@@ -133,7 +133,10 @@ Features designed specifically for AuDHD brains, ranked by impact.
 - [x] Gemini CLI / OpenCode / Amp agents (unified shared framework)
 - [x] CI Python version matrix (3.12, 3.13)
 - [x] GitHub Pages deployment workflow
-- [x] CHANGELOG.md and release automation (git-cliff + release.yml)
+- [x] CHANGELOG.md (Keep a Changelog format, at repo root)
+- [ ] Release automation (git-cliff + release.yml) — **not yet built**; there is
+  no `release.yml`. CI today is `ci.yml`, `docs.yml`, `nightly-install.yml`,
+  `nightly-uat.yml`.
 - [x] `query_sessions.py` refactor — split into `query_logic.py` (717 lines) + CLI (505 lines)
 
 ## v1.3 — AuDHD Intelligence (from review)
@@ -269,7 +272,9 @@ Nightly drift detection, pre-release gate, backup/restore.
 
 - [x] Nightly: fresh install on Ubuntu + macOS, `studyloop doctor --json` as gate (`nightly-install.yml`)
 - [x] Nightly: UAT tmux integration tests on macOS (`nightly-uat.yml`)
-- [x] Pre-release: upgrade path N-1 → N, triggered on release tags (`pre-release.yml`)
+- [ ] Pre-release: upgrade path N-1 → N, triggered on release tags — **not yet
+  built**; there is no `pre-release.yml`. Only `nightly-install.yml` and
+  `nightly-uat.yml` exist today.
 - [x] `studyloop backup` / `studyloop restore` — timestamped snapshots with safety backup
 - [x] Orphaned process cleanup in test harness (`conftest.py` session-scoped fixture)
 - [ ] Docker: `studyloop-web` image with health check via doctor — deferred to Phase 3
@@ -286,7 +291,8 @@ Nightly drift detection, pre-release gate, backup/restore.
 
 ### CI/CD Fixes (2026-04-04) ✅
 
-- [x] Doctor exit code `|| true` in nightly-install + pre-release workflows
+- [x] Doctor exit code `|| true` in nightly-install workflow (no pre-release
+  workflow exists yet)
 - [x] Atomic state file writes (threading.Lock + temp file + os.replace)
 - [x] Auto-create sessions DB on first connect (run migrations on fresh machine)
 - [x] Internal docs consolidation (66 → 18 files)
