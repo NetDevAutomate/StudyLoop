@@ -72,14 +72,23 @@ addopts flags, subprocess-hosted e2e server…). New this session:
   this repo is local-only by design. Never push; sync to the macmini
   happens via `~/code/personal/tools/dirsync`. "Commits ahead of origin"
   is NOT loss exposure here.**
-- **Manual desktop verification** (~10 min, human-only): register
-  `studyloop-mcp` in Claude Desktop + Codex per `docs/desktop-mcp/README.md`
-  and click through one review loop (`get_due_cards` → `log_review_outcome`).
+- **Manual desktop verification** (~10 min, human-only): both apps are
+  ALREADY WIRED (configs merged 2026-07-12, backups alongside; install
+  needed the `[mcp,web,content]` extras — see `c175900`). Follow the new
+  runbook `docs/desktop-mcp/manual-test-plan.md` (per-client checklists,
+  mermaid flows, prompt scripts, results tables). User plans to run it
+  2026-07-13.
 
 ### Next-slice candidates (descoped from the archived change; all parallel-safe)
-- **Fake-agent PTY binary** — CI-walkable spawn→WS→terminal path.
-- **Journey phases 2–4** — generation walk (Stub provider), review loop,
-  session-end export assertion (`/api/session/end` → session DB row).
+- ~~Fake-agent PTY binary~~ — **DONE `45b9b13`**: `studyloop-fake-agent`
+  console script + `fake` adapter (gated behind `STUDYLOOP_TEST_AGENT=1`);
+  journey walks spawn→201→real WS (Origin header required)→bytes both
+  ways→end-while-connected→`study_sessions` row; browser test sees
+  "Connected · fake" in the real UI. Held-out gate proven.
+- ~~Journey phases 2–4~~ — **DONE `45b9b13`**:
+  `tests/e2e/test_journey_generate_review.py` — isolated tmp world, real
+  Generate panel + stub backend → deck files ON DISK; real flashcards walk
+  to summary; durable `card_reviews`/`review_sessions` rows asserted.
 - ~~MCP explorer read tools~~ — **DONE `e215368`**: `get_lesson_tree`,
   `read_lesson`, `search_lessons` shipped; shared `resolve_lesson_path`
   traversal guard extracted into `explorer.py`; 21 tools total.
@@ -93,22 +102,34 @@ addopts flags, subprocess-hosted e2e server…). New this session:
   Playwright strict-mode violation), not a product bug. Full browser smoke
   file now 9/9.
 
-### Known-open defects (carried forward, unfixed)
-- `resolve_study_dirs()` bare `review:` crash + `study_paths` scalar
-  explosion — settings shape-hardening P0 remainder.
-- Kiro exporter drops string-shaped history entries; gemini FK-swallow;
-  aider ID duplication (session-export spec).
-- Scrubber misses unquoted AWS secrets (regex requires quotes).
-- `get_chapter_text` negative-chapter Python-index bug (mcp-server audit).
-- LAN auth divergence: `create_app` never stores CLI-passed
-  username/password on `app.state`.
+### Known-open defects — ALL RESOLVED 2026-07-12/13
+- ~~`resolve_study_dirs()` bare `review:` crash + `study_paths` scalar
+  explosion~~ — **FIXED `6b52a0d`** (`or {}` guard + scalar→list coercion).
+- ~~Kiro exporter / gemini FK-swallow / aider ID duplication~~ — **FIXED
+  `b909b46`**: ONE root cause (scrub_log/file_references FKs lacked
+  ON DELETE CASCADE → migration 25) + kiro's real list-shaped entries
+  (extraction 1369→3419 msgs on the live DB) + aider delete-on-update.
+- ~~Scrubber unquoted AWS secrets~~ — **FIXED `6b52a0d`** (quotes optional,
+  40-char base64 anchor keeps specificity).
+- ~~`get_chapter_text` negative-chapter bug~~ — **FIXED `6b52a0d`**
+  (`1 <= chapter <= len` lower bound).
+- ~~LAN auth divergence~~ — **FIXED `4296941`** (real security hole: ttyd
+  side-channel unauthenticated when `--password` not persisted; creds now
+  single-sourced from `app.state`, fail-closed).
 
 ### Roadmap (honest `[ ]`)
 - Release automation (`release.yml` / `pre-release.yml` don't exist).
-- Learner-first UX UI slice: `/api/backlog` data layer exists; the "Today's
-  one next action" landing view, park-first friction modal, and recovery
-  shortcuts are unbuilt in `index.html`. Respect the nav-store lock and the
-  async-hydration pattern (post-fanout handoff §2.2–2.3).
+- ~~Learner-first UX UI slice~~ — **DONE `102e82f`**: Today landing view
+  (new default), context-aware resume (+ `GET /api/session/last`),
+  quick-park brain-dump (+ `POST /api/backlog/park`), park-first friction
+  modal (+ `POST /api/backlog/demote`), toast primitive, courses-loading
+  tri-state. Also fixed the TTS voice-ignored + overlapping-playback bugs
+  (`tts-engine.js` generation counter + voice restore).
+- CI e2e job (now unblocked by the fake agent — run
+  `STUDYLOOP_TEST_AGENT=1` journeys in CI).
+- Parked R&D threads: evaluate `coder/ghostty-web` vs ttyd (pairs with the
+  wterm exploration); xTiles MCP integration (future phase — keep new
+  endpoints MCP-parity-friendly).
 
 ## 5. Environment facts that save time
 
