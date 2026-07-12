@@ -68,9 +68,10 @@ addopts flags, subprocess-hosted e2e server…). New this session:
 ## 4. Outstanding work
 
 ### Needs the user (blocking close-out)
-- **Push + PR.** `git push origin main` (or push the branch and PR — user's
-  call on workflow). 42 local-only commits is real loss exposure; this is
-  the top priority. Get explicit approval first.
+- ~~Push + PR~~ — **RESOLVED 2026-07-12 (later session): the user confirmed
+  this repo is local-only by design. Never push; sync to the macmini
+  happens via `~/code/personal/tools/dirsync`. "Commits ahead of origin"
+  is NOT loss exposure here.**
 - **Manual desktop verification** (~10 min, human-only): register
   `studyloop-mcp` in Claude Desktop + Codex per `docs/desktop-mcp/README.md`
   and click through one review loop (`get_due_cards` → `log_review_outcome`).
@@ -79,16 +80,18 @@ addopts flags, subprocess-hosted e2e server…). New this session:
 - **Fake-agent PTY binary** — CI-walkable spawn→WS→terminal path.
 - **Journey phases 2–4** — generation walk (Stub provider), review loop,
   session-end export assertion (`/api/session/end` → session DB row).
-- **MCP explorer read tools** — `get_lesson_tree`, `read_lesson`,
-  `search_lessons` reusing `_safe_course_dir` + explorer internals.
-- **Run the Socratic judge live once** — `cd packages/studyloop && uv run
-  pytest tests/e2e/test_socratic_steering.py -m live_provider`; gateway
-  `http://127.0.0.1:4000`, token env `LITELLM_BEARER_TOKEN` (in
-  `~/code/personal/tools/litellm_proxy_docker/.env`). Never yet executed.
-- **Full 348-test e2e suite to completion** (>25 min). Known pre-existing
-  failure to root-cause:
-  `test_web_smoke_browser.py::test_generate_busy_response_shows_visible_conflict_state`.
-  CI still has no e2e job.
+- ~~MCP explorer read tools~~ — **DONE `e215368`**: `get_lesson_tree`,
+  `read_lesson`, `search_lessons` shipped; shared `resolve_lesson_path`
+  traversal guard extracted into `explorer.py`; 21 tools total.
+- ~~Run the Socratic judge live once~~ — **DONE `d5eb74a`**: the gateway
+  probe skipped on 401 (no auth header) — fixed; judge executed live and
+  PASSED (mentor reply judged Socratic by claude-opus-4-8).
+- **Full 348-test e2e suite to completion** (>25 min). CI still has no e2e
+  job. ~~Known pre-existing failure~~ — **DONE `d5eb74a`**:
+  `test_generate_busy_response_shows_visible_conflict_state` was a test
+  bug (unscoped `.form-error` locator hit the mastery panel too →
+  Playwright strict-mode violation), not a product bug. Full browser smoke
+  file now 9/9.
 
 ### Known-open defects (carried forward, unfixed)
 - `resolve_study_dirs()` bare `review:` crash + `study_paths` scalar
