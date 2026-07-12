@@ -260,6 +260,33 @@ class TestGetNextAction:
         )
         assert result == {"primary": {"concept": "closures"}}
 
+    def test_rejects_invalid_energy(self) -> None:
+        """A typo'd energy must fail loudly, not flow into scoring unvalidated."""
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        tool = _get_tool("get_next_action")
+        with (
+            patch(
+                "studyloop.learning.decision.build_now_plan",
+                side_effect=AssertionError("must not reach the engine"),
+            ),
+            __import__("pytest").raises(ToolError, match="Invalid energy"),
+        ):
+            tool(energy="LOW")
+
+    def test_rejects_invalid_modality(self) -> None:
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        tool = _get_tool("get_next_action")
+        with (
+            patch(
+                "studyloop.learning.decision.build_now_plan",
+                side_effect=AssertionError("must not reach the engine"),
+            ),
+            __import__("pytest").raises(ToolError, match="Invalid modality"),
+        ):
+            tool(modality="recal")
+
 
 # ---------------------------------------------------------------------------
 # get_active_topics — pending backlog capped at MAX_ACTIVE_TOPICS

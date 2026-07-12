@@ -579,9 +579,25 @@ def register_tools(mcp: FastMCP) -> None:
             time_minutes: Minutes available for this study action.
             modality: "recall", "conversation", "hands-on", "visual", or "audio".
         """
-        from studyloop.learning.decision import build_now_plan
+        from typing import cast, get_args
 
-        plan = build_now_plan(energy=energy, time_minutes=time_minutes, modality=modality)
+        from studyloop.learning.decision import EnergyLevel, Modality, build_now_plan
+
+        # MCP clients send plain strings; validate against the engine's
+        # Literal types before forwarding so a typo ("LOW", "recal") fails
+        # loudly here instead of flowing unvalidated into scoring.
+        valid_energy = get_args(EnergyLevel)
+        if energy not in valid_energy:
+            raise ToolError(f"Invalid energy {energy!r}: choose one of {valid_energy}")
+        valid_modality = get_args(Modality)
+        if modality not in valid_modality:
+            raise ToolError(f"Invalid modality {modality!r}: choose one of {valid_modality}")
+
+        plan = build_now_plan(
+            energy=cast("EnergyLevel", energy),
+            time_minutes=time_minutes,
+            modality=cast("Modality", modality),
+        )
         return plan.to_json_dict()
 
     @mcp.tool()
