@@ -150,6 +150,11 @@ class TestTerminalPaths:
         html = (STATIC_DIR / "index.html").read_text()
         assert "http://${window.location.hostname}" not in html
 
+    def test_iframe_waits_for_successful_terminal_probe(self) -> None:
+        """Hidden body-double panel must not eagerly request /terminal/ on page load."""
+        html = (STATIC_DIR / "index.html").read_text()
+        assert ":src=\"activeTtydUrl || 'about:blank'\"" in html
+
     def test_ttyd_url_uses_terminal_path(self) -> None:
         """ttydUrl in the inline script should return /terminal/."""
         html = (STATIC_DIR / "index.html").read_text()

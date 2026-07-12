@@ -10,6 +10,7 @@ Bug-fix coverage:
 
 from __future__ import annotations
 
+import builtins
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -231,6 +232,52 @@ class TestProvidersRoute:
             data = cl.get("/api/content/providers").json()
         bedrock = next(e for e in data if e["slug"] == "bedrock")
         assert bedrock["available"] is True
+
+    def test_local_provider_probes_run_once_per_request(self, monkeypatch: MonkeyPatch) -> None:
+        """Provider list must stay fast; local probes are shared across entries."""
+        for var in _PROVIDER_ENV_VARS:
+            monkeypatch.delenv(var, raising=False)
+        with (
+            patch(
+                "studyloop.web.routes.content_gen._bedrock_credentials_available",
+                return_value=False,
+            ) as bedrock_probe,
+            patch(
+                "studyloop.web.routes.content_gen._ollama_reachable",
+                return_value=False,
+            ) as ollama_probe,
+            patch("studyloop.web.routes.content_gen.get_secret", return_value=None),
+        ):
+            cl = TestClient(create_app(study_dirs=[]))
+            resp = cl.get("/api/content/providers")
+
+        assert resp.status_code == 200
+        assert bedrock_probe.call_count == 1
+        assert ollama_probe.call_count == 1
+
+    def test_bedrock_credentials_false_when_boto3_missing(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        """Missing optional boto3 must disable Bedrock, not crash the Web UI."""
+        from studyloop.web.routes.content_gen._catalog import _bedrock_credentials_available
+
+        for var in [
+            "AWS_ACCESS_KEY_ID",
+            "AWS_PROFILE",
+            "AWS_DEFAULT_PROFILE",
+        ]:
+            monkeypatch.delenv(var, raising=False)
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "boto3" or name.startswith("botocore"):
+                raise ImportError(f"No module named {name!r}")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+
+        assert _bedrock_credentials_available() is False
 
 
 class TestContentCoursesRoute:

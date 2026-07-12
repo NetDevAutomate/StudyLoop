@@ -9,7 +9,9 @@ Those were removed when the WS route migrated to the
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -53,6 +55,34 @@ def test_session_options_returns_course_hierarchy(
     assert all(agent["acp_ready"] is False for agent in body["agents"])
 
 
+def test_session_options_caps_topic_choices_to_three(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    study_root = tmp_path / "Study"
+    for name in ["Python", "SQL", "Data_Engineering", "AWS_Analytics"]:
+        (study_root / name).mkdir(parents=True)
+
+    class Content:
+        def __init__(self) -> None:
+            self.study_paths = [study_root]
+
+    class Settings:
+        def __init__(self) -> None:
+            self.content = Content()
+            self.topics = []
+
+    monkeypatch.setattr("studyloop.settings.load_settings", Settings)
+
+    client = TestClient(create_app())
+    body = client.get("/api/session/options").json()
+
+    assert [topic["label"] for topic in body["topics"]] == [
+        "AWS Analytics",
+        "Data Engineering",
+        "Python",
+    ]
+
+
 def test_session_options_lists_vendors_directly_under_study_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -87,3 +117,81 @@ def test_session_options_lists_vendors_directly_under_study_root(
     assert "CodeWithMosh" in vendor_labels
     assert any(c["label"] == "The Software Designer Mindset" for c in body["courses"])
     assert any(lesson_["label"] == "Module 01" for lesson_ in body["lessons"])
+
+
+def test_session_options_uses_index_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    from studyloop.web.routes.session import _options
+
+    state = SimpleNamespace()
+    calls = 0
+
+    def build_snapshot() -> dict:
+        nonlocal calls
+        calls += 1
+        return {
+            "session_types": [],
+            "topics": [{"label": "Python", "value": "python", "kind": "topic"}],
+            "vendors": [],
+            "courses": [],
+            "lessons": [],
+        }
+
+    monkeypatch.setattr(_options, "_target_fingerprint", lambda: {"same": True})
+    monkeypatch.setattr(_options, "_read_target_index", lambda _fingerprint: None)
+    monkeypatch.setattr(_options, "_write_target_index", lambda _fingerprint, _targets: None)
+    monkeypatch.setattr(_options, "_target_options_snapshot", build_snapshot)
+
+    first = _options._get_indexed_target_options(state)
+    second = _options._get_indexed_target_options(state)
+
+    assert first == second
+    assert calls == 1
+
+
+def test_session_options_refreshes_index_when_fingerprint_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from studyloop.web.routes.session import _options
+
+    state = SimpleNamespace()
+    fingerprints = iter([{"version": 1}, {"version": 2}])
+    calls = 0
+
+    def build_snapshot() -> dict:
+        nonlocal calls
+        calls += 1
+        return {
+            "session_types": [],
+            "topics": [{"label": f"Topic {calls}", "value": str(calls), "kind": "topic"}],
+            "vendors": [],
+            "courses": [],
+            "lessons": [],
+        }
+
+    monkeypatch.setattr(_options, "_target_fingerprint", lambda: next(fingerprints))
+    monkeypatch.setattr(_options, "_read_target_index", lambda _fingerprint: None)
+    monkeypatch.setattr(_options, "_write_target_index", lambda _fingerprint, _targets: None)
+    monkeypatch.setattr(_options, "_target_options_snapshot", build_snapshot)
+
+    first = _options._get_indexed_target_options(state)
+    second = _options._get_indexed_target_options(state)
+
+    assert first["topics"][0]["label"] == "Topic 1"
+    assert second["topics"][0]["label"] == "Topic 2"
+
+
+def test_agent_options_fall_back_when_detection_fails() -> None:
+    from studyloop.web.routes.session._options import _agent_options
+
+    with patch("studyloop.agent_launcher.detect_agents", side_effect=RuntimeError("boom")):
+        agents = _agent_options()
+
+    assert {agent["value"] for agent in agents} == {
+        "claude",
+        "codex",
+        "gemini",
+        "grok",
+        "kiro",
+        "opencode",
+    }
+    assert all(agent["available"] is False for agent in agents)

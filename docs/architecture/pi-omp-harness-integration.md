@@ -149,7 +149,7 @@ _TOOL_LINKS = {
     "omp": (LinkSpec("agents/omp/AGENTS.md", str(_HOME / ".omp/agent/AGENTS.md")),),
 }
 
-_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "amp", "pi", "omp")
+_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "grok", "amp", "pi", "omp")
 ```
 
 And in `_HARNESS_EXPORT`:

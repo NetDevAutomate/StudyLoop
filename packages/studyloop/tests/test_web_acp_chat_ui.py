@@ -51,8 +51,8 @@ pytestmark = [pytest.mark.e2e]
 
 WEB_PORT = 18576
 
-# Both agents advertise supports_acp: true.
-ACP_AGENTS = ["kiro", "gemini"]
+# These agents advertise supports_acp: true.
+ACP_AGENTS = ["kiro", "gemini", "grok"]
 
 
 # ---------------------------------------------------------------------------

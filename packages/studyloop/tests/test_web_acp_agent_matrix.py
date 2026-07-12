@@ -2,7 +2,7 @@
 
 Mirrors ``test_web_agent_matrix.py`` but for the ACP transport:
 
-- Parametrised over Kiro + Gemini (the two ``supports_acp: true`` agents
+- Parametrised over Kiro + Gemini + Grok (the ``supports_acp: true`` agents
   registered in ``studyloop.agent_launcher.AGENTS``).
 - Drives the route through ``STUDYLOOP_TEST_ACP_CMD`` pointing at the
   scripted ``_stub_acp_agent.py`` so no real Kiro / Gemini binary is
@@ -56,8 +56,8 @@ pytestmark = [pytest.mark.e2e]
 
 WEB_PORT = 18575
 
-# Both agents advertise ``supports_acp: true`` in ``/session/options``.
-ACP_AGENTS = ["kiro", "gemini"]
+# These agents advertise ``supports_acp: true`` in ``/session/options``.
+ACP_AGENTS = ["kiro", "gemini", "grok"]
 
 # Scripted prompt response — a single ``agent_message_chunk`` with a
 # known text payload, then ``stop_reason=end_turn``. The transport

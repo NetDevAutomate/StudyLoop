@@ -375,7 +375,7 @@ lan_password: ""     # persistent password for --lan mode (auto-generated if emp
 
 ```yaml
 agents:
-  priority: [codex, claude, gemini, opencode, kiro, ollama, lmstudio]
+  priority: [codex, grok, claude, gemini, opencode, kiro, ollama, lmstudio]
 ```
 
 ---

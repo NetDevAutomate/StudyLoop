@@ -82,6 +82,7 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
 
     - Kiro: ``["kiro-cli", "acp"]``
     - Gemini: ``["gemini", "--acp"]``
+    - Grok: ``["grok", "agent", "stdio"]``
 
     The ``STUDYLOOP_TEST_ACP_CMD`` env var overrides the argv entirely,
     matching the shape of ``STUDYLOOP_TEST_AGENT_CMD`` on the PTY side.
@@ -125,6 +126,8 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
             return ["kiro-cli", "acp"]
         if _config.agent == "gemini":
             return ["gemini", "--acp"]
+        if _config.agent == "grok":
+            return ["grok", "agent", "stdio"]
         # Fall back to adapter binary + `acp` subcommand. Any future ACP
         # agent added to AGENTS should either speak ``<bin> acp`` or
         # register here explicitly.

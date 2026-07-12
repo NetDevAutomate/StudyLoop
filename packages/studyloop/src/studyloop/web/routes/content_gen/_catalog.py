@@ -108,6 +108,8 @@ async def list_providers() -> list[dict[str, Any]]:
     from studyloop.web.routes import content_gen as content_gen_pkg
 
     out: list[dict[str, Any]] = []
+    bedrock_credentials = content_gen_pkg._bedrock_credentials_available()
+    ollama_reachable = content_gen_pkg._ollama_reachable(content_gen_pkg._ollama_base_url())
     for slug, profile in PROFILES.items():
         auth_kind = get_auth_kind(slug)
 
@@ -118,10 +120,8 @@ async def list_providers() -> list[dict[str, Any]]:
                 auth_env=profile.auth_env,
                 env_value=os.environ.get(profile.auth_env, ""),
                 stored_secret=content_gen_pkg.get_secret(stored_secret_name),
-                bedrock_credentials=content_gen_pkg._bedrock_credentials_available(),
-                ollama_reachable=content_gen_pkg._ollama_reachable(
-                    content_gen_pkg._ollama_base_url()
-                ),
+                bedrock_credentials=bedrock_credentials,
+                ollama_reachable=ollama_reachable,
             )
         )
 
@@ -222,31 +222,43 @@ def _bedrock_credentials_available() -> bool:
     """
     import os
 
+    try:
+        import boto3  # pyright: ignore[reportMissingImports]
+    except ImportError:
+        return False
+
     if (
         os.environ.get("AWS_ACCESS_KEY_ID", "").strip()
         or os.environ.get("AWS_PROFILE", "").strip()
         or os.environ.get("AWS_DEFAULT_PROFILE", "").strip()
     ):
-        try:
-            import boto3  # pyright: ignore[reportMissingImports]
-
-            return True
-        except ImportError:
-            return False
+        return True
 
     try:
-        import boto3  # pyright: ignore[reportMissingImports]
         from botocore.exceptions import (  # pyright: ignore[reportMissingImports]
             NoCredentialsError,
         )
+    except ImportError:
+        return False
 
-        session = boto3.Session()
-        creds = session.get_credentials()
-        if creds is None:
-            return False
-        frozen = creds.get_frozen_credentials()
-        return bool(frozen.access_key)
-    except (ImportError, NoCredentialsError, Exception):
+    try:
+        old_metadata_setting = os.environ.get("AWS_EC2_METADATA_DISABLED")
+        os.environ["AWS_EC2_METADATA_DISABLED"] = "true"
+        try:
+            session = boto3.Session()
+            creds = session.get_credentials()
+            if creds is None:
+                return False
+            frozen = creds.get_frozen_credentials()
+            return bool(frozen.access_key)
+        finally:
+            if old_metadata_setting is None:
+                os.environ.pop("AWS_EC2_METADATA_DISABLED", None)
+            else:
+                os.environ["AWS_EC2_METADATA_DISABLED"] = old_metadata_setting
+    except NoCredentialsError:
+        return False
+    except Exception:
         return False
 
 

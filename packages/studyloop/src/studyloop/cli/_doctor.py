@@ -29,6 +29,7 @@ def _get_registry():
         check_local_llm_servers,
     )
     from studyloop.doctor.config import (
+        check_active_topic_limit,
         check_obsidian_export,
         check_obsidian_vault,
         check_pandoc,
@@ -60,6 +61,7 @@ def _get_registry():
     for fn in [
         check_obsidian_vault,
         check_obsidian_export,
+        check_active_topic_limit,
         check_review_directories,
         check_pandoc,
         check_tmux_resurrect,
