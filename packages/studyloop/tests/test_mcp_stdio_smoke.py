@@ -53,7 +53,7 @@ async def test_full_handshake_list_tools_and_call(isolated_config):
 
         tools_result = await session.list_tools()
         names = {t.name for t in tools_result.tools}
-        assert len(names) >= 13, f"expected >=13 tools, got {len(names)}: {names}"
+        assert len(names) >= 21, f"expected >=21 tools, got {len(names)}: {names}"
         assert names >= CORE_TOOLS, f"missing core tools: {CORE_TOOLS - names}"
 
         call_result = await session.call_tool("list_courses", {})

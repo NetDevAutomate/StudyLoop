@@ -220,6 +220,30 @@ def _sanitize_fts_query(q: str) -> str:
     return f'"{escaped}"'
 
 
+def resolve_lesson_path(base: Path, lesson_id: str) -> Path | None:
+    """Resolve *lesson_id* to a source file under *base*, or ``None``.
+
+    *base* must already be resolved. Tries each suffix in
+    ``_SUFFIX_PRIORITY``; returns ``None`` when the id escapes *base*
+    (``../`` / symlink), the suffix is not a source suffix, or no file
+    exists. Shared by the web route and the MCP ``read_lesson`` tool so
+    the traversal guard lives in exactly one place.
+    """
+    for suffix in _SUFFIX_PRIORITY:
+        candidate = (base / lesson_id).with_suffix(suffix)
+        try:
+            r = candidate.resolve()
+        except OSError:
+            continue
+        if not r.is_relative_to(base):
+            return None
+        if r.suffix.lower() not in _SOURCE_SUFFIXES:
+            return None
+        if r.is_file():
+            return r
+    return None
+
+
 def _walk_lessons(base: Path) -> list[dict[str, Any]]:
     """Return a flat list of all source lesson files under *base*.
 
@@ -514,28 +538,8 @@ def explorer_lesson_content(lesson_id: str) -> dict[str, str]:
     settings = load_settings()
     base = Path(settings.content.base_path).expanduser().resolve()
 
-    resolved: Path | None = None
-    for suffix in _SUFFIX_PRIORITY:
-        candidate = (base / lesson_id).with_suffix(suffix)
-        try:
-            r = candidate.resolve()
-        except OSError:
-            continue
-        if not r.is_relative_to(base):
-            raise HTTPException(status_code=404)
-        if r.suffix.lower() not in _SOURCE_SUFFIXES:
-            raise HTTPException(status_code=404)
-        if r.is_file():
-            resolved = r
-            break
-
+    resolved = resolve_lesson_path(base, lesson_id)
     if resolved is None:
-        raise HTTPException(status_code=404)
-
-    # Final guard: re-check after we found the file.
-    if not resolved.is_relative_to(base):
-        raise HTTPException(status_code=404)
-    if resolved.suffix.lower() not in _SOURCE_SUFFIXES:
         raise HTTPException(status_code=404)
 
     content = resolved.read_text(encoding="utf-8", errors="replace")

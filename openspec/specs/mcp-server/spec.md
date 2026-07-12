@@ -8,20 +8,21 @@ access. This is one of two MCP servers in the repo; `session-db-mcp`
 separate and out of scope for this capability.
 ## Requirements
 ### Requirement: studyloop-mcp registers a fixed set of study tools
-The system SHALL register the following 18 tools via
+The system SHALL register the following 21 tools via
 `register_tools(mcp)` (`mcp/tools.py`): `list_courses`,
 `get_study_context`, `record_study_progress`, `generate_flashcards`,
 `generate_quiz`, `get_chapter_text`, `get_study_backlog`,
 `get_topic_suggestions`, `get_study_history`, `list_session_options`,
-`end_session`, `record_topic_progress`, `log_topic`, plus the review-loop
+`end_session`, `record_topic_progress`, `log_topic`, the review-loop
 and lifecycle parity tools added in `e3070be`: `get_due_cards`,
 `log_review_outcome`, `get_next_action`, `get_active_topics`,
-`log_struggle`.
+`log_struggle`, plus the Course Explorer read-parity tools:
+`get_lesson_tree`, `read_lesson`, `search_lessons`.
 
 #### Scenario: Client lists available tools
 - **WHEN** an MCP client connects to the `studyloop-mcp` stdio server and
   requests its tool list
-- **THEN** exactly these 18 tools are returned, matching the table in
+- **THEN** exactly these 21 tools are returned, matching the table in
   `docs/mcp.md` (verified 2026-07-12; the earlier state where `docs/mcp.md`
   documented only the separate `session-db-mcp` server was closed in
   `4f7bf6f`). The full stdio handshake + tools/list + tools/call round-trip
@@ -115,9 +116,9 @@ same traversal guard as `_safe_course_dir` / the explorer's
   any `lesson_id` containing `../` segments
 
 ### Requirement: docs/mcp.md documents studyloop-mcp and desktop registration
-`docs/mcp.md` SHALL document `studyloop-mcp`'s full tool list (18 tools
-after this change: the 13 existing plus `get_due_cards`,
-`submit_card_answer`, `get_lesson_tree`, `read_lesson`, `search_lessons`),
+`docs/mcp.md` SHALL document `studyloop-mcp`'s full tool list (21 tools:
+the 18 study/review/lifecycle tools plus `get_lesson_tree`, `read_lesson`,
+`search_lessons`),
 Claude Desktop registration (`claude_desktop_config.json`), Codex
 registration (`~/.codex/config.toml`), and an explicit capability matrix
 stating what works via MCP today versus what still requires the browser

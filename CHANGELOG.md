@@ -22,6 +22,11 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   `log_review_outcome`, `get_next_action`, `get_active_topics`,
   `log_struggle`) — the desktop MCP server now exposes 18 tools; Claude
   Desktop + Codex registration snippets live in `docs/desktop-mcp/`.
+- Three MCP Course Explorer read-parity tools (`get_lesson_tree`,
+  `read_lesson`, `search_lessons`) wrapping the existing explorer route
+  internals (shared `resolve_lesson_path` traversal guard, FTS5 search) —
+  desktop MCP clients can now browse and read course material; 21 tools
+  total.
 
 ### Fixed
 - **Security (P0):** session-directory slug now strips path-traversal vectors

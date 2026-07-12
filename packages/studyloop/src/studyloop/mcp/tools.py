@@ -620,6 +620,80 @@ def register_tools(mcp: FastMCP) -> None:
             "max_active": MAX_ACTIVE_TOPICS,
         }
 
+    # ── Course Explorer read parity (desktop MCP) ────────────────
+
+    @mcp.tool()
+    def get_lesson_tree(provider: str | None = None, course: str | None = None) -> dict[str, Any]:
+        """Browse the course-material tree: providers → courses → lessons.
+
+        With no arguments, returns the two-level provider→course tree
+        (same data as the web ``GET /api/explorer/tree``). Pass
+        ``provider`` and ``course`` to also list that course's lessons
+        (same data as ``GET /api/explorer/courses/{id}/lessons``).
+
+        Args:
+            provider: Provider directory name (from the tree's ``id``).
+            course: Course directory name. Requires ``provider``.
+        """
+        from studyloop.web.routes.explorer import _build_tree, _walk_lessons
+
+        base = load_settings().content.base_path.expanduser()
+        tree = _build_tree(base)
+        if provider is None and course is None:
+            return {"providers": tree}
+        if provider is None or course is None:
+            raise ToolError("Pass both 'provider' and 'course', or neither")
+
+        course_dir = _safe_course_dir(base, provider, course)
+        if not course_dir.is_dir():
+            raise ToolError(f"Course not found: {provider}/{course}")
+        course_id = f"{provider}/{course}"
+        lessons = [
+            {"id": e["lesson_id"], "title": e["title"]}
+            for e in _walk_lessons(base)
+            if e["course_id"] == course_id
+        ]
+        return {"course_id": course_id, "lessons": lessons}
+
+    @mcp.tool()
+    def read_lesson(lesson_id: str) -> dict[str, str]:
+        """Read the raw markdown content of one lesson.
+
+        Args:
+            lesson_id: ``provider/course/relative/path`` (no file suffix),
+                as returned by get_lesson_tree or search_lessons.
+        """
+        from studyloop.web.routes.explorer import resolve_lesson_path
+
+        base = load_settings().content.base_path.expanduser().resolve()
+        resolved = resolve_lesson_path(base, lesson_id)
+        if resolved is None:
+            raise ToolError(f"Lesson not found: {lesson_id!r}")
+        content = resolved.read_text(encoding="utf-8", errors="replace")
+        return {"lesson_id": lesson_id, "content": content}
+
+    @mcp.tool()
+    def search_lessons(query: str, limit: int = 20) -> dict[str, Any]:
+        """Full-text search over lesson bodies (SQLite FTS5).
+
+        Same engine as the web ``GET /api/explorer/search`` — the query is
+        treated as a literal phrase, and excerpts highlight matches with
+        ``<mark>`` tags.
+
+        Args:
+            query: Search term (min 2 characters).
+            limit: Maximum results to return.
+        """
+        from studyloop.web.routes.explorer import _fts_db_path, _fts_lock, _run_fts_search
+
+        q = query.strip()
+        if len(q) < 2:
+            return {"results": []}
+        base = load_settings().content.base_path.expanduser()
+        with _fts_lock:
+            results = _run_fts_search(_fts_db_path(), base, q, limit)
+        return {"results": results}
+
     @mcp.tool()
     def log_struggle(
         question: str,
