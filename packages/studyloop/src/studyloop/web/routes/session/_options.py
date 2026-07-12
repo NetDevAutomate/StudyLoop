@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -399,6 +400,10 @@ def _existing_unique_dirs(paths: list[Path]) -> list[Path]:
 
 def _agent_options() -> list[dict[str, object]]:
     names = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
+    if os.environ.get("STUDYLOOP_TEST_AGENT") == "1":
+        # Harness-only: surface the deterministic fake agent in the picker so
+        # browser e2e can drive the real UI spawn path (adapters/fake.py).
+        names.append("fake")
     try:
         from studyloop.agent_launcher import AGENTS, detect_agents
 
@@ -425,7 +430,7 @@ def _agent_options() -> list[dict[str, object]]:
                 "supports_acp": name in ACP_CAPABLE_AGENTS,
                 "acp_ready": False,
                 "recommended_transport": "ttyd",
-                "binary": _AGENT_FALLBACK_BINARIES[name],
+                "binary": _AGENT_FALLBACK_BINARIES.get(name, name),
             }
             for name in names
         ]

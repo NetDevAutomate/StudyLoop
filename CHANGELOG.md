@@ -8,6 +8,18 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 ## [Unreleased]
 
 ### Added
+- **Fake harness agent (`studyloop-fake-agent`)** — a deterministic console
+  script that speaks just enough "agent" (banner, echo replies, clean
+  EOF/SIGTERM exit) to walk the real spawn → PTY → WebSocket → terminal path
+  in CI without an LLM or vendor CLI. Registers as the `fake` adapter ONLY
+  under `STUDYLOOP_TEST_AGENT=1` (never in a real user's picker); the journey
+  asserts bytes flow both ways over the live WS, the browser terminal
+  connects, and the ended session leaves a `study_sessions` row.
+- **Journey phases 2–4** (`tests/e2e/test_journey_generate_review.py`) — an
+  isolated tmp-vault world drives the REAL Generate panel with the stub
+  backend (deck files asserted on disk), walks the flashcards review UI over
+  the generated deck to the summary, and asserts durable `card_reviews` /
+  `review_sessions` rows landed in the tmp DB.
 - **"Today" landing view** — the app now opens on a one-next-action card
   driven by the shared decision engine (`GET /api/now`): concept, time
   estimate, reason, one Start button, collapsible alternates, and a
