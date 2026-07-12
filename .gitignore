@@ -546,3 +546,6 @@ entities.json
 
 # Playwright/e2e failure artifacts
 test-results/
+
+# Stray MagicMock dirs from tests that mock a path-typed setting (defense-in-depth)
+MagicMock/
