@@ -685,3 +685,51 @@ def test_doctor_voice_honors_flat_tts_backend(tmp_path, monkeypatch):
     from studyloop.doctor.voice import _tts_config
 
     assert _tts_config().get("backend") == "openvox"
+
+
+# ---------------------------------------------------------------------------
+# Shape-hardening regressions (bare keys, scalar-where-list-expected)
+# ---------------------------------------------------------------------------
+
+
+def _write_raw(tmp_path, text: str, monkeypatch) -> Path:
+    """Write literal YAML text (so a bare 'review:' stays None) and point config at it."""
+    p = tmp_path / "config.yaml"
+    p.write_text(text)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(p))
+    return p
+
+
+def test_resolve_study_dirs_bare_review_key(tmp_path, monkeypatch):
+    """A bare 'review:' (parses to None) must not crash resolve_study_dirs."""
+    _write_raw(tmp_path, "review:\ncontent:\n  base_path: /tmp/x\n", monkeypatch)
+    from studyloop.settings import resolve_study_dirs
+
+    assert resolve_study_dirs() == ["/tmp/x"]
+
+
+def test_resolve_study_dirs_scalar_directories(tmp_path, monkeypatch):
+    """A scalar review.directories must become one dir, not a per-char explosion."""
+    _write_raw(
+        tmp_path, "review:\n  directories: /tmp/decks\ncontent:\n  base_path: /tmp/x\n", monkeypatch
+    )
+    from studyloop.settings import resolve_study_dirs
+
+    assert resolve_study_dirs() == ["/tmp/decks"]
+
+
+def test_scalar_study_paths_not_char_exploded(tmp_path, monkeypatch):
+    """A scalar content.study_paths must resolve to one path, not one-per-character."""
+    _write_raw(tmp_path, "content:\n  study_paths: /tmp/onepath\n", monkeypatch)
+    from studyloop.settings import load_settings
+
+    assert load_settings().content.study_paths == [Path("/tmp/onepath")]
+
+
+def test_bare_content_key(tmp_path, monkeypatch):
+    """A bare 'content:' (None) must not crash load_settings."""
+    _write_raw(tmp_path, "content:\n", monkeypatch)
+    from studyloop.settings import load_settings
+
+    # Falls back to ContentConfig defaults; the key point is no AttributeError.
+    assert load_settings().content.base_path

@@ -218,6 +218,31 @@ class TestGetChapterText:
             with pytest.raises(ToolError, match="No chapters directory"):
                 tool("nonexistent", 1)
 
+    @pytest.mark.parametrize("chapter", [0, -1, -3])
+    def test_nonpositive_chapter_rejected_not_wrapped(
+        self, tmp_path: Path, chapter: int
+    ) -> None:
+        """chapter<=0 must error, not index all_pdfs[chapter-1] from the end."""
+        pymupdf = __import__("pytest").importorskip("pymupdf")
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        from studyloop.settings import ContentConfig, Settings
+
+        chapters_dir = tmp_path / "c" / "chapters"
+        chapters_dir.mkdir(parents=True)
+        for n in (1, 2, 3):
+            doc = pymupdf.open()
+            doc.new_page().insert_text((72, 72), f"chapter {n}")
+            doc.ez_save(str(chapters_dir / f"ch{n:02d}.pdf"))
+            doc.close()
+
+        fake_settings = Settings(content=ContentConfig(base_path=tmp_path))
+        with (
+            patch("studyloop.mcp.tools.load_settings", return_value=fake_settings),
+            pytest.raises(ToolError, match="not found"),
+        ):
+            _get_tool("get_chapter_text")("c", chapter)
+
 
 class TestPathTraversal:
     """Verify that course parameters with directory traversal are rejected."""

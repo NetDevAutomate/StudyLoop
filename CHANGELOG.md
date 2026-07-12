@@ -29,6 +29,21 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   total.
 
 ### Fixed
+- **Settings shape-hardening:** a bare `review:` key (YAML `None`) no longer
+  crashes `resolve_study_dirs()` with `AttributeError`; a scalar
+  `review.directories` or `content.study_paths` string is treated as a single
+  path instead of being iterated per-character into bogus one-letter dirs.
+- **MCP `get_chapter_text`:** a non-positive `chapter` (0 or negative) now
+  errors instead of falling through to `all_pdfs[chapter-1]`, which Python's
+  negative indexing silently resolved to a chapter counted from the end.
+- **Secret scrubber:** the `aws_secret_key` pattern now also catches the
+  common unquoted `.env`/CLI shape (`aws_secret_access_key = wJalr…`); it
+  previously required surrounding quotes and let unquoted keys through.
+- **Desktop MCP install:** documented `uv tool install` command corrected to
+  require the `[mcp,web,content]` extras (a bare install produced a
+  `studyloop-mcp` binary that crashed on launch or on any web-route-backed
+  tool call), plus a warning that `which studyloop-mcp` may resolve to a
+  mise/asdf shim shadowing the uv-tool binary.
 - **Security (P0):** session-directory slug now strips path-traversal vectors
   (`/`, `\`, `..`) from the user-controlled topic across all four
   session-start paths (web PTY/ttyd, CLI). The directory is later `rmtree`'d on

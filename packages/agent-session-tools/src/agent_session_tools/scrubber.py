@@ -23,7 +23,10 @@ SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
         r"\b((?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z2-7]{16})\b"
     ),
     "aws_secret_key": re.compile(
-        r"(?i)aws.{0,20}(?:secret|key).{0,20}['\"][0-9a-zA-Z/+]{40}['\"]"
+        # Quotes optional: the common .env/CLI shape is unquoted
+        # (aws_secret_access_key = wJalr…). The 40-char base64 run and a
+        # word boundary keep it specific enough to avoid false positives.
+        r"(?i)aws.{0,20}(?:secret|key).{0,20}['\"]?[0-9a-zA-Z/+]{40}['\"]?\b"
     ),
     "github_pat": re.compile(r"\bghp_[0-9a-zA-Z]{36}\b"),
     "github_fine_grained": re.compile(r"\bgithub_pat_\w{82}\b"),
