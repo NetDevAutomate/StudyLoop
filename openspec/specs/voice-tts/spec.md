@@ -57,8 +57,52 @@ reachability of the configured `openvox_base_url`.
 - **WHEN** `tts.backend: openvox` is set and nothing is listening on the
   configured base URL
 - **THEN** `studyloop doctor` reports the `openvox_api` check as failing
-  with a repair hint to start OpenVox or switch back to `tts.backend:
-  kokoro`
+  with a repair hint to start OpenVox or set `backend: kokoro` under the
+  `tts:` section (hint rephrased as nested YAML in `a7eabb6`; see below)
+
+### Requirement: load_raw_config expands dotted top-level keys before any consumer reads tts.backend
+`settings.load_raw_config()` SHALL expand top-level dotted keys (for
+example `tts.backend: openvox`) into nested mappings (`tts: {backend:
+openvox}`) via `_expand_dotted_keys()` before returning, so that every
+consumer of `raw.get("tts", {})` — `doctor/voice.py::_tts_config()` and
+`learning/voice.py:57` — sees the same shape regardless of whether the
+user's config uses the flat or nested form. On conflict between a dotted
+key and an explicit nested mapping for the same path, the nested mapping
+SHALL win.
+
+This closes a defect (fixed in `a7eabb6`) where two of `doctor/voice.py`'s
+own repair messages were worded as a flat dotted key
+(`"Set tts.backend: openvox to enable this check"`) — a user following
+them literally would write a top-level `tts.backend: openvox` scalar key,
+which `raw.get("tts", {})` could not see (there was no `"tts"` key, only a
+literal key named `"tts.backend"`), silently keeping `backend` at its
+`"kokoro"` default and skipping the `openvox_api` check the hint promised
+to enable. `a7eabb6` fixes this at the loader level (`_expand_dotted_keys()`
+in `settings.py`, benefiting all 6 `raw.get("tts", ...)`-style consumers at
+once) and rephrases both `doctor/voice.py` repair hints to describe the
+nested form (`"Set backend: openvox under the tts: section of
+config.yaml..."`, `doctor/voice.py:105-106`) so new users are no longer
+taught the broken flat form, while the loader still accepts it from
+existing configs. Regression tests in `test_settings_custom.py`
+(`test_dotted_top_level_key_expands_to_nested`,
+`test_nested_wins_over_dotted_on_conflict`,
+`test_doctor_voice_honors_flat_tts_backend`, and others) lock the fix;
+full suite 2872 passed, 0 failed per the commit message.
+
+#### Scenario: A user's config has the flat form from before the hint was rephrased
+- **WHEN** a user's `config.yaml` contains a top-level
+  `tts.backend: openvox` key (written before `a7eabb6`, when the doctor's
+  own hint suggested exactly this flat form)
+- **THEN** `load_raw_config()` expands the flat key into
+  `tts: {backend: openvox}`, `_tts_config()` returns that nested mapping,
+  and `check_voice_readiness()` correctly probes `openvox_api`
+  reachability instead of silently falling back to the `"kokoro"` default
+
+#### Scenario: Both the dotted and nested forms are present for the same key
+- **WHEN** a config contains both `tts: {backend: kokoro}` and a
+  top-level `tts.backend: openvox` key
+- **THEN** the explicit nested value (`kokoro`) wins; the dotted key is
+  dropped rather than overwriting it
 
 ### Requirement: No PWA service worker exists for offline TTS caching
 The system SHALL NOT ship a service worker (`sw.js`) for the web app.
