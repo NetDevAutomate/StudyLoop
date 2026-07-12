@@ -7,10 +7,119 @@ the code (44 confirmed, 11 refuted), plus a completeness-critic pass over areas 
 reviewers didn't cover. 67 agents total.
 
 **Branch caveat:** the review ran on worktree branch `worktree-fix-startup-errors`
-(base `050e77b`). Local `main` is 8 commits ahead and already fixes three findings
-(codex exporter `cc8b367`, agent symlinks `5ea6dfa`) and already ships a first
-OpenVox TTS backend (`732c53d`). Every finding below was re-checked against `main`;
-stale-branch artifacts are marked as such.
+(base `050e77b`). Every finding was re-checked against `main`; stale-branch
+artifacts are marked as such.
+
+**Update 2026-07-12 — reconciled against main HEAD `9f033fa`** ("stabilize session
+picker and add grok support"). Main advanced 9 commits past this worktree's base and
+independently closed several findings. §0 below is the authoritative live status;
+the priority tables in §2 are the original review snapshot, annotated where main has
+since moved. **My worktree's two startup fixes (`9a57577`) are now superseded** —
+main fixed both the string-topics loader (more completely, via `_topic_from_raw`) and
+the bedrock `UnboundLocalError` (more completely, moving the boto3 import + disabling
+IMDS). This worktree branch can be abandoned once §0's remaining items are picked up
+on main; there is nothing here to merge except this document.
+
+---
+
+## 0. Live status against main HEAD `9f033fa` (2026-07-12)
+
+### Fixed on main — close these
+
+| Was | Where | Fixed by |
+|---|---|---|
+| String-topics loader crash (P0 #2a) | `settings.py` `_topic_from_raw` | `9f033fa` — full rewrite: string entries → name-only TopicConfig, non-dict → `ConfigError` with position, active topics capped at 3 (`MAX_ACTIVE_TOPICS`). Supersedes worktree `9a57577`. |
+| Per-topic `obsidian_path` non-scalar crash (P0 #2c) | `settings.py` | `9f033fa` — `_topic_from_raw` guards the shape. |
+| Bedrock `UnboundLocalError` on missing boto3 (this week's other startup crash) | `_catalog.py:_bedrock_credentials_available` | `9f033fa` — boto3 import hoisted, `except NoCredentialsError` then `except Exception`, plus IMDS-probe disable to avoid slow credential resolution. Supersedes worktree `9a57577`. |
+| Codex exporter regression (rated critical on this branch) | `exporters/codex.py` | `cc8b367`. |
+| Dead GEMINI.md / AGENTS.md symlinks (P1 #5-arch, #42) | repo root | `5ea6dfa`. |
+| OpenVox TTS backend absent | `speak.py`, `doctor/voice.py` | `732c53d` — `_speak_openvox`, registered `voice` doctor category, config keys, docs. |
+| No active-topic-count doctor check | `doctor/config.py` | `9f033fa` — `check_active_topic_limit` warns past 3 topics and validates `topics` is a list. |
+
+### Still open on main HEAD — confirmed present in `9f033fa`
+
+Re-verified by reading main HEAD's source, not the worktree:
+
+- **P0 #1 — topic→path traversal.** `session_dir_name` (`web/services/session_start.py`)
+  still does `topic.lower().replace(" ", "-")[:20]` with no `/`/`..` strip, and
+  `_start.py:562` still hand-rolls the same slug. **Unfixed. Highest priority.**
+- **P0 #2b — `resolve_study_dirs()` + nested sections.** `settings.py:385` still does
+  `raw.get("review", {}).get("directories")` → `AttributeError` on a bare `review:`
+  key; `study_paths` as a bare scalar string still explodes into one Path per
+  character (`content` loader, ~line 567). The topic loader was hardened but the
+  *other* sections weren't. **Unfixed.**
+- **P0 #3 — CI e2e coverage.** `ci.yml:104` `browser-smoke` still runs only
+  `just test-browser-smoke` (the 9-test subset). **Unfixed.**
+- **P0 #4 — kiro exporter** `_extract_text` still `continue`s on non-dict history
+  entries (`exporters/kiro.py:158`). **Unfixed.**
+- **P0 #5 — scrubber** `aws_secret_key` regex still requires quotes (`scrubber.py:26`).
+  **Unfixed.**
+- **P1 #13 — `doctor/database.py`** still imports the non-existent
+  `agent_session_tools.config` (masked by broad `except`). **Unfixed.**
+- **P1 #14 — `sw.js:24`** top-level `return;` SyntaxError still present. **Unfixed.**
+  (See §0.1 — recommend deleting, not fixing.)
+- **P1 #15 — `write_raw_config`** still `write_text` with no chmod; `lan_password`
+  world-readable. **Unfixed.**
+- All remaining agent-session-tools findings (#6 gemini FK, #7 aider dupes),
+  generation-pipeline (#8 retry order, #9 max_tokens), async hygiene (#10–#12, #20,
+  #21), and the P2/P3 lists are untouched by `9f033fa` (it only touched the picker,
+  settings topic loader, bedrock detection, and grok support). **All still open.**
+
+**Net:** of the 5 P0s, main closed one (#2a — the string-topics half of the settings
+cluster). The traversal bug, the rest of the settings-shape cluster, CI e2e, and both
+exporter-integrity P0s remain. The remediation plan in §3 stands, minus Step 2's
+topic-loader portion.
+
+### 0.1 Decisions (2026-07-12)
+
+**TTS default → keep `kokoro`.** Confirmed. Rationale: local kokoro-onnx gives ~1.5s
+TTFA vs OpenVox's measured 2.9–3.8s warm (10–12s cold), needs no separate app running,
+and works identically on Linux dev boxes. OpenVox stays the *opt-in* macOS backend
+(`tts.backend: openvox`) it already is on main — the right call for the latency-
+sensitive live-narration path. This **supersedes the review's earlier `auto`-default
+suggestion** (§5), which assumed warm latency would prove competitive; the benchmark
+says it doesn't. Main's `732c53d` already ships `backend: kokoro` as default, so
+**no code change needed** — only two cleanups remain: unify the OpenVox default voice
+from `af_bella` to `am_michael` for cross-backend parity, and add a `tts` block to
+`agent_session_tools.config_loader.DEFAULT_CONFIG` so partial `tts:` overrides
+deep-merge instead of relying on scattered `.get(k, hardcoded)`. Main's own roadmap
+note (in `docs/superpowers/plans/2026-06-01-...md`, added by `9f033fa`) independently
+states the same policy: "voice output browser/Kokoro-first ... OpenVox is a good
+optional backend for macOS terminal and MCP recap flows."
+
+**PWA offline (`sw.js`) → delete it, don't finish it.** Recommendation: **low value,
+remove the file and the manifest's implied offline promise.** Reasoning:
+
+- *It has never worked.* `sw.js:24` is a hard SyntaxError and nothing ever calls
+  `navigator.serviceWorker.register()` — there is no registration path anywhere in
+  the JS. The PWA has shipped with zero service worker for its entire life; no user
+  has offline support today, so removing it regresses nothing.
+- *The offline use-case is thin for this app.* StudyLoop's core surfaces are inherently
+  online-relative-to-a-local-server: the review PWA talks to `studyloop web` on
+  localhost/LAN, generation calls LLM providers, session start drives a live agent.
+  The one genuinely offline-capable surface — reviewing already-generated flashcards —
+  is a narrow slice, and the device is almost always on the same LAN as the server
+  that's serving the cards anyway. "Study flashcards on the train with the laptop
+  closed" is the only real scenario, and it competes with the browser-Kokoro model
+  cache (the *actually* valuable thing `sw.js` is currently written to preserve).
+- *Finishing it has real cost.* A correct service worker means a cache-versioning
+  discipline (this repo already has a documented history of stale-install bugs masking
+  fixes — a mismanaged SW cache is exactly that failure mode, permanently, in every
+  user's browser), a registration + update-prompt flow, and offline-state UI. That is
+  a multi-day feature with an ongoing maintenance tax, for the train-flashcards slice.
+- *The lazy correct move:* delete `sw.js`, drop the `sw.js` line from the caching
+  discussion in `voice-output.md`, and keep the browser-Kokoro model in `Cache
+  Storage` (transformers.js manages that cache itself — it does **not** need a service
+  worker; the SW today only *spares* that cache on its self-destruct path, which is
+  moot once the SW is gone). If offline flashcard review becomes a real request later,
+  build it deliberately as its own scoped feature with cache-versioning baked in from
+  the start — not by resurrecting a stranded file.
+
+  *If you'd rather keep the door open:* the minimal alternative is to leave `sw.js`
+  deleted but add a one-line `// PWA offline: intentionally not implemented — see
+  audit 2026-07-11 §0.1` where registration would go, so the next person doesn't
+  re-strand a half-built worker. Either way the SyntaxError file should not stay in
+  the tree.
 
 ---
 
@@ -184,8 +293,9 @@ run `pre-commit run --all-files` in CI (kills the bandit-skip-list duplication a
 enforces secret-scanning); add `just shellcheck` to CI. *(~1 day.)*
 
 **Step 7 — small fixes batch (P1 #13, #14, #16, #17, #18; P2 #25–#27, #30).**
-Each is minutes: fix the dead import, delete or fix sw.js's stranded tail (decide:
-PWA offline support is either a feature to finish or dead code to remove), drop the
+Each is minutes: fix the dead import, **delete `sw.js`** (decided §0.1 — PWA offline
+is dead code, not a feature to finish; drop the `sw.js` reference in voice-output.md
+too), drop the
 secret slice from the debug log, guard `relative_to`, atomic state write, chapter
 lower-bound, log the swallowed migration error, per-file isolation in the harness
 doctor, use `connect_db()` in explorer. *(~1 day for all.)*
@@ -249,15 +359,17 @@ research-strand report with what exists.
   mapping layer needed**. (Main currently defaults `openvox_voice: af_bella`,
   diverging from the `am_michael` default elsewhere — unify.)
 
-**Recommended target (one design):**
-- **CLI/server on macOS:** keep main's `_speak_openvox` shape but change backend
-  resolution to `tts.backend: auto` (new default) = *prefer OpenVox when
-  `sys.platform == "darwin"` and a probe of `/v1/models` (1s timeout, validate
-  `owned_by == "openvox"` in the response to avoid port-8000 dev-server false
-  positives) succeeds; else local kokoro-onnx; else `say`*. Main's current default
-  (`kokoro`, OpenVox opt-in) is defensible given warm latency; `auto` is the better
-  AuDHD-UX call because it removes a config decision — ship `auto` but keep the
-  measured-latency note in docs.
+**Recommended target (one design) — updated per §0.1 decision:**
+- **CLI/server:** **keep `kokoro` as the default** (decision 2026-07-12; supersedes
+  the `auto`-default idea originally floated here). The measured warm latency (2.9–3.8s
+  vs local kokoro-onnx's ~1.5s) is too slow for the live-narration path to auto-prefer.
+  Main already ships `backend: kokoro` default with `_speak_openvox` as the opt-in
+  `backend: openvox` macOS path — **this is the target; no backend-resolution change
+  needed.** Optional future nicety, not now: if a user explicitly opts into OpenVox,
+  a response-shape-validated `/v1/models` probe (check `owned_by == "openvox"` to
+  avoid a port-8000 dev-server false positive) before the first call would give a
+  cleaner "OpenVox not running" message — but that's polish for the doctor check, not
+  a default change.
 - **Browser (all platforms including Mac):** keep the existing three-tier
   Kokoro engine (`neural-webgpu → neural-wasm → web-speech`) unchanged. **Do not
   build a server-proxied `/api/tts` for the Mac browser** — 3s+ per utterance vs
@@ -270,7 +382,9 @@ research-strand report with what exists.
   fallback, don't hard-error.
 
 **Gaps in main's current implementation to fix (the actual work remaining):**
-1. `auto` backend resolution + response-shape-validated probe (above).
+1. ~~`auto` backend resolution~~ — dropped per §0.1 (keep `kokoro` default).
+   Optional only: response-shape-validated `/v1/models` probe for a cleaner
+   "OpenVox not running" doctor message when `backend: openvox` is set.
 2. Unify default voice (`am_michael`) across openvox/kokoro paths.
 3. `agent_session_tools.config_loader.DEFAULT_CONFIG` has no `tts` key — add the
    schema so deep-merge works instead of scattered `.get(key, hardcoded)`.
@@ -369,11 +483,23 @@ provenance.
 
 ## 7. Where we are
 
-- **Done:** review complete; 44 confirmed findings triaged against main; both
-  design strands reconciled with the OpenVox work already on main.
-- **Next:** Steps 1–2 of the remediation plan (traversal + settings hardening) are
-  the highest-value few days; TTS gap-closing and MCP build plan can proceed in
-  parallel.
-- **Open decisions:** `tts.backend: auto` vs keep `kokoro` default; whether PWA
-  offline support (sw.js) is a feature to finish or dead code to delete; when to
-  rebase/merge this worktree onto main.
+- **Done:** review complete; 44 confirmed findings triaged; reconciled against main
+  HEAD `9f033fa` (§0); both design strands settled.
+- **Decisions made (2026-07-12, §0.1):** TTS default stays **`kokoro`** (OpenVox
+  opt-in on macOS — no code change, already the state on main); PWA offline `sw.js`
+  is **dead code to delete**, not a feature to finish (near-zero value, never worked,
+  real maintenance tax if resurrected).
+- **Fixed on main since the review** (§0): string-topics loader, bedrock
+  UnboundLocalError, codex exporter, dead symlinks, OpenVox backend, active-topic
+  doctor check. **This worktree's `9a57577` startup fixes are superseded** — nothing
+  here needs merging except this audit doc.
+- **Next, highest-value first (all confirmed still-open on main HEAD):**
+  1. Topic→path traversal — one shared `session_dir_slug()` on `slugify` (§3 Step 1).
+  2. Finish the settings-shape hardening main *started* — `resolve_study_dirs` bare-
+     `review:` crash + scalar `study_paths` char-explosion + the round-trip test
+     (§3 Step 2, minus the topic-loader part main already did).
+  3. Exporter integrity — kiro string entries, scrubber unquoted-AWS, gemini FK,
+     aider dupes + the live-data smoke check (§3 Step 3).
+  4. CI runs the full e2e suite (§3 Step 6); delete `sw.js` (decision above).
+- **Open decision remaining:** when to land these on main (recommend small PRs
+  straight onto main per §3, since this worktree branch is now superseded).
