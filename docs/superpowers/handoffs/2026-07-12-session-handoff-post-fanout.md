@@ -111,12 +111,22 @@ mission-scoped e2e green (32 passed, 2 honest live-only skips).
 ### Known-open defects (documented in openspec/specs/, re-verified at handoff)
 - `resolve_study_dirs()` bare `review:` crash + `study_paths` scalar
   explosion — the settings shape-hardening P0 remainder (plan Task 1).
-- **`tts.backend` flat-key bug (NEW, user-reported this session)**: a
-  top-level YAML key literally named `tts.backend` is ignored by
-  `doctor/voice.py::_tts_config()` (reads `raw.get("tts")`), so
-  `tts.backend: openvox` at top level reports "backend is kokoro". The
-  doctor's own repair message induces the flat form. → was being fixed by
-  the `doctor-tts-fix` agent lane at handoff time (§4).
+- ~~`tts.backend` flat-key bug~~ **FIXED (`a7eabb6`)**: a top-level YAML key
+  literally named `tts.backend` was ignored by every consumer (they read the
+  nested `raw.get("tts")` shape) — and the doctor's own repair hint ("Set
+  tts.backend: openvox") taught users to write exactly that broken flat form.
+  Root-cause fix: `_expand_dotted_keys()` in `settings.load_raw_config()`
+  normalises ANY top-level dotted key into the nested tree (explicit nested
+  values win on conflict), fixing all 6 consumers at once; doctor hints now
+  phrase the repair as nested YAML. Verified live against the user's real
+  config: `studyloop doctor` reports "OpenVox API reachable". Held-out gate
+  passed; suite 2872/0. The user's config file itself was deliberately left
+  untouched — the flat form now WORKS, though the canonical form is:
+
+  ```yaml
+  tts:
+    backend: openvox
+  ```
 - Kiro exporter drops string-shaped history entries; gemini FK-swallow;
   aider ID duplication (session-export spec).
 - Scrubber misses unquoted AWS secrets (`['\"]...` regex requires quotes).
@@ -132,21 +142,20 @@ mission-scoped e2e green (32 passed, 2 honest live-only skips).
 
 ## 4. In-flight agent lanes at handoff time
 
-Two agents were dispatched just before this doc was written; their output
-may already be committed (check `git log`) or may be uncommitted diffs:
-
-1. **`doctor-tts-fix`** — root-causing the flat `tts.backend` key: expected
-   to normalize dotted top-level keys in `settings.load_raw_config()`
-   (nested wins on conflict), fix the misleading doctor repair message to
-   show nested YAML, add tests + held-out gate, keep suite at 2866/0.
+1. **`doctor-tts-fix`** — ~~in flight~~ **LANDED as `a7eabb6`** (the agent
+   stalled; the main session implemented it directly — see §3's fixed
+   tts.backend entry for the full shape: `_expand_dotted_keys()` in
+   `load_raw_config()`, doctor hints rephrased, 6 new tests, held-out gate,
+   suite 2872/0).
 2. **`openspec-sync`** — updating `openspec/changes/complete-e2e-harness-
    and-desktop-mcp/tasks.md` checkboxes to verified reality (with
    done-differently notes), appending Outcome-notes to design.md, and adding
-   the tts.backend defect to `openspec/specs/voice-tts/spec.md`.
+   the tts.backend defect (now FIXED in `a7eabb6` — it should describe the
+   fixed behaviour, citing that commit) to `openspec/specs/voice-tts/spec.md`.
 
-If their work is on disk but uncommitted: review the diff, run the tests
-they claim, commit with conventional messages. If absent: re-run those two
-lanes from the specs above.
+If openspec-sync's work is on disk but uncommitted: review the diff, run
+`openspec validate --all` (must stay 9/9), commit. If absent: re-run that
+lane from the spec above.
 
 ## 5. Suggested fan-out for the next session
 
