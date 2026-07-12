@@ -78,9 +78,17 @@ def test_mentor_asks_rather_than_tells() -> None:
     if not token:
         pytest.skip("No LiteLLM gateway token available")
 
-    # Sanity: gateway reachable.
+    # Sanity: gateway reachable. An HTTP error (e.g. 401) still means it's up.
     try:
-        urllib.request.urlopen(f"{GATEWAY}/v1/models", timeout=5)
+        urllib.request.urlopen(
+            urllib.request.Request(
+                f"{GATEWAY}/v1/models",
+                headers={"Authorization": f"Bearer {token}"},
+            ),
+            timeout=5,
+        )
+    except urllib.error.HTTPError:
+        pass
     except (urllib.error.URLError, OSError):
         pytest.skip(f"LiteLLM gateway not reachable at {GATEWAY}")
 

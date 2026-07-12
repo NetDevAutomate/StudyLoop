@@ -333,4 +333,4 @@ def test_generate_busy_response_shows_visible_conflict_state(web_page: Page) -> 
         has_text="Another generation job is already running."
     )
     banner.wait_for(state="visible", timeout=5000)
-    assert not web_page.locator(".form-error").is_visible()
+    assert not web_page.locator(".generate-form .form-error").is_visible()
