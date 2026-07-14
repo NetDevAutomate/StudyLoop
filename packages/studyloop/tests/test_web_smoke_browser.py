@@ -263,7 +263,7 @@ def test_route_stubbed_learner_flow_marks_struggle_and_reaches_generate(
         }
     ]
 
-    web_page.get_by_role("button", name="Generate").click()
+    web_page.get_by_role("button", name="Generate", exact=True).click()
     web_page.wait_for_function(
         "() => window.Alpine.store('nav').current === 'generate'",
         timeout=3000,
@@ -543,6 +543,4 @@ def test_course_list_no_false_empty_flash(web_page: Page) -> None:
     fc_view.locator("text=Checking your content").wait_for(state="visible", timeout=3000)
     assert not fc_view.locator("h2", has_text="No courses found").is_visible()
     # After the fetch resolves empty, the true empty state appears.
-    fc_view.locator("h2", has_text="No courses found").wait_for(
-        state="visible", timeout=5000
-    )
+    fc_view.locator("h2", has_text="No courses found").wait_for(state="visible", timeout=5000)

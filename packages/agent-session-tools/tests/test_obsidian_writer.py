@@ -734,6 +734,10 @@ class TestCliObsidianFlags:
                 "--obsidian",
                 "--obsidian-vault",
                 str(vault),
+                # Backfill so the pre-inserted DB session is exported regardless
+                # of what (if anything) the import touched this run — keeps the
+                # test hermetic on a clean CI runner with no ~/.claude sessions.
+                "--obsidian-backfill",
             ],
         )
         assert result.exit_code == 0, result.output
@@ -762,6 +766,9 @@ class TestCliObsidianFlags:
                 "--obsidian",
                 "--obsidian-vault",
                 str(vault),
+                # Backfill: export the pre-inserted session deterministically
+                # (see test_obsidian_without_dry_run_writes_notes).
+                "--obsidian-backfill",
             ],
         )
         assert result.exit_code == 0, result.output
@@ -783,6 +790,9 @@ class TestCliObsidianFlags:
                 "--obsidian-vault",
                 str(vault),
                 "--obsidian-dry-run",
+                # Backfill so the writer runs (and prints the dry-run tag) even
+                # when nothing was imported this run — hermetic on clean CI.
+                "--obsidian-backfill",
             ],
         )
         assert result.exit_code == 0, result.output

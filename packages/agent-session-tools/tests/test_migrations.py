@@ -772,9 +772,7 @@ class TestV25CascadeOnMessageDelete:
     def _seed(self, conn):
         migrate(conn)
         conn.execute("PRAGMA foreign_keys=ON")
-        conn.execute(
-            "INSERT INTO sessions (id, source) VALUES ('s1', 'test')"
-        )
+        conn.execute("INSERT INTO sessions (id, source) VALUES ('s1', 'test')")
         conn.execute(
             "INSERT INTO messages (id, session_id, role, content, seq) "
             "VALUES ('m1', 's1', 'user', 'hi', 1)"

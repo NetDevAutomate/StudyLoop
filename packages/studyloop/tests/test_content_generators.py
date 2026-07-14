@@ -1,8 +1,8 @@
 """Tests for the card-generator Protocol, Ollama backend, and factory (D2).
 
 Most tests mock the HTTP transport so they run offline in CI. One
-integration-marked test hits a real localhost Ollama and is deselected
-by default via ``addopts = "-m 'not integration'"`` in pyproject.toml.
+live_provider-marked test hits a real localhost Ollama and is deselected
+by default via ``addopts`` in pyproject.toml.
 """
 
 from __future__ import annotations
@@ -507,17 +507,18 @@ class TestContextManager:
 
 
 # ---------------------------------------------------------------------------
-# Live integration test -- requires real Ollama. Deselected by default.
+# Live provider test -- requires a real Ollama server. Deselected by default.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.integration
+@pytest.mark.live_provider
 class TestLiveOllama:
     """Hit a real local Ollama at ``localhost:11434``.
 
-    Run with: ``pytest -m integration tests/test_content_generators.py``.
-    Requires the configured model to be pulled (``ollama pull qwen2.5:7b``
-    for a quick run; the default is ``qwen2.5:14b``).
+    Run with: ``pytest -m live_provider tests/test_content_generators.py``.
+    Requires a running Ollama server and the configured model pulled
+    (``ollama pull qwen2.5:7b`` for a quick run; the default is
+    ``qwen2.5:14b``). Excluded from CI because no Ollama server is available.
     """
 
     def test_generate_flashcards_against_real_ollama(self) -> None:

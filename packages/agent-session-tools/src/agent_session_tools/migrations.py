@@ -825,9 +825,7 @@ def migrate_v24(conn: sqlite3.Connection) -> None:
     )
 
 
-@migration(
-    25, "Add ON DELETE CASCADE to scrub_log/file_references message_id FKs"
-)
+@migration(25, "Add ON DELETE CASCADE to scrub_log/file_references message_id FKs")
 def migrate_v25(conn: sqlite3.Connection) -> None:
     """Rebuild scrub_log and file_references so deleting a message cascades.
 

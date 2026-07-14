@@ -18,8 +18,7 @@ def _client() -> TestClient:
 def test_backlog_splits_active_and_parking_lot(monkeypatch) -> None:
     """More than MAX_ACTIVE_TOPICS pending → first N active, rest parked."""
     pending = [
-        {"id": i, "question": f"q{i}", "status": "pending"}
-        for i in range(MAX_ACTIVE_TOPICS + 2)
+        {"id": i, "question": f"q{i}", "status": "pending"} for i in range(MAX_ACTIVE_TOPICS + 2)
     ]
     monkeypatch.setattr(
         "studyloop.web.routes.backlog.get_parked_topics",
@@ -130,9 +129,7 @@ def test_session_last_returns_latest_row(monkeypatch) -> None:
 
 
 def test_session_last_empty_when_no_history(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "studyloop.history.sessions.get_last_study_session", lambda: None
-    )
+    monkeypatch.setattr("studyloop.history.sessions.get_last_study_session", lambda: None)
     assert _client().get("/api/session/last").json() == {}
 
 
@@ -154,7 +151,5 @@ def test_demote_happy_path(monkeypatch) -> None:
 
 
 def test_demote_failure_returns_500(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "studyloop.web.routes.backlog.demote_parked_topic", lambda pid: False
-    )
+    monkeypatch.setattr("studyloop.web.routes.backlog.demote_parked_topic", lambda pid: False)
     assert _client().post("/api/backlog/demote", json={"id": 7}).status_code == 500

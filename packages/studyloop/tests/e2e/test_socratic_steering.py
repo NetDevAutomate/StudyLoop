@@ -33,9 +33,7 @@ def _gateway_token() -> str | None:
     tok = os.environ.get("LITELLM_BEARER_TOKEN")
     if tok:
         return tok
-    env = os.path.expanduser(
-        "~/code/personal/tools/litellm_proxy_docker/.env"
-    )
+    env = os.path.expanduser("~/code/personal/tools/litellm_proxy_docker/.env")
     try:
         with open(env, encoding="utf-8") as fh:
             for line in fh:
@@ -104,7 +102,7 @@ def test_mentor_asks_rather_than_tells() -> None:
         "You are grading whether a study mentor's reply is SOCRATIC. A Socratic "
         "reply guides the learner with questions and prompts toward their own "
         "insight; it does NOT simply state the answer or a rule. Respond with "
-        "strict JSON: {\"socratic\": true|false, \"reason\": \"...\"}."
+        'strict JSON: {"socratic": true|false, "reason": "..."}.'
     )
     judge_user = (
         f"Learner said: {learner_msg!r}\n\nMentor replied: {mentor_reply!r}\n\n"

@@ -144,7 +144,9 @@ class TestGrokExportAll:
             ],
         )
         GrokExporter(sessions_dir=sessions_dir).export_all(conn)
-        rows = conn.execute("SELECT role, content, model FROM messages ORDER BY seq").fetchall()
+        rows = conn.execute(
+            "SELECT role, content, model FROM messages ORDER BY seq"
+        ).fetchall()
         assert [(r["role"], r["content"]) for r in rows] == [
             ("user", "hi"),
             ("assistant", "hello"),

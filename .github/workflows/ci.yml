@@ -72,17 +72,19 @@ jobs:
       - name: Audit full optional dependency surface
         run: |
           uv --quiet export --all-packages --group dev --all-extras --no-emit-workspace --format requirements-txt -o /tmp/requirements-full.txt
-          # Torch has no fixed release for PYSEC-2026-139 yet; keep the ignore explicit.
-          uv tool run pip-audit -r /tmp/requirements-full.txt --strict --no-deps --disable-pip --ignore-vuln PYSEC-2026-139
+          uv tool run pip-audit -r /tmp/requirements-full.txt --strict --no-deps --disable-pip
 
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
+      fail-fast: false  # report every Python version independently; don't cancel siblings
       matrix:
         python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          lfs: true  # hydrate LFS-tracked vendored binaries (e.g. ort *.wasm) for vendor tests
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
           python-version: ${{ matrix.python-version }}
