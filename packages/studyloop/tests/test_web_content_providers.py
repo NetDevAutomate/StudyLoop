@@ -255,9 +255,7 @@ class TestProvidersRoute:
         assert bedrock_probe.call_count == 1
         assert ollama_probe.call_count == 1
 
-    def test_bedrock_credentials_false_when_boto3_missing(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_bedrock_credentials_false_when_boto3_missing(self, monkeypatch: MonkeyPatch) -> None:
         """Missing optional boto3 must disable Bedrock, not crash the Web UI."""
         from studyloop.web.routes.content_gen._catalog import _bedrock_credentials_available
 

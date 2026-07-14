@@ -485,9 +485,7 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
     )
 
 
-def _start_ttyd_session(
-    body: StartSessionRequest, request: Request | None = None
-) -> JSONResponse:
+def _start_ttyd_session(body: StartSessionRequest, request: Request | None = None) -> JSONResponse:
     """Legacy tmux+ttyd start path (plan §1.9 emergency fallback).
 
     Kept as-is to guarantee a deprecation window. New development should

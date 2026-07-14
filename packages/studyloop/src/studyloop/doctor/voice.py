@@ -102,8 +102,7 @@ def check_voice_readiness() -> list[CheckResult]:
                 # "tts.backend: openvox" hint taught users to write a single
                 # dotted top-level key, which YAML does NOT nest (the loader
                 # now normalises that form too, but the nested one is canonical).
-                "Set backend: openvox under the tts: section of config.yaml "
-                "to enable this check",
+                "Set backend: openvox under the tts: section of config.yaml to enable this check",
                 False,
             )
         )

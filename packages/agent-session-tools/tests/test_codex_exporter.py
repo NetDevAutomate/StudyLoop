@@ -63,7 +63,12 @@ def _msg(
     return {
         "timestamp": timestamp,
         "type": "response_item",
-        "payload": {"type": "message", "role": role, "content": content, "model": model},
+        "payload": {
+            "type": "message",
+            "role": role,
+            "content": content,
+            "model": model,
+        },
     }
 
 
@@ -190,7 +195,9 @@ class TestCodexExportAll:
         conn, _ = migrated_db
         _write_rollout(_dated(sessions_dir, "rollout-x.jsonl"), [_msg()])
         CodexExporter(sessions_dir=sessions_dir).export_all(conn)
-        assert conn.execute("SELECT source FROM sessions").fetchone()["source"] == "codex"
+        assert (
+            conn.execute("SELECT source FROM sessions").fetchone()["source"] == "codex"
+        )
 
 
 # ---------------------------------------------------------------------------

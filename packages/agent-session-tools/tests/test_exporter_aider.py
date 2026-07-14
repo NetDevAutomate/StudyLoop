@@ -245,7 +245,9 @@ class TestExportAll:
         after = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
 
         # New content has 3 messages; the total must equal that, not first+3.
-        assert after == 3, f"expected 3 messages after re-export, got {after} (first run had {first})"
+        assert after == 3, (
+            f"expected 3 messages after re-export, got {after} (first run had {first})"
+        )
 
     def test_empty_directory_produces_zero_stats(
         self, migrated_db, tmp_path: Path, monkeypatch

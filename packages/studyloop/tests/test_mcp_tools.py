@@ -219,9 +219,7 @@ class TestGetChapterText:
                 tool("nonexistent", 1)
 
     @pytest.mark.parametrize("chapter", [0, -1, -3])
-    def test_nonpositive_chapter_rejected_not_wrapped(
-        self, tmp_path: Path, chapter: int
-    ) -> None:
+    def test_nonpositive_chapter_rejected_not_wrapped(self, tmp_path: Path, chapter: int) -> None:
         """chapter<=0 must error, not index all_pdfs[chapter-1] from the end."""
         pymupdf = __import__("pytest").importorskip("pymupdf")
         from mcp.server.fastmcp.exceptions import ToolError

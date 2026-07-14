@@ -145,7 +145,7 @@ def check_active_topic_limit() -> list[CheckResult]:
             "warn",
             f"{len(topics)} study topics configured; StudyLoop activates the first "
             f"{MAX_ACTIVE_TOPICS}",
-            "Move extra study ideas to the backlog with: studyloop backlog add \"topic\"",
+            'Move extra study ideas to the backlog with: studyloop backlog add "topic"',
             False,
         )
     ]

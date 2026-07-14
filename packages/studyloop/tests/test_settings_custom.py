@@ -654,18 +654,14 @@ def test_nested_tts_key_still_works(tmp_path):
 
 def test_nested_wins_over_dotted_on_conflict(tmp_path):
     """When both forms are present, the explicit nested mapping is authoritative."""
-    p = _write_config(
-        tmp_path, {"tts": {"backend": "kokoro"}, "tts.backend": "openvox"}
-    )
+    p = _write_config(tmp_path, {"tts": {"backend": "kokoro"}, "tts.backend": "openvox"})
     raw = _load_raw(p)
     assert raw["tts"]["backend"] == "kokoro"
 
 
 def test_dotted_key_merges_into_existing_section(tmp_path):
     """A dotted key for a NEW leaf merges into an existing nested section."""
-    p = _write_config(
-        tmp_path, {"tts": {"voice": "af_bella"}, "tts.backend": "openvox"}
-    )
+    p = _write_config(tmp_path, {"tts": {"voice": "af_bella"}, "tts.backend": "openvox"})
     raw = _load_raw(p)
     assert raw["tts"]["backend"] == "openvox"
     assert raw["tts"]["voice"] == "af_bella"

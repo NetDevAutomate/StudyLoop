@@ -255,9 +255,7 @@ class TestGetNextAction:
         ) as mock_build:
             result = tool(energy="high", time_minutes=15, modality="hands-on")
 
-        mock_build.assert_called_once_with(
-            energy="high", time_minutes=15, modality="hands-on"
-        )
+        mock_build.assert_called_once_with(energy="high", time_minutes=15, modality="hands-on")
         assert result == {"primary": {"concept": "closures"}}
 
     def test_rejects_invalid_energy(self) -> None:
