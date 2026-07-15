@@ -576,17 +576,17 @@ class TestRegionFallback:
 
 
 # ---------------------------------------------------------------------------
-# Live integration test -- requires real Bedrock + bedrock-prod profile.
+# Live provider test -- requires real Bedrock + bedrock-prod profile.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.integration
+@pytest.mark.live_provider
 class TestLiveBedrock:
     """Hits real Bedrock using the ``bedrock-prod`` profile.
 
-    Run with: ``pytest -m integration tests/test_content_generators_bedrock.py``.
+    Run with: ``pytest -m live_provider tests/test_content_generators_bedrock.py``.
     Requires AWS credentials configured and model access enabled in the
-    configured region.
+    configured region. Excluded from CI because no AWS profiles are available.
     """
 
     def test_generate_flashcards_against_real_bedrock(self) -> None:

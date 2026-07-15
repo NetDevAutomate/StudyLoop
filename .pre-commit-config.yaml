@@ -61,7 +61,7 @@ repos:
   - id: pytest
     name: pytest
     language: system
-    entry: uv run pytest --tb=short -m "not integration and not e2e"
+    entry: uv run pytest --tb=short -m "not integration and not e2e and not live_provider"
     pass_filenames: false
     files: ^packages/.*\.py$
     stages: [pre-push]

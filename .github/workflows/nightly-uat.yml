@@ -26,7 +26,7 @@ jobs:
         run: tmux -V
 
       - name: Run integration tests
-        run: uv run pytest -m integration --tb=short -v
+        run: uv run pytest -m "integration and not live_provider" --tb=short -v
 
       - name: Run UAT terminal tests
         if: always()
