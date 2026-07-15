@@ -50,10 +50,11 @@ packages = ["src/studyctl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short -m 'not integration and not e2e'"
+addopts = "--tb=short -m 'not integration and not e2e and not live_provider'"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "e2e: end-to-end browser tests requiring Playwright + web server",
+    "live_provider: tests that call a real LLM provider (Ollama/Bedrock). Requires a running service/credentials; opt in with -m live_provider",
 ]
 
 [tool.pyright]

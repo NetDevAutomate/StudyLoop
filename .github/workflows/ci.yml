@@ -71,7 +71,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --all-packages --group dev
-      - run: uv run pytest --tb=short -m "not integration and not e2e" --cov=packages --cov-report=term-missing
+      - run: uv run pytest --tb=short -m "not integration and not e2e and not live_provider" --cov=packages --cov-report=term-missing
 
   build:
     runs-on: ubuntu-latest
