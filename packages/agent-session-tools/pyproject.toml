@@ -75,12 +75,11 @@ dev = [
 test = [
     "sqlite-vec>=0.1.6",
 ]
+# True aggregate of the runtime extras (dev/test stay opt-in). Self-referential
+# so new extras can't silently drift out of [all] — the installer relies on
+# this being complete.
 all = [
-    "tiktoken>=0.5.0",
-    "textual>=0.40.0",
-    "watchdog>=4.0.0",
-    "sentence-transformers>=2.2.0",
-    "numpy>=1.24.0",
+    "agent-session-tools[tokens,tui,watch,semantic,tts]",
 ]
 
 [build-system]

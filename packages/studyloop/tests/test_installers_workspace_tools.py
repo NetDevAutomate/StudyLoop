@@ -31,7 +31,7 @@ def test_install_workspace_tools_installs_expected_tool_commands(tmp_path: Path)
     assert run.call_args_list == [
         call(["uv", "sync", "--all-packages"], cwd=repo_root),
         call(
-            ["uv", "tool", "install", f"{agent_pkg}[tts]", "--editable", "--force"],
+            ["uv", "tool", "install", f"{agent_pkg}[all]", "--editable", "--force"],
             cwd=repo_root,
         ),
         call(
@@ -39,7 +39,7 @@ def test_install_workspace_tools_installs_expected_tool_commands(tmp_path: Path)
                 "uv",
                 "tool",
                 "install",
-                f"{studyloop_pkg}[tui,web,content]",
+                f"{studyloop_pkg}[all]",
                 "--with-editable",
                 str(agent_pkg),
                 "--editable",

@@ -23,9 +23,9 @@ export XDG_DATA_HOME="$tmp/xdg-data"
 export UV_TOOL_BIN_DIR="$tmp/bin"
 TOOL_BIN="$UV_TOOL_BIN_DIR"
 
-uv tool install --force --editable "$ROOT_DIR/packages/studyloop[sessions,web,content]" \
+uv tool install --force --editable "$ROOT_DIR/packages/studyloop[all]" \
   --with-editable "$ROOT_DIR/packages/agent-session-tools"
-uv tool install --force --editable "$ROOT_DIR/packages/agent-session-tools"
+uv tool install --force --editable "$ROOT_DIR/packages/agent-session-tools[all]"
 
 test -x "$TOOL_BIN/studyloop"
 test -x "$TOOL_BIN/session-export"

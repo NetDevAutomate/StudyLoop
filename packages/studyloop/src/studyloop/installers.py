@@ -241,10 +241,15 @@ def install_workspace_tools(
     for pkg_dir in sorted(p for p in packages_dir.iterdir() if p.is_dir()):
         package_name = pkg_dir.name
         cmd = ["uv", "tool", "install"]
+        # Both packages install with their [all] aggregate extra so a single
+        # `./scripts/install.sh` yields a fully working tool — web UI, content
+        # generation, Bedrock (boto3), MCP server, NotebookLM, TUI, TTS, and
+        # semantic session search. Partial extras here are how "No module
+        # named 'boto3'/'mcp'" surfaced in otherwise-green installs.
         if package_name == "agent-session-tools":
-            cmd.append(f"{pkg_dir}[tts]")
+            cmd.append(f"{pkg_dir}[all]")
         elif package_name == "studyloop":
-            cmd.append(f"{pkg_dir}[tui,web,content]")
+            cmd.append(f"{pkg_dir}[all]")
             cmd.extend(["--with-editable", str(repo_root / "packages" / "agent-session-tools")])
         else:
             cmd.append(str(pkg_dir))
