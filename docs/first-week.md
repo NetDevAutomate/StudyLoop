@@ -13,8 +13,7 @@ Install from source (see [Setup Guide](setup-guide.md)):
 ```bash
 git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
 cd studyloop
-uv sync --all-packages
-uv tool install './packages/studyloop[sessions,web,content]'
+./scripts/install.sh
 studyloop setup
 studyloop doctor --fix
 ```

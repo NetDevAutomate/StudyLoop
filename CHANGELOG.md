@@ -56,6 +56,17 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   desktop MCP clients can now browse and read course material; 21 tools
   total.
 
+### Changed
+- **Install now installs everything:** `studyloop install tools` (and thus
+  `./scripts/install.sh`) installs both workspace packages with their `[all]`
+  aggregate extras — `studyloop[all]` (content, bedrock, web, notebooklm, tui,
+  mcp, sessions) and `agent-session-tools[all]` (tokens, tui, watch, semantic,
+  tts). Previously the installer used partial extras (`[tui,web,content]` /
+  `[tts]`), so a fresh install could die at runtime with
+  `ModuleNotFoundError` for `boto3` or `mcp`. The `agent-session-tools` `all`
+  extra is now a self-referential aggregate that includes `tts`, so new
+  extras can't drift out of it.
+
 ### Fixed
 - **TTS voice ignored + overlapping playback:** the engine never restored the
   saved `neuralVoiceId`, so every page load spoke as the `am_michael` default

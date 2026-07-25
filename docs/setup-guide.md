@@ -92,7 +92,9 @@ first setup if `config.yaml` does not exist yet.
 1. Verify Python 3.12+ is installed
 2. Install `uv` if not already available
 3. Run `uv sync`
-4. Delegate to `studyloop install tools`
+4. Delegate to `studyloop install tools` — installs both packages with their
+   `[all]` extras, so web UI, content generation, Bedrock, MCP, NotebookLM,
+   TUI, TTS, and semantic session search all work out of the box
 5. Delegate to `studyloop install agents`
 6. Run lightweight installed CLI smoke checks
 
@@ -115,8 +117,9 @@ such as `session-export`, `session-query`, and `session-sync` may not appear on
 
 ```bash
 uv sync --all-packages
-uv tool install './packages/studyloop[sessions,web,content]'
-uv tool install './packages/agent-session-tools[tts]'
+uv tool install --editable './packages/studyloop[all]' \
+  --with-editable ./packages/agent-session-tools
+uv tool install --editable './packages/agent-session-tools[all]'
 ```
 
 Prefer `./scripts/install.sh` or `studyloop install tools` for normal source

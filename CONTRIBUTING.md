@@ -118,8 +118,11 @@ assets, so a stale install serves stale HTML/CSS/JS.** Before running e2e tests
 (or verifying any UI change by hand), reinstall:
 
 ```bash
-uv tool install --reinstall './packages/studyloop[web,content,bedrock]'
+uv run studyloop install tools --skip-sync
 ```
+
+(or the raw equivalent: `uv tool install --reinstall --editable
+'./packages/studyloop[all]' --with-editable ./packages/agent-session-tools`)
 
 A red e2e test whose actions pass when reproduced manually against a fresh
 server is almost always a stale install — reinstall before suspecting the code.
