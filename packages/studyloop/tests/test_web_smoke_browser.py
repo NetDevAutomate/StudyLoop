@@ -562,9 +562,11 @@ def test_terminal_flex_chain_allows_shrink(web_page: Page) -> None:
         """
         () => {
           const outer = document.createElement('div');
-          outer.style.cssText = 'position:fixed;left:0;top:0;width:800px;height:400px;display:flex;';
+          outer.style.cssText =
+            'position:fixed;left:0;top:0;width:800px;height:400px;display:flex;';
           outer.innerHTML = `
-            <div class="session-terminal-area agent-console" style="display:flex;flex-direction:column;">
+            <div class="session-terminal-area agent-console"
+                 style="display:flex;flex-direction:column;">
               <div class="embedded-terminal-panel xterm-panel">
                 <div class="embedded-terminal-content xterm-content">
                   <div class="xterm-mount">
@@ -590,3 +592,231 @@ def test_terminal_flex_chain_allows_shrink(web_page: Page) -> None:
     assert result["wide"] > 700, result
     assert result["narrow"] <= 400, result
     assert result["overflow"] == "hidden", result
+
+
+# ---------------------------------------------------------------------------
+# Flashcards / quiz / voice journeys (route-stubbed)
+# ---------------------------------------------------------------------------
+
+_REVIEW_COURSES = [
+    {
+        "name": "python-basics",
+        "publisher": "TestPub",
+        "flashcard_count": 2,
+        "quiz_count": 1,
+        "due_count": 0,
+        "mastered": 0,
+    }
+]
+
+_FLASHCARDS = [
+    {
+        "type": "flashcard",
+        "front": "What does a decorator return?",
+        "back": "A callable wrapping the decorated function",
+        "hash": "fc-1",
+        "source": "ch1",
+    },
+    {
+        "type": "flashcard",
+        "front": "What is a generator?",
+        "back": "An iterator produced by a function with yield",
+        "hash": "fc-2",
+        "source": "ch1",
+    },
+]
+
+_QUIZ_CARDS = [
+    {
+        "type": "quiz",
+        "question": "Which keyword defines a generator?",
+        "options": [
+            {"text": "return", "is_correct": False, "rationale": ""},
+            {
+                "text": "yield",
+                "is_correct": True,
+                "rationale": "yield makes a generator.",
+            },
+        ],
+        "hash": "qz-1",
+        "source": "ch1",
+    },
+    {
+        # Second card so the 1.5s auto-advance cannot end the session while
+        # the rationale assertion below is still reading the first card.
+        "type": "quiz",
+        "question": "Which module provides fixtures?",
+        "options": [
+            {"text": "pytest", "is_correct": True, "rationale": "pytest fixtures."},
+            {"text": "unittest", "is_correct": False, "rationale": ""},
+        ],
+        "hash": "qz-2",
+        "source": "ch1",
+    },
+]
+
+
+def _stub_review_routes(page: Page, mode: str, cards: list[dict]) -> None:
+    """Stub every endpoint the reviewApp() course->config->study flow hits."""
+    page.route("**/api/courses", lambda r: r.fulfill(json=_REVIEW_COURSES))
+    page.route("**/api/session/state", lambda r: r.fulfill(json={}))
+    page.route("**/api/stats/**", lambda r: r.fulfill(json={}))
+    page.route("**/api/history**", lambda r: r.fulfill(json=[]))
+    page.route("**/api/heatmap**", lambda r: r.fulfill(json=[]))
+    page.route(
+        "**/api/sources/python-basics**",
+        lambda r: r.fulfill(json=["ch1"]),
+    )
+    page.route(
+        f"**/api/cards/python-basics?mode={mode}",
+        lambda r: r.fulfill(json=cards),
+    )
+    page.route("**/api/due/python-basics", lambda r: r.fulfill(json=[]))
+    page.route("**/api/wrong/python-basics", lambda r: r.fulfill(json=[]))
+    page.route("**/api/review", lambda r: r.fulfill(json={"ok": True}))
+
+
+def _open_deck(page: Page, view: str, action_class: str, mode: str) -> None:
+    """Navigate to the review view, open the course's config, start a session."""
+    _goto(page, view)
+    fc_view = page.locator(f'.content-area > div[x-show*="{view}"]')
+    row_btn = fc_view.locator(f".course-row-action.{action_class}").first
+    row_btn.wait_for(state="visible", timeout=5000)
+    row_btn.click()
+    start = fc_view.get_by_role("button", name="Start Session")
+    start.wait_for(state="visible", timeout=5000)
+    start.click()
+    fc_view.locator(".card .card-content").wait_for(state="visible", timeout=5000)
+
+
+# Installed as an init script. The accessor property swallows the real
+# /tts-engine.js module's later `window.ttsEngine = ...` assignment (a
+# plain data-property stub would be overwritten at an arbitrary point in
+# the module's async init, making assertions racy).
+_TTS_STUB = """
+window.__spoken = [];
+const __ttsStub = {
+  speak(text) {
+    window.__spoken.push(text);
+    window.dispatchEvent(new CustomEvent('tts:state-change',
+        {detail: {state: 'speaking'}}));
+    return Promise.resolve();
+  },
+  stop() {
+    window.dispatchEvent(new CustomEvent('tts:state-change',
+        {detail: {state: 'idle'}}));
+  },
+  init() { return Promise.resolve(); },
+};
+Object.defineProperty(window, 'ttsEngine', {
+  get: () => __ttsStub,
+  set: () => {},
+  configurable: false,
+});
+"""
+
+
+def test_flashcard_deck_opens_and_flips(web_page: Page) -> None:
+    """Journey: Flashcards tab -> open deck -> question shows -> flip -> answer.
+
+    Session decks are shuffled (_shuffleCards), so assertions map whichever
+    card is showing to its expected back rather than assuming an order.
+    """
+    fronts_to_backs = {c["front"]: c["back"] for c in _FLASHCARDS}
+    _stub_review_routes(web_page, "flashcards", _FLASHCARDS)
+    _open_deck(web_page, "flashcards", "flashcard", "flashcards")
+
+    fc_view = web_page.locator('.content-area > div[x-show*="flashcards"]')
+    card = fc_view.locator(".card:visible").first
+    content = card.locator(".card-content")
+
+    front = content.inner_text().strip()
+    assert front in fronts_to_backs, f"unexpected card front: {front!r}"
+
+    card.dispatch_event("click")  # flip
+    fc_view.locator(".card.revealed:visible").wait_for(state="visible", timeout=3000)
+    assert fronts_to_backs[front] in content.inner_text()
+
+    # Answering advances to the other card in the (shuffled) deck.
+    other_front = next(f for f in fronts_to_backs if f != front)
+    fc_view.get_by_role("button", name="I knew it").click()
+    web_page.wait_for_function(
+        """(expected) => {
+          const el = document.querySelector('.content-area .card.revealed')
+            ? null
+            : [...document.querySelectorAll('.content-area .card-content')]
+                .find(e => e.offsetParent !== null);
+          return el && el.textContent.includes(expected);
+        }""",
+        arg=other_front,
+        timeout=3000,
+    )
+
+
+def test_quiz_opens_and_answers(web_page: Page) -> None:
+    """Journey: Quizzes tab -> open quiz -> answer correctly -> rationale."""
+    _stub_review_routes(web_page, "quiz", _QUIZ_CARDS)
+    _open_deck(web_page, "quizzes", "quiz", "quiz")
+
+    qz_view = web_page.locator('.content-area > div[x-show*="quizzes"]')
+    question = qz_view.locator(".card:visible .card-content").first.inner_text().strip()
+    quiz = next(c for c in _QUIZ_CARDS if c["question"] == question)
+    correct = next(o for o in quiz["options"] if o["is_correct"])
+
+    qz_view.locator(".quiz-option", has_text=correct["text"]).click()
+    # Atomic read: the card auto-advances 1.5s after answering, so wait on
+    # the rationale text itself rather than visibility-then-read.
+    web_page.wait_for_function(
+        """(expected) => [...document.querySelectorAll('.rationale')].some(
+             e => e.offsetParent !== null && e.textContent.includes(expected))""",
+        arg=correct["rationale"].rstrip("."),
+        timeout=3000,
+    )
+
+
+def test_voice_reads_flashcard_aloud(web_page: Page) -> None:
+    """Voice wiring: toggle voice, read a card via the speak button and 'T'.
+
+    Headless Chromium has no audio and the neural TTS model download is far
+    too heavy for a smoke test, so window.ttsEngine is stubbed — the test
+    verifies the app-side wiring: toggle announcement, per-card speak,
+    keyboard shortcut, and the isSpeaking -> stop-button state loop.
+    Decks are shuffled, so spoken text is matched against whichever card
+    is actually showing.
+    """
+    fronts_to_backs = {c["front"]: c["back"] for c in _FLASHCARDS}
+    web_page.add_init_script(_TTS_STUB)
+    _stub_review_routes(web_page, "flashcards", _FLASHCARDS)
+    _open_deck(web_page, "flashcards", "flashcard", "flashcards")
+
+    fc_view = web_page.locator('.content-area > div[x-show*="flashcards"]')
+    front = fc_view.locator(".card:visible .card-content").inner_text().strip()
+    assert front in fronts_to_backs, f"unexpected card front: {front!r}"
+
+    # Toggle voice on — announces "Voice enabled" through the engine.
+    web_page.locator('button[title*="Toggle voice"]').click()
+    web_page.wait_for_function("() => window.__spoken.includes('Voice enabled')", timeout=5000)
+
+    # The announcement flips isSpeaking -> stop button pops into the
+    # toolbar. Assert the state loop and settle it before continuing.
+    stop_btn = web_page.locator(".stop-tts-btn")
+    stop_btn.wait_for(state="visible", timeout=5000)
+    stop_btn.click()
+    stop_btn.wait_for(state="hidden", timeout=5000)
+
+    # Speak button reads the visible side (the question). dispatch_event
+    # targets the handler directly — this test verifies voice wiring, not
+    # pointer hit-testing (the flashcard journey test covers real clicks).
+    fc_view.locator(".card:visible .speak-btn").first.dispatch_event("click")
+    web_page.wait_for_function("(f) => window.__spoken.includes(f)", arg=front, timeout=5000)
+
+    # Keyboard shortcut 'T' reads the revealed side after a flip.
+    web_page.evaluate("() => window.ttsEngine.stop()")
+    fc_view.locator(".card:visible").first.dispatch_event("click")
+    fc_view.locator(".card.revealed:visible").wait_for(state="visible", timeout=5000)
+    web_page.keyboard.press("t")
+    web_page.wait_for_function(
+        "(b) => window.__spoken.includes(b)",
+        arg=fronts_to_backs[front],
+        timeout=5000,
+    )
