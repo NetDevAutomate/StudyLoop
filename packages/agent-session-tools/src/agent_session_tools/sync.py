@@ -274,19 +274,31 @@ def _ensure_mux_dir() -> None:
     _SSH_MUX_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
 
 
-def _resolve_remote(remote: str) -> tuple[str, str]:
+def _resolve_remote(remote: str, tier: str = "hot") -> tuple[str, str]:
     """Resolve a remote target to (user@host, db_path).
 
     Accepts either:
     - An endpoint name from config (e.g. "macmini")
     - A full remote path (e.g. "user@host:/path/to/db")
+
+    ``tier`` selects which remote DB an endpoint entry points at: "hot"
+    uses ``sessions_db``, "full" uses ``full_db``. Explicit user@host:path
+    remotes ignore tier (the path is already explicit).
     """
     # Check if it's a configured endpoint name
     endpoints = get_endpoints(_get_config())
     if remote in endpoints:
         ep = endpoints[remote]
         username = ep["username"]
-        path = ep["path"]
+        if tier == "full":
+            path = ep.get("full_path", "")
+            if not path:
+                raise typer.BadParameter(
+                    f"Endpoint '{remote}' has no 'full_db' configured — add it "
+                    "to the host entry in config.yaml to sync the full tier."
+                )
+        else:
+            path = ep["path"]
         _ensure_mux_dir()
         # Try primary IP, fall back to secondary
         for ip_key in ("primary_ip", "secondary_ip"):
@@ -301,7 +313,7 @@ def _resolve_remote(remote: str) -> tuple[str, str]:
                     timeout=5,
                 )
                 console.print(
-                    f"[dim]Resolved endpoint '{remote}' → {host}:{path}[/dim]"
+                    f"[dim]Resolved endpoint '{remote}' ({tier}) → {host}:{path}[/dim]"
                 )
                 return host, path
             except (subprocess.TimeoutExpired, OSError):
@@ -316,6 +328,49 @@ def _resolve_remote(remote: str) -> tuple[str, str]:
         )
     host, db_path = remote.split(":", 1)
     return host, db_path
+
+
+def _local_db_for_tier(tier: str, db_override: Path | None) -> Path:
+    """Resolve the local DB for a tier ('hot' -> sessions.db, 'full' -> record)."""
+    if db_override:
+        return db_override
+    if tier == "full":
+        from agent_session_tools.tiering import get_full_db_path
+
+        full = get_full_db_path(_get_config())
+        if full is None:
+            raise typer.BadParameter(
+                "database.full_db_path is not configured — cannot sync the "
+                "full tier on this machine."
+            )
+        return full
+    return _get_db_path()
+
+
+def _pruned_session_ids(exclude_ids: set[str]) -> set[str]:
+    """Of ``exclude_ids``, return those present in the local full DB.
+
+    Used by hot-tier pulls: a session the remote has but the local hot DB
+    lacks is NOT new if the local full DB holds it — it was pruned locally
+    and must not be resurrected. Returns an empty set when tiering is
+    disabled or the full DB is unreachable (pull then behaves as before).
+    """
+    if not exclude_ids:
+        return set()
+    try:
+        from agent_session_tools.tiering import get_full_db_path
+
+        full = get_full_db_path(_get_config())
+        if full is None or not full.exists():
+            return set()
+        conn = sqlite3.connect(f"file:{full}?mode=ro", uri=True)
+        try:
+            known = {r[0] for r in conn.execute("SELECT id FROM sessions").fetchall()}
+        finally:
+            conn.close()
+        return exclude_ids & known
+    except sqlite3.Error:
+        return set()
 
 
 def _quote_remote_path(path: str) -> str:
@@ -551,6 +606,22 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
         conn.close()
 
 
+# FTS repair appended to every import. Two reasons this must rebuild from
+# the messages table rather than use FTS5's ('rebuild') command:
+# 1. The streamed INSERT OR REPLACE statements fire insert triggers but NOT
+#    delete triggers (SQLite's REPLACE skips them unless recursive_triggers
+#    is on), so every updated session leaks orphaned FTS rows.
+# 2. ('rebuild') rebuilds the inverted index from the FTS table's OWN
+#    content store — it preserves those orphans. This exact mechanism once
+#    grew a sessions DB to 45GB.
+_FTS_REPAIR_SQL = (
+    "DELETE FROM messages_fts;\n"
+    "INSERT INTO messages_fts(rowid, content, session_id, role) "
+    "SELECT rowid, content, session_id, role FROM messages "
+    "WHERE content IS NOT NULL;\n"
+)
+
+
 def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     """Stream SQL into a local DB or remote DB over SSH.
 
@@ -559,8 +630,8 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     if not sql.strip():
         return True
 
-    # Append FTS rebuild
-    sql += "\nINSERT INTO messages_fts(messages_fts) VALUES('rebuild');\n"
+    # Append FTS repair (rebuild from messages — see _FTS_REPAIR_SQL note)
+    sql += "\n" + _FTS_REPAIR_SQL
 
     if isinstance(target, Path):
         result = subprocess.run(
@@ -632,6 +703,13 @@ def show_db_stats(db_path: Path, label: str = "Database") -> None:
     console.print(table)
 
 
+_tier_option = typer.Option(
+    "--tier",
+    help="Which DB tier to sync: 'hot' (local sessions.db, default) or "
+    "'full' (complete-history record; endpoint needs 'full_db' configured).",
+)
+
+
 @app.command()
 def pull(
     remote: Annotated[str, typer.Argument(help="Remote path (user@host:path)")],
@@ -639,10 +717,11 @@ def pull(
         Path | None, typer.Option("--db", "-d", help="Local database path")
     ] = None,
     no_backup: Annotated[bool, typer.Option("--no-backup", help="Skip backup")] = False,
+    tier: Annotated[str, _tier_option] = "hot",
 ) -> None:
     """Pull new sessions from remote via SQL streaming."""
-    local_db = db or _get_db_path()
-    host, remote_db = _resolve_remote(remote)
+    local_db = _local_db_for_tier(tier, db)
+    host, remote_db = _resolve_remote(remote, tier)
 
     console.print(f"[bold]Pulling from:[/bold] {remote}")
     console.print(f"[bold]Local DB:[/bold] {local_db}")
@@ -688,6 +767,16 @@ def pull(
     conn.close()
 
     new_ids = set(remote_sessions) - set(local_sessions)
+    if tier == "hot":
+        # Prune-awareness: sessions we deliberately pruned live in the local
+        # full DB — the remote having them does not make them "new".
+        pruned = _pruned_session_ids(new_ids)
+        if pruned:
+            console.print(
+                f"[dim]Skipping {len(pruned)} session(s) pruned locally "
+                "(present in full DB).[/dim]"
+            )
+            new_ids -= pruned
     updated_ids = {
         sid
         for sid in set(remote_sessions) & set(local_sessions)
@@ -731,10 +820,11 @@ def push(
     db: Annotated[
         Path | None, typer.Option("--db", "-d", help="Local database path")
     ] = None,
+    tier: Annotated[str, _tier_option] = "hot",
 ) -> None:
     """Push new and updated sessions to remote via SQL streaming."""
-    local_db = db or _get_db_path()
-    host, remote_db = _resolve_remote(remote)
+    local_db = _local_db_for_tier(tier, db)
+    host, remote_db = _resolve_remote(remote, tier)
 
     console.print(f"[bold]Pushing to:[/bold] {remote}")
     console.print(f"[bold]Local DB:[/bold] {local_db}")
@@ -791,13 +881,16 @@ def sync(
         Path | None, typer.Option("--db", "-d", help="Local database path")
     ] = None,
     no_backup: Annotated[bool, typer.Option("--no-backup", help="Skip backup")] = False,
+    tier: Annotated[str, _tier_option] = "hot",
 ) -> None:
     """Two-way sync: stream deltas in both directions.
 
-    Both machines end up with the same data.
+    Both machines end up with the same data. In the hot tier, sessions
+    pruned locally (present in the local full DB) are not pulled back.
+    Use --tier full to consolidate the complete-history records.
     """
-    local_db = db or _get_db_path()
-    host, remote_db = _resolve_remote(remote)
+    local_db = _local_db_for_tier(tier, db)
+    host, remote_db = _resolve_remote(remote, tier)
 
     console.print(f"[bold]Syncing with:[/bold] {remote}")
     console.print(f"[bold]Local DB:[/bold] {local_db}")
@@ -837,8 +930,16 @@ def sync(
         for sid in set(local_sessions) & set(remote_sessions)
         if _timestamp_key(local_sessions[sid]) > _timestamp_key(remote_sessions[sid])
     }
-    # Pull: remote new + remote newer
+    # Pull: remote new + remote newer (hot tier: minus locally-pruned)
     pull_new = set(remote_sessions) - set(local_sessions)
+    if tier == "hot":
+        pruned = _pruned_session_ids(pull_new)
+        if pruned:
+            console.print(
+                f"[dim]Skipping {len(pruned)} session(s) pruned locally "
+                "(present in full DB).[/dim]"
+            )
+            pull_new -= pruned
     pull_updated = {
         sid
         for sid in set(local_sessions) & set(remote_sessions)

@@ -62,6 +62,49 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
+def _search_schema(
+    conn: sqlite3.Connection,
+    schema: str,
+    fts_query: str,
+    since: str | None,
+    before: str | None,
+    limit: int,
+    exclude_main_sessions: bool = False,
+) -> list[sqlite3.Row]:
+    """Run the FTS search against one schema (``main`` or the attached full DB)."""
+    # FTS5 auxiliary functions (bm25) and MATCH need unqualified table
+    # references, so the FTS pass runs in a subquery whose FROM is
+    # schema-qualified; names inside it resolve within that schema.
+    base_query = f"""
+        SELECT s.source, s.project_path, s.id as session_id, m.role, m.timestamp,
+               substr(m.content, 1, 300) as preview, m.content as full_content,
+               fx.rank as rank
+        FROM (
+            SELECT rowid AS fts_rowid, bm25(messages_fts) AS rank
+            FROM {schema}.messages_fts
+            WHERE messages_fts MATCH ?
+        ) fx
+        JOIN {schema}.messages m ON m.rowid = fx.fts_rowid
+        JOIN {schema}.sessions s ON m.session_id = s.id
+        WHERE 1=1
+    """
+    params: list = [fts_query]
+
+    if exclude_main_sessions:
+        # Hot sessions also exist in the full DB (sync) — the full-DB pass
+        # must only surface history the hot DB no longer holds.
+        base_query += " AND s.id NOT IN (SELECT id FROM main.sessions)"
+
+    date_filter, date_params = build_date_filter(since, before)
+    if date_filter:
+        base_query += f" AND ({date_filter.replace('updated_at', 'm.timestamp')})"
+        params.extend(date_params)
+
+    base_query += " ORDER BY rank, m.timestamp DESC LIMIT ?"
+    params.append(limit)
+    return conn.execute(base_query, params).fetchall()
+
+
 def search(
     conn: sqlite3.Connection,
     query: str,
@@ -69,40 +112,50 @@ def search(
     since: str | None = None,
     before: str | None = None,
     output_format: str = "table",
+    include_full: bool = True,
 ) -> None:
-    """Full-text search across message content with porter stemming."""
+    """Full-text search across message content with porter stemming.
+
+    Federated by default: when a full-history DB is configured and its
+    volume is mounted, results include history already pruned from the
+    local DB (tagged ``tier: full``). When unavailable, search silently
+    falls back to local-only — reads are mount-opportunistic, never
+    mount-dependent.
+    """
+    from agent_session_tools.query_db import FULL_SCHEMA, attach_full_db
+
     # Escape the query for FTS5
     fts_query = escape_fts_query(query)
 
-    # Build base query with BM25 ranking for relevance
-    base_query = """
-        SELECT s.source, s.project_path, s.id as session_id, m.role, m.timestamp,
-               substr(m.content, 1, 300) as preview, m.content as full_content,
-               bm25(messages_fts) as rank
-        FROM messages m
-        JOIN sessions s ON m.session_id = s.id
-        JOIN messages_fts ON messages_fts.rowid = m.rowid
-        WHERE messages_fts MATCH ?
-    """
+    rows: list[tuple[sqlite3.Row, str]] = [
+        (r, "local")
+        for r in _search_schema(conn, "main", fts_query, since, before, limit)
+    ]
 
-    params: list = [fts_query]
+    full_attached = include_full and attach_full_db(conn)
+    if full_attached:
+        rows.extend(
+            (r, "full")
+            for r in _search_schema(
+                conn,
+                FULL_SCHEMA,
+                fts_query,
+                since,
+                before,
+                limit,
+                exclude_main_sessions=True,
+            )
+        )
+        # Merge across tiers: BM25 is more negative = more relevant.
+        rows.sort(key=lambda item: (item[0]["rank"], item[0]["timestamp"] or ""))
+        rows = rows[:limit]
 
-    # Add date filtering
-    date_filter, date_params = build_date_filter(since, before)
-    if date_filter:
-        base_query += f" AND ({date_filter.replace('updated_at', 'm.timestamp')})"
-        params.extend(date_params)
-
-    # Order by relevance (BM25 score), then timestamp
-    base_query += " ORDER BY rank, m.timestamp DESC LIMIT ?"
-    params.append(limit)
-
-    results = conn.execute(base_query, params).fetchall()
+    results = rows
 
     if output_format == "json":
         # JSON output
         output = []
-        for r in results:
+        for r, tier in results:
             output.append(
                 {
                     "source": r["source"],
@@ -112,6 +165,7 @@ def search(
                     "timestamp": r["timestamp"] or "unknown",
                     "preview": r["preview"],
                     "full_content": r["full_content"],
+                    "tier": tier,
                 }
             )
         print(json.dumps(output, indent=2))
@@ -123,21 +177,24 @@ def search(
         print(f"**Results:** {len(results)}\n")
         print("---\n")
 
-        for i, r in enumerate(results, 1):
+        for i, (r, tier) in enumerate(results, 1):
             print(f"## Result {i}")
             print(f"- **Source:** {r['source']}")
             print(f"- **Project:** {r['project_path']}")
             print(f"- **Session:** {r['session_id'][:20]}...")
             print(f"- **Role:** {r['role']}")
             print(f"- **Timestamp:** {r['timestamp'] or 'unknown'}")
+            if tier == "full":
+                print("- **Tier:** full history (pruned locally)")
             print("**Preview:**")
             print(f"```\n{r['preview']}\n```\n")
             print("---\n")
 
     else:
         # Table output (default)
-        for r in results:
-            print(f"\n[{r['source']}] {r['project_path']}")
+        for r, tier in results:
+            tier_tag = " [full]" if tier == "full" else ""
+            print(f"\n[{r['source']}]{tier_tag} {r['project_path']}")
             print(f"  {r['role']} @ {r['timestamp'] or 'unknown'}")
             print(f"  {r['preview']}...")
 

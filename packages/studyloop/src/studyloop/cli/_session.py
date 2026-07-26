@@ -84,6 +84,18 @@ def session_start(topic: str, energy: int) -> None:
     console.print("\n  [dim]The study dashboard will update as your AI mentor teaches.[/dim]")
     console.print("  [dim]Open 'studyloop web' in a browser for the visual dashboard.[/dim]")
 
+    # Tiering: session start triggers a background incremental sync of
+    # sessions.db into the configured full DB. Defensive import —
+    # agent-session-tools is an optional dependency and a missing/failed
+    # sync must never block a study session.
+    try:
+        from agent_session_tools.tiering import maybe_spawn_sync
+
+        if maybe_spawn_sync():
+            console.print("  [dim]↻ Session-DB sync started in background.[/dim]")
+    except ImportError:
+        pass
+
 
 @session_group.command("end")
 @click.option("--notes", "-n", default="", help="Session notes.")

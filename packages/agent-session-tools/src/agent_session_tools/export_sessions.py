@@ -303,6 +303,15 @@ def _run_export(
 
     conn.close()
 
+    # Tiering: every export triggers a background incremental sync of the
+    # hot DB into the configured full DB (cadence per database.sync_mode).
+    # No-op when tiering is disabled or the target volume is unmounted —
+    # the stateless content-hash diff catches up automatically on remount.
+    from agent_session_tools.tiering import maybe_spawn_sync
+
+    if maybe_spawn_sync():
+        print("↻ Incremental sync to full DB started in background.")
+
 
 @app.command()
 def export(

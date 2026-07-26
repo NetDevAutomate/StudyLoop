@@ -75,14 +75,43 @@ db_option = typer.Option("-d", "--db", help="Database path (default: from config
 no_backup_option = typer.Option("--no-backup", help="Skip backup creation")
 
 
-def create_backup(db_path: Path) -> Path:
-    """Create a timestamped backup of the database."""
+def create_backup(db_path: Path) -> Path | None:
+    """Create a timestamped backup of the database, with rotation.
+
+    Refuses (returns None) when the DB exceeds ``database.backup_max_mb`` —
+    accumulating multi-GB full copies is how a 45GB disk incident happens.
+    At that size, snapshot the full DB instead (``session-maint snapshot``).
+    Old backups beyond ``database.backup_retention`` are rotated out.
+    """
+    cfg = _get_config()
+    db_cfg = cfg.get("database", {})
+    max_mb = float(db_cfg.get("backup_max_mb", 1024))
+    size_mb = db_path.stat().st_size / 1024 / 1024
+    if size_mb > max_mb:
+        print(
+            f"⚠️  Skipping full-copy backup: {db_path.name} is {size_mb:.0f} MB "
+            f"(limit {max_mb:.0f} MB). Use 'session-maint snapshot' / "
+            "'session-maint sync-full' for large databases."
+        )
+        logger.warning(
+            "backup skipped: %s is %.0f MB (limit %.0f MB)", db_path, size_mb, max_mb
+        )
+        return None
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = get_backup_dir(_get_config())
+    backup_dir = get_backup_dir(cfg)
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     backup_path = backup_dir / f"{db_path.stem}_backup_{timestamp}.db"
     shutil.copy2(db_path, backup_path)
+
+    # Rotation: keep only the newest N backups for this database stem.
+    retention = int(db_cfg.get("backup_retention", 5))
+    if retention > 0:
+        backups = sorted(backup_dir.glob(f"{db_path.stem}_backup_*.db"))
+        for old in backups[:-retention]:
+            old.unlink()
+            logger.info("backup rotation: removed %s", old.name)
 
     logger.info(f"Backup created: {backup_path}")
     print(f"✅ Backup created: {backup_path}")
@@ -218,7 +247,7 @@ def _schema(db_path: Path, detailed: bool = False) -> int:
 
 
 def _reindex(db_path: Path, backup: bool = True) -> int:
-    """Rebuild full-text search index."""
+    """Rebuild full-text search index from the messages table."""
     print(f"\n{'=' * 50}")
     print("REBUILD FTS INDEX")
     print(f"{'=' * 50}")
@@ -231,19 +260,29 @@ def _reindex(db_path: Path, backup: bool = True) -> int:
         create_backup(db_path)
 
     try:
+        from agent_session_tools.tiering import fts_integrity, repair_fts
+
         conn = sqlite3.connect(db_path)
 
-        print("🔧 Rebuilding messages_fts index...")
-        conn.execute("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')")
-
-        # Get count
-        count = conn.execute("SELECT COUNT(*) as cnt FROM messages_fts").fetchone()
+        before = fts_integrity(conn)
+        if not before.healthy:
+            print(
+                f"⚠️  FTS drift detected: {before.fts_rows:,} index rows for "
+                f"{before.messages_with_content:,} messages "
+                f"(drift {before.drift:+,})"
+            )
+        print("🔧 Rebuilding messages_fts index from messages table...")
+        # NOTE: FTS5's built-in ('rebuild') command rebuilds from the FTS
+        # table's OWN content store, so it preserves duplicated rows. A
+        # drifted index must be cleared and repopulated from messages —
+        # repair_fts does exactly that.
+        after = repair_fts(conn)
 
         conn.commit()
         conn.close()
 
-        print(f"✅ FTS index rebuilt successfully ({count[0]:,} entries)")
-        logger.info(f"FTS index rebuilt: {count[0]} entries")
+        print(f"✅ FTS index rebuilt successfully ({after.fts_rows:,} entries)")
+        logger.info(f"FTS index rebuilt: {after.fts_rows} entries")
         return 0
 
     except Exception as e:
@@ -660,6 +699,199 @@ def find_duplicates(
     db_path = db if db else _get_db_path()
     exit_code = _handle_duplicates(db_path, threshold, auto_merge, merge_ids)
     raise typer.Exit(exit_code)
+
+
+# ==================== Tiering Commands ====================
+
+
+@app.command("fts-check")
+def fts_check(
+    db: Annotated[Path | None, db_option] = None,
+    fix: Annotated[
+        bool, typer.Option("--fix", help="Rebuild the index when drift is found")
+    ] = False,
+) -> None:
+    """Check the FTS index invariant (one index row per message with content)."""
+    from agent_session_tools.tiering import fts_integrity, repair_fts
+
+    db_path = db if db else _get_db_path()
+    if not db_path.exists():
+        print(f"❌ Database not found: {db_path}")
+        raise typer.Exit(1)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        result = fts_integrity(conn)
+        if result.healthy:
+            print(
+                f"✅ FTS index consistent: {result.fts_rows:,} rows for "
+                f"{result.messages_with_content:,} messages"
+            )
+            raise typer.Exit(0)
+
+        print(
+            f"⚠️  FTS drift: {result.fts_rows:,} index rows for "
+            f"{result.messages_with_content:,} messages (drift {result.drift:+,})"
+        )
+        if not fix:
+            print("   Run with --fix to rebuild the index from the messages table.")
+            raise typer.Exit(1)
+
+        print("🔧 Rebuilding index...")
+        after = repair_fts(conn)
+        conn.commit()
+        print(f"✅ Rebuilt: {after.fts_rows:,} entries (drift now {after.drift:+,})")
+        raise typer.Exit(0 if after.healthy else 1)
+    finally:
+        conn.close()
+
+
+@app.command()
+def compact(
+    source: Annotated[Path, typer.Argument(help="Bloated source database (read-only)")],
+    dest: Annotated[Path, typer.Argument(help="Destination for the clean database")],
+) -> None:
+    """Rescue a bloated database into a fresh one (rebuilds FTS exactly once).
+
+    The source is opened read-only and never modified. Refuses to overwrite
+    an existing destination.
+    """
+    from agent_session_tools.tiering import compact_database
+
+    print(f"\n{'=' * 50}")
+    print("COMPACT DATABASE")
+    print(f"{'=' * 50}")
+    try:
+        stats = compact_database(source, dest)
+    except (FileNotFoundError, FileExistsError) as exc:
+        print(f"❌ {exc}")
+        raise typer.Exit(1) from exc
+
+    print(
+        f"Source: {stats.source_size_mb:,.1f} MB -> Dest: {stats.dest_size_mb:,.1f} MB"
+    )
+    for table, rows in sorted(stats.tables_copied.items()):
+        print(f"  • {table}: {rows:,} rows")
+    if stats.fts:
+        status = (
+            "✅ consistent" if stats.fts.healthy else f"⚠️ drift {stats.fts.drift:+,}"
+        )
+        print(f"FTS index: {stats.fts.fts_rows:,} rows ({status})")
+    print(f"✅ Compacted database written: {dest}")
+
+
+@app.command("sync-full")
+def sync_full(
+    db: Annotated[Path | None, db_option] = None,
+    quiet: Annotated[bool, typer.Option("--quiet", help="Suppress output")] = False,
+) -> None:
+    """Incrementally sync the hot DB into the configured full DB (idempotent)."""
+    from agent_session_tools.tiering import (
+        acquire_sync_lock,
+        release_sync_lock,
+        sync_to_full,
+        write_sync_marker,
+    )
+
+    if not acquire_sync_lock():
+        if not quiet:
+            print("⏳ Another sync is already running — skipping.")
+        raise typer.Exit(0)
+    try:
+        stats = sync_to_full(hot=db)
+        write_sync_marker()
+        if not quiet:
+            print(
+                f"✅ Synced {stats.sessions_synced} session(s) "
+                f"({stats.messages_synced} messages) — "
+                f"full DB holds {stats.sessions_total_full:,} sessions"
+            )
+        # Periodic point-in-time protection for the record itself.
+        from agent_session_tools.tiering import maybe_snapshot
+
+        snap = maybe_snapshot()
+        if snap and not quiet:
+            print(f"📸 Auto-snapshot created: {snap}")
+    except (ValueError, FileNotFoundError) as exc:
+        if not quiet:
+            print(f"❌ {exc}")
+        logger.warning("sync-full skipped: %s", exc)
+        raise typer.Exit(1) from exc
+    finally:
+        release_sync_lock()
+
+
+@app.command()
+def snapshot(
+    retain: Annotated[
+        int | None,
+        typer.Option("--retain", help="Snapshots to keep (default: from config)"),
+    ] = None,
+) -> None:
+    """Create a point-in-time snapshot of the full DB, rotating old snapshots."""
+    from agent_session_tools.tiering import create_snapshot
+
+    try:
+        path = create_snapshot(retain=retain)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"❌ {exc}")
+        raise typer.Exit(1) from exc
+    print(f"✅ Snapshot created: {path}")
+
+
+@app.command()
+def prune(
+    days: Annotated[
+        int, typer.Option("--days", help="Prune sessions older than N days")
+    ] = 30,
+    db: Annotated[Path | None, db_option] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run/--no-dry-run", help="Preview without deleting"),
+    ] = True,
+    no_vacuum: Annotated[
+        bool, typer.Option("--no-vacuum", help="Skip VACUUM after prune")
+    ] = False,
+) -> None:
+    """Prune old sessions from the hot DB — only those verified in the full DB.
+
+    Runs in dry-run mode by default; pass --no-dry-run to actually delete.
+    A session is only deleted when the full DB holds the same session with a
+    matching content hash and at least as many messages. Learning tables are
+    never touched.
+    """
+    from agent_session_tools.tiering import prune_hot
+
+    print(f"\n{'=' * 50}")
+    print(f"PRUNE HOT DB (older than {days} days){' — DRY RUN' if dry_run else ''}")
+    print(f"{'=' * 50}")
+    try:
+        stats = prune_hot(days=days, hot=db, dry_run=dry_run, vacuum=not no_vacuum)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"❌ {exc}")
+        raise typer.Exit(1) from exc
+
+    print(f"Candidates older than {days} days: {stats.candidates}")
+    print(f"Verified present in full DB:       {stats.verified}")
+    if stats.skipped_unverified:
+        print(f"⚠️  Skipped (NOT in full DB):       {stats.skipped_unverified}")
+        for sid in stats.skipped_ids[:5]:
+            print(f"     - {sid}")
+        if len(stats.skipped_ids) > 5:
+            print(f"     ... and {len(stats.skipped_ids) - 5} more")
+        print("   Run 'session-maint sync-full' to back them up first.")
+    if dry_run:
+        print(
+            f"\nDry run: would delete {stats.verified} session(s) "
+            f"({stats.messages_deleted:,} messages). "
+            "Pass --no-dry-run to apply."
+        )
+    else:
+        print(
+            f"✅ Deleted {stats.sessions_deleted} session(s) "
+            f"({stats.messages_deleted:,} messages), "
+            f"reclaimed {stats.reclaimed_mb:.1f} MB"
+        )
 
 
 # ==================== Main Entry Point ====================
