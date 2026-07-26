@@ -148,6 +148,16 @@ studyloop web                        # Launch flashcard/quiz PWA
 studyloop backlog list               # Cross-session study backlog
 studyloop clean --dry-run            # Preview orphan session cleanup
 
+# Focus & session-DB tiering
+studyloop focus                      # Show current focus topics (max 3)
+studyloop focus suggest              # Suggest focus from recent sessions + struggles
+studyloop focus set "python" "sql"   # Confirm up to 3 focus topics
+studyloop prune --days 30            # Preview pruning old local sessions (dry run)
+studyloop prune --days 30 --apply    # Delete — only sessions verified in the full DB
+session-maint sync-full              # Incremental sync of sessions.db -> full DB
+session-maint snapshot               # Point-in-time snapshot of the full DB (rotated)
+session-maint fts-check --fix        # Check/repair the FTS index invariant
+
 # Status/topics
 studyloop status                     # Show sync status
 studyloop topics                     # List configured course topics (config.yaml)
@@ -235,6 +245,7 @@ sudo apt install ttyd        # Linux (or build from source)
 - [Setup Guide](docs/setup-guide.md) — installation and configuration
 - [Your First Week](docs/first-week.md) — minimal day-by-day onboarding
 - [Architecture](docs/architecture.md) — current and target architecture
+- [Session-DB Tiering](docs/session-db-tiering.md) — hot/full DB tiers, sync, prune, snapshots, restore procedures
 - [Content Pipeline](docs/content-pipeline.md) — local generation of review artefacts
 - [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
 - [Web UI Guide](docs/web-ui-guide.md) — live sessions, terminal fallback, flashcards, quizzes

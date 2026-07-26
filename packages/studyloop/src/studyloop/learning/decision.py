@@ -450,6 +450,16 @@ def _modality_matches(candidate: _Candidate, modality: Modality) -> bool:
     return modality == "recall" and candidate.action_type in {"recall", "teachback"}
 
 
+def _focus_topics() -> list[str]:
+    """Current focus topics (attention filter), best-effort."""
+    try:
+        from studyloop.focus import get_focus
+
+        return get_focus().topics
+    except Exception:
+        return []
+
+
 def _score_candidates(
     candidates: list[_Candidate],
     *,
@@ -458,9 +468,21 @@ def _score_candidates(
     interleave: InterleaveMode,
 ) -> list[_Candidate]:
     last_topic = _last_focus_topic(candidates)
+    focus_topics = _focus_topics()
     scored: list[_Candidate] = []
     for candidate in candidates:
         score = candidate.score
+        if focus_topics:
+            from studyloop.focus import matches_focus
+
+            if matches_focus(candidate.topic, focus_topics) or (
+                candidate.course and matches_focus(candidate.course, focus_topics)
+            ):
+                score += 22
+            else:
+                # Out-of-focus work still surfaces when nothing in-focus is
+                # due, but focus wins ties decisively.
+                score -= 12
         if _modality_matches(candidate, modality):
             score += 18
         if modality == "audio":

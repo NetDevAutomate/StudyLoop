@@ -115,8 +115,7 @@ def check_sessions_db() -> list[CheckResult]:
     try:
         conn = sqlite3.connect(db_path)
         conn.execute("PRAGMA integrity_check")
-        conn.close()
-        return [
+        results = [
             CheckResult(
                 "database",
                 "sessions_db",
@@ -126,6 +125,9 @@ def check_sessions_db() -> list[CheckResult]:
                 fix_auto=False,
             )
         ]
+        results.extend(_check_fts_drift(conn, db_path))
+        conn.close()
+        return results
     except sqlite3.DatabaseError as exc:
         return [
             CheckResult(
@@ -137,3 +139,46 @@ def check_sessions_db() -> list[CheckResult]:
                 fix_auto=False,
             )
         ]
+
+
+def _check_fts_drift(conn: sqlite3.Connection, db_path: Path) -> list[CheckResult]:
+    """Check the FTS invariant: index rows == messages with content.
+
+    A drifting index is the failure mode that once grew a sessions DB to
+    45GB (the same 32MB of messages indexed ~586 times by a non-idempotent
+    export path). Catch it the day it starts, on every machine.
+    """
+    try:
+        messages = conn.execute(
+            "SELECT COUNT(*) FROM messages WHERE content IS NOT NULL"
+        ).fetchone()[0]
+        fts_rows = conn.execute("SELECT COUNT(*) FROM messages_fts").fetchone()[0]
+    except sqlite3.OperationalError:
+        # Tables not created yet (fresh DB) — nothing to check.
+        return []
+
+    drift = fts_rows - messages
+    if drift == 0:
+        return [
+            CheckResult(
+                "database",
+                "sessions_fts",
+                "pass",
+                f"FTS index consistent ({fts_rows:,} rows)",
+                "",
+                fix_auto=False,
+            )
+        ]
+    # Any drift is an invariant violation; large drift means the index is
+    # being duplicated and the DB will bloat without bound.
+    severity = "fail" if abs(drift) > max(100, messages // 10) else "warn"
+    return [
+        CheckResult(
+            "database",
+            "sessions_fts",
+            severity,
+            f"FTS index drift: {fts_rows:,} index rows for {messages:,} messages ({drift:+,})",
+            "session-maint fts-check --fix",
+            fix_auto=False,
+        )
+    ]
