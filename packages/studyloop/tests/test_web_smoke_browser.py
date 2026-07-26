@@ -544,3 +544,49 @@ def test_course_list_no_false_empty_flash(web_page: Page) -> None:
     assert not fc_view.locator("h2", has_text="No courses found").is_visible()
     # After the fetch resolves empty, the true empty state appears.
     fc_view.locator("h2", has_text="No courses found").wait_for(state="visible", timeout=5000)
+
+
+def test_terminal_flex_chain_allows_shrink(web_page: Page) -> None:
+    """The xterm mount must shrink with its container (min-width regression).
+
+    Flex items default to ``min-width: auto`` and refuse to shrink below
+    their content's intrinsic width. xterm.js renders its screen at a fixed
+    pixel width, so without an explicit ``min-width: 0`` down the terminal
+    flex chain the browser could grow the terminal but never shrink it —
+    the ResizeObserver never fired on narrow. Verify against the real
+    stylesheet by mounting the production class chain with an over-wide
+    child and shrinking the outer container.
+    """
+    _goto(web_page)
+    result = web_page.evaluate(
+        """
+        () => {
+          const outer = document.createElement('div');
+          outer.style.cssText = 'position:fixed;left:0;top:0;width:800px;height:400px;display:flex;';
+          outer.innerHTML = `
+            <div class="session-terminal-area agent-console" style="display:flex;flex-direction:column;">
+              <div class="embedded-terminal-panel xterm-panel">
+                <div class="embedded-terminal-content xterm-content">
+                  <div class="xterm-mount">
+                    <div style="width:1200px;height:10px;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          document.body.appendChild(outer);
+          const mount = outer.querySelector('.xterm-mount');
+          const wide = mount.clientWidth;
+          outer.style.width = '400px';
+          // Force layout
+          const narrow = mount.getBoundingClientRect().width;
+          const styles = getComputedStyle(mount);
+          const overflow = styles.overflow;
+          outer.remove();
+          return { wide, narrow, overflow };
+        }
+        """
+    )
+    # The mount tracked the container down, despite the 1200px-wide child.
+    assert result["wide"] > 700, result
+    assert result["narrow"] <= 400, result
+    assert result["overflow"] == "hidden", result
