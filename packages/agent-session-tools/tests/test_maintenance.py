@@ -156,6 +156,7 @@ class TestCreateBackup:
         ):
             backup_path = create_backup(db_path)
 
+        assert backup_path is not None
         assert backup_path.exists()
         assert backup_path.suffix == ".db"
         assert "backup_" in backup_path.name
@@ -170,6 +171,7 @@ class TestCreateBackup:
         ):
             backup_path = create_backup(db_path)
 
+        assert backup_path is not None
         # Verify backup contains the same data
         conn = sqlite3.connect(backup_path)
         row = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()
@@ -187,6 +189,56 @@ class TestCreateBackup:
             create_backup(db_path)
 
         assert backup_dir.exists()
+
+    def test_backup_refuses_database_over_size_limit(self, tmp_path, capsys):
+        db_path = _make_db(tmp_path)
+        backup_dir = tmp_path / "backups"
+        config = {"database": {"backup_max_mb": 0}}
+
+        with (
+            patch("agent_session_tools.maintenance._get_config", return_value=config),
+            patch(
+                "agent_session_tools.maintenance.get_backup_dir",
+                return_value=backup_dir,
+            ),
+        ):
+            backup_path = create_backup(db_path)
+
+        assert backup_path is None
+        assert not backup_dir.exists()
+        output = capsys.readouterr().out
+        assert "Skipping full-copy backup" in output
+        assert "session-maint snapshot" in output
+
+    def test_backup_rotates_old_files_beyond_retention(self, tmp_path):
+        db_path = _make_db(tmp_path)
+        backup_dir = tmp_path / "backups"
+        backup_dir.mkdir()
+        old_backups = [
+            backup_dir / f"sessions_backup_2024010{day}_000000.db"
+            for day in range(1, 4)
+        ]
+        for backup in old_backups:
+            backup.write_text("old backup")
+        unrelated = backup_dir / "other_backup_20240101_000000.db"
+        unrelated.write_text("unrelated backup")
+        config = {"database": {"backup_max_mb": 1024, "backup_retention": 2}}
+
+        with (
+            patch("agent_session_tools.maintenance._get_config", return_value=config),
+            patch(
+                "agent_session_tools.maintenance.get_backup_dir",
+                return_value=backup_dir,
+            ),
+        ):
+            backup_path = create_backup(db_path)
+
+        assert backup_path is not None
+        assert sorted(backup_dir.glob("sessions_backup_*.db")) == [
+            old_backups[-1],
+            backup_path,
+        ]
+        assert unrelated.exists()
 
 
 # ---------------------------------------------------------------------------
