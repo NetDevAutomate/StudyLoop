@@ -74,6 +74,15 @@ typecheck:
 docs:
     NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
 
+# Structural validation of openspec/specs + openspec/changes.
+# Skips (does not fail) when the openspec CLI is not installed.
+spec-check:
+    if command -v openspec >/dev/null 2>&1; then \
+        openspec validate --specs --all; \
+    else \
+        echo "openspec CLI not found — skipping spec validation (see docs/openspec.md)"; \
+    fi
+
 audit:
     uv --quiet export --all-packages --group dev --no-emit-workspace --format requirements-txt -o /tmp/studyloop-requirements.txt
     uv tool run pip-audit -r /tmp/studyloop-requirements.txt --strict --no-deps --disable-pip
@@ -96,6 +105,6 @@ release-consistency:
 prepare-release version:
     uv run python scripts/prepare-release.py {{version}}
 
-preflight: lint typecheck test docs release-consistency
+preflight: lint typecheck test docs release-consistency spec-check
 
 release-check: test lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed
