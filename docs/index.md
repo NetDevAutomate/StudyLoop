@@ -100,6 +100,7 @@ graph LR
 - **[Content Pipeline](content-pipeline.md)** — local review artefact generation from study sources
 - **[Architecture](architecture.md)** — current and target architecture docs
 - **[Target Architecture](architecture/target.md)** — plugin architecture, ACP/PTY live sessions, macOS/iOS direction
+- **[Architecture Decision Records](adr/README.md)** — why load-bearing choices were made, and what was rejected
 - **[TUI Sidebar Guide](tui-guide.md)** — Terminal sidebar layout, timer modes, key bindings
 - **[Web UI Guide](web-ui-guide.md)** — live sessions, session dashboard, terminal fallback, review UI
 - **[Session Protocol](session-protocol.md)** — How every study session flows, from arrival to close
