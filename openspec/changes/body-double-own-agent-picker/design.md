@@ -35,6 +35,16 @@ Constraints in play:
 - `transport: "ttyd"` is still a supported, spec'd fallback, forceable via
   `STUDYLOOP_TRANSPORT`.
 - Alpine initialises `x-data` under `x-show`. Hidden components are live.
+- Macmini commit `f29567c` adds `min-width: 0` down the modern terminal flex
+  chain (`.session-terminal-area` at `style.css:1796`,
+  `.embedded-terminal-panel` at `:1814`, `.embedded-terminal-content` /
+  `.xterm-content`, and `.xterm-mount` at `:2115`) plus
+  `overflow: hidden` on the mount. The Body Double console MUST preserve this
+  production class chain; otherwise the new xterm will reintroduce the
+  grow-but-never-shrink defect. The older references remain valid after the
+  merge: `.body-double-*` is still `style.css:337-365`,
+  `main:has(.split-container)` is still `:1570`, and the Body Double /
+  picker / console locations in `index.html` did not move.
 - Seven existing test groups touch this markup; three of them
   (`.body-double-header` geometry, `.body-double-controls` e2e Pomodoro,
   `[x-show*="body-double"]` nav wiring) must keep passing unchanged.

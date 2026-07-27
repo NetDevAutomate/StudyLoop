@@ -14,9 +14,11 @@
       `VIRTUAL_ENV=.venv uv run --active pytest packages/studyloop/tests/test_web_session_lifecycle.py packages/studyloop/tests/test_terminal_proxy.py packages/studyloop/tests/test_mcp_session_parity.py -q`
       then
       `VIRTUAL_ENV=.venv uv run --active pytest packages/studyloop/tests/test_web_navigation.py packages/studyloop/tests/test_web_terminal.py packages/studyloop/tests/test_web_layout_regression.py -q -m e2e`
-- [ ] 1.3a Known baseline state as of `a0fe6f0` (measured 2026-07-25):
-      default-marker set `28 passed`; e2e set `1 failed, 39 passed, 4 skipped`.
-      The one failure is **pre-existing and unrelated** —
+- [ ] 1.3a Known baseline state after macmini merge `82a3fbb` (measured
+      2026-07-27): default-marker set `28 passed`; marked e2e set
+      `1 failed, 39 passed, 4 skipped`; representative Body Double Pomodoro
+      journey `1 passed, 8 deselected`. The one failure is unchanged from the
+      pre-merge `a0fe6f0` baseline and unrelated —
       `TestQuizzesConfigNavLayout::test_config_nav_title_is_centered`, filed as
       `docs/issues/0001-quizzes-config-nav-title-not-centered.md`. Do not
       attribute it to this change; do not fix it in this change.
@@ -80,7 +82,12 @@
       `grep -c "terminalPanel()" index.html` is exactly 1.
 - [ ] 4.4 Confirm no `.body-double-*` CSS rule (`style.css:337-365`) or the
       `main:has(.split-container)` override (`:1570`) breaks with the picker
-      present.
+      present. Preserve the modern terminal's shrink-safe production class
+      chain introduced by macmini commit `f29567c`: `.session-terminal-area`
+      (`:1796`), `.embedded-terminal-panel` (`:1814`),
+      `.embedded-terminal-content` / `.xterm-content`, and `.xterm-mount`
+      (`:2115`) must retain `min-width: 0`; the mount retains
+      `overflow: hidden`.
 
 ## 5. Remove the dead session-type path
 
