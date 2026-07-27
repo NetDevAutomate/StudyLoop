@@ -70,6 +70,9 @@ from studyloop.cli._lazy import LazyGroup
         # _backup.py — backup and restore user data
         "backup": "studyloop.cli._backup:backup",
         "restore": "studyloop.cli._backup:restore",
+        # _focus.py — focus topics (attention filter) + hot-DB pruning
+        "focus": "studyloop.cli._focus:focus_group",
+        "prune": "studyloop.cli._focus:prune",
     },
 )
 @click.version_option()

@@ -1796,6 +1796,10 @@ main:has(.split-container) .session-dashboard {
 .session-terminal-area {
   flex: 1;
   min-height: 0;
+  min-width: 0; /* flex items default to min-width:auto and refuse to shrink
+                   below content width — xterm renders at fixed px width, so
+                   without this the browser can grow the terminal but never
+                   shrink it (ResizeObserver never fires on narrow). */
   position: relative;
   background: #1a1b26;
 }
@@ -1810,6 +1814,7 @@ main:has(.split-container) .session-dashboard {
 .embedded-terminal-panel {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1927,6 +1932,7 @@ main:has(.split-container) .session-dashboard {
   position: relative;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   background: #1a1b26;
 }
 
@@ -2102,12 +2108,16 @@ main:has(.split-container) .session-dashboard {
   position: relative;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
 }
 
 .xterm-mount {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden; /* xterm's screen is sized in px by fit(); never let it
+                       prop the flex box open and block shrinking. */
   background: var(--bg);
   padding: 6px 8px 8px;
   outline: none;
