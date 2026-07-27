@@ -10,6 +10,7 @@ How to set up a development environment, add features, and submit changes.
 - [Running Tests](#running-tests)
 - [Release Build](#release-build)
 - [Project Structure](#project-structure)
+- [Spec-Driven Changes (OpenSpec)](#spec-driven-changes-openspec)
 - [How to Add a New Session Exporter](#how-to-add-a-new-session-exporter)
 - [How to Add a New Study Topic](#how-to-add-a-new-study-topic)
 - [How to Modify Agent Behaviour](#how-to-modify-agent-behaviour)
@@ -243,6 +244,43 @@ Codex is intentionally excluded (no codex source in `SOURCE_CHOICES` yet).
 The wiring lives in `installers.py` (`_HARNESS_EXPORT`,
 `install_session_db_mandate`, `install_claude_stop_hook`) and the doctor check
 in `doctor/harness.py`.
+
+## Spec-Driven Changes (OpenSpec)
+
+Behaviour is specified in `openspec/`, not only in code and PR descriptions.
+Full contract: [OpenSpec Framework](openspec.md) (`docs/openspec.md`).
+
+- `openspec/specs/<capability>/spec.md` — the 18 capability specs describe
+  behaviour that is **already shipped**, warts included. They were written by
+  reading the checkout, so a spec that disagrees with the code is a bug in
+  the spec.
+- `openspec/changes/<change-id>/` — work in flight: `proposal.md`,
+  `design.md`, `tasks.md`, plus a spec delta per affected capability.
+  `openspec archive <id>` folds the deltas into `specs/` when the work lands.
+
+Before you start a behavioural change:
+
+```bash
+openspec list --specs                          # find the owning capability
+openspec show <capability> --type spec         # read its current requirements
+```
+
+Then propose the change (the `openspec-propose` skill runs these):
+
+```bash
+openspec new change "<kebab-id>"
+openspec status --change "<kebab-id>"
+```
+
+Skip the ceremony for typos, dependency bumps with no behaviour delta,
+test-only additions, and doc edits. Do **not** skip it when a fix changes
+behaviour a requirement describes — update that requirement.
+
+Validate before pushing:
+
+```bash
+just spec-check      # also runs inside just preflight
+```
 
 ## How to Add a New Session Exporter
 

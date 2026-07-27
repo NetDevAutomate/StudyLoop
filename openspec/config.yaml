@@ -50,11 +50,25 @@ context: |
 
   MANDATORY: Invoke the 'openspec-plus-apply' skill immediately when openspec-apply-change is invoked
 
+  Spec baseline: `openspec/specs/` holds 18 capability specs written
+  retrospectively (July 2026) by reading the checkout, and they describe
+  shipped behaviour including its defects (e.g. scrubber gaps, dry-run-only
+  `content ingest`, missing service worker). One owner per requirement — find
+  the owning capability in `docs/openspec.md` before changing behaviour, and
+  add a spec delta under `changes/<id>/specs/<capability>/spec.md` rather
+  than editing `openspec/specs/` directly. `docs/openspec.md` is the
+  going-forward contract for this workflow.
+
 rules:
   proposal:
     - "MANDATORY: Invoke the 'openspec-plus-proposal' skill BEFORE writing the proposal."
   specs:
     - "MANDATORY: Invoke the 'openspec-plus-spec' skill BEFORE writing any specification."
+    - "Requirement headings are assertive sentence-cased claims, never topic labels."
+    - "Every requirement names the real module/function/path that implements it, verified in the checkout — docs and handoff notes are claims, not evidence."
+    - "Every requirement has at least one scenario; 5-9 requirements per capability; prose wraps at ~76 columns."
+    - "Specify current behaviour including known defects; never silently spec the fixed version."
+    - "Reference other capabilities' requirements, never duplicate them."
   design:
     - "MANDATORY: Invoke the 'openspec-plus-design' skill BEFORE writing the design document."
   tasks:
