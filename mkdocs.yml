@@ -93,11 +93,17 @@ nav:
     - Socratic Engine: socratic-engine.md
     - Network Bridges: network-bridges.md
     - Ownership Map: ownership.md
+    - OpenSpec Framework: openspec.md
     - Repository Standards: standards/repo-standards.md
   - Troubleshooting:
     - General Troubleshooting: troubleshooting.md
     - pi / omp Harnesses: troubleshooting/pi-omp.md
   - Governance:
+    - Architecture Decisions: adr/README.md
+    - "ADR-0001 Body Double reuses session start": adr/0001-body-double-reuses-session-start-endpoint.md
+    - "ADR-0002 Origin-scoped live agent console": adr/0002-origin-scoped-live-agent-console.md
+    - "ADR-0003 Body Double exempt from park-first": adr/0003-body-double-exempt-from-park-first-friction.md
+    - "ADR-0004 Unmount terminalPanel": adr/0004-retire-terminal-panel-from-body-double.md
     - Audit 2026-05-09: audit/2026_05_09_audit.md
     - Planning 2026-05-09: planning/2026_05_09_planning.md
     - Release Process: release-process.md
