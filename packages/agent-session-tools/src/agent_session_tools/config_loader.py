@@ -28,6 +28,27 @@ DEFAULT_CONFIG = {
         "path": str(CONFIG_DIR / "sessions.db"),
         "archive_path": str(CONFIG_DIR / "sessions_archive.db"),
         "backup_dir": str(CONFIG_DIR / "backups"),
+        # Tiering: complete-history DB (e.g. on an external volume).
+        # Empty string = tiering disabled. See tiering.py.
+        "full_db_path": "",
+        # Sync cadence for the background hot->full sync: "always" (every
+        # export/session trigger; record trails the spool by seconds) or
+        # "daily" (first trigger of the day only).
+        "sync_mode": "always",
+        # Auto-snapshot the full DB after a sync when the newest snapshot is
+        # older than this many days. 0 = manual snapshots only.
+        "snapshot_interval_days": 7,
+        # Point-in-time snapshots of the full DB. Empty = fall back to
+        # backup_dir. Keep maintenance backups local and snapshots on the
+        # same volume as the full DB.
+        "snapshot_dir": "",
+        # Point-in-time snapshots of the full DB to keep (rotation).
+        "snapshot_retention": 7,
+        # Timestamped maintenance backups of the hot DB to keep (rotation).
+        "backup_retention": 5,
+        # Refuse full-copy maintenance backups above this size (MB) — at
+        # multi-GB sizes use snapshots of the full DB instead.
+        "backup_max_mb": 1024,
     },
     "thresholds": {
         "warning_mb": 100,
@@ -151,6 +172,8 @@ def get_endpoints(config: dict[str, Any] | None = None) -> dict[str, dict[str, A
             endpoints[name] = {
                 "username": host.get("user", ""),
                 "path": host.get("sessions_db", str(get_config_dir() / "sessions.db")),
+                # Tier-aware sync: remote full-history DB path (optional).
+                "full_path": host.get("full_db", ""),
                 "ip_address": ip_address,
             }
 
@@ -214,6 +237,14 @@ def load_config() -> dict[str, Any]:
     config["database"]["backup_dir"] = str(
         expand_path(config["database"]["backup_dir"])
     )
+    if config["database"].get("full_db_path"):
+        config["database"]["full_db_path"] = str(
+            expand_path(config["database"]["full_db_path"])
+        )
+    if config["database"].get("snapshot_dir"):
+        config["database"]["snapshot_dir"] = str(
+            expand_path(config["database"]["snapshot_dir"])
+        )
     config["logging"]["path"] = str(expand_path(config["logging"]["path"]))
 
     # Expand obsidian vault_path if the section is present

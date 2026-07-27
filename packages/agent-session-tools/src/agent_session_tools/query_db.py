@@ -44,3 +44,27 @@ def get_connection(db: Path | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+FULL_SCHEMA = "full_db"
+
+
+def attach_full_db(conn: sqlite3.Connection) -> bool:
+    """Attach the configured full-history DB as ``full_db``, if available.
+
+    Returns True when attached. Quietly returns False when tiering is not
+    configured or the full DB is unreachable (e.g. external volume
+    unmounted) — readers federate opportunistically, they never *depend*
+    on the full DB being present.
+    """
+    try:
+        from agent_session_tools.tiering import get_full_db_path
+
+        full = get_full_db_path(_get_config())
+        if full is None or not full.exists():
+            return False
+        conn.execute(f"ATTACH DATABASE ? AS {FULL_SCHEMA}", (str(full),))
+        return True
+    except sqlite3.Error as exc:
+        logger.debug("full DB attach skipped: %s", exc)
+        return False

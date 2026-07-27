@@ -94,10 +94,24 @@ def search_cmd(
     output_format: Annotated[
         str, typer.Option("--output-format", help="Output format")
     ] = "table",
+    local_only: Annotated[
+        bool,
+        typer.Option(
+            "--local-only",
+            help="Search only the local DB (skip the full-history DB)",
+        ),
+    ] = False,
 ) -> None:
-    """Full-text search across message content."""
+    """Full-text search across message content.
+
+    Federated by default: when a full-history DB is configured
+    (database.full_db_path) and reachable, results include pruned history,
+    tagged [full]. Falls back to local-only when the volume is unmounted.
+    """
     conn = get_connection(db)
-    search(conn, query, limit, since, before, output_format)
+    search(
+        conn, query, limit, since, before, output_format, include_full=not local_only
+    )
     conn.close()
 
 

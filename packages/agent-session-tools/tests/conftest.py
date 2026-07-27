@@ -9,6 +9,26 @@ import pytest
 from agent_session_tools.migrations import migrate
 
 
+@pytest.fixture(autouse=True)
+def _isolated_studyloop_config(tmp_path, monkeypatch):
+    """Point every test at a non-existent config so ambient user config
+    (real DB paths, tiering full_db_path) can never leak into tests.
+
+    Tests that need specific config set STUDYLOOP_CONFIG themselves after
+    this fixture. Module-level config caches are reset for the same reason.
+    """
+    monkeypatch.setenv(
+        "STUDYLOOP_CONFIG", str(tmp_path / "isolated-studyloop-config.yaml")
+    )
+    import agent_session_tools.maintenance as maintenance_mod
+    import agent_session_tools.query_db as query_db_mod
+    import agent_session_tools.sync as sync_mod
+
+    monkeypatch.setattr(query_db_mod, "_config", None)
+    monkeypatch.setattr(sync_mod, "_config", None)
+    monkeypatch.setattr(maintenance_mod, "_config", None)
+
+
 @pytest.fixture
 def temp_db():
     """Create a temporary SQLite database for testing."""
