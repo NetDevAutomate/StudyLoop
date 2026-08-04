@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.12"
 
       - name: Install workspace dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --all-packages --all-extras --group dev
 
       - name: Release consistency
         run: |
@@ -63,11 +63,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # need tags for version detection
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.12"
 
