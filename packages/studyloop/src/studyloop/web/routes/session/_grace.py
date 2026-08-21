@@ -103,6 +103,18 @@ POLL_SECONDS = 0.5
 #: nothing and keeps "I ended it in a terminal" feeling immediate.
 REAP_INTERVAL_SECONDS = 5.0
 
+#: Env override for the reaper interval, in seconds.
+#:
+#: Exists for the same reason ``STUDYLOOP_WS_GRACE_SECONDS`` does: a test that
+#: shortens the detach window to a few seconds leaves the reaper ticking at the
+#: production 5 s, so the window always expires first and the reaper's
+#: "the agent is gone" branch can never be observed. The release is then always
+#: recorded as ``grace_expired``, never ``agent_exited`` — not because the code
+#: is wrong, but because the test gave it no tick to fire in. Shortening one
+#: clock without the other is exactly the hazard ``UNATTACHED_GRACE_SECONDS``
+#: warns about above.
+_REAP_ENV = "STUDYLOOP_REAP_INTERVAL_SECONDS"
+
 #: How long a session must have held the slot before the reaper will believe
 #: the IPC state file about it.
 #:
@@ -393,7 +405,7 @@ def start_reaper(*, interval: float | None = None) -> None:
     if reaper_running():
         return
     _reaper = asyncio.create_task(
-        _reaper_loop(REAP_INTERVAL_SECONDS if interval is None else interval),
+        _reaper_loop(_reap_interval_from_env() if interval is None else interval),
         name="session-slot-reaper",
     )
 
@@ -502,6 +514,22 @@ async def _reaper_loop(interval: float) -> None:
             raise
         except Exception:  # pragma: no cover — defensive
             logger.exception("session slot reaper tick failed")
+
+
+def _reap_interval_from_env() -> float:
+    """Reaper tick interval, overridable for tests. Mirrors _grace_from_env."""
+    raw = os.environ.get(_REAP_ENV, "").strip()
+    if not raw:
+        return REAP_INTERVAL_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning("ignoring invalid %s=%r", _REAP_ENV, raw)
+        return REAP_INTERVAL_SECONDS
+    if value <= 0:
+        logger.warning("ignoring non-positive %s=%r", _REAP_ENV, raw)
+        return REAP_INTERVAL_SECONDS
+    return value
 
 
 async def shutdown() -> None:

@@ -99,7 +99,12 @@ class Server:
             root,
             self.port,
             fake_agent=True,
-            extra_env={"STUDYLOOP_WS_GRACE_SECONDS": str(grace)},
+            extra_env={
+                "STUDYLOOP_WS_GRACE_SECONDS": str(grace),
+                # Must tick INSIDE the shortened window, or the window always
+                # expires first and the reaper never gets to notice a dead agent.
+                "STUDYLOOP_REAP_INTERVAL_SECONDS": "0.5",
+            },
         )
         self.running: RunningServer = start_server(world)
         self.session_dir = world.session_dir
@@ -290,10 +295,23 @@ class TestGraceAgainstARealAgent:
             timeout=GRACE_S + 10,
         )
         elapsed = time.monotonic() - killed_at
-        assert elapsed < GRACE_S, (
-            f"released after {elapsed:.1f}s — that is the full window, so the "
-            "liveness poll did not notice the agent had gone"
+        # Assert the MECHANISM, not the stopwatch. The old check was
+        # `elapsed < GRACE_S` with GRACE_S == the window itself, so it had zero
+        # margin: a poll that noticed at 2.9s passed and one at 3.1s failed, and
+        # on a loaded machine that is a coin toss (measured: 1 fail / 2 pass at
+        # load ~7.5). The reason field distinguishes the two outcomes this test
+        # actually cares about — the liveness poll noticing the agent died
+        # ("agent_exited") versus the timer simply running out ("grace_expired")
+        # — and no amount of CPU contention can blur them.
+        release = server.state().get("last_release") or {}
+        assert release.get("reason") == "agent_exited", (
+            f"released after {elapsed:.1f}s for reason {release.get('reason')!r} — "
+            "expected 'agent_exited', meaning the liveness poll noticed the agent "
+            "had gone. 'grace_expired' means it did not and the window merely ran out."
         )
+        # Generous upper bound so a pathologically slow release still fails,
+        # without re-introducing a race at the window boundary.
+        assert elapsed < GRACE_S + 8, f"release took {elapsed:.1f}s, far too slow"
 
         # And the freed slot is immediately usable.
         status, _ = server.post(
