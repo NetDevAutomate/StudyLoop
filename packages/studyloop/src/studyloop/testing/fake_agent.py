@@ -49,15 +49,47 @@ def _write(line: str) -> None:
     sys.stdout.flush()
 
 
-def _load_bank(persona_arg: str | None) -> TopicBank:
-    """Resolve the Socratic question bank from the persona file's topic."""
-    topic = ""
-    if persona_arg:
-        try:
-            topic = topic_from_persona(Path(persona_arg).read_text(encoding="utf-8"))
-        except OSError:
-            topic = ""
+def _load_bank(persona_arg: str | None) -> TopicBank | None:
+    """Resolve the Socratic question bank from the persona file's topic.
+
+    Returns ``None`` when no topic could be resolved -- no persona argument, an
+    unreadable path, or a briefing naming a topic the bank does not cover. The
+    agent then falls back to echo mode.
+
+    That distinction matters: the plumbing tests invoke this binary with no
+    argument at all (``python -m studyloop.testing.fake_agent``) or with a
+    deliberately absent path, because all they prove is that bytes flow both
+    ways through the PTY. Defaulting an unbriefed agent into a full Socratic
+    session made it teach a topic nobody asked about, and broke those tests.
+    """
+    if not persona_arg:
+        return None
+    try:
+        persona = Path(persona_arg).read_text(encoding="utf-8")
+    except OSError:
+        return None
+    topic = topic_from_persona(persona)
+    if not topic:
+        return None
     return bank_for_topic(topic)
+
+
+def _run_echo_session() -> None:
+    """Echo each stdin line back as a canned mentor-ish reply.
+
+    The unbriefed mode: no topic, so no question bank to teach from. Proves the
+    spawn -> PTY -> WebSocket -> terminal path carries bytes in both directions.
+    """
+    try:
+        for line in sys.stdin:
+            text = line.strip()
+            if not text:
+                continue
+            if text.lower() in {"exit", "quit"}:
+                break
+            _write(f"{REPLY_PREFIX} I hear you on {text!r} — tell me more.")
+    except (KeyboardInterrupt, BrokenPipeError):
+        pass
 
 
 def _run_socratic_session(bank: TopicBank) -> None:
@@ -69,23 +101,31 @@ def _run_socratic_session(bank: TopicBank) -> None:
     index = 0
     while index < total:
         question = bank.questions[index]
+        # Announced ONCE per question, not once per attempt: the inner loop
+        # below takes further attempts after a hint. Re-announcing made the
+        # learner see the same question twice and inflated the question count.
         _write(f"FAKE-AGENT ASKS: {question.question}")
 
-        line = sys.stdin.readline()
-        if not line:
-            return  # EOF mid-session — nothing more to grade.
-        text = line.strip()
-        if not text:
-            continue
-        if text.lower() in {"exit", "quit"}:
-            return
+        while True:
+            line = sys.stdin.readline()
+            if not line:
+                return  # EOF mid-session — nothing more to grade.
+            text = line.strip()
+            if not text:
+                continue
+            if text.lower() in {"exit", "quit"}:
+                return
 
-        if question.grade(text):
-            _write("FAKE-AGENT VERDICT: correct")
-            _write(f"FAKE-AGENT ANSWER: {question.correct_answer}")
-            correct_count += 1
-            index += 1
-        else:
+            if question.grade(text):
+                _write("FAKE-AGENT VERDICT: correct")
+                _write(f"FAKE-AGENT ANSWER: {question.correct_answer}")
+                correct_count += 1
+                index += 1
+                break
+
+            # Not yet: hint and let them try again at the SAME question. The
+            # canonical answer is deliberately withheld -- revealing it here
+            # would short-circuit the productive struggle the bank exists for.
             _write("FAKE-AGENT VERDICT: not-yet")
             _write(f"FAKE-AGENT HINT: {question.hint}")
 
@@ -93,7 +133,7 @@ def _run_socratic_session(bank: TopicBank) -> None:
 
 
 def main() -> int:
-    """Run the Socratic session. Deterministic, line-buffered, TTY-safe."""
+    """Run a Socratic session when briefed, otherwise echo. TTY-safe."""
     # Under pty.fork() stdout is a tty and line-buffering applies, but be
     # explicit: every write is flushed so tests never race the buffer.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
@@ -104,7 +144,10 @@ def main() -> int:
     _write(BANNER)
 
     try:
-        _run_socratic_session(bank)
+        if bank is None:
+            _run_echo_session()
+        else:
+            _run_socratic_session(bank)
     except (KeyboardInterrupt, BrokenPipeError):
         pass
 
