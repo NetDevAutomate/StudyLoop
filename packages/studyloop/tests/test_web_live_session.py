@@ -51,7 +51,10 @@ def test_session_options_returns_course_hierarchy(
     assert body["courses"][0]["label"] == "Python 101"
     assert body["lessons"][0]["label"] == "Section 01"
     assert "agents" in body
-    assert all(agent["recommended_transport"] == "ttyd" for agent in body["agents"])
+    # recommended_transport was deliberately dropped from the agent payload:
+    # it had zero consumers and named the retired ttyd path. See
+    # test_web_dev_engines.py::test_agents_no_longer_recommend_the_legacy_transport,
+    # which asserts it stays gone.
     assert all(agent["acp_ready"] is False for agent in body["agents"])
 
 
