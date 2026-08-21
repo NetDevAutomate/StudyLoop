@@ -175,8 +175,19 @@ async def end_session() -> JSONResponse:
     """
     from studyloop.session import active as session_active
     from studyloop.web.routes import session as session_pkg
+    from studyloop.web.routes.session import _grace
 
     state = session_pkg.read_session_state()
+
+    # Cancel any grace timer FIRST, before releasing the singleton. A socket
+    # that disconnected moments ago has scheduled a release for this session;
+    # ending the session now must not leave that timer armed, or it fires later
+    # against a slot that has already moved on. _grace.release_now is the
+    # documented path for "end arrived during the grace window" and leaves no
+    # orphan timer behind.
+    session_id = state.get("study_session_id")
+    if session_id:
+        await _grace.release_now(str(session_id), reason="ended-by-user")
 
     # Release the PTY singleton first — idempotent, safe when the session
     # was a legacy ttyd flow that never touched active.py.

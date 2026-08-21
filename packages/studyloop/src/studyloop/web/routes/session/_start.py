@@ -75,14 +75,23 @@ async def _session_conflict() -> JSONResponse | None:
         return None
 
     session_id = current.study_session_id
+    topic = _active_session_topic(session_id)
+    # Name the topic in the message itself, not only in the `topic` field. The
+    # learner reads the error text, and "a session is already active" without
+    # saying WHICH is the difference between a clear refusal and a dead end —
+    # especially mid-study, when the blocking session may be one they forgot in
+    # another tab. _active_session_topic reads the blocking session's own state,
+    # so this cannot borrow a different session's topic.
+    subject = f' on "{topic}"' if topic else ""
     return JSONResponse(
         {
             "error": (
-                "A session is already active — its browser tab may have closed "
-                "but the agent is still running. Reattach to it, or end it first."
+                f"A session is already active{subject} — its browser tab may have "
+                "closed but the agent is still running. Reattach to it, or end it "
+                "first."
             ),
             "study_session_id": session_id,
-            "topic": _active_session_topic(session_id),
+            "topic": topic,
             "agent": current.config.agent,
             "detached": _grace.has_pending_release(session_id),
             "reattach_url": f"/api/session/ws?study_session_id={session_id}",
