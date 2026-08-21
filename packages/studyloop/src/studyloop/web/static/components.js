@@ -1612,7 +1612,7 @@ function courseExplorer() {
           // Guard 3: a newer call ran during the DOM-flush ticks.
           if (this._readerGen !== myGen) return;
 
-          await _renderMermaidPlaceholders(this.$el);
+          await _renderMermaidPlaceholders(this.$root);
         } else {
           this.readerError = `Could not load lesson (${res.status})`;
         }
@@ -2351,7 +2351,14 @@ function parkingPanel() {
       await this.$nextTick();
       await this.$nextTick();
       _mermaidInitForPalette();
-      await _renderMermaidPlaceholders(this.$el);
+      /* $root, NOT $el. Alpine resolves $el against the EVALUATION SCOPE, and
+         this method is reached synchronously from @click="togglePreview()" on
+         the Preview button — so $el here is that button, whose subtree contains
+         no preview and therefore no placeholders. The pass found nothing,
+         returned, and left the diagram unrendered with its data-src intact: no
+         throw, no console output, nothing to see. $root is the component root
+         and is scope-stable. */
+      await _renderMermaidPlaceholders(this.$root);
     },
 
     _replaceItem(item) {

@@ -133,8 +133,29 @@ def _capture_console(page: Page):
     ``_diag`` can do after the fact.
     """
     _CONSOLE.clear()
+    # Unhandled promise REJECTIONS do not arrive on Playwright's pageerror
+    # channel, and this app fires async work without awaiting it
+    # (togglePreview() calls the async renderPreview() bare), so a throw inside
+    # such a call is invisible on every channel unless we route it ourselves.
+    # That invisibility is what made the mermaid failure look like "the code ran
+    # and quietly did nothing" through three separate investigations.
+    page.add_init_script(
+        "window.addEventListener('unhandledrejection', (e) => {"
+        "  const r = e.reason;"
+        "  console.error('[unhandledrejection] ' + ((r && (r.stack || r.message)) || r));"
+        "});"
+    )
     page.on("console", lambda m: _CONSOLE.append(f"[{m.type}] {m.text}"))
     page.on("pageerror", lambda e: _CONSOLE.append(f"[pageerror] {e}"))
+    # A failed script/resource load does NOT arrive on the console channel, so
+    # without these a 404 on a vendored bundle looks exactly like "everything
+    # loaded and the feature silently did nothing" — which is the single most
+    # misleading state to debug from.
+    page.on("requestfailed", lambda r: _CONSOLE.append(f"[requestfailed] {r.url} {r.failure}"))
+    page.on(
+        "response",
+        lambda r: _CONSOLE.append(f"[http {r.status}] {r.url}") if r.status >= 400 else None,
+    )
     return None
 
 
@@ -144,6 +165,30 @@ def _diag(page: Page | None, name: str) -> None:
         return
     RESULTS.mkdir(exist_ok=True)
     ts = int(time.time())
+    try:
+        # Probe the LIVE page, not just its corpse. A DOM dump shows an
+        # unrendered placeholder but cannot say whether the library that should
+        # have rendered it is even present — the difference between "asset
+        # missing" and "wrong root element passed".
+        probe = page.evaluate(
+            """() => {
+                const previews = document.querySelectorAll('#parking-panel .parking-note-preview');
+                const first = previews[0] || null;
+                return {
+                    mermaid_type: typeof window.mermaid,
+                    has_render: !!(window.mermaid && window.mermaid.render),
+                    previews: previews.length,
+                    placeholders_page: document.querySelectorAll('.mermaid-diagram').length,
+                    unrendered: document.querySelectorAll('.mermaid-diagram[data-src]').length,
+                    placeholders_in_first: first
+                        ? first.querySelectorAll('.mermaid-diagram').length : -1,
+                    first_has_h2: first ? !!first.querySelector('h2') : False_,
+                };
+            }""".replace("False_", "false")
+        )
+        _CONSOLE.append(f"[probe] {probe}")
+    except Exception as exc:  # pragma: no cover — diagnostics must never mask
+        _CONSOLE.append(f"[probe failed] {exc}")
     try:
         page.screenshot(path=str(RESULTS / f"{name}-{ts}.png"), full_page=True)
         (RESULTS / f"{name}-{ts}.html").write_text(page.content())
