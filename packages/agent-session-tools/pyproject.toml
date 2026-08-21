@@ -122,6 +122,12 @@ extraPaths = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+# Duplicated from the workspace-root pyproject.toml on purpose: pytest picks
+# its configfile from the rootdir it derives from the arguments, so a
+# path-scoped run under this package never reads the root settings. See the
+# matching comment in packages/studyloop/pyproject.toml.
+timeout = 60
+timeout_method = "signal"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
 ]
