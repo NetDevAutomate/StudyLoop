@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Mapping
 
     from playwright.sync_api import Browser, BrowserContext, Page
 
@@ -30,20 +30,58 @@ TOPICS_FILE = CONFIG_DIR / "session-topics.md"
 PARKING_FILE = CONFIG_DIR / "session-parking.md"
 
 
-def start_web_server(port: int, extra_env: dict[str, str] | None = None) -> subprocess.Popen:
+def start_web_server(
+    port: int,
+    extra_env: dict[str, str] | None = None,
+    *,
+    env: Mapping[str, str] | None = None,
+    cwd: Path | str | None = None,
+    extra_args: list[str] | None = None,
+) -> subprocess.Popen:
     """Spin up ``studyloop web`` on the given port. Returns the proc.
 
     Blocks until the server responds on ``/`` (or returns 401 when
     password protection is configured — still "up").
 
-    ``extra_env`` is merged over the inherited environment — used by the
-    journey to enable the fake harness agent (STUDYLOOP_TEST_AGENT=1).
+    Two mutually exclusive ways to give the child an environment:
+
+    ``extra_env`` is merged *over* the inherited environment — the original
+    contract, used by the older ``test_web_*`` modules and by the journey to
+    enable the fake harness agent (``STUDYLOOP_TEST_AGENT=1``).
+
+    ``env`` replaces the environment *verbatim*, inheriting nothing. The e2e
+    harness (``e2e/_env.py``) builds a complete ``TestWorld`` environment this
+    way so a run cannot read or clobber the developer's real HOME, config,
+    session DB or study plans. Passing both is a caller error, because the
+    merge semantics would silently defeat that isolation.
+
+    ``cwd`` sets the child's working directory (the world root, so relative
+    paths resolve inside the temp world rather than the repo).
+
+    ``extra_args`` is appended to the ``studyloop web`` command line — used to
+    select an experimental terminal renderer, e.g. ``["--dev"]`` or
+    ``["--dev-engine", "wterm"]``.
     """
     import os
 
-    env = {**os.environ, **(extra_env or {})}
+    if env is not None and extra_env is not None:
+        msg = (
+            "start_web_server: pass either env (complete, hermetic) or "
+            "extra_env (merged over os.environ), not both"
+        )
+        raise ValueError(msg)
+
+    child_env = dict(env) if env is not None else {**os.environ, **(extra_env or {})}
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+    if extra_args:
+        cmd.extend(extra_args)
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=child_env,
+        cwd=None if cwd is None else str(cwd),
+    )
     for _ in range(40):
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)
