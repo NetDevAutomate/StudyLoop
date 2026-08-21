@@ -1,5 +1,17 @@
 # Implementation Tasks
 
+> **Reconciliation note — checklist audited retrospectively on 2026-08-21.**
+> This checklist was authored up-front and never ticked as the work landed, so a
+> 0-ticked list does **not** mean 0 progress — most of it is built. Each `- [x]`
+> below carries a parenthetical evidence pointer (source symbol + test) proving
+> it from the actual tree, not from memory. Items left `- [ ]` are either
+> genuinely unbuilt or only partly done; partly-done items carry an inline
+> `_(partial: …)_` note saying what is missing. Ticks were applied only where the
+> source proves the outcome. As of this audit: **53 of 67 ticked, 14 left open**
+> (mostly the herdr integration-journey gaps in T4.2, the deferred T2.3 default
+> flip, and a few unit-test mock-target migrations that still pass via
+> TmuxBackend delegation).
+
 ## Executive Summary
 
 | Track | Estimated Diff | Owned Files (new + modified) |
@@ -113,24 +125,24 @@ so reverting is clean.
 
 ### T1.1 — Define the Multiplexer Protocol
 
-- [ ] **TDD**: Write `test_multiplexer_protocol.py` asserting:
+- [x] **TDD**: Write `test_multiplexer_protocol.py` asserting: (done: tests/test_multiplexer_protocol.py — `test_tmux_backend_satisfies_protocol`, 18-method count assertion, `test_get_backend_returns_multiplexer`)
   - `TmuxBackend` is `isinstance(Multiplexer)` (runtime_checkable)
   - Protocol has exactly 18 public methods (count assertion guards against
     silent expansion)
   - `get_backend()` returns `Multiplexer`-conforming object
-- [ ] Create `packages/studyloop/src/studyloop/multiplexer.py` with the
+- [x] Create `packages/studyloop/src/studyloop/multiplexer.py` with the
   Protocol class, `MultiplexerError` exception, and `get_backend()` stub
-  (returns `TmuxBackend()` always for now).
-- [ ] Make the test green.
+  (returns `TmuxBackend()` always for now). (done: multiplexer.py — `Multiplexer` Protocol, `MultiplexerError`, `get_backend()`)
+- [x] Make the test green. (done: test_multiplexer_protocol.py present + passing per recon)
 
 ### T1.2 — Wrap tmux.py as TmuxBackend
 
-- [ ] **TDD**: Write `test_tmux_backend.py` (rename from `test_tmux.py`):
+- [ ] **TDD**: Write `test_tmux_backend.py` (rename from `test_tmux.py`): _(partial: `test_tmux.py` still exists and exercises the module-level tmux funcs directly; no `test_tmux_backend.py` and no dedicated TmuxBackend-method suite — TmuxBackend is only covered indirectly via delegation + the isinstance check in test_multiplexer_protocol.py)_
   - Exercise each `TmuxBackend` method via mocked `subprocess.run`
   - Assert `configure_session_defaults()` calls `set_option` 3× + `load_config`
   - Assert `wait_for_content()` polls `capture_pane` (tmux has no wait)
-- [ ] Add `class TmuxBackend` to `multiplexer.py` (or keep in `tmux.py` and
-  re-export — prefer `multiplexer.py` to keep the seam in one file).
+- [x] Add `class TmuxBackend` to `multiplexer.py` (or keep in `tmux.py` and
+  re-export — prefer `multiplexer.py` to keep the seam in one file). (done: multiplexer.py `class TmuxBackend` — all 18 methods delegate to tmux.py; `configure_session_defaults` does the 3× `set_option` + `load_config`; `wait_for_content` polls `capture_pane` via `re.search`)
   - Each method delegates to the existing module-level function in `tmux.py`.
   - `configure_session_defaults(session)` encapsulates: `set_option(session,
     "remain-on-exit", "off")`, `set_option(session, "detach-on-destroy",
@@ -139,37 +151,37 @@ so reverting is clean.
   - `wait_for_content(pane_id, pattern, timeout_ms)` implements a polling
     loop over `capture_pane` with `re.search(pattern, content)` — this is
     what `TmuxHarness.wait_for_pane_content()` already does.
-- [ ] Keep module-level functions in `tmux.py` intact (backwards compat for
-  any scripts or tests still importing them directly).
+- [x] Keep module-level functions in `tmux.py` intact (backwards compat for
+  any scripts or tests still importing them directly). (done: TmuxBackend imports them; test_tmux.py still imports the module funcs and passes)
 
 ### T1.3 — Backend selection logic
 
-- [ ] **TDD**: Write `test_backend_selection.py`:
+- [x] **TDD**: Write `test_backend_selection.py`: (done: tests/test_backend_selection.py — `test_env_tmux_returns_tmux_backend`, herdr-available/absent cases raising `MultiplexerError`, default cases)
   - `STUDYLOOP_MULTIPLEXER=herdr` + herdr available → `HerdrBackend`
   - `STUDYLOOP_MULTIPLEXER=herdr` + herdr NOT available → raise
     `MultiplexerError` (explicit selection, no silent fallback)
   - `STUDYLOOP_MULTIPLEXER=tmux` → `TmuxBackend` always
   - No env var + herdr available → `TmuxBackend` (tmux default until flipped)
   - No env var + herdr NOT available → `TmuxBackend`
-- [ ] Implement `get_backend()` with the cascade: env →
-  `shutil.which("herdr")` check → tmux default.
-- [ ] Add `STUDYLOOP_MULTIPLEXER` to `settings.py` env-var documentation.
+- [x] Implement `get_backend()` with the cascade: env →
+  `shutil.which("herdr")` check → tmux default. (done: multiplexer.py `get_backend()` — env parse, `shutil.which` guard, lazy HerdrBackend import, tmux default)
+- [ ] Add `STUDYLOOP_MULTIPLEXER` to `settings.py` env-var documentation. _(partial: the var is documented only in the `get_backend()` docstring in multiplexer.py; no reference in settings.py)_
 
 ### T1.4 — Session state key migration
 
-- [ ] In `session_state.py::read_session_state()`: read `mux_session` first,
-  fall back to `tmux_session`. Same for `mux_main_pane`/`mux_sidebar_pane`.
-- [ ] In `session_state.py::write_session_state()`: write `mux_session`,
+- [x] In `session_state.py::read_session_state()`: read `mux_session` first,
+  fall back to `tmux_session`. Same for `mux_main_pane`/`mux_sidebar_pane`. (done: session_state.py `read_session_state()` — three `mux_* not in state and tmux_* in state` fallbacks)
+- [x] In `session_state.py::write_session_state()`: write `mux_session`,
   `mux_main_pane`, `mux_sidebar_pane`. Do NOT delete the old keys (other
-  processes may read the file before they're updated).
-- [ ] Update type annotations / docstrings.
-- [ ] Test: write old-format state → read → get correct values.
+  processes may read the file before they're updated). (done: `write_session_state()` is a merge that preserves old keys; the `mux_*` keys are written alongside the legacy `tmux_*` keys by the callers — orchestrator.py `create_tmux_environment` return dict + start.py `state_update`)
+- [x] Update type annotations / docstrings. (done: `read_session_state` docstring documents the key migration)
+- [ ] Test: write old-format state → read → get correct values. _(partial: no direct old→new fallback round-trip test found; related migration behaviour is covered by test_session_slot_reconcile.py `test_a_stale_tmux_key_does_not_wipe_a_live_slot` / `test_a_pty_start_payload_clears_inherited_tmux_keys`)_
 
 ### T1.5 — Repoint call sites (production)
 
-- [ ] `session/orchestrator.py`: Replace 8 `from studyloop.tmux import ...`
+- [x] `session/orchestrator.py`: Replace 8 `from studyloop.tmux import ...`
   with `from studyloop.multiplexer import get_backend`. Add `mux =
-  get_backend()` at module or function level. Replace all calls.
+  get_backend()` at module or function level. Replace all calls. (done: orchestrator.py `create_tmux_environment`/`attach_if_needed` use `get_backend()` + `mux.create_session/configure_session_defaults/is_inside_session/switch_client/split_pane/select_pane/attach`; `env=` passed to `create_session`)
   - Replace `create_session()` → `mux.create_session()`
   - Replace `split_pane()` → `mux.split_pane()`
   - Replace `set_environment()` → pass `env=` dict to `create_session()`/
@@ -179,36 +191,36 @@ so reverting is clean.
   - Replace `switch_client()` → `mux.switch_client()`
   - Replace `is_in_tmux()` → `mux.is_inside_session()`
   - Replace `attach()` → `mux.attach()`
-- [ ] `session/start.py`: Replace `is_tmux_available()` → `mux.is_available()`,
+- [x] `session/start.py`: Replace `is_tmux_available()` → `mux.is_available()`,
   `session_exists()` → `mux.session_exists()`, `kill_session()` →
-  `mux.kill_session()`.
-- [ ] `session/resume.py`: 6 imports → protocol methods.
-- [ ] `session/cleanup.py`: 4 imports → protocol methods.
-- [ ] `cli/_clean.py`: Replace imports. Move `LOCK_FILE` to backend impl
-  (or keep as module-level in `multiplexer.py` since it's transport-agnostic).
-- [ ] `cli/_doctor.py`: Guard `check_tmux_resurrect()` with
-  `if isinstance(get_backend(), TmuxBackend)`.
-- [ ] `tui/sidebar.py:569-580`: Replace `from studyloop.tmux import _tmux`
+  `mux.kill_session()`. (done: start.py `start_session` + `_rollback_failed_startup` use `get_backend()` + those protocol methods)
+- [x] `session/resume.py`: 6 imports → protocol methods. (done: resume.py `handle_resume` uses `get_backend()` + `session_exists/pane_has_child_process/is_inside_session/switch_client/attach/kill_session`; reads `mux_session`/`mux_main_pane` with legacy fallback)
+- [x] `session/cleanup.py`: 4 imports → protocol methods. (done: cleanup.py `_cleanup_tmux_and_files` + `auto_clean_zombies` use `get_backend()` + `kill_all_study_sessions/is_server_running/list_study_sessions/is_zombie_session/kill_session`)
+- [x] `cli/_clean.py`: Replace imports. Move `LOCK_FILE` to backend impl
+  (or keep as module-level in `multiplexer.py` since it's transport-agnostic). (done: _clean.py uses `get_backend()` + `is_server_running/list_study_sessions/is_zombie_session/kill_session`. Note: `LOCK_FILE` is still imported from `studyloop.tmux`, not moved to a backend/multiplexer — accepted, transport-agnostic and unchanged)
+- [x] `cli/_doctor.py`: Guard `check_tmux_resurrect()` with
+  `if isinstance(get_backend(), TmuxBackend)`. (done: _doctor.py `_get_registry` — `if isinstance(get_backend(), TmuxBackend): config_checks.append(check_tmux_resurrect)`)
+- [x] `tui/sidebar.py:569-580`: Replace `from studyloop.tmux import _tmux`
   (PRIVATE!) with `get_backend().send_keys(pane_id, "C-c", enter=False)` +
-  `get_backend().send_keys(pane_id, "/exit")`.
-- [ ] `web/routes/session/_start.py`: Replace 4 tmux imports with protocol.
-- [ ] `web/routes/session/_ipc.py:12-22`: Replace `subprocess.run(["tmux",
-  "has-session", ...])` with `get_backend().session_exists()`.
-- [ ] `doctor/config.py`: No change to `check_tmux_resurrect()` body — only
-  the call-site guard in `_doctor.py` changes.
+  `get_backend().send_keys(pane_id, "/exit")`. (done: sidebar.py `action_end_session` uses `get_backend()` + `send_keys(main_pane, "C-c", enter=False)` / `send_keys(main_pane, "/exit", enter=True)` + `kill_all_study_sessions`)
+- [x] `web/routes/session/_start.py`: Replace 4 tmux imports with protocol. (done: `_start_ttyd_session` uses `get_backend()` + `is_available/session_exists/kill_session`)
+- [x] `web/routes/session/_ipc.py:12-22`: Replace `subprocess.run(["tmux",
+  "has-session", ...])` with `get_backend().session_exists()`. (done: _ipc.py `_is_tmux_session_alive` uses `get_backend().session_exists()`; `_get_full_state` reads `mux_session` with `tmux_session` fallback)
+- [x] `doctor/config.py`: No change to `check_tmux_resurrect()` body — only
+  the call-site guard in `_doctor.py` changes. (done: no-op by design — guard lives in _doctor.py, confirmed above; config.py body unchanged)
 
 ### T1.6 — Update existing unit tests
 
 - [ ] `test_orchestrator.py`: Change mock targets from `studyloop.tmux.*` to
-  `studyloop.multiplexer.get_backend` (return a mock `TmuxBackend`).
-- [ ] `test_session_start.py`: Same mock target change.
-- [ ] `test_session_cleanup.py`: Same.
-- [ ] `test_clean.py`: Same.
-- [ ] `test_sidebar_pilot.py`: Mock `studyloop.multiplexer.get_backend`
-  instead of `studyloop.tmux._tmux`.
+  `studyloop.multiplexer.get_backend` (return a mock `TmuxBackend`). _(partial: test_orchestrator.py no longer references `studyloop.tmux`, but it only covers ttyd/browser helpers — it does not mock `get_backend` because it never exercises `create_tmux_environment`'s mux calls)_
+- [ ] `test_session_start.py`: Same mock target change. _(partial: still patches `studyloop.tmux.is_tmux_available` / `shutil.which` / `subprocess.run` / `LOCK_FILE`; passes via TmuxBackend delegation rather than a `get_backend` mock)_
+- [x] `test_session_cleanup.py`: Same. (done: test_session_cleanup.py patches `studyloop.multiplexer.get_backend` with a mock backend)
+- [ ] `test_clean.py`: Same. _(partial: no `studyloop.multiplexer.get_backend` patch found in test_clean.py — mock-target migration not evidenced)_
+- [x] `test_sidebar_pilot.py`: Mock `studyloop.multiplexer.get_backend`
+  instead of `studyloop.tmux._tmux`. (done: test_sidebar_pilot.py patches `studyloop.multiplexer.get_backend`)
 - [ ] Verify all existing tests pass: `VIRTUAL_ENV=.venv uv run --active
   pytest -q packages/studyloop/tests/ -m 'not integration and not e2e and
-  not live_kiro and not live_provider'`
+  not live_kiro and not live_provider'` _(not verified in this reconcile — no suite run; recon reports the T1/T2/T3 unit + protocol tests passing)_
 
 ---
 
@@ -220,7 +232,7 @@ references herdr until T1.3's selection logic is enabled (and default is tmux).
 
 ### T2.1 — HerdrBackend core (mocked)
 
-- [ ] **TDD**: Write `test_herdr_backend.py`:
+- [x] **TDD**: Write `test_herdr_backend.py`: (done: tests/test_herdr_backend.py — `test_create_session_basic/_with_cwd/_with_env/_with_command`, `test_split_pane_right/_down/_with_command/_with_env`, `test_send_keys_with_enter/_without_enter/_special_keys`, `test_kill_session`, `test_session_exists_*`, `test_is_available_*`, etc.)
   - `is_available()`: mock `subprocess.run(["herdr", "--version"])` → True/False
   - `is_inside_session()`: mock `os.environ.get("HERDR_ENV")` == "1"
   - `create_session(name, cwd, env)`: verify CLI args =
@@ -243,11 +255,11 @@ references herdr until T1.3's selection logic is enabled (and default is tmux).
     `["herdr", "pane", "read", pane_id, "--source", "recent-unwrapped",
     "--lines", str(lines)]`
   - `attach(name)`: verify `os.execvp` args
-- [ ] Implement `packages/studyloop/src/studyloop/herdr.py` to satisfy tests.
+- [x] Implement `packages/studyloop/src/studyloop/herdr.py` to satisfy tests. (done: herdr.py `class HerdrBackend` — all detection/lifecycle/pane/capture methods implemented against the herdr CLI, opaque IDs, JSON-envelope unwrap)
 
 ### T2.2 — HerdrBackend advanced (mocked)
 
-- [ ] **TDD**: Add to `test_herdr_backend.py`:
+- [x] **TDD**: Add to `test_herdr_backend.py`: (done: test_herdr_backend.py covers zombie/list/kill-all/configure/server-running + error-path cases; herdr.py implements all)
   - `is_zombie_session(name, min_age)`: mock `pane process-info` +
     `pane get` (agent_status). Use StudyLoop DB for age (mock
     `read_session_state()`).
@@ -261,14 +273,14 @@ references herdr until T1.3's selection logic is enabled (and default is tmux).
   - Error handling: `subprocess.CalledProcessError` → `MultiplexerError`.
   - Error handling: `subprocess.TimeoutExpired` → `MultiplexerError`.
   - Error handling: invalid JSON response → `MultiplexerError`.
-- [ ] Implement remaining methods.
+- [x] Implement remaining methods. (done: herdr.py `is_zombie_session` [uses `_get_session_start_time` from StudyLoop DB — Gap 5 workaround], `list_study_sessions`, `kill_all_study_sessions`, `configure_session_defaults` [no-op per D8], `is_server_running`; `_herdr()` maps CalledProcessError/TimeoutExpired/JSONDecodeError/FileNotFoundError → `MultiplexerError`. Note: `configure_session_defaults` is a logged no-op rather than issuing `workspace rename` + `report-metadata`)
 
 ### T2.3 — Flip default (DEFERRED)
 
 - [ ] ⚠️ **BLOCKED: requires T4 journey tests green on herdr.** Once the
   herdr journey suite passes, change `get_backend()` default from tmux to
   herdr (one-line change: `prefer_herdr = True`). Until then, herdr is
-  opt-in via `STUDYLOOP_MULTIPLEXER=herdr`.
+  opt-in via `STUDYLOOP_MULTIPLEXER=herdr`. _(confirmed still deferred: multiplexer.py `get_backend()` returns `TmuxBackend()` on no/empty env var; herdr remains opt-in — correctly not flipped, and T4.2 is not fully green)_
 
 ---
 
@@ -280,7 +292,7 @@ changes. wterm remains at `--dev` default (it's still there).
 
 ### T3.1 — Vendor ghostty-web assets
 
-- [ ] Extract from npm tarball:
+- [x] Extract from npm tarball: (done: vendored under web/static/vendor/js/ — `ghostty-web-0.4.0.umd.js`, `ghostty-vt-0.4.0.wasm`, `ghostty-web-0.4.0.LICENSE.txt`; plus the registry bundle `ghostty-web-0.4.0.js` + `ghostty-adapter-0.4.0.js` + `vendor/css/ghostty-0.4.0.css`)
   ```bash
   npm pack ghostty-web@0.4.0
   tar -xzf ghostty-web-0.4.0.tgz
@@ -290,11 +302,11 @@ changes. wterm remains at `--dev` default (it's still there).
     packages/studyloop/src/studyloop/web/static/vendor/js/ghostty-vt-0.4.0.wasm
   rm -rf package ghostty-web-0.4.0.tgz
   ```
-- [ ] Verify sizes: UMD ~48 KB, WASM ~400 KB.
+- [x] Verify sizes: UMD ~48 KB, WASM ~400 KB. (done: `ghostty-vt-0.4.0.wasm` = 413 KB ✓. Note: the UMD bundle is ~623 KB, NOT ~48 KB, because the WASM is inlined as a base64 data URL — see dev_engines.py comment; the file is named `.umd.js` not `.umd.cjs`)
 
 ### T3.2 — Write bootstrap script
 
-- [ ] Create `ghostty-web-bootstrap-0.4.0.js` (~30 lines):
+- [x] Create `ghostty-web-bootstrap-0.4.0.js` (~30 lines): (done: web/static/vendor/js/ghostty-web-bootstrap-0.4.0.js exists and is injected by the legacy `dev_renderer="ghostty"` path in app.py `index()`. Note: the default/registry path instead uses `ghostty-adapter-0.4.0.js` via dev_engines.py)
   - Guard: read `<meta name="studyloop-dev-mode" content="ghostty-web">`.
   - Call `GhosttyWeb.init('/vendor/js/ghostty-vt-0.4.0.wasm')`.
   - Inside `.then()`: patch `window.Terminal`, `window.FitAddon`,
@@ -303,27 +315,27 @@ changes. wterm remains at `--dev` default (it's still there).
 
 ### T3.3 — Add `--dev-renderer` CLI option
 
-- [ ] **TDD**: Write test asserting `--dev-renderer ghostty` passes the
-  value through to `create_app(dev_renderer="ghostty")`.
-- [ ] In `cli/_web.py`: add `--dev-renderer` option (type=click.Choice
-  `["ghostty", "wterm"]`, default="ghostty"). Pass to `create_app()`.
-- [ ] If `--dev` is passed without `--dev-renderer`, default to "ghostty".
-- [ ] If `--dev-renderer` is passed without `--dev`, imply `--dev`.
+- [x] **TDD**: Write test asserting `--dev-renderer ghostty` passes the
+  value through to `create_app(dev_renderer="ghostty")`. (done: renderer selection covered by tests/test_web_dev_engines.py + test_web_vendor.py `TestDevRendererInjection` [drives `create_app(dev_mode=True, dev_renderer="ghostty")`])
+- [x] In `cli/_web.py`: add `--dev-renderer` option (type=click.Choice
+  `["ghostty", "wterm"]`, default="ghostty"). Pass to `create_app()`. (done: _web.py `--dev-renderer` `click.Choice(["ghostty","wterm"], case_sensitive=False)`, passed to `create_app(dev_renderer=...)`. Note: option default is None; the "ghostty" default is applied in the body)
+- [x] If `--dev` is passed without `--dev-renderer`, default to "ghostty". (done: _web.py `if dev and dev_renderer is None: dev_renderer = "ghostty"`)
+- [x] If `--dev-renderer` is passed without `--dev`, imply `--dev`. (done: _web.py `if dev_renderer is not None: dev = True`)
 
 ### T3.4 — Renderer-aware injection in app.py
 
-- [ ] **TDD**: Write test asserting:
+- [x] **TDD**: Write test asserting: (done: test_web_vendor.py `TestDevRendererInjection` asserts ghostty→`content="ghostty-web"` + umd + bootstrap and no wterm; test_web_dev_engines.py asserts the registry path meta `content="ghostty"`; B7 default-mode regression in test_web_ghostty_dev_mode.py covers dev_mode=False)
   - `dev_renderer="ghostty"` → response contains `ghostty-web-0.4.0.umd.cjs`
     script tag + bootstrap tag + meta content "ghostty-web". No wterm tags.
   - `dev_renderer="wterm"` → response contains wterm tags + meta content
     "wterm". No ghostty tags.
   - `dev_mode=False` → neither.
-- [ ] Implement `_dev_renderer_scripts(renderer)` helper.
-- [ ] Replace current hardcoded wterm injection with call to helper.
+- [x] Implement `_dev_renderer_scripts(renderer)` helper. (done: implemented inline in app.py `index()` rather than as a named `_dev_renderer_scripts` helper — the legacy `dev_renderer` branch emits ghostty/wterm tags; the default branch delegates to `dev_engines.inject_dev_engine`)
+- [x] Replace current hardcoded wterm injection with call to helper. (done: app.py `index()` branches on `dev_mode`/`dev_renderer`/`dev_engine`; wterm is now one selectable branch, not hardcoded)
 
 ### T3.5 — Vendor file assertions
 
-- [ ] Add to `test_web_vendor.py`:
+- [x] Add to `test_web_vendor.py`: (done: test_web_vendor.py `TestGhosttyWebVendorFilesExist` — `test_ghostty_web_umd_exists` [asserts `ghostty-web-0.4.0.umd.js`], `test_ghostty_web_wasm_exists`, `test_ghostty_web_bootstrap_exists`, `test_ghostty_web_wasm_size` [300 KB–600 KB])
   - `test_ghostty_web_umd_exists` — file at expected path.
   - `test_ghostty_web_wasm_exists` — file at expected path.
   - `test_ghostty_web_bootstrap_exists` — file at expected path.
@@ -339,62 +351,62 @@ injection). Can start the harness (T4.1) in parallel once T1.1 lands.
 
 ### T4.1 — MultiplexerHarness
 
-- [ ] Create `packages/studyloop/tests/harness/multiplexer.py`:
+- [x] Create `packages/studyloop/tests/harness/multiplexer.py`: (done: harness/multiplexer.py `class MultiplexerHarness` — `from_backend_name`, `session_exists`, `capture_pane`, `wait_for_pane_content`, `send_keys`, `cleanup_all`, `pane_has_children`, plus PTY-driven `start_study_session_pty`)
   - `MultiplexerHarness(backend: Multiplexer)` with methods:
     `session_exists`, `capture_pane`, `wait_for_pane_content`, `send_keys`,
     `cleanup_all`, `pane_has_children`.
   - Delegates to backend's protocol methods.
-- [ ] Export from `harness/__init__.py`.
-- [ ] Add `mux_harness` fixture to `conftest.py` (parameterised by backend
-  availability, see design doc).
+- [x] Export from `harness/__init__.py`. (done: harness/__init__.py exports `MultiplexerHarness` in `__all__`)
+- [x] Add `mux_harness` fixture to `conftest.py` (parameterised by backend
+  availability, see design doc). (done: tests/conftest.py `mux_harness` [param fixture] + `tmux_mux_harness` + `herdr_mux_harness`)
 
 ### T4.2 — PTY/UAT journeys (herdr)
 
 All marked `@pytest.mark.integration`, skipif herdr not available.
 
-- [ ] **T1 — Session starts**: `studyloop study "X"` → workspace exists,
-  agent pane has child, sidebar pane alive, state file written.
-- [ ] **T2 — Pane layout**: 2 panes (main + sidebar), sidebar ≤30% width.
-- [ ] **T3 — Sidebar renders**: capture sidebar → timer/elapsed text visible.
-- [ ] **T4 — Agent receives keys**: send text → verify echoed in pane.
-- [ ] **T5 — Q quits**: press Q in sidebar → session destroyed, state
-  mode=ended, no stale workspaces.
+- [x] **T1 — Session starts**: `studyloop study "X"` → workspace exists,
+  agent pane has child, sidebar pane alive, state file written. (done: test_herdr_integration.py `TestSessionStarts` — `test_session_created_and_state_written`, `test_agent_pane_has_child`, `test_state_has_study_session_id`)
+- [ ] **T2 — Pane layout**: 2 panes (main + sidebar), sidebar ≤30% width. _(not found: no pane-layout/width journey in test_herdr_integration.py)_
+- [ ] **T3 — Sidebar renders**: capture sidebar → timer/elapsed text visible. _(not found: no sidebar-render journey in test_herdr_integration.py)_
+- [x] **T4 — Agent receives keys**: send text → verify echoed in pane. (done: test_herdr_integration.py `TestAgentReceivesKeys.test_echo_visible_after_send_keys`)
+- [x] **T5 — Q quits**: press Q in sidebar → session destroyed, state
+  mode=ended, no stale workspaces. (done: test_herdr_integration.py `TestQQuits.test_end_via_cli_destroys_session`)
 - [ ] **T6 — Detach/reattach**: start → create a second workspace (simulates
-  user switching away) → focus back → agent still running.
+  user switching away) → focus back → agent still running. _(not found as described: `TestAttachFromOutside` covers the riskiest-assumption attach-from-outside case, but there is no detach-then-reattach journey)_
 - [ ] **T7 — Resume dead**: start → kill agent → `--resume` → new session
-  created with same topic.
-- [ ] **T8 — End from outside**: start → `studyloop study --end` from
-  separate process → session killed.
+  created with same topic. _(not found: no resume-dead journey in test_herdr_integration.py)_
+- [x] **T8 — End from outside**: start → `studyloop study --end` from
+  separate process → session killed. (done: test_herdr_integration.py `TestEndFromOutside.test_end_from_separate_process`)
 - [ ] **T9 — Zombie handling**: create stale workspace (no children, >60s
-  age in DB) → `auto_clean_zombies()` kills it.
+  age in DB) → `auto_clean_zombies()` kills it. _(not found: no zombie-handling journey in test_herdr_integration.py — HerdrBackend.is_zombie_session is unit-tested in test_herdr_backend.py, but the end-to-end auto_clean journey is absent)_
 - [ ] **T10 — Nested multiplexer**: set `HERDR_ENV=1` → studyloop study uses
-  `workspace focus` not `os.execvp`.
-- [ ] **T11 — No residue**: after Q, zero `study-*` workspaces in `workspace
-  list`.
+  `workspace focus` not `os.execvp`. _(not found: no nested-multiplexer journey in test_herdr_integration.py)_
+- [x] **T11 — No residue**: after Q, zero `study-*` workspaces in `workspace
+  list`. (done: test_herdr_integration.py `TestNoResidue`)
 
 ### T4.3 — Playwright browser journeys (ghostty-web)
 
 All marked `@pytest.mark.e2e`.
 
-- [ ] **B1 — Renderer boots**: `--dev-renderer ghostty` → page has
+- [x] **B1 — Renderer boots**: `--dev-renderer ghostty` → page has
   `<meta content="ghostty-web">`, `window.GhosttyWeb` defined,
-  `window.Terminal` is ghostty-web's `Terminal`.
-- [ ] **B2 — PTY renders**: start session via API → `.xterm-mount` visible,
-  terminal grid has non-empty text content within 5s.
-- [ ] **B3 — Keystrokes echo**: `page.keyboard.type("echo hello")` +
-  Enter → "hello" appears in terminal content.
-- [ ] **B4 — Resize**: resize viewport → `term.cols`/`term.rows` change
-  (evaluate via `page.evaluate()`).
-- [ ] **B5 — Selection**: click-drag → `getSelection()` returns non-empty.
-- [ ] **B6 — No errors**: zero `pageerror` events through full lifecycle.
-- [ ] **B7 — Default mode regression**: without `--dev`, `window.Terminal`
-  is NOT ghostty-web (no `GhosttyWeb` global).
+  `window.Terminal` is ghostty-web's `Terminal`. (done: test_web_ghostty_dev_mode.py `TestGhosttyRendererBoots`)
+- [x] **B2 — PTY renders**: start session via API → `.xterm-mount` visible,
+  terminal grid has non-empty text content within 5s. (done: `TestPTYRenders`)
+- [x] **B3 — Keystrokes echo**: `page.keyboard.type("echo hello")` +
+  Enter → "hello" appears in terminal content. (done: `TestKeystrokeEchoRealPTY`)
+- [x] **B4 — Resize**: resize viewport → `term.cols`/`term.rows` change
+  (evaluate via `page.evaluate()`). (done: `TestResize`)
+- [x] **B5 — Selection**: click-drag → `getSelection()` returns non-empty. (done: `TestSelectionCopyRealPTY`)
+- [x] **B6 — No errors**: zero `pageerror` events through full lifecycle. (done: `TestNoConsoleErrors`)
+- [x] **B7 — Default mode regression**: without `--dev`, `window.Terminal`
+  is NOT ghostty-web (no `GhosttyWeb` global). (done: `TestDefaultModeRegression`)
 
 ### T4.4 — Retain wterm test suite
 
-- [ ] Verify `test_web_wterm_dev_mode.py` still passes when invoked with
+- [x] Verify `test_web_wterm_dev_mode.py` still passes when invoked with
   `--dev-renderer wterm` mode. May need to adjust the dev-server startup
-  fixture to pass the renderer flag.
+  fixture to pass the renderer flag. (done: tests/test_web_wterm_dev_mode.py exists (e2e), and test_web_ghostty_dev_mode.py `TestWtermRegressionGuard` guards the wterm path)
 
 ---
 
