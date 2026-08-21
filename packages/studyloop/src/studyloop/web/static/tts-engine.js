@@ -16,10 +16,26 @@
  *   ttsEngine.tier                 — 'neural-webgpu' | 'neural-wasm' | 'web-speech' | 'silent'
  *   ttsEngine.onProgress           — assign a function(pct, file, done) to receive download progress
  *
+ * describeEnvironment(signals) — named export alongside TTSEngine (see below).
+ *
  * Events (fired on window):
  *   'tts:state-change'   — detail: { state, tier }   (state: idle|warming|downloading|ready|speaking)
  *   'tts:download-progress' — detail: { pct, file, done }
- *   'tts:tier-change'    — detail: { tier }   (fired once when tier is resolved)
+ *   'tts:tier-change'    — detail: { tier, reason, detail, degraded }
+ *       reason/detail explain WHY the tier landed where it did (e.g. reason:
+ *       'device-too-slow', detail: 'measured 7.4x real time'); degraded is
+ *       true whenever the tier is not one of the neural tiers.
+ *
+ * describeEnvironment({ secureContext, hasGpu, hasCaches, origin }) — pure
+ * function, exported alongside TTSEngine. Explains, ahead of any actual
+ * init() attempt, why the neural tier may be unavailable or degraded in the
+ * caller's environment. Returns { warnings: [{ code, message }, ...] }:
+ *   - 'insecure-context' when secureContext is false (navigator.gpu and the
+ *     browser caches are hidden on non-secure origins); message names the
+ *     origin and points at localhost/HTTPS as the fix.
+ *   - 'no-webgpu' when secureContext is true but hasGpu is false — a lesser
+ *     warning, since WASM Tier 1 still works, just slower.
+ *   - No warnings at all when secureContext, hasGpu and hasCaches all hold.
  *
  * Vendor deps (loaded via importmap — see index.html):
  *   "onnxruntime-web"    → /vendor/js/ort.all.bundle.min.mjs
@@ -67,6 +83,51 @@ const WARMUP_TEXT = 'Hello world.';
 const SLOW_DEVICE_RATIO = 3.0; // synthesis_wall / audio_duration threshold
 const SENTENCE_SPLIT_RE = /(?<=[.!?…])\s+(?=[A-Z"'])|(?<=\n)/g;
 const MAX_TOKENS_PER_CHUNK = 500; // leave headroom under Kokoro's 510 limit
+
+// ─── Environment diagnostics ───────────────────────────────────────────────────
+
+/**
+ * describeEnvironment({ secureContext, hasGpu, hasCaches, origin })
+ * Pure function: explains ahead of any init() attempt why the neural tier
+ * may be unavailable or degraded in the caller's environment. The caller
+ * supplies the browser signals (navigator.gpu, window.caches, etc.) rather
+ * than this function reading them directly, because the insecure-context
+ * case specifically HIDES those APIs — there is no way to probe them from
+ * a page that is itself served over a secure origin (e.g. this test page).
+ *
+ * Returns { warnings: [{ code, message }, ...] }, ordered most→least severe:
+ *   'insecure-context' — non-secure origins (e.g. `studyloop web --lan` opened
+ *     at http://<lan-ip>:8567) hide navigator.gpu AND the Cache/IndexedDB
+ *     APIs, forcing WASM and defeating model caching. Named as the root
+ *     cause rather than reported as 'no-webgpu' + 'no-caches' separately.
+ *   'no-webgpu' — secure context, but no WebGPU adapter: Tier 1 still runs
+ *     on WASM, just slower. A lesser warning than insecure-context.
+ * No warnings at all when the context is secure, WebGPU is present, and
+ * Cache Storage is available.
+ */
+function describeEnvironment({ secureContext, hasGpu, hasCaches, origin = '' } = {}) {
+  const warnings = [];
+
+  if (!secureContext) {
+    const host = origin.replace(/^https?:\/\//, '');
+    warnings.push({
+      code: 'insecure-context',
+      message:
+        `${host || 'this page'} is not a secure context, so the browser hides WebGPU ` +
+        `and its caches — Kokoro falls back to slower WASM and re-downloads its model ` +
+        `every visit. Open StudyLoop over localhost or HTTPS instead.`,
+    });
+  }
+
+  if (!hasGpu) {
+    warnings.push({
+      code: 'no-webgpu',
+      message: 'No WebGPU adapter available — Kokoro will run on WASM, which is slower.',
+    });
+  }
+
+  return { warnings };
+}
 
 // ─── Voice catalogue (mirrors kokoro-js) ──────────────────────────────────────
 
@@ -208,9 +269,19 @@ class TTSEngine {
     window.dispatchEvent(new CustomEvent('tts:state-change', { detail }));
   }
 
-  _setTier(tier) {
+  /**
+   * _setTier(tier, reason, detail) — resolves the active tier and broadcasts
+   * WHY it landed there. reason/detail default to the healthy case ('ok', '')
+   * so existing call sites that only pass tier keep working unchanged.
+   * degraded is derived, not passed in: true for anything but the two
+   * neural tiers, so listeners can't drift out of sync with the tier list.
+   */
+  _setTier(tier, reason = 'ok', detail = '') {
     this._tier = tier;
-    window.dispatchEvent(new CustomEvent('tts:tier-change', { detail: { tier } }));
+    const degraded = tier !== 'neural-webgpu' && tier !== 'neural-wasm';
+    window.dispatchEvent(new CustomEvent('tts:tier-change', {
+      detail: { tier, reason, detail, degraded },
+    }));
   }
 
   // ── Progress reporting ───────────────────────────────────────────────────────
@@ -245,7 +316,10 @@ class TTSEngine {
       await this._initNeural();
     } catch (err) {
       console.warn('[tts-engine] Neural init failed, falling back to Web Speech API:', err.message);
-      this._initWebSpeech();
+      // err.message carries the reason code ('device-too-slow',
+      // 'warmup-failed', or a generic failure); err.detail (set by
+      // _initNeural's slow-device throw) carries the human-readable why.
+      this._initWebSpeech(err.message, err.detail || err.message);
     }
 
     // Restore the persisted voice into the ENGINE, not just the settings
@@ -344,14 +418,16 @@ class TTSEngine {
 
     // ── Step 6: warm up + slow-device probe (WASM only) ──────────────────────
     if (!useWebGPU) {
-      const probePassed = await this._probeSpeed();
-      if (!probePassed) {
-        // Device too slow for real-time neural synthesis — fall back
-        console.warn('[tts-engine] Device too slow for neural TTS, falling back to Web Speech API');
+      const probe = await this._probeSpeed();
+      if (!probe.passed) {
+        // Device too slow (or warmup failed) for real-time neural synthesis — fall back
+        console.warn(`[tts-engine] Falling back to Web Speech API (${probe.reason}): ${probe.detail}`);
         this._kokoroModel = null;
         this._tokenizer = null;
         this._Tensor = null;
-        throw new Error('device-too-slow');
+        const err = new Error(probe.reason);
+        err.detail = probe.detail;
+        throw err;
       }
     }
 
@@ -359,30 +435,55 @@ class TTSEngine {
     console.info(`[tts-engine] Neural TTS ready (${this._tier})`);
   }
 
+  /**
+   * _probeSpeed() — warm up once (discarded from timing; pays ONNX graph
+   * build + kernel compilation), then measure a second, timed inference.
+   * The first version of this probe timed the warmup itself, so a capable
+   * machine's one-off compilation cost got misread as "too slow" and the
+   * device was permanently demoted to Web Speech. Returns a structured
+   * result instead of a bare boolean so callers can explain the outcome:
+   *   { passed, ratio, reason, detail }
+   *   reason: 'ok' | 'device-too-slow' | 'warmup-failed'
+   */
   async _probeSpeed() {
-    // Synthesise a short probe and measure wall-clock vs audio duration
+    try {
+      await this._synthesiseChunk(WARMUP_TEXT, /* play= */ false);
+    } catch (e) {
+      console.warn('[tts-engine] Warmup probe failed:', e.message);
+      return { passed: false, ratio: null, reason: 'warmup-failed', detail: e.message };
+    }
+
     const t0 = performance.now();
     let audioDuration;
     try {
       audioDuration = await this._synthesiseChunk(WARMUP_TEXT, /* play= */ false);
     } catch (e) {
-      console.warn('[tts-engine] Warmup probe failed:', e.message);
-      return false;
+      console.warn('[tts-engine] Speed measurement failed:', e.message);
+      return { passed: false, ratio: null, reason: 'warmup-failed', detail: e.message };
     }
     const wallMs = performance.now() - t0;
     const audioMs = audioDuration * 1000;
     const ratio = wallMs / (audioMs || 1);
     console.info(`[tts-engine] Speed probe: ${wallMs.toFixed(0)}ms wall / ${audioMs.toFixed(0)}ms audio = ${ratio.toFixed(2)}x`);
-    return ratio < SLOW_DEVICE_RATIO;
+
+    if (ratio >= SLOW_DEVICE_RATIO) {
+      return {
+        passed: false,
+        ratio,
+        reason: 'device-too-slow',
+        detail: `measured ${ratio.toFixed(1)}x real time (threshold ${SLOW_DEVICE_RATIO}x)`,
+      };
+    }
+    return { passed: true, ratio, reason: 'ok', detail: '' };
   }
 
-  _initWebSpeech() {
+  _initWebSpeech(reason = 'no-neural-support', detail = '') {
     if (!('speechSynthesis' in window)) {
       console.warn('[tts-engine] Web Speech API not available, using silent mode');
-      this._setTier('silent');
+      this._setTier('silent', reason, detail);
       return;
     }
-    this._setTier('web-speech');
+    this._setTier('web-speech', reason, detail);
     console.info('[tts-engine] Web Speech API ready');
   }
 
@@ -713,4 +814,4 @@ function _createEngine() {
 
 _createEngine();
 
-export { TTSEngine };
+export { TTSEngine, describeEnvironment };
