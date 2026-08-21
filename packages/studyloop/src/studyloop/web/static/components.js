@@ -2417,9 +2417,23 @@ function parkingPanel() {
       this.saveState = 'Save';
     },
     closeEditor() {
+      const wasEditing = this.editingId;
       this.editingId = null;
       this.showPreview = false;
       this.previewHtml = '';
+      /* Put focus back on the card. Closing the editor makes Alpine rebuild the
+         card's contents, and the browser drops focus to <body> when the focused
+         node goes away — so a keyboard user who pressed Escape loses their place
+         entirely and the next arrow key does nothing. Restoring it keeps the
+         board navigable without a pointer, which for this audience is the
+         difference between usable and not. */
+      if (wasEditing == null) return;
+      requestAnimationFrame(() => {
+        const el = this.$root.querySelector(
+          `.parking-card[data-id="${wasEditing}"]`
+        );
+        if (el && typeof el.focus === 'function') el.focus();
+      });
     },
     onTitleClick(item) {
       if (this._justDragged) { this._justDragged = false; return; }
