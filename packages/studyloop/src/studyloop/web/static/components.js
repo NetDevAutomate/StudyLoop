@@ -288,8 +288,49 @@ document.addEventListener("alpine:init", () => {
     // ttsDownloadPct: 0-100 during first-run model download, -1 when idle.
     ttsDownloadPct: -1,
     ttsDownloadFile: '',
+    /* TTS engine tier, as reported by tts-engine.js via 'tts:tier-change'.
+       null means UNRESOLVED — not "no engine". The distinction matters: until
+       the tier is known we must not offer the device's system voices, because a
+       learner who installed a Kokoro app and silently got Apple voices has no
+       way to tell. loadVoices() shows a disabled placeholder instead. */
+    ttsTier: null,
+    ttsTierReason: '',
+    ttsTierDetail: '',
+    ttsDegraded: false,
+    ttsNotice: '',
     _preferredVoice: null,
     _voicesLoaded: false,
+
+    /* Engine badge. Three states: pending (tier unknown), ok (a neural tier is
+       live), degraded (something else is speaking). "Degraded" is deliberately
+       loud — a silent downgrade is indistinguishable from working software. */
+    get ttsEngineLabel() {
+      if (!this.ttsTier) return 'Detecting…';
+      if (this.ttsTier === 'neural-webgpu') return 'Kokoro (WebGPU)';
+      if (this.ttsTier === 'neural-wasm') return 'Kokoro (WASM)';
+      if (this.ttsTier === 'web-speech') return 'System voices';
+      if (this.ttsTier === 'silent') return 'No audio';
+      return String(this.ttsTier);
+    },
+
+    get ttsEngineClass() {
+      if (!this.ttsTier) return 'tts-engine-badge pending';
+      return this.ttsDegraded ? 'tts-engine-badge degraded' : 'tts-engine-badge ok';
+    },
+
+    get ttsEngineTitle() {
+      if (!this.ttsTier) {
+        return 'Detecting which speech engine this device can run…';
+      }
+      if (!this.ttsDegraded) {
+        return `Kokoro neural speech is active (${this.ttsTier}).`;
+      }
+      const why = this.ttsTierDetail || this.ttsTierReason || 'reason unknown';
+      return (
+        `Kokoro is NOT active — using ${this.ttsEngineLabel} instead. ` +
+        `Reason: ${this.ttsTierReason || 'unknown'} — ${why}`
+      );
+    },
 
     init() {
       if (this.dyslexic) document.body.classList.add("dyslexic");
@@ -310,10 +351,49 @@ document.addEventListener("alpine:init", () => {
         this.ttsDownloadFile = e.detail.done ? '' : (e.detail.file || '');
       });
 
-      // Wire tts:tier-change → rebuild voice selector when tier is resolved.
-      window.addEventListener('tts:tier-change', () => {
+      // Wire tts:tier-change → record the tier and rebuild the voice selector.
+      window.addEventListener('tts:tier-change', (e) => {
+        const d = (e && e.detail) || {};
+        this.ttsTier = d.tier || (window.ttsEngine && window.ttsEngine.tier) || null;
+        this.ttsTierReason = d.reason || '';
+        this.ttsTierDetail = d.detail || '';
+        this.ttsDegraded = !!d.degraded;
         this.loadVoices();
       });
+
+      /* Wire tts:engine-notice → surface it. A failure inside the speech engine
+         (a voice that would not download, WebGPU vanishing mid-session) is
+         otherwise completely invisible: audio just stops happening, and the
+         learner concludes the feature is broken rather than that one voice
+         failed to fetch. */
+      window.addEventListener('tts:engine-notice', (e) => {
+        const d = (e && e.detail) || {};
+        this.ttsNotice = d.message || '';
+        if (this.ttsNotice) Alpine.store('toast').show(this.ttsNotice);
+      });
+
+      // Adopt whatever the engine already resolved before this store mounted —
+      // tts-engine.js is a module and may win the race.
+      if (window.ttsEngine && window.ttsEngine.tier) {
+        this.ttsTier = window.ttsEngine.tier;
+        this.ttsTierReason = window.ttsEngine.tierReason || '';
+        this.ttsTierDetail = window.ttsEngine.tierDetail || '';
+        this.ttsDegraded =
+          this.ttsTier !== 'neural-webgpu' && this.ttsTier !== 'neural-wasm';
+      }
+
+      /* Start the engine when voice is already on. tts-engine.js deliberately
+         does NOT init() at load (it is a multi-hundred-MB model download), so
+         without this the tier never resolves for a returning learner who left
+         voice enabled — the badge sits on "Detecting…" forever and the voice
+         list never leaves its placeholder. */
+      if (this.voiceOn && window.ttsEngine && window.ttsEngine.init) {
+        try {
+          window.ttsEngine.init();
+        } catch (err) {
+          console.warn('[settings] ttsEngine.init() failed:', err);
+        }
+      }
 
       // Web Speech API fallback: load WSA voices if ttsEngine is not yet
       // initialised (or falls back to web-speech tier).
@@ -441,6 +521,28 @@ document.addEventListener("alpine:init", () => {
     // web-speech tier / no engine: uses speechSynthesis.getVoices().
     loadVoices() {
       const select = document.getElementById("voice-select");
+
+      /* UNRESOLVED tier: show a disabled placeholder, never the device's system
+         voices. This is the whole bug the e2e test names — a learner who
+         installed a Kokoro-speaking app and silently got Apple voices has no
+         way to tell the difference, so offering them is worse than offering
+         nothing. Falling through to the Web Speech path here is what did that.
+         `null` tier means "not known yet", which is NOT the same as
+         'web-speech' (a real, deliberate decision by the engine). */
+      if (!(window.ttsEngine && window.ttsEngine.tier)) {
+        if (select) {
+          select.innerHTML = "";
+          const opt = document.createElement("option");
+          opt.textContent = "Detecting voice engine…";
+          opt.value = "";
+          opt.disabled = true;
+          select.appendChild(opt);
+          select.disabled = true;
+        }
+        this._voicesLoaded = false;
+        return;
+      }
+      if (select) select.disabled = false;
 
       // Neural tier: ttsEngine is initialised and not web-speech
       if (window.ttsEngine && window.ttsEngine.tier &&
