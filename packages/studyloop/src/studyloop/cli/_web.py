@@ -117,14 +117,24 @@ def web(
     # --dev-renderer implies --dev
     if dev_renderer is not None:
         dev = True
-    # Default renderer when --dev is used without --dev-renderer
-    if dev and dev_renderer is None:
-        dev_renderer = "ghostty"
+
+    # Bare `--dev` must go through the dev_engines REGISTRY, not the deprecated
+    # `dev_renderer` inline path. Defaulting dev_renderer to "ghostty" here (as
+    # this did) forced every plain `--dev` down the legacy branch, which injects
+    # materially different markup: content="ghostty-web" plus the
+    # *.umd.js/bootstrap pair, instead of content="ghostty" plus
+    # ghostty-web-0.4.0.js + ghostty-adapter-0.4.0.js. app.py's own comment
+    # states the intent — "Every other dev_mode=True call — including the new
+    # default — goes through the dev_engines registry below" — but this default
+    # defeated it, so the registry path was unreachable from the CLI and the
+    # adapter, window.GhosttyWeb and __studyloopGhostty were never loaded.
+    # dev_renderer now stays None unless the user explicitly asked for it.
+    dev_engine = "ghostty" if dev and dev_renderer is None else None
 
     if dev:
         renderer_label = (
             "ghostty-web (canvas renderer)"
-            if dev_renderer == "ghostty"
+            if (dev_renderer or dev_engine) == "ghostty"
             else "wterm (DOM renderer)"
         )
         console.print(
@@ -139,6 +149,7 @@ def web(
         password=password,
         dev_mode=dev,
         dev_renderer=dev_renderer,
+        dev_engine=dev_engine,
     )
     access_info = build_web_access_info(
         bind_host=host,
