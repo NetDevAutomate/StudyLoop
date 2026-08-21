@@ -14,6 +14,7 @@ appear in a real user's picker.
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 from typing import TYPE_CHECKING
 
@@ -26,9 +27,13 @@ if TYPE_CHECKING:
 
 def _fake_launch(persona_path: Path, resume: bool) -> str:
     binary = shutil.which("studyloop-fake-agent") or "studyloop-fake-agent"
-    # The fake agent takes the persona path as argv[1] and ignores it —
-    # passing it keeps the launch shape identical to real adapters.
-    return f"{binary} {persona_path}"
+    # The fake agent reads the persona file at argv[1] to resolve the study
+    # topic and pick its question bank, so this path is load-bearing, not
+    # decorative. It MUST be shell-quoted: this string is handed to a shell, and
+    # an unquoted path containing a space would split into two arguments, leaving
+    # argv[1] a fragment. The agent would then fail to read it and fall back to
+    # echo mode -- teaching silently replaced by an echo, with nothing logged.
+    return f"{binary} {shlex.quote(str(persona_path))}"
 
 
 ADAPTER = (
