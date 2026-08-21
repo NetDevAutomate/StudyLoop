@@ -297,6 +297,24 @@
         <span>Courses</span>
       </button>
 
+      <!-- Parking Lot toggle — opens the 3rd-column Kanban parking panel -->
+      <button id="parking-lot-toggle" class="sidebar-btn parking-sidebar-btn"
+              :class="{ active: $store.parking.open }"
+              @click="$store.parking.toggle()"
+              title="Parking Lot — parked thoughts and tangents">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 8h4a2 2 0 010 4H9zM9 8v8"/></svg>
+        <span>Parking Lot</span>
+      </button>
+
+      <!-- Notes toggle — opens the 3rd-column study-notes panel -->
+      <button id="notes-toggle" class="sidebar-btn notes-sidebar-btn"
+              :class="{ active: $store.notes.open }"
+              @click="$store.notes.toggle()"
+              title="Notes — study notes">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg>
+        <span>Notes</span>
+      </button>
+
       <!-- Spacer pushes Settings to the bottom of the sidebar (gear convention) -->
       <div class="sidebar-spacer" aria-hidden="true"></div>
       <button class="sidebar-btn"
@@ -601,6 +619,274 @@
 
         </div>
 
+      </div><!-- .explorer-panel-body -->
+    </aside>
+
+    <!-- ============================================================ -->
+    <!-- PARKING LOT PANEL                                            -->
+    <!-- 3rd grid column: editable, Kanban-style, Markdown-native.    -->
+    <!-- ============================================================ -->
+    <aside id="parking-panel"
+           class="parking-panel side-panel"
+           x-data="parkingPanel()"
+           x-show="$store.parking.open"
+           :class="{ 'select-mode': selectMode }"
+           @keydown.escape.window="$store.parking.open && close()"
+           x-cloak
+           aria-label="Parking lot">
+
+      <div class="explorer-panel-header">
+        <span class="explorer-panel-title">Parking Lot</span>
+        <span id="parking-total-count" class="side-panel-count" x-text="totalLabel()"></span>
+        <button class="explorer-close-btn" @click="close()" title="Close"
+                aria-label="Close parking lot">&times;</button>
+      </div>
+
+      <!-- Bulk / selection bar — always visible (no hidden mode gate). -->
+      <div class="side-panel-bulkbar">
+        <button id="parking-select-mode" type="button" class="bulk-btn"
+                :class="{ active: selectMode }" @click="selectMode = !selectMode"
+                title="Toggle select mode">Select</button>
+        <button id="parking-select-all" type="button" class="bulk-btn"
+                @click="selectAll()">All</button>
+        <button id="parking-select-none" type="button" class="bulk-btn"
+                @click="selectNone()">None</button>
+        <span id="parking-selected-count" class="bulk-count"
+              x-text="selectedCountLabel()"></span>
+        <button id="parking-clear-selected" type="button" class="bulk-btn danger"
+                :disabled="selectedIds.length === 0"
+                :title="selectedIds.length === 0
+                        ? 'Tick or select cards, then delete them'
+                        : 'Delete the selected cards'"
+                @click="clearSelected()">Delete selected</button>
+        <button id="parking-clear-all" type="button" class="bulk-btn danger"
+                :disabled="totalCount() === 0" @click="clearAll()">Clear all</button>
+        <button id="parking-undo-clear" type="button" class="bulk-btn"
+                @click="undoClear()">Undo</button>
+        <button id="parking-manage-columns" type="button" class="bulk-btn"
+                :class="{ active: manageColumns }" @click="manageColumns = !manageColumns"
+                title="Manage columns">Columns</button>
+      </div>
+
+      <!-- Column admin — add / rename / remove columns. -->
+      <div class="parking-columns-admin" x-show="manageColumns" x-cloak>
+        <div class="parking-admin-add">
+          <input id="parking-new-column" type="text" maxlength="48"
+                 placeholder="New column name…" x-model="newColumnName"
+                 @keydown.enter="addColumn()">
+          <button id="parking-add-column" type="button" class="bulk-btn"
+                  @click="addColumn()">Add</button>
+        </div>
+        <template x-for="col in columns" :key="'admin-' + col.key">
+          <div class="parking-column-admin-row">
+            <input class="parking-column-rename" type="text" maxlength="48"
+                   :value="col.name"
+                   @keydown.enter="renameColumn(col.key, $event.target.value)">
+            <button type="button" class="bulk-btn danger"
+                    @click="removeColumn(col.key)">Remove</button>
+          </div>
+        </template>
+      </div>
+
+      <div class="explorer-panel-body">
+        <div x-show="loadError" class="explorer-error" x-text="loadError"></div>
+
+        <!-- Empty state -->
+        <div id="parking-empty" class="parking-empty" x-show="totalCount() === 0" x-cloak>
+          Nothing parked yet. Press <kbd>p</kbd> anywhere to park a thought.
+        </div>
+
+        <!-- The board: one column per key, cards inside. -->
+        <div class="parking-board">
+          <template x-for="col in columns" :key="col.key">
+            <div class="parking-column" :data-column="col.key"
+                 :class="{ 'drag-over': dragOverColumn === col.key }">
+              <div class="parking-column-header">
+                <span class="parking-column-name" x-text="col.name"></span>
+                <button type="button" class="parking-column-select"
+                        @click="selectColumn(col.key)"
+                        :title="'Select all cards in ' + col.name"
+                        aria-label="Select all cards in column">&#10003;</button>
+              </div>
+
+              <div class="parking-column-cards">
+                <template x-for="item in col.items" :key="item.id">
+                  <article class="parking-card"
+                           tabindex="0"
+                           :data-id="item.id"
+                           :class="{ editing: editingId === item.id, selected: isSelected(item.id) }"
+                           @pointerdown="startDrag(item, $event)"
+                           @keydown="onCardKey(item, $event)">
+                    <div class="parking-card-row">
+                      <label class="parking-card-check-label" @click.stop>
+                        <input type="checkbox" class="parking-card-check"
+                               :checked="isSelected(item.id)"
+                               @change="toggleSelect(item.id)"
+                               aria-label="Select card">
+                      </label>
+
+                      <div class="parking-card-main">
+                        <!-- Collapsed view -->
+                        <template x-if="editingId !== item.id">
+                          <div>
+                            <div class="parking-card-title"
+                                 @click="onTitleClick(item)"
+                                 x-text="item.question"></div>
+                            <div class="parking-card-meta">
+                              <span class="parking-card-area" x-show="item.tech_area"
+                                    x-text="item.tech_area"></span>
+                              <span class="parking-card-badge" x-show="item.has_diagram">diagram</span>
+                              <span class="parking-card-prio" x-show="item.priority"
+                                    x-text="'P' + item.priority"></span>
+                            </div>
+                            <div class="parking-card-preview-text" x-show="item.preview"
+                                 x-text="item.preview"></div>
+                          </div>
+                        </template>
+
+                        <!-- In-place editor (only the editing card renders it,
+                             so #parking-note-input stays unique). -->
+                        <template x-if="editingId === item.id">
+                          <div class="parking-card-editor"
+                               @pointerdown.stop @keydown.stop>
+                            <input class="parking-title-input" type="text"
+                                   x-model="titleText" placeholder="Title">
+                            <div class="parking-editor-controls">
+                              <input class="parking-area-input" type="text"
+                                     x-model="areaText" placeholder="Area (e.g. SQL)">
+                              <select class="parking-priority-input" x-model="priorityVal">
+                                <option value="">Priority…</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                              </select>
+                            </div>
+                            <div class="parking-editor-toolbar">
+                              <button id="parking-insert-diagram" type="button"
+                                      class="bulk-btn" @click="insertDiagram()">Insert diagram</button>
+                              <button id="parking-preview-btn" type="button"
+                                      class="bulk-btn" @click="togglePreview()">Preview</button>
+                              <button id="parking-save-btn" type="button"
+                                      class="bulk-btn primary" @click="save()"
+                                      x-text="saveState"></button>
+                            </div>
+                            <textarea id="parking-note-input" class="parking-note-textarea"
+                                      rows="10" x-model="noteText"
+                                      placeholder="Write it up as Markdown…"></textarea>
+                            <div class="parking-note-preview acp-message-final"
+                                 x-show="showPreview" x-html="previewHtml"></div>
+                          </div>
+                        </template>
+                      </div>
+
+                      <button class="parking-card-clear" type="button"
+                              @click.stop="clearOne(item.id)" @pointerdown.stop
+                              title="Clear this item" aria-label="Clear item">&times;</button>
+                    </div>
+                  </article>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div><!-- .explorer-panel-body -->
+    </aside>
+
+    <!-- ============================================================ -->
+    <!-- NOTES PANEL                                                  -->
+    <!-- 3rd grid column: study notes, selection + bulk delete.       -->
+    <!-- ============================================================ -->
+    <aside id="notes-panel"
+           class="notes-panel side-panel"
+           x-data="notesPanel()"
+           x-show="$store.notes.open"
+           :class="{ 'select-mode': selectMode }"
+           @keydown.escape.window="$store.notes.open && close()"
+           x-cloak
+           aria-label="Study notes">
+
+      <div class="explorer-panel-header">
+        <span class="explorer-panel-title">Notes</span>
+        <span id="notes-total-count" class="side-panel-count" x-text="totalLabel()"></span>
+        <button class="explorer-close-btn" @click="close()" title="Close"
+                aria-label="Close notes">&times;</button>
+      </div>
+
+      <div class="side-panel-bulkbar">
+        <button id="notes-select-mode" type="button" class="bulk-btn"
+                :class="{ active: selectMode }" @click="selectMode = !selectMode"
+                title="Toggle select mode">Select</button>
+        <button id="notes-select-all" type="button" class="bulk-btn"
+                @click="selectAll()">All</button>
+        <button id="notes-select-none" type="button" class="bulk-btn"
+                @click="selectNone()">None</button>
+        <span id="notes-selected-count" class="bulk-count"
+              x-text="selectedCountLabel()"></span>
+        <button id="notes-clear-selected" type="button" class="bulk-btn danger"
+                :disabled="selectedIds.length === 0"
+                :title="selectedIds.length === 0
+                        ? 'Tick or select notes, then delete them'
+                        : 'Delete the selected notes'"
+                @click="clearSelected()">Delete selected</button>
+        <button id="notes-clear-all" type="button" class="bulk-btn danger"
+                :disabled="notes.length === 0" @click="clearAll()">Clear all</button>
+        <button id="notes-undo-clear" type="button" class="bulk-btn"
+                @click="undoClear()">Undo</button>
+      </div>
+
+      <div class="explorer-panel-body">
+        <div x-show="loadError" class="explorer-error" x-text="loadError"></div>
+
+        <div class="notes-list">
+          <template x-for="n in notes" :key="n.id">
+            <article class="note-card"
+                     tabindex="0"
+                     :data-id="n.id"
+                     :class="{ editing: editingId === n.id, selected: isSelected(n.id) }"
+                     @keydown="onCardKey(n, $event)">
+              <div class="note-card-row">
+                <label class="note-card-check-label" @click.stop>
+                  <input type="checkbox" class="note-card-check"
+                         :checked="isSelected(n.id)"
+                         @change="toggleSelect(n.id)"
+                         aria-label="Select note">
+                </label>
+
+                <div class="note-card-main">
+                  <template x-if="editingId !== n.id">
+                    <div>
+                      <div class="note-card-title" @click="onTitleClick(n)"
+                           x-text="n.title"></div>
+                      <div class="note-card-kind" x-show="n.kind" x-text="n.kind"></div>
+                    </div>
+                  </template>
+
+                  <template x-if="editingId === n.id">
+                    <div class="note-card-editor" @keydown.stop>
+                      <input class="note-title-input" type="text"
+                             x-model="titleText" placeholder="Title">
+                      <textarea class="note-body-input" rows="8"
+                                x-model="bodyText"
+                                placeholder="Write your note as Markdown…"></textarea>
+                      <div class="note-editor-toolbar">
+                        <button type="button" class="bulk-btn primary"
+                                @click="save()" x-text="saveState"></button>
+                        <button type="button" class="bulk-btn"
+                                @click="closeEditor()">Close</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+
+                <button class="note-card-delete" type="button"
+                        @click.stop="clearOne(n.id)"
+                        title="Delete this note" aria-label="Delete note">&times;</button>
+              </div>
+            </article>
+          </template>
+        </div>
       </div><!-- .explorer-panel-body -->
     </aside>
 
@@ -1996,6 +2282,40 @@
         this.open = false;
         const layout = document.querySelector('.app-layout');
         if (layout) layout.classList.remove('explorer-open');
+      },
+    });
+
+    /* ----------------------------------------------------------------
+     * Parking Lot + Notes stores — boot stubs for the sidebar toggle
+     * buttons. The full behaviour (lazy-fetch + close siblings) is wired
+     * onto these by parkingPanel()/notesPanel() in their init(), mirroring
+     * the explorer store above. Only one 3rd-column panel is open at once.
+     * ---------------------------------------------------------------- */
+    Alpine.store('parking', {
+      open: false,
+      toggle() {
+        this.open = !this.open;
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.toggle('parking-open', this.open);
+      },
+      close() {
+        this.open = false;
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.remove('parking-open');
+      },
+    });
+
+    Alpine.store('notes', {
+      open: false,
+      toggle() {
+        this.open = !this.open;
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.toggle('notes-open', this.open);
+      },
+      close() {
+        this.open = false;
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.remove('notes-open');
       },
     });
 
