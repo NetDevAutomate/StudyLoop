@@ -38,6 +38,14 @@ async def get_session_state() -> dict:
     state = _get_full_state()
     current = await session_active.current()
     if current is None:
+        # Nothing is held: surface WHY the previous session ended. _grace has
+        # recorded this all along and its docstring says this endpoint reads it,
+        # but the wiring was never added — so a learner whose session vanished on
+        # grace expiry got an empty dashboard and no explanation, which is the
+        # exact guessing the record exists to prevent.
+        release = _grace.last_release()
+        if release is not None:
+            state["last_release"] = release
         return state
 
     session_id = current.study_session_id
