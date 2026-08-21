@@ -1,0 +1,20 @@
+{
+  "0": "Session Teardown & Cleanup",
+  "1": "Card Generation Backends",
+  "3": "Session Transport Layer",
+  "4": "Session Exporters",
+  "5": "Content Generation Runner",
+  "6": "Session CLI Commands",
+  "7": "Content Config & Explorer Tests",
+  "10": "Web Auth & Security Middleware",
+  "11": "Web App Factory",
+  "13": "Session Deduplication",
+  "14": "Session State & Breaks",
+  "15": "Study Dir Resolution Settings",
+  "16": "Study Orchestration (tmux)",
+  "31": "ACP Chat UI Browser Tests",
+  "51": "NotebookLM Client & Models",
+  "131": "Syllabus & Chunking",
+  "161": "Review & Progress CLI",
+  "387": "Obsidian/NotebookLM Sync CLI"
+}

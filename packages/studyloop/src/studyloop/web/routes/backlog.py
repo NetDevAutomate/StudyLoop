@@ -12,7 +12,13 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from studyloop.parking import demote_parked_topic, get_parked_topics, park_topic
+from studyloop.parking import (
+    demote_parked_topic,
+    dismiss_parked_topic,
+    get_parked_topics,
+    park_topic,
+    resolve_parked_topic,
+)
 from studyloop.settings import MAX_ACTIVE_TOPICS
 
 router = APIRouter()
@@ -83,4 +89,45 @@ def post_demote(body: DemoteRequest) -> dict:
     """
     if not demote_parked_topic(body.id):
         raise HTTPException(status_code=500, detail="Could not demote topic")
+    return {"ok": True}
+
+
+class DismissRequest(BaseModel):
+    """POST /api/backlog/dismiss request body."""
+
+    id: int
+
+
+@router.post("/backlog/dismiss")
+def post_dismiss(body: DismissRequest) -> dict:
+    """Mark a parked thought as "not worth it" — removes it from the active backlog.
+
+    Dismiss means the learner decided the tangent isn't worth pursuing. This
+    is distinct from resolve (which means "I eventually covered this"). The
+    distinction matters for analytics: dismissed items are noise the system
+    can learn to deprioritise; resolved items are evidence of successful
+    curiosity capture.
+    """
+    if not dismiss_parked_topic(body.id):
+        raise HTTPException(status_code=500, detail="Could not dismiss topic")
+    return {"ok": True}
+
+
+class ResolveRequest(BaseModel):
+    """POST /api/backlog/resolve request body."""
+
+    id: int
+
+
+@router.post("/backlog/resolve")
+def post_resolve(body: ResolveRequest) -> dict:
+    """Mark a parked thought as "I covered this" — a successful learning capture.
+
+    Resolve means the tangent was eventually addressed (in a session, via
+    self-study, or through incidental coverage). Unlike dismiss, a resolved
+    item is a positive signal: the parking lot worked — it held the thought
+    until the learner was ready for it.
+    """
+    if not resolve_parked_topic(body.id):
+        raise HTTPException(status_code=500, detail="Could not resolve topic")
     return {"ok": True}

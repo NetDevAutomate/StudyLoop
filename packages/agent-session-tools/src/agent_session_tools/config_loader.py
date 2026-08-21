@@ -266,10 +266,26 @@ def _deep_merge(base: dict, update: dict) -> None:
 
 
 def get_db_path(config: dict[str, Any] | None = None) -> Path:
-    """Get database path from config."""
+    """Get database path from config.
+
+    Precedence: an explicit ``database.path`` config key wins, then
+    ``STUDYLOOP_DB``, then the hardcoded default.
+
+    ``STUDYLOOP_DB`` replaces only the hardcoded default so a test run — or a
+    subprocess it spawns — cannot fall through to the learner's real
+    ``~/.config/studyloop/sessions.db`` and run migrations against it. This
+    module resolves the DB independently of ``studyloop.settings``, so it needs
+    its own guard; honouring the env var in only one of the two was why the
+    real database was still being written during test runs. See
+    ``docs/issues/0005-vendor-picker-lists-repo-directories.md``.
+    """
     if config is None:
         config = load_config()
-    return Path(config["database"]["path"])
+    configured = str(config["database"]["path"])
+    env_db = os.environ.get("STUDYLOOP_DB")
+    if env_db and configured == DEFAULT_CONFIG["database"]["path"]:
+        return Path(env_db).expanduser()
+    return Path(configured)
 
 
 def get_archive_path(config: dict[str, Any] | None = None) -> Path:

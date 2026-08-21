@@ -37,6 +37,7 @@ def create_app(
     username: str = "study",
     password: str = "",
     dev_mode: bool = False,
+    dev_renderer: str | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -46,8 +47,10 @@ def create_app(
         username: Username for HTTP Basic Auth (LAN protection). Default: "study".
         password: Optional password for HTTP Basic Auth (LAN protection).
                   If empty, no authentication is applied.
-        dev_mode: When True, the UI loads wterm instead of xterm.js. Default
-                  (False) preserves existing behaviour exactly.
+        dev_mode: When True, the UI loads an alternative renderer instead of
+                  xterm.js. Default (False) preserves existing behaviour exactly.
+        dev_renderer: Which renderer to use in dev mode. "ghostty" (default) or
+                      "wterm". Only meaningful when dev_mode=True.
     """
     app = FastAPI(
         title="StudyLoop",
@@ -59,6 +62,7 @@ def create_app(
     app.state.study_dirs = study_dirs or []
     app.state.ttyd_port = ttyd_port
     app.state.dev_mode = dev_mode
+    app.state.dev_renderer = dev_renderer
     # Single source of truth for LAN Basic-Auth credentials. The ttyd start
     # path reads these instead of independently re-loading config.yaml, so the
     # app's auth and ttyd's auth can never silently diverge (a CLI --password
@@ -142,31 +146,46 @@ def create_app(
         pass  # httpx/websockets not installed — proxy unavailable
 
     # Serve index.html at root (no-cache to prevent stale SW/browser cache).
-    # In dev_mode=True the HTML is read and a <meta> tag plus the wterm vendor
-    # bundle + adapter are injected so the client-side JS swaps Terminal at runtime.
+    # In dev_mode=True the HTML is read and renderer-specific tags are injected
+    # so the client-side JS swaps Terminal at runtime.
     @app.get("/", response_model=None)
     async def index() -> Response:
         no_cache = {"Cache-Control": "no-cache, no-store, must-revalidate"}
         if not dev_mode:
             return FileResponse(STATIC_DIR / "index.html", headers=no_cache)
         html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-        dev_injection = (
-            '\n  <meta name="studyloop-dev-mode" content="wterm">'
-            '\n  <link rel="stylesheet" href="/vendor/css/wterm-0.3.0.css">'
-        )
-        html = html.replace("<head>", "<head>" + dev_injection, 1)
-        # Both scripts are `defer` — they execute in document order AFTER the
-        # `defer` xterm-6.0.0 scripts above, so the adapter's
-        # `window.Terminal = WTermAdapter` is the last writer and wins. Without
-        # `defer`, the adapter runs synchronously *before* xterm, which then
-        # overwrites the patch.
-        wterm_scripts = (
-            "\n  <!-- wterm dev-mode: defer so it runs after the xterm defer"
-            " scripts; the adapter patches window.Terminal last -->"
-            '\n  <script defer src="/vendor/js/wterm-0.3.0.js"></script>'
-            '\n  <script defer src="/vendor/js/wterm-adapter-0.3.0.js"></script>'
-        )
-        html = html.replace("</head>", wterm_scripts + "\n</head>", 1)
+        renderer = dev_renderer or "ghostty"
+        if renderer == "ghostty":
+            dev_injection = (
+                '\n  <meta name="studyloop-dev-mode" content="ghostty-web">'
+            )
+            html = html.replace("<head>", "<head>" + dev_injection, 1)
+            # ghostty-web UMD + bootstrap: defer so they execute after the
+            # xterm.js defer scripts; the bootstrap patches window.Terminal last.
+            # No CSS needed (canvas renderer).
+            ghostty_scripts = (
+                "\n  <!-- ghostty-web dev-mode: defer so it runs after the xterm"
+                " defer scripts; the bootstrap patches window.Terminal last -->"
+                '\n  <script defer src="/vendor/js/ghostty-web-0.4.0.umd.js"></script>'
+                '\n  <script defer src="/vendor/js/ghostty-web-bootstrap-0.4.0.js"></script>'
+            )
+            html = html.replace("</head>", ghostty_scripts + "\n</head>", 1)
+        elif renderer == "wterm":
+            dev_injection = (
+                '\n  <meta name="studyloop-dev-mode" content="wterm">'
+                '\n  <link rel="stylesheet" href="/vendor/css/wterm-0.3.0.css">'
+            )
+            html = html.replace("<head>", "<head>" + dev_injection, 1)
+            # Both scripts are `defer` — they execute in document order AFTER the
+            # `defer` xterm-6.0.0 scripts above, so the adapter's
+            # `window.Terminal = WTermAdapter` is the last writer and wins.
+            wterm_scripts = (
+                "\n  <!-- wterm dev-mode: defer so it runs after the xterm defer"
+                " scripts; the adapter patches window.Terminal last -->"
+                '\n  <script defer src="/vendor/js/wterm-0.3.0.js"></script>'
+                '\n  <script defer src="/vendor/js/wterm-adapter-0.3.0.js"></script>'
+            )
+            html = html.replace("</head>", wterm_scripts + "\n</head>", 1)
         return HTMLResponse(content=html, headers=no_cache)
 
     # Redirect /session to hash-routed study-session tab

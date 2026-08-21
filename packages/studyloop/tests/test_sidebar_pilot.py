@@ -118,32 +118,26 @@ class TestSidebarKeyBindings:
                 "mode": "study",
                 "tmux_session": "study-test-123",
                 "tmux_main_pane": "%0",
+                "mux_session": "study-test-123",
+                "mux_main_pane": "%0",
                 "started_at": "2026-04-02T12:00:00+00:00",
             },
         )
 
-        def _tmux_side_effect(*args, **_kwargs):
-            """Mock tmux: list-sessions returns the study session name."""
-            if args and args[0] == "list-sessions":
-                return MagicMock(returncode=0, stdout="study-test-123\n")
-            return MagicMock(returncode=0, stdout="")
+        mock_backend = MagicMock()
+        mock_backend.list_study_sessions.return_value = ["study-test-123"]
 
         with (
-            patch("studyloop.tmux._tmux", side_effect=_tmux_side_effect) as mock_tmux,
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.session.cleanup.cleanup_on_exit"),
         ):
             async with SidebarApp().run_test(size=(40, 20)) as pilot:
                 await pilot.press("Q")
                 await pilot.pause()
 
-                # Verify kill-session was called for the study session
-                kill_calls = [
-                    call
-                    for call in mock_tmux.call_args_list
-                    if len(call.args) >= 2 and call.args[0] == "kill-session"
-                ]
-                assert len(kill_calls) > 0, (
-                    f"kill-session not called. tmux calls: {mock_tmux.call_args_list}"
+                # Verify kill_all_study_sessions was called
+                mock_backend.kill_all_study_sessions.assert_called_once_with(
+                    current_session="study-test-123"
                 )
 
     @pytest.mark.asyncio
@@ -160,29 +154,31 @@ class TestSidebarKeyBindings:
                 "mode": "study",
                 "tmux_session": "study-test-123",
                 "tmux_main_pane": "%0",
+                "mux_session": "study-test-123",
+                "mux_main_pane": "%0",
                 "started_at": "2026-04-02T12:00:00+00:00",
             },
         )
 
-        with patch("studyloop.tmux._tmux") as mock_tmux:
-            mock_tmux.return_value = MagicMock(returncode=0)
+        mock_backend = MagicMock()
 
-            with patch("studyloop.session.cleanup.cleanup_on_exit"):
-                async with SidebarApp().run_test(size=(40, 20)) as pilot:
-                    await pilot.press("Q")
-                    await pilot.pause()
+        with (
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
+            patch("studyloop.session.cleanup.cleanup_on_exit"),
+        ):
+            async with SidebarApp().run_test(size=(40, 20)) as pilot:
+                await pilot.press("Q")
+                await pilot.pause()
 
-                    # Check that send-keys with /exit was called
-                    send_calls = [
-                        call
-                        for call in mock_tmux.call_args_list
-                        if len(call.args) >= 4
-                        and call.args[0] == "send-keys"
-                        and "/exit" in call.args
-                    ]
-                    assert len(send_calls) > 0, (
-                        f"/exit not sent. tmux calls: {mock_tmux.call_args_list}"
-                    )
+                # Check that send_keys was called with /exit
+                exit_calls = [
+                    call
+                    for call in mock_backend.send_keys.call_args_list
+                    if "/exit" in call.args
+                ]
+                assert len(exit_calls) > 0, (
+                    f"/exit not sent. send_keys calls: {mock_backend.send_keys.call_args_list}"
+                )
 
     @pytest.mark.asyncio
     async def test_p_toggles_pause(self, state_dir):

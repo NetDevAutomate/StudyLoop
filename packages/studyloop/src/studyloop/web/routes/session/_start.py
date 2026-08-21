@@ -499,13 +499,15 @@ def _start_ttyd_session(body: StartSessionRequest, request: Request | None = Non
     import shutil
     from pathlib import Path
 
-    from studyloop.tmux import is_tmux_available, kill_session, session_exists
+    from studyloop.multiplexer import get_backend
+
+    mux = get_backend()
 
     # --- Pre-flight ---
 
-    if not is_tmux_available():
+    if not mux.is_available():
         return JSONResponse(
-            {"error": "tmux 3.1+ is required but not found"},
+            {"error": "Terminal multiplexer is required but not available"},
             status_code=503,
         )
 
@@ -616,8 +618,8 @@ def _start_ttyd_session(body: StartSessionRequest, request: Request | None = Non
     session_name = f"study-{slug}-{short_id}"
     session_dir = SESSION_DIR / "sessions" / session_name
 
-    if session_exists(session_name):
-        kill_session(session_name)
+    if mux.session_exists(session_name):
+        mux.kill_session(session_name)
 
     from studyloop.agent_launcher import build_canonical_persona
     from studyloop.session.orchestrator import (

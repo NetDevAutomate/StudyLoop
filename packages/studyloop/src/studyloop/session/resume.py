@@ -38,46 +38,39 @@ def handle_resume(
             The CLI layer passes this in to avoid a upward import.
             If None and rebuild is needed, a RuntimeError is raised.
     """
+    from studyloop.multiplexer import get_backend
     from studyloop.session_state import read_session_state
-    from studyloop.tmux import (
-        attach,
-        is_in_tmux,
-        kill_session,
-        pane_has_child_process,
-        session_exists,
-    )
+
+    mux = get_backend()
 
     state = read_session_state()
-    session_name = state.get("tmux_session")
+    session_name = state.get("mux_session") or state.get("tmux_session")
     session_dir = state.get("session_dir")
-    main_pane = state.get("tmux_main_pane")
+    main_pane = state.get("mux_main_pane") or state.get("tmux_main_pane")
 
     if not session_name:
         console.print("[yellow]No active session to resume.[/yellow]")
         ctx.exit(1)
         return
 
-    # Scenario 1: tmux session is still alive AND agent is running -- reconnect
-    if session_exists(session_name):
+    # Scenario 1: session is still alive AND agent is running -- reconnect
+    if mux.session_exists(session_name):
         # Check if the agent is actually running (not just a dead shell).
-        # tmux wraps commands in a shell, so we check for child processes.
-        agent_alive = pane_has_child_process(main_pane) if main_pane else False
+        agent_alive = mux.pane_has_child_process(main_pane) if main_pane else False
 
         if agent_alive:
             topic = state.get("topic", "unknown")
             console.print(f"[green]Resuming:[/green] {topic}")
 
-            if is_in_tmux():
-                from studyloop.tmux import switch_client
-
-                switch_client(session_name)
+            if mux.is_inside_session():
+                mux.switch_client(session_name)
             else:
-                attach(session_name)
+                mux.attach(session_name)
             return
 
-        # tmux session is zombie (agent exited) -- kill it and rebuild
-        console.print("[dim]Cleaning up stale tmux session...[/dim]")
-        kill_session(session_name)
+        # Session is zombie (agent exited) -- kill it and rebuild
+        console.print("[dim]Cleaning up stale session...[/dim]")
+        mux.kill_session(session_name)
 
     # Scenario 2: tmux session dead but session dir preserved
     # Rebuild the tmux session with -r to resume the AI conversation

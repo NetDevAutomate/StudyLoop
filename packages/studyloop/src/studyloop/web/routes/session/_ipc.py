@@ -10,17 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 def _is_tmux_session_alive(session_name: str) -> bool:
-    """Check if a tmux session exists. Returns False if tmux isn't running."""
-    import subprocess
-
+    """Check if a multiplexer session exists. Returns False if not running."""
     if not session_name:
         return False
-    result = subprocess.run(
-        ["tmux", "has-session", "-t", session_name],
-        capture_output=True,
-        check=False,
-    )
-    return result.returncode == 0
+    from studyloop.multiplexer import get_backend
+
+    mux = get_backend()
+    return mux.session_exists(session_name)
 
 
 def _kill_stale_ttyd(state: dict) -> None:
@@ -55,9 +51,9 @@ def _get_full_state() -> dict:
 
     state = session_pkg.read_session_state()
 
-    # Zombie detection: state says active but tmux session is dead
-    tmux_session = state.get("tmux_session")
-    if tmux_session and state.get("mode") != "ended" and not _is_tmux_session_alive(tmux_session):
+    # Zombie detection: state says active but multiplexer session is dead
+    mux_session = state.get("mux_session") or state.get("tmux_session")
+    if mux_session and state.get("mode") != "ended" and not _is_tmux_session_alive(mux_session):
         # Kill orphaned ttyd before clearing state
         _kill_stale_ttyd(state)
         # Clear stale IPC files

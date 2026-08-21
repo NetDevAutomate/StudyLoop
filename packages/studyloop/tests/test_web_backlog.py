@@ -138,6 +138,148 @@ def test_session_last_empty_when_no_history(monkeypatch) -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# POST /api/backlog/dismiss — mark a parked thought as "not worth it"
+# ---------------------------------------------------------------------------
+
+
+def test_dismiss_happy_path(monkeypatch) -> None:
+    """Dismiss sets status='dismissed' and item vanishes from GET /api/backlog."""
+    captured: dict = {}
+    monkeypatch.setattr(
+        "studyloop.web.routes.backlog.dismiss_parked_topic",
+        lambda pid: captured.update({"id": pid}) or True,
+    )
+    resp = _client().post("/api/backlog/dismiss", json={"id": 42})
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+    assert captured["id"] == 42
+
+
+def test_dismiss_unknown_id_returns_500(monkeypatch) -> None:
+    """Dismissing a non-existent id returns 500 (mirrors demote behaviour)."""
+    monkeypatch.setattr("studyloop.web.routes.backlog.dismiss_parked_topic", lambda pid: False)
+    assert _client().post("/api/backlog/dismiss", json={"id": 9999}).status_code == 500
+
+
+def test_dismiss_removes_from_backlog(monkeypatch) -> None:
+    """Park -> dismiss -> absent from GET /api/backlog round-trip."""
+    parked_id = 55
+    store: list[dict] = []
+
+    def _fake_park(question, **kw):
+        store.append({"id": parked_id, "question": question, "status": "pending"})
+        return parked_id
+
+    def _fake_dismiss(pid):
+        store[:] = [t for t in store if t["id"] != pid]
+        return True
+
+    monkeypatch.setattr("studyloop.web.routes.backlog.park_topic", _fake_park)
+    monkeypatch.setattr("studyloop.web.routes.backlog.dismiss_parked_topic", _fake_dismiss)
+    monkeypatch.setattr(
+        "studyloop.web.routes.backlog.get_parked_topics",
+        lambda status="pending": [t for t in store if t["status"] == "pending"],
+    )
+
+    client = _client()
+    # Park it
+    resp = client.post("/api/backlog/park", json={"question": "Learn about MVCC"})
+    assert resp.status_code == 200
+    # Dismiss it
+    resp = client.post("/api/backlog/dismiss", json={"id": parked_id})
+    assert resp.status_code == 200
+    # Gone from backlog
+    body = client.get("/api/backlog").json()
+    assert body["active_count"] == 0
+    assert body["parking_lot_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# POST /api/backlog/resolve — mark a parked thought as "I covered this"
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_happy_path(monkeypatch) -> None:
+    """Resolve sets status='resolved' — the thought was eventually addressed."""
+    captured: dict = {}
+    monkeypatch.setattr(
+        "studyloop.web.routes.backlog.resolve_parked_topic",
+        lambda pid: captured.update({"id": pid}) or True,
+    )
+    resp = _client().post("/api/backlog/resolve", json={"id": 10})
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+    assert captured["id"] == 10
+
+
+def test_resolve_unknown_id_returns_500(monkeypatch) -> None:
+    monkeypatch.setattr("studyloop.web.routes.backlog.resolve_parked_topic", lambda pid: False)
+    assert _client().post("/api/backlog/resolve", json={"id": 9999}).status_code == 500
+
+
+def test_resolve_removes_from_backlog(monkeypatch) -> None:
+    """Park -> resolve -> absent from GET /api/backlog round-trip."""
+    parked_id = 77
+    store: list[dict] = []
+
+    def _fake_park(question, **kw):
+        store.append({"id": parked_id, "question": question, "status": "pending"})
+        return parked_id
+
+    def _fake_resolve(pid):
+        store[:] = [t for t in store if t["id"] != pid]
+        return True
+
+    monkeypatch.setattr("studyloop.web.routes.backlog.park_topic", _fake_park)
+    monkeypatch.setattr("studyloop.web.routes.backlog.resolve_parked_topic", _fake_resolve)
+    monkeypatch.setattr(
+        "studyloop.web.routes.backlog.get_parked_topics",
+        lambda status="pending": [t for t in store if t["status"] == "pending"],
+    )
+
+    client = _client()
+    resp = client.post("/api/backlog/park", json={"question": "CTE recursion"})
+    assert resp.status_code == 200
+    resp = client.post("/api/backlog/resolve", json={"id": parked_id})
+    assert resp.status_code == 200
+    body = client.get("/api/backlog").json()
+    assert body["active_count"] == 0
+    assert body["parking_lot_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Route registration — dismiss and resolve are discoverable
+# ---------------------------------------------------------------------------
+
+
+def test_dismiss_route_registered() -> None:
+    """POST /api/backlog/dismiss is a registered route."""
+    from studyloop.web.app import create_app
+
+    app = create_app(study_dirs=[])
+    routes = {
+        (r.path, ",".join(r.methods)) for r in app.routes if hasattr(r, "methods") and r.methods
+    }
+    assert ("/api/backlog/dismiss", "POST") in routes
+
+
+def test_resolve_route_registered() -> None:
+    """POST /api/backlog/resolve is a registered route."""
+    from studyloop.web.app import create_app
+
+    app = create_app(study_dirs=[])
+    routes = {
+        (r.path, ",".join(r.methods)) for r in app.routes if hasattr(r, "methods") and r.methods
+    }
+    assert ("/api/backlog/resolve", "POST") in routes
+
+
+# ---------------------------------------------------------------------------
+# POST /api/backlog/demote — free a 3-topic slot (park-first friction modal)
+# ---------------------------------------------------------------------------
+
+
 def test_demote_happy_path(monkeypatch) -> None:
     captured: dict = {}
     monkeypatch.setattr(

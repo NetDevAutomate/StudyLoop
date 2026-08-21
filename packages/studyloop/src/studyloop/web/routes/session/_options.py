@@ -16,7 +16,7 @@ from studyloop.web.routes.session._models import SessionOption
 from studyloop.web.routes.session._router import router
 from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
 
-_SESSION_OPTION_INDEX_VERSION = 1
+_SESSION_OPTION_INDEX_VERSION = 2
 _SESSION_OPTION_INDEX_LOCK = threading.Lock()
 _OUTPUT_DIR_NAMES = {"flashcards", "quizzes"}
 _AGENT_FALLBACK_BINARIES = {
@@ -100,9 +100,18 @@ def _target_options_snapshot() -> dict[str, list[dict[str, Any]]]:
 
 
 def _target_fingerprint() -> dict[str, Any]:
-    """Cheap fingerprint for picker inputs so runtime re-indexes are fast."""
+    """Cheap fingerprint for picker inputs so runtime re-indexes are fast.
+
+    Includes the resolved root list (whether or not each path exists) so that
+    an empty scan under root set A never validates a cache built from root set B.
+    """
+    roots = [*_study_roots(), *_courses_roots()]
+    # Include root list as absolute strings — even absent roots must be part
+    # of the identity so different root sets always produce different fingerprints.
+    root_strings = [str(Path(r).expanduser().resolve()) for r in roots]
+
     records: list[list[Any]] = []
-    for root in [*_study_roots(), *_courses_roots()]:
+    for root in roots:
         _record_dir(records, root, depth=0)
         for vendor_dir in _visible_child_dirs(root):
             _record_dir(records, vendor_dir, depth=1)
@@ -125,6 +134,8 @@ def _target_fingerprint() -> dict[str, Any]:
     return {
         "version": _SESSION_OPTION_INDEX_VERSION,
         "config": config_record,
+        "roots": root_strings,
+        "record_count": len(records),
         "records": records,
     }
 
@@ -182,6 +193,11 @@ def _read_target_index(fingerprint: dict[str, Any]) -> dict[str, list[dict[str, 
     targets = payload.get("targets")
     if not isinstance(targets, dict):
         return None
+    # Absolute-path invariant: reject any payload where an option has a
+    # non-empty path that is not absolute. This catches poisoned caches
+    # written by test runs with cwd-relative study roots.
+    if _targets_contain_relative_paths(targets):
+        return None
     return targets
 
 
@@ -190,6 +206,10 @@ def _write_target_index(
 ) -> None:
     path = _target_index_path()
     if path is None:
+        return
+    # Refuse to persist relative paths — a write-time guard so even if test
+    # isolation regresses, a poisoned payload never reaches the user's state dir.
+    if _targets_contain_relative_paths(targets):
         return
     payload = {
         "version": _SESSION_OPTION_INDEX_VERSION,
@@ -203,6 +223,25 @@ def _write_target_index(
         tmp_path.replace(path)
     except OSError:
         return
+
+
+def _targets_contain_relative_paths(targets: dict[str, list[dict[str, Any]]]) -> bool:
+    """Return True if any option in *targets* has a non-empty relative path.
+
+    This is a permanent tripwire: absolute paths are the only valid shape for
+    persisted options. A relative path indicates the index was built from a
+    working-directory-relative root (typically a test leak).
+    """
+    for options in targets.values():
+        if not isinstance(options, list):
+            continue
+        for option in options:
+            if not isinstance(option, dict):
+                continue
+            path_val = option.get("path", "")
+            if path_val and not Path(path_val).is_absolute():
+                return True
+    return False
 
 
 def _study_roots() -> list[Path]:

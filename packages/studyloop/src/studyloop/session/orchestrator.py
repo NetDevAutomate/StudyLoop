@@ -145,73 +145,52 @@ def create_tmux_environment(
     session_state_dir: Path,
     sidebar: bool = True,
 ) -> dict:
-    """Create tmux session with agent and sidebar panes.
+    """Create multiplexer session with agent and sidebar panes.
 
-    Returns dict with tmux_main_pane and tmux_sidebar_pane IDs.
+    Returns dict with mux_main_pane and mux_sidebar_pane IDs.
+    Also writes legacy tmux_main_pane/tmux_sidebar_pane for backwards compat.
     """
-    import contextlib
+    from studyloop.multiplexer import get_backend
 
-    from studyloop.tmux import (
-        create_session,
-        is_in_tmux,
-        load_config,
-        select_pane,
-        set_environment,
-        set_option,
-        split_pane,
-        switch_client,
-    )
-
+    mux = get_backend()
     python = sys.executable
     sidebar_cmd = f"{python} -m studyloop.tui.sidebar"
 
     # Create session in the session directory -- agent conversation history
     # (.claude/, .kiro/, etc.) is preserved here across sessions.
-    main_pane = create_session(
+    main_pane = mux.create_session(
         session_name,
         command=wrapped_agent_cmd,
         cwd=str(session_dir),
+        env={"PATH": f"{session_dir}:{os.environ.get('PATH', '')}"},
     )
 
-    # Set PATH for all panes in this session so the studyloop wrapper
-    # in the session dir is found first (before any globally installed
-    # older version). Uses tmux set-environment so ALL panes inherit it.
-    current_path = os.environ.get("PATH", "")
-    set_environment(session_name, "PATH", f"{session_dir}:{current_path}")
+    # Configure backend-specific session defaults (encapsulates set_option
+    # calls for tmux, workspace labels for herdr, etc.)
+    mux.configure_session_defaults(session_name)
 
-    # Ensure panes are destroyed when their commands exit. Without this,
-    # user/plugin tmux configs may keep dead panes alive (remain-on-exit on),
-    # preventing the session from auto-destroying after Q.
-    set_option(session_name, "remain-on-exit", "off")
-    # When the session is destroyed, detach the client (return to original
-    # shell) rather than switching to another tmux session. Critical for
-    # non-technical users who don't want to be stranded in tmux.
-    set_option(session_name, "detach-on-destroy", "on")
-    # Use the largest client's size for the window. Without this, ttyd's
-    # smaller viewport constrains the native terminal, causing dotted fill.
-    set_option(session_name, "window-size", "largest")
     if not sidebar:
         # Web sessions render activity/progress in native StudyLoop panels.
         # Hide tmux chrome so the learner sees only the agent terminal.
-        set_option(session_name, "status", "off")
+        # This is tmux-specific — other backends handle it in configure_session_defaults.
+        from studyloop.multiplexer import TmuxBackend
 
-    # Load user's studyloop tmux overlay if they've explicitly created one.
-    user_conf = session_state_dir / "tmux-studyloop.conf"
-    if user_conf.exists():
-        with contextlib.suppress(Exception):
-            load_config(user_conf)
+        if isinstance(mux, TmuxBackend):
+            from studyloop.tmux import set_option
 
-    # --- Switch/attach FIRST so tmux resizes to the actual terminal ---
+            set_option(session_name, "status", "off")
+
+    # --- Switch/attach FIRST so the multiplexer resizes to the actual terminal ---
     # This ensures the split percentage is calculated against the real
     # terminal width, not the detached default (80x24).
-    already_in_tmux = is_in_tmux()
-    if already_in_tmux:
-        switch_client(session_name)
+    already_in_session = mux.is_inside_session()
+    if already_in_session:
+        mux.switch_client(session_name)
 
     sidebar_pane = ""
     if sidebar:
         # Split for sidebar (right pane, 25% width)
-        sidebar_pane = split_pane(
+        sidebar_pane = mux.split_pane(
             main_pane,
             direction="right",
             size=25,
@@ -220,26 +199,29 @@ def create_tmux_environment(
         )
 
     # Focus main pane (agent)
-    select_pane(main_pane)
+    mux.select_pane(main_pane)
 
     return {
-        "tmux_main_pane": main_pane,
-        "tmux_sidebar_pane": sidebar_pane,
-        "already_in_tmux": already_in_tmux,
+        "tmux_main_pane": main_pane,  # legacy key for backwards compat
+        "tmux_sidebar_pane": sidebar_pane,  # legacy key for backwards compat
+        "mux_main_pane": main_pane,
+        "mux_sidebar_pane": sidebar_pane,
+        "already_in_tmux": already_in_session,  # legacy key name preserved
     }
 
 
 def attach_if_needed(session_name: str, already_in_tmux: bool) -> None:
-    """Attach to tmux session if not already inside tmux.
+    """Attach to multiplexer session if not already inside one.
 
-    If already in tmux, switch_client was called during create_tmux_environment.
-    If not, this replaces the current process via os.execvp.
+    If already in a session, switch_client was called during create_tmux_environment.
+    If not, this replaces the current process via the backend's attach method.
     """
     if not already_in_tmux:
-        from studyloop.tmux import attach
+        from studyloop.multiplexer import get_backend
 
+        mux = get_backend()
         # Replaces this process via os.execvp -- no code runs after this
-        attach(session_name)
+        mux.attach(session_name)
 
 
 def start_web_background(session_name: str, *, lan: bool = False, password: str = "") -> None:

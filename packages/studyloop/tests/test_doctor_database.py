@@ -12,6 +12,32 @@ if TYPE_CHECKING:
 import pytest
 
 
+class TestSessionsDbPathResolution:
+    """The doctor must check the database the app actually uses.
+
+    Regression guard: this resolver used to import a module that had been
+    renamed away (``agent_session_tools.config``), so its hardcoded fallback
+    ran unconditionally and the check reported on the default path regardless
+    of configuration.
+    """
+
+    def test_honours_configured_session_db(self, tmp_path: Path, monkeypatch) -> None:
+        from studyloop.doctor.database import _get_sessions_db_path
+
+        configured = tmp_path / "elsewhere" / "sessions.db"
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(f"session_db: {configured}\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+        assert _get_sessions_db_path() == configured
+
+    def test_does_not_return_hardcoded_default_under_isolation(self) -> None:
+        from studyloop.doctor.database import _get_sessions_db_path
+        from studyloop.settings import CONFIG_DIR
+
+        assert _get_sessions_db_path() != CONFIG_DIR / "sessions.db"
+
+
 class TestReviewDbCheck:
     @pytest.fixture()
     def db_path(self, tmp_path: Path) -> Path:

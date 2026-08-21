@@ -190,7 +190,7 @@ def _kill_background_processes(state: dict) -> None:
 
 
 def _cleanup_tmux_and_files(session_name: str | None, persona_file: str | None) -> None:
-    """Kill tmux study sessions and remove transient IPC files.
+    """Kill multiplexer study sessions and remove transient IPC files.
 
     Keeps session-state.json (mode=ended) so the dashboard can render a
     summary view before the next session starts.
@@ -198,8 +198,8 @@ def _cleanup_tmux_and_files(session_name: str | None, persona_file: str | None) 
     import contextlib
     import os
 
+    from studyloop.multiplexer import get_backend
     from studyloop.session_state import PARKING_FILE, SESSION_DIR, TOPICS_FILE
-    from studyloop.tmux import kill_all_study_sessions
 
     # Remove persona temp file
     if persona_file:
@@ -210,9 +210,10 @@ def _cleanup_tmux_and_files(session_name: str | None, persona_file: str | None) 
     with contextlib.suppress(OSError):
         oneline.unlink()
 
-    # Kill all study tmux sessions
+    # Kill all study sessions via the multiplexer protocol
     with contextlib.suppress(Exception):
-        kill_all_study_sessions(current_session=session_name)
+        mux = get_backend()
+        mux.kill_all_study_sessions(current_session=session_name)
 
     # Clear transient IPC files but KEEP session-state.json (mode=ended)
     for f in [TOPICS_FILE, PARKING_FILE, oneline]:
@@ -260,7 +261,7 @@ def end_session_common(
 def auto_clean_zombies() -> None:
     """Silently kill zombie study sessions before starting a new one.
 
-    Handles tmux-resurrect restoring previously killed sessions.
+    Handles multiplexer restoring previously killed sessions.
     Uses the FCIS clean logic -- gather data, decide, execute.
     Runs quietly: no output unless something goes wrong.
     """
@@ -268,22 +269,18 @@ def auto_clean_zombies() -> None:
     import shutil
 
     from studyloop.logic.clean_logic import DirInfo, plan_clean
+    from studyloop.multiplexer import get_backend
     from studyloop.output import console
     from studyloop.session_state import SESSION_DIR, STATE_FILE, read_session_state
-    from studyloop.tmux import (
-        is_tmux_server_running,
-        is_zombie_session,
-        kill_session,
-        list_study_sessions,
-    )
 
     with contextlib.suppress(Exception):
-        tmux_running = is_tmux_server_running()
-        if not tmux_running:
+        mux = get_backend()
+        server_running = mux.is_server_running()
+        if not server_running:
             return
 
-        study_sessions = list_study_sessions()
-        zombie_sessions = [s for s in study_sessions if is_zombie_session(s)]
+        study_sessions = mux.list_study_sessions()
+        zombie_sessions = [s for s in study_sessions if mux.is_zombie_session(s)]
 
         sessions_dir = SESSION_DIR / "sessions"
         session_dirs = (
@@ -309,7 +306,7 @@ def auto_clean_zombies() -> None:
             return
 
         for name in plan.sessions_to_kill:
-            kill_session(name)
+            mux.kill_session(name)
         for path in plan.dirs_to_remove:
             shutil.rmtree(path, ignore_errors=True)
         if plan.state_to_clean:

@@ -2090,5 +2090,24 @@ function todayPanel() {
       }));
       Alpine.store('nav').go('study-session');
     },
+
+    async dismissParked(p) {
+      const idx = this.parked.indexOf(p);
+      if (idx !== -1) this.parked.splice(idx, 1);
+      try {
+        const res = await fetch('/api/backlog/dismiss', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: p.id }),
+        });
+        if (!res.ok) {
+          this.parked.splice(idx, 0, p);
+          Alpine.store('toast').show('Could not dismiss — try again');
+        }
+      } catch {
+        this.parked.splice(idx, 0, p);
+        Alpine.store('toast').show('Could not dismiss — offline?');
+      }
+    },
   };
 }

@@ -40,11 +40,26 @@ class ParkingEntry:
 
 
 def read_session_state() -> dict:
-    """Read session state JSON. Returns {} if no active session or file missing."""
+    """Read session state JSON. Returns {} if no active session or file missing.
+
+    Performs key migration: reads ``mux_session`` first, falls back to legacy
+    ``tmux_session``. Same for ``mux_main_pane``/``mux_sidebar_pane``.
+    This allows both old and new writers to coexist during migration.
+    """
     try:
-        return json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
+        state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
     except (json.JSONDecodeError, OSError):
         return {}
+
+    # Key migration: prefer mux_* keys, fall back to tmux_* keys
+    if "mux_session" not in state and "tmux_session" in state:
+        state["mux_session"] = state["tmux_session"]
+    if "mux_main_pane" not in state and "tmux_main_pane" in state:
+        state["mux_main_pane"] = state["tmux_main_pane"]
+    if "mux_sidebar_pane" not in state and "tmux_sidebar_pane" in state:
+        state["mux_sidebar_pane"] = state["tmux_sidebar_pane"]
+
+    return state
 
 
 def _ensure_session_dir() -> None:

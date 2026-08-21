@@ -1,0 +1,40 @@
+# graphify corpus exclusions.
+#
+# IMPORTANT: graphify PREFERS this file and only falls back to .gitignore when
+# it is absent (see graphify/detect.py::_load_graphifyignore). So the moment
+# this file exists, every .gitignore rule stops applying to the graph. Anything
+# git-ignored that should also stay out of the graph must be repeated here.
+
+# Vendored third-party browser assets — not StudyLoop code.
+# These dominated the graph (7,945 of 25,281 nodes) and produced
+# minified god nodes like _() and $.
+packages/studyloop/src/studyloop/web/static/vendor/
+
+# Generated MkDocs build output. Rebuilt by `just docs`; contains minified
+# bundles (lunr, Material theme) that produced the _() god node.
+site/
+
+# Local tool caches and agent-config copies. All git-ignored, and the dot-dirs
+# duplicate the tracked agents/ tree, so they double-count the same content.
+.understand-anything/
+.claude/
+.agents/
+.kiro/
+agent/
+skills-lock.json
+
+# graphify's own label store — describes the graph, so indexing it would make
+# the graph a node in itself.
+.graphify-labels.json
+
+# Python/tooling caches that the .gitignore fallback used to cover.
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+node_modules/
+dist/
+build/
+htmlcov/
+.coverage

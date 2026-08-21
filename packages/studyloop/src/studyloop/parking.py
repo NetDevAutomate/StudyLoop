@@ -54,11 +54,13 @@ def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
     """Create parked_topics with the full current schema.
 
     This is a last-resort fallback when the migration system can't
-    self-heal. The schema matches the cumulative result of v14-v17:
+    self-heal. The schema matches the cumulative result of v14-v17, v26:
     - v14: base table
     - v15: unique index (session_id, question)
     - v16: source, tech_area columns; index updated to include source
     - v17: priority column
+    - v26: park_count column; partial unique index on (question, source)
+           WHERE status = 'pending' (replaces old session-scoped index)
 
     Uses IF NOT EXISTS / IF NOT EXISTS throughout so it's safe to call
     repeatedly — idempotency means no harm if the table already exists.
@@ -79,12 +81,13 @@ def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
             created_by TEXT DEFAULT 'agent',
             source TEXT NOT NULL DEFAULT 'parked',
             tech_area TEXT,
-            priority INTEGER
+            priority INTEGER,
+            park_count INTEGER NOT NULL DEFAULT 1
         )
     """)
     conn.execute("""
-        CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_session_question
-        ON parked_topics (study_session_id, question, source)
+        CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_question_source_pending
+        ON parked_topics (question, source) WHERE status = 'pending'
     """)
     conn.commit()
 
@@ -122,8 +125,9 @@ def park_topic(
 ) -> int | None:
     """Park a tangential topic for later. Returns the row ID or None on failure.
 
-    If the topic already exists for this session+source (INSERT OR IGNORE),
-    the existing row's ID is returned instead of 0.
+    If the topic already has a pending row for this (question, source) pair
+    (INSERT OR IGNORE hits the partial unique index), the existing row's ID
+    is returned and its park_count is incremented.
 
     Args:
         source: Origin of the entry — 'parked', 'struggled', or 'manual'.
@@ -156,11 +160,18 @@ def park_topic(
             conn.commit()
             if cursor.rowcount > 0:
                 return cursor.lastrowid
-            # Insert was ignored (duplicate) — fetch existing row ID
+            # Insert was ignored (duplicate pending) — increment park_count
+            # and return existing row ID
+            conn.execute(
+                """UPDATE parked_topics SET park_count = park_count + 1
+                   WHERE question = ? AND source = ? AND status = 'pending'""",
+                (question, source),
+            )
+            conn.commit()
             row = conn.execute(
                 """SELECT id FROM parked_topics
-                   WHERE study_session_id IS ? AND question = ? AND source = ?""",
-                (study_session_id, question, source),
+                   WHERE question = ? AND source = ? AND status = 'pending'""",
+                (question, source),
             ).fetchone()
             return row["id"] if row else None
         finally:
@@ -312,14 +323,18 @@ def dismiss_parked_topic(parked_id: int) -> bool:
 
 
 def get_topic_frequencies(status: str = "pending") -> dict[str, int]:
-    """Count how many times each question appears in parked_topics.
+    """Get the re-park frequency for each question in parked_topics.
 
-    Returns a dict mapping question text to its frequency count.
+    Returns a dict mapping question text to how many times it was parked,
+    even across sessions. The v26 partial unique index allows at most one
+    pending row per ``(question, source)``, and ``park_count`` on that row
+    tracks re-parks — so the frequency for a question is the SUM of
+    ``park_count`` across its sources, not a row count.
     """
     conn = _connect()
     try:
         rows = conn.execute(
-            """SELECT question, COUNT(*) as freq
+            """SELECT question, SUM(park_count) AS freq
                FROM parked_topics WHERE status = ?
                GROUP BY question ORDER BY freq DESC""",
             (status,),

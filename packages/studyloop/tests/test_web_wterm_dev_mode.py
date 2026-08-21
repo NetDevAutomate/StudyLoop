@@ -72,7 +72,8 @@ def _start_dev_web_server(port: int = WEB_DEV_PORT) -> subprocess.Popen:
         "web",
         "--port",
         str(port),
-        "--dev",
+        "--dev-renderer",
+        "wterm",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(30):

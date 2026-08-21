@@ -40,9 +40,17 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
     "--dev",
     is_flag=True,
     default=False,
-    help="Developer experiment mode: swap xterm.js for wterm (DOM renderer).",
+    help="Developer experiment mode: swap xterm.js for an alternative renderer.",
 )
-def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
+@click.option(
+    "--dev-renderer",
+    type=click.Choice(["ghostty", "wterm"], case_sensitive=False),
+    default=None,
+    help="Select the dev-mode renderer (default: ghostty). Implies --dev.",
+)
+def web(
+    port: int, lan: bool, password: str, ttyd_port: int, dev: bool, dev_renderer: str | None,
+) -> None:
     """Launch the study PWA in your browser.
 
     Serves flashcard and quiz review as a web app accessible from any
@@ -106,9 +114,21 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
 
     from studyloop.web.app import create_app
 
+    # --dev-renderer implies --dev
+    if dev_renderer is not None:
+        dev = True
+    # Default renderer when --dev is used without --dev-renderer
+    if dev and dev_renderer is None:
+        dev_renderer = "ghostty"
+
     if dev:
+        renderer_label = (
+            "ghostty-web (canvas renderer)"
+            if dev_renderer == "ghostty"
+            else "wterm (DOM renderer)"
+        )
         console.print(
-            "[yellow]--dev mode:[/yellow] xterm.js swapped for wterm (experimental DOM renderer)"
+            f"[yellow]--dev mode:[/yellow] xterm.js swapped for {renderer_label}"
         )
 
     host = "0.0.0.0" if lan else "127.0.0.1"
@@ -118,6 +138,7 @@ def web(port: int, lan: bool, password: str, ttyd_port: int, dev: bool) -> None:
         username=username,
         password=password,
         dev_mode=dev,
+        dev_renderer=dev_renderer,
     )
     access_info = build_web_access_info(
         bind_host=host,
