@@ -76,7 +76,9 @@ def speak_text_result(text: str, *, timeout: int = 60) -> VoiceResult:
     requested = _requested_backend()
     command = _study_speak_path()
     if not command:
-        return VoiceResult(ok=False, backend="", requested=requested, detail="study-speak not found")
+        return VoiceResult(
+            ok=False, backend="", requested=requested, detail="study-speak not found"
+        )
     if not text.strip():
         return VoiceResult(ok=False, backend="", requested=requested, detail="no text to speak")
     try:
@@ -90,7 +92,9 @@ def speak_text_result(text: str, *, timeout: int = 60) -> VoiceResult:
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
         return VoiceResult(ok=False, backend="", requested=requested, detail=str(exc))
     if result.returncode != 0:
-        return VoiceResult(ok=False, backend="", requested=requested, detail="study-speak exited non-zero")
+        return VoiceResult(
+            ok=False, backend="", requested=requested, detail="study-speak exited non-zero"
+        )
     backend = _backend_marker_from_stderr(result.stderr) or requested
     return VoiceResult(ok=True, backend=backend, requested=requested, detail="")
 
@@ -219,14 +223,18 @@ def synthesize_text_to_file_result(
     except UnknownBackendError as exc:
         return VoiceResult(ok=False, backend="", requested="", detail=str(exc))
     if not text.strip():
-        return VoiceResult(ok=False, backend="", requested=requested, detail="no text to synthesize")
+        return VoiceResult(
+            ok=False, backend="", requested=requested, detail="no text to synthesize"
+        )
     cfg = _tts_config()
     resolved = output_path.expanduser().resolve()
     if requested == "openvox" and _write_openvox_audio(text.strip(), resolved, cfg):
         return VoiceResult(ok=True, backend="openvox", requested=requested, detail="")
     if _write_macos_audio(text.strip(), resolved, cfg):
         return VoiceResult(ok=True, backend="macos", requested=requested, detail="")
-    return VoiceResult(ok=False, backend="", requested=requested, detail="no export backend produced audio")
+    return VoiceResult(
+        ok=False, backend="", requested=requested, detail="no export backend produced audio"
+    )
 
 
 def synthesize_text_to_file(text: str, output_path: Path, *, backend: str | None = None) -> bool:

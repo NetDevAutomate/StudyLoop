@@ -749,7 +749,10 @@ def register_tools(mcp: FastMCP) -> None:
                 "prompt": question.prompt,
                 "multi_select": question.is_multi_select,
                 "answerable": question.is_answerable(),
-                "choices": [{"label": question.label(i), "text": c.text} for i, c in enumerate(question.choices)],
+                "choices": [
+                    {"label": question.label(i), "text": c.text}
+                    for i, c in enumerate(question.choices)
+                ],
             }
             if include_answers:
                 item["correct"] = question.correct_indexes
@@ -790,11 +793,11 @@ def register_tools(mcp: FastMCP) -> None:
             include_answers: Pass True to also receive reference solutions and
                 correct-choice markers (author/grader use only).
         """
+        from studyloop.planning.exercises import readiness as compute_readiness
         from studyloop.planning.exercises import (
             render_exercise_set,
             render_for_learner,
         )
-        from studyloop.planning.exercises import readiness as compute_readiness
         from studyloop.planning.exercises.store import ExerciseSetNotFoundError, InvalidSetIdError
         from studyloop.planning.exercises.store import load_set as load_exercise_set
 
@@ -915,9 +918,8 @@ def register_tools(mcp: FastMCP) -> None:
             answers: Selected choices per question index, for multiple_choice.
             record: Set True to write the derived confidence into study_progress.
         """
-        from studyloop.planning.exercises import EXERCISE_KINDS
+        from studyloop.planning.exercises import EXERCISE_KINDS, review_submission
         from studyloop.planning.exercises import record_review as record_exercise_review
-        from studyloop.planning.exercises import review_submission
         from studyloop.planning.exercises.store import ExerciseSetNotFoundError, InvalidSetIdError
         from studyloop.planning.exercises.store import load_set as load_exercise_set
 

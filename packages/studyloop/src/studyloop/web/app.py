@@ -6,9 +6,9 @@ Serves JSON API endpoints and static PWA files.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse
@@ -17,6 +17,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse, Response
 
 from studyloop.session_runtime import AgentSessionManager
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 STATIC_DIR = Path(__file__).parent / "static"
 
