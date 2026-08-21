@@ -32,10 +32,23 @@ def get_last_session() -> dict:
 
     Powers the Today panel's "Resume: <topic>" shortcut when no session is
     currently live — start-again-same-topic, not tmux reattach.
-    """
-    from studyloop.history.sessions import get_last_study_session
 
-    return get_last_study_session() or {}
+    This is a convenience lookup hit on every page load, so a DB problem must
+    degrade to "no previous session" rather than surfacing a 500 as a console
+    error and an error toast. Catch narrowly — a locked/drifted SQLite DB
+    (``sqlite3.Error``) or a missing agent-session-tools install
+    (``ImportError``) — and let any other exception propagate so real bugs
+    stay visible.
+    """
+    import sqlite3
+
+    try:
+        from studyloop.history.sessions import get_last_study_session
+
+        return get_last_study_session() or {}
+    except (sqlite3.Error, ImportError):
+        logger.warning("session/last lookup failed; degrading to no-session", exc_info=True)
+        return {}
 
 
 @router.get("/session/stream")
