@@ -2887,3 +2887,221 @@ function notesPanel() {
     },
   };
 }
+
+/* ====================================================================
+ * bodyDoubleView() — the Body Double workspace.
+ *
+ * Owns its own session lifecycle (origin 'body-double', ADR-0002) so the
+ * Study Session picker and this view can each run a session without the
+ * other's console reacting. Capture (note/park) lives here rather than in a
+ * separate view on purpose: the whole point is to record a tangent WITHOUT
+ * leaving the session, because leaving is what loses the thread.
+ * ==================================================================== */
+function bodyDoubleView() {
+  return {
+    slots: [], slotsUsed: 0, maxActive: 3, atCapacity: false, parkingLotCount: 0,
+    focus: { topics: [], is_set: false, is_stale: false },
+    focusCollapsed: false, captureCollapsed: false, captureTab: 'note',
+    activity: '', agent: '', transport: 'pty', energy: 5, agents: [],
+    sessionActive: false, liveActivity: '', confirmingEnd: false,
+    starting: false, startError: '',
+    noteKind: 'note', noteTopic: '', noteTitle: '', noteBody: '',
+    noteConfidence: '', showPreview: false, previewHtml: '', noteSaved: false,
+    templates: {}, diagramTemplate: '',
+    parkQuestion: '', parkNotes: '', parkSaved: false,
+    _savedTimer: null, _parkTimer: null,
+
+    async init() {
+      this.focusCollapsed = localStorage.getItem('bd.focus.collapsed') === 'true';
+      this.captureCollapsed = localStorage.getItem('bd.capture.collapsed') === 'true';
+      await this.refreshFocus();
+      try {
+        const res = await fetch('/api/session/options');
+        if (res.ok) {
+          const data = await res.json();
+          this.agents = data.agents || [];
+          /* Hydrate the renderer store from here too, so the transport labels
+             are right even if the learner never opens the Study picker. */
+          Alpine.store('terminalEngine').hydrate(data.terminal_engine);
+        }
+      } catch { /* labels fall back to the store's stock defaults */ }
+      try {
+        const res = await fetch('/api/notes?limit=1');
+        if (res.ok) {
+          const data = await res.json();
+          this.templates = data.templates || {};
+          this.diagramTemplate = data.diagram_template || '';
+        }
+      } catch { /* template button simply does nothing */ }
+    },
+
+    async refreshFocus() {
+      try {
+        const res = await fetch('/api/body-double/focus');
+        if (!res.ok) return;
+        const d = await res.json();
+        this.slots = d.slots || [];
+        this.slotsUsed = d.slots_used ?? this.slots.length;
+        this.maxActive = d.max_active ?? 3;
+        this.atCapacity = !!d.at_capacity;
+        this.parkingLotCount = d.parking_lot_count || 0;
+        this.focus = d.focus || { topics: [], is_set: false, is_stale: false };
+        /* Default the note topic to what the learner is actually doing. A note
+           filed against the wrong topic is worse than an untagged one. */
+        if (!this.noteTopic) {
+          this.noteTopic = this.liveActivity || (this.slots[0] && this.slots[0].topic) || '';
+        }
+      } catch {
+        Alpine.store('toast').show('Could not load focus — offline?');
+      }
+    },
+
+    toggleFocus() {
+      this.focusCollapsed = !this.focusCollapsed;
+      localStorage.setItem('bd.focus.collapsed', String(this.focusCollapsed));
+    },
+    toggleCapture() {
+      this.captureCollapsed = !this.captureCollapsed;
+      localStorage.setItem('bd.capture.collapsed', String(this.captureCollapsed));
+    },
+
+    pickTopic(slot) { this.activity = slot.topic; },
+
+    async dropTopic(topic) { await this._setFocus(this.focus.topics.filter((t) => t !== topic)); },
+    async clearFocus() { await this._setFocus([]); },
+    async _setFocus(topics) {
+      try {
+        const res = await fetch('/api/body-double/focus', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topics }),
+        });
+        if (res.ok) await this.refreshFocus();
+        else Alpine.store('toast').show('Could not update focus — try again');
+      } catch {
+        Alpine.store('toast').show('Could not update focus — offline?');
+      }
+    },
+
+    applyTemplate() { this.noteBody = this.templates[this.noteKind] || ''; },
+
+    insertDiagram() {
+      const tpl = this.diagramTemplate || '```mermaid\nflowchart TD\n  A[Start] --> B[Next]\n```';
+      this.noteBody = (this.noteBody || '').replace(/\s+$/, '') + '\n\n' + tpl;
+      this.showPreview = true;
+      this.renderPreview();
+    },
+    togglePreview() {
+      this.showPreview = !this.showPreview;
+      if (this.showPreview) this.renderPreview();
+    },
+    async renderPreview() {
+      if (this.previewHtml) { this.previewHtml = ''; await this.$nextTick(); }
+      this.previewHtml = renderMarkdown(this.noteBody || '');
+      await this.$nextTick();
+      await this.$nextTick();
+      _mermaidInitForPalette();
+      /* $root, NOT $el — $el resolves to whatever element the calling
+         expression sits on (here the Preview button), whose subtree holds no
+         placeholders. Same bug as the parking panel's, fixed in 11f7862. */
+      await _renderMermaidPlaceholders(this.$root);
+    },
+
+    async saveNote() {
+      const payload = {
+        title: this.noteTitle, body: this.noteBody, kind: this.noteKind,
+        topic: this.noteTopic, origin: 'body-double',
+      };
+      if (this.noteConfidence) payload.confidence = parseInt(this.noteConfidence, 10);
+      try {
+        const res = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) { Alpine.store('toast').show('Could not save note — try again'); return; }
+        this.noteSaved = true;
+        if (this._savedTimer) clearTimeout(this._savedTimer);
+        this._savedTimer = setTimeout(() => { this.noteSaved = false; }, 1500);
+        window.dispatchEvent(new CustomEvent('notes:changed'));
+      } catch {
+        Alpine.store('toast').show('Could not save note — offline?');
+      }
+    },
+
+    async submitPark() {
+      try {
+        const res = await fetch('/api/parking/item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: this.parkQuestion, notes: this.parkNotes }),
+        });
+        if (!res.ok) { Alpine.store('toast').show('Could not park — try again'); return; }
+        this.parkSaved = true;
+        if (this._parkTimer) clearTimeout(this._parkTimer);
+        this._parkTimer = setTimeout(() => { this.parkSaved = false; }, 1500);
+        this.parkQuestion = '';
+        this.parkNotes = '';
+        await this.refreshFocus();
+        window.dispatchEvent(new CustomEvent('parking:changed'));
+      } catch {
+        Alpine.store('toast').show('Could not park — offline?');
+      }
+    },
+
+    async startSession() {
+      this.starting = true;
+      this.startError = '';
+      try {
+        const res = await fetch('/api/session/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: this.activity, energy: this.energy, agent: this.agent,
+            transport: this.transport, origin: 'body-double',
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          this.startError = data.error || data.detail || `Could not start (${res.status})`;
+          return;
+        }
+        this.sessionActive = true;
+        this.liveActivity = this.activity;
+        window.dispatchEvent(new CustomEvent('study-session-start', {
+          detail: {
+            topic: this.activity, origin: 'body-double', energy: this.energy,
+            agent: this.agent || null,
+            resolvedAgent: data.agent || this.agent || null,
+            studySessionId: data.study_session_id || null,
+            transport: data.transport || this.transport,
+            wsUrl: data.ws_url || null,
+            personaText: data.persona_text || null,
+          },
+        }));
+      } catch {
+        this.startError = 'Could not reach the server.';
+      } finally {
+        this.starting = false;
+      }
+    },
+
+    endSession() { this.confirmingEnd = true; },
+    cancelEnd() { this.confirmingEnd = false; },
+    async confirmEnd() {
+      try {
+        await fetch('/api/session/end', { method: 'POST' });
+      } catch { /* tear the UI down regardless — a stuck "live" strip is worse */ }
+      window.dispatchEvent(new CustomEvent('study-session-stop', {
+        detail: { origin: 'body-double' },
+      }));
+      Alpine.store('pomodoro').stop();
+      this.sessionActive = false;
+      this.activity = '';
+      this.confirmingEnd = false;
+      /* Deliberately NOT clearing the note draft: losing a half-written note
+         because the session ended is exactly the kind of loss this view exists
+         to prevent. */
+    },
+  };
+}

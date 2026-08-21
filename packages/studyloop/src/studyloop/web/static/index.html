@@ -1446,60 +1446,181 @@
       <!-- BODY DOUBLE VIEW — timer + terminal                          -->
       <!-- ============================================================ -->
       <div x-show="$store.nav.is('body-double')" x-cloak>
-        <div class="split-container" x-data="splitLayout()">
+        <div class="body-double-view" x-data="bodyDoubleView()" x-init="init()">
+          <header class="body-double-header">
+            <h2>Body Double</h2>
+            <p class="text-muted">A focused workspace with timer and terminal. Just be here.</p>
+          </header>
 
-          <!-- Timer panel -->
-          <div class="split-panel split-dashboard">
-            <div class="session-dashboard body-double-dashboard">
-              <div class="body-double-header">
-                <h2>Body Double</h2>
-                <p class="text-muted">A focused workspace with timer and terminal. Just be here.</p>
+          <!-- Pomodoro strip. Retained from the legacy view: the timer is the
+               reason this surface exists, and test_remaining_surface asserts
+               #bd-timer-display matches the SERVED defaults, so it binds to the
+               store rather than hardcoding 00:00 as the old markup did. -->
+          <div class="body-double-timer">
+            <div class="timer-display large-timer">
+              <span class="timer-time" id="bd-timer-display" x-text="$store.pomodoro.display">00:00</span>
+            </div>
+            <div class="body-double-controls">
+              <div class="pomo-settings bd-pomo-settings" x-show="!$store.pomodoro.running">
+                <label>Focus <input type="number" min="1" max="120" x-model.number="$store.pomodoro.focusMin"
+                       @change="$store.pomodoro.saveDurations()" class="pomo-input">m</label>
+                <label>Break <input type="number" min="1" max="60" x-model.number="$store.pomodoro.shortBreakMin"
+                       @change="$store.pomodoro.saveDurations()" class="pomo-input">m</label>
+                <label>Long <input type="number" min="1" max="60" x-model.number="$store.pomodoro.longBreakMin"
+                       @change="$store.pomodoro.saveDurations()" class="pomo-input">m</label>
               </div>
-              <div class="body-double-timer">
-                <div class="timer-display large-timer">
-                  <span class="timer-time" id="bd-timer-display">00:00</span>
-                </div>
-                <div class="body-double-controls">
-                  <div class="pomo-settings bd-pomo-settings" x-show="!$store.pomodoro.running">
-                    <label>Focus <input type="number" min="1" max="120" x-model.number="$store.pomodoro.focusMin"
-                           @change="$store.pomodoro.saveDurations()" class="pomo-input">m</label>
-                    <label>Break <input type="number" min="1" max="60" x-model.number="$store.pomodoro.shortBreakMin"
-                           @change="$store.pomodoro.saveDurations()" class="pomo-input">m</label>
-                    <label>Long <input type="number" min="1" max="60" x-model.number="$store.pomodoro.longBreakMin"
-                           @change="$store.pomodoro.saveDurations()" class="pomo-input">m</label>
-                  </div>
-                  <button class="toggle-btn" @click="$store.pomodoro.start()" title="Start Pomodoro">Start Pomodoro</button>
-                </div>
-              </div>
+              <button class="toggle-btn" @click="$store.pomodoro.start()" title="Start Pomodoro">Start Pomodoro</button>
             </div>
           </div>
 
-          <!-- Terminal panel (Split.js creates the gutter automatically) -->
-          <div class="split-panel split-terminal">
-            <div class="terminal-panel" x-data="terminalPanel()" x-show="available">
-              <div class="terminal-header">
-                <span class="terminal-title">Terminal</span>
-                <div class="terminal-controls">
-                  <button class="timer-btn" @click="toggleEmbed()"
-                          :title="embedded ? 'Hide terminal' : 'Show terminal'"
-                          x-text="embedded ? '\u2796' : '\u2795'"></button>
-                  <button class="timer-btn" @click="popOut()" title="Open in new window">&#x29c9;</button>
-                </div>
+          <!-- FOCUS: at most three live topics. The cap is the point — an
+               unbounded list is the thing this whole feature exists to prevent. -->
+          <section id="bd-focus" class="bd-card">
+            <div class="bd-card-head">
+              <button id="bd-focus-toggle" type="button" class="bd-collapse-btn"
+                      :aria-expanded="String(!focusCollapsed)" @click="toggleFocus()">
+                <span x-text="focusCollapsed ? '▸' : '▾'"></span> Focus
+              </button>
+              <span id="bd-focus-count" x-text="slotsUsed + ' of ' + maxActive + ' topics'"></span>
+              <button id="bd-focus-refresh" type="button" class="bulk-btn" @click="refreshFocus()">Refresh</button>
+              <button id="bd-focus-clear" type="button" class="bulk-btn" x-show="focus.is_set"
+                      @click="clearFocus()">Clear focus</button>
+              <span id="bd-focus-stale" class="bd-chip warn" x-show="focus.is_stale"
+                    title="This focus was set more than 30 days ago — still current?">stale</span>
+            </div>
+            <div id="bd-focus-body" x-show="!focusCollapsed">
+              <div id="bd-focus-empty" class="text-muted" x-show="slots.length === 0">
+                Nothing in focus yet. Park a tangent or set a focus to fill these slots.
               </div>
-              <div class="terminal-content">
-                <iframe :src="activeTtydUrl || 'about:blank'" class="terminal-iframe"
-                        :style="embedded ? '' : 'visibility:hidden;position:absolute;pointer-events:none'"
-                        allow="clipboard-read; clipboard-write"></iframe>
-                <div x-show="!connected && unavailableMessage" class="terminal-unavailable">
-                  <div x-text="unavailableMessage"></div>
+              <template x-for="slot in slots" :key="slot.topic">
+                <div class="bd-focus-slot">
+                  <button type="button" class="bd-focus-slot-topic" x-text="slot.topic"
+                          @click="pickTopic(slot)"></button>
+                  <button type="button" class="bd-focus-drop" x-show="slot.source === 'focus'"
+                          :data-topic="slot.topic" @click="dropTopic(slot.topic)"
+                          aria-label="Drop this topic">&times;</button>
                 </div>
-                <div x-show="!embedded && poppedOut" class="terminal-placeholder">
-                  <div>Terminal opened in separate window</div>
-                  <div class="placeholder-hint">Click <strong>+</strong> to return terminal here</div>
-                </div>
+              </template>
+              <span id="bd-focus-at-capacity" class="bd-chip" x-show="atCapacity">at capacity</span>
+              <span id="bd-focus-parked" class="bd-chip" x-show="parkingLotCount > 0"
+                    x-text="parkingLotCount + ' parked'"></span>
+            </div>
+          </section>
+
+          <!-- PICKER (idle) -->
+          <section class="bd-card" x-show="!sessionActive">
+            <label class="bd-field">What are you working on?
+              <input id="bd-activity-input" type="text" x-model="activity"
+                     placeholder="e.g. Window functions"></label>
+            <label class="bd-field">Agent
+              <select id="bd-agent-select" class="picker-select" x-model="agent">
+                <option value="">Choose an agent…</option>
+                <template x-for="a in agents" :key="a.value">
+                  <option :value="a.value" :disabled="!a.available" x-text="a.label"></option>
+                </template>
+              </select></label>
+            <label class="bd-field">Transport
+              <select id="bd-transport-select" class="picker-select" x-model="transport">
+                <option value="pty" x-text="'Browser terminal (' + $store.terminalEngine.renderer + ')'"></option>
+                <option value="acp">ACP (Agent Client Protocol)</option>
+                <option value="ttyd">Legacy terminal (ttyd iframe)</option>
+              </select></label>
+            <p id="bd-transport-hint-pty" class="picker-hint" x-show="transport === 'pty'"
+               x-text="'Runs the agent in a PTY and paints it with ' + $store.terminalEngine.label + '.'"></p>
+            <p class="picker-hint" x-show="transport === 'acp'">Structured agent protocol — chat surface, no terminal.</p>
+            <p class="picker-hint" x-show="transport === 'ttyd'">Legacy ttyd iframe. Needs ttyd installed.</p>
+            <span id="dev-engine-badge" class="bd-chip warn" x-show="$store.terminalEngine.experimental"
+                  :title="$store.terminalEngine.caveats.join(' ')"
+                  x-text="$store.terminalEngine.label"></span>
+            <label class="bd-field">Energy <span x-text="energy + '/10'"></span>
+              <input type="range" min="1" max="10" x-model.number="energy"
+                     data-testid="bd-energy-slider" class="energy-slider"></label>
+            <button id="bd-start-session" type="button" class="start-session-btn"
+                    :disabled="!activity.trim() || !agent" @click="startSession()">Start session</button>
+            <p id="bd-start-error" class="picker-hint error" x-show="startError" x-text="startError"></p>
+          </section>
+
+          <!-- LIVE (session active). The strip is sticky so End stays reachable
+               without scrolling back up mid-session. -->
+          <section x-show="sessionActive">
+            <div class="bd-live-strip">
+              <span id="bd-live-activity" x-text="liveActivity"></span>
+              <button id="bd-end-session" type="button" class="toggle-btn"
+                      aria-label="End body double session" @click="endSession()">End session</button>
+              <div id="bd-end-confirm" class="bd-end-confirm" x-show="confirmingEnd">
+                <span>End this session?</span>
+                <button id="bd-end-confirm-yes" type="button" class="bulk-btn" @click="confirmEnd()">Yes, end it</button>
+                <button id="bd-end-cancel" type="button" class="bulk-btn" @click="cancelEnd()">Keep going</button>
               </div>
             </div>
-          </div>
+            <div class="bd-console-panel">
+              <div class="session-terminal-area agent-console" x-data="liveAgentConsole('body-double')">
+                <div class="agent-console-status">
+                  <span class="status-dot" :class="statusDot"></span>
+                  <span x-text="status"></span>
+                </div>
+                <div class="xterm-mount" x-ref="xtermMount"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- CAPTURE: note or park, without leaving the session. -->
+          <section id="bd-capture" class="bd-card">
+            <div class="bd-card-head">
+              <button id="bd-capture-toggle" type="button" class="bd-collapse-btn"
+                      :aria-expanded="String(!captureCollapsed)" @click="toggleCapture()">
+                <span x-text="captureCollapsed ? '▸' : '▾'"></span> Capture
+              </button>
+              <button id="bd-open-notes" type="button" class="bulk-btn"
+                      @click="$store.notes.open || $store.notes.toggle()">Open notes</button>
+            </div>
+            <div id="bd-capture-body" x-show="!captureCollapsed">
+              <div class="bd-tabs">
+                <button id="bd-tab-note" type="button" class="bd-tab"
+                        :class="{ active: captureTab === 'note' }"
+                        @click="captureTab='note'; captureCollapsed=false">Note</button>
+                <button id="bd-tab-park" type="button" class="bd-tab"
+                        :class="{ active: captureTab === 'park' }"
+                        @click="captureTab='park'; captureCollapsed=false">Park</button>
+              </div>
+              <form id="bd-note-form" x-show="captureTab === 'note'" @submit.prevent>
+                <select id="bd-note-kind" class="picker-select" x-model="noteKind">
+                  <option value="note">Note</option>
+                  <option value="insight">Insight</option>
+                  <option value="question">Question</option>
+                  <option value="diagram">Diagram</option>
+                  <option value="snippet">Snippet</option>
+                  <option value="summary">Summary</option>
+                </select>
+                <button id="bd-note-template" type="button" class="bulk-btn" @click="applyTemplate()">Template</button>
+                <select id="bd-note-topic" class="picker-select" x-model="noteTopic">
+                  <option value="">No topic</option>
+                  <template x-for="slot in slots" :key="'nt-' + slot.topic">
+                    <option :value="slot.topic" x-text="slot.topic"></option>
+                  </template>
+                </select>
+                <input id="bd-note-title" type="text" x-model="noteTitle" placeholder="Title">
+                <textarea id="bd-note-body" rows="8" x-model="noteBody" placeholder="Markdown…"></textarea>
+                <button id="bd-note-diagram" type="button" class="bulk-btn" @click="insertDiagram()">Insert diagram</button>
+                <button id="bd-note-preview-toggle" type="button" class="bulk-btn" @click="togglePreview()">Preview</button>
+                <div id="bd-note-preview" class="acp-message-final" x-show="showPreview" x-html="previewHtml"></div>
+                <span class="bd-confidence">Confidence
+                  <select data-testid="bd-note-confidence" class="picker-select" x-model="noteConfidence">
+                    <option value="">–</option>
+                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                    <option value="4">4</option><option value="5">5</option>
+                  </select></span>
+                <button id="bd-save-note" type="button" class="start-session-btn" @click="saveNote()">Save note</button>
+                <span id="bd-note-saved" class="bd-chip ok" x-show="noteSaved">Saved ✓</span>
+              </form>
+              <form id="bd-park-form" x-show="captureTab === 'park'" @submit.prevent>
+                <input id="bd-park-question" type="text" x-model="parkQuestion" placeholder="What tangent came up?">
+                <textarea id="bd-park-notes" rows="4" x-model="parkNotes" placeholder="Optional notes…"></textarea>
+                <button id="bd-park-submit" type="button" class="start-session-btn" @click="submitPark()">Park it</button>
+                <span id="bd-park-saved" class="bd-chip ok" x-show="parkSaved">Parked ✓</span>
+              </form>
+            </div>
+          </section>
         </div>
       </div>
 
