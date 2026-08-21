@@ -244,7 +244,7 @@ class TestGraceAgainstARealAgent:
 
         with server.ws(session_id) as ws2:
             ws2.send(json.dumps({"type": "input", "data": "still there?\n"}))
-            _read_until(ws2, b"FAKE-AGENT SAYS:")
+            _read_until(ws2, b"FAKE-AGENT VERDICT:")
 
         assert server.state().get("study_session_id") == session_id
         assert agent_pid in _agent_pids(), "reattached to a different (or dead) agent"
@@ -378,7 +378,7 @@ class TestGraceAgainstARealAgent:
 
                 # B owns the stream whole: its own echo comes back intact.
                 ws_b.send(json.dumps({"type": "input", "data": "who has me?\n"}))
-                buf = _read_until(ws_b, b"FAKE-AGENT SAYS:")
+                buf = _read_until(ws_b, b"FAKE-AGENT VERDICT:")
                 assert b"who has me?" in buf, (
                     "B received a partial stream — output is still being split"
                 )
