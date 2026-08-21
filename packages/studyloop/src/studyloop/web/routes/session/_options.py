@@ -16,7 +16,7 @@ from studyloop.web.routes.session._models import SessionOption
 from studyloop.web.routes.session._router import router
 from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
 
-_SESSION_OPTION_INDEX_VERSION = 2
+_SESSION_OPTION_INDEX_VERSION = 3
 _SESSION_OPTION_INDEX_LOCK = threading.Lock()
 _OUTPUT_DIR_NAMES = {"flashcards", "quizzes"}
 _AGENT_FALLBACK_BINARIES = {
@@ -90,7 +90,11 @@ def _target_options_snapshot() -> dict[str, list[dict[str, Any]]]:
     return {
         "session_types": [
             {"label": "Study Session", "value": "study", "kind": "session_type"},
-            {"label": "Body Double", "value": "body_double", "kind": "session_type"},
+            # Body Double is a first-class top-level view with its own agent
+            # picker, not a Study Session "session type" (body-double-own-agent-
+            # picker, tasks §5.3). The session_types key itself stays — MCP's
+            # list_session_options publishes it and test_mcp_session_parity.py
+            # asserts its presence.
         ],
         "topics": [option.model_dump() for option in _topic_options()],
         "vendors": [option.model_dump() for option in _vendor_options()],

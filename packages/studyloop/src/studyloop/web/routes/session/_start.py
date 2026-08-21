@@ -28,6 +28,38 @@ from studyloop.web.services.session_start import (
 
 logger = logging.getLogger(__name__)
 
+# Which view started the session: the Study Session picker ('study', the
+# default) or the Body Double view ('body-double'). Persisted into the session
+# state payload and echoed by GET /api/session/state so the frontend's two
+# origin-scoped liveAgentConsole() instances each only react to their own
+# view's start (see body-double-own-agent-picker, ADR-0002).
+_ALLOWED_ORIGINS: frozenset[str] = frozenset({"study", "body-double"})
+_DEFAULT_ORIGIN = "study"
+
+
+async def _resolve_origin(request: Request) -> str:
+    """Return the validated ``origin`` from the start request body.
+
+    ``origin`` is read from the raw request body rather than from
+    ``StartSessionRequest`` because that model lives in ``_models.py`` (outside
+    this stage's ownership) and Pydantic drops unknown fields, so the value
+    never reaches ``body``. Starlette caches the request body, so re-reading it
+    here after FastAPI's own parse is safe. Absent/blank origin defaults to
+    ``'study'``. An out-of-set value raises 400 rather than silently coercing.
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        return _DEFAULT_ORIGIN
+    if not isinstance(payload, dict):
+        return _DEFAULT_ORIGIN
+    origin = payload.get("origin")
+    if origin is None or origin == "":
+        return _DEFAULT_ORIGIN
+    if origin not in _ALLOWED_ORIGINS:
+        raise ValueError(origin)
+    return origin
+
 
 def _ttyd_credentials(request: Request | None) -> tuple[str, str]:
     """Resolve ttyd Basic-Auth creds from the app's single source of truth.
@@ -71,15 +103,25 @@ async def start_session(body: StartSessionRequest, request: Request) -> JSONResp
     a loop owned by the main thread, which ``asyncio.run`` in a worker
     thread cannot provide.
     """
+    try:
+        origin = await _resolve_origin(request)
+    except ValueError as exc:
+        return JSONResponse(
+            {"error": f"Invalid origin: {exc.args[0]!r}. Allowed: {sorted(_ALLOWED_ORIGINS)}"},
+            status_code=400,
+        )
+
     transport = _resolve_transport(body.transport)
     if transport == "pty":
-        return await _start_pty_session(body)
+        return await _start_pty_session(body, origin)
     if transport == "acp":
-        return await _start_acp_session(body)
-    return _start_ttyd_session(body, request)
+        return await _start_acp_session(body, origin)
+    return _start_ttyd_session(body, origin, request)
 
 
-async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
+async def _start_pty_session(
+    body: StartSessionRequest, origin: str = _DEFAULT_ORIGIN
+) -> JSONResponse:
     """PTY-backed start path — no tmux, no ttyd.
 
     1. Reject if a session is already active (``active.current()``).
@@ -223,20 +265,24 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
     try:
         # --- Session state (no tmux metadata) ---
         _ensure_session_dir()
-        write_session_state(
-            build_session_state_payload(
-                study_id=study_id,
-                topic=body.topic,
-                energy=body.energy,
-                energy_label=energy_label,
-                agent=agent,
-                persona_file=str(persona_file),
-                session_dir=str(session_dir),
-                persona_hash=persona_hash,
-                transport="pty",
-                now=datetime.now(UTC),
-            )
+        pty_state = build_session_state_payload(
+            study_id=study_id,
+            topic=body.topic,
+            energy=body.energy,
+            energy_label=energy_label,
+            agent=agent,
+            persona_file=str(persona_file),
+            session_dir=str(session_dir),
+            persona_hash=persona_hash,
+            transport="pty",
+            now=datetime.now(UTC),
         )
+        # origin distinguishes Study Session ('study') from Body Double
+        # ('body-double') starts. Merged in here rather than in
+        # build_session_state_payload (owned by another stage) so it flows
+        # through write_session_state → read_session_state → /api/session/state.
+        pty_state["origin"] = origin
+        write_session_state(pty_state)
         TOPICS_FILE.touch(mode=0o600, exist_ok=True)
         PARKING_FILE.touch(mode=0o600, exist_ok=True)
     except OSError:
@@ -263,7 +309,9 @@ async def _start_pty_session(body: StartSessionRequest) -> JSONResponse:
     )
 
 
-async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
+async def _start_acp_session(
+    body: StartSessionRequest, origin: str = _DEFAULT_ORIGIN
+) -> JSONResponse:
     """ACP-backed start path (plan §2.2 — Amendment #10).
 
     Mirrors ``_start_pty_session`` but drops tmux and PTY-specific
@@ -440,19 +488,20 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
     try:
         # --- Session state (no tmux, no persona_file path; hash only) ---
         _ensure_session_dir()
-        write_session_state(
-            build_session_state_payload(
-                study_id=study_id,
-                topic=body.topic,
-                energy=body.energy,
-                energy_label=energy_label,
-                agent=agent,
-                session_dir=str(session_dir),
-                persona_hash=persona_hash,
-                transport="acp",
-                now=datetime.now(UTC),
-            )
+        acp_state = build_session_state_payload(
+            study_id=study_id,
+            topic=body.topic,
+            energy=body.energy,
+            energy_label=energy_label,
+            agent=agent,
+            session_dir=str(session_dir),
+            persona_hash=persona_hash,
+            transport="acp",
+            now=datetime.now(UTC),
         )
+        # See PTY path: origin merged here, not in build_session_state_payload.
+        acp_state["origin"] = origin
+        write_session_state(acp_state)
         TOPICS_FILE.touch(mode=0o600, exist_ok=True)
         PARKING_FILE.touch(mode=0o600, exist_ok=True)
     except OSError:
@@ -485,7 +534,9 @@ async def _start_acp_session(body: StartSessionRequest) -> JSONResponse:
     )
 
 
-def _start_ttyd_session(body: StartSessionRequest, request: Request | None = None) -> JSONResponse:
+def _start_ttyd_session(
+    body: StartSessionRequest, origin: str = _DEFAULT_ORIGIN, request: Request | None = None
+) -> JSONResponse:
     """Legacy tmux+ttyd start path (plan §1.9 emergency fallback).
 
     Kept as-is to guarantee a deprecation window. New development should
@@ -602,6 +653,7 @@ def _start_ttyd_session(body: StartSessionRequest, request: Request | None = Non
             "start_time": now,
             "paused_at": None,
             "total_paused_seconds": 0,
+            "origin": origin,
         }
     )
     TOPICS_FILE.touch(mode=0o600, exist_ok=True)
