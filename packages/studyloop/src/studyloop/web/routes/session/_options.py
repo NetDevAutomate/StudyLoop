@@ -30,10 +30,28 @@ _AGENT_FALLBACK_BINARIES = {
 
 
 @router.get("/session/options")
-def get_session_options(request: Request, refresh: bool = False) -> dict[str, list[dict]]:
+def get_session_options(request: Request, refresh: bool = False) -> dict[str, Any]:
     """Return local study choices for the web session picker."""
     targets = _get_indexed_target_options(request.app.state, force=refresh)
-    return {**targets, "agents": _agent_options()}
+    return {
+        **targets,
+        "agents": _agent_options(),
+        "terminal_engine": _terminal_engine_option(request.app.state),
+    }
+
+
+def _terminal_engine_option(state: Any) -> dict[str, Any]:
+    """Describe the renderer actually mounted for this app instance.
+
+    Delegates to ``studyloop.web.dev_engines.describe_terminal_engine`` — the
+    single source of truth for the renderer axis (xterm.js vs the ``--dev``
+    engine), as opposed to the session transport axis (pty/acp/ttyd).
+    """
+    from studyloop.web.dev_engines import describe_terminal_engine
+
+    dev_mode = bool(getattr(state, "dev_mode", False))
+    dev_engine = getattr(state, "dev_engine", None)
+    return describe_terminal_engine(dev_mode, dev_engine)
 
 
 def warm_session_options_index(app: object) -> None:
@@ -458,7 +476,6 @@ def _agent_options() -> list[dict[str, object]]:
                 "available": name in detected,
                 "supports_acp": name in ACP_CAPABLE_AGENTS,
                 "acp_ready": False,
-                "recommended_transport": "ttyd",
                 "binary": adapter.binary,
             }
             for name, adapter in AGENTS.items()
@@ -472,7 +489,6 @@ def _agent_options() -> list[dict[str, object]]:
                 "available": False,
                 "supports_acp": name in ACP_CAPABLE_AGENTS,
                 "acp_ready": False,
-                "recommended_transport": "ttyd",
                 "binary": _AGENT_FALLBACK_BINARIES.get(name, name),
             }
             for name in names
