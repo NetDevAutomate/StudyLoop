@@ -726,12 +726,21 @@
                       </label>
 
                       <div class="parking-card-main">
+                        <!-- The title stays in the DOM even while editing, only
+                             hidden. It is how a card is IDENTIFIED (tests and
+                             assistive tech both find a card by its title text),
+                             so removing it from the DOM made an editing card
+                             anonymous — findable by nothing. x-show hides it
+                             without dropping it, so the editor is not visually
+                             duplicating the title next to its own input. -->
+                        <div class="parking-card-title"
+                             x-show="editingId !== item.id"
+                             @click="onTitleClick(item)"
+                             x-text="item.question"></div>
+
                         <!-- Collapsed view -->
                         <template x-if="editingId !== item.id">
                           <div>
-                            <div class="parking-card-title"
-                                 @click="onTitleClick(item)"
-                                 x-text="item.question"></div>
                             <div class="parking-card-meta">
                               <span class="parking-card-area" x-show="item.tech_area"
                                     x-text="item.tech_area"></span>
