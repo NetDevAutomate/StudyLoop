@@ -2452,6 +2452,18 @@ function parkingPanel() {
     },
 
     async renderPreview() {
+      /* Clear first, and let the effect flush, before writing the same HTML
+         again. Without this a re-render is a no-op: renderMarkdown() is pure, so
+         a palette switch reassigns previewHtml to a byte-identical string,
+         Alpine's x-html effect sees no change and never rewrites the DOM, the
+         already-rendered placeholder keeps its old SVG and no longer carries
+         data-src — so _renderMermaidPlaceholders finds nothing to do and the
+         diagram silently keeps the previous palette's colours. The e2e test
+         catches this precisely: identical SVG, same mermaid-render-<ts> id. */
+      if (this.previewHtml) {
+        this.previewHtml = '';
+        await this.$nextTick();
+      }
       this.previewHtml = renderMarkdown(this.noteText || '');
       /* Two ticks so Alpine's x-html effect writes the DOM before we query the
          mermaid placeholders (same pattern as courseExplorer's reader). */
