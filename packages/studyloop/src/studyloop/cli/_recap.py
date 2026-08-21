@@ -10,7 +10,20 @@ from rich.panel import Panel
 
 from studyloop.cli._shared import console
 from studyloop.learning.recap import build_daily_recap
-from studyloop.learning.voice import speak_text, synthesize_text_to_file
+from studyloop.learning.voice import (
+    speak_text,
+    speak_text_result,
+    synthesize_text_to_file,
+    synthesize_text_to_file_result,
+)
+
+__all__ = [
+    "recap_group",
+    "speak_text",
+    "speak_text_result",
+    "synthesize_text_to_file",
+    "synthesize_text_to_file_result",
+]
 
 
 @click.group("recap")
@@ -47,10 +60,25 @@ def recap_today(speak: bool, audio_file: Path | None, json_output: bool) -> None
                 border_style="cyan",
             )
         )
-    if speak and not speak_text(recap.speakable_text()):
-        console.print("[yellow]Voice output was unavailable; continuing without speech.[/yellow]")
+    if speak:
+        speak_result = speak_text_result(recap.speakable_text())
+        if not speak_result.ok:
+            console.print(
+                "[yellow]Voice output was unavailable; continuing without speech.[/yellow]"
+            )
+        elif speak_result.degraded:
+            console.print(
+                f"[yellow]Spoke with {speak_result.backend} instead of "
+                f"{speak_result.requested}.[/yellow]"
+            )
     if audio_file:
-        if synthesize_text_to_file(recap.speakable_text(), audio_file):
+        file_result = synthesize_text_to_file_result(recap.speakable_text(), audio_file)
+        if file_result.ok:
             console.print(f"[green]Audio recap saved:[/green] {audio_file}")
+            if file_result.degraded:
+                console.print(
+                    f"[yellow]Saved with {file_result.backend} instead of "
+                    f"{file_result.requested}.[/yellow]"
+                )
         else:
             console.print("[yellow]Audio export was unavailable; no file was written.[/yellow]")
