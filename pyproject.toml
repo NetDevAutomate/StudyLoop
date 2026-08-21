@@ -98,8 +98,12 @@ consider_namespace_packages = true
 # Per-test wall-clock ceiling. Generous on purpose: the slowest legitimate unit
 # test (test_sidebar_pilot) takes ~13s, so 60s only ever fires on a genuine
 # hang. Without it an unbounded TestClient WebSocket receive blocks the run
-# forever and no summary is ever printed. e2e tests override this where a real
-# browser or subprocess server needs longer.
+# forever and no summary is ever printed.
+#
+# NOTE this bounds UNIT tests. e2e tests routinely need longer -- a real browser
+# plus a subprocess server, with individual waits already allowing 60-180s -- so
+# they carry an explicit `pytestmark = pytest.mark.timeout(...)` per module. A
+# bare 60s would kill them before their own deadlines.
 timeout = 60
 # "signal" (SIGALRM), not "thread": the hang this guards against is a blocked
 # selector inside a TestClient WebSocket receive, and a timer thread cannot
