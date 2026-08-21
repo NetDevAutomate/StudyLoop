@@ -119,8 +119,27 @@ graph TD
 """
 
 
+_CONSOLE: list[str] = []
+
+
+@pytest.fixture(autouse=True)
+def _capture_console(page: Page):
+    """Record browser console + uncaught page errors for failure artefacts.
+
+    Without this, a silent JS failure is invisible: the HTML artefact shows the
+    *outcome* (an unrendered placeholder) but never the *cause*, so diagnosis
+    degenerates into reading source and guessing. A listener has to be attached
+    before the page runs, which is why this is a fixture rather than something
+    ``_diag`` can do after the fact.
+    """
+    _CONSOLE.clear()
+    page.on("console", lambda m: _CONSOLE.append(f"[{m.type}] {m.text}"))
+    page.on("pageerror", lambda e: _CONSOLE.append(f"[pageerror] {e}"))
+    return None
+
+
 def _diag(page: Page | None, name: str) -> None:
-    """Best-effort failure artefacts (screenshot + HTML)."""
+    """Best-effort failure artefacts (screenshot + HTML + console)."""
     if page is None:
         return
     RESULTS.mkdir(exist_ok=True)
@@ -128,6 +147,13 @@ def _diag(page: Page | None, name: str) -> None:
     try:
         page.screenshot(path=str(RESULTS / f"{name}-{ts}.png"), full_page=True)
         (RESULTS / f"{name}-{ts}.html").write_text(page.content())
+    except Exception:
+        pass
+    try:
+        # Always write, even when empty: "no console output" and "the listener
+        # never attached" are different diagnoses and must not look identical.
+        body = "\n".join(_CONSOLE) if _CONSOLE else "(listener attached, no console output)"
+        (RESULTS / f"{name}-{ts}.console.log").write_text(body)
     except Exception:
         pass
 
