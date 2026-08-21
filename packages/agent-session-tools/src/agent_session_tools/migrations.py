@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 25
+CURRENT_VERSION = 26
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -898,6 +898,90 @@ def migrate_v25(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_file_refs_tool ON file_references(tool_name)"
+    )
+
+
+@migration(
+    26,
+    "Fix parked_topics deduplication: partial unique index on (question, source) WHERE pending",
+)
+def migrate_v26(conn: sqlite3.Connection) -> None:
+    """Collapse duplicate pending parked_topics rows and fix uniqueness scope.
+
+    Issue 0004: The old index scoped uniqueness to (study_session_id, question, source),
+    so the same question parked from different sessions created duplicate rows. NULLs in
+    study_session_id also bypassed deduplication entirely (SQLite NULL distinctness).
+
+    This migration:
+    1. Adds park_count column (default 1) to preserve re-park frequency signal
+    2. Collapses duplicate pending rows per (question, source), keeping the earliest
+       parked_at and dismissing the rest (no rows deleted)
+    3. Drops the old broken index
+    4. Creates a partial unique index on (question, source) WHERE status = 'pending'
+    """
+    columns = _table_columns(conn, "parked_topics")
+
+    # Step 1: Add park_count column if missing
+    if "park_count" not in columns:
+        conn.execute(
+            "ALTER TABLE parked_topics ADD COLUMN park_count INTEGER NOT NULL DEFAULT 1"
+        )
+
+    # Step 2: Collapse duplicate pending rows — keep the row with the earliest
+    # parked_at per (question, source) group (tie-break on lowest id). Dismiss all
+    # others. The keeper inherits the group's size as its park_count, so the
+    # "this keeps coming up" signal survives the rows that carried it.
+    # Strategy: find the single keeper per group (MIN parked_at, then MIN id for ties),
+    # then dismiss every other pending row in that group.
+    keeper_ids_sql = """
+        SELECT MIN(sub.id)
+        FROM parked_topics sub
+        WHERE sub.status = 'pending'
+          AND sub.parked_at = (
+              SELECT MIN(sub2.parked_at)
+              FROM parked_topics sub2
+              WHERE sub2.question = sub.question
+                AND sub2.source = sub.source
+                AND sub2.status = 'pending'
+          )
+        GROUP BY sub.question, sub.source
+    """
+
+    # Backfill park_count on the keepers BEFORE dismissing the losers, while the
+    # group is still countable. park_count is at least 1 for a singleton group.
+    conn.execute(f"""
+        UPDATE parked_topics
+        SET park_count = MAX(park_count, (
+            SELECT COUNT(*) FROM parked_topics grp
+            WHERE grp.question = parked_topics.question
+              AND grp.source = parked_topics.source
+              AND grp.status = 'pending'
+        ))
+        WHERE id IN ({keeper_ids_sql})
+    """)  # noqa: S608 - keeper_ids_sql is a module-local literal, no user input
+
+    conn.execute(f"""
+        UPDATE parked_topics
+        SET status = 'dismissed'
+        WHERE status = 'pending'
+          AND id NOT IN ({keeper_ids_sql})
+    """)  # noqa: S608 - keeper_ids_sql is a module-local literal, no user input
+
+    # Step 3: Drop the old index
+    conn.execute("DROP INDEX IF EXISTS uix_parked_topics_session_question")
+
+    # Step 4: Create the partial unique index
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_question_source_pending
+        ON parked_topics (question, source) WHERE status = 'pending'
+    """)
+
+    # Log the collapse for audit
+    dismissed_count = conn.execute(
+        "SELECT COUNT(*) FROM parked_topics WHERE status = 'dismissed'"
+    ).fetchone()[0]
+    logger.info(
+        f"v26 dedup: partial index created, {dismissed_count} total dismissed rows"
     )
 
 

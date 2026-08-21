@@ -57,17 +57,19 @@ def _rollback_failed_startup(
     from pathlib import Path
 
     from studyloop.history import abort_study_session
+    from studyloop.multiplexer import get_backend
     from studyloop.session_state import SESSION_DIR, clear_session_files
-    from studyloop.tmux import kill_session, session_exists
 
     if study_id:
         abort_study_session(study_id, f"Startup failed: {reason}")
 
-    if session_name and session_exists(session_name):
-        try:
-            kill_session(session_name)
-        except Exception:
-            logger.warning("failed to kill partially started tmux session %s", session_name)
+    if session_name:
+        mux = get_backend()
+        if mux.session_exists(session_name):
+            try:
+                mux.kill_session(session_name)
+            except Exception:
+                logger.warning("failed to kill partially started session %s", session_name)
 
     try:
         clear_session_files()
@@ -258,6 +260,7 @@ def start_session(
         detect_agents,
     )
     from studyloop.history import start_study_session
+    from studyloop.multiplexer import get_backend
     from studyloop.session.orchestrator import (
         attach_if_needed,
         build_wrapped_agent_cmd,
@@ -274,13 +277,14 @@ def start_session(
         is_session_active,
         write_session_state,
     )
-    from studyloop.tmux import is_tmux_available, kill_session, session_exists
+
+    mux = get_backend()
 
     # --- Pre-flight checks ---
 
-    if not is_tmux_available():
+    if not mux.is_available():
         raise SessionStartError(
-            "[red]tmux 3.1+ is required but not found.[/red]\n"
+            "[red]Terminal multiplexer is required but not available.[/red]\n"
             "  Install: [bold]brew install tmux[/bold] (macOS) or "
             "[bold]apt install tmux[/bold] (Linux)"
         )
@@ -372,9 +376,9 @@ def start_session(
         claude_project_dir = Path.home() / ".claude" / "projects" / claude_project_key
         is_resuming = claude_project_dir.exists()
 
-    # Clean up stale tmux session with same name
-    if session_exists(session_name):
-        kill_session(session_name)
+    # Clean up stale session with same name
+    if mux.session_exists(session_name):
+        mux.kill_session(session_name)
 
     # --- Build commands and orchestrate tmux ---
 
@@ -431,11 +435,14 @@ def start_session(
             session_state_dir=SESSION_DIR,
         )
 
-        # Store tmux metadata + topic resolution in session state for resume/end
+        # Store session metadata in session state for resume/end
         state_update = {
-            "tmux_session": session_name,
-            "tmux_main_pane": result["tmux_main_pane"],
-            "tmux_sidebar_pane": result["tmux_sidebar_pane"],
+            "tmux_session": session_name,  # legacy key
+            "tmux_main_pane": result["tmux_main_pane"],  # legacy key
+            "tmux_sidebar_pane": result["tmux_sidebar_pane"],  # legacy key
+            "mux_session": session_name,
+            "mux_main_pane": result["mux_main_pane"],
+            "mux_sidebar_pane": result["mux_sidebar_pane"],
             "persona_file": str(persona_file),
             "session_dir": str(session_dir),
             "agent": agent,

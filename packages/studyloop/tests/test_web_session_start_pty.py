@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _helpers import run_async
@@ -387,14 +387,16 @@ class TestPtyEnvOverride:
         """STUDYLOOP_TRANSPORT=ttyd forces the legacy branch even when the
         body asks for pty — operator-level kill switch (plan §1.9)."""
         monkeypatch.setenv("STUDYLOOP_TRANSPORT", "ttyd")
+        mock_backend = MagicMock()
+        mock_backend.is_available.return_value = False
         with (
-            patch("studyloop.tmux.is_tmux_available", return_value=False),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.web.routes.session.is_session_active", return_value=False),
         ):
             resp = client.post(
                 "/api/session/start",
                 json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
             )
-        # Legacy branch hits the tmux check first → 503
+        # Legacy branch hits the multiplexer check first → 503
         assert resp.status_code == 503
-        assert "tmux" in resp.json()["error"]
+        assert "not available" in resp.json()["error"]

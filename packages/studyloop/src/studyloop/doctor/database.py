@@ -19,15 +19,22 @@ def _get_review_db_path() -> Path:
 
 
 def _get_sessions_db_path() -> Path:
-    """Discover sessions DB path from agent-session-tools without hard import."""
-    try:
-        from agent_session_tools.config import get_db_path  # type: ignore[import-untyped]
+    """Resolve the sessions DB path the same way the rest of the app does.
 
-        return get_db_path()
-    except Exception:
-        from studyloop.settings import CONFIG_DIR
+    Previously this tried ``agent_session_tools.config``, a module that no
+    longer exists (it was renamed to ``config_loader``), and fell back to a
+    hardcoded ``CONFIG_DIR / "sessions.db"`` on the resulting ImportError. The
+    fallback therefore ran *every* time, so ``studyloop doctor`` reported on
+    the default database even when ``session_db`` pointed somewhere else —
+    a silently wrong health check.
 
-        return CONFIG_DIR / "sessions.db"
+    ``studyloop.settings.get_db_path`` is the single resolver that honours the
+    ``session_db`` / ``database.path`` config keys, then ``STUDYLOOP_DB``, then
+    the default.
+    """
+    from studyloop.settings import get_db_path
+
+    return get_db_path()
 
 
 def check_review_db() -> list[CheckResult]:

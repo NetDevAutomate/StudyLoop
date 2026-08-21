@@ -670,7 +670,9 @@
             <p class="today-parked-label">Parked thoughts you could pick up:</p>
             <div class="today-parked-chips">
               <template x-for="p in parked.slice(0, 5)" :key="p.id">
-                <button class="today-chip" @click="pickUpParked(p)" x-text="p.question"></button>
+                <span class="today-chip-wrap">
+                  <button class="today-chip" @click="pickUpParked(p)" x-text="p.question"></button><button class="today-chip-dismiss" aria-label="Dismiss parked thought" @click.stop="dismissParked(p)">&times;</button>
+                </span>
               </template>
             </div>
           </div>
@@ -1551,6 +1553,7 @@
           <div class="picker-field" x-show="targetKind === 'vendor' || targetKind === 'course' || targetKind === 'lesson'">
             <label for="vendor-select">Course Vendor</label>
             <select id="vendor-select" x-model="selectedVendor"
+                    x-show="studyOptions.vendors.length > 0"
                     @change="selectOption('vendor', selectedVendor); selectedCourse = ''; selectedLesson = ''"
                     class="picker-select">
               <option value="">Choose a vendor...</option>
@@ -1558,6 +1561,7 @@
                 <option :value="v.value" x-text="v.label"></option>
               </template>
             </select>
+            <p x-show="studyOptions.vendors.length === 0" class="picker-hint">No course vendors found &mdash; set <code>content.study_paths</code> in your config to a directory holding course folders.</p>
           </div>
 
           <div class="picker-field" x-show="targetKind === 'vendor' || targetKind === 'course' || targetKind === 'lesson'">

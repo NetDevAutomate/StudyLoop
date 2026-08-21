@@ -18,10 +18,44 @@ import yaml
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
 LEGACY_CONFIG_DIR = Path.home() / ".config" / "studyctl"
 DEFAULT_DB = CONFIG_DIR / "sessions.db"
+DEFAULT_STATE_DIR = Path.home() / ".local" / "share" / "studyloop"
 MAX_ACTIVE_TOPICS = 3
 
 _CONFIG_PATH = Path(os.environ.get("STUDYLOOP_CONFIG", CONFIG_DIR / "config.yaml"))
 _MIGRATION_CHECKED = False
+
+
+def _default_session_db() -> Path:
+    """Resolve the session DB default, honouring ``STUDYLOOP_DB``.
+
+    Same fallback semantics as :func:`get_db_path` — an explicit config key
+    still wins, because it is applied after the dataclass is constructed.
+
+    This exists because the session DB path is resolved in three independent
+    places: :func:`get_db_path`, this field (read by
+    ``history/_connection.py``), and
+    ``agent_session_tools.config_loader.get_db_path``. All three must honour
+    the override or a test run reaches the learner's real database through
+    whichever one was missed. See
+    ``docs/issues/0005-vendor-picker-lists-repo-directories.md``.
+    """
+    if env_db := os.environ.get("STUDYLOOP_DB"):
+        return Path(env_db).expanduser()
+    return DEFAULT_DB
+
+
+def _default_state_dir() -> Path:
+    """Resolve the state directory, honouring ``STUDYLOOP_STATE_DIR``.
+
+    Read at call time rather than import time so a test (or a subprocess it
+    spawns) can redirect writable state away from the learner's real
+    ``~/.local/share/studyloop``. Caches persisted there are trusted on read,
+    so a leaked test artefact becomes a production defect — see
+    ``docs/issues/0005-vendor-picker-lists-repo-directories.md``.
+    """
+    if env_dir := os.environ.get("STUDYLOOP_STATE_DIR"):
+        return Path(env_dir).expanduser()
+    return DEFAULT_STATE_DIR
 
 
 def _maybe_migrate_legacy_config() -> None:
@@ -298,10 +332,8 @@ class Settings:
     """Application settings loaded from config file."""
 
     obsidian_base: Path = field(default_factory=lambda: Path.home() / "Obsidian")
-    session_db: Path = field(
-        default_factory=lambda: Path.home() / ".config" / "studyloop" / "sessions.db"
-    )
-    state_dir: Path = field(default_factory=lambda: Path.home() / ".local" / "share" / "studyloop")
+    session_db: Path = field(default_factory=_default_session_db)
+    state_dir: Path = field(default_factory=_default_state_dir)
     topics: list[TopicConfig] = field(default_factory=list)
     sync_remote: str = ""
     sync_user: str = field(default_factory=lambda: _get_username())
@@ -681,7 +713,17 @@ def load_settings() -> Settings:
 
 
 def get_db_path() -> Path:
-    """Get sessions.db path from config, or use default."""
+    """Get sessions.db path from config, the environment, or the default.
+
+    Precedence: an explicit ``session_db`` / ``database.path`` config key wins,
+    then ``STUDYLOOP_DB``, then ``DEFAULT_DB``.
+
+    ``STUDYLOOP_DB`` replaces only the *hardcoded default*, deliberately. It
+    exists so a test run — or any subprocess a test spawns — cannot fall
+    through to the learner's real ``sessions.db`` and run migrations against
+    it. Letting it outrank an explicit config key would break the legitimate
+    pattern of a test writing its own config, so it does not.
+    """
     try:
         data = load_raw_config()
         # Support both old 'database.path' key and new 'session_db' key
@@ -692,6 +734,8 @@ def get_db_path() -> Path:
             return Path(db_str).expanduser()
     except (OSError, TypeError, AttributeError):
         pass
+    if env_db := os.environ.get("STUDYLOOP_DB"):
+        return Path(env_db).expanduser()
     return DEFAULT_DB
 
 

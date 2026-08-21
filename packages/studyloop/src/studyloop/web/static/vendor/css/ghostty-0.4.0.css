@@ -1,0 +1,120 @@
+/*
+ * ghostty-0.4.0.css — dev-mode only (studyloop web --dev)
+ *
+ * Loaded only when app.py injects
+ *   <meta name="studyloop-dev-mode" content="ghostty">
+ * so none of this can affect the default xterm.js path.
+ *
+ * Two jobs:
+ *
+ *  1. Declare --term-font-family / --term-font-size as first-class theme
+ *     variables, re-pointed per body[data-font] and body.dyslexic.
+ *     ghostty-adapter-0.4.0.js reads these via getComputedStyle and pushes
+ *     them into the terminal, which is how a font change reaches the
+ *     terminal as well as the prose panes.  The xterm.js path hard-codes
+ *     its font stack in index.html and cannot follow the picker.
+ *
+ *  2. Size the ghostty canvas inside .xterm-mount.  ghostty-web appends a
+ *     <canvas> plus a hidden <textarea>; the canvas is sized in CSS pixels
+ *     by FitAddon, so the mount must not let it prop the flex box open.
+ */
+
+:root {
+  /* Default terminal font — matches the xterm.js path's hard-coded stack so
+     dev mode starts visually identical to production. */
+  --term-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --term-font-size: 13px;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Reading-font picker → terminal font
+ *
+ *  The picker offers proportional reading fonts; a terminal needs a
+ *  monospace grid.  Each choice maps to the closest monospace pairing
+ *  and, for the legibility-focused options, a slightly larger size.
+ * ------------------------------------------------------------------ */
+
+body[data-font="lexend"] {
+  /* Lexend is a legibility face — pair with a humanist mono and bump size. */
+  --term-font-family: "Lexend", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --term-font-size: 14px;
+}
+
+body[data-font="atkinson"] {
+  /* Atkinson Hyperlegible — designed for low vision; bump size further. */
+  --term-font-family: "Atkinson Hyperlegible", ui-monospace, Menlo, monospace;
+  --term-font-size: 15px;
+}
+
+body[data-font="system"] {
+  --term-font-family: ui-monospace, "SF Mono", "Segoe UI Mono", "Roboto Mono", monospace;
+  --term-font-size: 13px;
+}
+
+body[data-font="serif"] {
+  --term-font-family: "Courier New", Courier, "Nimbus Mono PS", monospace;
+  --term-font-size: 14px;
+}
+
+/* OpenDyslexic wins over the reading-font picker, matching how body.dyslexic
+   overrides --font for prose.  Declared last so it takes precedence at equal
+   specificity, and repeated at higher specificity for the combined case. */
+body.dyslexic,
+body.dyslexic[data-font] {
+  --term-font-family: "OpenDyslexic", ui-monospace, Menlo, monospace;
+  --term-font-size: 14px;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Canvas mount
+ * ------------------------------------------------------------------ */
+
+/* Added by the adapter in open(); scopes canvas rules to dev mode only. */
+.xterm-mount.ghostty-active {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.xterm-mount.ghostty-active canvas {
+  display: block;
+  /* FitAddon sets width/height in CSS px from the measured cell metrics.
+     Never let the canvas exceed the mount and block flex shrinking. */
+  max-width: 100%;
+  max-height: 100%;
+  outline: none;
+}
+
+/* ghostty-web's hidden input target for IME and paste. */
+.xterm-mount.ghostty-active textarea {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  resize: none;
+  overflow: hidden;
+}
+
+/* Dev-mode badge so it is never ambiguous which engine is live. */
+.xterm-mount.ghostty-active::after {
+  content: "ghostty-web dev";
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 5;
+  font-family: var(--term-font-family);
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  opacity: 0.75;
+}

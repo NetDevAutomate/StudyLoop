@@ -37,24 +37,21 @@ def clean(dry_run: bool) -> None:
 
     from studyloop.cli._shared import console
     from studyloop.logic.clean_logic import CleanResult, DirInfo, plan_clean
+    from studyloop.multiplexer import get_backend
     from studyloop.session_state import SESSION_DIR, STATE_FILE, read_session_state
-    from studyloop.tmux import (
-        LOCK_FILE,
-        is_tmux_server_running,
-        is_zombie_session,
-        kill_session,
-        list_study_sessions,
-    )
+    from studyloop.tmux import LOCK_FILE
+
+    mux = get_backend()
 
     # ── GATHER — collect real-world state ────────────────────────
-    tmux_running = is_tmux_server_running()
-    study_sessions = list_study_sessions() if tmux_running else []
-    zombie_sessions = [s for s in study_sessions if is_zombie_session(s)]
+    mux_running = mux.is_server_running()
+    study_sessions = mux.list_study_sessions() if mux_running else []
+    zombie_sessions = [s for s in study_sessions if mux.is_zombie_session(s)]
     live_tmux_names = set(study_sessions)
 
     sessions_dir = SESSION_DIR / "sessions"
     session_dirs: list[DirInfo] = []
-    if sessions_dir.exists() and tmux_running:
+    if sessions_dir.exists() and mux_running:
         session_dirs = [
             DirInfo(name=d.name, path=d, is_symlink=d.is_symlink())
             for d in sorted(sessions_dir.iterdir())
@@ -65,7 +62,7 @@ def clean(dry_run: bool) -> None:
 
     # ── DECIDE — pure logic, no side effects ─────────────────────
     plan = plan_clean(
-        tmux_running=tmux_running,
+        tmux_running=mux_running,
         zombie_sessions=zombie_sessions,
         session_dirs=session_dirs,
         live_tmux_names=live_tmux_names,
@@ -77,7 +74,7 @@ def clean(dry_run: bool) -> None:
     execution_warnings: list[str] = []
     if not dry_run:
         for name in plan.sessions_to_kill:
-            success = kill_session(name)
+            success = mux.kill_session(name)
             if not success:
                 execution_warnings.append(f"Failed to confirm kill: {name}")
 

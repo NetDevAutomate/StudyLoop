@@ -8,7 +8,7 @@ from typing import Any, cast, get_type_hints
 pytest = __import__("pytest")
 pytest.importorskip("fastapi")
 
-from unittest.mock import patch  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
 
 from fastapi import Request  # noqa: E402  # pyright: ignore[reportMissingImports]
 from fastapi.routing import APIRoute  # noqa: E402  # pyright: ignore[reportMissingImports]
@@ -377,9 +377,11 @@ class TestStartSessionAPI:
     """
 
     def test_start_rejects_active_session(self, client: TestClient) -> None:
-        """Legacy-path 409 when a tmux+ttyd session is already live."""
+        """Legacy-path 409 when a session is already live."""
+        mock_backend = MagicMock()
+        mock_backend.is_available.return_value = True
         with (
-            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.web.routes.session.is_session_active", return_value=True),
         ):
             resp = client.post(
@@ -390,22 +392,27 @@ class TestStartSessionAPI:
         assert "already active" in resp.json()["error"]
 
     def test_start_rejects_no_tmux(self, client: TestClient) -> None:
-        """transport=ttyd requires tmux — 503 when it's unavailable.
+        """transport=ttyd requires a multiplexer — 503 when unavailable.
 
-        The default (pty) path no longer consults tmux, so this assertion
-        is specific to the legacy ttyd opt-in.
+        The default (pty) path no longer consults the multiplexer, so this
+        assertion is specific to the legacy ttyd opt-in.
         """
-        with patch("studyloop.tmux.is_tmux_available", return_value=False):
+        mock_backend = MagicMock()
+        mock_backend.is_available.return_value = False
+        with patch("studyloop.multiplexer.get_backend", return_value=mock_backend):
             resp = client.post(
                 "/api/session/start",
                 json={"topic": "Python", "energy": 5, "transport": "ttyd"},
             )
         assert resp.status_code == 503
-        assert "tmux" in resp.json()["error"]
+        error_msg = resp.json()["error"]
+        assert "multiplexer" in error_msg.lower() or "not available" in error_msg
 
     def test_start_rejects_unknown_agent(self, client: TestClient) -> None:
+        mock_backend = MagicMock()
+        mock_backend.is_available.return_value = True
         with (
-            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.web.routes.session.is_session_active", return_value=False),
         ):
             resp = client.post(
@@ -423,8 +430,10 @@ class TestStartSessionAPI:
         binary. Matches docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
         Phase 0 acceptance criteria.
         """
+        mock_backend = MagicMock()
+        mock_backend.is_available.return_value = True
         with (
-            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.web.routes.session.is_session_active", return_value=False),
             patch("shutil.which", return_value=None),
         ):

@@ -554,30 +554,32 @@ class SidebarApp(App[None]):
         timer.refresh()
 
     def action_end_session(self) -> None:
-        """End the entire study session (agent + sidebar + tmux).
+        """End the entire study session (agent + sidebar + multiplexer).
 
-        Sends /exit to Claude Code, runs DB cleanup, then fires a raw
-        tmux kill-session. We DON'T use the retry-loop kill_session()
-        because we're running inside the session being killed — tmux
-        sends SIGHUP which terminates us mid-verification.
+        Sends /exit to the agent, runs DB cleanup, then fires kill to
+        terminate all study sessions. We DON'T use the retry-loop
+        kill_session() because we're running inside the session being
+        killed — the multiplexer sends SIGHUP which terminates us
+        mid-verification.
 
         Strategy: fire the kill and accept that we'll die from SIGHUP.
         """
         import contextlib
 
+        from studyloop.multiplexer import get_backend
         from studyloop.session_state import read_session_state
-        from studyloop.tmux import _tmux
 
+        mux = get_backend()
         state = read_session_state()
-        main_pane = state.get("tmux_main_pane")
-        session_name = state.get("tmux_session")
+        main_pane = state.get("mux_main_pane") or state.get("tmux_main_pane")
+        session_name = state.get("mux_session") or state.get("tmux_session")
 
         # Try graceful agent exit (best effort)
         if main_pane:
             with contextlib.suppress(Exception):
-                _tmux("send-keys", "-t", main_pane, "C-c")
+                mux.send_keys(main_pane, "C-c", enter=False)
                 time_mod.sleep(0.5)
-                _tmux("send-keys", "-t", main_pane, "/exit", "Enter")
+                mux.send_keys(main_pane, "/exit", enter=True)
                 time_mod.sleep(1)
 
         # Run DB cleanup (state=ended, end study session, clean IPC files).
@@ -587,12 +589,10 @@ class SidebarApp(App[None]):
 
             _cleanup_session()
 
-        # Fire-and-forget: kill ALL study tmux sessions. This ensures no
+        # Fire-and-forget: kill ALL study sessions. This ensures no
         # stale sessions remain and the user returns to their original shell
-        # (not stranded in tmux). Kills us too via SIGHUP — that's fine.
-        from studyloop.tmux import kill_all_study_sessions
-
-        kill_all_study_sessions(current_session=session_name)
+        # (not stranded in the multiplexer). Kills us too via SIGHUP — that's fine.
+        mux.kill_all_study_sessions(current_session=session_name)
 
         # If we somehow survive (e.g., no sessions found), exit cleanly.
         self.exit()

@@ -388,8 +388,9 @@ class TestCleanupTmuxAndFiles:
         persona = tmp_path / "persona.md"
         persona.write_text("# Persona")
 
+        mock_backend = MagicMock()
         with (
-            patch("studyloop.tmux.kill_all_study_sessions"),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
             patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
             patch("studyloop.session_state.SESSION_DIR", tmp_path),
@@ -402,8 +403,9 @@ class TestCleanupTmuxAndFiles:
 
     def test_no_error_when_persona_file_absent(self, tmp_path):
         """Missing persona_file does not raise."""
+        mock_backend = MagicMock()
         with (
-            patch("studyloop.tmux.kill_all_study_sessions"),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
             patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
             patch("studyloop.session_state.SESSION_DIR", tmp_path),
@@ -414,9 +416,9 @@ class TestCleanupTmuxAndFiles:
 
     def test_kills_tmux_sessions(self, tmp_path):
         """kill_all_study_sessions is called with the current session name."""
-        mock_kill = MagicMock()
+        mock_backend = MagicMock()
         with (
-            patch("studyloop.tmux.kill_all_study_sessions", mock_kill),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
             patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
             patch("studyloop.session_state.SESSION_DIR", tmp_path),
@@ -425,7 +427,9 @@ class TestCleanupTmuxAndFiles:
 
             _cleanup_tmux_and_files(session_name="study-python-abc", persona_file=None)
 
-        mock_kill.assert_called_once_with(current_session="study-python-abc")
+        mock_backend.kill_all_study_sessions.assert_called_once_with(
+            current_session="study-python-abc"
+        )
 
     def test_ipc_files_removed(self, tmp_path):
         """TOPICS_FILE and PARKING_FILE are deleted if they exist."""
@@ -434,8 +438,9 @@ class TestCleanupTmuxAndFiles:
         topics.write_text("- [10:00] foo | status:win | bar")
         parking.write_text("- Why does Python have the GIL?")
 
+        mock_backend = MagicMock()
         with (
-            patch("studyloop.tmux.kill_all_study_sessions"),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.session_state.TOPICS_FILE", topics),
             patch("studyloop.session_state.PARKING_FILE", parking),
             patch("studyloop.session_state.SESSION_DIR", tmp_path),
@@ -449,8 +454,9 @@ class TestCleanupTmuxAndFiles:
 
     def test_ipc_removal_ignores_missing_files(self, tmp_path):
         """Unlinking already-absent IPC files does not raise."""
+        mock_backend = MagicMock()
         with (
-            patch("studyloop.tmux.kill_all_study_sessions"),
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
             patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
             patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
             patch("studyloop.session_state.SESSION_DIR", tmp_path),

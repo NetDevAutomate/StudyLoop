@@ -799,3 +799,254 @@ class TestV25CascadeOnMessageDelete:
         assert (
             fresh_db.execute("SELECT COUNT(*) FROM file_references").fetchone()[0] == 0
         )
+
+
+class TestMigrationV26:
+    """Test parked_topics deduplication migration (issue 0004).
+
+    The migration must:
+    1. Add park_count column (default 1)
+    2. Collapse duplicate pending rows per (question, source), keeping earliest parked_at
+    3. Set losers to status='dismissed' (NOT deleted)
+    4. Drop the old index (uix_parked_topics_session_question)
+    5. Create partial unique index on (question, source) WHERE status = 'pending'
+    """
+
+    def _seed_pre_migration_duplicates(self, conn: sqlite3.Connection) -> None:
+        """Seed the DB with duplicate pending rows simulating the bug.
+
+        Creates a parked_topics table at the v17 schema level (before v26)
+        with the old broken index that allows cross-session duplicates.
+        """
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS study_sessions (
+                id TEXT PRIMARY KEY,
+                started_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sessions (
+                id TEXT PRIMARY KEY,
+                source TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            );
+            INSERT INTO study_sessions (id, started_at) VALUES ('sess-1', '2026-07-01');
+            INSERT INTO study_sessions (id, started_at) VALUES ('sess-2', '2026-07-02');
+            INSERT INTO study_sessions (id, started_at) VALUES ('sess-3', '2026-07-03');
+            INSERT INTO study_sessions (id, started_at) VALUES ('sess-4', '2026-07-04');
+
+            CREATE TABLE IF NOT EXISTS parked_topics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                study_session_id TEXT REFERENCES study_sessions(id) ON DELETE SET NULL,
+                session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+                topic_tag TEXT,
+                question TEXT NOT NULL,
+                context TEXT,
+                status TEXT NOT NULL DEFAULT 'pending'
+                    CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
+                scheduled_for TEXT,
+                resolved_at TEXT,
+                parked_at TEXT NOT NULL DEFAULT (datetime('now')),
+                created_by TEXT DEFAULT 'agent',
+                source TEXT NOT NULL DEFAULT 'parked',
+                tech_area TEXT,
+                priority INTEGER
+            );
+            CREATE UNIQUE INDEX uix_parked_topics_session_question
+            ON parked_topics (study_session_id, question, source);
+
+            -- 4 duplicate pending rows for the same question (different sessions)
+            INSERT INTO parked_topics (study_session_id, question, source, parked_at, status)
+            VALUES ('sess-1', 'How do generators relate to closures?', 'parked', '2026-07-01 10:00:00', 'pending');
+            INSERT INTO parked_topics (study_session_id, question, source, parked_at, status)
+            VALUES ('sess-2', 'How do generators relate to closures?', 'parked', '2026-07-02 10:00:00', 'pending');
+            INSERT INTO parked_topics (study_session_id, question, source, parked_at, status)
+            VALUES ('sess-3', 'How do generators relate to closures?', 'parked', '2026-07-03 10:00:00', 'pending');
+            INSERT INTO parked_topics (study_session_id, question, source, parked_at, status)
+            VALUES ('sess-4', 'How do generators relate to closures?', 'parked', '2026-07-04 10:00:00', 'pending');
+
+            -- 1 resolved row (should NOT be touched)
+            INSERT INTO parked_topics (study_session_id, question, source, parked_at, status)
+            VALUES ('sess-1', 'Already resolved question', 'parked', '2026-07-01 09:00:00', 'resolved');
+
+            -- 2 duplicate pending rows for a different question
+            INSERT INTO parked_topics (study_session_id, question, source, parked_at, status)
+            VALUES ('sess-1', 'Does the wrapper actually work?', 'parked', '2026-07-01 11:00:00', 'pending');
+            INSERT INTO parked_topics (study_session_id, question, source, parked_at, status)
+            VALUES ('sess-2', 'Does the wrapper actually work?', 'parked', '2026-07-02 11:00:00', 'pending');
+        """)
+        conn.commit()
+
+    def test_migration_collapses_duplicates_to_one_pending(self, tmp_path) -> None:
+        """After migration, each (question, source) has exactly one pending row."""
+        db_path = tmp_path / "dedup.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        self._seed_pre_migration_duplicates(conn)
+
+        # Set user_version to 25 so only v26 runs
+        set_user_version(conn, 25)
+
+        migrate(conn)
+
+        # Check: exactly one pending per (question, source) group
+        pending = conn.execute(
+            "SELECT question, COUNT(*) as cnt FROM parked_topics "
+            "WHERE status = 'pending' GROUP BY question, source"
+        ).fetchall()
+        for row in pending:
+            assert row["cnt"] == 1, f"Multiple pending for: {row['question']}"
+
+        conn.close()
+
+    def test_migration_keeps_earliest_parked_at(self, tmp_path) -> None:
+        """The surviving pending row has the earliest parked_at."""
+        db_path = tmp_path / "dedup.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        self._seed_pre_migration_duplicates(conn)
+        set_user_version(conn, 25)
+
+        migrate(conn)
+
+        row = conn.execute(
+            "SELECT parked_at FROM parked_topics "
+            "WHERE question = 'How do generators relate to closures?' AND status = 'pending'"
+        ).fetchone()
+        assert row["parked_at"] == "2026-07-01 10:00:00"
+        conn.close()
+
+    def test_migration_dismisses_losers_not_deletes(self, tmp_path) -> None:
+        """Duplicate rows are set to 'dismissed', not deleted. Total row count preserved."""
+        db_path = tmp_path / "dedup.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        self._seed_pre_migration_duplicates(conn)
+
+        total_before = conn.execute(
+            "SELECT COUNT(*) as cnt FROM parked_topics"
+        ).fetchone()["cnt"]
+
+        set_user_version(conn, 25)
+        migrate(conn)
+
+        total_after = conn.execute(
+            "SELECT COUNT(*) as cnt FROM parked_topics"
+        ).fetchone()["cnt"]
+
+        # No rows deleted
+        assert total_after == total_before
+
+        # Check dismissed count for the 4-duplicate question: 3 dismissed, 1 pending
+        dismissed = conn.execute(
+            "SELECT COUNT(*) as cnt FROM parked_topics "
+            "WHERE question = 'How do generators relate to closures?' AND status = 'dismissed'"
+        ).fetchone()["cnt"]
+        assert dismissed == 3
+
+        conn.close()
+
+    def test_migration_adds_park_count_column(self, tmp_path) -> None:
+        """park_count column is added, defaulting to 1 for non-collapsed rows."""
+        db_path = tmp_path / "dedup.db"
+        conn = sqlite3.connect(str(db_path))
+        self._seed_pre_migration_duplicates(conn)
+        set_user_version(conn, 25)
+
+        migrate(conn)
+
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(parked_topics)")}
+        assert "park_count" in cols
+
+        # Rows that were never duplicated keep the default of 1.
+        resolved = conn.execute(
+            "SELECT park_count FROM parked_topics WHERE question = 'Already resolved question'"
+        ).fetchone()
+        assert resolved[0] == 1
+
+        conn.close()
+
+    def test_migration_backfills_park_count_from_collapsed_group(
+        self, tmp_path
+    ) -> None:
+        """The surviving row inherits the group size, so the re-park signal is not lost.
+
+        Collapsing 4 duplicate rows into 1 must not silently discard the fact
+        that the question came up 4 times — that count is the whole point of
+        ``get_topic_frequencies``. Without this backfill the migration would
+        trade one bug (duplicate rows) for another (a flattened signal).
+        """
+        db_path = tmp_path / "dedup.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        self._seed_pre_migration_duplicates(conn)
+        set_user_version(conn, 25)
+
+        migrate(conn)
+
+        generators = conn.execute(
+            """SELECT park_count FROM parked_topics
+               WHERE question = 'How do generators relate to closures?'
+                 AND status = 'pending'"""
+        ).fetchone()
+        assert generators["park_count"] == 4, "4 seeded duplicates -> park_count 4"
+
+        wrapper = conn.execute(
+            """SELECT park_count FROM parked_topics
+               WHERE question = 'Does the wrapper actually work?'
+                 AND status = 'pending'"""
+        ).fetchone()
+        assert wrapper["park_count"] == 2, "2 seeded duplicates -> park_count 2"
+
+        conn.close()
+
+    def test_migration_creates_partial_unique_index(self, tmp_path) -> None:
+        """The new partial index prevents two pending rows for same (question, source)."""
+        db_path = tmp_path / "dedup.db"
+        conn = sqlite3.connect(str(db_path))
+        self._seed_pre_migration_duplicates(conn)
+        set_user_version(conn, 25)
+
+        migrate(conn)
+
+        # The new index should exist
+        indexes = {
+            r[1]
+            for r in conn.execute(
+                "SELECT * FROM sqlite_master WHERE type='index' "
+                "AND tbl_name='parked_topics'"
+            ).fetchall()
+        }
+        assert "uix_parked_topics_question_source_pending" in indexes
+        # The old index should be gone
+        assert "uix_parked_topics_session_question" not in indexes
+
+        # Verify the constraint works: try inserting a duplicate pending
+        conn.execute(
+            "INSERT INTO parked_topics (question, source, status) "
+            "VALUES ('How do generators relate to closures?', 'parked', 'dismissed')"
+        )  # dismissed should work fine
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO parked_topics (question, source, status) "
+                "VALUES ('How do generators relate to closures?', 'parked', 'pending')"
+            )
+
+        conn.close()
+
+    def test_migration_does_not_touch_resolved_rows(self, tmp_path) -> None:
+        """Resolved rows are left untouched by the collapse."""
+        db_path = tmp_path / "dedup.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        self._seed_pre_migration_duplicates(conn)
+        set_user_version(conn, 25)
+
+        migrate(conn)
+
+        resolved = conn.execute(
+            "SELECT * FROM parked_topics WHERE question = 'Already resolved question'"
+        ).fetchall()
+        assert len(resolved) == 1
+        assert resolved[0]["status"] == "resolved"
+        conn.close()

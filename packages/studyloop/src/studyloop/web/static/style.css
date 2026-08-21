@@ -3877,6 +3877,20 @@ body[data-palette="everforest"] {
   padding: 4px 12px; font-size: 0.85rem; max-width: 260px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.today-chip-wrap {
+  display: inline-flex; align-items: center; position: relative;
+}
+.today-chip-wrap .today-chip {
+  padding-right: 24px; /* room for the × */
+}
+.today-chip-dismiss {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 0.9rem; line-height: 1; padding: 2px 4px; border-radius: 50%;
+}
+.today-chip-dismiss:hover, .today-chip-dismiss:focus-visible {
+  color: var(--text); background: rgba(255,255,255,0.1);
+}
 
 /* ------------------------------------------------------------------
  * Toast — minimal shared feedback primitive

@@ -22,10 +22,12 @@ from .agents import (
     parking_agent,
     topic_logger_agent,
 )
+from .multiplexer import MultiplexerHarness
 from .study import StudySession
 from .tmux import TmuxHarness
 
 __all__ = [
+    "MultiplexerHarness",
     "StudySession",
     "TmuxHarness",
     "fast_exit_agent",
