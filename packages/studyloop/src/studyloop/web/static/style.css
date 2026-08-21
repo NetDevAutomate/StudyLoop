@@ -233,8 +233,12 @@ header {
   overflow: hidden;
 }
 
-/* When the explorer panel is open, grow the 3rd column to 320px */
-.app-layout.explorer-open {
+/* When any 3rd-column side panel is open, grow the 3rd column to 320px.
+   Explorer, Parking Lot and Notes all share this single 3rd grid column;
+   only one is ever open at a time (opening one closes the others). */
+.app-layout.explorer-open,
+.app-layout.parking-open,
+.app-layout.notes-open {
   grid-template-columns: 200px 1fr 320px;
 }
 
@@ -3957,4 +3961,357 @@ body[data-palette="everforest"] {
   font-size: 0.9rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   z-index: 90; /* below pomodoro (100) */
+}
+
+/* ==========================================================================
+ * Parking Lot + Notes side panels (3rd grid column).
+ * Structurally mirror .course-explorer-panel; all rules scoped under the
+ * panel ids/classes so nothing cascades into other views.
+ * ========================================================================== */
+
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.side-panel-count {
+  margin-left: auto;
+  margin-right: 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* --- Bulk / selection bar (always visible — no hidden mode gate) --- */
+.side-panel-bulkbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bulk-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 6px 8px;
+  min-height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.bulk-btn:hover { border-color: var(--accent); }
+.bulk-btn.active { border-color: var(--accent); background: var(--bg); }
+.bulk-btn.primary { border-color: var(--accent); color: var(--accent); font-weight: 650; }
+.bulk-btn.danger:not(:disabled):hover { border-color: var(--red); color: var(--red); }
+.bulk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.bulk-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* --- Column admin --- */
+.parking-columns-admin {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.parking-admin-add { display: flex; gap: 4px; }
+.parking-column-admin-row { display: flex; gap: 4px; align-items: center; }
+.parking-column-rename,
+#parking-new-column {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  min-height: 28px;
+}
+
+/* --- Empty state --- */
+.parking-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.parking-empty kbd {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.8em;
+}
+
+/* --- The board --- */
+.parking-board {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  padding: 8px;
+  overflow-x: auto;
+  align-items: flex-start;
+}
+.parking-column {
+  flex: 1 1 0;
+  min-width: 70px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s, background 0.15s;
+}
+.parking-column.drag-over {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+.parking-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.parking-column-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.parking-column-select {
+  flex-shrink: 0;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.parking-column-select:hover { border-color: var(--accent); color: var(--text); }
+.parking-column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  min-height: 40px;
+}
+
+/* --- Cards (parking + notes share the selection/editing language) --- */
+.parking-card,
+.note-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+.parking-card:focus-visible,
+.note-card:focus-visible { border-color: var(--accent); }
+
+/* A SELECTED card carries a mark of its own (accent bar + surface tint +
+   shadow) so it can never be mistaken for the OPEN (editing) state, which
+   uses only an accent border and the plain surface. The e2e suite asserts
+   these two states are visually non-identical. */
+.parking-card.selected,
+.note-card.selected {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  box-shadow: inset 4px 0 0 0 var(--accent);
+}
+.parking-card.editing,
+.note-card.editing {
+  background: var(--bg);
+  border-color: var(--accent);
+  box-shadow: none;
+  cursor: default;
+}
+
+.parking-card-row,
+.note-card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px;
+}
+
+/* Checkbox hit target — always present so entering select mode never shifts
+   the card contents. WCAG 2.2 SC 2.5.8: >= 24x24. */
+.parking-card-check-label,
+.note-card-check-label {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.parking-card-check,
+.note-card-check {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.parking-card-main,
+.note-card-main { flex: 1; min-width: 0; }
+
+.parking-card-title,
+.note-card-title {
+  font-size: 0.82rem;
+  color: var(--text);
+  word-break: break-word;
+  cursor: pointer;
+}
+.note-card-kind {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+.parking-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.parking-card-area,
+.parking-card-badge,
+.parking-card-prio {
+  font-size: 0.64rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.parking-card-badge { color: var(--accent); }
+.parking-card-preview-text {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Clear / delete single — >= 24x24 hit target. */
+.parking-card-clear,
+.note-card-delete {
+  flex-shrink: 0;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.parking-card-clear:hover,
+.note-card-delete:hover { border-color: var(--red); color: var(--red); }
+
+/* --- In-place editor --- */
+.parking-card-editor,
+.note-card-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 240px;
+}
+.parking-title-input,
+.parking-area-input,
+.note-title-input,
+.parking-note-textarea,
+.note-body-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+.parking-note-textarea,
+.note-body-input { resize: vertical; line-height: 1.5; }
+.parking-editor-controls { display: flex; gap: 4px; }
+.parking-priority-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+.parking-editor-toolbar,
+.note-editor-toolbar { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Rendered Markdown preview — MUST follow the active palette tokens (the
+   e2e theme test compares these against --bg / --text). The id selector
+   wins over the shared .acp-message-final prose styles. */
+#parking-panel .parking-note-preview {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+#parking-panel .parking-note-preview table {
+  border-collapse: collapse;
+  margin: 6px 0;
+}
+#parking-panel .parking-note-preview th,
+#parking-panel .parking-note-preview td {
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+}
+#parking-panel .parking-note-preview .mermaid-diagram { margin: 8px 0; }
+
+/* --- Notes list --- */
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
 }

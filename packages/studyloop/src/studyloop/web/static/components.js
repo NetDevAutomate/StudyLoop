@@ -363,6 +363,12 @@ document.addEventListener("alpine:init", () => {
       } else {
         document.body.setAttribute("data-palette", this.palette);
       }
+      /* Notify palette-aware surfaces (e.g. the parking-lot Markdown preview
+         and its mermaid diagrams) so they re-render against the new tokens.
+         A hardcoded mermaid theme is exactly what this lets callers avoid. */
+      window.dispatchEvent(
+        new CustomEvent("studyloop:theme-change", { detail: { palette: this.palette } })
+      );
     },
 
     setFont(name) {
@@ -2107,6 +2113,614 @@ function todayPanel() {
       } catch {
         this.parked.splice(idx, 0, p);
         Alpine.store('toast').show('Could not dismiss — offline?');
+      }
+    },
+  };
+}
+
+/* ====================================================================
+ * Parking Lot + Notes panels (3rd-column side panels).
+ *
+ * Both mirror the courseExplorer() pattern: a boot-stub store
+ * (Alpine.store('parking') / 'notes') drives the sidebar toggle button,
+ * and the component wires its real toggle()/close() onto the store in
+ * init() (lazy-fetch + layout class). Only one 3rd-column panel is open
+ * at a time — opening one closes the siblings.
+ * ==================================================================== */
+
+/**
+ * Re-initialise mermaid so diagrams follow the ACTIVE palette rather than a
+ * hardcoded theme. Reads the live CSS custom properties off <body> and feeds
+ * them to mermaid's `base` theme, so a light palette produces a light diagram.
+ * Called immediately before each mermaid render pass in the parking preview.
+ */
+function _mermaidInitForPalette() {
+  if (!window.mermaid) return;
+  const cs = getComputedStyle(document.body);
+  const v = (name, fallback) => (cs.getPropertyValue(name).trim() || fallback);
+  const bg = v('--bg', '#1a1b26');
+  const surface = v('--bg-card', '#24283b');
+  const surfaceAlt = v('--bg-hover', surface);
+  const text = v('--text', '#c0caf5');
+  const accent = v('--accent', '#7aa2f7');
+  const border = v('--border', '#3b4261');
+  const muted = v('--text-muted', '#565f89');
+  try {
+    window.mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: 'base',
+      themeVariables: {
+        darkMode: false,
+        background: bg,
+        primaryColor: surface,
+        mainBkg: surface,
+        secondaryColor: surfaceAlt,
+        tertiaryColor: surfaceAlt,
+        primaryBorderColor: accent,
+        nodeBorder: accent,
+        clusterBkg: surfaceAlt,
+        clusterBorder: border,
+        primaryTextColor: text,
+        nodeTextColor: text,
+        textColor: text,
+        lineColor: muted,
+        edgeLabelBackground: bg,
+      },
+    });
+  } catch (err) {
+    console.warn('[parking] mermaid re-init failed:', err);
+  }
+}
+
+/* Fallback diagram source if the server template is unavailable. Guarantees
+   the one-click "Insert diagram" always drops a real ```mermaid fence. */
+const _PARKING_FALLBACK_DIAGRAM =
+  '```mermaid\ngraph TD\n    A[Start] --> B[Next step]\n```\n';
+
+function parkingPanel() {
+  return {
+    columns: [],
+    diagramTemplate: '',
+    loadError: '',
+
+    // editor state (single open editor — #parking-note-input is a unique id)
+    editingId: null,
+    titleText: '',
+    noteText: '',
+    areaText: '',
+    priorityVal: '',
+    showPreview: false,
+    previewHtml: '',
+    saveState: 'Save',
+
+    // selection + bulk state
+    selectMode: false,
+    selectedIds: [],
+    undoBuffer: [],
+
+    // column admin
+    manageColumns: false,
+    newColumnName: '',
+
+    // drag state
+    dragOverColumn: null,
+    _justDragged: false,
+
+    init() {
+      const self = this;
+      const store = Alpine.store('parking');
+      store.toggle = () => self.toggle();
+      store.close = () => self.close();
+      window.addEventListener('parking:changed', () => {
+        if (Alpine.store('parking').open) self.refresh();
+      });
+      window.addEventListener('studyloop:theme-change', () => {
+        if (self.showPreview && self.editingId != null) self.renderPreview();
+      });
+    },
+
+    async toggle() {
+      const store = Alpine.store('parking');
+      store.open = !store.open;
+      const layout = document.querySelector('.app-layout');
+      if (store.open) {
+        try { Alpine.store('explorer').close(); } catch { /* stub */ }
+        try { Alpine.store('notes').close(); } catch { /* stub */ }
+        if (layout) layout.classList.add('parking-open');
+        await this.refresh();
+      } else if (layout) {
+        layout.classList.remove('parking-open');
+      }
+    },
+
+    close() {
+      const store = Alpine.store('parking');
+      store.open = false;
+      const layout = document.querySelector('.app-layout');
+      if (layout) layout.classList.remove('parking-open');
+    },
+
+    async refresh() {
+      try {
+        const res = await fetch('/api/parking/board');
+        if (res.ok) {
+          const data = await res.json();
+          this.columns = data.columns || [];
+          this.diagramTemplate = data.diagram_template || '';
+          this.loadError = '';
+        } else {
+          this.loadError = `Could not load parking lot (${res.status})`;
+        }
+      } catch {
+        this.loadError = 'Network error loading parking lot';
+      }
+    },
+
+    // ---- derived ----
+    allItems() {
+      return this.columns.flatMap((c) => c.items || []);
+    },
+    totalCount() {
+      return this.allItems().length;
+    },
+    totalLabel() {
+      const n = this.totalCount();
+      return `${n} item${n === 1 ? '' : 's'}`;
+    },
+    selectedCountLabel() {
+      const n = this.selectedIds.length;
+      return n === 0 ? 'None selected' : `${n} selected`;
+    },
+
+    // ---- selection ----
+    isSelected(id) {
+      return this.selectedIds.includes(id);
+    },
+    toggleSelect(id) {
+      if (this.selectedIds.includes(id)) {
+        this.selectedIds = this.selectedIds.filter((x) => x !== id);
+      } else {
+        this.selectedIds = [...this.selectedIds, id];
+      }
+    },
+    selectAll() {
+      this.selectedIds = this.allItems().map((i) => i.id);
+    },
+    selectNone() {
+      this.selectedIds = [];
+    },
+    selectColumn(colKey) {
+      const col = this.columns.find((c) => c.key === colKey);
+      if (!col) return;
+      const set = new Set(this.selectedIds);
+      (col.items || []).forEach((i) => set.add(i.id));
+      this.selectedIds = [...set];
+    },
+
+    // ---- editor ----
+    openEditor(item) {
+      this.editingId = item.id;
+      this.titleText = item.question || '';
+      this.noteText = item.notes || '';
+      this.areaText = item.tech_area || '';
+      this.priorityVal = item.priority ? String(item.priority) : '';
+      this.showPreview = false;
+      this.previewHtml = '';
+      this.saveState = 'Save';
+    },
+    closeEditor() {
+      this.editingId = null;
+      this.showPreview = false;
+      this.previewHtml = '';
+    },
+    onTitleClick(item) {
+      if (this._justDragged) { this._justDragged = false; return; }
+      if (this.selectMode) { this.toggleSelect(item.id); return; }
+      this.openEditor(item);
+    },
+    onCardKey(item, ev) {
+      if (ev.key === 'ArrowRight') { ev.preventDefault(); this.moveByOffset(item, 1); }
+      else if (ev.key === 'ArrowLeft') { ev.preventDefault(); this.moveByOffset(item, -1); }
+      else if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+        ev.preventDefault();
+        if (this.selectMode) this.toggleSelect(item.id);
+        else this.openEditor(item);
+      } else if (ev.key === 'Escape') {
+        this.closeEditor();
+      }
+    },
+
+    insertDiagram() {
+      let tpl = this.diagramTemplate || '';
+      if (!tpl.includes('```mermaid')) tpl = _PARKING_FALLBACK_DIAGRAM;
+      this.noteText = this.noteText
+        ? this.noteText.replace(/\s*$/, '') + '\n\n' + tpl
+        : tpl;
+    },
+
+    togglePreview() {
+      this.showPreview = !this.showPreview;
+      if (this.showPreview) this.renderPreview();
+    },
+
+    async renderPreview() {
+      this.previewHtml = renderMarkdown(this.noteText || '');
+      /* Two ticks so Alpine's x-html effect writes the DOM before we query the
+         mermaid placeholders (same pattern as courseExplorer's reader). */
+      await this.$nextTick();
+      await this.$nextTick();
+      _mermaidInitForPalette();
+      await _renderMermaidPlaceholders(this.$el);
+    },
+
+    _replaceItem(item) {
+      for (const c of this.columns) {
+        const idx = (c.items || []).findIndex((i) => i.id === item.id);
+        if (idx !== -1) { c.items.splice(idx, 1, { ...c.items[idx], ...item }); return; }
+      }
+    },
+
+    async save() {
+      if (this.editingId == null) return;
+      this.saveState = 'Saving';
+      const body = { question: this.titleText, notes: this.noteText };
+      if (this.areaText) body.tech_area = this.areaText;
+      if (this.priorityVal) body.priority = parseInt(this.priorityVal, 10);
+      try {
+        const res = await fetch(`/api/parking/item/${this.editingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const item = data.item || {};
+          this._replaceItem(item);
+          if (typeof item.notes === 'string') this.noteText = item.notes;
+          this.saveState = 'Saved';
+          this.showPreview = true;
+          await this.renderPreview();
+        } else {
+          this.saveState = 'Save';
+          Alpine.store('toast').show('Could not save — try again');
+        }
+      } catch {
+        this.saveState = 'Save';
+        Alpine.store('toast').show('Could not save — offline?');
+      }
+    },
+
+    // ---- clearing ----
+    async _clear(ids) {
+      if (!ids.length) return;
+      try {
+        const res = await fetch('/api/parking/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        if (res.ok) {
+          this.undoBuffer = ids.slice();
+          this.selectedIds = [];
+          if (this.editingId != null && ids.includes(this.editingId)) this.closeEditor();
+          await this.refresh();
+        } else {
+          Alpine.store('toast').show('Could not clear — try again');
+        }
+      } catch {
+        Alpine.store('toast').show('Could not clear — offline?');
+      }
+    },
+    clearOne(id) { return this._clear([id]); },
+    clearSelected() { return this._clear(this.selectedIds.slice()); },
+    clearAll() { return this._clear(this.allItems().map((i) => i.id)); },
+
+    async undoClear() {
+      if (!this.undoBuffer.length) return;
+      try {
+        const res = await fetch('/api/parking/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: this.undoBuffer }),
+        });
+        if (res.ok) { this.undoBuffer = []; await this.refresh(); }
+      } catch {
+        Alpine.store('toast').show('Could not undo — offline?');
+      }
+    },
+
+    // ---- kanban move (keyboard + drag) ----
+    moveByOffset(item, delta) {
+      const idx = this.columns.findIndex((c) => (c.items || []).some((i) => i.id === item.id));
+      if (idx === -1) return;
+      const target = this.columns[idx + delta];
+      if (!target) return;
+      this.moveItem(item.id, target.key);
+    },
+    async moveItem(id, colKey) {
+      let moved = null;
+      for (const c of this.columns) {
+        const idx = (c.items || []).findIndex((i) => i.id === id);
+        if (idx !== -1) { moved = c.items.splice(idx, 1)[0]; break; }
+      }
+      if (!moved) return;
+      moved.board_column = colKey;
+      const target = this.columns.find((c) => c.key === colKey);
+      if (target) (target.items = target.items || []).push(moved);
+      try {
+        await fetch(`/api/parking/item/${id}/move`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ board_column: colKey }),
+        });
+      } catch {
+        await this.refresh();
+      }
+    },
+
+    startDrag(item, ev) {
+      /* Ignore presses that begin on an interactive control or inside the
+         editor — only the card body/title initiates a drag. */
+      if (ev.target.closest(
+        '.parking-card-check-label, .parking-card-clear, .parking-card-editor, ' +
+        'button, input, textarea, select, a'
+      )) return;
+      if (ev.button && ev.button !== 0) return;
+
+      const startX = ev.clientX;
+      const startY = ev.clientY;
+      const startCol = this._columnKeyForItem(item.id);
+      const self = this;
+      let dragging = false;
+      let maxTravel = 0;
+
+      const onMove = (e) => {
+        const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+        if (dist > maxTravel) maxTravel = dist;
+        if (!dragging && dist > 6) dragging = true;   // 6px drag threshold
+        if (dragging) {
+          const el = document.elementFromPoint(e.clientX, e.clientY);
+          const col = el && el.closest ? el.closest('.parking-column') : null;
+          self.dragOverColumn = col ? col.dataset.column : null;
+        }
+      };
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        const dropCol = self.dragOverColumn;
+        self.dragOverColumn = null;
+        if (dragging && dropCol && dropCol !== startCol) {
+          /* A committed move to a different column: perform it and swallow the
+             trailing click so the editor does not pop open. */
+          self._justDragged = true;
+          self.moveItem(item.id, dropCol);
+        } else if (dragging && maxTravel >= 24) {
+          /* An unambiguous drag that was reconsidered (dropped back in place):
+             still swallow the click. A small drift (< 24px) is treated as a
+             plain click so near-unselectable cards open on tap. */
+          self._justDragged = true;
+        }
+        /* Safety net: clear the swallow flag shortly after, in case no click
+           follows (e.g. the drop landed on a column gutter, not a title). */
+        if (self._justDragged) {
+          setTimeout(() => { self._justDragged = false; }, 120);
+        }
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    },
+
+    _columnKeyForItem(id) {
+      const col = this.columns.find((c) => (c.items || []).some((i) => i.id === id));
+      return col ? col.key : null;
+    },
+
+    // ---- column admin ----
+    async addColumn() {
+      const name = (this.newColumnName || '').trim();
+      if (!name) return;
+      try {
+        const res = await fetch('/api/parking/columns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        if (res.ok) { this.newColumnName = ''; await this.refresh(); }
+        else Alpine.store('toast').show('Could not add column');
+      } catch {
+        Alpine.store('toast').show('Could not add column — offline?');
+      }
+    },
+    async renameColumn(key, name) {
+      const clean = (name || '').trim();
+      if (!clean) return;
+      try {
+        const res = await fetch(`/api/parking/columns/${encodeURIComponent(key)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: clean }),
+        });
+        if (res.ok) await this.refresh();
+      } catch {
+        Alpine.store('toast').show('Could not rename column — offline?');
+      }
+    },
+    async removeColumn(key) {
+      try {
+        const res = await fetch(`/api/parking/columns/${encodeURIComponent(key)}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) await this.refresh();
+        else Alpine.store('toast').show('Could not remove column');
+      } catch {
+        Alpine.store('toast').show('Could not remove column — offline?');
+      }
+    },
+  };
+}
+
+function notesPanel() {
+  return {
+    notes: [],
+    loadError: '',
+
+    editingId: null,
+    titleText: '',
+    bodyText: '',
+    saveState: 'Save',
+
+    selectMode: false,
+    selectedIds: [],
+    undoBuffer: [],
+
+    init() {
+      const self = this;
+      const store = Alpine.store('notes');
+      store.toggle = () => self.toggle();
+      store.close = () => self.close();
+      window.addEventListener('notes:changed', () => {
+        if (Alpine.store('notes').open) self.refresh();
+      });
+    },
+
+    async toggle() {
+      const store = Alpine.store('notes');
+      store.open = !store.open;
+      const layout = document.querySelector('.app-layout');
+      if (store.open) {
+        try { Alpine.store('explorer').close(); } catch { /* stub */ }
+        try { Alpine.store('parking').close(); } catch { /* stub */ }
+        if (layout) layout.classList.add('notes-open');
+        await this.refresh();
+      } else if (layout) {
+        layout.classList.remove('notes-open');
+      }
+    },
+
+    close() {
+      const store = Alpine.store('notes');
+      store.open = false;
+      const layout = document.querySelector('.app-layout');
+      if (layout) layout.classList.remove('notes-open');
+    },
+
+    async refresh() {
+      try {
+        const res = await fetch('/api/notes');
+        if (res.ok) {
+          const data = await res.json();
+          this.notes = data.notes || [];
+          this.loadError = '';
+        } else {
+          this.loadError = `Could not load notes (${res.status})`;
+        }
+      } catch {
+        this.loadError = 'Network error loading notes';
+      }
+    },
+
+    totalLabel() {
+      const n = this.notes.length;
+      return `${n} note${n === 1 ? '' : 's'}`;
+    },
+    selectedCountLabel() {
+      const n = this.selectedIds.length;
+      return n === 0 ? 'None selected' : `${n} selected`;
+    },
+
+    isSelected(id) { return this.selectedIds.includes(id); },
+    toggleSelect(id) {
+      if (this.selectedIds.includes(id)) {
+        this.selectedIds = this.selectedIds.filter((x) => x !== id);
+      } else {
+        this.selectedIds = [...this.selectedIds, id];
+      }
+    },
+    selectAll() { this.selectedIds = this.notes.map((n) => n.id); },
+    selectNone() { this.selectedIds = []; },
+
+    openEditor(note) {
+      this.editingId = note.id;
+      this.titleText = note.title || '';
+      this.bodyText = note.body || '';
+      this.saveState = 'Save';
+    },
+    closeEditor() { this.editingId = null; },
+    onTitleClick(note) {
+      if (this.selectMode) { this.toggleSelect(note.id); return; }
+      this.openEditor(note);
+    },
+    onCardKey(note, ev) {
+      if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+        ev.preventDefault();
+        if (this.selectMode) this.toggleSelect(note.id);
+        else this.openEditor(note);
+      } else if (ev.key === 'Escape') {
+        this.closeEditor();
+      }
+    },
+
+    async save() {
+      if (this.editingId == null) return;
+      this.saveState = 'Saving';
+      try {
+        const res = await fetch(`/api/notes/${this.editingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: this.titleText, body: this.bodyText }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const note = data.note || {};
+          const idx = this.notes.findIndex((n) => n.id === note.id);
+          if (idx !== -1) this.notes.splice(idx, 1, { ...this.notes[idx], ...note });
+          this.saveState = 'Saved';
+        } else {
+          this.saveState = 'Save';
+          Alpine.store('toast').show('Could not save — try again');
+        }
+      } catch {
+        this.saveState = 'Save';
+        Alpine.store('toast').show('Could not save — offline?');
+      }
+    },
+
+    async _clear(ids) {
+      if (!ids.length) return;
+      try {
+        const res = await fetch('/api/notes/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        if (res.ok) {
+          this.undoBuffer = ids.slice();
+          this.selectedIds = [];
+          if (this.editingId != null && ids.includes(this.editingId)) this.closeEditor();
+          await this.refresh();
+        } else {
+          Alpine.store('toast').show('Could not delete — try again');
+        }
+      } catch {
+        Alpine.store('toast').show('Could not delete — offline?');
+      }
+    },
+    clearOne(id) { return this._clear([id]); },
+    clearSelected() { return this._clear(this.selectedIds.slice()); },
+    clearAll() { return this._clear(this.notes.map((n) => n.id)); },
+
+    async undoClear() {
+      if (!this.undoBuffer.length) return;
+      try {
+        const res = await fetch('/api/notes/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: this.undoBuffer }),
+        });
+        if (res.ok) { this.undoBuffer = []; await this.refresh(); }
+      } catch {
+        Alpine.store('toast').show('Could not undo — offline?');
       }
     },
   };
