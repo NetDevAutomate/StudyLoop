@@ -88,13 +88,17 @@ def create_app(
     from studyloop.web.routes import (
         artefacts,
         backlog,
+        body_double,
         cards,
         content_gen,
         courses,
+        exercises,
         explorer,
         history,
         mastery,
+        notes,
         now,
+        plans,
         session,
     )
 
@@ -108,6 +112,16 @@ def create_app(
     app.include_router(content_gen.router, prefix="/api")
     app.include_router(explorer.router, prefix="/api")
     app.include_router(artefacts.router)
+    app.include_router(body_double.router, prefix="/api")
+    app.include_router(exercises.router, prefix="/api")
+    app.include_router(notes.router, prefix="/api")
+    app.include_router(plans.router, prefix="/api")
+    # NOT YET: parking.router. web/routes/parking.py imports 12 board functions
+    # (get_board, add_board_column, move_parked_topic, restore_parked_topic, …)
+    # that studyloop/parking.py does not define, so importing it breaks
+    # create_app() outright. The contract is fully specified by the 35 tests in
+    # packages/studyloop/tests/test_parking_board.py; register this the moment
+    # they pass.
 
     try:
         from studyloop.web.routes.session._options import warm_session_options_index
