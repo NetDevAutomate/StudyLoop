@@ -9,11 +9,16 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+from contextlib import contextmanager
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from studyloop.db import SCHEMA_LOCK, connect_db
 from studyloop.markdown_notes import normalise_markdown
 from studyloop.settings import get_db_path
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +106,35 @@ def _connect() -> sqlite3.Connection:
         _ensure_board_schema(conn)
 
     return conn
+
+
+@contextmanager
+def _immediate(conn: sqlite3.Connection) -> Iterator[None]:
+    """Run a read-modify-write inside a single ``BEGIN IMMEDIATE`` transaction.
+
+    Python's :mod:`sqlite3` defers its implicit ``BEGIN`` until the first DML
+    statement, so a ``SELECT`` that feeds a later ``INSERT``/``UPDATE`` runs
+    without holding the write lock. Two callers can then read the same state
+    and write conflicting values — a lost update (e.g. two cards appended to a
+    column both reading the same ``MAX(board_order)`` and landing on the same
+    order). ``BEGIN IMMEDIATE`` takes the write lock up front, so concurrent
+    writers serialise (they wait out ``busy_timeout``) instead of racing.
+
+    Switches the connection to manual-commit for the duration and restores its
+    prior ``isolation_level`` afterwards.
+    """
+    prior = conn.isolation_level
+    conn.isolation_level = None
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
+    else:
+        conn.execute("COMMIT")
+    finally:
+        conn.isolation_level = prior
 
 
 def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
@@ -271,54 +305,58 @@ def park_topic(
     try:
         conn = _connect()
         try:
-            _ensure_reference_rows(
-                conn,
-                study_session_id=study_session_id,
-                session_id=session_id,
-            )
-            # Append to the end of the target column (dense 0..n ordering).
-            next_order = conn.execute(
-                "SELECT COALESCE(MAX(board_order), -1) + 1 AS n FROM parked_topics "
-                "WHERE board_column = ? AND status = 'pending'",
-                (board_column,),
-            ).fetchone()["n"]
-            cursor = conn.execute(
-                """INSERT OR IGNORE INTO parked_topics
-                   (study_session_id, session_id, topic_tag, question,
-                    context, created_by, source, tech_area, notes,
-                    board_column, board_order)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    study_session_id,
-                    session_id,
-                    topic_tag,
-                    question,
-                    context,
-                    created_by,
-                    source,
-                    tech_area,
-                    clean_notes,
-                    board_column,
-                    next_order,
-                ),
-            )
-            conn.commit()
-            if cursor.rowcount > 0:
-                return cursor.lastrowid
-            # Insert was ignored (duplicate pending) — increment park_count
-            # and return existing row ID
-            conn.execute(
-                """UPDATE parked_topics SET park_count = park_count + 1
-                   WHERE question = ? AND source = ? AND status = 'pending'""",
-                (question, source),
-            )
-            conn.commit()
-            row = conn.execute(
-                """SELECT id FROM parked_topics
-                   WHERE question = ? AND source = ? AND status = 'pending'""",
-                (question, source),
-            ).fetchone()
-            return row["id"] if row else None
+            # Serialise the append's read-modify-write. park_topic reads
+            # MAX(board_order)+1 then inserts; without the write lock held
+            # across both, two concurrent parks into the same column read the
+            # same MAX and write the same board_order (a lost update). Taking
+            # the lock up front (BEGIN IMMEDIATE) forces them to serialise.
+            with _immediate(conn):
+                _ensure_reference_rows(
+                    conn,
+                    study_session_id=study_session_id,
+                    session_id=session_id,
+                )
+                # Append to the end of the target column (dense 0..n ordering).
+                next_order = conn.execute(
+                    "SELECT COALESCE(MAX(board_order), -1) + 1 AS n FROM parked_topics "
+                    "WHERE board_column = ? AND status = 'pending'",
+                    (board_column,),
+                ).fetchone()["n"]
+                cursor = conn.execute(
+                    """INSERT OR IGNORE INTO parked_topics
+                       (study_session_id, session_id, topic_tag, question,
+                        context, created_by, source, tech_area, notes,
+                        board_column, board_order)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        study_session_id,
+                        session_id,
+                        topic_tag,
+                        question,
+                        context,
+                        created_by,
+                        source,
+                        tech_area,
+                        clean_notes,
+                        board_column,
+                        next_order,
+                    ),
+                )
+                if cursor.rowcount > 0:
+                    return cursor.lastrowid
+                # Insert was ignored (duplicate pending) — increment park_count
+                # and return existing row ID
+                conn.execute(
+                    """UPDATE parked_topics SET park_count = park_count + 1
+                       WHERE question = ? AND source = ? AND status = 'pending'""",
+                    (question, source),
+                )
+                row = conn.execute(
+                    """SELECT id FROM parked_topics
+                       WHERE question = ? AND source = ? AND status = 'pending'""",
+                    (question, source),
+                ).fetchone()
+                return row["id"] if row else None
         finally:
             conn.close()
     except Exception:
@@ -623,45 +661,49 @@ def move_parked_topic(item_id: int, board_column: str, position: int | None = No
     """
     conn = _connect()
     try:
-        if conn.execute(
-            "SELECT 1 FROM board_columns WHERE key = ?", (board_column,)
-        ).fetchone() is None:
-            return False
-        current = conn.execute(
-            "SELECT board_column FROM parked_topics WHERE id = ? AND status = 'pending'",
-            (item_id,),
-        ).fetchone()
-        if current is None:
-            return False
-        old_column = current["board_column"]
+        # Serialise validate → move → reindex under one write lock so two
+        # concurrent moves can't interleave and clobber each other's
+        # board_order (see _immediate).
+        with _immediate(conn):
+            if conn.execute(
+                "SELECT 1 FROM board_columns WHERE key = ?", (board_column,)
+            ).fetchone() is None:
+                return False
+            current = conn.execute(
+                "SELECT board_column FROM parked_topics WHERE id = ? AND status = 'pending'",
+                (item_id,),
+            ).fetchone()
+            if current is None:
+                return False
+            old_column = current["board_column"]
 
-        conn.execute(
-            "UPDATE parked_topics SET board_column = ?, updated_at = datetime('now') WHERE id = ?",
-            (board_column, item_id),
-        )
-        others = [
-            row["id"]
-            for row in conn.execute(
-                "SELECT id FROM parked_topics "
-                "WHERE board_column = ? AND status = 'pending' AND id != ? "
-                "ORDER BY board_order, id",
+            conn.execute(
+                "UPDATE parked_topics SET board_column = ?, updated_at = datetime('now') "
+                "WHERE id = ?",
                 (board_column, item_id),
             )
-        ]
-        if position is None or position >= len(others):
-            new_order = [*others, item_id]
-        else:
-            index = max(0, position)
-            new_order = [*others[:index], item_id, *others[index:]]
-        for order, row_id in enumerate(new_order):
-            conn.execute(
-                "UPDATE parked_topics SET board_order = ? WHERE id = ?",
-                (order, row_id),
-            )
-        if old_column != board_column:
-            _renormalise_column(conn, old_column)
-        conn.commit()
-        return True
+            others = [
+                row["id"]
+                for row in conn.execute(
+                    "SELECT id FROM parked_topics "
+                    "WHERE board_column = ? AND status = 'pending' AND id != ? "
+                    "ORDER BY board_order, id",
+                    (board_column, item_id),
+                )
+            ]
+            if position is None or position >= len(others):
+                new_order = [*others, item_id]
+            else:
+                index = max(0, position)
+                new_order = [*others[:index], item_id, *others[index:]]
+            for order, row_id in enumerate(new_order):
+                conn.execute(
+                    "UPDATE parked_topics SET board_order = ? WHERE id = ?",
+                    (order, row_id),
+                )
+            if old_column != board_column:
+                _renormalise_column(conn, old_column)
+            return True
     finally:
         conn.close()
 

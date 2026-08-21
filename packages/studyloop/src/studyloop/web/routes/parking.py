@@ -59,6 +59,29 @@ def _decorate(item: dict) -> dict:
     }
 
 
+def _require_question(question: str) -> str:
+    """Reject a blank / whitespace-only question with 400; return trimmed text.
+
+    Pydantic's ``min_length=1`` only stops the empty string ``""``; a value
+    like ``"   "`` clears it but collapses to nothing once trimmed, which would
+    otherwise persist an empty-question card.
+    """
+    trimmed = question.strip()
+    if not trimmed:
+        raise HTTPException(status_code=400, detail="question cannot be blank")
+    return trimmed
+
+
+def _require_known_column(board_column: str) -> None:
+    """Reject a board_column that is not one of the board's real columns (400)."""
+    known = {col["key"] for col in get_board_columns()}
+    if board_column not in known:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown board column: {board_column!r}",
+        )
+
+
 @router.get("/parking/board")
 def get_parking_board() -> dict:
     """Return the whole board: ordered columns, each with its ordered cards."""
@@ -85,8 +108,10 @@ class ParkingCreate(BaseModel):
 @router.post("/parking/item", status_code=201)
 def create_parking_item(body: ParkingCreate) -> dict:
     """Create a parked item (board-native capture, with notes from the start)."""
+    question = _require_question(body.question)
+    _require_known_column(body.board_column)
     row_id = park_topic(
-        body.question.strip(),
+        question,
         notes=body.notes,
         tech_area=body.tech_area,
         context=body.context,
@@ -121,6 +146,10 @@ def patch_parking_item(item_id: int, body: ParkingUpdate) -> dict:
     fields = body.model_dump(exclude_none=True)
     if not fields:
         raise HTTPException(status_code=422, detail="No editable fields supplied")
+    if "board_column" in fields:
+        _require_known_column(fields["board_column"])
+    if "question" in fields:
+        fields["question"] = _require_question(fields["question"])
     try:
         updated = update_parked_topic(item_id, **fields)
     except ValueError as exc:

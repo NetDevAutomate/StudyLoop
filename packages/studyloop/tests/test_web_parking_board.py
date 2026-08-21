@@ -123,6 +123,34 @@ def test_create_rejects_empty_question(client: TestClient) -> None:
     assert client.post("/api/parking/item", json={"question": ""}).status_code == 422
 
 
+def test_create_rejects_whitespace_only_question(client: TestClient) -> None:
+    """A question of only whitespace collapses to empty on the way in — 400."""
+    resp = client.post("/api/parking/item", json={"question": "   \t\n  "})
+    assert resp.status_code == 400, resp.text
+    # Nothing was persisted.
+    assert client.get("/api/parking/board").json()["total"] == 0
+
+
+def test_create_rejects_unknown_board_column(client: TestClient) -> None:
+    """board_column must name a real column; a bogus one is a 400, not an orphan."""
+    resp = client.post(
+        "/api/parking/item",
+        json={"question": "Where does this land?", "board_column": "ghost"},
+    )
+    assert resp.status_code == 400, resp.text
+    assert client.get("/api/parking/board").json()["total"] == 0
+
+
+def test_patch_rejects_unknown_board_column(client: TestClient) -> None:
+    """Moving a card via PATCH to a non-existent column is rejected with 400."""
+    item_id = _create(client, "Real card")
+    resp = client.patch(f"/api/parking/item/{item_id}", json={"board_column": "ghost"})
+    assert resp.status_code == 400, resp.text
+    # The card stayed put in its original column.
+    board = client.get("/api/parking/board").json()
+    assert [i["id"] for i in board["columns"][0]["items"]] == [item_id]
+
+
 # ---------------------------------------------------------------------------
 # PATCH /api/parking/item/{id} — in-place editing
 # ---------------------------------------------------------------------------

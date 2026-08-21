@@ -285,6 +285,43 @@ def test_board_order_is_dense_after_move(board_db: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Concurrency — the board-order read-modify-write must serialise
+# ---------------------------------------------------------------------------
+
+
+def test_concurrent_parks_to_one_column_keep_distinct_dense_order(board_db: Path) -> None:
+    """Parking many cards into one column at once must not collide on order.
+
+    ``park_topic`` reads ``MAX(board_order)+1`` then inserts. Without holding
+    the write lock across both statements, two concurrent parkers read the same
+    MAX and write the same ``board_order`` — a lost update that leaves two cards
+    sharing a slot. A single ``BEGIN IMMEDIATE`` transaction serialises them, so
+    the resulting orders stay a dense, collision-free ``0..n-1``.
+    """
+    from studyloop.parking import park_topic
+
+    n = 12
+    with ThreadPoolExecutor(max_workers=n) as pool:
+        ids = list(pool.map(lambda i: park_topic(f"card-{i}", board_column="inbox"), range(n)))
+
+    assert all(i is not None for i in ids), "every concurrent park should succeed"
+
+    conn = sqlite3.connect(str(board_db))
+    orders = [
+        r[0]
+        for r in conn.execute(
+            "SELECT board_order FROM parked_topics "
+            "WHERE board_column = 'inbox' AND status = 'pending' ORDER BY board_order"
+        )
+    ]
+    conn.close()
+
+    assert len(orders) == n
+    assert len(set(orders)) == n, f"duplicate board_order (lost update): {orders}"
+    assert orders == list(range(n)), f"ordering is not dense 0..n-1: {orders}"
+
+
+# ---------------------------------------------------------------------------
 # Clearing — single / subset / all, soft and hard
 # ---------------------------------------------------------------------------
 
