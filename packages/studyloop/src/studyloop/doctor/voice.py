@@ -9,6 +9,7 @@ from pathlib import Path
 
 from studyloop.doctor.models import CheckResult
 from studyloop.settings import load_raw_config
+from studyloop.tts_backends import UnknownBackendError, resolve_backend
 
 _KOKORO_MODEL = Path.home() / ".cache" / "kokoro-onnx" / "kokoro-v1.0.onnx"
 _KOKORO_VOICES = Path.home() / ".cache" / "kokoro-onnx" / "voices-v1.0.bin"
@@ -37,8 +38,34 @@ def _openvox_reachable(base_url: str) -> bool:
 def check_voice_readiness() -> list[CheckResult]:
     """Report local TTS readiness without making voice mandatory."""
     cfg = _tts_config()
-    backend = str(cfg.get("backend", "kokoro")).lower()
     results: list[CheckResult] = []
+
+    raw_backend = cfg.get("backend")
+    try:
+        backend = resolve_backend(raw_backend)
+    except UnknownBackendError as exc:
+        results.append(
+            CheckResult(
+                "voice",
+                "backend",
+                "fail",
+                str(exc),
+                f"Set tts.backend to one of the supported backends in config.yaml"
+                f" (got {raw_backend!r})",
+                False,
+            )
+        )
+        return results
+    results.append(
+        CheckResult(
+            "voice",
+            "backend",
+            "pass",
+            f"tts.backend resolved to {backend!r}",
+            "",
+            False,
+        )
+    )
 
     if _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists():
         results.append(
