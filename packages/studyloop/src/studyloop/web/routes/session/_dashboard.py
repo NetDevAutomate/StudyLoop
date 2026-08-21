@@ -21,9 +21,46 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/session/state")
-def get_session_state() -> dict:
-    """JSON endpoint for initial session state load."""
-    return _get_full_state()
+async def get_session_state() -> dict:
+    """JSON endpoint for initial session state load.
+
+    The live in-process slot (``session/active.py``) is the source of truth for
+    "is a session running?". When a slot is held, overlay it on the IPC file so
+    this endpoint can never disagree with ``POST /session/start``: report the
+    slot even when the file is gone or an out-of-process end left
+    ``mode=ended``, and surface the same ``detached`` / ``reattach_url``
+    affordance the 409 carries. When no slot is held, fall back to the file
+    verbatim so legacy ttyd sessions (which never touch the slot) still show.
+    """
+    from studyloop.session import active as session_active
+    from studyloop.web.routes.session import _grace
+
+    state = _get_full_state()
+    current = await session_active.current()
+    if current is None:
+        return state
+
+    session_id = current.study_session_id
+    if state.get("study_session_id") != session_id:
+        # File is gone, empty, or describes a stale/other session — don't let
+        # its fields masquerade as this slot's. Keep only the list panels.
+        state = {
+            "topics": state.get("topics", []),
+            "parking": state.get("parking", []),
+            "study_session_id": session_id,
+            "agent": current.config.agent,
+            "mode": "focus",
+        }
+    else:
+        state = dict(state)
+        if not state.get("agent"):
+            state["agent"] = current.config.agent
+        if state.get("mode") == "ended":
+            # An out-of-process end marked the file ended, but the slot is live.
+            state["mode"] = "focus"
+    state["detached"] = _grace.has_pending_release(session_id)
+    state["reattach_url"] = f"/api/session/ws?study_session_id={session_id}"
+    return state
 
 
 @router.get("/session/last")

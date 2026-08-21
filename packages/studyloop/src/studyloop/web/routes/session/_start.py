@@ -37,6 +37,60 @@ _ALLOWED_ORIGINS: frozenset[str] = frozenset({"study", "body-double"})
 _DEFAULT_ORIGIN = "study"
 
 
+def _active_session_topic(session_id: str) -> str | None:
+    """The active session's topic from the IPC file, or None.
+
+    Only trusts the file when its id matches the slot that actually holds the
+    session. A mismatched id means the file belongs to a different (stale or
+    replaced) session, and presenting its topic as this session's is exactly
+    the "your last topic" desync the reconcile work exists to kill.
+    """
+    from studyloop.web.routes import session as session_pkg
+
+    try:
+        state = session_pkg.read_session_state()
+    except Exception:  # pragma: no cover - defensive
+        return None
+    if state.get("study_session_id") != session_id:
+        return None
+    topic = state.get("topic")
+    return topic if isinstance(topic, str) else None
+
+
+async def _session_conflict() -> JSONResponse | None:
+    """Build the 409 for a start blocked by an already-active session.
+
+    Reports the *active* session's own topic and reattach URL so the UI can
+    offer "reattach or end" instead of the desync fallback string, and surfaces
+    the same ``detached`` / ``reattach_url`` affordance ``/session/state``
+    carries. The topic is looked up via :func:`_active_session_topic`, which
+    never borrows a different session's topic. Returns ``None`` when nothing is
+    active (the caller then proceeds with a normal start).
+    """
+    from studyloop.session import active as session_active
+    from studyloop.web.routes.session import _grace
+
+    current = await session_active.current()
+    if current is None:
+        return None
+
+    session_id = current.study_session_id
+    return JSONResponse(
+        {
+            "error": (
+                "A session is already active — its browser tab may have closed "
+                "but the agent is still running. Reattach to it, or end it first."
+            ),
+            "study_session_id": session_id,
+            "topic": _active_session_topic(session_id),
+            "agent": current.config.agent,
+            "detached": _grace.has_pending_release(session_id),
+            "reattach_url": f"/api/session/ws?study_session_id={session_id}",
+        },
+        status_code=409,
+    )
+
+
 async def _resolve_origin(request: Request) -> str:
     """Return the validated ``origin`` from the start request body.
 
@@ -138,11 +192,9 @@ async def _start_pty_session(
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
 
-    if await session_active.current() is not None:
-        return JSONResponse(
-            {"error": "A session is already active"},
-            status_code=409,
-        )
+    conflict = await _session_conflict()
+    if conflict is not None:
+        return conflict
 
     # --- Agent resolution ---
     agent = body.agent
