@@ -1969,6 +1969,11 @@
         <div x-show="sessionActive" x-transition class="session-active-layout">
 
           <!-- Live mentor surface: xterm.js for PTY, legacy iframe for ttyd fallback, message log for protocol transports (unused in Phase 1) -->
+          <!-- origin defaults to 'study' in liveAgentConsole(); left ARGUMENT-FREE on
+           purpose. 46 assertions across 3 suites address this attribute by its
+           literal string, and the default already gives correct scoping - so
+           naming the origin here would buy nothing and cost 46 edits. The Body
+           Double console passes 'body-double' explicitly. -->
           <div class="session-terminal-area agent-console" x-data="liveAgentConsole()">
 
             <!-- xterm.js terminal (PTY transport — plan §1.7) -->
@@ -2978,6 +2983,9 @@
           window.dispatchEvent(new CustomEvent('study-session-start', {
             detail: {
               topic,
+              // Which view started this: the two origin-scoped consoles each
+              // ignore the other's events (ADR-0002).
+              origin: 'study',
               energy: this.energy,
               sessionType: this.sessionType,
               targetKind: this.targetKind,
@@ -3036,7 +3044,7 @@
         try {
           await fetch('/api/session/end', { method: 'POST' });
         } catch { /* best effort */ }
-        window.dispatchEvent(new CustomEvent('study-session-stop'));
+        window.dispatchEvent(new CustomEvent('study-session-stop', { detail: { origin: 'study' } }));
         this.sessionActive = false;
         clearInterval(this.interval);
         this.topic = 'Session ended';
@@ -3290,7 +3298,12 @@
    * the one documented in plan Amendment #5 (WS route) + Amendment
    * #6 (REST /session/start returns ws_url).
    * ------------------------------------------------------------------ */
-  function liveAgentConsole() {
+  /* origin: which view owns this console — 'study' or 'body-double'. Two
+     instances live on the page at once, so every start/stop event must be
+     filtered by origin: without the STOP guard, ending a study session tears
+     down the Body Double console and vice versa. See ADR-0002 and the
+     _ALLOWED_ORIGINS comment in web/routes/session/_start.py. */
+  function liveAgentConsole(origin = 'study') {
     return {
       /* ---- reactive state (bound to template) --------------------- */
       terminalMode: null,        /* 'xterm' | 'ttyd-iframe' | 'acp-chat' | null (idle) */
@@ -3325,8 +3338,14 @@
                                             turn is in flight; cleared on first turn_end */
 
       init() {
-        window.addEventListener('study-session-start', (event) => this.start(event.detail));
-        window.addEventListener('study-session-stop', () => this.stop());
+        window.addEventListener('study-session-start', (event) => {
+          if (((event.detail && event.detail.origin) || 'study') !== origin) return;
+          this.start(event.detail);
+        });
+        window.addEventListener('study-session-stop', (event) => {
+          if (((event.detail && event.detail.origin) || 'study') !== origin) return;
+          this.stop();
+        });
       },
 
       start(detail) {
