@@ -122,7 +122,13 @@ def _persist_session_data(
 
 
 def _signal_dashboard_ended() -> None:
-    """Write mode=ended to session state so the dashboard shows a summary."""
+    """Mark the session state ``mode=ended`` for the dashboard summary.
+
+    ``write_session_state`` refuses to *create* a fresh file for an id-less
+    end-marker, so calling this after ``/session/end`` or ``studyloop clean``
+    has already deleted the state file will not resurrect a contentless
+    ``{"mode": "ended"}`` that outlives the session.
+    """
     import contextlib
 
     from studyloop.session_state import write_session_state

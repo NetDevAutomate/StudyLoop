@@ -59,6 +59,16 @@ def read_session_state() -> dict:
     if "mux_sidebar_pane" not in state and "tmux_sidebar_pane" in state:
         state["mux_sidebar_pane"] = state["tmux_sidebar_pane"]
 
+    # A PTY/ACP session owns no multiplexer. ``write_session_state`` is a
+    # read-merge-write, so a PTY session started after a legacy ttyd session
+    # inherits that session's dead ``tmux_session`` key. Left in place, zombie
+    # detection then classifies the live PTY session as a dead tmux session and
+    # deletes its state file. Drop the inherited multiplexer keys so a live PTY
+    # session is never mistaken for a dead tmux session.
+    if state.get("transport") in ("pty", "acp"):
+        state.pop("tmux_session", None)
+        state.pop("mux_session", None)
+
     return state
 
 
@@ -107,6 +117,19 @@ def write_session_state(updates: dict) -> None:
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             current = read_session_state()
+            # Don't resurrect a deleted state file just to record that a
+            # session ended. An id-less ``{"mode": "ended"}`` marker is litter —
+            # no id, no topic, nothing the dashboard summary needs — that
+            # outlives the session and confuses the next desync diagnosis. An
+            # end-marker for a session whose file already exists (or any update
+            # carrying real session state) still writes normally.
+            merged = {**current, **updates}
+            if (
+                not STATE_FILE.exists()
+                and merged.get("mode") == "ended"
+                and not merged.get("study_session_id")
+            ):
+                return
             current.update(updates)
             _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
         finally:

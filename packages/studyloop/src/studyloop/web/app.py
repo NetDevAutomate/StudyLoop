@@ -6,6 +6,8 @@ Serves JSON API endpoints and static PWA files.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -17,6 +19,26 @@ from starlette.responses import RedirectResponse, Response
 from studyloop.session_runtime import AgentSessionManager
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Run the session-slot reaper for the whole life of the app.
+
+    The reaper is the backstop for every way the single-session slot can be
+    pinned that the WebSocket grace timer cannot see — a session whose socket
+    never attached, or one ended/cleaned from another process. Without it those
+    slots stay occupied until the server restarts and every ``/session/start``
+    409s. Started on app startup and torn down on shutdown so a stop cannot
+    leave an orphaned agent child owned by a timer that will never fire.
+    """
+    from studyloop.web.routes.session import _grace
+
+    _grace.start_reaper()
+    try:
+        yield
+    finally:
+        await _grace.shutdown()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -68,6 +90,7 @@ def create_app(
         title="StudyLoop",
         docs_url=None,
         redoc_url=None,
+        lifespan=_lifespan,
     )
 
     # Store config on app state for route access
