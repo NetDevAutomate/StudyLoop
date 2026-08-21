@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from typing import Any, cast
 
@@ -15,6 +16,21 @@ from studyloop.web.ws_origin import origin_allowed
 logger = logging.getLogger(__name__)
 
 _WS_CLOSE_POLICY = 1008  # RFC 6455 Policy Violation
+
+#: Sent to a socket that just lost the consumer slot to a newer one, on its own
+#: connection, so the learner is told where the live terminal went.
+_SUPERSEDED_MESSAGE = (
+    "This study session was opened in another tab or window, "
+    "which now has the live terminal."
+)
+
+
+class _Superseded(Exception):
+    """Raised inside the pump TaskGroup when a newer socket takes the slot.
+
+    Collapses the group so the ``except*`` arm can send the displaced client
+    its ``attach_superseded`` frame and close. Never escapes the route.
+    """
 
 
 @router.websocket("/session/ws")
@@ -49,6 +65,7 @@ async def live_session_socket(websocket: WebSocket) -> None:
         Stopped,
         TransportError,
     )
+    from studyloop.web.routes.session import _grace
 
     # --- Pre-accept guards -----------------------------------------------
 
@@ -79,32 +96,82 @@ async def live_session_socket(websocket: WebSocket) -> None:
 
     await websocket.accept()
     transport = current.transport
+    session_id = current.study_session_id
+
+    # A reconnect inside the grace window stands the release timer down, then
+    # claiming the consumer slot displaces any socket still holding it. The slot
+    # is what guarantees the event-stream drain is never split between two
+    # terminals (see _grace.py: events() is a drain, one event per consumer).
+    _grace.cancel_pending_release(session_id)
+    mine, _displaced = await _grace.acquire_consumer(session_id)
+
+    stopped = False  # session is over: Stopped event, stop frame, or drained stream
+    superseded = False  # a newer socket took the consumer slot from us
 
     async def pty_to_ws() -> None:
-        """Pump transport events → WS frames until the session ends."""
-        async for event in transport.events():
-            if isinstance(event, OutputBytes):
-                await websocket.send_bytes(event.data)
-            elif isinstance(event, Started):
-                await websocket.send_json({"type": "started", "agent": event.agent})
-            elif isinstance(event, Stopped):
-                await websocket.send_json(
-                    {
-                        "type": "stopped",
-                        "returncode": event.returncode,
-                        "reason": event.reason,
-                    }
-                )
-                return  # Stopped is terminal — stop pumping.
-            elif isinstance(event, TransportError):
-                await websocket.send_json({"type": "transport_error", "message": event.message})
-            elif isinstance(event, AgentMessage):
-                await websocket.send_json(
-                    {"type": "agent_message", "kind": event.kind, "payload": event.payload}
-                )
+        """Pump transport events → WS frames until the session ends.
+
+        The next event is pulled as its own task so the loop can also poll
+        ``mine.superseded`` every ``SUPERSEDE_POLL_S`` while the stream is idle
+        (a live agent with nothing to say still has to notice a takeover). The
+        poll lives here rather than in a third TaskGroup task on purpose: once
+        the stream ends this coroutine returns and its pull task is cancelled
+        synchronously, leaving only ``ws_to_pty`` blocked on receive — the same
+        shape the plain-pump WS tests rely on for a clean client-close teardown.
+        """
+        nonlocal stopped, superseded
+        events = transport.events()
+        nxt = asyncio.ensure_future(events.__anext__())
+        try:
+            while True:
+                await asyncio.wait({nxt}, timeout=_grace.SUPERSEDE_POLL_S)
+                if mine.superseded:
+                    superseded = True
+                    raise _Superseded()
+                if not nxt.done():
+                    continue  # nothing yet — poll again.
+                exc = nxt.exception()
+                if isinstance(exc, StopAsyncIteration):
+                    # Stream drained with no Stopped event (end() pushed the
+                    # queue sentinel). The session is over, so release now rather
+                    # than hold a dead agent for the whole grace window.
+                    stopped = True
+                    return
+                if exc is not None:
+                    raise exc
+                event = nxt.result()
+                if isinstance(event, Stopped):
+                    await websocket.send_json(
+                        {
+                            "type": "stopped",
+                            "returncode": event.returncode,
+                            "reason": event.reason,
+                        }
+                    )
+                    stopped = True  # agent exit — release now, not after the window.
+                    return  # Stopped is terminal — stop pumping.
+                nxt = asyncio.ensure_future(events.__anext__())
+                if isinstance(event, OutputBytes):
+                    await websocket.send_bytes(event.data)
+                elif isinstance(event, Started):
+                    await websocket.send_json({"type": "started", "agent": event.agent})
+                elif isinstance(event, TransportError):
+                    await websocket.send_json(
+                        {"type": "transport_error", "message": event.message}
+                    )
+                elif isinstance(event, AgentMessage):
+                    await websocket.send_json(
+                        {"type": "agent_message", "kind": event.kind, "payload": event.payload}
+                    )
+        finally:
+            if not nxt.done():
+                nxt.cancel()
+            with contextlib.suppress(BaseException):
+                await events.aclose()
 
     async def ws_to_pty() -> None:
         """Read WS control frames and forward to transport."""
+        nonlocal stopped
         while True:
             frame = await websocket.receive_json()
             ftype = frame.get("type")
@@ -120,7 +187,10 @@ async def live_session_socket(websocket: WebSocket) -> None:
                     continue
                 await transport.resize(cols, rows)
             elif ftype == "stop":
+                # Explicit learner intent, not a disconnect — end immediately
+                # with no grace window (a disconnect would get one).
                 await transport.cancel()
+                stopped = True
                 return
             elif ftype == "permission_response":
                 # ACP permission response (U6.5). Duck-typed guard: PTYTransport
@@ -154,6 +224,18 @@ async def live_session_socket(websocket: WebSocket) -> None:
         async with asyncio.TaskGroup() as tg:
             tg.create_task(pty_to_ws(), name="ws-pty-to-ws")
             tg.create_task(ws_to_pty(), name="ws-ws-to-pty")
+    except* _Superseded:
+        # A newer socket took over. Tell this (older) client where its session
+        # went, on its own connection, then close with a policy-violation code.
+        with contextlib.suppress(Exception):
+            await websocket.send_json(
+                {
+                    "type": "attach_superseded",
+                    "reason": "taken_over",
+                    "message": _SUPERSEDED_MESSAGE,
+                }
+            )
+            await websocket.close(code=_WS_CLOSE_POLICY)
     except* WebSocketDisconnect:
         pass
     except* OSError as eg:
@@ -161,4 +243,18 @@ async def live_session_socket(websocket: WebSocket) -> None:
     except* Exception as eg:  # pragma: no cover — defensive
         logger.exception("unexpected error on /session/ws: %s", eg.exceptions)
     finally:
-        await session_active.release()
+        # Give up our own claim (identity-checked in _grace: a no-op on the
+        # session slot once we have been superseded, so the successor keeps it).
+        _grace.release_consumer(mine)
+        if superseded:
+            # The successor owns the session now — leave it running for them.
+            pass
+        elif stopped:
+            # Agent exited or the learner pressed Stop — release at once.
+            await _grace.release_now(session_id, reason="session ended")
+        else:
+            # A plain disconnect (reload, closed lid, lost wifi). Hold the
+            # session for the grace window so a returning client can reattach
+            # instead of losing a live agent to an accidental ⌘R.
+            _grace.schedule_release(session_id)
+
