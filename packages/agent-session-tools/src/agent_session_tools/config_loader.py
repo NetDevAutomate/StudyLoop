@@ -183,6 +183,49 @@ def get_endpoints(config: dict[str, Any] | None = None) -> dict[str, dict[str, A
     return config.get("endpoints", {})
 
 
+def _expand_dotted_keys(raw: dict[str, Any]) -> dict[str, Any]:
+    """Expand top-level dotted keys into nested mappings.
+
+    In YAML, ``tts.backend: openvox`` is a single flat key named
+    ``"tts.backend"`` -- NOT ``tts: {backend: openvox}``. Real user configs
+    contain the flat form (the doctor's repair hints used to suggest it
+    verbatim), and every consumer reads the nested shape, so the flat key was
+    silently ignored.
+
+    Rules: dotted keys merge into the nested tree; on conflict an explicit
+    nested value wins over a dotted one (the nested form is authoritative);
+    non-dict intermediate values are left alone rather than clobbered.
+
+    DELIBERATE DUPLICATE of ``studyloop.settings._expand_dotted_keys``. The two
+    packages are independently publishable and must not import each other's
+    config loaders (see the module docstring), but they parse the SAME
+    config.yaml, so they have to agree on its syntax. A previous fix changed
+    only the studyloop side and claimed it "fixes all 6 consumers at once";
+    it missed this loader. ``test_voice_backends.py::
+    test_dotted_key_expansion_is_identical_in_both_packages`` asserts the two
+    stay behaviourally identical -- change both or neither.
+    """
+    result: dict[str, Any] = {k: v for k, v in raw.items() if "." not in str(k)}
+    for key, value in raw.items():
+        if "." not in str(key):
+            continue
+        parts = str(key).split(".")
+        node = result
+        for part in parts[:-1]:
+            child = node.get(part)
+            if not isinstance(child, dict):
+                if part in node:
+                    # An existing non-dict value occupies this path -- the
+                    # explicit key wins; drop the dotted variant.
+                    break
+                child = {}
+                node[part] = child
+            node = child
+        else:
+            node.setdefault(parts[-1], value)
+    return result
+
+
 def load_config() -> dict[str, Any]:
     """Load configuration from config.yaml with fallbacks.
 
@@ -214,6 +257,11 @@ def load_config() -> dict[str, Any]:
             with open(config_file) as f:
                 yaml_config = yaml.safe_load(f)
                 if yaml_config:
+                    # Normalise flat `a.b: v` keys to nested form first, so a
+                    # user config written in the dotted style is not silently
+                    # ignored by the merge below.
+                    if isinstance(yaml_config, dict):
+                        yaml_config = _expand_dotted_keys(yaml_config)
                     # Deep merge with defaults
                     _deep_merge(config, yaml_config)
         except Exception as e:
