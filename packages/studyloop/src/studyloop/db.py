@@ -8,10 +8,26 @@ connection options.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+#: Serialises the *self-healing* schema CREATEs that several modules perform on
+#: first write (see :func:`studyloop.notes._connect`).
+#:
+#: ``PRAGMA user_version`` can run ahead of the real schema when a migration
+#: partially applies, so those modules check for their table directly and
+#: CREATE it if absent. Uvicorn serves sync endpoints on a threadpool, so two
+#: concurrent first-writers can reach that check together — one wins the
+#: CREATE and the other raises. Holding this lock across check-and-create makes
+#: the recovery path idempotent between threads.
+#:
+#: Guards schema repair only. Normal reads and writes rely on WAL plus
+#: ``busy_timeout``, so this is not a global database mutex.
+SCHEMA_LOCK = threading.Lock()
 
 
 def connect_db(db_path: Path | str, *, row_factory: bool = False) -> sqlite3.Connection:
