@@ -302,6 +302,39 @@ class PTYTransport:
             config.rows,
         )
 
+    def is_running(self) -> bool:
+        """Whether the agent child is still alive.
+
+        Satisfies the duck-typed liveness probe the session-slot reaper looks
+        for (``_LivenessProbe`` in ``web/routes/session/_grace.py``). Until this
+        existed, NOTHING in the tree implemented it, so the reaper's
+        ``isinstance`` check always failed, every transport was assumed alive
+        forever, and the reaper's "the agent is gone" branch was dead code. The
+        cost to a learner: an agent that dies while the dashboard tab is closed
+        pins the single-session slot for the whole 90 s grace window and 409s
+        every ``POST /session/start`` until it expires. Nothing else can notice,
+        because a detached session has no consumer draining ``events()``.
+
+        Deliberately uses ``os.kill(pid, 0)`` rather than ``waitpid``: this
+        module reaps children in its own SIGCHLD handler (``_pid_callbacks``),
+        and a ``waitpid`` here would STEAL that reap, so ``on_exit`` would never
+        fire and the ``Stopped`` event would be lost. Signal 0 only probes.
+
+        Caveat: a zombie that the SIGCHLD handler has not yet reaped still
+        answers signal 0, so this can report True for a moment after death. That
+        is harmless — the reaper polls, and the next tick sees the truth.
+        """
+        state = self._state
+        if state is None or self._ended:
+            return False
+        try:
+            os.kill(state.pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:  # pragma: no cover — not ours, but alive
+            return True
+        return True
+
     async def send_input(self, data: bytes) -> None:
         state = self._state
         if state is None:
