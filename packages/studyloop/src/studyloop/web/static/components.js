@@ -225,6 +225,28 @@ function _pomoNotify(title, body) {
  * ==================================================================== */
 
 document.addEventListener("alpine:init", () => {
+  /* Which renderer will actually PAINT the terminal — the renderer axis, not
+     the transport axis. Conflating the two is the confusion that made `--dev`
+     look like it "still showed xterm.js, ACP and Legacy (ttyd)": those are
+     transports. Hydrated from /api/session/options.
+
+     The defaults deliberately mirror describe_terminal_engine()'s stock output
+     (dev_engines.py), so a slow or failed fetch still renders the CORRECT
+     stock labels rather than a blank or a guess — an empty engine badge that
+     silently means "xterm.js" is how a learner ends up believing an
+     experimental renderer is live when it is not. */
+  Alpine.store("terminalEngine", {
+    dev_mode: false,
+    engine: null,
+    renderer: "xterm.js",
+    label: "xterm.js",
+    experimental: false,
+    caveats: [],
+    hydrate(d) {
+      Object.assign(this, d || {});
+    },
+  });
+
   // Minimal shared toast — $store.toast.show('Parked ✓'). Auto-dismisses.
   Alpine.store("toast", {
     visible: false,
