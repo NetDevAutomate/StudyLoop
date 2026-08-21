@@ -65,6 +65,18 @@ packages = ["src/studyloop"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--tb=short -m 'not integration and not e2e and not live_kiro and not live_provider'"
+# MUST be duplicated from the workspace-root pyproject.toml. pytest resolves
+# rootdir from its arguments, so `pytest packages/studyloop/tests/foo.py` makes
+# THIS file the configfile and the root one is never read -- the root setting
+# only ever applied to a bare `pytest` at the workspace root. Two sub-agents
+# lost a 30-minute budget each to an unbounded path-scoped run before this was
+# spotted, so keep the two in step.
+#
+# "signal" (SIGALRM) rather than "thread": the hang being guarded against is a
+# blocked selector inside a TestClient WebSocket receive, which a timer thread
+# cannot interrupt.
+timeout = 60
+timeout_method = "signal"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "e2e: end-to-end browser tests requiring Playwright + web server",
