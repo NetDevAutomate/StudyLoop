@@ -1714,7 +1714,12 @@ function courseExplorer() {
           // Guard 3: a newer call ran during the DOM-flush ticks.
           if (this._readerGen !== myGen) return;
 
-          await _renderMermaidPlaceholders(this.$root);
+          /* $el, NOT $root. Verified by test: the parking panel needs $root
+             because its call is reached from a @click expression on a button,
+             but this call site is NOT, and switching it to $root breaks
+             test_explorer_search_finds_and_opens_a_lesson. The two sites are
+             genuinely different; assuming they were the same was wrong. */
+          await _renderMermaidPlaceholders(this.$el);
         } else {
           this.readerError = `Could not load lesson (${res.status})`;
         }
