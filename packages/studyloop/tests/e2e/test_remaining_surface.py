@@ -307,6 +307,59 @@ def test_park_then_demote_rearranges_the_active_three(env) -> None:
     _reset_parking(base)
 
 
+def _pending_ids(base: str) -> list[int]:
+    """Return every id the backlog still considers pending (active + parked)."""
+    import requests
+
+    body = requests.get(f"{base}/api/backlog", timeout=20).json()
+    return [t["id"] for t in (*body["active"], *body["parking_lot"])]
+
+
+def test_dismiss_and_resolve_clear_a_parked_thought(env) -> None:
+    """Dismiss and resolve both remove a topic from the pending backlog.
+
+    They are distinct *intents* — dismiss = "not worth it", resolve = "I
+    covered this" — but from the backlog's point of view each retires the
+    thought so it stops competing for one of the 3 active slots. This walks
+    both against a running server: park a thought, dismiss it, and confirm it
+    is gone; then park another, resolve it, and confirm the same.
+    """
+    import requests
+
+    base = env.base_url
+    _reset_parking(base)
+
+    dismiss_id = requests.post(
+        f"{base}/api/backlog/park",
+        json={"question": "A tangent not worth chasing", "tech_area": "python"},
+        timeout=20,
+    ).json()["id"]
+    assert dismiss_id in _pending_ids(base), "parked thought never became pending"
+
+    dismissed = requests.post(f"{base}/api/backlog/dismiss", json={"id": dismiss_id}, timeout=20)
+    assert dismissed.status_code == 200, dismissed.text
+    assert dismissed.json() == {"ok": True}, dismissed.text
+    assert dismiss_id not in _pending_ids(base), (
+        "dismiss returned 200 but the thought is still pending in the backlog"
+    )
+
+    resolve_id = requests.post(
+        f"{base}/api/backlog/park",
+        json={"question": "A tangent I eventually covered", "tech_area": "python"},
+        timeout=20,
+    ).json()["id"]
+    assert resolve_id in _pending_ids(base), "parked thought never became pending"
+
+    resolved = requests.post(f"{base}/api/backlog/resolve", json={"id": resolve_id}, timeout=20)
+    assert resolved.status_code == 200, resolved.text
+    assert resolved.json() == {"ok": True}, resolved.text
+    assert resolve_id not in _pending_ids(base), (
+        "resolve returned 200 but the thought is still pending in the backlog"
+    )
+
+    _reset_parking(base)
+
+
 # ---------------------------------------------------------------------------
 # Artefacts — GET /api/artefacts/{course}
 # ---------------------------------------------------------------------------
