@@ -714,3 +714,252 @@ def register_tools(mcp: FastMCP) -> None:
 
         row_id = park_topic(question, topic_tag=topic_tag, context=context, source="struggled")
         return {"status": "logged", "id": row_id}
+
+    # ── Exercise sets — blank slate / completion / multiple choice ───
+
+    def _code_payload(exercise, *, include_answers: bool) -> dict[str, Any] | None:
+        """Serialise a code exercise, withholding the reference solution by default.
+
+        Mirrors ``studyloop.web.routes.exercises._code_payload``: the point of a
+        blank-slate exercise evaporates if the answer ships with the requirements.
+        """
+        if exercise is None:
+            return None
+        payload: dict[str, Any] = {
+            "kind": exercise.kind,
+            "title": exercise.title,
+            "language": exercise.language,
+            "requirements": list(exercise.requirements),
+            "starter_code": exercise.starter_code,
+            "scaffold_ratio": exercise.scaffold_ratio,
+            "total_weight": exercise.total_weight,
+            "ready": exercise.is_ready(),
+            # Titles and weights only — a `check` regex is a partial answer key.
+            "rubric": [{"title": c.title, "weight": c.weight} for c in exercise.rubric],
+        }
+        if include_answers:
+            payload["reference_solution"] = exercise.reference_solution
+        return payload
+
+    def _mc_payload(questions, *, include_answers: bool) -> list[dict[str, Any]]:
+        """Serialise multiple-choice questions, withholding the correct option."""
+        out: list[dict[str, Any]] = []
+        for question in questions:
+            item: dict[str, Any] = {
+                "prompt": question.prompt,
+                "multi_select": question.is_multi_select,
+                "answerable": question.is_answerable(),
+                "choices": [{"label": question.label(i), "text": c.text} for i, c in enumerate(question.choices)],
+            }
+            if include_answers:
+                item["correct"] = question.correct_indexes
+                item["ask"] = question.ask
+                for i, choice in enumerate(question.choices):
+                    item["choices"][i]["correct"] = choice.correct
+                    item["choices"][i]["why"] = choice.why
+            out.append(item)
+        return out
+
+    @mcp.tool()
+    def exercise_list(plan_id: str = "", topic: str = "") -> dict[str, Any]:
+        """List exercise sets, optionally scoped to a plan and/or topic.
+
+        Args:
+            plan_id: Filter to sets belonging to this plan.
+            topic: Filter to sets matching this topic (case-insensitive).
+        """
+        from studyloop.planning.exercises import EXERCISE_KINDS, list_sets
+
+        sets = list_sets(plan_id=plan_id.strip(), topic=topic.strip())
+        return {
+            "sets": [item.summary() for item in sets],
+            "count": len(sets),
+            "kinds": list(EXERCISE_KINDS),
+        }
+
+    @mcp.tool()
+    def exercise_get(set_id: str, include_answers: bool = False) -> dict[str, Any]:
+        """Fetch one exercise set: all three formats, plus readiness.
+
+        Reference solutions and marked-correct choices are withheld unless
+        ``include_answers`` is set — an agent that has not read the solution
+        cannot leak it to the learner.
+
+        Args:
+            set_id: The exercise set id (from exercise_list or exercise_create).
+            include_answers: Pass True to also receive reference solutions and
+                correct-choice markers (author/grader use only).
+        """
+        from studyloop.planning.exercises import (
+            render_exercise_set,
+            render_for_learner,
+        )
+        from studyloop.planning.exercises import readiness as compute_readiness
+        from studyloop.planning.exercises.store import ExerciseSetNotFoundError, InvalidSetIdError
+        from studyloop.planning.exercises.store import load_set as load_exercise_set
+
+        try:
+            item = load_exercise_set(set_id)
+        except ExerciseSetNotFoundError as exc:
+            raise ToolError(str(exc)) from exc
+        except InvalidSetIdError as exc:
+            raise ToolError(str(exc)) from exc
+
+        return {
+            "set": item.summary(),
+            "markdown": render_exercise_set(item) if include_answers else render_for_learner(item),
+            "blank_slate": _code_payload(item.blank_slate, include_answers=include_answers),
+            "completion": _code_payload(item.completion, include_answers=include_answers),
+            "multiple_choice": _mc_payload(item.multiple_choice, include_answers=include_answers),
+            "readiness": compute_readiness(item),
+        }
+
+    @mcp.tool()
+    def exercise_create(
+        topic: str,
+        plan_id: str = "",
+        concepts: list[str] | None = None,
+        requirements: list[str] | None = None,
+        reference_solution: str = "",
+        language: str = "python",
+        reveal: float = 0.4,
+    ) -> dict[str, Any]:
+        """Draft a new exercise set for a topic (blank slate + completion + MC scaffold).
+
+        Nothing is invented: rubric checks and multiple-choice questions are left
+        for a follow-up author pass, and the returned ``readiness`` reports exactly
+        what is still missing rather than fabricating content.
+
+        Args:
+            topic: What the exercise is about. Required.
+            plan_id: Owning study plan id, if any.
+            concepts: Concept tags to attach (joins to study_progress).
+            requirements: What a correct solution must do.
+            reference_solution: Author's solution; also used to derive the
+                completion exercise's starter code.
+            language: Source language for the code exercises (default "python").
+            reveal: Fraction of the reference solution to reveal as completion
+                starter code (0.0-0.85).
+        """
+        from studyloop.planning.exercises import create_set, draft_exercise_set, unique_set_id
+        from studyloop.planning.exercises import readiness as compute_readiness
+
+        cleaned_topic = topic.strip()
+        if not cleaned_topic:
+            raise ToolError("topic is required")
+
+        item = draft_exercise_set(
+            cleaned_topic,
+            plan_id=plan_id.strip(),
+            set_id=unique_set_id(plan_id.strip(), cleaned_topic),
+            concepts=concepts or [],
+            requirements=requirements or [],
+            reference_solution=reference_solution,
+            language=language,
+            reveal=reveal,
+        )
+        create_set(item)
+        return {"created": True, "set": item.summary(), "readiness": compute_readiness(item)}
+
+    @mcp.tool()
+    def exercise_import(markdown: str) -> dict[str, Any]:
+        """Import a hand-authored exercise document (Markdown) as a new set.
+
+        The document is parsed and re-validated before being persisted, so a
+        malformed import fails loudly here rather than saving a broken set.
+
+        Args:
+            markdown: The full exercise-set document, including its front matter.
+        """
+        from studyloop.planning.exercises import (
+            create_set,
+            parse_exercise_set,
+            unique_set_id,
+        )
+        from studyloop.planning.exercises import readiness as compute_readiness
+
+        cleaned = markdown.strip()
+        if not cleaned:
+            raise ToolError("markdown is required")
+
+        try:
+            item = parse_exercise_set(cleaned)
+        except Exception as exc:
+            raise ToolError(f"unparseable markdown: {exc}") from exc
+        if not item.set_id:
+            item.set_id = unique_set_id(item.plan_id, item.topic)
+
+        create_set(item)
+        return {"created": True, "set": item.summary(), "readiness": compute_readiness(item)}
+
+    @mcp.tool()
+    def exercise_review(
+        set_id: str,
+        kind: str,
+        submission: str = "",
+        answers: dict[str, list[int]] | None = None,
+        record: bool = False,
+    ) -> dict[str, Any]:
+        """Score an attempt against an exercise set and return Socratic follow-ups.
+
+        One entry point for all three formats. ``submission`` carries code for
+        ``blank_slate``/``completion``; ``answers`` carries
+        ``{question_index: [choice_index, ...]}`` for ``multiple_choice``. The
+        returned markdown never contains the reference solution or which choice
+        was correct.
+
+        Args:
+            set_id: The exercise set id.
+            kind: One of "blank_slate", "completion", "multiple_choice".
+            submission: Learner's code, for the two code formats.
+            answers: Selected choices per question index, for multiple_choice.
+            record: Set True to write the derived confidence into study_progress.
+        """
+        from studyloop.planning.exercises import EXERCISE_KINDS
+        from studyloop.planning.exercises import record_review as record_exercise_review
+        from studyloop.planning.exercises import review_submission
+        from studyloop.planning.exercises.store import ExerciseSetNotFoundError, InvalidSetIdError
+        from studyloop.planning.exercises.store import load_set as load_exercise_set
+
+        try:
+            item = load_exercise_set(set_id)
+        except ExerciseSetNotFoundError as exc:
+            raise ToolError(str(exc)) from exc
+        except InvalidSetIdError as exc:
+            raise ToolError(str(exc)) from exc
+
+        if kind not in EXERCISE_KINDS:
+            raise ToolError(f"kind must be one of {EXERCISE_KINDS}")
+
+        parsed_answers: dict[int, list[int]] = {}
+        if kind == "multiple_choice":
+            for key, value in (answers or {}).items():
+                try:
+                    index = int(key)
+                except (TypeError, ValueError) as exc:
+                    raise ToolError(f"answers keys must be question indexes, got {key!r}") from exc
+                selected = value if isinstance(value, list) else [value]
+                try:
+                    parsed_answers[index] = [int(v) for v in selected]
+                except (TypeError, ValueError) as exc:
+                    raise ToolError(f"answers[{index}] must be choice indexes") from exc
+
+        try:
+            review = review_submission(
+                item,
+                kind,
+                submission=submission,
+                answers=parsed_answers,
+            )
+        except LookupError as exc:
+            raise ToolError(f"no {kind!r} exercise on set {set_id!r}: {exc}") from exc
+
+        recorded = False
+        if record:
+            recorded = record_exercise_review(review, concepts=item.concepts)
+
+        return {
+            "review": review.to_dict(),
+            "markdown": review.as_markdown(),
+            "recorded": recorded,
+        }
