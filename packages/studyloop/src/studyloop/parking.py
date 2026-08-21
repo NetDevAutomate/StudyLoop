@@ -354,7 +354,13 @@ def get_parked_topics(
             clauses.append("tech_area = ?")
             params.append(tech_area)
         where = " AND ".join(clauses)
-        order = "parked_at" if study_session_id else "parked_at DESC"
+        # `parked_at` has one-second resolution, so topics parked in the same
+        # second tie and SQLite may return them in any order -- in practice
+        # rowid ascending, i.e. exactly backwards for the DESC case. `id` is
+        # INTEGER PRIMARY KEY AUTOINCREMENT, so it is a monotonic stand-in for
+        # insertion order and gives a total ordering. Without it, "which three
+        # topics am I focused on" could differ between two consecutive reads.
+        order = "parked_at, id" if study_session_id else "parked_at DESC, id DESC"
         rows = conn.execute(
             f"SELECT * FROM parked_topics WHERE {where} ORDER BY {order}",
             params,
@@ -368,21 +374,29 @@ def get_unscheduled_parked_topics(
     topic_tag: str | None = None,
     limit: int = 10,
 ) -> list[dict]:
-    """Get pending parked topics for surfacing at session start."""
+    """Get pending parked topics for surfacing at session start.
+
+    Ordered newest-first. ``parked_at`` has one-second resolution, so several
+    topics parked in the same second compare equal and SQLite is then free to
+    return them in any order -- in practice rowid ascending, i.e. exactly
+    backwards. ``id DESC`` breaks the tie by insertion order (the column is
+    INTEGER PRIMARY KEY AUTOINCREMENT, so it is monotonic), which is what
+    "most recent" means when the clock cannot separate them.
+    """
     conn = _connect()
     try:
         if topic_tag:
             rows = conn.execute(
                 """SELECT * FROM parked_topics
                    WHERE status = 'pending' AND topic_tag = ?
-                   ORDER BY parked_at DESC LIMIT ?""",
+                   ORDER BY parked_at DESC, id DESC LIMIT ?""",
                 (topic_tag, limit),
             ).fetchall()
         else:
             rows = conn.execute(
                 """SELECT * FROM parked_topics
                    WHERE status = 'pending'
-                   ORDER BY parked_at DESC LIMIT ?""",
+                   ORDER BY parked_at DESC, id DESC LIMIT ?""",
                 (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
