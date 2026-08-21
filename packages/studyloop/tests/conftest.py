@@ -232,3 +232,29 @@ def herdr_mux_harness():
         pytest.skip("herdr not available")
     with MultiplexerHarness.from_backend_name("herdr") as harness:
         yield harness
+
+
+# ---------------------------------------------------------------------------
+# e2e tests get a longer per-test timeout than the 60s unit ceiling.
+#
+# The pytest-timeout ceiling in pyproject.toml exists to stop one hanging test
+# eating the whole run (an unbounded TestClient WebSocket receive did exactly
+# that). 60s is right for unit tests -- the slowest is ~13s -- but far too tight
+# for e2e, which drives a real browser against a subprocess-hosted server and
+# has individual waits already allowing 60-180s. test_journey_generate_review's
+# generate walk alone measures ~61s, so a flat 60s kills it before its own
+# deadline and reports a timeout that looks like a product bug.
+#
+# Applied as a collection hook rather than a `pytest.mark.timeout` on each of
+# the 20 e2e modules: one rule, no per-module drift, and it covers modules added
+# later. An explicit timeout mark on a test or module still wins.
+# ---------------------------------------------------------------------------
+
+E2E_TIMEOUT_SECONDS = 300
+
+
+def pytest_collection_modifyitems(items) -> None:
+    """Grant every e2e-marked test E2E_TIMEOUT_SECONDS unless it sets its own."""
+    for item in items:
+        if item.get_closest_marker("e2e") and not item.get_closest_marker("timeout"):
+            item.add_marker(pytest.mark.timeout(E2E_TIMEOUT_SECONDS))
