@@ -1530,12 +1530,12 @@
             <p class="picker-hint" x-show="transport === 'acp'">Structured agent protocol — chat surface, no terminal.</p>
             <p class="picker-hint" x-show="transport === 'ttyd'">Legacy ttyd iframe. Needs ttyd installed.</p>
             <span id="dev-engine-badge" class="bd-chip warn" x-show="$store.terminalEngine.experimental"
-                  :title="$store.terminalEngine.caveats.join(' ')"
+                  :title="'Experimental renderer, enabled by --dev. Known gaps: ' + $store.terminalEngine.caveats.join(' ')"
                   x-text="$store.terminalEngine.label"></span>
             <label class="bd-field">Energy <span x-text="energy + '/10'"></span>
               <input type="range" min="1" max="10" x-model.number="energy"
                      data-testid="bd-energy-slider" class="energy-slider"></label>
-            <button id="bd-start-session" type="button" class="start-session-btn"
+            <button id="bd-start-session" type="button" class="bd-primary-btn"
                     :disabled="!activity.trim() || !agent" @click="startSession()">Start session</button>
             <p id="bd-start-error" class="picker-hint error" x-show="startError" x-text="startError"></p>
           </section>
@@ -1574,15 +1574,18 @@
               <button id="bd-open-notes" type="button" class="bulk-btn"
                       @click="$store.notes.open || $store.notes.toggle()">Open notes</button>
             </div>
+            <!-- Tabs live OUTSIDE #bd-capture-body on purpose: choosing a tab is
+                 how a learner REOPENS a collapsed pane, so they must stay
+                 clickable while it is collapsed. -->
+            <div class="bd-tabs">
+              <button id="bd-tab-note" type="button" class="bd-tab"
+                      :class="{ active: captureTab === 'note' }"
+                      @click="captureTab='note'; captureCollapsed=false">Note</button>
+              <button id="bd-tab-park" type="button" class="bd-tab"
+                      :class="{ active: captureTab === 'park' }"
+                      @click="captureTab='park'; captureCollapsed=false">Park</button>
+            </div>
             <div id="bd-capture-body" x-show="!captureCollapsed">
-              <div class="bd-tabs">
-                <button id="bd-tab-note" type="button" class="bd-tab"
-                        :class="{ active: captureTab === 'note' }"
-                        @click="captureTab='note'; captureCollapsed=false">Note</button>
-                <button id="bd-tab-park" type="button" class="bd-tab"
-                        :class="{ active: captureTab === 'park' }"
-                        @click="captureTab='park'; captureCollapsed=false">Park</button>
-              </div>
               <form id="bd-note-form" x-show="captureTab === 'note'" @submit.prevent>
                 <select id="bd-note-kind" class="picker-select" x-model="noteKind">
                   <option value="note">Note</option>
@@ -1610,13 +1613,13 @@
                     <option value="1">1</option><option value="2">2</option><option value="3">3</option>
                     <option value="4">4</option><option value="5">5</option>
                   </select></span>
-                <button id="bd-save-note" type="button" class="start-session-btn" @click="saveNote()">Save note</button>
+                <button id="bd-save-note" type="button" class="bd-primary-btn" @click="saveNote()">Save note</button>
                 <span id="bd-note-saved" class="bd-chip ok" x-show="noteSaved">Saved ✓</span>
               </form>
               <form id="bd-park-form" x-show="captureTab === 'park'" @submit.prevent>
                 <input id="bd-park-question" type="text" x-model="parkQuestion" placeholder="What tangent came up?">
                 <textarea id="bd-park-notes" rows="4" x-model="parkNotes" placeholder="Optional notes…"></textarea>
-                <button id="bd-park-submit" type="button" class="start-session-btn" @click="submitPark()">Park it</button>
+                <button id="bd-park-submit" type="button" class="bd-primary-btn" @click="submitPark()">Park it</button>
                 <span id="bd-park-saved" class="bd-chip ok" x-show="parkSaved">Parked ✓</span>
               </form>
             </div>
@@ -2025,7 +2028,7 @@
             </select>
             <label for="transport-select">Transport</label>
             <select id="transport-select" x-model="transport" class="picker-select">
-              <option value="pty">Browser terminal (xterm.js)</option>
+              <option value="pty" x-text="'Browser terminal (' + $store.terminalEngine.renderer + ')'"></option>
               <option value="acp" x-show="selectedAgentSupportsAcp()">ACP (Agent Client Protocol)</option>
               <option value="ttyd">Legacy terminal (ttyd iframe)</option>
             </select>
@@ -3001,6 +3004,11 @@
           if (options) {
             this.studyOptions = options;
             this.topics = options.topics || [];
+            /* Same renderer descriptor the Body Double view reads. Hydrated here
+               too so this picker's pty label names what will ACTUALLY paint —
+               otherwise it reads "xterm.js" while libghostty is doing the work,
+               which is the exact mislabelling --dev used to cause. */
+            Alpine.store('terminalEngine').hydrate(options.terminal_engine);
           }
           // Pre-select the first detected-available agent so the user
           // sees an explicit choice rather than the previous "Auto"
