@@ -73,6 +73,10 @@ from studyloop.cli._lazy import LazyGroup
         # _focus.py — focus topics (attention filter) + hot-DB pruning
         "focus": "studyloop.cli._focus:focus_group",
         "prune": "studyloop.cli._focus:prune",
+        # _plan.py — structured study plans
+        "plan": "studyloop.cli._plan:plan_group",
+        # _exercise.py — the three topic exercise formats and their review pipeline
+        "exercise": "studyloop.cli._exercise:exercise_group",
     },
 )
 @click.version_option()
