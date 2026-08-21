@@ -549,6 +549,7 @@ test-results/
 # Screenshots/HTML/console dumps written by the e2e harness on failure
 # (see packages/studyloop/tests/e2e/_env.py). Regenerated every run.
 playwright/artifacts/
+playwright/snapshots/
 
 # Stray MagicMock dirs from tests that mock a path-typed setting (defense-in-depth)
 MagicMock/
