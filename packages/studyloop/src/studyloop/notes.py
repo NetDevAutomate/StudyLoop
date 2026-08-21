@@ -99,12 +99,23 @@ def _connect() -> sqlite3.Connection:
         # Base schema first. On a DB whose first writer is the notes panel there is
         # no `sessions`/`study_sessions` table yet, so the FK targets below would
         # not exist and every INSERT would fail under PRAGMA foreign_keys=ON.
+        #
+        # This used to import `ensure_schema` from studyloop.history._connection,
+        # which does not exist — the ImportError was swallowed by the except, so
+        # the healing never ran. init_db applies the canonical schema.sql and
+        # runs migrations; reconnect after, since it returns its own connection.
         try:
-            from studyloop.history._connection import ensure_schema
+            conn.execute("SELECT 1 FROM sessions LIMIT 0")
+        except sqlite3.OperationalError:
+            logger.info("Initialising base session schema for study_notes")
+            conn.close()
+            try:
+                from agent_session_tools.export_sessions import init_db
 
-            ensure_schema(conn)
-        except Exception:
-            logger.debug("ensure_schema unavailable for study_notes", exc_info=True)
+                init_db(str(get_db_path())).close()
+            except Exception:
+                logger.warning("Base schema init failed for study_notes", exc_info=True)
+            conn = connect_db(get_db_path(), row_factory=True)
 
         try:
             conn.execute("SELECT 1 FROM study_notes LIMIT 0")
