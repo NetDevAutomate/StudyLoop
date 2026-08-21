@@ -299,9 +299,9 @@ def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
             msg = ws.recv(timeout=10)
             if isinstance(msg, bytes):
                 buf += msg
-            if b"FAKE-AGENT SAYS:" in buf:
+            if b"FAKE-AGENT VERDICT:" in buf:
                 break
-        assert b"FAKE-AGENT SAYS:" in buf, f"no echo; got {buf!r}"
+        assert b"FAKE-AGENT VERDICT:" in buf, f"no echo; got {buf!r}"
 
         # --- End WHILE connected (mirrors the UI's End button) ---
         end = requests.post(f"{fake_agent_server}/api/session/end", timeout=15)

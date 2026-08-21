@@ -27,7 +27,7 @@ cannot: xterm paints to a WebGL canvas with no DOM text, so
 replies are assertable.
 
 The agent is ``studyloop-fake-agent`` (``STUDYLOOP_TEST_AGENT=1``), which emits
-stable line-oriented markers — ``FAKE-AGENT READY``, ``FAKE-AGENT SAYS:`` — so
+stable line-oriented markers — ``FAKE-AGENT READY``, ``FAKE-AGENT VERDICT:`` — so
 the transcript is parseable without an LLM.
 
 Plan/analysis: docs/explorations/ghostty-web-evaluation.md
@@ -336,10 +336,10 @@ class TestLiveAgentSession:
             _await_agent_text(live_page, "FAKE-AGENT READY")
 
             _type_into_terminal(live_page, "decorators wrap functions")
-            _await_agent_text(live_page, "FAKE-AGENT SAYS:")
+            _await_agent_text(live_page, "FAKE-AGENT VERDICT:")
 
             text = _buffer_text(live_page)
-            assert "FAKE-AGENT SAYS:" in text, (
+            assert "FAKE-AGENT VERDICT:" in text, (
                 f"agent did not echo the typed line; buffer was:\n{text}"
             )
         except Exception:
@@ -376,7 +376,7 @@ class TestLiveResize:
             # And the resized session is still usable — the PTY got the new
             # winsize and the agent still answers.
             _type_into_terminal(live_page, "still alive")
-            _await_agent_text(live_page, "FAKE-AGENT SAYS:")
+            _await_agent_text(live_page, "FAKE-AGENT VERDICT:")
         except Exception:
             _diag(live_page, "ghostty-live-resize-fail")
             raise
@@ -449,7 +449,7 @@ class TestLiveThemePropagation:
             )
             # ... and the PTY is still attached and answering.
             _type_into_terminal(live_page, "after theme change")
-            _await_agent_text(live_page, "FAKE-AGENT SAYS:")
+            _await_agent_text(live_page, "FAKE-AGENT VERDICT:")
 
             # Session was never torn down server-side.
             state = live_page.evaluate(
@@ -505,7 +505,7 @@ class TestLiveFontPropagation:
             # Live session survived the re-measure and re-fit.
             assert "FAKE-AGENT READY" in _buffer_text(live_page)
             _type_into_terminal(live_page, "after font change")
-            _await_agent_text(live_page, "FAKE-AGENT SAYS:")
+            _await_agent_text(live_page, "FAKE-AGENT VERDICT:")
         except Exception:
             _diag(live_page, "ghostty-live-font-fail")
             raise
@@ -625,7 +625,7 @@ class TestLiveRefresh:
             )
 
             _type_into_terminal(live_page, "are you still there after the reload")
-            _await_agent_text(live_page, "FAKE-AGENT SAYS:")
+            _await_agent_text(live_page, "FAKE-AGENT VERDICT:")
         except Exception:
             _diag(live_page, "ghostty-live-refresh-reattach-fail")
             raise
@@ -720,7 +720,7 @@ class TestLiveRefresh:
             _start_session_through_ui(live_page, live_env, "Ghostty Refresh Restart")
             _await_agent_text(live_page, "FAKE-AGENT READY")
             _type_into_terminal(live_page, "new session works")
-            _await_agent_text(live_page, "FAKE-AGENT SAYS:")
+            _await_agent_text(live_page, "FAKE-AGENT VERDICT:")
         except Exception:
             _diag(live_page, "ghostty-live-refresh-recovery-fail")
             raise
@@ -758,7 +758,7 @@ class TestLiveGlyphs:
                     f"emoji {glyph} did not survive the PTY round trip; buffer was:\n{text}"
                 )
             # And it came back from the agent, not just from local echo.
-            _await_agent_text(live_page, "FAKE-AGENT SAYS:")
+            _await_agent_text(live_page, "FAKE-AGENT VERDICT:")
         except Exception:
             _diag(live_page, "ghostty-live-emoji-fail")
             raise
