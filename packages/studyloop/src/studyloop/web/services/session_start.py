@@ -68,6 +68,11 @@ def build_session_state_payload(
         "agent": agent,
         "persona_hash": persona_hash,
         "transport": transport,
+        # PTY/ACP starts own no tmux session. write_session_state is a
+        # read-merge-write, so a PTY session started after a legacy ttyd one
+        # would otherwise inherit that session's dead tmux_session key and be
+        # misclassified as a tmux zombie. Clear it explicitly at the source.
+        "tmux_session": None,
     }
     if persona_file is not None:
         payload["persona_file"] = persona_file
