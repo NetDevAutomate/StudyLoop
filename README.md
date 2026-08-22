@@ -17,7 +17,7 @@ Five things:
 1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
 2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes, flashcards, and hands-on practice tasks locally, without requiring external notebook services.
 3. **Active learning decisions** — `studyloop now` chooses one useful next action from due reviews, weak concepts, practice tasks, energy, modality, and time available.
-4. **Flashcard review** — Spaced repetition (SM-2) via a PWA web app. Works on phone, tablet, laptop.
+4. **Flashcard review** — Spaced repetition (SM-2) in the browser app. Works on phone, tablet, laptop.
 5. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
 
 Built by a neurodivergent learner transitioning from networking to data engineering. If you're self-teaching and AuDHD, this might help.
@@ -50,7 +50,7 @@ studyloop recap today        # One win, one repair target, one due item, one nex
 studyloop recap today --audio-file recap.wav  # Save a local audio recap
 studyloop web                # Flashcards, quizzes, live session dashboard
 session-export               # Export AI sessions to SQLite
-session-query search "decorators"
+session-query search-cmd "decorators"
 ```
 
 See [docs/first-week.md](docs/first-week.md) for a day-by-day onboarding path.
@@ -142,7 +142,7 @@ studyloop struggles --days 30        # Find recurring struggle topics
 studyloop wins                       # Learning wins (mastered / confident concepts)
 studyloop resume                     # Where you left off (session summary)
 studyloop streaks                    # Study streak and consistency stats
-studyloop web                        # Launch flashcard/quiz PWA
+studyloop web                        # Launch flashcard/quiz web app
 
 # Backlog & cleanup
 studyloop backlog list               # Cross-session study backlog
@@ -179,9 +179,9 @@ session-export --pi-only             # Export only pi sessions
 session-export --omp-only            # Export only omp sessions
 session-export --obsidian            # Also write notes to your Obsidian vault
 session-export --obsidian --obsidian-backfill  # one-time: mirror all history
-session-query search QUERY           # Full-text search across sessions
+session-query search-cmd QUERY       # Full-text search across sessions
 session-query list --since 7d        # List recent sessions
-session-query stats                  # Database statistics
+session-query stats-cmd              # Database statistics
 session-sync push/pull/sync HOST     # Cross-machine sync
 ```
 
@@ -207,7 +207,10 @@ Launch with `studyloop web`. Accessible from any device on the network.
 - SM-2 spaced repetition with source/chapter filter
 - Session history with 90-day study heatmap
 - Pomodoro timer, voice output, OpenDyslexic font toggle
-- PWA installable — add to home screen
+- Add to home screen for a standalone, browser-chrome-free window (`manifest.json` sets `display: standalone`)
+
+> **Not offline.** There is no service worker, so no page or asset is cached: the
+> `studyloop web` server must be reachable every time you open the app.
 
 **Course Explorer** (sidebar "Courses" button):
 - Browse course material by provider in horizontal carousels, with per-provider filter
@@ -222,8 +225,13 @@ Launch with `studyloop web`. Accessible from any device on the network.
 - Timer with energy-adaptive colour phases (green/amber/red)
 - Topic counters (wins, parked, review)
 - Session summary on completion
-- **Terminal panel** — embedded ttyd iframe proxied same-origin at `/terminal/` for current live agent interaction. Target architecture is ACP-first web sessions with PTY fallback.
+- **Terminal panel** — the live agent renders as xterm.js driving a PTY over a WebSocket (transport `pty`), or as an ACP chat surface (transport `acp`). Those are the only two transports the UI offers; no external terminal binary is involved. See [ADR-0005](docs/adr/0005-retire-ttyd-browser-surface.md).
 - HTMX + Alpine.js — no build step
+
+> **Practice tasks and topic exercises are CLI-only for now.** Feature 2 above
+> generates them, and `studyloop practice verify` / `studyloop exercise` score
+> them from the terminal. The web backend route exists, but the browser app has
+> no exercises panel yet.
 
 ## Optional Extras
 
@@ -234,10 +242,6 @@ uv sync --all-packages --extra content  # PDF splitting + content pipeline
 
 # Global CLI with the features used in this README
 studyloop install tools
-
-# ttyd — web terminal (enables the terminal panel in the live dashboard)
-brew install ttyd            # macOS
-sudo apt install ttyd        # Linux (or build from source)
 ```
 
 ## Documentation
@@ -248,7 +252,7 @@ sudo apt install ttyd        # Linux (or build from source)
 - [Session-DB Tiering](docs/session-db-tiering.md) — hot/full DB tiers, sync, prune, snapshots, restore procedures
 - [Content Pipeline](docs/content-pipeline.md) — local generation of review artefacts
 - [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
-- [Web UI Guide](docs/web-ui-guide.md) — live sessions, terminal fallback, flashcards, quizzes
+- [Web UI Guide](docs/web-ui-guide.md) — live sessions, live terminal, flashcards, quizzes
 - [Agent Installation](docs/agent-install.md) — per-platform agent setup
 - [CI Workflows](docs/ci.md) — local and GitHub Actions quality gates
 - [Ownership Map](docs/ownership.md) — where common changes should live

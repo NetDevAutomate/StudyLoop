@@ -187,47 +187,60 @@ install.
 
 An `at-risk` verdict describes the *plan*, never the learner.
 
-## How a plan drives Today
+## How a plan drives Today — not implemented
+
+!!! warning "Plans do not influence `studyloop now` / the Today card yet"
+    **Checked against `learning/decision.py` on 2026-08-22: it contains no reference to study plans at all.** No plan candidate source, no on-plan bias, no `plan_id` in the `now` metadata, and no "From study plan:" rendering in the Today card. An active plan changes nothing about what Today recommends.
+
+    The design below is the intended integration, kept because the score-band reasoning is the substantive part and re-deriving it would be waste. Read it as a specification, not as behaviour.
+
+    What *does* work today: a plan drives a session through its [three checkpoints](#the-three-checkpoints) (`studyloop session start --plan ID`) and through `studyloop plan evaluate`. Those are real. Today's recommendation is assembled from the heuristic sources in the table below, plan or no plan.
+
+### The intended design
 
 Checkpoints answer "is this plan on track?". The `now` decision engine
 (`learning/decision.py`) answers the adjacent question — "so what do I do in the
-next 25 minutes?" — and an active plan is what makes that answer a **plan step**
-rather than a guess assembled from whatever the databases happen to hold.
+next 25 minutes?" — and an active plan is what should make that answer a **plan
+step** rather than a guess assembled from whatever the databases happen to hold.
 
-Two mechanisms, both skipped entirely when no plan is `active`:
+Two mechanisms, both to be skipped entirely when no plan is `active`:
 
-**1. The plan is a candidate source.** Each active plan contributes one
+**1. The plan as a candidate source.** Each active plan contributes one
 candidate per concept of its `next_milestone()` — the first unchecked milestone,
 i.e. the zone of proximal development. A milestone with no `(concepts: ...)`
-suffix still contributes, falling back to its title, so an untagged plan is
-never silently dropped. These candidates carry `source =
+suffix would still contribute, falling back to its title, so an untagged plan is
+never silently dropped. These candidates would carry `source =
 study_plan:<plan-id>:<milestone-slug>` and a reason quoting the plan's mission.
 
 **2. The plan biases every other source.** Due cards, struggle repairs, and
-continuity threads that the plan's topics or concepts claim are boosted;
+continuity threads that the plan's topics or concepts claim get boosted;
 everything else is nudged down. So a due review *that is plan work* still wins —
 correctly, because it is on-plan — while an unrelated backlog cannot bury the
 plan.
 
 ### Score bands
 
-The boost is sized against the bands the heuristic sources already occupy —
-too small and the plan silently loses to a pile of due cards, which looks
+The boost has to be sized against the bands the heuristic sources already occupy
+— too small and the plan silently loses to a pile of due cards, which looks
 identical to having no plan integration at all:
 
-| Source | Score | Meaning |
-|---|---|---|
-| `_due_progress_candidates` | 100–190 | 100 + days overdue + confidence penalty |
-| **plan next milestone** | **120** | the committed next step |
-| `_due_card_candidates` | 96–116 | "N spaced-repetition cards are due" |
-| `_struggle_candidates` | 70–124 | recorded struggling / learning |
-| `_continuity_candidates` | 58 | last session's open threads |
-| `_transfer_candidates` | 52 | weak prerequisite links |
-| `_practice_candidates` | 48 | a practice file exists |
+| Source | Score | Meaning | Status |
+|---|---|---|---|
+| `_due_progress_candidates` | 100–190 | 100 + days overdue (max 30) + confidence bonus (+35 struggling / +15 learning) + 25 for a weak teach-back | **live** |
+| **plan next milestone** | **120** | the committed next step | **not implemented** |
+| `_due_card_candidates` | 96–116 | "N spaced-repetition cards are due" | **live** |
+| `_struggle_candidates` | 70–124 | recorded struggling (82) or learning (70), plus up to +42 for a weak teach-back | **live** |
+| `_continuity_candidates` | 58 | last session's open threads | **live** |
+| `_transfer_candidates` | 52 | weak prerequisite links | **live** |
+| `_practice_candidates` | 48 | a practice file exists | **live** |
 
-Plus `+20` on-plan / `−10` off-plan, deliberately the same magnitude as the
-`studyloop focus` filter (`+22`/`−12`) because it is the same kind of signal: a
-declared attention boundary.
+Every **live** row above was read off `learning/decision.py` and is accurate. The
+plan row is the design target.
+
+The proposed bias is `+20` on-plan / `−10` off-plan, deliberately the same
+magnitude as the `studyloop focus` filter, which really does apply `+22`/`−12`
+(`decision.py`, in `_score_candidates`) — because it is the same kind of signal:
+a declared attention boundary.
 
 The intended outcome: **120 clears the entire due-card band**, so a queue of 20
 cards can never outrank the step you committed to — but a concept that is
@@ -235,20 +248,22 @@ genuinely decaying (20+ days overdue, or recorded as struggling) still wins,
 because evidence of *forgetting* outranks the plan while a queue length does
 not.
 
-### Provenance
+### Provenance (intended)
 
-The winning action carries `metadata.plan_id`, `metadata.plan_title`, and
-`metadata.milestone` through the `now` JSON contract, and the Today card renders
-**From study plan: `<title>` · `<milestone>`** so the recommendation is never
-unexplained.
+The winning action would carry `metadata.plan_id`, `metadata.plan_title`, and
+`metadata.milestone` through the `now` JSON contract, and the Today card would
+render **From study plan: `<title>` · `<milestone>`** so the recommendation is
+never unexplained. None of these keys are emitted today.
 
 ### With no active plan
 
-Nothing changes. A plan is never mandatory: with no `active` plan, no candidates
-are added, no scores are adjusted, and Today behaves exactly as it did before.
-The one exception is the fallback — an active plan with *no* milestones, or with
-every milestone ticked, replaces the generic "one tiny recall loop" starter with
-a plan-shaped prompt (break the mission into milestones / close out the plan).
+Nothing changes — which is the situation for every plan right now. A plan is
+never mandatory: with no `active` plan, no candidates are added, no scores are
+adjusted, and Today behaves exactly as it did before. The intended design also
+includes a fallback for an active plan with *no* milestones, or with every
+milestone ticked, replacing the generic "one tiny recall loop" starter with a
+plan-shaped prompt (break the mission into milestones / close out the plan);
+that fallback is also not implemented.
 
 ## CLI
 
@@ -291,28 +306,129 @@ milestones.
 is not ready, and leaves the status unchanged. Plan ids are validated against
 path traversal before any filesystem access.
 
-## MCP tools
+## MCP tools — not implemented
 
-For agents that speak MCP rather than shelling out: `plan_list`, `plan_get`,
-`plan_interview`, `plan_create`, `plan_evaluate`, `plan_set_milestone`,
-`plan_set_status`. Same semantics as the CLI, including the activation refusal.
+!!! warning "There are no `plan_*` MCP tools"
+    This page previously listed `plan_list`, `plan_get`, `plan_interview`, `plan_create`, `plan_evaluate`, `plan_set_milestone` and `plan_set_status` as available. **None of them are registered.** `mcp/tools.py` exposes no plan tool, so an agent asking for one gets an unknown-tool error.
+
+    Those names *do* exist as CLI functions in `cli/_plan.py`, which is probably how the list was written. They are not reachable over MCP.
+
+    Until they are added, an MCP agent should reach study plans the same way any script does: shell out to [`studyloop plan …`](#cli), or call the [REST API](#rest-api) directly. Both are complete, including the activation refusal.
+
+Exercises, by contrast, *do* have MCP tools — see [Topic Exercises § MCP tools](topic-exercises.md#mcp-tools).
 
 ## Web UI
 
-The **left pane** carries a Study Plan section: the nav button plus a list of
-existing plans, each showing status, milestone count, and a progress bar.
-Selecting one opens it in the main view.
+The study-plan panel shipped on 2026-08-22. Everything in this section is in the
+browser today; the plan → Today integration described [above](#how-a-plan-drives-today-not-implemented) is not.
 
-The main view renders the document through the same
+```mermaid
+flowchart LR
+    Nav["Study Plans<br/>sidebar button"]
+    List["Plan list<br/>(left pane)"]
+    Empty["Empty state<br/>'No plans yet'"]
+    New["New plan<br/>brain dump first"]
+    Reader["Plan reader<br/>(content column)"]
+    Eval["Checkpoint<br/>start / mid / end"]
+    Record["Record checkpoint"]
+    Miles["Milestone checkboxes"]
+
+    Nav --> List
+    List -->|"no plans"| Empty
+    Empty --> New
+    List -->|"click a plan"| Reader
+    New --> Reader
+    Reader --> Eval --> Record
+    Reader --> Miles
+    Miles -->|"progress 1/3 · 33%"| List
+```
+
+### The plan list (left pane)
+
+A **Study Plans** button in the sidebar opens a list of existing plans under the
+heading *Existing plans*. Each entry shows the plan title, its status chip
+(`draft` / `active` / `paused` / `complete` / `abandoned`), a `done/total`
+milestone count, and a progress bar. Clicking one opens it in the content column.
+
+With no plans, the list renders an explicit empty state — **"No plans yet"**, and
+a hint naming the next action ("Open **New plan** and describe where you are and
+where you want to get to, in your own words. The structure comes after."). A
+brand-new user's first screen is never a silent blank list.
+
+The list and the reader live in disjoint DOM subtrees, so they share
+`Alpine.store('plans')` rather than an `x-data` — which is why ticking a
+milestone in the reader moves the counter in the sidebar.
+
+### The reader
+
+The content column renders the plan document through the same
 `marked → DOMPurify → highlight.js / mermaid` pipeline as the Course Explorer, so
-headings, GFM task lists, the checkpoint table, inline code, and mermaid diagrams
-all render properly. Frontmatter is stripped from the render — it is metadata,
-already surfaced as header chips.
+headings, GFM task lists, the checkpoint table, inline code, links and mermaid
+diagrams all render as real DOM. Frontmatter is stripped from the render — it is
+metadata, already surfaced as header chips (title, status, `done/total · pct%`
+and a progress bar).
 
-Around the document: the three evaluation buttons, a **Record checkpoint**
-action, **Copy for agent** (copies the evaluation Markdown), interactive
-milestone checkboxes, and the readiness panel explaining why a draft cannot yet
-go active.
+### Creating a plan: the brain dump comes first
+
+**New plan** opens a form headed *Start from where you actually are*. The primary
+field is a large free-text box — *"Where are you now, and where do you want to get
+to?"* — that takes typing or macOS dictation with no structure required: what you
+are aiming for, what you have already tried, where you get stuck.
+
+Below it, under *The plan itself*, are the five structured fields the API
+consumes: **Title**, **Why**, **Success looks like**, **Topics**, and
+**Milestones** (the last three one item per line; a milestone line's trailing
+`(concepts: a, b)` is parsed into a concept list). They are labelled as the
+editable *result*, not the input of first resort — "Nothing here has to be right
+first time — edit whatever comes back."
+
+The reason is not cosmetic. A blank five-field form asks a learner to supply the
+decomposition they do not yet have — the exact paralysis this tool exists to
+prevent. Recognising and correcting a draft is dramatically cheaper than
+recalling and synthesising one. The brain dump is carried through on create as
+the plan's `notes`, so the reasoning survives the plan's creation, and the
+[`study-plan-architect` agent](#agents) is what turns a dump into structured
+fields — not the browser.
+
+On create the new plan is loaded and shown immediately.
+
+### Evaluation and checkpoints
+
+A **Checkpoint** toolbar over the document runs the three phases —
+**start**, **mid**, **end** — against `GET /api/plans/{id}/evaluate?phase=`,
+which previews **without** recording. The result panel shows:
+
+- the **verdict** as a coloured chip (`on-track` / `at-risk` / `stalled` / `complete`),
+- the phase it describes,
+- a one-line **headline**,
+- **Do next** — the recommendations, as an ordered list.
+
+**Record checkpoint** then POSTs the same phase to `/api/plans/{id}/evaluate`,
+which appends the row to the plan's Checkpoints table and writes the durable
+log entry. A short *Recorded …* status appears next to the button. Recording
+deliberately waits for an in-flight preview to land first, so the phase recorded
+and the verdict displayed always describe the same checkpoint.
+
+### Milestones and activation
+
+Milestone checkboxes are interactive. A toggle is **not** optimistic: it POSTs to
+`/api/plans/{id}/milestones/{index}/toggle`, then re-reads the document, so the
+rendered `- [x]` and the counts cannot drift apart and the state survives a
+reload. The header progress and the sidebar entry both move — `0/3` becomes
+`1/3 · 33%` in both places.
+
+**Activate** patches the status. Activating a plan that is not ready is
+**refused** by the server with `422`, and the panel surfaces the returned
+`blockers` under *Blocking activation* (missing mission, success criteria or
+milestones) rather than swallowing the failure. That is the same refusal
+`studyloop plan status ID active` gives at the CLI.
+
+!!! note "No 'Copy for agent' button"
+    An earlier version of this page listed a **Copy for agent** action that
+    copied the evaluation Markdown. **It does not exist** — no such control is in
+    the markup. To hand an evaluation to an agent, use
+    `studyloop plan evaluate ID --phase start --json`, or fetch
+    `GET /api/plans/{id}/evaluate?phase=start`.
 
 ## Agents
 

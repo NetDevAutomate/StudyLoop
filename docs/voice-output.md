@@ -190,7 +190,7 @@ The study web app (`studyloop web`) synthesises speech **entirely in the browser
 | **`neural-wasm`** | Kokoro on single-thread WASM | No WebGPU, but device is fast enough (passes a warm-up speed probe) |
 | **`web-speech`** | Web Speech API (OS voices) | Neural unavailable or device too slow — graceful fallback |
 
-There is **no COOP/COEP requirement** — the engine forces single-thread WASM (`numThreads=1`) and prefers WebGPU, so it never needs `SharedArrayBuffer`. This keeps the same-origin ttyd terminal iframe working.
+There is **no COOP/COEP requirement** — the engine forces single-thread WASM (`numThreads=1`) and prefers WebGPU, so it never needs `SharedArrayBuffer`. That keeps the page's cross-origin isolation headers off, which matters because isolating the origin would break the same-origin embeds and WebSocket the session dashboard relies on.
 
 ### First-run download
 
@@ -215,9 +215,12 @@ The current design needs internet **once** (the first-run fetch). Making voice w
 ### Controls
 
 - **Voice selector dropdown** — choose a Kokoro voice (e.g. `am_michael`, `af_heart`, `bf_emma`). Appears in the header; selection persists across sessions. (Falls back to listing OS voices if the engine is on the `web-speech` tier.)
-- **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once.
-- **Auto-voice** — toggle the header speaker icon, or press `V`. Reads everything automatically as you navigate.
+- **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once. This works whether or not the header voice toggle is on.
+- **Voice toggle** — the header speaker button. It enables the app's own spoken announcements (Pomodoro transitions and confirmations such as "voice enabled") and reveals the voice selector and engine badge. Persists to `localStorage` under `voice`. **Click-only — no key is bound to it, and it does not read cards to you automatically.**
 - **Stop** — a stop button appears in the header while audio is playing; click it (or it clears automatically when playback ends) to interrupt mid-utterance. The stop control halts neural WebGPU/WASM playback, not just Web Speech API output.
+
+!!! warning "There is no auto-voice, and `V` is unbound"
+    This page previously described pressing `V` to "read everything automatically as you navigate". No such feature exists in the web app — there is no auto-read mode, and `V` is not bound to anything. Reading is always one deliberate action: `T`, or the speaker icon.
 
 ---
 

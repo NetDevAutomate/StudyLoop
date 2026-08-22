@@ -22,7 +22,6 @@ Step-by-step installation and configuration for StudyLoop.
 - **tmux 3.1+** — required for `studyloop study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
 - **Obsidian** — for study notes (any vault structure works)
 - **Optional**: `sentence-transformers` for semantic search
-- **Optional**: `ttyd` — enables web terminal access from browser or iPad (`brew install ttyd` on macOS, `apt install ttyd` on Linux)
 - **Optional**: [OpenVox](https://openvoxai.com/) — local macOS voice API for terminal/MCP `study-speak` output when its Local API is enabled
 
 > **tmux-resurrect / tmux-continuum users**: studyloop automatically cleans up
@@ -300,7 +299,11 @@ studyloop web
 
 This starts a web server on `http://127.0.0.1:8567`. Use `studyloop web --lan` if you want to expose it to other devices on your network.
 
-**Install as PWA (iOS/Android):** Open in Safari → Share → Add to Home Screen. The app then works full-screen like a native app.
+**Add to home screen (iOS/iPadOS):** Open in Safari → Share → Add to Home Screen. `manifest.json` sets `display: standalone`, so it launches without browser chrome.
+
+> **The web app does not work offline.** There is no service worker anywhere in
+> the app, so no page and no asset is cached. Every launch — including from a
+> home-screen icon — needs the `studyloop web` server reachable on the network.
 
 Configure flashcard/quiz directories:
 
@@ -312,7 +315,7 @@ review:
     - ~/Desktop/Python/downloads
 ```
 
-**Voice output** synthesises speech with a neural model (Kokoro-82M) **entirely in the browser** via WebGPU/WASM — no text is sent to a remote API, and no OS voice setup is needed. On first use the model downloads once (~92 MB) and is cached for offline use thereafter; if the device can't run the neural model it falls back to the browser's Web Speech API.
+**Voice output** synthesises speech with a neural model (Kokoro-82M) **entirely in the browser** via WebGPU/WASM — no text is sent to a remote API, and no OS voice setup is needed. On first use the model downloads once (~92 MB) from Hugging Face and is kept in the browser's Cache Storage (`transformers-cache`) so later sessions do not re-download it; that caches the *model*, not the app, so it does not make StudyLoop usable offline. If the device can't run the neural model it falls back to the browser's Web Speech API.
 
 Two voice modes in the PWA:
 - **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once.
@@ -339,7 +342,7 @@ studyloop study "Python Decorators" --energy 7 --lan
 studyloop study "Python Decorators" --energy 7 --lan --password mysecret
 ```
 
-Access the live dashboard and embedded terminal from your iPad at `http://<mac-ip>:8567/session`. Use username `study` and the displayed password when prompted. The terminal panel (ttyd iframe) is proxied through the web server on the same origin, so pop-out/return works seamlessly. ttyd must be installed for the terminal panel to work (`brew install ttyd`).
+Access the live dashboard from your iPad at `http://<mac-ip>:8567/session`. Use username `study` and the displayed password when prompted. The terminal panel runs in the page itself — xterm.js over a same-origin WebSocket — so nothing extra needs installing on either machine.
 
 **Password sources** (checked in order):
 1. `--password` CLI flag
@@ -478,12 +481,21 @@ Environment variable overrides:
 ### Web Terminal Settings
 
 ```yaml
-# Web terminal (optional — requires ttyd installed)
-ttyd_port: 7681      # ttyd listens on this port (default 7681)
+# Web dashboard
 web_port: 8567       # web dashboard port (default 8567)
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent LAN password (auto-generated per session if empty)
+
+# Maintainer-only (see the note below) — retired ttyd server transport
+ttyd_port: 7681      # port a ttyd process would listen on (default 7681)
 ```
+
+> **`ttyd_port` unlocks nothing for normal use — do not install ttyd for it.**
+> The browser terminal is xterm.js over a same-origin WebSocket; the ttyd browser
+> surface was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md).
+> For maintainers the server still honours `STUDYLOOP_TRANSPORT=ttyd` and
+> `studyloop web --ttyd-port`, but a session started on that transport has **no
+> browser renderer** and reports `unavailable`.
 
 ### TTS Voice Settings
 
@@ -617,14 +629,14 @@ session-export --obsidian
 session-export --obsidian --obsidian-backfill   # one-time: all history
 ```
 
-Supported sources: `claude`, `codex`, `grok`, `kiro`, `gemini`, `opencode`, `aider`, `litellm`, `repoprompt`, `pi`, `omp`
+Supported `--sources` values: `aider`, `bedrock`, `claude`, `codex`, `gemini`, `grok`, `kilocode`, `kiro`, `omp`, `opencode`, `pi`, `repoprompt`
 
 ### Verify it's working
 
 ```bash
-session-query stats              # Show database statistics
-session-query list --since 7d    # List recent sessions
-session-query search "python"    # Search across all sessions
+session-query stats-cmd            # Show database statistics
+session-query list --since 7d      # List recent sessions
+session-query search-cmd "python"  # Search across all sessions
 ```
 
 ## Content Pipeline
@@ -835,6 +847,6 @@ export STUDYLOOP_CONFIG=/path/to/your/config.yaml
 
 ```bash
 session-maint vacuum             # Reclaim space
-session-query stats              # Check current size
+session-query stats-cmd          # Check current size
 session-maint archive            # Archive old sessions
 ```

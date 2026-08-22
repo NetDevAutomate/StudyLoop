@@ -102,7 +102,7 @@ graph LR
 - **[Target Architecture](architecture/target.md)** — plugin architecture, ACP/PTY live sessions, macOS/iOS direction
 - **[Architecture Decision Records](adr/README.md)** — why load-bearing choices were made, and what was rejected
 - **[TUI Sidebar Guide](tui-guide.md)** — Terminal sidebar layout, timer modes, key bindings
-- **[Web UI Guide](web-ui-guide.md)** — live sessions, session dashboard, terminal fallback, review UI
+- **[Web UI Guide](web-ui-guide.md)** — live sessions, session dashboard, live terminal, review UI
 - **[Session Protocol](session-protocol.md)** — How every study session flows, from arrival to close
 - **[CLI Reference](cli-reference.md)** — Full command reference for `studyloop` and `session-query`
 - **[Repository Standards](standards/repo-standards.md)** — naming, doc, and structure standards

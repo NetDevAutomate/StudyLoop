@@ -8,6 +8,27 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 ## [Unreleased]
 
 ### Added
+- **Study plans in the browser** — the planning backend and the
+  `study-plan-architect` agent already existed; the web surface did not, which
+  meant neither was reachable without the CLI. Adds a plan list in the sidebar,
+  a rendered plan reader in the content column, a create/interview wizard, and
+  milestone evaluation. The create form leads with a free-text brain-dump field
+  above the five structured fields on purpose: a blank structured form asks the
+  learner for the decomposition they do not have yet, which is the paralysis the
+  feature exists to prevent. The structured fields remain as the editable
+  result. Implemented as an Alpine **store** plus a thin factory — new for this
+  codebase, and necessary because the sidebar list and the content-column reader
+  live in different DOM subtrees and cannot share one `x-data`. The store's own
+  `init()` loads the list, so a full browser reload repopulates the sidebar
+  instead of showing an empty list until something is clicked.
+- **Origin-aware session recovery in both start pickers** — `sessionActive`
+  previously meant only "a session exists", so a picker would hide on a session
+  it did not own, and the surface that *did* render its picker offered a Start
+  button that could only ever return 409. It complained without offering a way
+  out. `sessionActive` now means "a session exists **and this view owns it**".
+  Both pickers name the owning surface and offer the two levers that work: open
+  that surface, or end its session. Reattach is offered only for a session the
+  view owns, which is what the origin guard exists to enforce.
 - **Fake harness agent (`studyloop-fake-agent`)** — a deterministic console
   script that speaks just enough "agent" (banner, echo replies, clean
   EOF/SIGTERM exit) to walk the real spawn → PTY → WebSocket → terminal path
@@ -57,6 +78,21 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   total.
 
 ### Changed
+- **Frontend modularised out of `index.html`** — the seven Alpine component
+  factories (`generatePanel`, `settingsPanel`, `sessionTimer`, `terminalPanel`,
+  `splitLayout`, `liveAgentConsole`, `plansPanel`) moved from the inline
+  `<script>` into one ES module each under
+  `static/js/components/`, with shared helpers in `static/js/lib/` and
+  `static/js/main.js` as the entry point. `main.js` assigns each factory to
+  `window` — Alpine resolves `x-data` names off the global scope, so a factory
+  that is only a module export is invisible to it — and registers the `plans`
+  store on `alpine:init`. `index.html` drops from 4,403 lines to 2,702. Each
+  factory body was moved verbatim, the only edit being the added `export`
+  keyword. No user-visible behaviour change, but it is the reason frontend
+  assertions no longer all cost a browser launch: JS unit tests went 5 → 87,
+  running in seconds against a ~24-minute e2e suite. `courseExplorer`,
+  `reviewApp` and the rest still live in `static/components.js`, which loads as
+  a classic script.
 - **Install now installs everything:** `studyloop install tools` (and thus
   `./scripts/install.sh`) installs both workspace packages with their `[all]`
   aggregate extras — `studyloop[all]` (content, bedrock, web, notebooklm, tui,
@@ -68,6 +104,20 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   extras can't drift out of it.
 
 ### Fixed
+- **Live console came back empty after a page refresh:** `init()` only ever
+  reacted to a `study-session-start` event, and for an already-running session
+  that event had been dispatched before the page existed — so a reload mounted
+  no terminal at all. (`sessionTimer()` dispatches only on a fresh start, never
+  on restore, so waiting to be told was never going to work.) `init()` now calls
+  `_adoptLiveSession()`, which reads `GET /api/session/state` and mounts only
+  when this view owns the session, comparing the endpoint's `origin` against the
+  console's own — the same ownership test the recovery banner uses. Listeners are
+  still registered before that await, so an event arriving mid-fetch is not lost,
+  and an `_adoptEpoch` counter bumped by every real start/stop is re-checked
+  afterwards so a slow adopt cannot mount over newer user action. A reattach
+  reports `Reattached · <agent>` rather than `Starting`, because claiming to
+  start something that has been running for an hour is a lie the learner has to
+  decode.
 - **TTS voice ignored + overlapping playback:** the engine never restored the
   saved `neuralVoiceId`, so every page load spoke as the `am_michael` default
   regardless of the Settings selection (the dropdown showed the right voice;
@@ -141,6 +191,26 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
   masquerades as "Network error"; the real HTTP status is surfaced.
 
 ### Removed
+- **The ttyd browser terminal is no longer offered in the UI.** Both transport
+  selects lose their `Legacy terminal (ttyd iframe)` option and both legacy
+  `<iframe>` panels are gone. ttyd is an external binary (`brew install ttyd`);
+  without it the iframe rendered an *empty frame*, indistinguishable from a hang
+  — and it was the path the pickers offered as a fallback. The dispatcher's
+  `else` branch now reports an explicit `unavailable` state naming the transport
+  it cannot render and what to do about it, rather than a blank frame.
+  Installing ttyd no longer enables anything user-visible.
+  **The server transport is retained:** `POST /api/session/start` still honours
+  `transport: "ttyd"` and `STUDYLOOP_TRANSPORT=ttyd`, and `/terminal/` plus
+  `terminal_proxy.py` are untouched — a session started that way simply has no
+  browser renderer. See `docs/adr/0005-retire-ttyd-browser-surface.md`.
+- **The `wterm` dev renderer** — its registry entry, the inline-injection branch,
+  the `--dev-renderer wterm` choice, three vendored assets, and its 342-line
+  test module. The project's own evaluation had ghostty-web ahead on 9 of 12
+  dimensions, and wterm's registry entry carried its own indictment ("No
+  onScroll, no custom key handler, no clipboard"; "known to disconnect
+  mid-session"). It also required a 200-line adapter shim and an esbuild step
+  that ghostty's UMD build removes. `--dev-renderer` now accepts only `ghostty`;
+  xterm.js remains the production default.
 - Dead no-op content-index warm check from the web-app startup lifespan.
 
 ---

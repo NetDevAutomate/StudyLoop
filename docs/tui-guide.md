@@ -147,7 +147,10 @@ Press these keys while the sidebar pane is focused (click the sidebar or use `Ct
 | Key | Action | Description |
 |-----|--------|-------------|
 | `p` | Toggle pause | Pauses/resumes the timer. Resuming records a break taken. |
+| `s` | Start/stop Pomodoro | Toggles the Pomodoro cycle without restarting the session. |
 | `r` | Reset timer | Resets the timer to 00:00:00. |
+| `+` | +5 min focus | Lengthens the Pomodoro focus period by 5 minutes. |
+| `-` | −5 min focus | Shortens the Pomodoro focus period by 5 minutes. |
 | `Q` | End session | Ends the entire study session: sends `/exit` to the agent, runs cleanup (flashcard generation, DB update), kills the tmux session. |
 | `q` | Quit sidebar | Quits only the sidebar process. The tmux session and agent continue running. |
 

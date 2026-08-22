@@ -54,12 +54,19 @@ Install `just` if needed:
 brew install just
 ```
 
-`just release-check` runs the full local release gate:
-- tests
-- lint
-- typecheck
-- strict docs build
-- release artifact build
+`just release-check` runs the full local release gate, in this order:
+- `test` — the default `pytest` selection (no `e2e`, no `integration`)
+- `lint` — `ruff check` and `ruff format --check`
+- `typecheck` — pyright
+- `shellcheck` — the four shipped shell scripts
+- `docs` — `mkdocs build --strict`
+- `audit` and `audit-full` — `pip-audit` on the default and all-extras exports
+- `release-consistency` — release note matches the package version
+- `smoke-installed` — builds the release artefacts, then installs and smoke-tests
+  the wheel in a temporary venv
+
+It does **not** run `spec-check`. Use `just preflight` when a change touches
+`openspec/`.
 
 ## Code Style
 
@@ -215,8 +222,8 @@ studyloop/
 │   ├── install.sh                   # Thin source-install bootstrap wrapper
 │   └── install-agents.sh            # Thin compatibility wrapper
 ├── Justfile                         # Contributor task runner
-├── Formula/studyloop.rb              # Homebrew formula
 ├── docs/                            # Documentation
+├── releases/                        # Per-release notes (v<version>.md)
 ├── pyproject.toml                   # Workspace root
 └── CONTRIBUTING.md
 ```
@@ -248,7 +255,8 @@ in `doctor/harness.py`.
 ## Spec-Driven Changes (OpenSpec)
 
 Behaviour is specified in `openspec/`, not only in code and PR descriptions.
-Full contract: [OpenSpec Framework](openspec.md) (`docs/openspec.md`).
+Full contract: [OpenSpec Framework](https://github.com/Hookey-Street-Software/StudyLoop/blob/main/docs/openspec.md)
+(`docs/openspec.md` in the checkout).
 
 - `openspec/specs/<capability>/spec.md` — the 18 capability specs describe
   behaviour that is **already shipped**, warts included. They were written by
@@ -379,7 +387,15 @@ Agent files are symlinked by the installer, so edits in the repo are immediately
 5. Commit with a descriptive message
 6. Open a PR against `main`
 
-CI runs lint, typecheck, and tests automatically on every PR.
+CI runs lint, typecheck, SAST, dependency audits, the default test suite on
+Python 3.12 and 3.13, the four optional profile jobs, browser smoke, and a build
+plus installed-wheel smoke on every PR.
+
+**CI does not run the e2e journey suite.** The default `pytest` selection
+deselects the `e2e` marker, so a green PR says nothing about the browser paths
+under `packages/studyloop/tests/e2e/`. Run those locally before merging a UI
+change — see [CI Workflows](https://github.com/Hookey-Street-Software/StudyLoop/blob/main/docs/ci.md)
+for exactly what each workflow covers and what it does not.
 
 ## Documentation Style Guide
 

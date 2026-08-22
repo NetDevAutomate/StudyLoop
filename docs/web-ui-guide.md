@@ -64,7 +64,7 @@ graph TB
 
     HOME -->|"click Flashcards"| CONFIG
     CONFIG -->|"Start Session"| STUDY
-    STUDY -->|"Space/Enter to flip"| ANSWER
+    STUDY -->|"Space to flip"| ANSWER
     ANSWER -->|"Y=correct, N=wrong, S=skip"| STUDY
     STUDY -->|"all cards done"| SUMMARY
     SUMMARY -->|"R = retry wrong"| STUDY
@@ -103,7 +103,7 @@ is far denser than the old cards.
    course has multiple chapters, you'll see a filter dropdown to select specific
    chapters and a card limit picker.
 
-3. **Study cards** — each card shows the front (question). Press **Space** or **Enter** to flip and reveal the answer.
+3. **Study cards** — each card shows the front (question). Press **Space** to flip and reveal the answer, or click the card. Enter is not bound.
 
 4. **Mark your answer**:
    - **Y** or click the green button — Correct (SM-2 interval increases)
@@ -116,15 +116,22 @@ is far denser than the old cards.
 
 ### Keyboard Shortcuts (Flashcard Mode)
 
+These fire only while the **Flashcards** panel is the active panel.
+
 | Key | Action |
 |-----|--------|
-| Space / Enter | Flip card |
-| Y | Mark correct |
-| N | Mark incorrect |
+| Space | Flip card |
+| Y | Mark correct — **only after the card is flipped** |
+| N | Mark incorrect — **only after the card is flipped** |
 | S | Skip card |
 | T | Read card aloud (in-browser neural TTS) |
-| V | Toggle auto-voice (reads every card) |
 | Escape | Return to home |
+| R | On the session summary: retry the cards you got wrong |
+| P | Park a thought (works anywhere outside a text field) |
+
+Case does not matter — the handler lower-cases the key first.
+
+> **Enter does not flip a card, and there is no auto-voice key.** `V` is unbound; voice is a click-only header toggle (see [Voice Output](#voice-output) below). If you expected either from an older version of this guide, that guide was wrong.
 
 > Voice uses an in-browser neural model (Kokoro via WebGPU/WASM) — no text leaves the browser. See [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts).
 
@@ -142,7 +149,7 @@ graph TB
 
     HOME -->|"click Quiz"| CONFIG
     CONFIG -->|"Start Session"| QUIZ
-    QUIZ -->|"1-4 or A-D to pick"| RESULT
+    QUIZ -->|"1-4 to pick"| RESULT
     RESULT -->|"auto-advance"| QUIZ
     QUIZ -->|"all done"| SUMMARY
     SUMMARY -->|"R = retry wrong"| QUIZ
@@ -157,18 +164,23 @@ but lists only decks that have quiz questions, with a single **Quiz** action per
 
 1. **Pick a course** — click the **Quiz** button on a course row.
 
-2. **Answer questions** — each card shows a question with 4 multiple-choice options. Press **1-4** or **A-D** to select your answer. Correct answers highlight green; wrong answers highlight red with the correct answer shown.
+2. **Answer questions** — each card shows a question with 4 multiple-choice options. Press **1**-**4** to select your answer, or click an option. Correct answers highlight green; wrong answers highlight red with the correct answer shown. `A`-`D` are not bound.
 
 3. **Summary** — same as flashcard mode. Press **R** to retry wrong answers.
 
 ### Keyboard Shortcuts (Quiz Mode)
 
+These fire only while the **Quizzes** panel is the active panel.
+
 | Key | Action |
 |-----|--------|
-| 1-4 or A-D | Select answer option |
+| 1-4 | Select answer option — **only before you have answered** |
 | T | Read question aloud |
-| V | Toggle auto-voice |
 | Escape | Return to home |
+| R | On the session summary: retry the questions you got wrong |
+| P | Park a thought (works anywhere outside a text field) |
+
+> **`A`-`D` are not bound** — use the number keys or click the option. `V` is not bound either; see the note under [flashcard shortcuts](#keyboard-shortcuts-flashcard-mode).
 
 ---
 
@@ -300,7 +312,7 @@ graph LR
         META["Topic + Energy + Timer"]
         FEED["Live Activity Feed<br/>(SSE streaming)"]
         COUNTERS["WINS / PARKED / REVIEW"]
-        TERM["Embedded Terminal<br/>(ttyd iframe, current fallback)"]
+        TERM["Agent Console<br/>(xterm.js over WebSocket,<br/>or ACP chat)"]
     end
 
     subgraph "Data Sources"
@@ -323,7 +335,12 @@ graph LR
 
 **Counter Bar** — WINS, PARKED, and REVIEW counts updated live.
 
-**Embedded Terminal** — the ttyd terminal panel shows your tmux session, letting you interact with the agent from the browser. This is currently the main browser-based way to ask questions and have a live mentor conversation.
+**Agent Console** — where you talk to the agent. `liveAgentConsole()` renders one of two surfaces, chosen by the session's transport:
+
+- **`pty`** → **xterm.js**, fed by StudyLoop's own FastAPI WebSocket. This is the default terminal path and it survives a page refresh: the console reads `GET /api/session/state` on init and re-adopts a live session it owns, so the same agent process answers a freshly typed line with no action from you.
+- **`acp`** → the [ACP chat surface](#acp-chat-mode-kiro-gemini). Structured markdown rather than a terminal, and the preferred experience where the agent supports it.
+
+Anything else renders an explicit **unavailable** state naming what happened and what to do. There is no iframe fallback — see [Browser terminal surfaces](#browser-terminal-surfaces).
 
 ## Target Session Presentation
 
@@ -394,44 +411,47 @@ Example target event:
 | Transport | Role | Use when |
 |---|---|---|
 | ACP | Preferred structured session transport | Agent supports Agent Client Protocol |
-| PTY | Compatibility fallback | Agent only has an interactive terminal UI |
+| PTY | Default terminal transport | Agent only has an interactive terminal UI |
 | Headless CLI | Background jobs only | One-shot summaries, generation, checks |
-| ttyd | Current web terminal bridge | Until ACP/PTY web sessions are complete |
+| ttyd | Server transport only — **no browser renderer** | Maintainer opt-in via `STUDYLOOP_TRANSPORT=ttyd`; not offered in the UI |
 
-Do not remove ttyd until the web UI can complete an interactive study session without it.
+The learner-facing transport picker offers **`pty`** and **`acp`** only. That is deliberately narrower than the API, which still accepts `ttyd` — see [ADR-0005](adr/0005-retire-ttyd-browser-surface.md).
 
 ---
 
-## Terminal Fallback (ttyd)
+## Browser terminal surfaces
 
-The web dashboard embeds a terminal via ttyd, giving you full terminal access to the study session from a browser.
+The dashboard has **two** browser surfaces for talking to the agent, plus an honest error state. There is no iframe and no third fallback.
 
-ttyd is currently important because it preserves the critical capability: the learner can ask questions and interact with the selected agent during study or body-doubling.
+| Surface | Transport | How it renders |
+|---|---|---|
+| **xterm.js** | `pty` | The agent's PTY streamed over StudyLoop's own FastAPI WebSocket |
+| **ACP chat** | `acp` | Structured ACP events as markdown — see [ACP Chat Mode](#acp-chat-mode-kiro-gemini) |
+| **unavailable** | anything else | An explicit message naming what happened and what to do |
 
-### How it works
+`terminalMode` is `'xterm' | 'acp-chat' | 'unavailable' | null`.
 
-ttyd runs as a background process alongside the web server. The dashboard embeds it in an iframe at `/terminal/`, proxied through FastAPI on the same port (no CORS issues).
+### The retired ttyd iframe
 
-### Pop-out and return
+Earlier versions embedded [ttyd](https://github.com/tsl0922/ttyd) in an iframe at `/terminal/` as a third surface. **That surface is gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)), for two reasons worth knowing as a user:
 
-- **Pop-out** — click the pop-out button to open the terminal in a separate browser window. Useful on multi-monitor setups.
-- **Return** — close the pop-out window or click "Show terminal" on the dashboard to re-embed the iframe.
+- ttyd is an external binary most machines do not have. Without it the iframe rendered an **empty frame**, which is indistinguishable from a hang — so the "fallback" failed more confusingly than the thing it was covering for.
+- The reason for keeping it was that the primary xterm.js path could not survive a page refresh. It now can, so the fallback had nothing left to cover.
 
-The terminal stays connected during pop-out/return — your tmux session is not interrupted.
+What this means in practice:
+
+- **`brew install ttyd` enables nothing user-visible.** You do not need ttyd installed. The `Legacy terminal (ttyd iframe)` option is gone from both transport pickers.
+- The **server** transport survives: `POST /api/session/start` still honours `transport: "ttyd"`, `STUDYLOOP_TRANSPORT=ttyd` still works, and `/terminal/` is still proxied. But a session started that way has **no browser renderer** — the console reports `unavailable`. It is a maintainer path, not a learner path.
 
 ### LAN access
 
-With `--lan`, the terminal is accessible from other devices on your network:
+With `--lan`, the dashboard and its terminal surface are reachable from other devices on your network:
 
 ```bash
 studyloop study "topic" --web --lan --password mypassword
 ```
 
-Access from a tablet or phone at `http://<host-ip>:8567/session`. HTTP Basic Auth protects the connection.
-
-### Without ttyd
-
-If ttyd is not installed, the current dashboard works without the terminal panel. The activity feed, timer, and counters still function, but browser-based live agent interaction is degraded until the target ACP/PTY session transport exists.
+Access from a tablet or phone at `http://<host-ip>:8567/session`. HTTP Basic Auth protects the connection, and the WebSocket rides the same authenticated origin — no extra port to open.
 
 ---
 
@@ -483,13 +503,6 @@ A real-browser test (`packages/studyloop/tests/test_web_acp_dogfood_kiro.py`, ma
 - The persona-injection turn left zero artefacts in the chat.
 
 Run it locally with `uv run pytest -m live_kiro` (requires `kiro-cli` authenticated).
-
-Install ttyd with:
-
-```bash
-brew install ttyd      # macOS
-apt install ttyd       # Debian/Ubuntu
-```
 
 ---
 
@@ -643,12 +656,16 @@ The original light/dark **toggle button** is still present and orthogonal to the
 
 ### Voice Output
 
-- **T** key — read the current card aloud (in-browser neural TTS — Kokoro on WebGPU/WASM)
-- **V** key — toggle auto-voice (reads every card automatically)
-- **Stop button** — appears in the header while speaking; interrupts neural playback mid-utterance
-- Voice selector dropdown in the header lets you choose a Kokoro voice (falls back to OS voices if the device can't run the neural model)
+- **`T`** key, or the speaker icon on a card — read the current card aloud once (in-browser neural TTS — Kokoro on WebGPU/WASM). Works whether or not the header voice toggle is on.
+- **Header speaker button** — enables voice for the app's own spoken announcements (Pomodoro transitions, "voice enabled", "voice changed") and reveals the voice selector and engine badge. Persists to `localStorage` under `voice`. **This is a click-only control — no key is bound to it.**
+- **Stop button** — appears in the header while speaking; interrupts neural playback mid-utterance.
+- **Voice selector dropdown** in the header lets you choose a Kokoro voice (falls back to OS voices if the device can't run the neural model).
+- **Engine badge** next to the selector names the tier that is actually speaking (`neural-webgpu`, `neural-wasm`, `web-speech`), shown whenever voice is on rather than only on failure — a badge that appears only when something breaks teaches nobody what working looks like.
 
-Speech is synthesised entirely on-device — no text is sent to a remote API. The ~92 MB model downloads once on first use, then is cached for offline use. Full details: [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts).
+!!! warning "There is no auto-voice"
+    Earlier versions of this guide documented a **`V`** key that toggled "auto-voice — reads every card automatically". **No such feature exists**, and `V` is not bound to anything. Nothing reads cards to you automatically; card reading is always `T` or the speaker icon, one card at a time. Getting this wrong in the Accessibility section is exactly the kind of error that costs a screen-reader or low-vision user their time, so it is called out rather than quietly deleted.
+
+Speech is synthesised entirely on-device — no text is sent to a remote API. The ~92 MB model downloads once on first use and is then served from browser Cache Storage, so voice keeps working with no network. That caching is done by the TTS libraries themselves and is **not** app-shell caching — the app itself still needs its local server. Full details: [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts).
 
 ### Pomodoro Timer (Browser)
 
@@ -662,40 +679,61 @@ The web UI is a Progressive Web App. To install:
 
 1. Open `http://localhost:8567` in Chrome/Safari
 2. Click "Add to Home Screen" (mobile) or the install icon in the address bar (desktop)
-3. The app works offline for reviewing cards you've already loaded
+3. The app opens in its own window, with the StudyLoop icon and theme colour from `manifest.json`
 
-The service worker caches all vendored assets (HTMX, Alpine.js, fonts) for offline use. The in-browser TTS model is cached separately in Cache Storage (`transformers-cache`) by transformers.js — the service worker is configured to preserve it when refreshing app-shell assets, so the ~92 MB model never re-downloads on a code change.
+!!! warning "The app does **not** work offline"
+    **There is no service worker.** `static/` ships `manifest.json` and icons only — no `sw.js`, no `navigator.serviceWorker.register()` anywhere in the JavaScript. Nothing is cached for offline use, so:
+
+    - Installing the app does not make it usable without the server. Every page load fetches `index.html`, the vendored JS/CSS, and every `/api/…` call from `studyloop web` on your machine or LAN. With the server down or out of reach, the installed app shows a browser network error.
+    - It is a **local** app, not a hosted one. "Offline" would mean running without your own machine's server process — which is not what the install gives you.
+    - Browser install prompts differ. iOS/iPadOS Safari offers **Add to Home Screen** from the manifest alone; Chromium's install criteria have historically included a service worker with a fetch handler, so the desktop install button may not appear. Not verified here — no browser was launched.
+
+    The one thing that *is* cached is the **voice model**: transformers.js stores the ~92 MB Kokoro weights in Cache Storage (`transformers-cache`) and the voice embeddings in `kokoro-voices`, both managed by the TTS libraries directly with no service worker involved. So voice keeps working after the first download, and a code change never re-downloads it. See [Voice Output § First-run download](voice-output.md#first-run-download).
+
+    Offline app-shell caching is a genuine gap, not an undocumented feature. See the [2026-07-11 review](audit/2026-07-11-comprehensive-review.md) for the cache-versioning work it would need.
 
 ---
 
 ## Developer Experiment Flags
 
-### `--dev` — wterm terminal renderer
+### `--dev` — ghostty-web terminal renderer
 
 ```bash
 studyloop web --dev
 ```
 
-Swaps the xterm.js terminal renderer (used in all study-session and ACP terminal panels) for [wterm](https://github.com/vercel-labs/wterm) — a Vercel Labs project that uses a Zig/WASM VT parser and a DOM renderer.
+Swaps the xterm.js terminal renderer (used in all study-session and ACP terminal panels) for [ghostty-web](https://github.com/coder/ghostty-web) — Ghostty's VT100 parser compiled to WASM, wrapped in a canvas renderer (MIT, maintained by Coder).
+
+!!! note "wterm is gone"
+    A previous version of this flag loaded [wterm](https://github.com/vercel-labs/wterm) (`wterm-0.3.0.js` + a `WTermAdapter` shim). **wterm has been removed** — no `wterm*` file remains in the tree, and `--dev-renderer` now accepts only `ghostty`. The evaluation that led to the swap is at `docs/explorations/ghostty-web-evaluation.md`; the original wterm write-up is kept at `docs/explorations/wterm-evaluation.md` for history.
 
 **What changes in dev mode:**
-- The server injects a `<meta name="studyloop-dev-mode" content="wterm">` tag into the HTML.
-- Two extra vendor scripts are loaded: `wterm-0.3.0.js` (60 KB IIFE bundle) and `wterm-adapter-0.3.0.js` (adapter shim).
-- `window.Terminal` is patched to `WTermAdapter`, which maps the xterm.js API surface onto wterm — the rest of the JavaScript is unchanged.
 
-**Advantages over xterm.js:**
-- Native DOM rendering — browser selection, copy/paste, find, and screen readers work without a canvas overlay.
-- ~10x smaller bundle (70 KB total vs. 720 KB xterm + WebGL).
+- The server injects `<meta name="studyloop-dev-mode" content="ghostty">` into the HTML. Every vendored adapter checks this marker before patching `window.Terminal` and stays dormant when it does not match, which is why several adapters can ship side by side.
+- The engine's assets are appended inside `<head>`: `ghostty-0.4.0.css`, `ghostty-web-0.4.0.js`, `ghostty-adapter-0.4.0.js`.
+- The adapter patches `window.Terminal` — the rest of the JavaScript is unchanged.
 
-**Known limitations in dev mode (wterm 0.3.0):**
-- No WebGL renderer — DOM painting only.
-- OSC 52 clipboard writes (agent "copy to clipboard") are silently dropped.
-- The jump-to-bottom pill is disabled (`onScroll` is a no-op).
-- **The Agent Terminal disconnects mid-session.** The wterm adapter doesn't yet mirror xterm.js's WebSocket lifecycle and ANSI write semantics; agent output stops streaming after the WS reconnect window. This is the active investigation thread for `--dev` — the flag is **not production-ready**, treat it as a sandbox for evaluating the swap.
+The engine is registered in `web/dev_engines.py`, which is the single source of truth for the marker value, the asset list, and the caveats the UI shows in its tooltip. Adding an engine is one entry in `DEV_ENGINES`.
+
+**Why libghostty:**
+
+- Ghostty's battle-tested VT parser, not a ground-up JS rewrite.
+- Self-contained: the 423 KB WASM binary is inlined in the bundle as a base64 data URL, so there is no second network fetch, no `.wasm` MIME-type configuration, and it works with no network access.
+- Scrollback, selection, fit and `onScroll` are native — nothing has to be stubbed.
+
+**Known gaps (why this is still `--dev`):**
+
+- Clipboard: agent OSC 52 copy requests are silently dropped.
+- Scrollback beyond 512 KB is lost when you change palette.
+- Emoji and other non-BMP characters cannot be typed (paste instead).
+- Canvas rendering only — throughput under heavy output is unmeasured.
+- Full-screen TUIs (vim, htop, mouse tracking) are untested.
+
+The transport picker reports which renderer is actually painting, so `--dev` cannot silently masquerade as xterm.js.
+
+**`--dev-renderer ghostty`** is a deprecated alias kept for the original inline injection path. It implies `--dev` but injects *different* markup — `content="ghostty-web"` plus the `ghostty-web-0.4.0.umd.js` / `ghostty-web-bootstrap-0.4.0.js` pair — rather than going through the registry. Prefer bare `--dev`.
 
 **Default mode is unchanged.** `studyloop web` (no `--dev`) continues to load xterm.js exactly as before — no performance or behaviour difference.
-
-See the full evaluation write-up at `docs/explorations/wterm-evaluation.md`.
 
 ---
 
