@@ -494,7 +494,17 @@ class TestWsGraceThroughRoute:
         with client.websocket_connect(
             "/api/session/ws?study_session_id=study-grace-1", headers=_WS_HEADERS
         ) as ws2:
-            assert ws2.receive_bytes() == b"emitted while detached"
+            # Drain until the buffered bytes arrive rather than demanding they be
+            # the FIRST frame. This test's own comment states the requirement as
+            # "output produced while nobody was attached SURVIVES" - a reattach
+            # banner legitimately precedes it, and pinning frame order made that
+            # banner impossible to add without a false failure.
+            buffered = b""
+            for _ in range(5):
+                buffered += ws2.receive_bytes()
+                if b"emitted while detached" in buffered:
+                    break
+            assert b"emitted while detached" in buffered, buffered
             assert not _grace.has_pending_release("study-grace-1"), (
                 "reattach did not stand the release timer down"
             )

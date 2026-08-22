@@ -618,7 +618,7 @@ class TestLiveRefresh:
             # The console reconnects with no user action — nothing here clicks.
             live_page.wait_for_function(
                 "() => { const el = document.querySelector"
-                "('[x-data=\"liveAgentConsole(\\'study\\')\"]');"
+                "('[x-data=\"liveAgentConsole()\"]');"
                 " if (!el) return false; const d = Alpine.$data(el);"
                 " return d && d.connected === true; }",
                 timeout=AGENT_TIMEOUT_MS,
@@ -650,7 +650,7 @@ class TestLiveRefresh:
 
             status = live_page.evaluate(
                 "() => { const el = document.querySelector"
-                "('[x-data=\"liveAgentConsole(\\'study\\')\"]');"
+                "('[x-data=\"liveAgentConsole()\"]');"
                 " return el ? Alpine.$data(el).status : null; }"
             )
             assert status is not None, "study console not found on the reloaded page"
