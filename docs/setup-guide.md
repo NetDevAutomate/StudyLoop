@@ -68,7 +68,7 @@ primary installer because it installs both `studyloop` and the
 `agent-session-tools` console scripts used by the session database workflow.
 
 ```bash
-git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
 cd studyloop
 ./scripts/install.sh
 studyloop self-test
@@ -142,7 +142,7 @@ checkout installs because they keep the two tool venvs wired together.
 If you are contributing to the repo or running from source, prefer `uv sync` in the checkout:
 
 ```bash
-git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
 cd studyloop
 uv sync
 ```
@@ -161,7 +161,7 @@ uv run studyloop doctor --fix
 ### Legacy Script Modes
 
 ```bash
-git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
 cd studyloop
 
 # Full bootstrap from a repo checkout
@@ -196,7 +196,7 @@ For **Ansible playbooks**, clone the repo then run the install script:
   tasks:
     - name: Clone repo
       git:
-        repo: https://github.com/Hookey-Street-Software/StudyLoop.git
+        repo: https://github.com/NetDevAutomate/StudyLoop.git
         dest: ~/code/personal/tools/studyloop
 
     - name: Run installer

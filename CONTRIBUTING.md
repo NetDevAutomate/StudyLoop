@@ -20,7 +20,7 @@ How to set up a development environment, add features, and submit changes.
 ## Development Setup
 
 ```bash
-git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
 cd studyloop
 
 # Install all packages with dev dependencies
@@ -255,7 +255,7 @@ in `doctor/harness.py`.
 ## Spec-Driven Changes (OpenSpec)
 
 Behaviour is specified in `openspec/`, not only in code and PR descriptions.
-Full contract: [OpenSpec Framework](https://github.com/Hookey-Street-Software/StudyLoop/blob/main/docs/openspec.md)
+Full contract: [OpenSpec Framework](https://github.com/NetDevAutomate/StudyLoop/blob/main/docs/openspec.md)
 (`docs/openspec.md` in the checkout).
 
 - `openspec/specs/<capability>/spec.md` — the 18 capability specs describe
@@ -394,7 +394,7 @@ plus installed-wheel smoke on every PR.
 **CI does not run the e2e journey suite.** The default `pytest` selection
 deselects the `e2e` marker, so a green PR says nothing about the browser paths
 under `packages/studyloop/tests/e2e/`. Run those locally before merging a UI
-change — see [CI Workflows](https://github.com/Hookey-Street-Software/StudyLoop/blob/main/docs/ci.md)
+change — see [CI Workflows](https://github.com/NetDevAutomate/StudyLoop/blob/main/docs/ci.md)
 for exactly what each workflow covers and what it does not.
 
 ## Documentation Style Guide

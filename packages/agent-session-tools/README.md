@@ -2,7 +2,7 @@
 
 AI session export, search, and sync tools — supports Claude Code, Codex CLI, Grok CLI, Kiro CLI, Gemini CLI, Aider, OpenCode, LiteLLM, RepoPrompt, pi, and oh-my-pi (omp).
 
-Part of [StudyLoop](https://github.com/Hookey-Street-Software/StudyLoop).
+Part of [StudyLoop](https://github.com/NetDevAutomate/StudyLoop).
 
 ## Install
 

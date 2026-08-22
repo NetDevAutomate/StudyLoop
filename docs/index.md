@@ -8,7 +8,7 @@
 
 ```bash
 # 1. Install and configure
-git clone https://github.com/Hookey-Street-Software/StudyLoop.git studyloop
+git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
 cd studyloop
 ./scripts/install.sh
 studyloop setup
