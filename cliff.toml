@@ -11,7 +11,7 @@ All notable changes to StudyLoop will be documented in this file.
 """
 body = """
 {%- macro remote_url() -%}
-  https://github.com/Hookey-Street-Software/StudyLoop
+  https://github.com/NetDevAutomate/StudyLoop
 {%- endmacro -%}
 
 {% if version -%}

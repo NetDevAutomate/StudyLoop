@@ -19,7 +19,7 @@ from studyloop.doctor.models import CheckResult
 from studyloop.installers import find_repo_root
 
 MANIFEST_URL = (
-    "https://raw.githubusercontent.com/Hookey-Street-Software/StudyLoop/main/agents/manifest.json"
+    "https://raw.githubusercontent.com/NetDevAutomate/StudyLoop/main/agents/manifest.json"
 )
 
 TOOL_AGENTS: dict[str, tuple[str, str]] = {

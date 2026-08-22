@@ -31,10 +31,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Hookey-Street-Software/StudyLoop"
-Documentation = "https://github.com/Hookey-Street-Software/StudyLoop#readme"
-Repository = "https://github.com/Hookey-Street-Software/StudyLoop"
-Issues = "https://github.com/Hookey-Street-Software/StudyLoop/issues"
+Homepage = "https://github.com/NetDevAutomate/StudyLoop"
+Documentation = "https://github.com/NetDevAutomate/StudyLoop#readme"
+Repository = "https://github.com/NetDevAutomate/StudyLoop"
+Issues = "https://github.com/NetDevAutomate/StudyLoop/issues"
 
 [project.scripts]
 session-export = "agent_session_tools.export_sessions:main"

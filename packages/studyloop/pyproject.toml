@@ -50,10 +50,10 @@ studyloop-mcp = "studyloop.mcp.server:main"
 studyloop-fake-agent = "studyloop.testing.fake_agent:main"
 
 [project.urls]
-Homepage = "https://github.com/Hookey-Street-Software/StudyLoop"
-Repository = "https://github.com/Hookey-Street-Software/StudyLoop"
-Issues = "https://github.com/Hookey-Street-Software/StudyLoop/issues"
-Documentation = "https://github.com/Hookey-Street-Software/StudyLoop/tree/main/docs"
+Homepage = "https://github.com/NetDevAutomate/StudyLoop"
+Repository = "https://github.com/NetDevAutomate/StudyLoop"
+Issues = "https://github.com/NetDevAutomate/StudyLoop/issues"
+Documentation = "https://github.com/NetDevAutomate/StudyLoop/tree/main/docs"
 
 [build-system]
 requires = ["hatchling"]

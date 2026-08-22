@@ -8,7 +8,7 @@
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![CI](https://github.com/Hookey-Street-Software/StudyLoop/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/NetDevAutomate/StudyLoop/actions/workflows/ci.yml/badge.svg)
 
 ## What Does It Do?
 
@@ -26,7 +26,7 @@ Built by a neurodivergent learner transitioning from networking to data engineer
 
 ```bash
 # Install from source (no PyPI release)
-git clone https://github.com/Hookey-Street-Software/StudyLoop studyloop
+git clone https://github.com/NetDevAutomate/StudyLoop studyloop
 cd studyloop
 ./scripts/install.sh
 

@@ -6,7 +6,7 @@ than as the answer.
 
 The `study-mentor` / `socratic-mentor` agents run these during sessions. Both go
 through `studyloop exercise`. See
-[`agents/shared/exercise-protocol.md`](https://github.com/Hookey-Street-Software/StudyLoop/blob/main/agents/shared/exercise-protocol.md)
+[`agents/shared/exercise-protocol.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/agents/shared/exercise-protocol.md)
 for the agent-facing rules.
 
 ## The three formats
