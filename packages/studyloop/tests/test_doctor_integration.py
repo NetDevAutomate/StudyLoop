@@ -39,7 +39,10 @@ class TestDoctorIntegration:
             raise urllib.error.URLError("blocked by test")
 
         monkeypatch.setattr("urllib.request.urlopen", _block_network)
-        monkeypatch.setattr("studyloop.doctor.agents._fetch_manifest", lambda: None)
+        monkeypatch.setattr(
+            "studyloop.doctor.agents._fetch_manifest_with_reason",
+            lambda: (None, "offline"),
+        )
         monkeypatch.setattr("studyloop.doctor.agents._detect_ai_tools", lambda: [])
         monkeypatch.setattr("studyloop.doctor.updates._fetch_pypi_version", lambda pkg: None)
         monkeypatch.setattr("studyloop.doctor.updates._read_cache", lambda: {})

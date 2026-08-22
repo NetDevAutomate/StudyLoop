@@ -47,10 +47,21 @@ def _get_installed_version(package: str) -> str | None:
 
 
 def _fetch_pypi_version(package: str) -> str | None:
+    """Return the latest published version, or None if the package is unpublished.
+
+    A 404 means "no such project on PyPI", which is a different fact from "the
+    network is down" and must not be reported as one. StudyLoop is installed from
+    a source checkout and has no PyPI release, so 404 is its normal answer.
+    """
     url = f"https://pypi.org/pypi/{package}/json"
     req = urllib.request.Request(url, headers={"User-Agent": "studyloop-doctor/1.0"})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        data = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
     return data["info"]["version"]
 
 
@@ -78,6 +89,23 @@ def check_pypi_versions() -> list[CheckResult]:
             ]
     else:
         latest_versions = cached
+
+    # PyPI was reachable but knows about none of these packages. That is the
+    # expected state today: StudyLoop is installed from a source checkout and
+    # has no published release. Saying so is more useful than an update check
+    # that silently finds nothing, and it stops the previous behaviour of
+    # reporting a 404 as "offline — check network connection".
+    if not latest_versions:
+        return [
+            CheckResult(
+                "updates",
+                "pypi_check",
+                "info",
+                "No published release on PyPI — install and update from the git checkout",
+                "git pull && ./scripts/install.sh",
+                False,
+            )
+        ]
 
     results: list[CheckResult] = []
     for pkg in PACKAGES_TO_CHECK:

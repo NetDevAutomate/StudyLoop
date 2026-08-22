@@ -150,7 +150,10 @@ class TestAgentDefinitionCheck:
                 "studyloop.doctor.agents._get_agent_install_path",
                 return_value=agent_dir / ".claude" / "agents" / "socratic-mentor.md",
             ),
-            patch("studyloop.doctor.agents._fetch_manifest", return_value=manifest),
+            patch(
+                "studyloop.doctor.agents._fetch_manifest_with_reason",
+                return_value=(manifest, ""),
+            ),
         ):
             results = check_agent_definitions()
         assert any(r.status == "pass" and "claude" in r.name for r in results)
@@ -171,7 +174,10 @@ class TestAgentDefinitionCheck:
                 "studyloop.doctor.agents._get_agent_install_path",
                 return_value=agent_dir / ".claude" / "agents" / "socratic-mentor.md",
             ),
-            patch("studyloop.doctor.agents._fetch_manifest", return_value=manifest),
+            patch(
+                "studyloop.doctor.agents._fetch_manifest_with_reason",
+                return_value=(manifest, ""),
+            ),
         ):
             results = check_agent_definitions()
         assert any(r.status == "warn" and r.fix_auto for r in results)
@@ -190,7 +196,10 @@ class TestAgentDefinitionCheck:
                 "studyloop.doctor.agents._get_agent_install_path",
                 return_value=tmp_path / "nonexistent.md",
             ),
-            patch("studyloop.doctor.agents._fetch_manifest", return_value=manifest),
+            patch(
+                "studyloop.doctor.agents._fetch_manifest_with_reason",
+                return_value=(manifest, ""),
+            ),
         ):
             results = check_agent_definitions()
         assert any(r.status == "warn" for r in results)
@@ -208,7 +217,10 @@ class TestAgentDefinitionCheck:
 
         with (
             patch("studyloop.doctor.agents._detect_ai_tools", return_value=["claude"]),
-            patch("studyloop.doctor.agents._fetch_manifest", return_value=None),
+            patch(
+                "studyloop.doctor.agents._fetch_manifest_with_reason",
+                return_value=(None, "offline"),
+            ),
         ):
             results = check_agent_definitions()
         assert any(r.status == "info" for r in results)

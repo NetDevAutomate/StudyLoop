@@ -72,13 +72,26 @@ def _smoke_test(binary: str) -> tuple[bool, str]:
         return False, str(exc)
 
 
-def _fetch_manifest() -> dict | None:
+def _fetch_manifest_with_reason() -> tuple[dict | None, str]:
+    """Fetch the agent manifest, returning why it failed when it does.
+
+    The reason matters: a 404 means the manifest is not reachable at that URL —
+    typically because the repository is private, or the branch has moved — and
+    telling the user to "check network connection" for that sends them to
+    diagnose something that is working. Distinguish it from a genuine outage.
+    """
     try:
         req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "studyloop-doctor/1.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
-        return None
+            return json.loads(resp.read()), ""
+    except urllib.error.HTTPError as exc:
+        if exc.code in (403, 404):
+            return None, "not-published"
+        return None, "http-error"
+    except (urllib.error.URLError, TimeoutError):
+        return None, "offline"
+    except json.JSONDecodeError:
+        return None, "malformed"
 
 
 def _hash_file(path: Path) -> str:
@@ -245,15 +258,32 @@ def check_agent_definitions() -> list[CheckResult]:
             )
         ]
 
-    manifest = _fetch_manifest()
+    manifest, reason = _fetch_manifest_with_reason()
     if manifest is None:
+        detail, fix = {
+            "not-published": (
+                "Agent manifest not published yet — agents install from this checkout",
+                "studyloop install agents",
+            ),
+            "malformed": (
+                "Agent manifest fetched but could not be parsed",
+                "studyloop install agents",
+            ),
+            "http-error": (
+                "Agent manifest fetch failed (server error)",
+                "Retry later, or: studyloop install agents",
+            ),
+        }.get(
+            reason,
+            ("Could not fetch agent manifest (offline?)", "Check network connection"),
+        )
         return [
             CheckResult(
                 "agents",
                 "manifest_fetch",
                 "info",
-                "Could not fetch agent manifest (offline?)",
-                "Check network connection",
+                detail,
+                fix,
                 False,
             )
         ]
