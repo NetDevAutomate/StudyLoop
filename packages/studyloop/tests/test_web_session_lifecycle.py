@@ -548,7 +548,9 @@ class TestEndSession:
         # auto-dismisses those while the ttyd iframe holds focus).
         dialog = web_page.locator(".end-confirm-dialog")
         dialog.wait_for(state="visible", timeout=3000)
-        web_page.locator(".end-confirm-yes").click()
+        # Scoped to the dialog: .end-confirm-yes appears 3x in the SPA, so an
+        # unscoped locator is a strict-mode violation, not a timeout.
+        dialog.locator(".end-confirm-yes").click()
         # Assert the POST landed and the dialog is gone.
         web_page.wait_for_timeout(200)
         assert any("/api/session/end" in c["url"] for c in calls)
@@ -575,8 +577,10 @@ class TestEndSession:
               d.endSession();
             }"""
         )
-        web_page.locator(".end-confirm-dialog").wait_for(state="visible", timeout=3000)
-        web_page.locator(".end-confirm-cancel").click()
+        dialog = web_page.locator(".end-confirm-dialog")
+        dialog.wait_for(state="visible", timeout=3000)
+        # Scoped for the same reason as the confirm button above.
+        dialog.locator(".end-confirm-cancel").click()
         web_page.wait_for_timeout(200)
         assert not calls
         assert web_page.evaluate(

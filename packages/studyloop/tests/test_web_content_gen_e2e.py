@@ -206,10 +206,16 @@ class TestSidebarTab:
             }"""
         )
         assert "Generate" in button_text
-        # Order: Flashcards, Quizzes, Generate, Body Double, Study Session
-        idx = button_text.index("Generate")
-        assert button_text[idx - 1] == "Quizzes"
-        assert button_text[idx + 1] == "Body Double"
+        # Assert RELATIVE order, not immediate neighbours. The old form pinned
+        # button_text[idx + 1] == "Body Double" and broke the moment Mastery was
+        # inserted between them - a test failing for a feature ADDITION, which is
+        # drift rather than a defect. Relative order still protects what this test
+        # cares about (Generate sits in the content-production group, after the
+        # review tabs and before the session tabs) without re-breaking on the
+        # next panel.
+        order = {name: i for i, name in enumerate(button_text)}
+        assert order["Quizzes"] < order["Generate"], button_text
+        assert order["Generate"] < order["Body Double"], button_text
 
 
 class TestFormHappyPath:
@@ -218,7 +224,7 @@ class TestFormHappyPath:
         _goto_generate(page)
         _select_publisher_course(page)
         # Default scope is 'course' — no further input needed.
-        page.click('.toggle-btn:has-text("Generate")')
+        page.click('.generate-form button[type="submit"]')
         # Progress region appears; wait for the summary.
         page.wait_for_selector(".generate-summary", timeout=10000)
         summary = page.text_content(".generate-summary") or ""
@@ -253,7 +259,7 @@ class TestConflictBanner:
         )
         # Now submit via the form — second concurrent call → 409.
         _select_publisher_course(page)
-        page.click('.toggle-btn:has-text("Generate")')
+        page.click('.generate-form button[type="submit"]')
         # Banner shows. NOTE: the first job may complete fast (stub), so
         # this is timing-sensitive. Either we see the banner or we see
         # the form re-submitted cleanly. Both are non-crash outcomes,
@@ -275,7 +281,7 @@ class TestProgressBarRenders:
         """The .generate-progress-fill element is in the DOM and gets non-zero width."""
         _goto_generate(page)
         _select_publisher_course(page)
-        page.click('.toggle-btn:has-text("Generate")')
+        page.click('.generate-form button[type="submit"]')
         page.wait_for_selector(".generate-progress-fill", timeout=5000)
         # By the time the summary lands, the bar must be at 100%.
         page.wait_for_selector(".generate-summary", timeout=10000)
@@ -339,7 +345,7 @@ def _check_only_kind(page: Page, kind: str) -> None:
 
 
 def _submit(page: Page) -> None:
-    page.click('.toggle-btn:has-text("Generate")')
+    page.click('.generate-form button[type="submit"]')
 
 
 def _read_summary(page: Page) -> str:
