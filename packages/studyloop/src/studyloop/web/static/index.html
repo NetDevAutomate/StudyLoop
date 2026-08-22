@@ -1941,13 +1941,11 @@
         <div x-show="!sessionActive && !starting" class="session-start-picker study-start-picker" x-transition>
           <h2>Start a Study Session</h2>
 
-          <div class="picker-field">
-            <label for="session-type-select">Session Type</label>
-            <select id="session-type-select" x-model="sessionType" class="picker-select">
-              <option value="study">Study Session</option>
-              <option value="body_double">Body Double</option>
-            </select>
-          </div>
+          <!-- Session Type dropdown removed: Body Double is its own view now, not
+               a mode of the Study picker. Offering it here made one surface
+               pretend to be two, and the picker's own controls (course target,
+               transport) never applied to the body-double branch. sessionType
+               stays pinned to 'study' in the factory for the start payload. -->
 
           <div class="picker-field">
             <label for="target-kind-select">Study Target</label>
