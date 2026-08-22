@@ -44,6 +44,12 @@
        time — init() is lazy-triggered on the first speak() call. -->
   <script type="module" src="/tts-engine.js"></script>
 
+  <!-- Frontend module entry point. Assigns the extracted factories to window
+       so Alpine's x-data expressions, which evaluate in global scope, still
+       resolve them. Deferred like every module, so it runs before
+       DOMContentLoaded and therefore before Alpine starts. -->
+  <script type="module" src="/js/main.js"></script>
+
   <!-- HTMX + SSE extension (vendored for offline PWA) -->
   <script src="/vendor/js/htmx-2.0.4.min.js"></script>
   <script src="/vendor/js/htmx-ext-sse-2.2.2.js"></script>
@@ -2593,11 +2599,7 @@
     low:    { green: 15, amber: 30 },
   };
 
-  function energyBand(energy) {
-    if (energy >= 7) return 'high';
-    if (energy >= 4) return 'medium';
-    return 'low';
-  }
+  /* energyBand() -> js/lib/chunk-text.js (unit-tested in tests/js/) */
 
   /* ------------------------------------------------------------------
    * Generate panel — drives content generation jobs (U8).
@@ -3504,17 +3506,7 @@
    * but Kiro occasionally emits { content: [ { type: 'text', text } ] }
    * for multi-part responses. Handle both.
    * ------------------------------------------------------------------ */
-  function _extractChunkText(payload) {
-    if (!payload) return '';
-    const content = payload.content;
-    if (content && typeof content === 'object' && !Array.isArray(content)) {
-      return typeof content.text === 'string' ? content.text : '';
-    }
-    if (Array.isArray(content) && content.length > 0 && typeof content[0] === 'object') {
-      return typeof content[0].text === 'string' ? content[0].text : '';
-    }
-    return typeof payload.text === 'string' ? payload.text : '';
-  }
+  /* _extractChunkText() -> js/lib/chunk-text.js (unit-tested in tests/js/) */
 
   /* ------------------------------------------------------------------
    * Live agent console — xterm.js terminal for PTY transport, iframe
