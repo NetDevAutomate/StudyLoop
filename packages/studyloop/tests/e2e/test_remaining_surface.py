@@ -390,11 +390,13 @@ def test_terminal_proxy_degrades_when_ttyd_is_absent(env) -> None:
 
     This is the surviving full-stack coverage for `/terminal/{path:path}` after
     ADR-0004 step 2 deleted `tests/test_web_terminal.py` (every test in it drove
-    the retired `terminalPanel()` path). The route itself is NOT retired — the
-    `ttyd` transport still mounts an iframe through it via
-    `_mountLegacyIframe()` — so it needs to keep proving it survives real ASGI
-    serving, real config loading and the auth middleware, which is exactly what
-    an in-process `TestClient` call cannot show.
+    the retired `terminalPanel()` path). The route itself is NOT retired, but the
+    reason changed with ADR-0005: no browser surface mounts an iframe through it
+    any more (`_mountLegacyIframe()` is gone), and the `ttyd` transport survives
+    server-side only, behind `STUDYLOOP_TRANSPORT=ttyd`. So this is now the ONLY
+    full-stack coverage of the route, and it has to keep proving the route
+    survives real ASGI serving, real config loading and the auth middleware —
+    exactly what an in-process `TestClient` call cannot show.
 
     ttyd is not running in the harness, so the contract under test is the
     degradation: a clean 502 with an explanatory body, never a 500 traceback and

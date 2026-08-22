@@ -1,5 +1,12 @@
 # ADR-0004 — Unmount `terminalPanel()` without deleting it
 
+> **Partly superseded by [ADR-0005](./0005-retire-ttyd-browser-surface.md) (2026-08-22).** This ADR
+> names `_mountLegacyIframe()` as the single surviving ttyd code path. That
+> function has since been removed: the ttyd BROWSER surface is retired and the
+> `else` branch now renders an explicit error state. The `ttyd` server
+> transport, `/terminal/` and the step-2 plan for `terminalPanel()` are
+> unaffected and still stand.
+
 - **Status**: Proposed
 - **Date**: 2026-07-25
 - **Change**: `openspec/changes/body-double-own-agent-picker`

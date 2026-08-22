@@ -1607,7 +1607,6 @@
               <select id="bd-transport-select" class="picker-select" x-model="transport">
                 <option value="pty" x-text="'Browser terminal (' + $store.terminalEngine.renderer + ')'"></option>
                 <option value="acp">ACP (Agent Client Protocol)</option>
-                <option value="ttyd">Legacy terminal (ttyd iframe)</option>
               </select></label>
             <p id="bd-transport-hint-pty" class="picker-hint" x-show="transport === 'pty'"
                x-text="'Runs the agent in a PTY and paints it with ' + $store.terminalEngine.label + '.'"></p>
@@ -1705,11 +1704,6 @@
                      matters. The console stays MOUNTED either way, because its
                      init() is what registers the study-session-start listener. -->
                 <div x-ref="xtermMount" :class="sessionActive ? 'xterm-mount' : 'bd-xterm-idle'"></div>
-                <!-- Legacy ttyd path. The transport select still offers 'ttyd',
-                     so this has to exist or choosing it renders nothing. -->
-                <iframe :src="legacyTtydUrl || 'about:blank'" class="terminal-iframe"
-                        x-show="terminalMode === 'ttyd-iframe'"
-                        title="Agent terminal (ttyd)"></iframe>
               </div>
             </div>
           </section>
@@ -2205,7 +2199,6 @@
             <select id="transport-select" x-model="transport" class="picker-select">
               <option value="pty" x-text="'Browser terminal (' + $store.terminalEngine.renderer + ')'"></option>
               <option value="acp" x-show="selectedAgentSupportsAcp()">ACP (Agent Client Protocol)</option>
-              <option value="ttyd">Legacy terminal (ttyd iframe)</option>
             </select>
           </div>
           <p class="picker-hint" x-show="transport === 'pty'">
@@ -2480,19 +2473,16 @@
                 </button>
               </form>
             </div>
-
-            <!-- ttyd iframe (legacy fallback, when transport=ttyd) -->
-            <div class="embedded-terminal-panel"
-                 x-show="terminalMode === 'ttyd-iframe'" x-cloak>
+            <!-- No usable transport. Replaced the ttyd iframe fallback: an empty
+                 frame reads as a hang, so say what happened instead. -->
+            <div class="embedded-terminal-panel unavailable-panel"
+                 x-show="terminalMode === 'unavailable'" x-cloak>
               <div class="agent-console-toolbar">
-                <span class="agent-console-title">Agent Terminal (legacy)</span>
+                <span class="agent-console-title">Agent Terminal</span>
                 <span class="agent-console-state" x-text="status"></span>
-                <button class="agent-console-tool" @click="$store.settings.stopSpeaking()" title="Stop speaking">&#9632;</button>
               </div>
               <div class="embedded-terminal-content">
-                <iframe x-show="connected" :src="legacyTtydUrl" class="terminal-iframe"
-                        allow="clipboard-read; clipboard-write"></iframe>
-                <div x-show="!connected && statusMessage" class="terminal-unavailable">
+                <div class="terminal-unavailable">
                   <div x-text="statusMessage"></div>
                 </div>
               </div>
