@@ -2451,9 +2451,12 @@ function parkingPanel() {
          difference between usable and not. */
       if (wasEditing == null) return;
       requestAnimationFrame(() => {
-        const el = this.$root.querySelector(
-          `.parking-card[data-id="${wasEditing}"]`
-        );
+        /* $root can be undefined by the time this frame runs — the component may
+           have been torn down (a reload, or the panel closing). Reading through
+           it unguarded throws an uncaught pageerror, which the journey's
+           clean-console assertion catches. */
+        const root = this.$root || document;
+        const el = root.querySelector(`.parking-card[data-id="${wasEditing}"]`);
         if (el && typeof el.focus === 'function') el.focus();
       });
     },
@@ -2513,7 +2516,7 @@ function parkingPanel() {
          returned, and left the diagram unrendered with its data-src intact: no
          throw, no console output, nothing to see. $root is the component root
          and is scope-stable. */
-      await _renderMermaidPlaceholders(this.$root);
+      await _renderMermaidPlaceholders(this.$root || document);
     },
 
     _replaceItem(item) {
@@ -2856,7 +2859,7 @@ function notesPanel() {
       _mermaidInitForPalette();
       /* $root, not $el — $el resolves to the element the calling expression sits
          on (a tab button), whose subtree holds no placeholders. See 11f7862. */
-      await _renderMermaidPlaceholders(this.$root);
+      await _renderMermaidPlaceholders(this.$root || document);
     },
 
     insertNoteDiagram() {
@@ -3063,7 +3066,7 @@ function bodyDoubleView() {
       /* $root, NOT $el — $el resolves to whatever element the calling
          expression sits on (here the Preview button), whose subtree holds no
          placeholders. Same bug as the parking panel's, fixed in 11f7862. */
-      await _renderMermaidPlaceholders(this.$root);
+      await _renderMermaidPlaceholders(this.$root || document);
     },
 
     async saveNote() {
