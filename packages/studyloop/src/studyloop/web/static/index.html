@@ -303,6 +303,68 @@
         </div>
       </div>
 
+      <!-- ========================================================== -->
+      <!-- STUDY PLANS — nav button + the existing-plans list.        -->
+      <!-- The list MUST stay inside nav.sidebar: the journey test     -->
+      <!-- asserts el.closest('nav.sidebar') on [data-testid=         -->
+      <!-- "sidebar-plans"], so it cannot move to the content column.  -->
+      <!-- It reads the shared $store.plans that plansPanel()          -->
+      <!-- publishes into, because the sidebar and the content-column  -->
+      <!-- reader are sibling subtrees and cannot share one x-data.    -->
+      <!-- ========================================================== -->
+      <button class="sidebar-btn" data-testid="nav-study-plans"
+              :class="{ active: $store.nav.is('study-plans') }"
+              @click="$store.nav.go('study-plans')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Study Plans</span>
+      </button>
+
+      <div x-show="$store.nav.is('study-plans')" x-cloak
+           class="sidebar-plans" data-testid="sidebar-plans"
+           role="group" aria-label="Existing study plans">
+        <p class="sidebar-plans-title">Existing plans</p>
+
+        <!-- A refresh of an existing list gets a spinner line; a first load
+             does not, because the store's isEmpty is deliberately NOT gated on
+             `loading` and the empty state must not have to compete with it. -->
+        <p x-show="$store.plans?.loading && $store.plans?.hasPlans"
+           class="sidebar-plans-loading">Loading…</p>
+
+        <!-- Empty state. This is the FIRST screen a brand-new user meets, so
+             it names the next action instead of rendering a silent blank list. -->
+        <div class="sidebar-plans-empty" data-testid="sidebar-plans-empty"
+             x-show="$store.plans?.isEmpty">
+          <p class="sidebar-plans-empty-title">No plans yet</p>
+          <p class="sidebar-plans-empty-hint">
+            Open <strong>New plan</strong> and describe where you are and where
+            you want to get to, in your own words. The structure comes after.
+          </p>
+        </div>
+
+        <ul class="sidebar-plan-list">
+          <template x-for="plan in ($store.plans?.items || [])" :key="plan.plan_id">
+            <li>
+              <button class="sidebar-plan-item" type="button"
+                      :class="{ active: $store.plans?.isSelected?.(plan) }"
+                      :data-plan-id="plan.plan_id"
+                      @click="$store.nav.go('study-plans'); $store.plans?.select(plan)">
+                <span class="sidebar-plan-name" x-text="plan.title"></span>
+                <span class="sidebar-plan-meta">
+                  <span class="plan-status" :class="'plan-status-' + (plan.status || 'draft')"
+                        x-text="plan.status"></span>
+                  <span class="sidebar-plan-count"
+                        x-text="(plan.milestone_done ?? 0) + '/' + (plan.milestone_total ?? 0)"></span>
+                </span>
+                <span class="sidebar-plan-bar" aria-hidden="true">
+                  <span class="sidebar-plan-bar-fill"
+                        :style="'width:' + (plan.progress_pct ?? 0) + '%'"></span>
+                </span>
+              </button>
+            </li>
+          </template>
+        </ul>
+      </div>
+
       <!-- Course Explorer toggle — opens the 3rd-column panel -->
       <button class="sidebar-btn explorer-sidebar-btn"
               :class="{ active: $store.explorer.open }"
@@ -2521,6 +2583,246 @@
       </div>
 
       <!-- ============================================================ -->
+      <!-- STUDY PLANS VIEW — plan reader, interview form, checkpoints  -->
+      <!--                                                              -->
+      <!-- Every binding below is read-only over state plansPanel()      -->
+      <!-- (js/components/plans-panel.js) forwards into this scope:      -->
+      <!--   getters  progressText milestones blockers recommendations   -->
+      <!--            verdict headline hasPlans isEmpty                  -->
+      <!--   fields   markdownHtml creating form evaluation evalPhase    -->
+      <!--            saving evaluating recording error loading          -->
+      <!--   selected is FLATTENED: title status milestone_done          -->
+      <!--            milestone_total progress_pct readiness …           -->
+      <!--   methods  startCreate cancelCreate submitPlan evaluate       -->
+      <!--            recordCheckpoint toggleMilestone(i) activate       -->
+      <!--            select(idOrObj) isSelected(idOrObj)                -->
+      <!--                                                              -->
+      <!-- The sidebar list reads the same names off $store.plans,       -->
+      <!-- because it lives in nav.sidebar and cannot join this scope.    -->
+      <!--                                                              -->
+      <!-- markdownHtml is ALREADY rendered and DOMPurify-sanitised, and -->
+      <!-- an after-render hook drives the mermaid pass off it — so the   -->
+      <!-- template must not call renderMarkdown() itself.               -->
+      <!-- init() is auto-invoked by Alpine from x-data, so there is      -->
+      <!-- deliberately no x-init here.                                   -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('study-plans')" x-cloak
+           x-data="plansPanel()">
+        <div class="plans-panel">
+          <header class="body-double-header">
+            <h2>Study Plans</h2>
+            <p class="text-muted">
+              One plan at a time, in Markdown you can read and edit. Each plan is
+              checked against your real study history at the start of a session,
+              mid-session, and once it ends.
+            </p>
+          </header>
+
+          <div class="plan-error form-error" data-testid="plan-error"
+               role="alert" aria-live="assertive"
+               x-show="error" x-text="error"></div>
+
+          <!-- ---------------- Create ---------------- -->
+          <div class="plans-toolbar">
+            <button class="toggle-btn" type="button" data-testid="plan-new"
+                    @click="startCreate()">New plan</button>
+            <button class="link-btn" type="button" x-show="creating"
+                    @click="cancelCreate()">Cancel</button>
+            <span class="mastery-copy-status" x-show="loading">Loading…</span>
+          </div>
+
+          <section class="plan-create" data-testid="plan-create-form" x-show="creating">
+            <h3 class="plan-create-heading">Start from where you actually are</h3>
+
+            <!-- PRIMARY field.  A blank five-field form asks the learner for a
+                 decomposition they do not have yet — the exact paralysis this
+                 tool exists to prevent.  Recognising and correcting a draft is
+                 far cheaper than recalling and synthesising one, so the dump
+                 comes first and the structured fields are the editable RESULT.
+                 A plain textarea is all macOS dictation needs. -->
+            <label class="plan-field plan-field-primary">
+              <span class="plan-field-label">Where are you now, and where do you want to get to?</span>
+              <span class="plan-field-hint">
+                Type it or dictate it — no structure needed. What you are aiming
+                for, what you have already tried, and where you get stuck. It is
+                kept with the plan, and the study-plan agent can turn it into the
+                fields below for you to edit.
+              </span>
+              <textarea class="plan-braindump" rows="7"
+                        data-testid="plan-field-braindump"
+                        x-model="form.braindump"
+                        placeholder="I can read a Glue job someone else wrote, but I have never built one. I want to own the nightly pipeline. I got lost in job bookmarks and gave up."></textarea>
+            </label>
+
+            <div class="plan-structured">
+              <p class="plan-structured-title">The plan itself</p>
+              <p class="plan-structured-note text-muted">
+                These five fields build the plan document. Nothing here has to be
+                right first time — edit whatever comes back.
+              </p>
+
+              <label class="plan-field">
+                <span class="plan-field-label">Title</span>
+                <input type="text" data-testid="plan-field-title" x-model="form.title"
+                       autocomplete="off" spellcheck="false"
+                       placeholder="Ship a Glue ETL job">
+              </label>
+
+              <label class="plan-field">
+                <span class="plan-field-label">Why — what changes once you can do this?</span>
+                <textarea rows="2" data-testid="plan-field-why" x-model="form.why"
+                          placeholder="Own the nightly customer-events pipeline without pairing."></textarea>
+              </label>
+
+              <label class="plan-field">
+                <span class="plan-field-label">Success looks like <small>(one per line)</small></span>
+                <textarea rows="3" data-testid="plan-field-success" x-model="form.success"
+                          placeholder="Deploy a Glue job unaided&#10;Explain the job bookmark to a colleague"></textarea>
+              </label>
+
+              <label class="plan-field">
+                <span class="plan-field-label">Topics <small>(one per line)</small></span>
+                <textarea rows="2" data-testid="plan-field-topics" x-model="form.topics"
+                          placeholder="data-engineering&#10;python"></textarea>
+              </label>
+
+              <label class="plan-field">
+                <span class="plan-field-label">
+                  Milestones
+                  <small>(one per line — add <code>(concepts: a, b)</code> to link evidence)</small>
+                </span>
+                <textarea rows="4" data-testid="plan-field-milestones" x-model="form.milestones"
+                          placeholder="Understand Glue job anatomy (concepts: glue job, job bookmark)"></textarea>
+              </label>
+            </div>
+
+            <div class="plans-toolbar">
+              <button class="toggle-btn" type="button" data-testid="plan-create-submit"
+                      :disabled="saving" @click="submitPlan()"
+                      x-text="saving ? 'Creating…' : 'Create plan'">Create plan</button>
+            </div>
+          </section>
+
+          <!-- The content column's own first-run state. The sidebar carries the
+               required sidebar-plans-empty; this stops the main column being a
+               blank rectangle on the very first screen a new learner sees. No
+               testid: the spec's list is closed. -->
+          <div class="plans-empty-state" x-show="isEmpty && !creating && !selected">
+            <p class="plans-empty-state-title">No study plans yet</p>
+            <p class="plans-empty-state-body">
+              A plan is one thing you are trying to become able to do, broken into
+              milestones you can tick off. Start with <strong>New plan</strong> and
+              describe the situation in your own words — you do not have to know the
+              steps yet, that is what the plan is for.
+            </p>
+          </div>
+
+          <!-- ---------------- Reader ---------------- -->
+          <!-- startCreate() clears `selected`, so this cannot show a stale plan
+               behind the open create form. -->
+          <section class="plan-detail" data-testid="plan-detail" x-show="selected">
+            <header class="plan-detail-header">
+              <h3 class="plan-detail-title" data-testid="plan-detail-title"
+                  x-text="selected?.title || ''"></h3>
+              <div class="plan-detail-meta">
+                <!-- The status pill holds the BARE status word: a test asserts it
+                     equals 'draft' after strip + lower, so any label stays
+                     outside this element. -->
+                <span class="plan-status" data-testid="plan-detail-status"
+                      :class="'plan-status-' + (selected?.status || 'draft')"
+                      x-text="selected?.status || ''"></span>
+                <span class="plan-progress" data-testid="plan-detail-progress"
+                      x-text="progressText"></span>
+              </div>
+              <span class="plan-progress-bar" aria-hidden="true">
+                <span class="plan-progress-bar-fill"
+                      :style="'width:' + (selected?.progress_pct ?? 0) + '%'"></span>
+              </span>
+            </header>
+
+            <div class="plans-toolbar">
+              <span class="plan-toolbar-label">Checkpoint</span>
+              <button class="toggle-btn" type="button" data-testid="plan-eval-start"
+                      @click="evaluate('start')">Start</button>
+              <button class="toggle-btn" type="button" data-testid="plan-eval-mid"
+                      @click="evaluate('mid')">Mid</button>
+              <button class="toggle-btn" type="button" data-testid="plan-eval-end"
+                      @click="evaluate('end')">End</button>
+              <button class="link-btn" type="button" data-testid="plan-activate"
+                      @click="activate()">Activate</button>
+            </div>
+
+            <!-- Why a draft cannot go active yet.  Never swallowed: the refusal
+                 has to say what is missing. -->
+            <div class="plan-blockers" data-testid="plan-blockers"
+                 x-show="(blockers || []).length > 0">
+              <p class="plan-section-title">Blocking activation</p>
+              <ul class="plan-blocker-list">
+                <template x-for="(item, i) in (blockers || [])" :key="i">
+                  <li x-text="item"></li>
+                </template>
+              </ul>
+            </div>
+
+            <!-- Evaluation result -->
+            <div class="plan-evaluation" data-testid="plan-evaluation"
+                 x-show="evaluation">
+              <div class="plan-evaluation-head">
+                <span class="plan-verdict" data-testid="plan-verdict"
+                      :class="'plan-verdict-' + (verdict || 'unknown')"
+                      x-text="verdict || ''"></span>
+                <!-- evalPhase is set from the RESPONSE; pendingPhase is the
+                     optimistic one and would read wrong here. -->
+                <span class="plan-eval-phase" data-testid="plan-eval-phase"
+                      x-text="evalPhase ? evalPhase + ' checkpoint' : ''"></span>
+                <button class="link-btn" type="button" data-testid="plan-record-checkpoint"
+                        :disabled="recording" @click="recordCheckpoint()">Record checkpoint</button>
+                <span class="mastery-copy-status" data-testid="plan-record-status"
+                      role="status" aria-live="polite"
+                      x-text="recordStatus"></span>
+              </div>
+              <p class="plan-headline" data-testid="plan-headline" x-text="headline || ''"></p>
+              <p class="plan-section-title">Do next</p>
+              <ol class="plan-recommendations" data-testid="plan-recommendations">
+                <template x-for="(rec, i) in (recommendations || [])" :key="i">
+                  <li x-text="rec"></li>
+                </template>
+              </ol>
+            </div>
+
+            <!-- Milestones — the interactive layer over the document.  Native
+                 checkboxes on purpose: a custom control that hides the input
+                 stops being clickable.  :checked + @click, never x-model — the
+                 server owns this state and must survive a reload. -->
+            <div class="plan-milestones" x-show="(milestones || []).length > 0">
+              <p class="plan-section-title">Milestones</p>
+              <ul class="plan-milestone-list">
+                <template x-for="(m, i) in (milestones || [])" :key="i">
+                  <li class="plan-milestone">
+                    <label class="plan-milestone-label">
+                      <input type="checkbox" class="plan-milestone-check"
+                             :data-testid="'plan-milestone-' + i"
+                             :checked="m.done"
+                             @click="toggleMilestone(i)">
+                      <span class="plan-milestone-title" :class="{ 'plan-milestone-done': m.done }"
+                            x-text="m.title"></span>
+                      <small class="text-muted" x-show="(m.concepts || []).length > 0"
+                             x-text="'(' + (m.concepts || []).join(', ') + ')'"></small>
+                    </label>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <!-- The plan document.  markdownHtml is pre-rendered and sanitised;
+                 .acp-message-final is the app's shared Markdown prose class. -->
+            <article class="plan-document acp-message-final" data-testid="plan-markdown"
+                     x-html="markdownHtml"></article>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
       <!-- SETTINGS VIEW — LLM Providers admin                          -->
       <!-- ============================================================ -->
       <div x-show="$store.nav.is('settings')" x-cloak
@@ -2665,6 +2967,17 @@
     });
 
     /* ----------------------------------------------------------------
+     * Alpine.store('plans') is registered by plansPanel()
+     * (js/components/plans-panel.js) — it owns the plan data and the
+     * left-pane list reads it, because the sidebar and the
+     * content-column reader are sibling subtrees that cannot share one
+     * x-data scope.  Deliberately NOT registered here: a second
+     * registration would silently replace whichever half won the race.
+     * The sidebar bindings use optional chaining so they render blank,
+     * not broken, before that module has installed the store.
+     * ---------------------------------------------------------------- */
+
+    /* ----------------------------------------------------------------
      * Navigation store — drives sidebar + view switching
      * ---------------------------------------------------------------- */
     Alpine.store('nav', {
@@ -2672,7 +2985,7 @@
 
       init() {
         const hash = window.location.hash.slice(1);
-        const valid = ['today', 'flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'settings', 'course-reader'];
+        const valid = ['today', 'flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'study-plans', 'settings', 'course-reader'];
         if (hash && valid.includes(hash)) this.current = hash;
       },
 

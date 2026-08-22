@@ -4315,3 +4315,487 @@ body[data-palette="everforest"] {
   gap: 6px;
   padding: 8px;
 }
+
+/* ==========================================================================
+ * Study Plans — sidebar list + content-column reader.
+ *
+ * Deliberately thin: the panel shell reuses .body-double-header (panel
+ * heading), .toggle-btn / .link-btn (actions), .form-error (error text),
+ * .text-muted, .mastery-copy-status (inline status text) and
+ * .acp-message-final (the app's shared rendered-Markdown prose styles).
+ * Only what those cannot express is defined here, and every colour comes
+ * from a palette token so both themes and the theme packs follow.
+ * ========================================================================== */
+
+/* ---- Sidebar: the existing-plans list (lives inside nav.sidebar) ---- */
+
+.sidebar-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 4px 4px;
+  margin: 2px 0 6px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-plans-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 0 8px;
+}
+
+.sidebar-plans-loading {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
+/* The empty state is the first screen a brand-new user meets, so it gets
+   real presence in the rail rather than one muted line. */
+.sidebar-plans-empty {
+  background: var(--bg-hover);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  margin: 0 4px;
+}
+
+.sidebar-plans-empty-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.sidebar-plans-empty-hint {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.sidebar-plans-empty-hint strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar-plan-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-plan-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-plan-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.sidebar-plan-item.active {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.sidebar-plan-name {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.sidebar-plan-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.sidebar-plan-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-plan-bar,
+.plan-progress-bar {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.sidebar-plan-bar-fill,
+.plan-progress-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+/* ---- Status pill — shared by the sidebar list and the reader header ---- */
+
+.plan-status {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.plan-status-draft { color: var(--text-muted); }
+.plan-status-active { color: var(--green); border-color: var(--green); }
+.plan-status-paused { color: var(--yellow); border-color: var(--yellow); }
+.plan-status-complete { color: var(--accent); border-color: var(--accent); }
+.plan-status-abandoned { color: var(--red); border-color: var(--red); }
+
+/* ---- Panel shell — same measure and padding as .mastery-panel ---- */
+
+.plans-panel {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.plans-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.plan-toolbar-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.plan-error {
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.plan-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* ---- First-run state for the content column ---- */
+
+.plans-empty-state {
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 620px;
+}
+
+.plans-empty-state-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.plans-empty-state-body {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.plans-empty-state-body strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---- Create form ---- */
+
+.plan-create {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.plan-create-heading {
+  font-size: 1.1rem;
+  margin-bottom: 14px;
+}
+
+.plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.plan-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.plan-field-label small {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.plan-field-hint {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.plan-field input,
+.plan-field textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.plan-field input:focus,
+.plan-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* The brain dump is the primary input, and it has to look like it: a blank
+   five-field form asks for a decomposition the learner does not have yet. */
+.plan-field-primary {
+  background: var(--bg-hover);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.plan-field-primary .plan-field-label {
+  font-size: 0.95rem;
+}
+
+.plan-braindump {
+  font-size: 0.95rem;
+}
+
+.plan-structured {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.plan-structured-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.plan-structured-note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+/* ---- Reader ---- */
+
+.plan-detail-header {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.plan-detail-title {
+  font-size: 1.35rem;
+  margin-bottom: 6px;
+}
+
+.plan-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+}
+
+.plan-progress {
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-progress-bar {
+  max-width: 320px;
+}
+
+.plan-blockers,
+.plan-evaluation,
+.plan-milestones {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.plan-blockers {
+  border-left: 3px solid var(--yellow);
+}
+
+.plan-blocker-list,
+.plan-recommendations {
+  margin: 0 0 0 20px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.plan-evaluation-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.plan-verdict {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.plan-verdict-on-track { color: var(--green); border-color: var(--green); }
+.plan-verdict-at-risk { color: var(--yellow); border-color: var(--yellow); }
+.plan-verdict-stalled { color: var(--red); border-color: var(--red); }
+.plan-verdict-complete { color: var(--accent); border-color: var(--accent); }
+.plan-verdict-unknown { color: var(--text-muted); }
+
+.plan-eval-phase {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.plan-headline {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* ---- Milestones ---- */
+
+.plan-milestone-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.plan-milestone-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Native checkbox on purpose — a custom control that hides the input stops
+   being clickable, for a pointer and for an assistive tech alike. */
+.plan-milestone-check {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Deliberately not flex-grow: growing pushes the concept list to the far edge
+   of the card, where it reads as unrelated to the milestone it belongs to. */
+.plan-milestone-title {
+  flex: 0 1 auto;
+}
+
+.plan-milestone-done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* ---- The plan document (prose comes from .acp-message-final) ---- */
+
+.plan-document {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  overflow-x: auto;
+}
+
+/* .acp-message-final carries no table rules — the checkpoint table needs
+   them, so mirror the parking-panel preview's treatment. */
+.plan-document table {
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 0.88rem;
+}
+
+.plan-document th,
+.plan-document td {
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  text-align: left;
+}
+
+.plan-document th {
+  background: var(--bg-hover);
+  font-weight: 650;
+}
+
+.plan-document .mermaid-diagram { margin: 10px 0; }
+
+@media (max-width: 900px) {
+  .plans-panel { padding: 18px; }
+}
