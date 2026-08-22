@@ -1631,14 +1631,24 @@
                  the console exists whenever this view is the current one, which
                  is exactly when it can be needed, and never while the Study view
                  is on screen. -->
-            <template x-if="$store.nav.is('body-double')">
             <div class="bd-console-panel">
               <div class="session-terminal-area agent-console" x-data="liveAgentConsole('body-double')">
                 <div class="agent-console-status">
                   <span class="status-dot" :class="statusDot"></span>
                   <span x-text="status"></span>
                 </div>
-                <div class="xterm-mount" x-ref="xtermMount"></div>
+                <!-- The .xterm-mount class is applied ONLY while a Body Double
+                     session is live. The class is not load-bearing for the
+                     terminal itself (the console mounts via x-ref), but it IS a
+                     global test selector: this element sits earlier in the
+                     document than the Study console, so carrying the class
+                     unconditionally made it the first match for
+                     document.querySelector('.xterm-mount') and shadowed the real
+                     terminal in 27 tests. Body Double's own tests scope to
+                     .bd-console-panel .xterm-mount, so they still match when it
+                     matters. The console stays MOUNTED either way, because its
+                     init() is what registers the study-session-start listener. -->
+                <div x-ref="xtermMount" :class="sessionActive ? 'xterm-mount' : 'bd-xterm-idle'"></div>
                 <!-- Legacy ttyd path. The transport select still offers 'ttyd',
                      so this has to exist or choosing it renders nothing. -->
                 <iframe :src="legacyTtydUrl || 'about:blank'" class="terminal-iframe"
@@ -1646,7 +1656,6 @@
                         title="Agent terminal (ttyd)"></iframe>
               </div>
             </div>
-            </template>
           </section>
 
           <!-- CAPTURE: note or park, without leaving the session. -->
