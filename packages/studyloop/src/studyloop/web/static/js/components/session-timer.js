@@ -37,7 +37,31 @@
  *     never explicitly initializes them — they are relied upon to be
  *     `undefined` (falsy) on the object returned by the factory, since
  *     no property of that name is declared in the initial state block.
+ *   - `sessionActive` means "a session exists AND THIS VIEW OWNS IT", not
+ *     merely "a session exists". A live session whose `origin` is another
+ *     surface's leaves it false and populates `conflictSession` instead, so
+ *     the picker stays up with a recovery block rather than adopting a PTY
+ *     another console is already attached to.
  * ------------------------------------------------------------------ */
+
+/* This view's own origin. A live session whose origin differs is NOT ours to
+   adopt: the guard exists so two consoles never attach to one PTY. */
+const OWN_ORIGIN = 'study';
+
+/* Origin -> the surface's human name, used verbatim in the picker's error text
+   so the learner is told WHICH view holds the session rather than being left
+   to guess (and to keep clicking a Start that can only 409). */
+const CONFLICT_OWNER_LABELS = {
+  study: 'Study Session',
+  'body-double': 'Body Double',
+};
+
+/* Origin -> the nav route that shows that surface. */
+const CONFLICT_OWNER_ROUTES = {
+  study: 'study-session',
+  'body-double': 'body-double',
+};
+
 export function sessionTimer() {
     return {
       // Timer state
@@ -72,6 +96,25 @@ export function sessionTimer() {
       studyOptions: { topics: [], vendors: [], courses: [], lessons: [] },
       starting: false,
       startError: '',
+
+      /* Recovery state for a live session this view does not own — or for one
+         that 409'd our own Start. `sessionActive` means "a session exists AND
+         THIS VIEW OWNS IT"; a foreign session therefore leaves it false, the
+         picker stays up, and these fields give that picker its levers:
+           conflictSession    the blocking session (normalised, see
+                              _conflictPayload) or null when there is none
+           conflictOwnerLabel the owning surface's name ('Body Double')
+           conflictIsOwn      true when the blocking session's origin is OURS,
+                              i.e. the only case where reattach is offerable
+         `confirmingEnd` (declared with the timer state above) doubles as the
+         end-dialog flag for the recovery End, so there is one dialog, not two. */
+      conflictSession: null,
+      conflictOwnerLabel: '',
+      conflictIsOwn: false,
+      /* Monotonic, mirroring reviewApp's _liveSessionEpoch: bumped whenever the
+         user acts on the conflict, so an /api/session/state response that was
+         already in flight cannot overwrite the newer state. */
+      _conflictEpoch: 0,
 
       energyBandLabel() {
         if (this.energy >= 7) return 'High energy';
@@ -121,7 +164,12 @@ export function sessionTimer() {
 
         try {
           const state = await statePromise;
-          if (state.study_session_id && state.mode !== 'ended') {
+          const live = !!state.study_session_id && state.mode !== 'ended';
+          /* An ABSENT origin means 'study': /api/session/state applies exactly
+             that default server-side (setdefault), so the two must not diverge
+             here or a legacy session would read as foreign to its own view. */
+          const origin = (live && state.origin) || OWN_ORIGIN;
+          if (live && origin === OWN_ORIGIN) {
             this.energy = state.energy || 5;
             this.topic = state.topic || 'Study Session';
             this.startTime = state.start_time
@@ -130,6 +178,16 @@ export function sessionTimer() {
             this.sessionActive = true;
             this.tick();
             this.interval = setInterval(() => this.tick(), 1000);
+          } else if (live) {
+            /* Foreign origin — refuse to adopt (that guard is why two consoles
+               never share a PTY) and do NOT set sessionActive, so the picker
+               renders. But a picker in this state can ONLY 409, so name the
+               owning surface and offer both levers up front rather than after
+               the learner has been refused by a Start they had no reason to
+               expect would fail. */
+            this._setConflict(this._conflictPayload(state), origin);
+            this.startError = this._foreignConflictMessage(this.conflictSession);
+            this.topic = 'No active session';
           } else {
             this.topic = 'No active session';
           }
@@ -173,6 +231,10 @@ export function sessionTimer() {
               energy: this.energy,
               agent: this.agent,
               transport: this.transport,
+              /* Stated, not inferred. The server defaults a missing origin to
+                 'study', but the Body Double twin sends its own origin
+                 explicitly and ownership is now load-bearing on both sides. */
+              origin: OWN_ORIGIN,
             }),
           });
           /* Parse defensively: a 500 with an HTML/plain body must NOT masquerade
@@ -182,6 +244,37 @@ export function sessionTimer() {
           let data = {};
           try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
           if (!res.ok) {
+            /* 409 — the slot is held. The body has carried the blocking
+               session's id and reattach_url since the WS grace window landed;
+               nothing ever consumed them, which is precisely what turned this
+               refusal into a dead end. Consume them now. */
+            if (res.status === 409 && data.study_session_id) {
+              /* Origin resolution, in priority order:
+                 1. a conflict we ALREADY hold for this same session id knows
+                    the real origin (init() read it from /session/state);
+                 2. otherwise assume it is ours — the 409 body carries no
+                    origin, and a Start that races our own other tab is the
+                    common case and the one reattach exists for;
+                 3. then CONFIRM via /session/state, which does echo origin,
+                    and downgrade to the foreign (no-reattach) form if it
+                    disagrees. Skipping that confirmation would let this view
+                    adopt another surface's PTY — the exact thing the origin
+                    guard forbids. */
+              const knownOrigin = (this.conflictSession
+                && this.conflictSession.study_session_id === data.study_session_id
+                && this.conflictSession.origin) || OWN_ORIGIN;
+              this._setConflict(this._conflictPayload(data), knownOrigin);
+              this.startError = this.conflictIsOwn
+                ? (data.error
+                  || 'A session is already active. Reattach to it, or end it first.')
+                : this._foreignConflictMessage(this.conflictSession);
+              this.starting = false;
+              /* Deliberately not awaited: the error and both levers must paint
+                 now, not one round-trip later. Staleness is handled by the
+                 epoch guard inside, not by ordering. */
+              if (this.conflictIsOwn) this._syncConflictOrigin(data.study_session_id);
+              return;
+            }
             /* §1.5b returns structured 503 with install_hint; surface it verbatim.
                For a non-JSON error body, fall back to the HTTP status + snippet. */
             if (data.install_hint) {
@@ -204,6 +297,9 @@ export function sessionTimer() {
         this.topic = topic;
         this.startTime = new Date();
         this.sessionActive = true;
+        /* We own the slot now, so any conflict block from a previous refusal is
+           stale — clearing it here keeps the two from ever being true at once. */
+        this._clearConflict();
         this.starting = false;
         this.elapsed = 0;
         this.tick();
@@ -234,7 +330,11 @@ export function sessionTimer() {
         // In-page confirm, NOT native confirm(): Chrome can auto-dismiss
         // native dialogs while the embedded ttyd terminal iframe holds
         // focus, which made agent sessions impossible to end.
-        if (!this.sessionActive) return;
+        //
+        // A conflict counts as something to end even though we own no session:
+        // that is the ONE state where the learner needs End and has no session
+        // of their own to end it from.
+        if (!this.sessionActive && !this.conflictSession) return;
         this.confirmingEnd = true;
       },
 
@@ -269,7 +369,13 @@ export function sessionTimer() {
 
       async confirmEndSession() {
         this.confirmingEnd = false;
-        if (!this.sessionActive) return;
+        if (!this.sessionActive) {
+          /* No session of our own, but one we do not own is blocking Start: the
+             dialog was opened by the picker's recovery End, so honour the
+             confirmation here too instead of dropping the click. */
+          if (this.conflictSession) await this._releaseConflictSession();
+          return;
+        }
         try {
           await fetch('/api/session/end', { method: 'POST' });
         } catch { /* best effort */ }
@@ -279,6 +385,175 @@ export function sessionTimer() {
         this.topic = 'Session ended';
         this.topicInput = '';
         this.selectedTopic = '';
+      },
+
+      /* ---- recovery from a session this view does not own -------------- */
+
+      /* Route to the surface that DOES own the live session. Sending the
+         learner into a view that can only 409 them is the closed loop this
+         whole block exists to break. */
+      openConflictOwner() {
+        const origin = (this.conflictSession && this.conflictSession.origin) || OWN_ORIGIN;
+        const route = CONFLICT_OWNER_ROUTES[origin] || CONFLICT_OWNER_ROUTES[OWN_ORIGIN];
+        const nav = window.Alpine && window.Alpine.store ? window.Alpine.store('nav') : null;
+        if (nav && typeof nav.go === 'function') nav.go(route);
+      },
+
+      /* End the blocking session, releasing the slot so Start can succeed.
+         TWO-PHASE on purpose: killing a live agent is not undoable, and the
+         picker's End button and the confirm dialog's Yes may both be wired
+         here, so the first call only raises the in-page dialog and the second —
+         made with the dialog already up — performs the release. */
+      async endConflictSession() {
+        if (!this.conflictSession) return;
+        if (!this.confirmingEnd) {
+          this.confirmingEnd = true;
+          return;
+        }
+        await this._releaseConflictSession();
+      },
+
+      /* Adopt the LIVE session instead of starting a new one. Only legal when
+         the session is ours (`conflictIsOwn`) — the server holds a detached
+         session through the grace window, so the id in reattach_url still
+         resolves to a running PTY. */
+      reattachConflictSession() {
+        const session = this.conflictSession;
+        if (!session || !this.conflictIsOwn) return;
+        const sessionId = session.study_session_id;
+        const wsUrl = this._conflictWsUrl(session);
+        if (!sessionId || !wsUrl) return;
+        /* Newer information than anything in flight: drop a late state read. */
+        this._conflictEpoch += 1;
+        this.topic = session.topic || 'Study Session';
+        this.energy = session.energy || this.energy;
+        this.startTime = session.start_time ? new Date(session.start_time) : new Date();
+        this.sessionActive = true;
+        this.starting = false;
+        this._clearConflict();
+        clearInterval(this.interval);
+        this.tick();
+        this.interval = setInterval(() => this.tick(), 1000);
+        this.$nextTick(() => {
+          window.dispatchEvent(new CustomEvent('study-session-start', {
+            detail: {
+              topic: this.topic,
+              // Origin-scoped: the Body Double console ignores this (ADR-0002).
+              origin: OWN_ORIGIN,
+              energy: this.energy,
+              sessionType: this.sessionType,
+              targetKind: this.targetKind,
+              targetPath: null,
+              agent: session.agent || this.agent || null,
+              resolvedAgent: session.agent || this.agent || null,
+              studySessionId: sessionId,
+              transport: session.transport || this.transport,
+              wsUrl,
+              personaText: null,
+              /* Marks this as an ADOPTION, not a fresh start: consumers must
+                 not replay a persona turn into a conversation already running. */
+              reattached: true,
+            },
+          }));
+        });
+      },
+
+      /* The actual release. Separate from endConflictSession() so the confirm
+         dialog can call it directly without re-entering the two-phase gate. */
+      async _releaseConflictSession() {
+        this.confirmingEnd = false;
+        const epoch = ++this._conflictEpoch;
+        try {
+          await fetch('/api/session/end', { method: 'POST' });
+        } catch { /* best effort — a stuck conflict block is worse than a lost error */ }
+        if (epoch !== this._conflictEpoch) return;
+        this._clearConflict();
+        this.starting = false;
+        this.topic = 'No active session';
+      },
+
+      /* Normalise a conflicting session from either source — the 409 body or
+         /api/session/state — down to the fields this block reads. The state
+         body also carries the topics/parking panels; keeping them would drag
+         two lists through Alpine's proxy on every conflict read for no reader. */
+      _conflictPayload(source) {
+        const src = source || {};
+        return {
+          study_session_id: src.study_session_id || null,
+          topic: src.topic || null,
+          agent: src.agent || null,
+          energy: src.energy || null,
+          start_time: src.start_time || src.started_at || null,
+          transport: src.transport || null,
+          detached: !!src.detached,
+          reattach_url: src.reattach_url || null,
+        };
+      },
+
+      /* Single writer for all three conflict fields, so the label and the
+         is-own flag can never drift from the session they describe. An
+         unrecognised origin falls back to ours, matching the server's own
+         setdefault rather than inventing a third state. */
+      _setConflict(session, origin) {
+        const resolved = CONFLICT_OWNER_LABELS[origin] ? origin : OWN_ORIGIN;
+        this.conflictSession = { ...session, origin: resolved };
+        this.conflictIsOwn = resolved === OWN_ORIGIN;
+        this.conflictOwnerLabel = CONFLICT_OWNER_LABELS[resolved];
+      },
+
+      _clearConflict() {
+        this.conflictSession = null;
+        this.conflictOwnerLabel = '';
+        this.conflictIsOwn = false;
+        this.startError = '';
+      },
+
+      /* Names the owning surface in the text itself. "A session is already
+         active" without saying WHOSE is the difference between a clear refusal
+         and a dead end. */
+      _foreignConflictMessage(session) {
+        const subject = session && session.topic ? ` on "${session.topic}"` : '';
+        return `A ${this.conflictOwnerLabel} session is already active${subject}. `
+          + `Open ${this.conflictOwnerLabel} to use it, or end it to start here.`;
+      },
+
+      _conflictWsUrl(session) {
+        const id = session && session.study_session_id;
+        if (!id) return null;
+        /* Prefer the server's own reattach_url — both the 409 body and
+           /session/state carry it, and it already contains the session id,
+           which is what /api/session/ws keys the resumed PTY on. The fallback
+           mirrors the server's exact format for the same reason; the id is
+           server-issued and must reach the socket unescaped. */
+        const url = session.reattach_url || `/api/session/ws?study_session_id=${id}`;
+        return String(url).includes(String(id))
+          ? url
+          : `/api/session/ws?study_session_id=${id}`;
+      },
+
+      /* Confirm an ASSUMED-ours conflict against /api/session/state, the only
+         source that echoes `origin`, and downgrade to the foreign form if it
+         disagrees. Also upgrades the payload with the fields a 409 body lacks
+         (start_time, energy, transport), so an adopted session's elapsed clock
+         continues from its real start rather than restarting at zero. */
+      async _syncConflictOrigin(sessionId) {
+        const epoch = this._conflictEpoch;
+        let state = null;
+        try {
+          state = await fetch('/api/session/state').then((res) => (res.ok ? res.json() : null));
+        } catch { return; /* keep the optimistic reading — no worse than before */ }
+        /* A reattach or an end since this went out is NEWER information than
+           the response; letting it land would resurrect a cleared conflict. */
+        if (epoch !== this._conflictEpoch) return;
+        if (!state || !state.study_session_id || state.study_session_id !== sessionId) return;
+        if (!this.conflictSession
+          || this.conflictSession.study_session_id !== sessionId) return;
+        const payload = this._conflictPayload(state);
+        payload.reattach_url = payload.reattach_url || this.conflictSession.reattach_url;
+        this._setConflict(payload, state.origin || OWN_ORIGIN);
+        if (!this.conflictIsOwn) {
+          this.startError = this._foreignConflictMessage(this.conflictSession);
+        }
       },
 
       selectOption(kind, value) {
