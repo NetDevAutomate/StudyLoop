@@ -66,11 +66,13 @@ BRAIN_DUMP = (
     "I'm working through the ArjanCodes path: Next-Level Python first, then "
     "Software Design Mastery 1/3 | CORE DESIGNER, then 2/3 | SYSTEM DESIGNER, "
     "and 3/3 | MASTER DESIGNER once it's released. After those I want The "
-    "Software Designer Mindset and Pythonic Patterns. Alongside the courses I "
-    "need agentic workflows with orchestration, knowledge graphs, ontology "
-    "services, and Python testing/TDD — those aren't courses, they're things "
-    "I'll be expected to build. I don't know how to break this into steps yet, "
-    "which is why I'm writing it here instead of filling in a form."
+    "Software Designer Mindset and Pythonic Patterns. I also own Domain "
+    "Modeling Fundamentals and Design Wins and haven't decided where they fit. "
+    "Alongside the courses I need agentic workflows with orchestration, "
+    "knowledge graphs, ontology services, and Python testing/TDD — those aren't "
+    "courses, they're things I'll be expected to build. I don't know how to "
+    "break this into steps yet, which is why I'm writing it here instead of "
+    "filling in a form."
 )
 
 PLAN_TITLE = "From writing Python to designing software"
@@ -79,25 +81,33 @@ PLAN_WHY = (
     "so I can be trusted with a service end to end."
 )
 PLAN_TOPICS = (
-    "Next-Level Python, software design principles, Pythonic patterns, "
-    "agentic workflows with orchestration, knowledge graphs, ontology services, "
-    "Python testing and TDD"
+    "Next-Level Python, software design principles, domain modelling, "
+    "Pythonic patterns, agentic workflows with orchestration, knowledge graphs, "
+    "ontology services, Python testing and TDD"
 )
 PLAN_SUCCESS = (
     "I can justify a design decision out loud without hedging; "
     "I can write a test before the code it covers and not delete it later"
 )
+# Milestone concepts are the REAL section names from the learner's course vault
+# (~/Obsidian/Personal/Study/ArjanCodes), not invented stand-ins. That matters:
+# these are the strings `studyloop content ingest` derives concepts from, so a
+# plan written against them lines up with the mastery graph and the review deck
+# instead of creating a second, parallel vocabulary that never joins up.
+#
 # The unreleased course is included on purpose — see the module docstring.
 PLAN_MILESTONES = (
-    "Finish Next-Level Python (concepts: typing, dataclasses, iterators)\n"
-    "Software Design Mastery 1/3 | CORE DESIGNER (concepts: SOLID, cohesion, coupling)\n"
-    "Software Design Mastery 2/3 | SYSTEM DESIGNER (concepts: boundaries, layering)\n"
+    "Next-Level Python (type-annotations, iterators, generators, context-managers)\n"
+    "Next-Level Python (next-level-functions, next-level-classes, concurrent-programming)\n"
+    "Software Design Mastery 1/3 | CORE DESIGNER (core-level-1, core-level-2, core-level-3)\n"
+    "Software Design Mastery 2/3 | SYSTEM DESIGNER (system-level-1, system-level-2)\n"
     "Software Design Mastery 3/3 | MASTER DESIGNER — not yet released\n"
-    "The Software Designer Mindset (concepts: tradeoffs, refactoring)\n"
-    "Pythonic Patterns (concepts: strategy, observer, composition)\n"
-    "Python testing and TDD (concepts: red-green-refactor, test doubles)\n"
-    "Agentic workflows with orchestration (concepts: tool use, state, retries)\n"
-    "Knowledge graphs and ontology services (concepts: triples, inference)"
+    "Domain Modeling Fundamentals (domain-modeling, domain-implementation)\n"
+    "The Software Designer Mindset (tradeoffs, refactoring, design-wins)\n"
+    "Pythonic Patterns (strategy, observer, composition over inheritance)\n"
+    "Python testing and TDD (red-green-refactor, test doubles, fixtures)\n"
+    "Agentic workflows with orchestration (tool use, state, retries)\n"
+    "Knowledge graphs and ontology services (triples, inference, domain vocabulary)"
 )
 
 
@@ -263,6 +273,15 @@ def test_phase3_the_learners_own_words_survive_the_round_trip(page: Page) -> Non
 
         # The pipe and the fraction are the characters most likely to be eaten.
         assert "1/3" in body or "1 / 3" in body, "course numbering was lost in the round trip"
+
+        # Real course section names must survive verbatim. These are the strings
+        # the content pipeline derives concepts from, so a hyphenated identifier
+        # mangled here (or "helpfully" title-cased) silently decouples the plan
+        # from the mastery graph that is supposed to track it.
+        for section in ("type-annotations", "context-managers", "core-level-1", "domain-modeling"):
+            assert section in body, (
+                f"course section name {section!r} did not survive the round trip"
+            )
     except Exception:
         _diag(page, "newuser-phase3-fail")
         raise
