@@ -1615,6 +1615,23 @@
                 <button id="bd-end-cancel" type="button" class="bulk-btn" @click="cancelEnd()">Keep going</button>
               </div>
             </div>
+            <!-- x-if, NOT x-show: this console must not EXIST in the DOM unless a
+                 Body Double session is running. It sits earlier in the document
+                 than the Study console, so while it was merely hidden it became
+                 the first match for .xterm-mount and every terminal test using a
+                 global selector silently addressed this hidden mount instead of
+                 the real one. A second mount is not free just because it is
+                 invisible.
+
+                 Gated on NAV, not on sessionActive: the console has to be mounted
+                 BEFORE the session starts, because its init() is what registers
+                 the study-session-start listener. Gating on sessionActive created
+                 it only after that event had already been dispatched, so it never
+                 heard the start and never connected. Nav is the right condition -
+                 the console exists whenever this view is the current one, which
+                 is exactly when it can be needed, and never while the Study view
+                 is on screen. -->
+            <template x-if="$store.nav.is('body-double')">
             <div class="bd-console-panel">
               <div class="session-terminal-area agent-console" x-data="liveAgentConsole('body-double')">
                 <div class="agent-console-status">
@@ -1629,6 +1646,7 @@
                         title="Agent terminal (ttyd)"></iframe>
               </div>
             </div>
+            </template>
           </section>
 
           <!-- CAPTURE: note or park, without leaving the session. -->
