@@ -118,9 +118,7 @@ class MultiplexerHarness:
         env: dict[str, str] | None = None,
     ) -> str:
         """Create a session and track it for cleanup. Returns the pane_id."""
-        pane_id = self.backend.create_session(
-            name, command=command, cwd=cwd, env=env
-        )
+        pane_id = self.backend.create_session(name, command=command, cwd=cwd, env=env)
         self._managed_sessions.append(name)
         return pane_id
 
@@ -174,10 +172,7 @@ class MultiplexerHarness:
     def kill_all_study_sessions(self, current: str | None = None) -> None:
         self.backend.kill_all_study_sessions(current)
         # Remove from tracked
-        self._managed_sessions = [
-            s for s in self._managed_sessions
-            if s == current
-        ]
+        self._managed_sessions = [s for s in self._managed_sessions if s == current]
 
     # ------------------------------------------------------------------
     # Polling helpers
@@ -214,9 +209,7 @@ class MultiplexerHarness:
             if compiled.search(content):
                 return content
             time.sleep(0.5)
-        raise TimeoutError(
-            f"Pattern {pattern!r} not found in pane {pane_id} after {timeout}s"
-        )
+        raise TimeoutError(f"Pattern {pattern!r} not found in pane {pane_id} after {timeout}s")
 
     def wait_for_session(self, name: str, *, timeout: float = 15) -> None:
         """Wait until a session exists."""
@@ -254,15 +247,11 @@ class MultiplexerHarness:
         Returns the session state dict (parsed from session-state.json).
         """
         if agent_cmd is None:
-            raise ValueError(
-                "agent_cmd required (pass long_running_agent(tmp_path))"
-            )
+            raise ValueError("agent_cmd required (pass long_running_agent(tmp_path))")
 
         # herdr needs a real PTY (os.execvp launches the TUI)
         if self.is_herdr:
-            return self.start_study_session_pty(
-                topic, energy=energy, agent_cmd=agent_cmd
-            )
+            return self.start_study_session_pty(topic, energy=energy, agent_cmd=agent_cmd)
 
         self._clean_ipc_files()
 
@@ -283,10 +272,15 @@ class MultiplexerHarness:
 
         result = subprocess.run(
             [
-                sys.executable, "-m", "studyloop.cli",
-                "study", topic,
-                "--energy", str(energy),
-                "--agent", "claude",
+                sys.executable,
+                "-m",
+                "studyloop.cli",
+                "study",
+                topic,
+                "--energy",
+                str(energy),
+                "--agent",
+                "claude",
             ],
             capture_output=True,
             text=True,
@@ -299,7 +293,7 @@ class MultiplexerHarness:
             lambda: STATE_FILE.exists() and self._read_state().get("study_session_id"),
             timeout=15,
             msg=f"session state not written (exit={result.returncode}, "
-                f"stderr={result.stderr[-200:]!r})",
+            f"stderr={result.stderr[-200:]!r})",
         )
 
         state = self._read_state()
@@ -361,9 +355,7 @@ class MultiplexerHarness:
         Returns the session state dict.
         """
         if agent_cmd is None:
-            raise ValueError(
-                "agent_cmd required (pass long_running_agent(tmp_path))"
-            )
+            raise ValueError("agent_cmd required (pass long_running_agent(tmp_path))")
 
         self._clean_ipc_files()
 
@@ -385,10 +377,7 @@ class MultiplexerHarness:
         env.pop("TMUX_PANE", None)
         env.pop("HERDR_ENV", None)
 
-        cmd = (
-            f"{sys.executable} -m studyloop.cli study "
-            f"'{topic}' --energy {energy} --agent claude"
-        )
+        cmd = f"{sys.executable} -m studyloop.cli study '{topic}' --energy {energy} --agent claude"
 
         self._pty_child = pexpect.spawn(
             cmd,

@@ -87,9 +87,7 @@ class Multiplexer(Protocol):
 
     # --- Test harness support ---
     def capture_pane(self, pane_id: str, lines: int = 50) -> str: ...
-    def wait_for_content(
-        self, pane_id: str, pattern: str, timeout_ms: int = 10000
-    ) -> str: ...
+    def wait_for_content(self, pane_id: str, pattern: str, timeout_ms: int = 10000) -> str: ...
 
 
 # ---------------------------------------------------------------------------
@@ -230,9 +228,7 @@ class TmuxBackend:
         result = _tmux("capture-pane", "-t", pane_id, "-p", "-S", f"-{lines}")
         return result.stdout if result.returncode == 0 else ""
 
-    def wait_for_content(
-        self, pane_id: str, pattern: str, timeout_ms: int = 10000
-    ) -> str:
+    def wait_for_content(self, pane_id: str, pattern: str, timeout_ms: int = 10000) -> str:
         """Poll capture_pane until pattern matches or timeout.
 
         tmux has no native wait — this implements polling with re.search.
@@ -245,9 +241,7 @@ class TmuxBackend:
             if match:
                 return match.group(0)
             time.sleep(0.1)
-        raise MultiplexerError(
-            f"Timed out waiting for pattern {pattern!r} in pane {pane_id}"
-        )
+        raise MultiplexerError(f"Timed out waiting for pattern {pattern!r} in pane {pane_id}")
 
 
 # ---------------------------------------------------------------------------

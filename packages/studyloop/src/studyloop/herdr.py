@@ -24,12 +24,39 @@ from studyloop.multiplexer import MultiplexerError
 logger = logging.getLogger(__name__)
 
 # Special key prefixes that should use send-keys instead of send-text
-_SPECIAL_KEYS = frozenset({
-    "C-", "M-", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9",
-    "F10", "F11", "F12", "Up", "Down", "Left", "Right", "Home", "End",
-    "PageUp", "PageDown", "Tab", "Escape", "Enter", "Space", "BSpace",
-    "DC", "IC",
-})
+_SPECIAL_KEYS = frozenset(
+    {
+        "C-",
+        "M-",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "F11",
+        "F12",
+        "Up",
+        "Down",
+        "Left",
+        "Right",
+        "Home",
+        "End",
+        "PageUp",
+        "PageDown",
+        "Tab",
+        "Escape",
+        "Enter",
+        "Space",
+        "BSpace",
+        "DC",
+        "IC",
+    }
+)
 
 # Timeout for herdr subprocess calls (seconds)
 _CMD_TIMEOUT = 30
@@ -60,10 +87,7 @@ def _get_session_start_time(session_name: str) -> float | None:
 
 def _is_special_key(keys: str) -> bool:
     """Check if a key string is a special key (needs send-keys, not send-text)."""
-    return any(
-        keys.startswith(prefix) or keys == prefix.rstrip("-")
-        for prefix in _SPECIAL_KEYS
-    )
+    return any(keys.startswith(prefix) or keys == prefix.rstrip("-") for prefix in _SPECIAL_KEYS)
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +150,7 @@ class HerdrBackend:
         except subprocess.CalledProcessError as e:
             stderr = (e.stderr or "").strip()
             raise MultiplexerError(
-                f"herdr command failed (exit {e.returncode}): {' '.join(cmd)}\n"
-                f"stderr: {stderr}"
+                f"herdr command failed (exit {e.returncode}): {' '.join(cmd)}\nstderr: {stderr}"
             ) from e
         except subprocess.TimeoutExpired as e:
             raise MultiplexerError(
@@ -135,8 +158,7 @@ class HerdrBackend:
             ) from e
         except FileNotFoundError as e:
             raise MultiplexerError(
-                f"herdr binary not found. Is herdr installed and on PATH?\n"
-                f"Command: {' '.join(cmd)}"
+                f"herdr binary not found. Is herdr installed and on PATH?\nCommand: {' '.join(cmd)}"
             ) from e
 
         if not json_output:
@@ -324,20 +346,13 @@ class HerdrBackend:
         workspace_data = result.get("workspace", result)
         root_pane_data = result.get("root_pane", result)
 
-        workspace_id = (
-            workspace_data.get("workspace_id")
-            or result.get("workspace_id")
-        )
+        workspace_id = workspace_data.get("workspace_id") or result.get("workspace_id")
         if not workspace_id:
             raise MultiplexerError(
-                f"herdr workspace create response missing workspace_id key. "
-                f"Response: {result}"
+                f"herdr workspace create response missing workspace_id key. Response: {result}"
             )
 
-        pane_id = (
-            root_pane_data.get("pane_id")
-            or result.get("pane_id")
-        )
+        pane_id = root_pane_data.get("pane_id") or result.get("pane_id")
 
         # Cache the mapping
         self._workspace_cache[name] = workspace_id
@@ -435,7 +450,8 @@ class HerdrBackend:
             except MultiplexerError:
                 logger.warning(
                     "Failed to close current workspace %s (%s)",
-                    current_ws_id, current_session,
+                    current_ws_id,
+                    current_session,
                 )
 
         # Invalidate cache
@@ -474,9 +490,13 @@ class HerdrBackend:
         ratio = size / 100.0
 
         args = [
-            "pane", "split", target,
-            "--direction", direction,
-            "--ratio", str(ratio),
+            "pane",
+            "split",
+            target,
+            "--direction",
+            direction,
+            "--ratio",
+            str(ratio),
             "--no-focus",
         ]
         if env:
@@ -494,9 +514,7 @@ class HerdrBackend:
         pane_data = result.get("pane", result)
         pane_id = pane_data.get("pane_id") or result.get("pane_id")
         if not pane_id:
-            raise MultiplexerError(
-                f"herdr pane split response missing pane_id. Response: {result}"
-            )
+            raise MultiplexerError(f"herdr pane split response missing pane_id. Response: {result}")
 
         # Run command in the new pane if requested
         if command:
@@ -569,9 +587,7 @@ class HerdrBackend:
         """
         workspace_id = self._find_workspace_id(name)
         if not workspace_id:
-            raise MultiplexerError(
-                f"Cannot switch to '{name}': workspace not found"
-            )
+            raise MultiplexerError(f"Cannot switch to '{name}': workspace not found")
         self._herdr("workspace", "focus", workspace_id, json_output=False)
 
     def attach(self, name: str) -> None:
@@ -660,18 +676,20 @@ class HerdrBackend:
         """
         try:
             result = self._herdr(
-                "pane", "read", pane_id,
-                "--source", "recent-unwrapped",
-                "--lines", str(lines),
+                "pane",
+                "read",
+                pane_id,
+                "--source",
+                "recent-unwrapped",
+                "--lines",
+                str(lines),
                 json_output=False,
             )
             return result if isinstance(result, str) else ""
         except MultiplexerError:
             return ""
 
-    def wait_for_content(
-        self, pane_id: str, pattern: str, timeout_ms: int = 10000
-    ) -> str:
+    def wait_for_content(self, pane_id: str, pattern: str, timeout_ms: int = 10000) -> str:
         """Wait for pattern to appear in pane output.
 
         Uses herdr's native ``wait output`` command with --regex — a single
@@ -691,15 +709,18 @@ class HerdrBackend:
         """
         try:
             result = self._herdr(
-                "wait", "output", pane_id,
-                "--match", pattern,
+                "wait",
+                "output",
+                pane_id,
+                "--match",
+                pattern,
                 "--regex",
-                "--timeout", str(timeout_ms),
+                "--timeout",
+                str(timeout_ms),
             )
         except MultiplexerError as e:
             raise MultiplexerError(
-                f"Timed out or failed waiting for pattern {pattern!r} "
-                f"in pane {pane_id}: {e}"
+                f"Timed out or failed waiting for pattern {pattern!r} in pane {pane_id}: {e}"
             ) from e
 
         if isinstance(result, dict):

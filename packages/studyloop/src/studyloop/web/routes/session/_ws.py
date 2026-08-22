@@ -20,12 +20,11 @@ _WS_CLOSE_POLICY = 1008  # RFC 6455 Policy Violation
 #: Sent to a socket that just lost the consumer slot to a newer one, on its own
 #: connection, so the learner is told where the live terminal went.
 _SUPERSEDED_MESSAGE = (
-    "This study session was opened in another tab or window, "
-    "which now has the live terminal."
+    "This study session was opened in another tab or window, which now has the live terminal."
 )
 
 
-class _Superseded(Exception):
+class _SupersededError(Exception):
     """Raised inside the pump TaskGroup when a newer socket takes the slot.
 
     Collapses the group so the ``except*`` arm can send the displaced client
@@ -127,7 +126,7 @@ async def live_session_socket(websocket: WebSocket) -> None:
                 await asyncio.wait({nxt}, timeout=_grace.SUPERSEDE_POLL_S)
                 if mine.superseded:
                     superseded = True
-                    raise _Superseded()
+                    raise _SupersededError()
                 if not nxt.done():
                     continue  # nothing yet — poll again.
                 exc = nxt.exception()
@@ -156,9 +155,7 @@ async def live_session_socket(websocket: WebSocket) -> None:
                 elif isinstance(event, Started):
                     await websocket.send_json({"type": "started", "agent": event.agent})
                 elif isinstance(event, TransportError):
-                    await websocket.send_json(
-                        {"type": "transport_error", "message": event.message}
-                    )
+                    await websocket.send_json({"type": "transport_error", "message": event.message})
                 elif isinstance(event, AgentMessage):
                     await websocket.send_json(
                         {"type": "agent_message", "kind": event.kind, "payload": event.payload}
@@ -224,7 +221,7 @@ async def live_session_socket(websocket: WebSocket) -> None:
         async with asyncio.TaskGroup() as tg:
             tg.create_task(pty_to_ws(), name="ws-pty-to-ws")
             tg.create_task(ws_to_pty(), name="ws-ws-to-pty")
-    except* _Superseded:
+    except* _SupersededError:
         # A newer socket took over. Tell this (older) client where its session
         # went, on its own connection, then close with a policy-violation code.
         with contextlib.suppress(Exception):
@@ -257,4 +254,3 @@ async def live_session_socket(websocket: WebSocket) -> None:
             # session for the grace window so a returning client can reattach
             # instead of losing a live agent to an accidental ⌘R.
             _grace.schedule_release(session_id)
-

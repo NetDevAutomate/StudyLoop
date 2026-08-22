@@ -59,9 +59,14 @@ def _clean_ipc():
 def _start_ghostty_dev_server(port: int = WEB_GHOSTTY_PORT) -> subprocess.Popen:
     """Start studyloop web with --dev-renderer ghostty."""
     cmd = [
-        sys.executable, "-m", "studyloop.cli",
-        "web", "--port", str(port),
-        "--dev-renderer", "ghostty",
+        sys.executable,
+        "-m",
+        "studyloop.cli",
+        "web",
+        "--port",
+        str(port),
+        "--dev-renderer",
+        "ghostty",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(40):
@@ -110,9 +115,7 @@ def _auth_context(browser):
         ctx_args["http_credentials"] = {"username": _USER, "password": _PASS}
     context = browser.new_context()
     if _PASS:
-        context = browser.new_context(
-            http_credentials={"username": _USER, "password": _PASS}
-        )
+        context = browser.new_context(http_credentials={"username": _USER, "password": _PASS})
     yield context
     context.close()
 
@@ -169,9 +172,7 @@ class TestGhosttyRendererBoots:
         assert has_ghostty, "window.Terminal should be defined"
 
         # Verify WtermLib is NOT present (ghostty, not wterm)
-        wterm_present = ghostty_page.evaluate(
-            "() => typeof window.WtermLib !== 'undefined'"
-        )
+        wterm_present = ghostty_page.evaluate("() => typeof window.WtermLib !== 'undefined'")
         assert not wterm_present, "WtermLib should NOT be present in ghostty mode"
 
 
@@ -277,7 +278,8 @@ class TestNoConsoleErrors:
 
         # Filter out known non-fatal errors (WebGL in headless, pre-existing app errors)
         fatal = [
-            e for e in errors
+            e
+            for e in errors
             if "WebGL" not in e
             and "reading 'type'" not in e
             and "GhosttyWeb" not in e  # WASM init warnings are non-fatal
@@ -322,10 +324,9 @@ class TestNoConsoleErrors:
         time.sleep(2)  # Let any async errors surface
 
         fatal = [
-            e for e in errors
-            if "WebGL" not in e
-            and "reading 'type'" not in e
-            and "GhosttyWeb" not in e
+            e
+            for e in errors
+            if "WebGL" not in e and "reading 'type'" not in e and "GhosttyWeb" not in e
         ]
         assert not fatal, f"JS errors during session lifecycle: {fatal}"
 
@@ -360,9 +361,14 @@ def _start_ghostty_dev_server_with_real_pty(
         "STUDYLOOP_TEST_AGENT_CMD": "echo agent-stub-ready; exec cat",
     }
     cmd = [
-        sys.executable, "-m", "studyloop.cli",
-        "web", "--port", str(port),
-        "--dev-renderer", "ghostty",
+        sys.executable,
+        "-m",
+        "studyloop.cli",
+        "web",
+        "--port",
+        str(port),
+        "--dev-renderer",
+        "ghostty",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env)
     for _ in range(40):
@@ -471,8 +477,7 @@ class TestKeystrokeEchoRealPTY:
 
         # Wait for GhosttyWeb + Alpine nav store settled
         page.wait_for_function(
-            "() => typeof window.GhosttyWeb !== 'undefined'"
-            " && window.Alpine",
+            "() => typeof window.GhosttyWeb !== 'undefined' && window.Alpine",
             timeout=15000,
         )
 
@@ -503,9 +508,7 @@ class TestKeystrokeEchoRealPTY:
               return await res.json();
             }"""
         )
-        assert "error" not in start_data, (
-            f"Session start failed: {start_data}"
-        )
+        assert "error" not in start_data, f"Session start failed: {start_data}"
         ws_url = start_data["ws_url"]
 
         # Activate the UI (B2-proven pattern) with the REAL ws_url
@@ -539,9 +542,7 @@ class TestKeystrokeEchoRealPTY:
         )
 
         # Wait for the xterm-mount to become visible
-        page.wait_for_selector(
-            ".xterm-mount", state="visible", timeout=10000
-        )
+        page.wait_for_selector(".xterm-mount", state="visible", timeout=10000)
 
         # Wait for agent-stub-ready in the terminal (via selection API)
         page.wait_for_function(
@@ -614,8 +615,7 @@ class TestKeystrokeEchoRealPTY:
         page.wait_for_load_state("domcontentloaded")
 
         page.wait_for_function(
-            "() => typeof window.GhosttyWeb !== 'undefined'"
-            " && window.Alpine",
+            "() => typeof window.GhosttyWeb !== 'undefined' && window.Alpine",
             timeout=15000,
         )
 
@@ -670,14 +670,10 @@ class TestKeystrokeEchoRealPTY:
               return {status: res.status, body: data};
             }"""
         )
-        assert start_result.get("status") == 201, (
-            f"Session start failed: {start_result}"
-        )
+        assert start_result.get("status") == 201, f"Session start failed: {start_result}"
 
         # Wait for terminal and agent ready
-        page.wait_for_selector(
-            ".xterm-mount", state="visible", timeout=10000
-        )
+        page.wait_for_selector(".xterm-mount", state="visible", timeout=10000)
         page.wait_for_function(
             """() => {
               const panels = document.querySelectorAll('[x-data]');
@@ -770,8 +766,7 @@ class TestSelectionCopyRealPTY:
         page.wait_for_load_state("domcontentloaded")
 
         page.wait_for_function(
-            "() => typeof window.GhosttyWeb !== 'undefined'"
-            " && window.Alpine",
+            "() => typeof window.GhosttyWeb !== 'undefined' && window.Alpine",
             timeout=15000,
         )
 
@@ -826,14 +821,10 @@ class TestSelectionCopyRealPTY:
               return {status: res.status, body: data};
             }"""
         )
-        assert start_result.get("status") == 201, (
-            f"Session start failed: {start_result}"
-        )
+        assert start_result.get("status") == 201, f"Session start failed: {start_result}"
 
         # Wait for terminal and agent-stub-ready
-        page.wait_for_selector(
-            ".xterm-mount", state="visible", timeout=10000
-        )
+        page.wait_for_selector(".xterm-mount", state="visible", timeout=10000)
         page.wait_for_function(
             """() => {
               const panels = document.querySelectorAll('[x-data]');
@@ -924,8 +915,7 @@ class TestSelectionCopyRealPTY:
         page.wait_for_load_state("domcontentloaded")
 
         page.wait_for_function(
-            "() => typeof window.GhosttyWeb !== 'undefined'"
-            " && window.Alpine",
+            "() => typeof window.GhosttyWeb !== 'undefined' && window.Alpine",
             timeout=15000,
         )
 
@@ -980,14 +970,10 @@ class TestSelectionCopyRealPTY:
               return {status: res.status, body: data};
             }"""
         )
-        assert start_result.get("status") == 201, (
-            f"Session start failed: {start_result}"
-        )
+        assert start_result.get("status") == 201, f"Session start failed: {start_result}"
 
         # Wait for terminal and agent-stub-ready
-        page.wait_for_selector(
-            ".xterm-mount", state="visible", timeout=10000
-        )
+        page.wait_for_selector(".xterm-mount", state="visible", timeout=10000)
         page.wait_for_function(
             """() => {
               const panels = document.querySelectorAll('[x-data]');
@@ -1104,5 +1090,3 @@ class TestDefaultModeRegression:
 # ---------------------------------------------------------------------------
 # B7b — wterm regression guard (T4.4)
 # ---------------------------------------------------------------------------
-
-

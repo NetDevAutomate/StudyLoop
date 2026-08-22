@@ -317,7 +317,6 @@ class TestDevRendererInjection:
         assert "wterm-0.3.0.js" not in html
         assert "wterm-adapter" not in html
 
-
     def test_no_dev_mode_injects_nothing(self):
         html = self._get_index_html(dev_mode=False)
         assert "studyloop-dev-mode" not in html

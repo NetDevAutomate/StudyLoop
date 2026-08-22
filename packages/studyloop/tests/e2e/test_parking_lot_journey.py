@@ -183,10 +183,19 @@ def _diag(page: Page | None, name: str) -> None:
                     placeholders_in_first: first
                         ? first.querySelectorAll('.mermaid-diagram').length : -1,
                     first_has_h2: first ? !!first.querySelector('h2') : False_,
-                    activeEl: document.activeElement ? (document.activeElement.tagName + '.' + (document.activeElement.className || '')).slice(0,50) : 'none',
-                    editingCards: document.querySelectorAll('#parking-panel .parking-card.editing').length,
-                    cardsInbox: document.querySelectorAll('#parking-panel .parking-column[data-column="inbox"] .parking-card').length,
-                    cardsNext: document.querySelectorAll('#parking-panel .parking-column[data-column="next"] .parking-card').length,
+                    activeEl: document.activeElement
+                        ? (document.activeElement.tagName + '.'
+                            + (document.activeElement.className || '')).slice(0, 50)
+                        : 'none',
+                    editingCards: document.querySelectorAll(
+                        '#parking-panel .parking-card.editing'
+                    ).length,
+                    cardsInbox: document.querySelectorAll(
+                        '#parking-panel .parking-column[data-column="inbox"] .parking-card'
+                    ).length,
+                    cardsNext: document.querySelectorAll(
+                        '#parking-panel .parking-column[data-column="next"] .parking-card'
+                    ).length,
                 };
             }""".replace("False_", "false")
         )

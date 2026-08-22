@@ -49,7 +49,12 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
     help="Select the dev-mode renderer (default: ghostty). Implies --dev.",
 )
 def web(
-    port: int, lan: bool, password: str, ttyd_port: int, dev: bool, dev_renderer: str | None,
+    port: int,
+    lan: bool,
+    password: str,
+    ttyd_port: int,
+    dev: bool,
+    dev_renderer: str | None,
 ) -> None:
     """Launch the study PWA in your browser.
 
@@ -136,9 +141,7 @@ def web(
         # named variable so adding a second engine later reintroduces the choice
         # in one obvious place.
         renderer_label = "ghostty-web (canvas renderer)"
-        console.print(
-            f"[yellow]--dev mode:[/yellow] xterm.js swapped for {renderer_label}"
-        )
+        console.print(f"[yellow]--dev mode:[/yellow] xterm.js swapped for {renderer_label}")
 
     host = "0.0.0.0" if lan else "127.0.0.1"
     app = create_app(

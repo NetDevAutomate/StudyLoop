@@ -58,20 +58,24 @@ skip_no_herdr = pytest.mark.skipif(not has_herdr, reason="herdr not available")
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(params=[
-    pytest.param("tmux", marks=skip_no_tmux),
-    pytest.param("herdr", marks=skip_no_herdr),
-])
+@pytest.fixture(
+    params=[
+        pytest.param("tmux", marks=skip_no_tmux),
+        pytest.param("herdr", marks=skip_no_herdr),
+    ]
+)
 def mux(request, tmp_path):
     """Parameterised multiplexer harness — both backends run the same journey."""
     with MultiplexerHarness.from_backend_name(request.param) as harness:
         yield harness
 
 
-@pytest.fixture(params=[
-    pytest.param("tmux", marks=skip_no_tmux),
-    pytest.param("herdr", marks=skip_no_herdr),
-])
+@pytest.fixture(
+    params=[
+        pytest.param("tmux", marks=skip_no_tmux),
+        pytest.param("herdr", marks=skip_no_herdr),
+    ]
+)
 def mux_cli(request, tmp_path):
     """Mux harness for tests that exercise the CLI (which does os.execvp on attach).
 
@@ -139,9 +143,7 @@ class TestAgentReceivesKeys:
         time.sleep(1)  # Let agent print its startup message
 
         # The mock agent echoes "Mock agent started" — verify that's visible
-        content = mux_cli.wait_for_pane_content(
-            main_pane, r"Mock agent started", timeout=10
-        )
+        content = mux_cli.wait_for_pane_content(main_pane, r"Mock agent started", timeout=10)
         assert "Mock agent started" in content
 
 
@@ -198,7 +200,10 @@ class TestEndFromOutside:
 
         subprocess.run(
             [sys.executable, "-m", "studyloop.cli", "study", "--end"],
-            capture_output=True, text=True, env=env, timeout=15,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=15,
         )
 
         mux_cli.wait_for_session_gone(session_name, timeout=15)
@@ -266,9 +271,7 @@ class TestAttachFromOutside:
             mux.send_keys(pane_id, "echo ATTACH_TEST_OK", enter=True)
 
             # Use wait_for with generous timeout (pane shell needs to start)
-            content = mux.wait_for_pane_content(
-                pane_id, r"ATTACH_TEST_OK", timeout=10
-            )
+            content = mux.wait_for_pane_content(pane_id, r"ATTACH_TEST_OK", timeout=10)
             assert "ATTACH_TEST_OK" in content
 
     def test_full_study_session_from_non_herdr_shell(self, agent_cmd: str):
@@ -323,9 +326,7 @@ class TestMultiplexerPrimitives:
         pane_id = mux.create_session("test-sendkeys", cwd=str(tmp_path))
         time.sleep(0.5)  # Let shell start
         mux.send_keys(pane_id, "echo MUX_HARNESS_WORKS", enter=True)
-        content = mux.wait_for_pane_content(
-            pane_id, r"MUX_HARNESS_WORKS", timeout=10
-        )
+        content = mux.wait_for_pane_content(pane_id, r"MUX_HARNESS_WORKS", timeout=10)
         assert "MUX_HARNESS_WORKS" in content
 
     def test_list_study_sessions(self, mux: MultiplexerHarness, tmp_path):

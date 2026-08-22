@@ -581,9 +581,7 @@ def get_board() -> dict:
     """
     conn = _connect()
     try:
-        columns = conn.execute(
-            "SELECT key, name FROM board_columns ORDER BY position"
-        ).fetchall()
+        columns = conn.execute("SELECT key, name FROM board_columns ORDER BY position").fetchall()
         keys = [c["key"] for c in columns]
         buckets: dict[str, list[dict]] = {c["key"]: [] for c in columns}
         first_key = keys[0] if keys else None
@@ -600,8 +598,7 @@ def get_board() -> dict:
 
         return {
             "columns": [
-                {"key": c["key"], "name": c["name"], "items": buckets[c["key"]]}
-                for c in columns
+                {"key": c["key"], "name": c["name"], "items": buckets[c["key"]]} for c in columns
             ],
             "total": sum(len(items) for items in buckets.values()),
         }
@@ -665,9 +662,12 @@ def move_parked_topic(item_id: int, board_column: str, position: int | None = No
         # concurrent moves can't interleave and clobber each other's
         # board_order (see _immediate).
         with _immediate(conn):
-            if conn.execute(
-                "SELECT 1 FROM board_columns WHERE key = ?", (board_column,)
-            ).fetchone() is None:
+            if (
+                conn.execute(
+                    "SELECT 1 FROM board_columns WHERE key = ?", (board_column,)
+                ).fetchone()
+                is None
+            ):
                 return False
             current = conn.execute(
                 "SELECT board_column FROM parked_topics WHERE id = ? AND status = 'pending'",
