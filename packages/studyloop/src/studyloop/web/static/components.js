@@ -1741,7 +1741,13 @@ function courseExplorer() {
              but this call site is NOT, and switching it to $root breaks
              test_explorer_search_finds_and_opens_a_lesson. The two sites are
              genuinely different; assuming they were the same was wrong. */
-          await _renderMermaidPlaceholders(this.$el);
+          /* Guarded $root, not $el. $el is whatever element the invoking
+             expression sits on - for a lesson opened by clicking a list
+             item, that item, which does NOT contain the reader prose the
+             placeholders live in. An earlier attempt at bare $root threw
+             when it was undefined and broke the search test (aaad544); the
+             guard is what makes $root safe here. */
+          if (this.$root) await _renderMermaidPlaceholders(this.$root);
         } else {
           this.readerError = `Could not load lesson (${res.status})`;
         }
