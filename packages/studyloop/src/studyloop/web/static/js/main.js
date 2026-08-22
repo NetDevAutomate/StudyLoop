@@ -49,6 +49,7 @@ import { THRESHOLDS } from './lib/timer-thresholds.js';
 
 import { generatePanel } from './components/generate-panel.js';
 import { liveAgentConsole } from './components/live-agent-console.js';
+import { plansPanel, registerPlansStore } from './components/plans-panel.js';
 import { sessionTimer } from './components/session-timer.js';
 import { settingsPanel } from './components/settings-panel.js';
 import { splitLayout } from './components/split-layout.js';
@@ -69,7 +70,19 @@ window.THRESHOLDS = THRESHOLDS;
    argument and dozens of assertions address that exact attribute string. */
 window.generatePanel = generatePanel;
 window.liveAgentConsole = liveAgentConsole;
+window.plansPanel = plansPanel;
 window.sessionTimer = sessionTimer;
 window.settingsPanel = settingsPanel;
 window.splitLayout = splitLayout;
 window.terminalPanel = terminalPanel;
+
+/* The plan panel is the first component here needing an Alpine STORE as well as a
+   factory, because its two halves live in different DOM subtrees: the plan list is
+   inside nav.sidebar and the reader is in the content column, so they cannot share
+   one x-data. The store is the seam between them - selecting in the sidebar drives
+   the reader.
+   Registered on `alpine:init` rather than immediately, because Alpine.store() does
+   not exist until Alpine boots. Alpine then calls the store's own init(), which
+   loads the plan list - that is what makes a full browser reload repopulate the
+   sidebar instead of showing an empty list until something is clicked. */
+document.addEventListener('alpine:init', () => registerPlansStore(window.Alpine));
