@@ -742,8 +742,14 @@
                              anonymous — findable by nothing. x-show hides it
                              without dropping it, so the editor is not visually
                              duplicating the title next to its own input. -->
+                        <!-- Always visible, including while editing. cf735f1 kept
+                             this in the DOM so an open card stays identifiable;
+                             HIDING it was a cosmetic choice of mine, and it cost
+                             more than it bought - the title is also the handle
+                             for reopening/closing the editor, so a hidden title
+                             makes an open card unclickable. Showing it above the
+                             editor also tells you which card you are editing. -->
                         <div class="parking-card-title"
-                             x-show="editingId !== item.id"
                              @click="onTitleClick(item)"
                              x-text="item.question"></div>
 
