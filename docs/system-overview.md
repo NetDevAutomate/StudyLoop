@@ -28,10 +28,10 @@ flowchart TB
     subgraph "Interactive Study"
         Picker["studyloop study<br/>session picker"]
         Agent["Selected assistant<br/>Claude/Codex/Gemini/Kiro/OpenCode"]
-        Tmux["tmux/Textual<br/>current runtime"]
+        Tmux["Multiplexer<br/>tmux (default) | herdr (opt-in)<br/>+ Textual sidebar"]
         Web["Web/PWA<br/>dashboard + review"]
         Explorer["Course Explorer<br/>(browse + read + search<br/>study material)"]
-        TTYD["ttyd<br/>browser terminal fallback"]
+        Term["Terminal panel<br/>xterm.js over WebSocket (PTY)<br/>or ACP chat"]
     end
 
     subgraph "Review Support"
@@ -57,12 +57,12 @@ flowchart TB
     Picker --> Tmux
     Tmux --> Agent
     StudyLoop --> Web
-        Web --> TTYD
+    Web -->|"WebSocket /api/session/ws"| Term
     Web --> Explorer
     Explorer -->|"reads source material"| Obsidian
     Explorer -->|"writes struggle flags<br/>with lesson provenance"| DB
     Explorer -->|"copies Socratic<br/>discussion prompt"| Companion
-    TTYD --> Tmux
+    Term -->|"PTY bytes"| Agent
     Agent --> DB
     AST --> DB
     AST -.->|"--obsidian (opt-in)<br/>obsidian_writer"| AgentMemory
@@ -192,18 +192,27 @@ NotebookLM is not required for this workflow.
 
 Current:
 
-- tmux + assistant CLI for live interaction
+- tmux + assistant CLI for live interaction, behind a multiplexer abstraction
+  (`multiplexer.py`; **tmux is the default**, herdr opt-in via
+  `STUDYLOOP_MULTIPLEXER=herdr`)
 - Textual sidebar for timer/activity
 - Web dashboard for session state
-- ttyd for browser terminal access
+- Browser terminal via **xterm.js over a WebSocket** (PTY), or **ACP chat** for
+  structured-event agents
 
 Target:
 
 - Web/PWA live session panel as primary learner UI
 - ACP transport where available
 - PTY transport fallback where ACP is not available
-- ttyd retained until the web session layer can fully replace it
+- herdr as the default multiplexer once its journey suite is green
 - macOS/iOS apps use the same local API later
+
+The ttyd browser surface is **already gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)):
+it was removed *because* the PTY refresh path went green, so the console
+reattaches after a page reload with no user action. The ttyd **server** transport
+(`STUDYLOOP_TRANSPORT=ttyd`, the `/terminal/` proxy) is retained for maintainers,
+but a session started that way has no browser renderer and reports `unavailable`.
 
 ```mermaid
 flowchart TD

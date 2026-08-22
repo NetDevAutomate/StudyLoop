@@ -95,7 +95,11 @@ studyloop content generate-practice ~/path/to/course-notes --course my-course
 studyloop web
 ```
 
-Use **Flashcards** or **Quizzes** in the PWA. In the **Course Explorer**, open a lesson and use **Discuss** to copy a Socratic prompt from the current note; use **Struggling?** when the lesson should feed future repair work. You do not need NotebookLM for this path.
+Use **Flashcards** or **Quizzes** in the web app. In the **Course Explorer**, open a lesson and use **Discuss** to copy a Socratic prompt from the current note; use **Struggling?** when the lesson should feed future repair work. You do not need NotebookLM for this path.
+
+> **Practice tasks stay in the terminal.** The web app has no exercises panel
+> yet, so review the JSON that `generate-practice` wrote with
+> `studyloop practice verify TASKS.json --task 1 --notes "what passed"`.
 
 For generation, configure **one** provider in the web **Settings → LLM Providers** panel (Ollama locally or Bedrock/OpenAI if you already have keys). See [Content Pipeline](content-pipeline.md).
 

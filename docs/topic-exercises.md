@@ -113,7 +113,7 @@ Multiple choice is authored in plain Markdown — GFM task lists where `- [x]`
 marks the correct option — so a quiz can be written in any text editor with no
 tooling.
 
-```markdown
+````markdown
 ---
 id: python--closures
 plan_id: python
@@ -164,7 +164,7 @@ def make_counter():
 - [x] A cell object held by the function
 
 `(ask: What would happen if two counters shared one global?)`
-```
+````
 
 Annotations are order-independent and strippable, matching the `(concepts: …)`
 convention plan milestones already use:
@@ -250,22 +250,25 @@ the learner: an agent that has not read the solution cannot leak it under
 pressure — and it does not need to, because `exercise_review` scores the attempt
 and returns the questions to ask.
 
-## Web UI
+## Web UI — not yet built
 
-The Exercises section lives inside the Study Plans view, below the plan document.
+!!! warning "There is no Exercises panel in the browser yet"
+    **The CLI is the way to do exercises today.** The backend is complete — `web/routes/exercises.py` serves the whole REST surface above, and it is wired into the app — but **no browser UI consumes it**. There is no Exercises section in the Study Plans view, no tabs, no attempt editor.
 
-- Three tabs over **one** attempt surface. Switching to Completion re-seeds the
-  same editor with the supplied scaffold — visibly the same flow, because it is.
-- The scaffold label states the parameter: "no starting code — you write all of
-  it" versus "43% of the solution supplied".
-- Criteria are marked `✓ met`, `• unmet`, `✕ violated`, `– given`, `? unscoreable`,
-  and `given` rows are explicitly labelled as excluded from the score.
-- Mentoring renders as an ordered list under **"Ask, do not tell"**.
-- "Copy for mentor" yields the Markdown block for pasting into a session.
+    A previous version of this page described that panel in the present tense, as though you could go and use it. You cannot. Use [the CLI](#cli) instead; nothing about the exercise model or the scoring is missing, only the browser surface.
 
-Validated by [`tests/e2e/test_journey_exercises.py`](https://github.com/Hookey-Street-Software/StudyLoop/blob/main/packages/studyloop/tests/e2e/test_journey_exercises.py)
-— an 11-phase Playwright journey against the real UI, including the
-network-boundary assertion that the answer key is never sent to the browser.
+### The planned design
+
+Kept here because it is a real design decision record, not a feature list. When the panel is built, this is the shape it should take:
+
+- Three tabs over **one** attempt surface. Switching to Completion re-seeds the same editor with the supplied scaffold — visibly the same flow, because it is.
+- The scaffold label states the parameter: "no starting code — you write all of it" versus "43% of the solution supplied".
+- Criteria marked `✓ met`, `• unmet`, `✕ violated`, `– given`, `? unscoreable`, with `given` rows explicitly labelled as excluded from the score.
+- Mentoring as an ordered list under **"Ask, do not tell"**.
+- A copy-for-mentor action yielding the Markdown block for pasting into a session.
+- The answer key must never reach the browser: `GET /api/exercises/{id}` already withholds it, and the panel must not add an authoring view that leaks it.
+
+A Playwright journey for this panel exists at `packages/studyloop/tests/e2e/test_journey_exercises.py`, written **before** the UI as its specification. It does not pass — it cannot, because the surface it drives does not exist. Treat it as the spec for the work, **not** as evidence the feature works. (e2e is also excluded from CI by default; see [CI Workflows](ci.md).)
 
 ## Authoring: nothing is invented
 

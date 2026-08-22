@@ -70,6 +70,62 @@ Configured LAN passwords are not printed. Generated one-time passwords are
 printed once. If a phone or tablet cannot connect, check that the shown LAN URL
 uses the host's real LAN address and that the device is on the same network.
 
+## The Browser Terminal Shows "No Terminal Available"
+
+The live console has two renderers, chosen by the session's `transport`:
+
+| `transport` | Renders as |
+| --- | --- |
+| `pty` (default) | xterm.js, fed by the PTY over a WebSocket |
+| `acp` | structured ACP chat events |
+
+Anything else has **no browser renderer**. The console reports an explicit
+`unavailable` state — status `No terminal available`, plus a message naming the
+transport it cannot render and telling you to end the session and start it again
+on the browser terminal or ACP.
+
+The usual cause is `STUDYLOOP_TRANSPORT=ttyd` in the environment. That path is
+still honoured server-side, but it is no longer a browser rendering option:
+
+```bash
+env | grep STUDYLOOP_TRANSPORT
+```
+
+Unset it and start a new session:
+
+```bash
+unset STUDYLOOP_TRANSPORT
+studyloop web
+```
+
+Installing `ttyd` does **not** fix this and is not required for the terminal
+panel. The ttyd browser surface was retired deliberately, because without the
+binary the old iframe rendered an empty frame that was indistinguishable from a
+hang. See [ADR-0005](adr/0005-retire-ttyd-browser-surface.md) for the reasoning
+and for what remains on the server path.
+
+If the transport is already `pty` and the panel still reports no terminal, the
+server did not return a connection for the session. Ending and restarting the
+session clears this; the message says so rather than leaving a blank pane.
+
+## The Terminal Is Empty After A Page Refresh
+
+It should not be. `liveAgentConsole.init()` reads `GET /api/session/state` on
+load and adopts a live session it owns, so a refresh reattaches to the running
+agent with no user action and the same process answers the next line typed.
+
+If a refresh leaves an empty terminal:
+
+1. Confirm a session is actually live: `GET /api/session/state` should report it.
+2. Check the browser console for a JS error during `init()` — a thrown
+   initialiser is the usual reason the adopt step never runs.
+3. Confirm the static assets being served are current. `studyloop web` serves the
+   **installed** package's assets, so a stale editable install serves stale JS:
+
+   ```bash
+   uv run studyloop install tools --skip-sync
+   ```
+
 ## Provider Credentials
 
 Use the web Settings panel or environment variables for provider keys. Raw

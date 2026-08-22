@@ -11,7 +11,7 @@ graph TB
         HARNESS[Code harnesses + studyloop sessions] -->|"1. write (always local, never fails)"| HOT["HOT: ~/.config/studyloop/sessions.db<br/>working set · all operational reads<br/>prunable to N days"]
         HOT -->|"2. store-and-forward sync<br/>background, content-hash diff"| FULL["FULL: database.full_db_path<br/>the record · normally append-only"]
         FULL -->|"3. auto-snapshot + retention"| SNAP["snapshot_dir"]
-        SEARCH["session-query search"] -->|always| HOT
+        SEARCH["session-query search-cmd"] -->|always| HOT
         SEARCH -.->|"4. federated: ATTACH read-only<br/>when mounted, tag [full]"| FULL
         PRUNE["studyloop prune / focus set"] -->|"5. verify-then-delete<br/>REFUSES if FULL unreachable"| HOT
     end
@@ -64,7 +64,7 @@ session-maint compact SRC DEST  # rescue a bloated DB into a clean one
 studyloop prune --days 30 --apply     # trim old, verified sessions from hot
 studyloop focus set "python" "sql"    # set focus; pulls focus history, prunes stale
 studyloop focus apply                 # retry deferred refocus data movement
-session-query search "topic"          # federated (hot + full); --local-only to skip
+session-query search-cmd "topic"      # federated (hot + full); --local-only to skip
 session-sync sync HOST                # hot tier, prune-aware
 session-sync sync HOST --tier full    # consolidate records across machines
 ```

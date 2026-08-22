@@ -67,6 +67,39 @@ studyloop bridge list                     # Network→DE (or cross-domain) knowl
 studyloop clean --dry-run                 # Preview orphan tmux/session cleanup
 studyloop extract-struggles --incremental # Session DB → study_progress (stub or --llm)
 
+# Study plans
+studyloop plan interview                  # Interview questions + evidence-based seed suggestions
+studyloop plan new --title TITLE [--why WHY] [--topic T] [--success S] [--milestone M]
+studyloop plan new --title TITLE --activate  # Activate on create (refused if incomplete)
+studyloop plan list [--status draft|active|paused|complete|abandoned] [--json]
+studyloop plan show PLAN_ID [--markdown] [--json]
+studyloop plan status PLAN_ID active      # Change lifecycle state
+studyloop plan milestone PLAN_ID INDEX [--done|--undone]  # Toggle or set a milestone
+studyloop plan evaluate PLAN_ID [--phase start|mid|end] [--record] [--study-id ID]
+studyloop plan reindex                    # Rebuild the plan index in the sessions DB
+studyloop plan path                       # Print the plan document directory
+
+# Topic exercises (blank slate / completion / multiple choice)
+studyloop exercise new --topic TOPIC [--plan ID] [--requirement R] [--reference FILE]
+studyloop exercise from-milestone PLAN_ID [--index N]  # Draft from a plan milestone
+studyloop exercise import PATH            # Import a hand-authored exercise document
+studyloop exercise list [--plan ID] [--topic T] [--json]
+studyloop exercise show SET_ID [--markdown]      # Learner-safe (answers withheld)
+studyloop exercise show SET_ID --with-answers    # Author use only
+studyloop exercise review SET_ID [--kind blank_slate|completion|multiple_choice]
+studyloop exercise review SET_ID --file ANSWER.py --record  # Score + write confidence
+studyloop exercise path                   # Print the exercise document directory
+
+# Focus & retention
+studyloop focus                           # Show current focus topics (max 3)
+studyloop focus suggest [--days 30]       # Suggest focus from sessions, struggles, config
+studyloop focus set "python" "sql window functions"  # Replace focus (1-3 topics)
+studyloop focus set TOPIC --no-refocus    # Save focus only, skip the data movement
+studyloop focus apply [--days 30] [--dry-run]  # Run/retry the deferred data movement
+studyloop focus clear                     # Clear all focus topics
+studyloop prune [--days 30]               # Preview trimming old local sessions (dry run)
+studyloop prune --days 30 --apply         # Actually delete (only verified-in-full sessions)
+
 # Configuration & health
 studyloop setup                           # Interactive setup wizard
 studyloop install tools                   # Install global CLI entrypoints from repo
@@ -85,6 +118,9 @@ studyloop restore BACKUP --confirm        # Restore from backup (safety backup f
 
 # Web
 studyloop web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
+studyloop web --ttyd-port 7681            # ttyd server transport port (0 = read from config)
+studyloop web --dev                       # Dev mode: swap xterm.js for an alternative renderer
+studyloop web --dev-renderer ghostty      # Select the dev renderer (only choice; implies --dev)
 ```
 
 ### Study Sessions
@@ -311,6 +347,70 @@ studyloop backlog suggest --limit 5 --topic "Python Patterns"
 
 Mid-session parking uses `studyloop park` (writes to the same backlog with source `parked`).
 
+### Study plans
+
+Structured, evaluable plans: a mission, topics, success criteria, and milestones. Plans live as Markdown documents (`studyloop plan path`) with a derived index in the sessions DB, so a plan is readable and editable outside the tool.
+
+```bash
+studyloop plan interview                  # What to ask, plus evidence-based seed suggestions
+studyloop plan new --title "SQL window functions" \
+  --why "Stop guessing at analytic queries" \
+  --topic "sql" --success "Explain PARTITION BY unprompted" \
+  --milestone "Frames (concepts: window frame, rows vs range)" \
+  --target-date 2026-10-01 --energy-floor 4
+studyloop plan list --status active
+studyloop plan show PLAN_ID --markdown
+studyloop plan milestone PLAN_ID 0 --done
+studyloop plan evaluate PLAN_ID --phase mid --record
+studyloop plan status PLAN_ID complete
+studyloop plan reindex                    # Rebuild the DB index from the documents
+```
+
+Omitted answers are left **explicitly blank** in the document rather than invented, and `readiness` reports what is still missing. Activation (`--activate`, or `plan status … active`) is **refused** while a plan lacks a mission, success criteria, or milestones — an unevaluable plan must not look active.
+
+`studyloop plan interview` exists so an agent can learn what to ask before proposing a plan.
+
+### Topic exercises
+
+Each exercise set carries all three formats — **blank slate**, **completion**, and **multiple choice**. The completion exercise is sliced from the reference solution, so one authored task yields both code formats.
+
+```bash
+studyloop exercise new --topic "generators" \
+  --requirement "Yields lazily" --requirement "Handles empty input" \
+  --reference solution.py --reveal 0.4 --language python
+studyloop exercise from-milestone PLAN_ID --index 0   # Seed from a plan milestone
+studyloop exercise import hand-written.md             # `- [x]` marks the correct option
+studyloop exercise list --plan PLAN_ID
+studyloop exercise show SET_ID --markdown             # Learner-safe: no answers
+studyloop exercise show SET_ID --with-answers         # Author use only
+studyloop exercise review SET_ID --kind completion --file attempt.py --record
+studyloop exercise review SET_ID --kind multiple_choice --answer 0:a --answer 1:b,c
+```
+
+`show` withholds reference solutions and marked-correct choices unless `--with-answers` is passed, so pasting the output into a study session cannot hand over the solution. `review` output carries questions, never the solution; a completion attempt is scored on what the learner **added**, with criteria the starter code already satisfied marked `given` and excluded. `--record` writes the derived confidence to `study_progress`.
+
+Multiple-choice sets are authored in plain Markdown, so a set can be written in any text editor with no tooling. These commands are **CLI-only** — there is no browser panel for exercises yet.
+
+### Focus and pruning
+
+Focus shapes what `studyloop now` and review sessions recommend. It never deletes data on its own; `studyloop prune` is the age-based command that does.
+
+```bash
+studyloop focus                            # Show current focus (max 3 topics)
+studyloop focus suggest --days 30          # Propose focus from sessions, struggles, config
+studyloop focus set "python" "sql window functions"
+studyloop focus set "python" --no-refocus  # Save focus only, skip the data movement
+studyloop focus apply --dry-run            # Preview the deferred data movement
+studyloop focus clear
+
+studyloop prune --days 30                  # Dry run by default
+studyloop prune --days 30 --apply          # Actually delete
+```
+
+Saving a focus is followed by the **refocus data movement**: focus-topic conversations newer than `--days` are pulled from the full DB into the local DB, then non-focus sessions older than `--days` are pruned. If the full DB is unreachable (external volume unmounted) the focus still saves and the movement is **deferred** — run `studyloop focus apply` later.
+
+Both `prune` and the refocus prune obey one safety invariant: a session is deleted only when the configured full DB (`database.full_db_path`) holds the same session with a **matching content hash and at least as many messages**. Unverified sessions are skipped and reported. Learning data — progress, concepts, reviews — is never touched.
+
 ### Knowledge bridges
 
 Record analogies between domains (e.g. networking → data engineering). Stored in the session/review database.
@@ -355,7 +455,9 @@ studyloop web --lan --password SECRET
 
 **Features:** Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, 90-day study heatmap, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.
 
-**Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** — an embedded ttyd iframe showing the tmux session live via same-origin proxy (`/terminal/`). The panel is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). ttyd is optional (`brew install ttyd`) but required for the terminal panel.
+**Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** showing the live session. The panel renders one of two surfaces: **xterm.js** driven by a PTY streamed over a WebSocket (`transport: "pty"`), or **ACP chat** for structured-event agents (`transport: "acp"`). It is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads `GET /api/session/state` on init and adopts a live session it owns.
+
+There is **no browser terminal fallback**: the ttyd iframe surface was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md). Installing ttyd no longer enables anything user-visible in the dashboard. The `ttyd` **server** transport still exists for maintainers (`STUDYLOOP_TRANSPORT=ttyd`, plus the `/terminal/` proxy), but a session started that way has no browser renderer and reports an explicit `unavailable` state.
 
 **Voice:** In-browser neural TTS (Kokoro on WebGPU/WASM — no remote API; Web Speech API fallback). Two modes:
 - **Read once** — speaker icon on card or `T` key
@@ -366,7 +468,7 @@ studyloop web --lan --password SECRET
 
 ```yaml
 web_port: 8567       # web dashboard port (default 8567)
-ttyd_port: 7681      # ttyd web terminal port (default 7681)
+ttyd_port: 7681      # ttyd server transport port (default 7681) — maintainer-only; no browser surface
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
 ```
@@ -387,18 +489,29 @@ AI session export, search, and cross-machine sync.
 ```bash
 session-export [--sources SOURCE ...]    # Export AI sessions to SQLite
 session-export [--obsidian] [--obsidian-vault PATH] [--obsidian-backfill] [--obsidian-dry-run]
-session-query search QUERY               # Full-text search across sessions
+session-query search-cmd QUERY           # Full-text search across sessions
 session-query list --since 7d            # List recent sessions
 session-query show SESSION_ID            # Show session details
 session-query context SESSION_ID         # Generate context for resuming
-session-query stats                      # Database statistics
+session-query continue SESSION_ID        # Continuation context for resuming work
+session-query stats-cmd                  # Database statistics
+session-query tag|note SESSION_ID        # Manage session tags / notes
+session-query check-size                 # Check DB size against thresholds
+session-query profiles                   # Manage export profiles/templates
 session-sync push|pull|sync REMOTE       # Sync database across machines
 session-maint vacuum|reindex|schema|archive  # Database maintenance
+session-maint delete --confirm            # Permanently delete old sessions
+session-maint find-duplicates|fts-check|compact  # Integrity and rescue
+session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune
 study-speak "text" [-b openvox|kokoro|qwen3|macos] [-v VOICE] [-s SPEED]
                                           # Speak text aloud using local TTS
 ```
 
 ### Supported Sources
+
+`search-cmd` and `stats-cmd` carry the `-cmd` suffix because the module already imports `search` and `stats` from `query_logic`, and Typer derives each command name from its function name. The CLI names are literal, not typos.
+
+The `--sources` values below are the complete set the CLI accepts — anything else is rejected with `Invalid sources: {...}`.
 
 | Source | Tool |
 |--------|------|
@@ -406,9 +519,10 @@ study-speak "text" [-b openvox|kokoro|qwen3|macos] [-v VOICE] [-s SPEED]
 | `codex` | OpenAI Codex CLI |
 | `kiro` | Kiro CLI |
 | `gemini` | Gemini CLI |
+| `grok` | Grok CLI |
+| `kilocode` | Kilocode CLI |
 | `aider` | Aider |
 | `opencode` | OpenCode |
-| `litellm` | LiteLLM |
 | `bedrock` | Bedrock proxy |
 | `repoprompt` | RepoPrompt |
 | `pi` | pi coding agent (`@earendil-works/pi-coding-agent`) |

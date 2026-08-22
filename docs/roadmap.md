@@ -256,7 +256,7 @@ Live study session with real-time dashboard, parking lot, and timer.
 
 - [x] `studyloop clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs
 - [x] tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore
-- [x] Vendor HTMX + Alpine.js + OpenDyslexic + Inter into `web/static/` (zero CDN, fully offline PWA)
+- [x] Vendor HTMX + Alpine.js + OpenDyslexic + Inter into `web/static/` (zero CDN — no third-party requests at runtime; note this is *not* offline support, as there is no service worker)
 - [x] Parked topic warmup at session start (surface unresolved topics from previous sessions)
 - [x] Break suggestions at timer threshold crossings (FCIS `logic/break_logic.py`, sidebar BreakBanner)
 - [x] Energy streaks — distribution, trend detection, duration correlation in `studyloop streaks`
@@ -299,9 +299,17 @@ Nightly drift detection, pre-release gate, backup/restore.
 
 ## Next: v2.2.0 — Remote Study + Local LLMs
 
-Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optional local LLMs.
+Study from any device (iPad, laptop, phone) via the web dashboard, with optional local LLMs.
 
 ### ttyd Integration + Embedded Web Pane
+
+> **Superseded by [ADR-0005](adr/0005-retire-ttyd-browser-surface.md) (2026-08-22).**
+> The items below shipped as written, but the ttyd **browser surface** has since
+> been retired: the iframe panels and the `ttyd` transport option are gone from
+> the UI, and the browser terminal is now xterm.js over a WebSocket (PTY) or ACP
+> chat. The ttyd **server** transport, the `/terminal/` proxy, the LAN Basic-Auth
+> middleware, and the port/browser config all remain. Remote study from an iPad
+> is served by the web dashboard, not by ttyd.
 
 - [x] `studyloop study --lan` starts ttyd alongside tmux session (port 7681)
 - [x] Embed ttyd as iframe in existing web dashboard
@@ -336,7 +344,7 @@ Study from any device (iPad, laptop, phone) via ttyd + web dashboard, with optio
 ### Deferred
 
 - Docker web + server-side TTS — parked
-- Full TUI session view — cut (web + ttyd covers this)
+- Full TUI session view — cut (the web dashboard's terminal panel covers this)
 
 ## v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)
 
@@ -397,5 +405,8 @@ Remaining future work from these waves:
 - [ ] Persist per-provider model preferences server-side.
 - [ ] Add an agent-side tool surface for immediate mid-session deck generation
   from a specific struggle, rather than only date-window `topic_struggles`.
-- [ ] Continue replacing ttyd fallback paths as ACP/PTY web sessions cover all
-  supported agents.
+- [x] Continue replacing ttyd fallback paths as ACP/PTY web sessions cover all
+  supported agents. — done for the **browser** surface (ADR-0005): the iframe
+  fallback is replaced by an explicit `unavailable` state. The ttyd **server**
+  transport remains, and retiring it is scheduled with the herdr multiplexer
+  default flip.
