@@ -151,9 +151,17 @@ class TestTerminalPaths:
         assert "http://${window.location.hostname}" not in html
 
     def test_iframe_waits_for_successful_terminal_probe(self) -> None:
-        """Hidden body-double panel must not eagerly request /terminal/ on page load."""
+        """A hidden ttyd panel must not eagerly request /terminal/ on page load.
+
+        Pins the GUARD, not the variable name. The body-double panel was rebuilt
+        and its console now uses liveAgentConsole's own legacyTtydUrl instead of
+        the retired terminalPanel()'s activeTtydUrl - but the property that
+        matters is unchanged: an unresolved URL must fall back to about:blank
+        rather than binding a bare /terminal/ that the browser fetches while the
+        panel is still hidden.
+        """
         html = (STATIC_DIR / "index.html").read_text()
-        assert ":src=\"activeTtydUrl || 'about:blank'\"" in html
+        assert ":src=\"legacyTtydUrl || 'about:blank'\"" in html
 
     def test_ttyd_url_uses_terminal_path(self) -> None:
         """ttydUrl in the inline script should return /terminal/."""
