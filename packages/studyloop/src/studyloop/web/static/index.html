@@ -1673,7 +1673,6 @@
             <p id="bd-transport-hint-pty" class="picker-hint" x-show="transport === 'pty'"
                x-text="'Runs the agent in a PTY and paints it with ' + $store.terminalEngine.label + '.'"></p>
             <p class="picker-hint" x-show="transport === 'acp'">Structured agent protocol — chat surface, no terminal.</p>
-            <p class="picker-hint" x-show="transport === 'ttyd'">Legacy ttyd iframe. Needs ttyd installed.</p>
             <span id="dev-engine-badge" class="bd-chip warn" x-show="$store.terminalEngine.experimental"
                   :title="'Experimental renderer, enabled by --dev. Known gaps: ' + $store.terminalEngine.caveats.join(' ')"
                   x-text="$store.terminalEngine.label"></span>
@@ -1682,6 +1681,19 @@
                      data-testid="bd-energy-slider" class="energy-slider"></label>
             <button id="bd-start-session" type="button" class="bd-primary-btn"
                     :disabled="!activity.trim() || !agent" @click="startSession()">Start session</button>
+            <!-- Say WHY the button is dead. Without this the picker refuses
+                 silently: a learner who has chosen an agent and a transport sees
+                 a greyed-out button and no cause, which reads as "the feature is
+                 broken" rather than "one field is empty". Deliberately NOT
+                 .picker-hint — three tests enumerate that class, and adding a
+                 member would change their counts. -->
+            <p id="bd-start-requirement" class="bd-requirement"
+               x-show="!activity.trim() || !agent"
+               x-text="(!activity.trim() &amp;&amp; !agent)
+                 ? 'To start: type what you are working on, and choose an agent.'
+                 : (!activity.trim()
+                     ? 'To start: type what you are working on above.'
+                     : 'To start: choose an agent above.')"></p>
             <p id="bd-start-error" class="picker-hint error" x-show="startError" x-text="startError"></p>
 
             <!-- Recovery block — the twin of the Study picker's. x-if, NOT
