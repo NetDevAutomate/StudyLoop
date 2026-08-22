@@ -29,19 +29,25 @@ def check_system_binaries() -> list[CheckResult]:
                 "deps",
                 "bin_ttyd",
                 "pass",
-                f"ttyd installed ({ttyd_path})",
+                f"ttyd installed ({ttyd_path}) — only used by STUDYLOOP_TRANSPORT=ttyd",
                 "",
                 False,
             )
         )
     else:
+        # ADR-0005 retired the ttyd BROWSER surface. The live terminal is
+        # xterm.js over a same-origin WebSocket, or an ACP chat surface — neither
+        # needs ttyd. Only the maintainer-only STUDYLOOP_TRANSPORT=ttyd server
+        # path uses the binary, so this check must NOT suggest installing it:
+        # doing so previously told users a missing package was blocking a
+        # feature that had already stopped depending on it.
         results.append(
             CheckResult(
                 "deps",
                 "bin_ttyd",
                 "info",
-                "ttyd not installed (optional — enables web terminal)",
-                "brew install ttyd",
+                "ttyd not installed — not needed; the browser terminal uses xterm.js",
+                "",
                 False,
             )
         )
