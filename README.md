@@ -319,4 +319,7 @@ rsvg-convert -w 1280 -h 640 icons/studyloop-banner.svg -o icons/studyloop-social
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+Third-party work that influenced StudyLoop is credited in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
