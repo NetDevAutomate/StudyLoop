@@ -48,6 +48,7 @@ import { extractChunkText, energyBand } from './lib/chunk-text.js';
 import { THRESHOLDS } from './lib/timer-thresholds.js';
 
 import { generatePanel } from './components/generate-panel.js';
+import { liveAgentConsole } from './components/live-agent-console.js';
 import { sessionTimer } from './components/session-timer.js';
 import { settingsPanel } from './components/settings-panel.js';
 import { splitLayout } from './components/split-layout.js';
@@ -62,8 +63,12 @@ window.energyBand = energyBand;
 /* Free-variable dependency of session-timer.js - see the header note. */
 window.THRESHOLDS = THRESHOLDS;
 
-/* Alpine component factories, addressed by name from x-data attributes. */
+/* Alpine component factories, addressed by name from x-data attributes.
+   liveAgentConsole is instantiated TWICE per page - once per origin - and its
+   default argument is load-bearing: the study console's markup calls it with no
+   argument and dozens of assertions address that exact attribute string. */
 window.generatePanel = generatePanel;
+window.liveAgentConsole = liveAgentConsole;
 window.sessionTimer = sessionTimer;
 window.settingsPanel = settingsPanel;
 window.splitLayout = splitLayout;
