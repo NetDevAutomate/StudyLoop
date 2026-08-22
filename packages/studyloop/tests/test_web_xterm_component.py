@@ -121,22 +121,33 @@ def web_page(web_server, _auth_context):
 
 class TestXtermPickerDefaults:
     def test_transport_picker_defaults_to_pty(self, web_page) -> None:
-        """The picker must default to PTY after §1.7 — legacy ttyd is the
-        explicit fallback, not the default."""
+        """The picker must default to PTY — since ADR-0005 retired the ttyd
+        browser surface, PTY and ACP are the only two transports offered."""
         web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         web_page.wait_for_selector("#transport-select", state="attached", timeout=5000)
         selected = web_page.eval_on_selector("#transport-select", "(el) => el.value")
         assert selected == "pty"
 
-    def test_legacy_ttyd_option_still_available(self, web_page) -> None:
-        """ttyd stays reachable behind the explicit dropdown option."""
+    def test_legacy_ttyd_option_is_gone(self, web_page) -> None:
+        """The ttyd BROWSER surface was retired in ADR-0005, so the dropdown
+        must no longer offer it.
+
+        The UI surface is deliberately NARROWER than the API surface here: the
+        server still honours ``STUDYLOOP_TRANSPORT=ttyd`` for maintainers, so
+        ``POST /api/session/start`` continues to accept ``transport=ttyd``.
+        What was removed is the browser's ability to *choose* it, because
+        choosing it rendered nothing — there is no iframe left to mount. If
+        this assertion ever fails because ``ttyd`` came back into the dropdown,
+        check that a renderer came back with it; a selectable transport with no
+        renderer is the silent-blank defect ADR-0005 exists to prevent.
+        """
         web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         web_page.wait_for_selector("#transport-select", state="attached", timeout=5000)
         values = web_page.eval_on_selector_all(
             "#transport-select option", "(opts) => opts.map(o => o.value)"
         )
         assert "pty" in values
-        assert "ttyd" in values
+        assert "ttyd" not in values
         # PR-B re-enabled the ACP option gated by selectedAgentSupportsAcp();
         # it's present in the DOM but hidden via x-show when no ACP-capable
         # agent is selected. See test_web_session_lifecycle.py::TestTransportAcpOption

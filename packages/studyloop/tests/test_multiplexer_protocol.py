@@ -19,9 +19,11 @@ class TestProtocolDefinition:
     def test_multiplexer_is_runtime_checkable(self):
         from studyloop.multiplexer import Multiplexer
 
-        assert hasattr(Multiplexer, "__protocol_attrs__") or hasattr(
-            Multiplexer, "__abstractmethods__"
-        ) or hasattr(Multiplexer, "__subclasshook__")
+        assert (
+            hasattr(Multiplexer, "__protocol_attrs__")
+            or hasattr(Multiplexer, "__abstractmethods__")
+            or hasattr(Multiplexer, "__subclasshook__")
+        )
 
     def test_tmux_backend_satisfies_protocol(self):
         from studyloop.multiplexer import Multiplexer, TmuxBackend

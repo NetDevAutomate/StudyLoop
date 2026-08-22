@@ -150,7 +150,6 @@ class TestTerminalPaths:
         html = (STATIC_DIR / "index.html").read_text()
         assert "http://${window.location.hostname}" not in html
 
-
     def test_ttyd_url_uses_terminal_path(self) -> None:
         """ttydUrl must return the same-origin /terminal/ path."""
         # terminalPanel owns the ttydUrl getter and moved out of index.html's

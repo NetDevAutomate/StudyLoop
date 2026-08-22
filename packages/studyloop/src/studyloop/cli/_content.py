@@ -785,9 +785,7 @@ def autopilot(output_dir: Path, book_name: str | None, timeout: int) -> None:
 @click.option("-b", "--book-name", default=None, help="Book name for state file.")
 def status_cmd(output_dir: Path, book_name: str | None) -> None:
     """Show syllabus progress for chunked generation."""
-    from studyloop.content.syllabus import read_state
-
-    from studyloop.content.syllabus import SyllabusStateError
+    from studyloop.content.syllabus import SyllabusStateError, read_state
 
     resolved_book_name = book_name or output_dir.resolve().name
     state_path = output_dir / f".{resolved_book_name}-syllabus.json"

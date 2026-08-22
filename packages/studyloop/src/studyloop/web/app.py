@@ -222,9 +222,7 @@ def create_app(
                 content=inject_dev_engine(html, app.state.dev_engine), headers=no_cache
             )
         if renderer == "ghostty":
-            dev_injection = (
-                '\n  <meta name="studyloop-dev-mode" content="ghostty-web">'
-            )
+            dev_injection = '\n  <meta name="studyloop-dev-mode" content="ghostty-web">'
             html = html.replace("<head>", "<head>" + dev_injection, 1)
             # ghostty-web UMD + bootstrap: defer so they execute after the
             # xterm.js defer scripts; the bootstrap patches window.Terminal last.

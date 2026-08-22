@@ -49,7 +49,8 @@ class TestBackendSelectionEnvVar:
 
         with (
             patch.dict(os.environ, {"STUDYLOOP_MULTIPLEXER": "herdr"}),
-            patch("shutil.which", return_value=None),pytest.raises(MultiplexerError, match="herdr")
+            patch("shutil.which", return_value=None),
+            pytest.raises(MultiplexerError, match="herdr"),
         ):
             get_backend()
 

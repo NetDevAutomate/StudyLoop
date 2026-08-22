@@ -97,9 +97,7 @@ class TestProtocolConformance:
         }
         backend = HerdrBackend()
         for method_name in expected_methods:
-            assert hasattr(backend, method_name), (
-                f"HerdrBackend missing method: {method_name}"
-            )
+            assert hasattr(backend, method_name), f"HerdrBackend missing method: {method_name}"
             assert callable(getattr(backend, method_name))
 
 
@@ -142,9 +140,9 @@ class TestDetection:
             assert backend.is_inside_session() is False
 
     def test_is_server_running_true(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result([
-            {"name": "default", "running": True, "attached": True}
-        ])
+        mock_subprocess.return_value = _json_result(
+            [{"name": "default", "running": True, "attached": True}]
+        )
         assert backend.is_server_running() is True
 
     def test_is_server_running_false_on_error(self, mock_subprocess, backend):
@@ -164,11 +162,13 @@ class TestSessionLifecycle:
 
     def test_create_session_basic(self, mock_subprocess, backend):
         """Verify argv and JSON response parsing for workspace create."""
-        mock_subprocess.return_value = _json_result({
-            "workspace_id": "w5",
-            "tab_id": "w5:t1",
-            "pane_id": "w5:p1",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "workspace_id": "w5",
+                "tab_id": "w5:t1",
+                "pane_id": "w5:p1",
+            }
+        )
         result = backend.create_session("study-decorators")
 
         mock_subprocess.assert_called_once()
@@ -184,11 +184,13 @@ class TestSessionLifecycle:
         assert result == "w5:p1"
 
     def test_create_session_with_cwd(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result({
-            "workspace_id": "w6",
-            "tab_id": "w6:t1",
-            "pane_id": "w6:p1",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "workspace_id": "w6",
+                "tab_id": "w6:t1",
+                "pane_id": "w6:p1",
+            }
+        )
         backend.create_session("study-sql", cwd="/home/user/project")
 
         args = mock_subprocess.call_args[0][0]
@@ -197,11 +199,13 @@ class TestSessionLifecycle:
         assert args[cwd_idx + 1] == "/home/user/project"
 
     def test_create_session_with_env(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result({
-            "workspace_id": "w7",
-            "tab_id": "w7:t1",
-            "pane_id": "w7:p1",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "workspace_id": "w7",
+                "tab_id": "w7:t1",
+                "pane_id": "w7:p1",
+            }
+        )
         backend.create_session(
             "study-env",
             env={"STUDYLOOP_SESSION_ID": "abc123", "TOPIC": "python"},
@@ -217,11 +221,13 @@ class TestSessionLifecycle:
 
     def test_create_session_with_command(self, mock_subprocess, backend):
         """command= should use pane run after workspace create."""
-        mock_subprocess.return_value = _json_result({
-            "workspace_id": "w8",
-            "tab_id": "w8:t1",
-            "pane_id": "w8:p1",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "workspace_id": "w8",
+                "tab_id": "w8:t1",
+                "pane_id": "w8:p1",
+            }
+        )
         backend.create_session("study-cmd", command="kiro-cli chat")
 
         # First call: workspace create. Second call: pane run.
@@ -235,16 +241,20 @@ class TestSessionLifecycle:
 
     def test_session_exists_true(self, mock_subprocess, backend):
         """workspace list JSON, filter by label match."""
-        mock_subprocess.return_value = _json_result([
-            {"workspace_id": "w1", "label": "StudyLoop"},
-            {"workspace_id": "w3", "label": "study-decorators"},
-        ])
+        mock_subprocess.return_value = _json_result(
+            [
+                {"workspace_id": "w1", "label": "StudyLoop"},
+                {"workspace_id": "w3", "label": "study-decorators"},
+            ]
+        )
         assert backend.session_exists("study-decorators") is True
 
     def test_session_exists_false(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result([
-            {"workspace_id": "w1", "label": "StudyLoop"},
-        ])
+        mock_subprocess.return_value = _json_result(
+            [
+                {"workspace_id": "w1", "label": "StudyLoop"},
+            ]
+        )
         assert backend.session_exists("study-python") is False
 
     def test_session_exists_handles_error(self, mock_subprocess, backend):
@@ -258,10 +268,12 @@ class TestSessionLifecycle:
         # First call: workspace list (find by label)
         # Second call: workspace close
         mock_subprocess.side_effect = [
-            _json_result([
-                {"workspace_id": "w1", "label": "StudyLoop"},
-                {"workspace_id": "w9", "label": "study-sql"},
-            ]),
+            _json_result(
+                [
+                    {"workspace_id": "w1", "label": "StudyLoop"},
+                    {"workspace_id": "w9", "label": "study-sql"},
+                ]
+            ),
             _json_result({"type": "ok"}),
         ]
         result = backend.kill_session("study-sql")
@@ -272,20 +284,24 @@ class TestSessionLifecycle:
         assert close_args == ["herdr", "workspace", "close", "w9"]
 
     def test_kill_session_not_found(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result([
-            {"workspace_id": "w1", "label": "StudyLoop"},
-        ])
+        mock_subprocess.return_value = _json_result(
+            [
+                {"workspace_id": "w1", "label": "StudyLoop"},
+            ]
+        )
         result = backend.kill_session("study-nonexistent")
         assert result is False
 
     def test_list_study_sessions(self, mock_subprocess, backend):
         """Returns labels of workspaces matching 'study-' prefix."""
-        mock_subprocess.return_value = _json_result([
-            {"workspace_id": "w1", "label": "StudyLoop"},
-            {"workspace_id": "w2", "label": "Study"},
-            {"workspace_id": "w3", "label": "study-decorators"},
-            {"workspace_id": "w4", "label": "study-sql-joins"},
-        ])
+        mock_subprocess.return_value = _json_result(
+            [
+                {"workspace_id": "w1", "label": "StudyLoop"},
+                {"workspace_id": "w2", "label": "Study"},
+                {"workspace_id": "w3", "label": "study-decorators"},
+                {"workspace_id": "w4", "label": "study-sql-joins"},
+            ]
+        )
         result = backend.list_study_sessions()
         assert result == ["study-decorators", "study-sql-joins"]
 
@@ -293,12 +309,14 @@ class TestSessionLifecycle:
         """Closes all study-* workspaces, current_session last."""
         mock_subprocess.side_effect = [
             # workspace list
-            _json_result([
-                {"workspace_id": "w1", "label": "StudyLoop"},
-                {"workspace_id": "w3", "label": "study-decorators"},
-                {"workspace_id": "w4", "label": "study-sql"},
-                {"workspace_id": "w5", "label": "study-spark"},
-            ]),
+            _json_result(
+                [
+                    {"workspace_id": "w1", "label": "StudyLoop"},
+                    {"workspace_id": "w3", "label": "study-decorators"},
+                    {"workspace_id": "w4", "label": "study-sql"},
+                    {"workspace_id": "w5", "label": "study-spark"},
+                ]
+            ),
             # close w3 (other)
             _json_result({"type": "ok"}),
             # close w5 (other)
@@ -324,11 +342,13 @@ class TestPaneManagement:
     """split_pane, send_keys, select_pane."""
 
     def test_split_pane_right(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result({
-            "pane_id": "w5:p2",
-            "workspace_id": "w5",
-            "tab_id": "w5:t1",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "pane_id": "w5:p2",
+                "workspace_id": "w5",
+                "tab_id": "w5:t1",
+            }
+        )
         result = backend.split_pane("w5:p1", direction="right", size=30, percentage=True)
 
         args = mock_subprocess.call_args[0][0]
@@ -344,11 +364,13 @@ class TestPaneManagement:
         assert result == "w5:p2"
 
     def test_split_pane_down(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result({
-            "pane_id": "w5:p3",
-            "workspace_id": "w5",
-            "tab_id": "w5:t1",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "pane_id": "w5:p3",
+                "workspace_id": "w5",
+                "tab_id": "w5:t1",
+            }
+        )
         result = backend.split_pane("w5:p1", direction="down", size=50, percentage=True)
 
         args = mock_subprocess.call_args[0][0]
@@ -378,11 +400,13 @@ class TestPaneManagement:
         assert result == "w5:p4"
 
     def test_split_pane_with_env(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _json_result({
-            "pane_id": "w5:p5",
-            "workspace_id": "w5",
-            "tab_id": "w5:t1",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "pane_id": "w5:p5",
+                "workspace_id": "w5",
+                "tab_id": "w5:t1",
+            }
+        )
         backend.split_pane("w5:p1", env={"FOO": "bar", "BAZ": "qux"})
 
         args = mock_subprocess.call_args[0][0]
@@ -457,9 +481,11 @@ class TestClientAttach:
         """switch_client focuses the workspace (already inside herdr)."""
         # First: workspace list to find workspace_id from label
         mock_subprocess.side_effect = [
-            _json_result([
-                {"workspace_id": "w3", "label": "study-decorators"},
-            ]),
+            _json_result(
+                [
+                    {"workspace_id": "w3", "label": "study-decorators"},
+                ]
+            ),
             _make_result(),
         ]
         backend.switch_client("study-decorators")
@@ -491,13 +517,15 @@ class TestProcessIntrospection:
 
     def test_pane_has_child_process_true(self, mock_subprocess, backend):
         """foreground_processes with entries → True."""
-        mock_subprocess.return_value = _json_result({
-            "pid": 12345,
-            "foreground_processes": [
-                {"pid": 12346, "argv": ["kiro-cli", "chat"], "cwd": "/tmp"}
-            ],
-            "cwd": "/Users/test",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "pid": 12345,
+                "foreground_processes": [
+                    {"pid": 12346, "argv": ["kiro-cli", "chat"], "cwd": "/tmp"}
+                ],
+                "cwd": "/Users/test",
+            }
+        )
         assert backend.pane_has_child_process("w5:p1") is True
 
         args = mock_subprocess.call_args[0][0]
@@ -506,11 +534,13 @@ class TestProcessIntrospection:
 
     def test_pane_has_child_process_false(self, mock_subprocess, backend):
         """Empty foreground_processes → False."""
-        mock_subprocess.return_value = _json_result({
-            "pid": 12345,
-            "foreground_processes": [],
-            "cwd": "/Users/test",
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "pid": 12345,
+                "foreground_processes": [],
+                "cwd": "/Users/test",
+            }
+        )
         assert backend.pane_has_child_process("w5:p1") is False
 
     def test_pane_has_child_process_error(self, mock_subprocess, backend):
@@ -526,15 +556,19 @@ class TestProcessIntrospection:
         # pane process-info → no foreground_processes
         mock_subprocess.side_effect = [
             # workspace list to find workspace + initial pane
-            _json_result([
-                {"workspace_id": "w9", "label": "study-old-topic", "panes": ["w9:p1"]},
-            ]),
+            _json_result(
+                [
+                    {"workspace_id": "w9", "label": "study-old-topic", "panes": ["w9:p1"]},
+                ]
+            ),
             # pane process-info for the pane → no children
-            _json_result({
-                "pid": 99999,
-                "foreground_processes": [],
-                "cwd": "/tmp",
-            }),
+            _json_result(
+                {
+                    "pid": 99999,
+                    "foreground_processes": [],
+                    "cwd": "/tmp",
+                }
+            ),
         ]
         # Mock session_state to return an old started_at
         import time
@@ -546,30 +580,36 @@ class TestProcessIntrospection:
     def test_is_zombie_session_false_has_children(self, mock_subprocess, backend):
         """Session with active children → not zombie."""
         mock_subprocess.side_effect = [
-            _json_result([
-                {"workspace_id": "w9", "label": "study-active", "panes": ["w9:p1"]},
-            ]),
-            _json_result({
-                "pid": 99999,
-                "foreground_processes": [
-                    {"pid": 99998, "argv": ["claude"], "cwd": "/tmp"}
-                ],
-                "cwd": "/tmp",
-            }),
+            _json_result(
+                [
+                    {"workspace_id": "w9", "label": "study-active", "panes": ["w9:p1"]},
+                ]
+            ),
+            _json_result(
+                {
+                    "pid": 99999,
+                    "foreground_processes": [{"pid": 99998, "argv": ["claude"], "cwd": "/tmp"}],
+                    "cwd": "/tmp",
+                }
+            ),
         ]
         assert backend.is_zombie_session("study-active") is False
 
     def test_is_zombie_session_false_too_young(self, mock_subprocess, backend):
         """Session that's too new → not zombie (still starting)."""
         mock_subprocess.side_effect = [
-            _json_result([
-                {"workspace_id": "w9", "label": "study-new", "panes": ["w9:p1"]},
-            ]),
-            _json_result({
-                "pid": 99999,
-                "foreground_processes": [],
-                "cwd": "/tmp",
-            }),
+            _json_result(
+                [
+                    {"workspace_id": "w9", "label": "study-new", "panes": ["w9:p1"]},
+                ]
+            ),
+            _json_result(
+                {
+                    "pid": 99999,
+                    "foreground_processes": [],
+                    "cwd": "/tmp",
+                }
+            ),
         ]
         import time
 
@@ -592,9 +632,7 @@ class TestHarnessSupport:
     """capture_pane and wait_for_content."""
 
     def test_capture_pane(self, mock_subprocess, backend):
-        mock_subprocess.return_value = _make_result(
-            stdout="$ echo hello\nhello\n$ "
-        )
+        mock_subprocess.return_value = _make_result(stdout="$ echo hello\nhello\n$ ")
         result = backend.capture_pane("w5:p1", lines=30)
 
         args = mock_subprocess.call_args[0][0]
@@ -610,10 +648,12 @@ class TestHarnessSupport:
 
     def test_wait_for_content_success(self, mock_subprocess, backend):
         """Uses herdr wait output with --match and --timeout."""
-        mock_subprocess.return_value = _json_result({
-            "output_matched": True,
-            "read": {"text": "$ echo hello\nhello\n$ "},
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "output_matched": True,
+                "read": {"text": "$ echo hello\nhello\n$ "},
+            }
+        )
         result = backend.wait_for_content("w5:p1", "hello", timeout_ms=5000)
 
         args = mock_subprocess.call_args[0][0]
@@ -632,7 +672,8 @@ class TestHarnessSupport:
         from studyloop.multiplexer import MultiplexerError
 
         mock_subprocess.side_effect = subprocess.CalledProcessError(
-            1, ["herdr", "wait", "output"],
+            1,
+            ["herdr", "wait", "output"],
             stderr="timed out waiting for match",
         )
         with pytest.raises(MultiplexerError, match=r"[Tt]imed out|wait"):
@@ -640,10 +681,12 @@ class TestHarnessSupport:
 
     def test_wait_for_content_regex(self, mock_subprocess, backend):
         """Pattern is passed with --regex flag."""
-        mock_subprocess.return_value = _json_result({
-            "output_matched": True,
-            "read": {"text": "line 1\nMATCHED_42\nline 3"},
-        })
+        mock_subprocess.return_value = _json_result(
+            {
+                "output_matched": True,
+                "read": {"text": "line 1\nMATCHED_42\nline 3"},
+            }
+        )
         backend.wait_for_content("w5:p1", r"MATCHED_\d+", timeout_ms=3000)
 
         args = mock_subprocess.call_args[0][0]
@@ -664,15 +707,14 @@ class TestErrorHandling:
         from studyloop.multiplexer import MultiplexerError
 
         mock_subprocess.side_effect = subprocess.CalledProcessError(
-            1, ["herdr", "workspace", "create"],
+            1,
+            ["herdr", "workspace", "create"],
             stderr="server not running",
         )
         with pytest.raises(MultiplexerError, match=r"server|herdr"):
             backend.create_session("study-fail")
 
-    def test_subprocess_timeout_raises_multiplexer_error(
-        self, mock_subprocess, backend
-    ):
+    def test_subprocess_timeout_raises_multiplexer_error(self, mock_subprocess, backend):
         from studyloop.multiplexer import MultiplexerError
 
         mock_subprocess.side_effect = subprocess.TimeoutExpired(
@@ -688,9 +730,7 @@ class TestErrorHandling:
         with pytest.raises(MultiplexerError, match=r"[Jj]SON|parse|response"):
             backend.create_session("study-badjson")
 
-    def test_missing_key_in_json_raises_multiplexer_error(
-        self, mock_subprocess, backend
-    ):
+    def test_missing_key_in_json_raises_multiplexer_error(self, mock_subprocess, backend):
         from studyloop.multiplexer import MultiplexerError
 
         # workspace create response missing workspace_id
@@ -698,9 +738,7 @@ class TestErrorHandling:
         with pytest.raises(MultiplexerError, match=r"workspace_id|missing|key"):
             backend.create_session("study-missingkey")
 
-    def test_file_not_found_error_raises_multiplexer_error(
-        self, mock_subprocess, backend
-    ):
+    def test_file_not_found_error_raises_multiplexer_error(self, mock_subprocess, backend):
         """Binary removed between is_available and actual call."""
         from studyloop.multiplexer import MultiplexerError
 

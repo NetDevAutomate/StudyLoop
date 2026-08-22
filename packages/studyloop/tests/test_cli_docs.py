@@ -90,7 +90,14 @@ def _has_unknown_group_subcommand(tokens: list[str]) -> bool:
         if child is None:
             return True
         command = child
-    return isinstance(command, click.Group)
+    # A bare group is normally a documentation error — `studyloop content` on its
+    # own does nothing. The exception is a group declared with
+    # invoke_without_command=True (e.g. `studyloop focus`, which prints the
+    # current focus topics), where bare invocation is a real, exit-0 command and
+    # therefore legitimate to document.
+    if isinstance(command, click.Group):
+        return not command.invoke_without_command
+    return False
 
 
 def test_known_command_prefix_common_examples() -> None:

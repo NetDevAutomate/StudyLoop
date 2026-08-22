@@ -107,7 +107,6 @@ class TestInjection:
         for url in DEV_ENGINES["ghostty"]["js"]:
             assert f'<script defer src="{url}"></script>' in html
 
-
     def test_injection_is_inside_head(self) -> None:
         html = inject_dev_engine(SAMPLE_HTML, "ghostty")
         head = html.index("<head>")
@@ -170,10 +169,7 @@ class TestCreateApp:
         from studyloop.web.app import create_app
 
         assert create_app(dev_mode=True).state.dev_engine == "ghostty"
-        assert (
-            create_app(dev_mode=True, dev_engine="ghostty").state.dev_engine
-            == "ghostty"
-        )
+        assert create_app(dev_mode=True, dev_engine="ghostty").state.dev_engine == "ghostty"
 
     def test_unknown_engine_fails_fast(self) -> None:
         """Bad --dev-engine errors at startup, not on first page load."""
@@ -249,7 +245,6 @@ class TestTerminalEngineDescriptor:
         joined = " ".join(caveats).lower()
         assert "clipboard" in joined
         assert "scrollback" in joined
-
 
     def test_engine_is_ignored_when_dev_mode_is_off(self) -> None:
         """``dev_engine`` is inert without ``--dev`` — matching create_app."""

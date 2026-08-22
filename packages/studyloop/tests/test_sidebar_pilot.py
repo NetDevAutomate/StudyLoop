@@ -172,9 +172,7 @@ class TestSidebarKeyBindings:
 
                 # Check that send_keys was called with /exit
                 exit_calls = [
-                    call
-                    for call in mock_backend.send_keys.call_args_list
-                    if "/exit" in call.args
+                    call for call in mock_backend.send_keys.call_args_list if "/exit" in call.args
                 ]
                 assert len(exit_calls) > 0, (
                     f"/exit not sent. send_keys calls: {mock_backend.send_keys.call_args_list}"
