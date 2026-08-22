@@ -753,7 +753,7 @@
                             <div class="parking-card-meta">
                               <span class="parking-card-area" x-show="item.tech_area"
                                     x-text="item.tech_area"></span>
-                              <span class="parking-card-badge" x-show="item.has_diagram">diagram</span>
+                              <span class="parking-chip diagram parking-card-badge" x-show="item.has_diagram">diagram</span>
                               <span class="parking-card-prio" x-show="item.priority"
                                     x-text="'P' + item.priority"></span>
                             </div>
@@ -790,7 +790,7 @@
                                       class="bulk-btn primary" @click="save()"
                                       x-text="saveState"></button>
                             </div>
-                            <textarea id="parking-note-input" class="parking-note-textarea"
+                            <textarea id="parking-note-input" class="parking-note-textarea parking-note-input"
                                       rows="10" x-model="noteText"
                                       placeholder="Write it up as Markdown…"></textarea>
                             <div class="parking-note-preview acp-message-final"
