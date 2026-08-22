@@ -2989,15 +2989,20 @@ function notesPanel() {
 }
 
 /* ====================================================================
- * bodyDoubleView() — the Body Double workspace.
+ * bodyDoubleSession() — the Body Double workspace.
  *
  * Owns its own session lifecycle (origin 'body-double', ADR-0002) so the
  * Study Session picker and this view can each run a session without the
  * other's console reacting. Capture (note/park) lives here rather than in a
  * separate view on purpose: the whole point is to record a tangent WITHOUT
  * leaving the session, because leaving is what loses the thread.
+ *
+ * Named bodyDoubleSession() rather than bodyDoubleView() because the session
+ * recovery spec addresses this component by its x-data attribute string
+ * (`[x-data="bodyDoubleSession()"]`). bodyDoubleView() survives below as a
+ * delegating alias, so the rename cannot half-land while the markup catches up.
  * ==================================================================== */
-function bodyDoubleView() {
+function bodyDoubleSession() {
   return {
     slots: [], slotsUsed: 0, maxActive: 3, atCapacity: false, parkingLotCount: 0,
     focus: { topics: [], is_set: false, is_stale: false },
@@ -3005,13 +3010,64 @@ function bodyDoubleView() {
     activity: '', agent: '', transport: 'pty', energy: 5, agents: [],
     sessionActive: false, liveActivity: '', confirmingEnd: false,
     starting: false, startError: '',
+    /* ---- origin-aware session recovery --------------------------------
+     * There is ONE session slot. When the Study Session view holds it, this
+     * view will not adopt the session (ADR-0002's origin guard exists so two
+     * consoles never attach to one PTY) — so it rendered its picker, and that
+     * picker's Start could only ever 409. conflictSession is the live session
+     * that blocks us, normalised by _conflictShape(); conflictOwnerLabel and
+     * conflictIsOwn are DERIVED from it (getters, below) so clearing it can
+     * never leave a stale owner label or a stale "reattach is safe" flag.
+     * ------------------------------------------------------------------ */
+    studySessionId: null,
+    conflictSession: null,
+    /* Monotonic staleness guard, mirroring reviewApp's _liveSessionEpoch:
+       bumped on every end/reattach so a conflict probe still in flight cannot
+       write its now-stale "someone else is live" answer over fresher state.
+       Initialised on purpose — `undefined + 1` is NaN, and a NaN !== NaN
+       comparison would then work only by accident. */
+    _conflictEpoch: 0,
+    /* True once init() has finished ALL its async work. The only honest ready
+       signal for tests: the conflict probe settles after the focus and options
+       loads, so nothing else marks the end of init(). */
+    _initDone: false,
     noteKind: 'note', noteTopic: '', noteTitle: '', noteBody: '',
     noteConfidence: '', showPreview: false, previewHtml: '', noteSaved: false,
     templates: {}, diagramTemplate: '',
     parkQuestion: '', parkNotes: '', parkSaved: false,
     _savedTimer: null, _parkTimer: null,
 
+    /* 'Study Session' | 'Body Double' — the surface that OWNS the live session.
+       An absent origin means 'study' (the server's documented default, applied
+       with setdefault), so absent and 'study' must read identically here. */
+    get conflictOwnerLabel() {
+      const origin = (this.conflictSession && this.conflictSession.origin) || 'study';
+      return origin === 'body-double' ? 'Body Double' : 'Study Session';
+    },
+    /* True only when the blocking session is THIS view's own. Reattach is gated
+       on it: adopting a foreign-origin session here is exactly what the origin
+       guard exists to prevent. */
+    get conflictIsOwn() {
+      const origin = (this.conflictSession && this.conflictSession.origin) || 'study';
+      return origin === 'body-double';
+    },
+
     async init() {
+      /* Registered BEFORE any await, deliberately. A stop dispatched while the
+         awaits below are in flight would otherwise hit no listener at all and
+         be lost permanently, leaving a recovery banner up for a session that
+         has already ended — the same ordering bug fixed in reviewApp.init(). */
+      window.addEventListener('study-session-stop', (event) => {
+        const origin = (event.detail && event.detail.origin) || 'study';
+        /* Bump BEFORE clearing: a probe already in flight captured the old
+           epoch and must not restore the banner it saw a moment ago. */
+        this._conflictEpoch += 1;
+        const conflict = this.conflictSession;
+        if (conflict && (conflict.origin || 'study') === origin) {
+          this.conflictSession = null;
+          this.startError = '';
+        }
+      });
       this.focusCollapsed = localStorage.getItem('bd.focus.collapsed') === 'true';
       this.captureCollapsed = localStorage.getItem('bd.capture.collapsed') === 'true';
       await this.refreshFocus();
@@ -3033,6 +3089,12 @@ function bodyDoubleView() {
           this.diagramTemplate = data.diagram_template || '';
         }
       } catch { /* template button simply does nothing */ }
+      /* A session already holding the slot must be announced BEFORE the learner
+         presses Start, because Start can do nothing but 409 while it is held. */
+      await this._checkLiveSessionConflict();
+      /* Last line of init() on purpose — the only signal that every await
+         above, the conflict probe included, has settled. */
+      this._initDone = true;
     },
 
     async refreshFocus() {
@@ -3163,10 +3225,20 @@ function bodyDoubleView() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
+          if (res.status === 409) {
+            /* Not merely an error: another session holds the only slot. Turn the
+               refusal into the levers that get the learner out of it — open the
+               owning surface, end it, or (own origin only) reattach. */
+            await this._raiseStartConflict(data);
+            return;
+          }
           this.startError = data.error || data.detail || `Could not start (${res.status})`;
           return;
         }
         this.sessionActive = true;
+        this.studySessionId = data.study_session_id || null;
+        /* A start that succeeded proves nothing is blocking us any more. */
+        this.conflictSession = null;
         this.liveActivity = this.activity;
         /* Re-point the note composer at the live activity. refreshFocus() ran at
            init(), before any session existed, so its default fell back to the
@@ -3191,9 +3263,189 @@ function bodyDoubleView() {
       }
     },
 
+    /* ================================================================
+     * Origin-aware recovery from a session we cannot start over.
+     * ================================================================ */
+
+    /* Normalise GET /api/session/state — or a 409 start body — into the one
+       shape the recovery block reads. camelCase is the JS-side convention (it
+       matches the study-session-start detail); the snake_case aliases are kept
+       alongside because the server payload speaks that dialect and a template
+       binding to the wrong spelling fails SILENTLY rather than loudly. */
+    _conflictShape(source) {
+      const id = source.study_session_id || null;
+      const origin = source.origin === 'body-double' ? 'body-double' : 'study';
+      const reattachUrl = source.reattach_url
+        || (id ? `/api/session/ws?study_session_id=${encodeURIComponent(id)}` : '');
+      return {
+        studySessionId: id,
+        study_session_id: id,
+        topic: source.topic || '',
+        agent: source.agent || '',
+        origin,
+        transport: source.transport || 'pty',
+        detached: !!source.detached,
+        reattachUrl,
+        reattach_url: reattachUrl,
+      };
+    },
+
+    /* Publish the conflict and the sentence that explains it. Split from the
+       probe/409 callers so both paths word it identically. */
+    _applyConflict(conflict, serverMessage) {
+      this.conflictSession = conflict;
+      if (conflict.origin === 'body-double') {
+        /* Our own session: the server's text already names the topic and both
+           verbs, so keep it rather than paraphrasing it worse. */
+        this.startError = serverMessage
+          || 'A Body Double session is already active — reattach to it, or end it first.';
+        return;
+      }
+      /* Foreign origin: NAME the surface that owns it. "A session is already
+         active" without saying which is the dead end this work removes, and the
+         way out is over there, not here. */
+      const on = conflict.topic ? ` on "${conflict.topic}"` : '';
+      this.startError = `${this.conflictOwnerLabel} already has a session active${on}`
+        + ' — open it there to carry on, or end it to free the slot.';
+    },
+
+    /* Proactive probe at init(). Own-origin sessions are deliberately left
+       alone: load-time adoption belongs to the console (see its KNOWN GAPS
+       note), and claiming sessionActive here without mounting a terminal would
+       show a live strip over a dead console. */
+    async _checkLiveSessionConflict() {
+      if (this.sessionActive) return;
+      const epoch = this._conflictEpoch;
+      try {
+        const res = await fetch('/api/session/state');
+        if (!res.ok) return;
+        const state = await res.json();
+        /* Drop the answer if a stop or a reattach landed while it was in
+           flight — that is newer information than this fetch. */
+        if (epoch !== this._conflictEpoch || this.sessionActive) return;
+        if (!state.study_session_id || state.mode === 'ended') return;
+        const conflict = this._conflictShape(state);
+        if (conflict.origin === 'body-double') return;
+        this._applyConflict(conflict, '');
+      } catch { /* offline — Start will surface the 409 instead */ }
+    },
+
+    /* The 409 carries study_session_id / topic / agent / detached /
+       reattach_url but NOT origin, so ownership cannot be decided from it
+       alone. Resolve origin from /api/session/state, which echoes it for
+       exactly this purpose, and trust that answer only when it describes the
+       SAME session the 409 named — otherwise a race would let one session's
+       origin decide another's fate. */
+    async _raiseStartConflict(body) {
+      const conflict = this._conflictShape(body || {});
+      const message = (body && (body.error || body.detail)) || '';
+      const epoch = this._conflictEpoch;
+      try {
+        const res = await fetch('/api/session/state');
+        if (res.ok) {
+          const state = await res.json();
+          if (epoch !== this._conflictEpoch) return;
+          const sameSession = state.study_session_id
+            && (!conflict.studySessionId || state.study_session_id === conflict.studySessionId);
+          if (sameSession) {
+            const live = this._conflictShape(state);
+            /* The overlay branch of /session/state rebuilds its dict from the
+               slot and drops topic/transport, so prefer the 409's copy when the
+               state's is blank. */
+            live.topic = live.topic || conflict.topic;
+            live.agent = live.agent || conflict.agent;
+            live.detached = live.detached || conflict.detached;
+            this._applyConflict(live, message);
+            return;
+          }
+        }
+      } catch { /* fall through to the 409's own, origin-less answer */ }
+      if (epoch !== this._conflictEpoch) return;
+      this._applyConflict(conflict, message);
+    },
+
+    /* Route to the surface that OWNS the live session. 'study' maps to the
+       'study-session' route — the origin id and the route id differ, and
+       sending the learner to the wrong one lands them in a picker that cannot
+       adopt the session: the closed loop this work exists to break. */
+    openConflictOwner() {
+      const origin = (this.conflictSession && this.conflictSession.origin) || 'study';
+      const route = origin === 'body-double' ? 'body-double' : 'study-session';
+      const nav = window.Alpine && window.Alpine.store('nav');
+      if (nav) nav.go(route);
+    },
+
+    /* Release the slot outright. No confirmation step on purpose: this button
+       only exists while a session is BLOCKING the learner, and a second click
+       to confirm is one more wall in the dead end. The stop event carries the
+       ENDED session's origin so the console that owns it tears down — the
+       origin filter means our own console correctly ignores a foreign stop. */
+    async endConflictSession() {
+      const origin = (this.conflictSession && this.conflictSession.origin) || 'study';
+      /* Bump BEFORE the await: a probe in flight must not restore the banner. */
+      this._conflictEpoch += 1;
+      try {
+        await fetch('/api/session/end', { method: 'POST' });
+      } catch { /* tear the UI down regardless — a stuck banner is worse */ }
+      window.dispatchEvent(new CustomEvent('study-session-stop', { detail: { origin } }));
+      const pomodoro = Alpine.store('pomodoro');
+      if (pomodoro) pomodoro.stop();
+      if (origin === 'body-double') {
+        this.sessionActive = false;
+        this.studySessionId = null;
+      }
+      this.conflictSession = null;
+      this.startError = '';
+      this.confirmingEnd = false;
+    },
+
+    /* Adopt the live session instead of starting a new one. Gated on own
+       origin: reattaching to a foreign session would attach a second console to
+       one PTY, which is what the guard forbids. The console mounts off the
+       study-session-start event, so reattached:true and the server's
+       reattach_url are the load-bearing fields here. */
+    reattachConflictSession() {
+      const conflict = this.conflictSession;
+      if (!conflict || conflict.origin !== 'body-double') return;
+      /* Newer than any probe in flight — that probe would re-raise the banner
+         for the very session we just adopted. */
+      this._conflictEpoch += 1;
+      const topic = conflict.topic || this.activity || '';
+      this.sessionActive = true;
+      this.studySessionId = conflict.studySessionId;
+      this.liveActivity = topic;
+      if (conflict.topic) {
+        this.activity = conflict.topic;
+        /* Re-point the note composer at what the session is ACTUALLY about —
+           the same misfiling startSession() guards against. */
+        this.noteTopic = conflict.topic;
+      }
+      this.conflictSession = null;
+      this.startError = '';
+      this.starting = false;
+      window.dispatchEvent(new CustomEvent('study-session-start', {
+        detail: {
+          topic,
+          origin: 'body-double',
+          energy: this.energy,
+          agent: conflict.agent || this.agent || null,
+          resolvedAgent: conflict.agent || this.agent || null,
+          studySessionId: conflict.studySessionId,
+          transport: conflict.transport || 'pty',
+          wsUrl: conflict.reattachUrl || null,
+          personaText: null,
+          reattached: true,
+        },
+      }));
+    },
+
     endSession() { this.confirmingEnd = true; },
     cancelEnd() { this.confirmingEnd = false; },
     async confirmEnd() {
+      /* Bumped before the await for the same reason as endConflictSession():
+         a conflict probe in flight must not raise a banner for the session we
+         are in the middle of ending. */
+      this._conflictEpoch += 1;
       try {
         await fetch('/api/session/end', { method: 'POST' });
       } catch { /* tear the UI down regardless — a stuck "live" strip is worse */ }
@@ -3202,6 +3454,9 @@ function bodyDoubleView() {
       }));
       Alpine.store('pomodoro').stop();
       this.sessionActive = false;
+      this.studySessionId = null;
+      this.conflictSession = null;
+      this.startError = '';
       this.activity = '';
       this.confirmingEnd = false;
       /* Deliberately NOT clearing the note draft: losing a half-written note
@@ -3210,3 +3465,9 @@ function bodyDoubleView() {
     },
   };
 }
+
+/* Delegating alias for the pre-rename attribute string `bodyDoubleView()`.
+ * NOT a second implementation — it returns the one factory above — so a markup
+ * file still carrying the old x-data cannot silently get a component without
+ * the recovery block, and the rename cannot half-land. */
+function bodyDoubleView() { return bodyDoubleSession(); }

@@ -1066,7 +1066,14 @@
             <div x-show="view === 'courses'" class="review-content">
               <div style="width:100%;max-width:800px;margin:0 auto;padding:24px">
                 <!-- Live session banner -->
-                <a x-show="liveSession" href="#study-session" @click.prevent="$store.nav.go('study-session')"
+                <!-- Live session banner. It routes to the surface that OWNS the
+                     session, from the origin the state endpoint reports — a
+                     body-double session sent to the Study picker lands the
+                     learner on a view that cannot adopt it, where every Start
+                     409s. That closed loop is the bug this banner fed. -->
+                <a x-show="liveSession"
+                   :href="'#' + (liveSession?.origin === 'body-double' ? 'body-double' : 'study-session')"
+                   @click.prevent="$store.nav.go(liveSession?.origin === 'body-double' ? 'body-double' : 'study-session')"
                    class="session-indicator">
                   <span class="session-pulse"></span>
                   Live session: <span x-text="liveSession?.topic || 'Study'"></span>
@@ -1514,7 +1521,14 @@
       <!-- BODY DOUBLE VIEW — timer + terminal                          -->
       <!-- ============================================================ -->
       <div x-show="$store.nav.is('body-double')" x-cloak>
-        <div class="body-double-view session-dashboard" x-data="bodyDoubleView()" x-init="init()">
+        <!-- x-data string is load-bearing, not decorative: the recovery tests
+             reach this component with
+             document.querySelector('[x-data="bodyDoubleSession()"]'). The
+             pre-rename bodyDoubleView() survives as a delegating alias in
+             components.js, so the old string still FUNCTIONS in a browser —
+             which is exactly why a stale attribute here would look fine and
+             still fail the suite. -->
+        <div class="body-double-view session-dashboard" x-data="bodyDoubleSession()" x-init="init()">
           <header class="body-double-header">
             <h2>Body Double</h2>
             <p class="text-muted">A focused workspace with timer and terminal. Just be here.</p>
@@ -1575,8 +1589,10 @@
             </div>
           </section>
 
-          <!-- PICKER (idle) -->
-          <section class="bd-card" x-show="!sessionActive">
+          <!-- PICKER (idle). .bd-start-picker is the surface-scoping hook: this
+               view is declared BEFORE the Study view in the document, so an
+               unscoped picker selector resolves here first. -->
+          <section class="bd-card bd-start-picker" x-show="!sessionActive">
             <label class="bd-field">What are you working on?
               <input id="bd-activity-input" type="text" x-model="activity"
                      placeholder="e.g. Window functions"></label>
@@ -1606,6 +1622,40 @@
             <button id="bd-start-session" type="button" class="bd-primary-btn"
                     :disabled="!activity.trim() || !agent" @click="startSession()">Start session</button>
             <p id="bd-start-error" class="picker-hint error" x-show="startError" x-text="startError"></p>
+
+            <!-- Recovery block — the twin of the Study picker's. x-if, NOT
+                 x-show, and that is load-bearing: this view is always in the
+                 DOM (x-show on nav), and three tests in
+                 test_web_session_lifecycle.py address `.picker-error` with a
+                 BARE selector. A second one living here permanently would turn
+                 those into strict-mode violations, so the element exists only
+                 while this picker is actually blocked. Reattach stays gated on
+                 conflictIsOwn: a foreign session must not be adopted here. -->
+            <template x-if="conflictSession || startError">
+              <div class="session-conflict-recovery" style="margin-top:12px">
+                <p class="picker-error">
+                  <span x-show="conflictSession && !conflictIsOwn">A session is already live in <strong x-text="conflictOwnerLabel"></strong> &mdash; this view cannot adopt it, so Start would be refused.</span>
+                  <span x-show="startError" x-text="startError"></span>
+                </p>
+                <div class="conflict-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+                  <button id="bd-conflict-open" type="button" class="bulk-btn"
+                          x-show="conflictSession && !conflictIsOwn"
+                          @click="openConflictOwner()">
+                    Open <span x-text="conflictOwnerLabel || 'the owning view'"></span>
+                  </button>
+                  <button id="bd-conflict-reattach" type="button" class="bulk-btn"
+                          x-show="conflictIsOwn"
+                          @click="reattachConflictSession()">
+                    Reattach to this session
+                  </button>
+                  <button id="bd-conflict-end" type="button" class="bulk-btn"
+                          x-show="conflictSession"
+                          @click="endConflictSession()">
+                    End that session
+                  </button>
+                </div>
+              </div>
+            </template>
           </section>
 
           <!-- LIVE (session active). The strip is sticky so End stays reachable
@@ -2040,6 +2090,30 @@
           </div>
         </div>
 
+        <!-- In-page end-session confirm (replaces native confirm()). Sits
+             OUTSIDE the sessionActive/picker branches for the same reason the
+             park-first overlay does: it is needed in BOTH states — ending our
+             own live session, and ending the session another surface owns from
+             the recovery block in the picker. There is exactly ONE
+             .end-confirm-dialog in the SPA and a test addresses it with a bare
+             selector, so this element is shared rather than duplicated. -->
+        <div id="end-confirm" class="end-confirm-overlay" x-show="confirmingEnd"
+             x-transition.opacity x-cloak
+             @keydown.escape.window="confirmingEnd = false">
+          <div class="end-confirm-dialog" role="alertdialog" aria-label="End session confirmation">
+            <p x-text="conflictSession && !conflictIsOwn
+                       ? 'End the live session in ' + (conflictOwnerLabel || 'the other view') + '?'
+                       : 'End the current study session?'"></p>
+            <div class="end-confirm-actions">
+              <button class="end-confirm-btn end-confirm-cancel"
+                      @click="confirmingEnd = false">Keep going</button>
+              <button class="end-confirm-btn end-confirm-yes"
+                      data-testid="study-end-confirm-yes"
+                      @click="confirmEndSession()">End session</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Start Session Picker (no active session) ── -->
         <div x-show="!sessionActive && !starting" class="session-start-picker study-start-picker" x-transition>
           <h2>Start a Study Session</h2>
@@ -2173,7 +2247,8 @@
           </div>
 
           <!-- Start button -->
-          <button class="start-session-btn" @click="startSession()"
+          <button class="start-session-btn" data-testid="study-start-session"
+                  @click="startSession()"
                   :disabled="!resolvedTopic().trim() || !agent"
                   :class="{ disabled: !resolvedTopic().trim() || !agent }">
             Start Session
@@ -2181,7 +2256,47 @@
           <p class="picker-hint" x-show="!agent" x-cloak>Select an agent to continue.</p>
           <p class="picker-hint" x-show="agent && !resolvedTopic().trim()" x-cloak>Add a topic or pick a lesson.</p>
 
-          <p x-show="startError" class="picker-error" x-text="startError"></p>
+          <!-- ── Recovery block ───────────────────────────────────────────
+               This picker cannot start anything while another surface owns the
+               live session: the origin guard in liveAgentConsole() is what
+               stops two consoles attaching to one PTY, so the view renders the
+               picker instead of adopting it, and Start can then only ever 409.
+               Complaining without offering a lever was the bug — name the
+               owner, then offer open / end / reattach.
+
+               ONE .picker-error, deliberately. Three tests in
+               test_web_session_lifecycle.py address it with a BARE
+               `.picker-error`, so a second one anywhere in this view is a
+               strict-mode violation, not a nicer layout. The plain start-error
+               path (503 / network / same-origin 409) still renders through it.
+
+               Reattach is gated on conflictIsOwn: adopting a FOREIGN session
+               in this view is precisely what the origin guard exists to
+               prevent, so the control must not even be offered for one. ── -->
+          <div class="session-conflict-recovery" style="margin-top:12px"
+               x-show="conflictSession || startError" x-cloak>
+            <p class="picker-error">
+              <span x-show="conflictSession && !conflictIsOwn">A session is already live in <strong x-text="conflictOwnerLabel"></strong> &mdash; this view cannot adopt it, so Start would be refused.</span>
+              <span x-show="startError" x-text="startError"></span>
+            </p>
+            <div class="conflict-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+              <button id="study-conflict-open" type="button" class="end-confirm-btn"
+                      x-show="conflictSession && !conflictIsOwn"
+                      @click="openConflictOwner()">
+                Open <span x-text="conflictOwnerLabel || 'the owning view'"></span>
+              </button>
+              <button id="study-conflict-reattach" type="button" class="end-confirm-btn"
+                      x-show="conflictIsOwn"
+                      @click="reattachConflictSession()">
+                Reattach to this session
+              </button>
+              <button id="study-conflict-end" type="button" class="end-confirm-btn"
+                      x-show="conflictSession"
+                      @click="endConflictSession()">
+                End that session
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- ── Starting spinner ── -->
@@ -2395,19 +2510,11 @@
               <button class="status-btn" @click="resetTimer()" title="Reset">&#8634;</button>
               <button class="status-btn end-btn" @click="endSession()" title="End session">&#9632;</button>
             </div>
-            <!-- In-page end-session confirm (replaces native confirm()) -->
-            <div class="end-confirm-overlay" x-show="confirmingEnd" x-transition.opacity
-                 @keydown.escape.window="confirmingEnd = false">
-              <div class="end-confirm-dialog" role="alertdialog" aria-label="End session confirmation">
-                <p>End the current study session?</p>
-                <div class="end-confirm-actions">
-                  <button class="end-confirm-btn end-confirm-cancel"
-                          @click="confirmingEnd = false">Keep going</button>
-                  <button class="end-confirm-btn end-confirm-yes"
-                          @click="confirmEndSession()">End session</button>
-                </div>
-              </div>
-            </div>
+            <!-- The end-session confirm overlay used to live HERE. It now sits
+                 at the component root (next to the park-first overlay) as
+                 #end-confirm: nested in this sessionActive-only layout it was
+                 display:none in the one state that needs it most — ending
+                 ANOTHER surface's session from the picker. -->
             <span class="status-topic" x-text="topic"></span>
             <span class="status-energy">&#9889;<span x-text="energy"></span></span>
             <div class="status-counters">
