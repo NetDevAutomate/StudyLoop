@@ -61,21 +61,6 @@ DEV_ENGINES: Final[dict[str, dict[str, Any]]] = {
             "Full-screen TUIs (vim, htop, mouse tracking) are untested.",
         ),
     },
-    # Earlier experiment (vercel-labs/wterm). Superseded by ghostty but kept
-    # reachable via ``--dev-engine wterm`` so the two can be compared directly.
-    "wterm": {
-        "css": ("/vendor/css/wterm-0.3.0.css",),
-        "js": (
-            "/vendor/js/wterm-0.3.0.js",
-            "/vendor/js/wterm-adapter-0.3.0.js",
-        ),
-        "renderer": "wterm",
-        "caveats": (
-            "Superseded by libghostty — kept only for side-by-side comparison.",
-            "No onScroll, no custom key handler, no clipboard.",
-            "The agent terminal is known to disconnect mid-session.",
-        ),
-    },
 }
 
 #: Engine used when ``--dev`` is passed without ``--dev-engine``.

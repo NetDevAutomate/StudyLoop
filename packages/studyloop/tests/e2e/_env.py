@@ -308,7 +308,7 @@ def launch_env(
 
     ``extra_args`` is appended to the ``studyloop web`` command line — used to
     launch an experimental terminal renderer (``["--dev"]``, optionally with
-    ``["--dev-engine", "wterm"]``) so the UI can be asserted to say so.
+    ``["--dev-engine", "ghostty"]``) so the UI can be asserted to say so.
     """
     world = build_test_world(root, port, fake_agent=fake_agent, plans_dir=plans_dir)
     server = start_server(world, extra_args=extra_args)

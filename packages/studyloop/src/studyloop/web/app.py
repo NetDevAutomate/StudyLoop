@@ -77,7 +77,7 @@ def create_app(
                   xterm.js. Default (False) preserves existing behaviour exactly.
         dev_renderer: Deprecated legacy alias for ``dev_engine``. When set
                       (non-None), it takes precedence and drives the original
-                      inline ghostty-web/wterm injection below. New callers
+                      inline ghostty-web injection below. New callers
                       should use ``dev_engine`` instead, which is validated
                       against and injected via ``studyloop.web.dev_engines``.
         dev_engine: Which registered dev engine (``studyloop.web.dev_engines
@@ -236,22 +236,6 @@ def create_app(
                 '\n  <script defer src="/vendor/js/ghostty-web-bootstrap-0.4.0.js"></script>'
             )
             html = html.replace("</head>", ghostty_scripts + "\n</head>", 1)
-        elif renderer == "wterm":
-            dev_injection = (
-                '\n  <meta name="studyloop-dev-mode" content="wterm">'
-                '\n  <link rel="stylesheet" href="/vendor/css/wterm-0.3.0.css">'
-            )
-            html = html.replace("<head>", "<head>" + dev_injection, 1)
-            # Both scripts are `defer` — they execute in document order AFTER the
-            # `defer` xterm-6.0.0 scripts above, so the adapter's
-            # `window.Terminal = WTermAdapter` is the last writer and wins.
-            wterm_scripts = (
-                "\n  <!-- wterm dev-mode: defer so it runs after the xterm defer"
-                " scripts; the adapter patches window.Terminal last -->"
-                '\n  <script defer src="/vendor/js/wterm-0.3.0.js"></script>'
-                '\n  <script defer src="/vendor/js/wterm-adapter-0.3.0.js"></script>'
-            )
-            html = html.replace("</head>", wterm_scripts + "\n</head>", 1)
         return HTMLResponse(content=html, headers=no_cache)
 
     # Redirect /session to hash-routed study-session tab
