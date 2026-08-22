@@ -212,7 +212,12 @@ def test_study_session_form_renders(web_page: Page) -> None:
         .filter(has_text="Start a Study Session")
         .is_visible()
     )
-    assert web_page.locator("#session-type-select").is_visible()
+    # Session Type dropdown deliberately absent: Body Double is its own view,
+    # not a mode of this picker (body-double-own-agent-picker / ADR-0002), and
+    # test_body_double_journey asserts its count is 0. This suite used to assert
+    # the opposite, which is a straight contradiction — the redesign is the
+    # newer contract.
+    assert web_page.locator("#session-type-select").count() == 0
     assert web_page.locator("#target-kind-select").is_visible()
     assert web_page.locator(".start-session-btn").is_visible()
 
