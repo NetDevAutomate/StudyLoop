@@ -34,6 +34,7 @@ async def get_session_state() -> dict:
     """
     from studyloop.session import active as session_active
     from studyloop.web.routes.session import _grace
+    from studyloop.web.routes.session._start import _DEFAULT_ORIGIN
 
     state = _get_full_state()
     current = await session_active.current()
@@ -68,6 +69,13 @@ async def get_session_state() -> dict:
             state["mode"] = "focus"
     state["detached"] = _grace.has_pending_release(session_id)
     state["reattach_url"] = f"/api/session/ws?study_session_id={session_id}"
+    # Which view owns this session. _start.py persists it, but the overlay branch
+    # above rebuilds the dict from scratch and dropped it — so a client could not
+    # tell a Body Double session from a Study one and had to guess which view to
+    # send the learner back to. Guessing wrong lands them in a picker that cannot
+    # adopt the session. Default to the documented default rather than omitting
+    # the key, so callers never have to special-case its absence.
+    state.setdefault("origin", _DEFAULT_ORIGIN)
     return state
 
 
