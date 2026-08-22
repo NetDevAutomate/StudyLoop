@@ -587,3 +587,18 @@ MagicMock/
 !.pi/skills/openspec-*/
 agent/
 skills-lock.json
+
+# Personal / throwaway scripts only.
+#
+# Do NOT ignore the whole scripts/ directory. 16 scripts in it are TRACKED and
+# load-bearing: scripts/install.sh is the README's documented install path,
+# build-release.sh + check-release-consistency.py + the two smoke-*.sh scripts are
+# invoked by .github/workflows/ci.yml, and the Justfile drives several more. A
+# directory-wide rule does not hide those (git only ignores UNTRACKED files) but it
+# does mean a NEW script silently fails to `git add`, and it leaves the tracked
+# ones in a tracked-but-ignored state that `git ls-files -i -c` flags.
+#
+# Convention: prefix a throwaway with an underscore, or put personal scratch in
+# scripts/local/.
+scripts/_*
+scripts/local/
