@@ -743,6 +743,12 @@ function reviewApp(defaultMode) {
     // NaN !== NaN — correct by accident, and silently broken by anyone who
     // "tidies" the comparison.
     _liveSessionEpoch: 0,
+    // True once init() has finished ALL of its async work. Exposed for tests:
+    // there is no other honest "ready" signal, because coursesLoading goes false
+    // in _loadCourses()'s finally — measured at ~250ms BEFORE liveSession is
+    // populated — so waiting on it returns while the session fetch is still in
+    // flight. That gap is what made the banner tests intermittent.
+    _initDone: false,
     heatmapDays: [],
     history: [],
 
@@ -891,6 +897,9 @@ function reviewApp(defaultMode) {
       });
       await this._loadCourses();
       await this._loadLiveSession();
+      // Last line of init() on purpose — this is the only signal that every
+      // await above has settled.
+      this._initDone = true;
     },
 
     async _loadCourses() {

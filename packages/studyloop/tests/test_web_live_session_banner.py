@@ -98,14 +98,12 @@ def _wait_flashcards_init(page: Page) -> None:
           });
           if (!el) return false;
           const d = window.Alpine.$data(el);
-          // Wait on coursesLoading flipping to false, NOT on courses being an
-          // array. `courses: []` is the component's INITIAL value, so
-          // Array.isArray(courses) is already true the instant Alpine mounts —
-          // the old predicate therefore returned before init() had run at all,
-          // and a test that then dispatched study-session-stop could beat the
-          // listener registration. coursesLoading starts true and is only
-          // cleared in _loadCourses()'s finally, so false proves init() ran.
-          return d.coursesLoading === false;
+          // Wait for init()'s OWN completion flag. Every proxy signal tried here
+          // was wrong: `courses` is an array from its initial `[]` (true before
+          // init runs at all), and `coursesLoading === false` fires in
+          // _loadCourses()'s finally — measured ~250ms BEFORE liveSession is
+          // populated — so tests reading liveSession raced the fetch.
+          return d._initDone === true;
         }""",
         timeout=6000,
     )
