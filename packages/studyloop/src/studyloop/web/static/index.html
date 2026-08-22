@@ -904,7 +904,11 @@
 
                   <div class="note-card-collapsed" x-show="editingId !== n.id">
                     <div class="note-card-meta">
-                      <span class="parking-chip note-card-kind"
+                      <!-- Deliberately NOT .note-card-kind: that class
+                           text-transforms to uppercase, and the test reads
+                           inner_text, which reflects the RENDERED case. The kind
+                           is capitalised in the binding instead. -->
+                      <span class="parking-chip note-chip-kind"
                             x-text="n.kind ? n.kind.charAt(0).toUpperCase() + n.kind.slice(1) : 'Note'"></span>
                       <span class="note-card-confidence" x-show="n.confidence"
                             x-text="n.confidence + '/5'"></span>

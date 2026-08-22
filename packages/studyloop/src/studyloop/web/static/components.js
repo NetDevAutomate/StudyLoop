@@ -3127,6 +3127,11 @@ function bodyDoubleView() {
         }
         this.sessionActive = true;
         this.liveActivity = this.activity;
+        /* Re-point the note composer at the live activity. refreshFocus() ran at
+           init(), before any session existed, so its default fell back to the
+           first focus slot - filing notes against the wrong topic for the whole
+           session. A misfiled note is worse than an untagged one. */
+        this.noteTopic = this.activity;
         window.dispatchEvent(new CustomEvent('study-session-start', {
           detail: {
             topic: this.activity, origin: 'body-double', energy: this.energy,
