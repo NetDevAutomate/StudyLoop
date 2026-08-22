@@ -896,29 +896,59 @@
                 </label>
 
                 <div class="note-card-main">
-                  <template x-if="editingId !== n.id">
-                    <div>
-                      <div class="note-card-title" @click="onTitleClick(n)"
-                           x-text="n.title"></div>
-                      <div class="note-card-kind" x-show="n.kind" x-text="n.kind"></div>
-                    </div>
-                  </template>
+                  <!-- The title stays in the DOM while editing (hidden, not
+                       unmounted): it is how a card is IDENTIFIED, by tests and
+                       by assistive tech alike, and removing it makes an open
+                       card anonymous. Same fix as the parking card in cf735f1. -->
+                  <div class="note-card-title" @click="onTitleClick(n)"
+                       x-show="editingId !== n.id" x-text="n.title"></div>
 
-                  <template x-if="editingId === n.id">
-                    <div class="note-card-editor" @keydown.stop>
+                  <div class="note-card-collapsed" x-show="editingId !== n.id">
+                    <div class="note-card-meta">
+                      <span class="parking-chip note-card-kind"
+                            x-text="n.kind ? n.kind.charAt(0).toUpperCase() + n.kind.slice(1) : 'Note'"></span>
+                      <span class="note-card-confidence" x-show="n.confidence"
+                            x-text="n.confidence + '/5'"></span>
+                    </div>
+                    <div class="note-card-preview" x-show="n.preview" x-text="n.preview"></div>
+                  </div>
+
+                  <!-- x-show, NOT x-if: the editor stays mounted per card so a
+                       reading/edit tab switch does not tear down and rebuild the
+                       surface mid-interaction. -->
+                  <div class="note-card-editor" x-show="editingId === n.id" @keydown.stop>
+                    <div class="note-editor-tabs">
+                      <button type="button" class="bd-tab note-tab-rendered"
+                              :class="{ active: expandedTab === 'rendered' }"
+                              @click="showRendered(n)">Rendered</button>
+                      <button type="button" class="bd-tab note-tab-edit"
+                              :class="{ active: expandedTab === 'edit' }"
+                              @click="expandedTab = 'edit'">Edit</button>
+                    </div>
+
+                    <!-- Reading surface is the DEFAULT: a saved note is
+                         something you come back to read far more often than to
+                         rewrite, and dropping straight into a raw textarea hides
+                         the diagrams the note was written for. -->
+                    <div class="note-rendered acp-message-final"
+                         x-show="expandedTab === 'rendered'" x-html="renderedHtml"></div>
+
+                    <div x-show="expandedTab === 'edit'">
                       <input class="note-title-input" type="text"
                              x-model="titleText" placeholder="Title">
-                      <textarea class="note-body-input" rows="8"
+                      <textarea class="note-edit-body note-body-input" rows="8"
                                 x-model="bodyText"
                                 placeholder="Write your note as Markdown…"></textarea>
-                      <div class="note-editor-toolbar">
-                        <button type="button" class="bulk-btn primary"
+                      <div class="note-edit-actions note-editor-toolbar">
+                        <button type="button" class="bulk-btn"
+                                @click="insertNoteDiagram()">+ Diagram</button>
+                        <button type="button" class="bulk-btn primary note-save-btn"
                                 @click="save()" x-text="saveState"></button>
                         <button type="button" class="bulk-btn"
                                 @click="closeEditor()">Close</button>
                       </div>
                     </div>
-                  </template>
+                  </div>
                 </div>
 
                 <button class="note-card-delete" type="button"

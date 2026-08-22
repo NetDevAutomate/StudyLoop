@@ -2743,6 +2743,11 @@ function notesPanel() {
     kindFilter: '',
     exportOpen: false,
     exportText: '',
+    /* Which face of an open note is showing. 'rendered' is the default because a
+       saved note is read far more often than rewritten, and opening straight
+       into a raw textarea hides the diagrams it was written for. */
+    expandedTab: 'rendered',
+    renderedHtml: '',
 
     init() {
       const self = this;
@@ -2829,8 +2834,35 @@ function notesPanel() {
       this.titleText = note.title || '';
       this.bodyText = note.body || '';
       this.saveState = 'Save';
+      this.expandedTab = 'rendered';
+      this.renderCard(note);
     },
     closeEditor() { this.editingId = null; },
+
+    async showRendered(note) {
+      this.expandedTab = 'rendered';
+      await this.renderCard(note);
+    },
+
+    async renderCard(note) {
+      /* Render from the CURRENT buffer when this note is the one open, so the
+         reading tab shows what is about to be saved rather than a stale copy. */
+      const src = (this.editingId === note.id ? this.bodyText : note.body) || '';
+      this.renderedHtml = '';
+      await this.$nextTick();
+      this.renderedHtml = renderMarkdown(src);
+      await this.$nextTick();
+      await this.$nextTick();
+      _mermaidInitForPalette();
+      /* $root, not $el — $el resolves to the element the calling expression sits
+         on (a tab button), whose subtree holds no placeholders. See 11f7862. */
+      await _renderMermaidPlaceholders(this.$root);
+    },
+
+    insertNoteDiagram() {
+      const tpl = '```mermaid\nflowchart TD\n  A[Start] --> B[Next]\n```';
+      this.bodyText = (this.bodyText || '').replace(/\s+$/, '') + '\n\n' + tpl;
+    },
     onTitleClick(note) {
       if (this.selectMode) { this.toggleSelect(note.id); return; }
       this.openEditor(note);
