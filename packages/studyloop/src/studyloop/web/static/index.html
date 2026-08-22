@@ -171,8 +171,6 @@
               @click="$store.settings.toggleTheme()" title="Toggle light/dark theme">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       </button>
-      <button class="toggle-btn" :class="{ active: $store.settings.dyslexic }"
-              @click="$store.settings.toggleDyslexic()" title="Toggle OpenDyslexic font">Aa</button>
       <select class="palette-select" title="Theme palette"
               :value="$store.settings.palette"
               @change="$store.settings.setPalette($event.target.value)">
@@ -189,15 +187,37 @@
         <option value="rose-pine">Rosé Pine</option>
         <option value="everforest">Everforest</option>
       </select>
-      <select class="palette-select" title="Reading font"
-              :value="$store.settings.font"
-              @change="$store.settings.setFont($event.target.value)">
-        <option value="inter">Inter</option>
-        <option value="lexend">Lexend</option>
-        <option value="atkinson">Atkinson Hyperlegible</option>
-        <option value="system">System</option>
-        <option value="serif">Serif</option>
-      </select>
+      <!-- Reading font + font size, both with a VISIBLE label.  The user asked
+           for "standard fonts other than just OpenDyslexic" when five already
+           sat in this dropdown: they could not tell what the unlabelled control
+           was, and a title attribute only appears on hover.  OpenDyslexic is an
+           option here rather than a separate Aa toggle so exactly one mechanism
+           (body[data-font]) governs the reading font — two mechanisms with
+           different line metrics were the reported sidebar overlap. -->
+      <label class="header-field">
+        <span class="header-field-label text-muted">Font</span>
+        <select class="palette-select" title="Reading font"
+                :value="$store.settings.font"
+                @change="$store.settings.setFont($event.target.value)">
+          <option value="inter">Inter</option>
+          <option value="lexend">Lexend</option>
+          <option value="atkinson">Atkinson Hyperlegible</option>
+          <option value="system">System</option>
+          <option value="serif">Serif</option>
+          <option value="opendyslexic">OpenDyslexic</option>
+        </select>
+      </label>
+      <label class="header-field">
+        <span class="header-field-label text-muted">Size</span>
+        <select class="palette-select" title="Font size"
+                :value="$store.settings.fontScale"
+                @change="$store.settings.setFontScale($event.target.value)">
+          <option value="sm">Small</option>
+          <option value="md">Medium</option>
+          <option value="lg">Large</option>
+          <option value="xl">Extra large</option>
+        </select>
+      </label>
     </div>
   </header>
 
@@ -2107,7 +2127,33 @@
           <section class="mastery-layout">
             <div class="mastery-graph-card">
               <div class="mastery-section-title">Graph</div>
+              <!-- Orienting line: the panel subtitle describes the controls,
+                   not the picture, and "not evident what the page is
+                   displaying" was the actual complaint.  Structure only — what
+                   the colours MEAN is the legend's job, because the generator
+                   owns the palette. -->
+              <p class="mastery-graph-caption text-muted">
+                Each box is a concept found in your notes; each arrow runs from a concept
+                to another one it depends on.
+              </p>
               <div x-ref="graphCanvas" class="mastery-graph-canvas"></div>
+              <!-- Legend rendered from the category list the API returns, never
+                   hardcoded: the colours are chosen by the graph generator, so a
+                   literal legend here becomes a lie the moment its palette
+                   changes.  Absent/empty list renders nothing at all. -->
+              <template x-if="(graph?.legend || graph?.legend_categories || graph?.categories || []).length">
+                <div class="mastery-legend">
+                  <template x-for="cat in (graph?.legend || graph?.legend_categories || graph?.categories || [])"
+                            :key="cat.label || cat.name">
+                    <div class="mastery-legend-item">
+                      <span class="mastery-legend-swatch"
+                            :style="'background:' + (cat.colour || cat.color || 'transparent')"></span>
+                      <strong x-text="cat.label || cat.name"></strong>
+                      <span x-text="(cat.meaning || cat.description) ? '— ' + (cat.meaning || cat.description) : ''"></span>
+                    </div>
+                  </template>
+                </div>
+              </template>
             </div>
 
             <div class="mastery-weak-card">

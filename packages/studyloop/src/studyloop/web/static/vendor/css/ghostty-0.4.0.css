@@ -8,7 +8,7 @@
  * Two jobs:
  *
  *  1. Declare --term-font-family / --term-font-size as first-class theme
- *     variables, re-pointed per body[data-font] and body.dyslexic.
+ *     variables, re-pointed per body[data-font], including the opendyslexic option.
  *     ghostty-adapter-0.4.0.js reads these via getComputedStyle and pushes
  *     them into the terminal, which is how a font change reaches the
  *     terminal as well as the prose panes.  The xterm.js path hard-codes
@@ -56,11 +56,17 @@ body[data-font="serif"] {
   --term-font-size: 14px;
 }
 
-/* OpenDyslexic wins over the reading-font picker, matching how body.dyslexic
-   overrides --font for prose.  Declared last so it takes precedence at equal
-   specificity, and repeated at higher specificity for the combined case. */
-body.dyslexic,
-body.dyslexic[data-font] {
+/* OpenDyslexic reaches the terminal as well as the prose panes.
+   It used to be selected by `body.dyslexic`, a separate class that set
+   font-family directly and competed with the `body[data-font]` variable the
+   picker drives. The two mechanisms had different line metrics, which is what
+   made switching fonts leave overlapping text, so OpenDyslexic is now one
+   option in the single `data-font` mechanism.
+   This file is vendored, which is exactly why it was missed when the rest of
+   the conversion happened: the adapter reads --term-font-family from here, so a
+   surviving `body.dyslexic` selector meant the setting silently stopped at the
+   terminal edge — the half-applied setting the test below guards against. */
+body[data-font="opendyslexic"] {
   --term-font-family: "OpenDyslexic", ui-monospace, Menlo, monospace;
   --term-font-size: 14px;
 }

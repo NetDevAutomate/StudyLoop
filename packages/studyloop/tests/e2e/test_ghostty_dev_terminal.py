@@ -666,12 +666,12 @@ class TestFontPropagation:
         exactly the kind of half-applied setting this work is meant to fix.
         """
         _mount_terminal(dev_page)
-        dev_page.evaluate("() => window.Alpine.store('settings').toggleDyslexic()")
+        dev_page.evaluate("() => window.Alpine.store('settings').setFont('opendyslexic')")
         dev_page.wait_for_function(
             "() => window.__studyloopGhostty.appliedFont.fontFamily.includes('OpenDyslexic')",
             timeout=10_000,
         )
-        assert dev_page.evaluate("() => document.body.classList.contains('dyslexic')")
+        assert dev_page.evaluate("() => document.body.getAttribute('data-font') === 'opendyslexic'")
         font = dev_page.evaluate("() => window.__studyloopGhostty.appliedFont")
         assert "OpenDyslexic" in font["fontFamily"]
 

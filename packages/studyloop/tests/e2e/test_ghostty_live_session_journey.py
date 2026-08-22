@@ -516,12 +516,14 @@ class TestLiveFontPropagation:
             _start_session_through_ui(live_page, live_env, "Ghostty Live Dyslexic")
             _await_agent_text(live_page, "FAKE-AGENT READY")
 
-            live_page.evaluate("() => window.Alpine.store('settings').toggleDyslexic()")
+            live_page.evaluate("() => window.Alpine.store('settings').setFont('opendyslexic')")
             live_page.wait_for_function(
                 "() => window.__studyloopGhostty.appliedFont.fontFamily.includes('OpenDyslexic')",
                 timeout=15_000,
             )
-            assert live_page.evaluate("() => document.body.classList.contains('dyslexic')")
+            assert live_page.evaluate(
+                "() => document.body.getAttribute('data-font') === 'opendyslexic'"
+            )
             assert "FAKE-AGENT READY" in _buffer_text(live_page)
         except Exception:
             _diag(live_page, "ghostty-live-dyslexic-fail")

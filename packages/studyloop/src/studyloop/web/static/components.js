@@ -157,6 +157,40 @@ function _mdToPlainText(md) {
 }
 
 /**
+ * Render one mermaid diagram without leaking DOM on failure.
+ *
+ * The two-argument form `mermaid.render(id, src)` appends its measurement node
+ * to document.body, and on a parse failure it leaves an error SVG ("Syntax
+ * error in text") attached there — pinned to the bottom of every page, since
+ * nothing ever removes it. Three defences, applied at every call site:
+ *
+ *  1. `parse()` first. It validates without injecting DOM, so a source that is
+ *     not a diagram is rejected before anything can be appended.
+ *  2. The three-argument `render(id, src, containerEl)` form, so mermaid
+ *     measures inside the caller's container instead of document.body.
+ *  3. A `finally` that removes anything still keyed on the id — `#<id>` and
+ *     `#d<id>`, the prefix mermaid uses for its measurement wrapper. Absence is
+ *     the normal case, hence the optional chaining.
+ *
+ * Rejects on invalid source so callers keep their own fallback behaviour.
+ *
+ * @param {string} id — unique element id for this render
+ * @param {string} src — mermaid diagram source
+ * @param {Element} containerEl — element mermaid may measure inside
+ * @returns {Promise<string>} the rendered SVG markup
+ */
+async function _renderMermaidScoped(id, src, containerEl) {
+  try {
+    await window.mermaid.parse(src);
+    const { svg } = await window.mermaid.render(id, src, containerEl);
+    return svg;
+  } finally {
+    document.getElementById(id)?.remove();
+    document.getElementById('d' + id)?.remove();
+  }
+}
+
+/**
  * Second-pass mermaid rendering.
  * renderMarkdown() leaves <div class="mermaid-diagram" data-src="…"> placeholders.
  * This function finds them inside `rootEl`, calls mermaid.render() for each,
@@ -180,8 +214,7 @@ async function _renderMermaidPlaceholders(rootEl) {
     delete el.dataset.src;
     const id = 'mermaid-render-' + Date.now() + '-' + (counter++);
     try {
-      const { svg } = await window.mermaid.render(id, src);
-      el.innerHTML = svg;
+      el.innerHTML = await _renderMermaidScoped(id, src, el);
     } catch (err) {
       console.warn('[CourseExplorer] mermaid.render failed:', err);
       /* Fallback: show the raw diagram source in a <pre> block. */
@@ -295,15 +328,21 @@ document.addEventListener("alpine:init", () => {
 
   Alpine.store("settings", {
     voiceOn: localStorage.getItem("voice") === "true",
-    dyslexic: localStorage.getItem("dyslexic") === "true",
     light: localStorage.getItem("theme") === "light",
     /* Palette selector: tokyo-night (default), dracula, catppuccin-mocha,
        catppuccin-latte. The legacy `light` toggle stays for backward
        compatibility but the palette is the canonical readability lever. */
     palette: localStorage.getItem("palette") || "tokyo-night",
-    /* Reading-font picker: inter (default), lexend, atkinson, system, serif.
-       Independent of the OpenDyslexic toggle, which overrides when active. */
+    /* Reading font: inter (default), lexend, atkinson, system, serif,
+       opendyslexic. ONE mechanism — body[data-font] feeding the --font custom
+       property. OpenDyslexic used to be a separate body.dyslexic class that set
+       font-family and line-height directly, which overrode the variable system
+       and produced overlapping text when the two were toggled independently.
+       Do not reintroduce a second mechanism. */
     font: localStorage.getItem("font") || "inter",
+    /* Reading size: sm, md (default), lg, xl. Applied through the same
+       attribute mechanism as `font` — see _applyFont(). */
+    fontScale: localStorage.getItem("fontScale") || "md",
     // isSpeaking: driven by 'tts:state-change' events from tts-engine.js.
     // true while any tier (neural or Web Speech API) is producing audio.
     isSpeaking: false,
@@ -355,7 +394,7 @@ document.addEventListener("alpine:init", () => {
     },
 
     init() {
-      if (this.dyslexic) document.body.classList.add("dyslexic");
+      this._migrateDyslexicSetting();
       if (this.light) document.body.classList.add("light");
       this._applyPalette();
       this._applyFont();
@@ -425,10 +464,18 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
-    toggleDyslexic() {
-      this.dyslexic = !this.dyslexic;
-      document.body.classList.toggle("dyslexic", this.dyslexic);
-      localStorage.setItem("dyslexic", this.dyslexic);
+    /* One-time migration off the removed body.dyslexic mechanism.
+       A learner who had the old `Aa` toggle on must land on the equivalent
+       dropdown option rather than silently losing their reading font. The stale
+       key is cleared unconditionally: leaving it behind would let a later reader
+       resurrect the second mechanism this migration exists to remove. */
+    _migrateDyslexicSetting() {
+      const legacy = localStorage.getItem("dyslexic");
+      if (legacy === null) return;
+      localStorage.removeItem("dyslexic");
+      if (legacy !== "true") return;
+      this.font = "opendyslexic";
+      localStorage.setItem("font", "opendyslexic");
     },
 
     toggleTheme() {
@@ -474,19 +521,44 @@ document.addEventListener("alpine:init", () => {
     },
 
     setFont(name) {
-      const allowed = ["inter", "lexend", "atkinson", "system", "serif"];
+      const allowed = [
+        "inter",
+        "lexend",
+        "atkinson",
+        "system",
+        "serif",
+        "opendyslexic",
+      ];
       if (!allowed.includes(name)) return;
       this.font = name;
       localStorage.setItem("font", name);
       this._applyFont();
     },
 
+    setFontScale(step) {
+      const allowed = ["sm", "md", "lg", "xl"];
+      if (!allowed.includes(step)) return;
+      this.fontScale = step;
+      localStorage.setItem("fontScale", step);
+      this._applyFont();
+    },
+
+    /* The single font mechanism: both family and size are body attributes that
+       style.css turns into custom properties. Family and size travel together
+       here deliberately — the overlapping-text bug came from a second mechanism
+       setting font metrics behind this one's back. */
     _applyFont() {
       /* `inter` is the bare :root state — drop the data attribute. */
       if (this.font === "inter") {
         document.body.removeAttribute("data-font");
       } else {
         document.body.setAttribute("data-font", this.font);
+      }
+      /* `md` is likewise the bare :root state. */
+      if (this.fontScale === "md") {
+        document.body.removeAttribute("data-font-scale");
+      } else {
+        document.body.setAttribute("data-font-scale", this.fontScale);
       }
     },
 
@@ -578,10 +650,17 @@ document.addEventListener("alpine:init", () => {
             opt.textContent = v.grade ? `${v.name} [${v.grade}]` : v.name;
             select.appendChild(opt);
           });
-          // Restore saved neural voice preference
+          // Select the voice that will ACTUALLY speak, not merely the saved one.
+          // With no saved preference the <select> fell to option index 0 while
+          // the engine stayed on its own DEFAULT_VOICE — so the dropdown named
+          // one voice and a different one was heard, with nothing in the UI
+          // admitting the disagreement. Prefer the saved id, fall back to the
+          // engine's live voice, and only then let the browser pick index 0.
           const saved = localStorage.getItem("neuralVoiceId");
-          if (saved && voices.find((v) => v.id === saved)) {
-            select.value = saved;
+          const engineVoice = window.ttsEngine && window.ttsEngine.voiceId;
+          const active = saved || engineVoice;
+          if (active && voices.find((v) => v.id === active)) {
+            select.value = active;
           }
         }
         this._voicesLoaded = true;
@@ -2043,17 +2122,67 @@ function _masteryMermaidFromGraph(graph) {
   const used = new Set();
   const ids = {};
   const lines = ['flowchart LR'];
+
+  /* Colour comes from the API, not from CSS on the rendered SVG.
+   *
+   * `mastery.py` also builds a coloured diagram server-side, but the browser has
+   * never used it: this function assembles the source from the JSON graph, so
+   * the server's classDef lines were unreachable from the UI. Rather than switch
+   * the panel to `format=mermaid` — which would discard the node/edge data the
+   * counters and weak-link list read — emit the same directives here from
+   * `node_categories` and `legend`, which the JSON response already carries.
+   * One source of colour, one legend, and they cannot disagree. */
+  const legend = graph && Array.isArray(graph.legend) ? graph.legend : [];
+  const nodeCats = (graph && graph.node_categories) || {};
+  const nodeLegend = legend.filter((c) => c.kind === 'node');
+  const edgeLegend = legend.filter((c) => c.kind !== 'node');
+  const byKey = {};
+  legend.forEach((c) => {
+    byKey[c.key] = c;
+  });
+
   nodes.forEach((node) => {
     const id = _masteryMermaidId(node, used);
     ids[node] = id;
     lines.push(`  ${id}["${_masteryMermaidLabel(node)}"]`);
   });
+
+  // One classDef per node category actually present, then the assignments.
+  const grouped = {};
+  nodes.forEach((node) => {
+    const key = nodeCats[node];
+    if (!key || !byKey[key] || !ids[node]) return;
+    (grouped[key] = grouped[key] || []).push(ids[node]);
+  });
+  nodeLegend.forEach((cat) => {
+    if (!grouped[cat.key]) return;
+    const styles = [`fill:${cat.colour}`, `stroke:${cat.border_colour || cat.colour}`, 'color:#fff'];
+    if (cat.dashed) styles.push('stroke-dasharray:4 3');
+    lines.push(`  classDef sl_${cat.key} ${styles.join(',')};`);
+    lines.push(`  class ${grouped[cat.key].join(',')} sl_${cat.key};`);
+  });
+
+  // Edge styling is positional in mermaid, so track the emitted index.
+  const edgeIndexByKey = {};
+  let edgeIndex = 0;
   edges.forEach((edge) => {
     if (!ids[edge.source_concept] || !ids[edge.target_concept]) return;
     lines.push(
       `  ${ids[edge.source_concept]} -->|"${_masteryMermaidLabel(edge.relation_type)}"| ${ids[edge.target_concept]}`
     );
+    const match = edgeLegend.find((c) => c.key === edge.relation_type) ||
+      edgeLegend.find((c) => c.key === 'other');
+    if (match) (edgeIndexByKey[match.key] = edgeIndexByKey[match.key] || []).push(edgeIndex);
+    edgeIndex += 1;
   });
+  Object.keys(edgeIndexByKey).forEach((key) => {
+    const cat = byKey[key];
+    if (!cat) return;
+    lines.push(
+      `  linkStyle ${edgeIndexByKey[key].join(',')} stroke:${cat.colour},stroke-width:2px;`
+    );
+  });
+
   return lines.join('\n');
 }
 
@@ -2064,6 +2193,12 @@ function masteryPanel() {
     error: '',
     graph: null,
     weakLinks: [],
+    /* Legend categories as DATA from /api/mastery/graph — [{label, colour,
+       meaning}]. Never hardcode the categories here or in the markup: the
+       colours come from the server-side generator, so a local copy becomes a
+       lie the moment the palette changes. Empty until the API supplies them,
+       which keeps the panel usable against an older response. */
+    legend: [],
     mermaidSource: '',
     copyStatus: '',
     graphLimit: 80,
@@ -2084,6 +2219,7 @@ function masteryPanel() {
       this.error = '';
       this.graph = null;
       this.weakLinks = [];
+      this.legend = [];
       this.mermaidSource = '';
       this.copyStatus = '';
       this.weakLinkTotal = 0;
@@ -2095,6 +2231,10 @@ function masteryPanel() {
           return;
         }
         this.graph = await graphResp.json();
+        /* `legend` is the field name coded against; `legend_categories` is
+           accepted as an alias so a naming difference in the generator degrades
+           to an absent legend rather than a broken panel. */
+        this.legend = this.graph.legend || this.graph.legend_categories || [];
         this.mermaidSource = _masteryMermaidFromGraph(this.graph);
         this.loading = false;
         await this.$nextTick();
@@ -2130,8 +2270,7 @@ function masteryPanel() {
       }
       try {
         const id = 'mastery-graph-' + Date.now();
-        const { svg } = await window.mermaid.render(id, this.mermaidSource);
-        el.innerHTML = svg;
+        el.innerHTML = await _renderMermaidScoped(id, this.mermaidSource, el);
       } catch (err) {
         console.warn('[Mastery] mermaid.render failed:', err);
         el.textContent = this.mermaidSource;
