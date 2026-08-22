@@ -7,6 +7,16 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-22
+
+First public release. Versioned `0.1.0` deliberately: under semantic versioning
+`0.y.z` signals that the public API is not yet stable, which is accurate. Internal
+versions up to `2.5.0` existed during development but were never published — no
+tag, no PyPI release, no installable artefact — so the first version anyone can
+install is this one. Everything below was developed under those internal versions
+and ships here for the first time. See `releases/v0.1.0.md` for the release note
+and its list of known limitations.
+
 ### Added
 - **Study plans in the browser** — the planning backend and the
   `study-plan-architect` agent already existed; the web surface did not, which
@@ -215,5 +225,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ---
 
-Historical releases predate this changelog; see the git history and
-`docs/roadmap.md` for prior milestones. The project is at version `2.5.0`.
+There are no historical *releases* — `0.1.0` is the first published version. The
+entries above were developed under internal versions up to `2.5.0` that were never
+tagged or distributed; see the git history and `docs/roadmap.md` for the
+development milestones behind them, and `releases/archive/` for the release notes
+drafted against those internal versions.
