@@ -3704,6 +3704,13 @@
           });
 
           this._term = term;
+          /* Flush anything that arrived before this mount existed. */
+          if (this._preMount && this._preMount.length) {
+            for (const chunk of this._preMount) {
+              try { term.write(chunk); } catch { /* ignore */ }
+            }
+            this._preMount = [];
+          }
           this._fitAddon = fit;
 
           this._openWebSocket(detail);
@@ -3766,7 +3773,16 @@
         ws.addEventListener('message', (event) => {
           if (event.data instanceof ArrayBuffer) {
             /* Raw PTY bytes → terminal.write(Uint8Array). */
-            if (this._term) this._term.write(new Uint8Array(event.data));
+            /* Buffer when the terminal is not mounted yet instead of dropping.
+               A reload reattaches the socket before xterm has opened, so the
+               first bytes of a resumed session - including the reattach
+               marker - were silently discarded. Any early output was. */
+            if (this._term) {
+              this._term.write(new Uint8Array(event.data));
+            } else {
+              this._preMount = this._preMount || [];
+              this._preMount.push(new Uint8Array(event.data));
+            }
             return;
           }
           let frame;
