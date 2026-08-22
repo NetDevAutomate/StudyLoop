@@ -42,6 +42,12 @@ export function liveAgentConsole(origin = 'study') {
       terminalMode: null,        /* 'xterm' | 'ttyd-iframe' | 'acp-chat' | null (idle) */
       transport: null,           /* 'pty' | 'acp' | 'ttyd' | null (idle) */
       connected: false,
+      /* Monotonic guard so an in-flight _adoptLiveSession() fetch cannot mount
+         over a newer real start/stop. Same pattern as reviewApp's
+         _liveSessionEpoch; initialised to 0 deliberately, because an undefined
+         counter makes the first bump NaN and the comparison then 'works' only
+         by NaN !== NaN. */
+      _adoptEpoch: 0,
       status: 'Waiting',
       statusDot: 'idle',         /* 'idle' | 'live' | 'error' */
       statusMessage: '',
@@ -71,13 +77,62 @@ export function liveAgentConsole(origin = 'study') {
                                             turn is in flight; cleared on first turn_end */
 
       init() {
+        /* Listeners FIRST, before the await in _adoptLiveSession(). A handler
+           must exist before the work that can emit its event. */
         window.addEventListener('study-session-start', (event) => {
           if (((event.detail && event.detail.origin) || 'study') !== origin) return;
+          this._adoptEpoch += 1;   /* a real start supersedes any in-flight adopt */
           this.start(event.detail);
         });
         window.addEventListener('study-session-stop', (event) => {
           if (((event.detail && event.detail.origin) || 'study') !== origin) return;
+          this._adoptEpoch += 1;
           this.stop();
+        });
+        /* LOAD-TIME ADOPTION. Everything above only reacts to an event, and after
+           a page reload the study-session-start for a still-live session was
+           dispatched before this page existed - so nothing mounted a terminal and
+           the learner came back to an empty pane. Proven by a terminal-buffer
+           artifact reading '<no buffer>' after reload: the terminal did not exist,
+           rather than existing and being blank. sessionTimer() dispatches only on
+           a FRESH start, never on restore, so this console has to adopt on its
+           own rather than wait to be told. */
+        this._adoptLiveSession();
+      },
+
+      /* Mount an already-live session this view owns. Deliberately silent when
+         there is nothing to adopt: no session, a session owned by the other
+         surface, or one already ended. */
+      async _adoptLiveSession() {
+        const epoch = this._adoptEpoch;
+        let state;
+        try {
+          const res = await fetch('/api/session/state', { cache: 'no-store' });
+          if (!res.ok) return;
+          state = await res.json();
+        } catch { return; }
+        /* A real start/stop landed while the fetch was in flight - it is newer
+           information than this response, so drop it rather than fighting it. */
+        if (epoch !== this._adoptEpoch) return;
+        if (this.connected) return;                       /* already mounted */
+        if (!state || !state.study_session_id) return;    /* nothing live */
+        if (state.mode === 'ended') return;
+        /* Ownership: the endpoint echoes `origin` for exactly this decision, and
+           defaults it to 'study', so an absent origin and 'study' must behave
+           identically. Adopting another surface's session is what the origin
+           guard exists to prevent - two consoles on one PTY. */
+        if (((state.origin) || 'study') !== origin) return;
+        this.start({
+          topic: state.topic || '',
+          origin,
+          agent: state.agent || null,
+          resolvedAgent: state.agent || null,
+          studySessionId: state.study_session_id,
+          transport: state.transport || 'pty',
+          wsUrl: state.reattach_url || null,
+          /* Distinguishes this from a fresh start, so the status line does not
+             claim to be 'Starting' something that has been running for an hour. */
+          reattached: true,
         });
       },
 
@@ -135,7 +190,10 @@ export function liveAgentConsole(origin = 'study') {
        * ------------------------------------------------------------ */
       _mountXterm(detail) {
         this.terminalMode = 'xterm';
-        this.status = `Starting · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
+        /* A resumed session has been running for a while - calling that 'Starting'
+           is a lie the learner has to decode, and a test forbids it. */
+        this.status = `${detail.reattached ? 'Reattached' : 'Starting'} · `
+          + `${detail.resolvedAgent || detail.agent || 'Agent'}`;
         this.statusDot = 'idle';
         this.$nextTick(() => {
           if (!this.$refs.xtermMount || !window.Terminal) {
@@ -231,7 +289,10 @@ export function liveAgentConsole(origin = 'study') {
        * ------------------------------------------------------------ */
       _mountAcpChat(detail) {
         this.terminalMode = 'acp-chat';
-        this.status = `Starting · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
+        /* A resumed session has been running for a while - calling that 'Starting'
+           is a lie the learner has to decode, and a test forbids it. */
+        this.status = `${detail.reattached ? 'Reattached' : 'Starting'} · `
+          + `${detail.resolvedAgent || detail.agent || 'Agent'}`;
         this.statusDot = 'idle';
         /* Initialise chat-surface state. _openWebSocket runs after $nextTick
            so the panel is already mounted in the DOM by the time the WS opens. */
