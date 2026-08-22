@@ -54,20 +54,82 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body.dyslexic {
-  font-family: var(--font-dyslexic);
+/* --- Reading font: ONE mechanism ---------------------------------------
+   body[data-font="…"] swaps the --font custom property; everything that needs
+   a family reads var(--font) (see `body` above).
+
+   OpenDyslexic used to be a SECOND, independent mechanism: a `dyslexic` class
+   on <body> set font-family DIRECTLY, so it overrode the variable system
+   entirely and brought its own line-height with it. Toggling the two controls
+   independently left the page carrying one system's family and the other's
+   line metrics — which is the sidebar text overlap that was reported. It is
+   now the sixth option in the same dropdown, expressed through --font like
+   every other one, so the two cannot disagree again.
+   Default (no data-font attribute) is Inter, defined in :root. */
+body[data-font="inter"]    { --font: "Inter", system-ui, sans-serif; }
+body[data-font="lexend"]   { --font: "Lexend", system-ui, sans-serif; }
+body[data-font="atkinson"] { --font: "Atkinson Hyperlegible", system-ui, sans-serif; }
+body[data-font="system"]   { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body[data-font="serif"]    { --font: Georgia, "Times New Roman", serif; }
+
+/* OpenDyslexic keeps the wider tracking and looser leading it has always had
+   — that is the point of the face — but the FAMILY travels through --font. */
+body[data-font="opendyslexic"] {
+  --font: var(--font-dyslexic);
   letter-spacing: 0.05em;
   word-spacing: 0.1em;
   line-height: 1.8;
 }
 
-/* Reading-font picker — swaps the base --font. Default (no data-font) is
-   Inter, defined in :root. The OpenDyslexic toggle (body.dyslexic) still
-   overrides everything when active, since it sets font-family directly. */
-body[data-font="lexend"]   { --font: "Lexend", system-ui, sans-serif; }
-body[data-font="atkinson"] { --font: "Atkinson Hyperlegible", system-ui, sans-serif; }
-body[data-font="system"]   { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-body[data-font="serif"]    { --font: Georgia, "Times New Roman", serif; }
+/* --- Reading size: body[data-font-scale="sm|md|lg|xl"] -------------------
+   Applied at the ROOT font-size, deliberately. 194 of this file's 213 `rem`
+   values are font-size declarations, and `rem` resolves against <html>, never
+   against <body> — so setting font-size on <body> would leave essentially all
+   of the app's type exactly where it was, the sidebar very much included.
+   Scaling the root carries every existing rem type rule with it without
+   editing 194 declarations, and the ~17 rem paddings/gaps travel too, which
+   is the behaviour you want: spacing should grow with the text it separates.
+
+   calc(100% * …) rather than a px value, so a reader who has raised their
+   browser's own default font size keeps that as the baseline instead of
+   having it overwritten. At the default step (md → 1) this computes to 100%,
+   i.e. rendering identical to having no rule at all — nothing moves for a
+   user who never opens the control.
+
+   The attribute lands on <body>, because that is the interface the settings
+   store codes against; :has() is how a root-level rule reads it.
+
+   Two declarations per step, deliberately: a literal percentage for the root
+   font-size, and a plain number in --font-scale on <body> for descendants.
+   Keeping the root's own font-size free of any var() means its value cannot
+   depend on a property inherited onto the element whose font-size is being
+   resolved — one less resolution-order question for the next reader — while
+   --font-scale, declared below the root, stays available to everything the
+   root font-size cannot reach.
+
+   Verified in Chromium at all four steps: .sidebar-btn (0.85rem) computes to
+   12.24 / 13.60 / 15.64 / 17.68px for sm / md / lg / xl. Note when checking
+   this by hand that .sidebar-btn carries `transition: all 0.15s` and
+   font-size is animatable, so a reading taken immediately after the attribute
+   changes is a mid-transition value, not the result.
+
+   Fixed `px` font sizes cannot follow a root scale at all, so the reading
+   surfaces that use them opt in explicitly with var(--font-scale) — see
+   .acp-message-body. */
+html { font-size: 100%; }
+html:has(body[data-font-scale="sm"]) { font-size: 90%; }
+html:has(body[data-font-scale="md"]) { font-size: 100%; }
+html:has(body[data-font-scale="lg"]) { font-size: 115%; }
+html:has(body[data-font-scale="xl"]) { font-size: 130%; }
+
+/* Same steps as a plain number, for the things a root font-size cannot reach:
+   fixed-px type rules and the sidebar column width. Declared on <body>, not
+   on the root, so nothing the root's own font-size depends on. */
+body { --font-scale: 1; }
+body[data-font-scale="sm"] { --font-scale: 0.9; }
+body[data-font-scale="md"] { --font-scale: 1; }
+body[data-font-scale="lg"] { --font-scale: 1.15; }
+body[data-font-scale="xl"] { --font-scale: 1.3; }
 
 /* --- Header --- */
 header {
@@ -228,7 +290,13 @@ header {
 .app-layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 200px 1fr 0px;
+  /* The sidebar column widens with the reading size. .sidebar-btn sizes in
+     rem, so at lg/xl its labels grow while a hard 200px column would not —
+     the labels then wrap or cramp, which is the sidebar damage the user
+     reported. At the default scale this is exactly 200px, so nothing moves
+     unless the reading size is actually changed. */
+  --sidebar-w: calc(200px * var(--font-scale));
+  grid-template-columns: var(--sidebar-w) 1fr 0px;
   min-height: 0; /* allow flex children to shrink */
   overflow: hidden;
 }
@@ -239,7 +307,7 @@ header {
 .app-layout.explorer-open,
 .app-layout.parking-open,
 .app-layout.notes-open {
-  grid-template-columns: 200px 1fr 320px;
+  grid-template-columns: var(--sidebar-w) 1fr 320px;
 }
 
 .sidebar {
@@ -686,7 +754,7 @@ main {
   line-height: 1.7;
 }
 
-body.dyslexic .card-content {
+body[data-font="opendyslexic"] .card-content {
   font-size: 1.3rem;
   line-height: 2;
 }
@@ -2197,7 +2265,9 @@ main:has(.split-container) .session-dashboard {
   background: var(--bg);
   color: var(--text);
   font-family: inherit;
-  font-size: 14px;
+  /* Fixed px cannot follow a root-level scale, so this reading surface opts
+     in explicitly. calc(… * 1) at the default step = the original 14px. */
+  font-size: calc(14px * var(--font-scale));
   outline: none;
 }
 
@@ -2278,7 +2348,7 @@ main:has(.split-container) .session-dashboard {
 .acp-message-body {
   min-width: 0;          /* allow code blocks to wrap inside grid */
   color: var(--text);
-  font-size: 15px;       /* readability over compactness */
+  font-size: calc(15px * var(--font-scale));  /* readability over compactness */
   line-height: 1.65;     /* prose breathes, especially helpful for AuDHD */
 }
 
@@ -2288,7 +2358,7 @@ main:has(.split-container) .session-dashboard {
      way; the bug was applying it to ASSISTANT streaming, which leaked
      markdown source. */
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
@@ -2358,7 +2428,7 @@ main:has(.split-container) .session-dashboard {
 }
 .acp-persona-setup-text small {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .acp-message-final {
@@ -2837,6 +2907,41 @@ body[data-palette="everforest"] {
 }
 .palette-select:hover { border-color: var(--accent); }
 .palette-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Labelled header controls.
+ *
+ * These exist because the font picker was previously an unlabelled <select>
+ * sitting beside the theme picker, and a user asked for fonts that were already
+ * in it — they could not tell what the control was. A `title` attribute is not
+ * discoverable. Label above control, not beside it, so the header does not grow
+ * horizontally on narrow screens.
+ *
+ * Added by the coordinator rather than an agent: the markup introduced these
+ * class names after the work was partitioned, so no agent owned them. They
+ * rendered acceptably on inherited styles, which is luck rather than design. */
+.header-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.header-field-label {
+  font-size: 0.68rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* One line of orientation above the Mastery graph. The panel's subtitle
+ * describes its controls; this describes the picture, which is what a reader
+ * actually needs before a node-link diagram means anything. */
+.mastery-graph-caption {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  max-width: 62ch;
+}
 
 /* ------------------------------------------------------------------
  * Generate panel (U8)
@@ -3658,6 +3763,41 @@ body[data-palette="everforest"] {
   color: var(--text-muted);
   margin-top: 4px;
   line-height: 1.4;
+}
+
+/* ---- Mastery legend -----------------------------------------------------
+   Rendered from the categories the API returns, so it cannot drift from the
+   generated graph. The swatch COLOUR arrives inline on the element from that
+   same data — these rules deliberately style only the box (size, shape,
+   outline). No background is declared here: an inline colour would win
+   anyway, and leaving it out means a category that ships without a colour
+   shows as an empty outlined box rather than silently borrowing a wrong one. */
+.mastery-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.mastery-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.mastery-legend-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  /* Outline, not fill: keeps a swatch legible against both a light and a dark
+     card when the inline colour is close to the card background. */
+  border: 1px solid var(--border);
 }
 
 @media (max-width: 900px) {
@@ -4798,4 +4938,498 @@ body[data-palette="everforest"] {
 
 @media (max-width: 900px) {
   .plans-panel { padding: 18px; }
+}
+
+/* ==========================================================================
+   BODY DOUBLE PANEL  (.body-double-view / .bd-*)
+   --------------------------------------------------------------------------
+   index.html carries 69 distinct bd-* hooks; this file previously defined
+   exactly one (.bd-pomo-settings, above). Everything else fell through to
+   browser defaults, which is why the panel rendered with system buttons, a
+   white textarea on a dark theme, and every .bd-field label sitting INLINE
+   with its own control ("What are you working on? [input] Agent").
+
+   Written against the markup as it stands — no class here is invented, and
+   nothing here needs index.html to change. Colours come from the palette
+   custom properties only: twelve palettes are defined in this file, so a
+   literal hex would be wrong in eleven of them.
+
+   .bd-tab is deliberately NOT scoped to .body-double-view: the notes-panel
+   card editor reuses it (index.html ~1018), and scoping would leave that
+   surface on browser defaults.
+   ========================================================================== */
+
+/* Restores the vertical rhythm .session-dashboard suppresses with gap:0.
+   Compound selector so it does not depend on source order. */
+.body-double-view.session-dashboard {
+  gap: 16px;
+}
+
+/* --- Card shell ---------------------------------------------------------- */
+
+/* Flex column rather than margins on the children, because Alpine's x-show
+   sets display:none — a display:none child is not a flex item, so its `gap`
+   disappears with it. Margins would leave a hole where a collapsed body was. */
+.bd-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bd-card > .bd-card-head,
+.bd-card > .bd-tabs,
+.bd-card > #bd-focus-body,
+.bd-card > #bd-capture-body {
+  align-self: stretch;
+}
+
+.bd-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Section title that is also the collapse control. Styled as a heading, not
+   as a button — the disclosure triangle is what signals it is actuable. */
+.bd-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.bd-collapse-btn:hover { color: var(--accent); }
+
+.bd-collapse-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* "0 of 3 topics" — takes the slack so the head's buttons sit hard right. */
+#bd-focus-count {
+  margin-right: auto;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Status chips -------------------------------------------------------- */
+
+.bd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.bd-chip.ok {
+  background: color-mix(in srgb, var(--green) 14%, var(--bg-card));
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.bd-chip.warn {
+  background: color-mix(in srgb, var(--yellow) 14%, var(--bg-card));
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+/* --- Focus slots -------------------------------------------------------- */
+
+#bd-focus-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#bd-focus-empty {
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.bd-focus-slot {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.bd-focus-slot:hover { border-color: var(--accent); }
+
+/* flex:1 so the whole row is the hit area, not just the glyph-width of the
+   label — the topic is the primary action in this card. */
+.bd-focus-slot-topic {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bd-focus-slot-topic:hover { color: var(--accent); }
+
+.bd-focus-slot-topic:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.bd-focus-drop {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bd-focus-drop:hover { border-color: var(--red); color: var(--red); }
+
+/* --- Start picker ------------------------------------------------------- */
+
+.bd-card.bd-start-picker {
+  gap: 14px;
+}
+
+.bd-start-picker > .bd-field,
+.bd-start-picker > .bd-primary-btn,
+.bd-start-picker > .bd-requirement,
+.bd-start-picker > .picker-hint,
+.bd-start-picker > .session-conflict-recovery {
+  align-self: stretch;
+}
+
+/* THE inline-collision fix. flex-wrap with the control forced onto its own
+   line puts the label ABOVE its control, while still allowing the label to be
+   more than one node: the Energy field is `Energy <span>7/10</span> <input>`,
+   and a plain flex-direction:column would strand "7/10" on a line of its own.
+   Wrapping keeps the label parts inline together and drops only the control. */
+.bd-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bd-field > input,
+.bd-field > select,
+.bd-field > textarea {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.bd-field > span {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* #bd-activity-input is a bare <input> — matches .picker-select/.picker-input
+   so the three picker controls read as one set. Scoped through
+   .body-double-view so it outranks the panel-wide input rule further down,
+   which would otherwise win on source order and shrink it out of step with
+   the two selects beside it. */
+.body-double-view .bd-field > input[type="text"] {
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.body-double-view .bd-field > input[type="text"]::placeholder { color: var(--text-muted); }
+
+.body-double-view .bd-field > input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* .picker-hint has no rule anywhere in this file; scoped to this surface so
+   the Study picker's own hints are untouched. */
+.bd-start-picker > .picker-hint {
+  margin: -4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.bd-start-picker > .picker-hint.error { color: var(--red); }
+
+/* --- Primary action ----------------------------------------------------- */
+
+.bd-primary-btn {
+  padding: 11px 20px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--bg);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: filter 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.bd-primary-btn:hover:not(:disabled) { filter: brightness(1.1); }
+
+.bd-primary-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Deliberately NOT a dimmed copy of the enabled button: a dashed outline with
+   muted text reads as "not filled in yet", where a low-opacity solid accent
+   reads as "this control is broken". Paired with .bd-requirement, which says
+   which field is missing. */
+.bd-primary-btn:disabled {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Guidance, not an error: accent-tinted and muted, with none of the red that
+   .picker-error uses. Nothing has gone wrong — a field is simply empty. */
+.bd-requirement {
+  margin: 0;
+  padding: 8px 11px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-card));
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* --- Live session strip ------------------------------------------------- */
+
+/* Sticky inside .content-area so "End session" stays reachable mid-session
+   without scrolling back up. z-index only has to clear the terminal below it. */
+.bd-live-strip {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+#bd-live-activity {
+  margin-right: auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.bd-end-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--red) 12%, var(--bg-card));
+  border: 1px solid var(--red);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+/* --- Terminal console --------------------------------------------------- */
+
+.bd-console-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  /* No overflow:hidden. xterm sizes its screen in px via fit(); clipping the
+     container would put part of a live terminal permanently out of reach
+     rather than letting it scroll. */
+}
+
+/* The mount before a session exists. Deliberately given no height: reserving
+   terminal-sized empty space would read as a terminal that failed to paint. */
+.bd-xterm-idle {
+  min-height: 0;
+}
+
+/* --- Capture: tabs ------------------------------------------------------ */
+
+.bd-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bd-tab {
+  padding: 7px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.bd-tab:hover { border-color: var(--accent); color: var(--text); }
+
+.bd-tab.active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bd-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Capture: note and park forms --------------------------------------- */
+
+/* Wrapping row, not a column: the forms have no wrapper elements to group
+   with (the markup is flat), so the short controls pair up on a line and the
+   full-measure ones claim their own via flex-basis:100% below. */
+#bd-note-form,
+#bd-park-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+#bd-note-form > input[type="text"],
+#bd-note-form > textarea,
+#bd-note-form > #bd-note-preview,
+#bd-park-form > input[type="text"],
+#bd-park-form > textarea {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* .picker-select is width:100%, which on a flex line means a whole row each.
+   These three are short choices and belong side by side. */
+#bd-capture-body .picker-select,
+.bd-confidence select {
+  width: auto;
+  min-width: 118px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+/* THE white-box fix. Scoped to this surface rather than a bare `textarea`
+   selector, per the no-new-global-bare-selectors rule. An unstyled textarea
+   paints white-on-white with a system serif; these are the only text inputs
+   in the panel that were not inheriting anything. */
+.body-double-view textarea,
+.body-double-view input[type="text"] {
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.body-double-view textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+
+.body-double-view textarea::placeholder,
+.body-double-view input[type="text"]::placeholder {
+  color: var(--text-muted);
+}
+
+.body-double-view textarea:focus,
+.body-double-view input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.bd-confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Rendered markdown preview: a reading surface, so it gets the card inset
+   treatment rather than sitting flush against the form controls. */
+#bd-note-preview {
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* Sits after the primary button on the same flex line — push it clear. */
+#bd-note-saved,
+#bd-park-saved {
+  margin-left: 2px;
+}
+
+@media (max-width: 600px) {
+  .bd-card { padding: 14px; }
+  .bd-primary-btn { width: 100%; }
 }

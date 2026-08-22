@@ -8,6 +8,7 @@ from fastapi.responses import PlainTextResponse
 from studyloop.learning.mastery import (
     mastery_graph_json,
     mastery_graph_mermaid,
+    mastery_legend,
     weak_links_for_topic,
 )
 
@@ -27,7 +28,14 @@ def get_mastery_graph(
             mastery_graph_mermaid(cleaned, max_edges=limit),
             media_type="text/plain",
         )
-    return mastery_graph_json(cleaned, max_edges=limit)
+    payload = mastery_graph_json(cleaned, max_edges=limit)
+    # ADDITIVE: `legend` and `node_categories` are guaranteed present without
+    # touching any existing key. `setdefault` rather than assignment so the
+    # generator stays authoritative when it supplies them, and so a test that
+    # substitutes `mastery_graph_json` still gets a legend to render.
+    payload.setdefault("legend", mastery_legend())
+    payload.setdefault("node_categories", {})
+    return payload
 
 
 @router.get("/mastery/weak-links")

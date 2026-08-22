@@ -260,6 +260,15 @@ class TTSEngine {
   get isSpeaking() { return this._state === 'speaking'; }
   get tier() { return this._tier; }
 
+  /* The voice the engine will actually speak with.
+   *
+   * Exposed because the Settings dropdown previously derived its selection only
+   * from localStorage: with no saved preference the <select> fell to option
+   * index 0 while the engine was still on DEFAULT_VOICE, so the UI named one
+   * voice and a different one spoke. The label and the audio have to agree, and
+   * only the engine knows which voice is live. */
+  get voiceId() { return this._voiceId; }
+
   // ── State machine ────────────────────────────────────────────────────────────
 
   _setState(state) {

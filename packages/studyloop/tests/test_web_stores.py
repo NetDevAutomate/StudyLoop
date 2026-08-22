@@ -79,11 +79,21 @@ class TestSettingsStore:
         stored = web_page.evaluate("() => localStorage.getItem('theme')")
         assert stored in {"light", "dark"}
 
-    def test_toggle_dyslexic_flips_body_class(self, web_page: Page) -> None:
+    def test_set_font_opendyslexic_applies_to_body(self, web_page: Page) -> None:
+        """OpenDyslexic is one option in the single font mechanism, not a toggle.
+
+        It used to be a separate `body.dyslexic` class that set font-family
+        directly, competing with the `body[data-font]` variable the picker drives
+        — two systems with different line metrics, which is what made switching
+        fonts leave the sidebar overlapping. Asserting a *flip* here would be
+        wrong now: setFont is idempotent, so it is the resulting state that
+        matters, not that it changed.
+        """
         _goto(web_page)
-        initial = web_page.evaluate("() => document.body.classList.contains('dyslexic')")
-        web_page.evaluate("() => window.Alpine.store('settings').toggleDyslexic()")
-        assert web_page.evaluate("() => document.body.classList.contains('dyslexic')") != initial
+        web_page.evaluate("() => window.Alpine.store('settings').setFont('opendyslexic')")
+        assert web_page.evaluate("() => document.body.getAttribute('data-font')") == "opendyslexic"
+        web_page.evaluate("() => window.Alpine.store('settings').setFont('inter')")
+        assert web_page.evaluate("() => document.body.getAttribute('data-font')") != "opendyslexic"
 
     def test_toggle_voice_updates_store(self, web_page: Page) -> None:
         _goto(web_page)
