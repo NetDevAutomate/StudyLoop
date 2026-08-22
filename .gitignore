@@ -457,6 +457,9 @@ GEMINI.md
 !agents/codex/AGENTS.md
 !agents/pi/AGENTS.md
 !agents/omp/AGENTS.md
+# Was missing from the list above while the file was tracked, so it sat
+# tracked-but-ignored: committed, but invisible to `git add` and `git status`.
+!agents/gemini/GEMINI.md
 agents/cowork/
 .kiro/
 .crush/
@@ -549,12 +552,35 @@ test-results/
 # Screenshots/HTML/console dumps written by the e2e harness on failure
 # (see packages/studyloop/tests/e2e/_env.py). Regenerated every run.
 playwright/artifacts/
-playwright/snapshots/
+# `dir/*` so the tracked .gitkeep survives — with `dir/` the negation is dead and
+# the keepfile shows up as tracked-but-ignored.
+playwright/snapshots/*
+!playwright/snapshots/.gitkeep
 
 # Stray MagicMock dirs from tests that mock a path-typed setting (defense-in-depth)
+# These are a SYMPTOM, not a config need: the write site is
+# packages/studyloop/src/studyloop/state.py:60 (get_state_dir().mkdir(...)). When a
+# test mocks settings without giving state_dir a real path, Path(MagicMock) becomes
+# the mock's repr and mkdir creates a directory named after it. 10 such directories
+# were present when this comment was written. The rule stays as a net, but the fix
+# belongs in the offending tests (give state_dir a tmp_path).
 MagicMock/
 # Tavily skill installs dropped by harness plugins (tool artefacts, not project content)
 .agents/
-.pi/
+# .pi holds BOTH tool artefacts and 12 deliberately-tracked OpenSpec files, so it
+# uses the `dir/*` form rather than `dir/`: git cannot re-include anything whose
+# parent directory is excluded by a trailing-slash pattern, which made the
+# negations below silently dead and left those files tracked-but-ignored.
+.pi/*
+!.pi/prompts/
+# Three steps, and all three are required. `.pi/*` excludes `.pi/skills` itself,
+# so a negation nested inside it can never fire - the intermediate directory has
+# to be un-excluded first, then its children re-excluded, then the specific
+# openspec skills negated. Only those are project content; the tavily-* skill
+# directories that harness plugins drop here stay ignored, which is what the
+# original rule existed to do.
+!.pi/skills/
+.pi/skills/*
+!.pi/skills/openspec-*/
 agent/
 skills-lock.json
