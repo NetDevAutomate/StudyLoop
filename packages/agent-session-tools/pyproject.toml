@@ -1,6 +1,6 @@
 [project]
 name = "agent-session-tools"
-version = "2.0.0"
+version = "0.1.0"
 description = "Export, search, and sync AI coding sessions (Claude, Codex, Kiro, Gemini, OpenCode, pi, omp, and more)"
 authors = [
     {name = "Andy Taylor"}

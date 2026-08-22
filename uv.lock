@@ -11,7 +11,7 @@ members = [
 
 [[package]]
 name = "agent-session-tools"
-version = "2.0.0"
+version = "0.1.0"
 source = { editable = "packages/agent-session-tools" }
 dependencies = [
     { name = "fastmcp" },
@@ -2955,7 +2955,7 @@ wheels = [
 
 [[package]]
 name = "studyloop"
-version = "2.5.0"
+version = "0.1.0"
 source = { editable = "packages/studyloop" }
 dependencies = [
     { name = "click" },
