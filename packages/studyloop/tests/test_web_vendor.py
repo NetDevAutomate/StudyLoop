@@ -317,14 +317,6 @@ class TestDevRendererInjection:
         assert "wterm-0.3.0.js" not in html
         assert "wterm-adapter" not in html
 
-    def test_wterm_renderer_injects_wterm_scripts(self):
-        html = self._get_index_html(dev_mode=True, dev_renderer="wterm")
-        assert 'content="wterm"' in html
-        assert "wterm-0.3.0.js" in html
-        assert "wterm-adapter-0.3.0.js" in html
-        # Must NOT have ghostty scripts
-        assert "ghostty-web-0.4.0.umd.js" not in html
-        assert "ghostty-web-bootstrap" not in html
 
     def test_no_dev_mode_injects_nothing(self):
         html = self._get_index_html(dev_mode=False)

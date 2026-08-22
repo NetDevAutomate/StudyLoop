@@ -44,7 +44,7 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
 )
 @click.option(
     "--dev-renderer",
-    type=click.Choice(["ghostty", "wterm"], case_sensitive=False),
+    type=click.Choice(["ghostty"], case_sensitive=False),
     default=None,
     help="Select the dev-mode renderer (default: ghostty). Implies --dev.",
 )
@@ -132,11 +132,10 @@ def web(
     dev_engine = "ghostty" if dev and dev_renderer is None else None
 
     if dev:
-        renderer_label = (
-            "ghostty-web (canvas renderer)"
-            if (dev_renderer or dev_engine) == "ghostty"
-            else "wterm (DOM renderer)"
-        )
+        # One engine since wterm was removed, so no branch is needed. Kept as a
+        # named variable so adding a second engine later reintroduces the choice
+        # in one obvious place.
+        renderer_label = "ghostty-web (canvas renderer)"
         console.print(
             f"[yellow]--dev mode:[/yellow] xterm.js swapped for {renderer_label}"
         )

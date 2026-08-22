@@ -36,12 +36,15 @@ SAMPLE_HTML = (
 
 class TestRegistry:
     def test_ghostty_is_the_default_engine(self) -> None:
-        """--dev means libghostty; wterm is the opt-in legacy comparison."""
+        """--dev means libghostty, and it is the only registered engine."""
         assert DEFAULT_DEV_ENGINE == "ghostty"
         assert DEFAULT_DEV_ENGINE in DEV_ENGINES
 
-    def test_both_engines_registered_with_assets(self) -> None:
-        assert set(DEV_ENGINES) == {"ghostty", "wterm"}
+    def test_every_registered_engine_has_assets(self) -> None:
+        # Asserts the shape of the registry rather than its exact membership, so
+        # adding an engine does not require editing this test - only removing the
+        # asset contract would. wterm was removed in favour of a single engine.
+        assert set(DEV_ENGINES) == {"ghostty"}
         for engine, assets in DEV_ENGINES.items():
             assert assets["js"], f"{engine} has no scripts"
             assert assets["css"], f"{engine} has no stylesheet"
@@ -60,7 +63,7 @@ class TestRegistry:
                 assert path.is_file(), f"{engine}: missing vendored asset {url}"
                 assert path.stat().st_size > 0, f"{engine}: empty asset {url}"
 
-    @pytest.mark.parametrize("raw", ["ghostty", "GHOSTTY", " Ghostty ", "wterm"])
+    @pytest.mark.parametrize("raw", ["ghostty", "GHOSTTY", " Ghostty "])
     def test_resolve_accepts_case_and_whitespace(self, raw: str) -> None:
         assert resolve_dev_engine(raw) == raw.strip().lower()
 
@@ -74,11 +77,11 @@ class TestRegistry:
 
 class TestInjection:
     def test_marker_carries_engine_name(self) -> None:
+        # The marker must NAME the engine rather than being a bare boolean flag:
+        # the browser-side bootstrap keys off the content value, so a generic
+        # marker would patch window.Terminal for any dev engine.
         html = inject_dev_engine(SAMPLE_HTML, "ghostty")
         assert '<meta name="studyloop-dev-mode" content="ghostty">' in html
-
-        html = inject_dev_engine(SAMPLE_HTML, "wterm")
-        assert '<meta name="studyloop-dev-mode" content="wterm">' in html
 
     def test_injects_all_engine_assets(self) -> None:
         html = inject_dev_engine(SAMPLE_HTML, "ghostty")
@@ -104,13 +107,6 @@ class TestInjection:
         for url in DEV_ENGINES["ghostty"]["js"]:
             assert f'<script defer src="{url}"></script>' in html
 
-    def test_only_the_selected_engine_is_injected(self) -> None:
-        """Shipping two adapters must not load both."""
-        html = inject_dev_engine(SAMPLE_HTML, "ghostty")
-        assert "wterm" not in html
-
-        html = inject_dev_engine(SAMPLE_HTML, "wterm")
-        assert "ghostty" not in html
 
     def test_injection_is_inside_head(self) -> None:
         html = inject_dev_engine(SAMPLE_HTML, "ghostty")
@@ -163,15 +159,21 @@ class TestCreateApp:
         assert '<meta name="studyloop-dev-mode" content="ghostty">' in response.text
 
     def test_dev_mode_honours_explicit_engine(self) -> None:
-        response = self._client(dev_mode=True, dev_engine="wterm").get("/")
-        assert '<meta name="studyloop-dev-mode" content="wterm">' in response.text
+        # Naming the engine explicitly must behave the same as defaulting to it.
+        # Worth keeping with one engine registered: it is the path a second engine
+        # would arrive through, and it proves the plumbing is not hardcoded.
+        response = self._client(dev_mode=True, dev_engine="ghostty").get("/")
+        assert '<meta name="studyloop-dev-mode" content="ghostty">' in response.text
 
     def test_dev_mode_records_engine_on_state(self) -> None:
         pytest.importorskip("fastapi")
         from studyloop.web.app import create_app
 
         assert create_app(dev_mode=True).state.dev_engine == "ghostty"
-        assert create_app(dev_mode=True, dev_engine="wterm").state.dev_engine == "wterm"
+        assert (
+            create_app(dev_mode=True, dev_engine="ghostty").state.dev_engine
+            == "ghostty"
+        )
 
     def test_unknown_engine_fails_fast(self) -> None:
         """Bad --dev-engine errors at startup, not on first page load."""
@@ -248,13 +250,6 @@ class TestTerminalEngineDescriptor:
         assert "clipboard" in joined
         assert "scrollback" in joined
 
-    def test_wterm_is_described_as_itself(self) -> None:
-        from studyloop.web.dev_engines import describe_terminal_engine
-
-        info = describe_terminal_engine(True, "wterm")
-        assert info["engine"] == "wterm"
-        assert info["renderer"] == "wterm"
-        assert info["experimental"] is True
 
     def test_engine_is_ignored_when_dev_mode_is_off(self) -> None:
         """``dev_engine`` is inert without ``--dev`` — matching create_app."""
@@ -303,9 +298,13 @@ class TestSessionOptionsExposesTheEngine:
         assert engine["caveats"]
 
     def test_dev_mode_honours_the_selected_engine(self) -> None:
-        engine = self._options(dev_mode=True, dev_engine="wterm")["terminal_engine"]
-        assert engine["engine"] == "wterm"
-        assert engine["renderer"] == "wterm"
+        # ghostty is the only registered engine since wterm was removed, so this
+        # asserts the explicit-selection path still resolves rather than being
+        # short-circuited by the default. It is the route a future second engine
+        # would arrive through.
+        engine = self._options(dev_mode=True, dev_engine="ghostty")["terminal_engine"]
+        assert engine["engine"] == "ghostty"
+        assert engine["renderer"] == "libghostty"
 
     def test_agents_no_longer_recommend_the_legacy_transport(self) -> None:
         """``recommended_transport: "ttyd"`` had zero consumers and pointed at

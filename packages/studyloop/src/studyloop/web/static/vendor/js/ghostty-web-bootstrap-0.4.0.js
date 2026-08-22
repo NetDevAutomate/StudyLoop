@@ -4,7 +4,7 @@
  * Bootstraps ghostty-web as the dev-mode terminal renderer.
  * Active only when: <meta name="studyloop-dev-mode" content="ghostty-web">
  *
- * Unlike the wterm adapter (full API shim), this is just init + global patch:
+ * This is just init + global patch, not a full API shim:
  * ghostty-web IS the xterm.js API — no translation needed.
  */
 (function () {

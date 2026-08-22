@@ -60,7 +60,7 @@ def start_web_server(
 
     ``extra_args`` is appended to the ``studyloop web`` command line — used to
     select an experimental terminal renderer, e.g. ``["--dev"]`` or
-    ``["--dev-engine", "wterm"]``.
+    ``["--dev-engine", "ghostty"]``.
     """
     import os
 
