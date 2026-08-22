@@ -2736,6 +2736,14 @@ function notesPanel() {
     selectedIds: [],
     undoBuffer: [],
 
+    /* Kind filter. #notes-total-count tracks the SELECTION, not the library:
+       "1 note" under a `plan` filter is the honest answer to "how many of these
+       am I looking at", and a count that ignores the filter makes the filter
+       look broken. */
+    kindFilter: '',
+    exportOpen: false,
+    exportText: '',
+
     init() {
       const self = this;
       const store = Alpine.store('notes');
@@ -2782,9 +2790,23 @@ function notesPanel() {
       }
     },
 
+    filteredNotes() {
+      if (!this.kindFilter) return this.notes;
+      return this.notes.filter((n) => n.kind === this.kindFilter);
+    },
     totalLabel() {
-      const n = this.notes.length;
+      const n = this.filteredNotes().length;
       return `${n} note${n === 1 ? '' : 's'}`;
+    },
+    async toggleExport() {
+      this.exportOpen = !this.exportOpen;
+      if (!this.exportOpen) return;
+      try {
+        const res = await fetch('/api/notes/markdown');
+        this.exportText = res.ok ? await res.text() : 'Could not load the export.';
+      } catch {
+        this.exportText = 'Could not load the export — offline?';
+      }
     },
     selectedCountLabel() {
       const n = this.selectedIds.length;
@@ -2837,6 +2859,11 @@ function notesPanel() {
           const note = data.note || {};
           const idx = this.notes.findIndex((n) => n.id === note.id);
           if (idx !== -1) this.notes.splice(idx, 1, { ...this.notes[idx], ...note });
+          /* Adopt the SERVER's body. normalise_markdown is the single hygiene
+             gate, so what was typed and what was stored can differ (fences,
+             trailing whitespace). Leaving the textarea showing the typed version
+             makes the next edit silently re-submit unnormalised text. */
+          if (note.body !== undefined) this.bodyText = note.body;
           this.saveState = 'Saved';
         } else {
           this.saveState = 'Save';

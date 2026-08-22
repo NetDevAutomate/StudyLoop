@@ -832,6 +832,29 @@
                 aria-label="Close notes">&times;</button>
       </div>
 
+      <!-- Filter + export. The count above tracks the FILTER, so narrowing to
+           one kind answers "how many of these am I looking at" rather than
+           restating the library size. -->
+      <div class="notes-filterbar">
+        <select id="notes-kind-filter" class="picker-select" x-model="kindFilter">
+          <option value="">All kinds</option>
+          <option value="note">Note</option>
+          <option value="insight">Insight</option>
+          <option value="question">Question</option>
+          <option value="diagram">Diagram</option>
+          <option value="snippet">Snippet</option>
+          <option value="summary">Summary</option>
+          <option value="plan">Plan</option>
+        </select>
+        <button id="notes-export-toggle" type="button" class="bulk-btn"
+                @click="toggleExport()">Export</button>
+      </div>
+      <pre id="notes-export-source" class="notes-export-source"
+           x-show="exportOpen" x-text="exportText"></pre>
+      <div id="notes-empty" class="text-muted" x-show="filteredNotes().length === 0">
+        No notes yet. Capture one from a Body Double session and it lands here.
+      </div>
+
       <div class="side-panel-bulkbar">
         <button id="notes-select-mode" type="button" class="bulk-btn"
                 :class="{ active: selectMode }" @click="selectMode = !selectMode"
