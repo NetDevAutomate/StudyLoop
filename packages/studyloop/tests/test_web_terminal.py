@@ -178,7 +178,7 @@ class TestTerminalPanelUI:
 
         # Scope to body-double split layout to avoid colliding with the
         # xterm panel which also uses the ``Agent Terminal`` header.
-        panel = web_page.locator(".split-terminal .terminal-panel")
+        panel = web_page.locator(".terminal-panel")
         assert not panel.is_visible()
 
     def test_panel_visible_when_ttyd_port_present(self, web_page):
@@ -198,7 +198,7 @@ class TestTerminalPanelUI:
         # terminalPanel() polls /api/session/state at 1s intervals; the
         # panel is hidden by the splitLayout() Split.js gutter until the
         # ``terminal-ready`` event fires with ``available: true``.
-        panel = web_page.locator(".split-terminal .terminal-panel")
+        panel = web_page.locator(".terminal-panel")
         panel.wait_for(state="visible", timeout=5000)
 
         # Header shows "Terminal"
@@ -224,7 +224,7 @@ class TestTerminalPanelUI:
         web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#body-double")
         web_page.wait_for_load_state("load")
 
-        panel = web_page.locator(".split-terminal .terminal-panel")
+        panel = web_page.locator(".terminal-panel")
         panel.wait_for(state="visible", timeout=5000)
 
         iframe = panel.locator(".terminal-iframe")
@@ -239,46 +239,7 @@ class TestTerminalPanelUI:
         web_page.wait_for_timeout(300)
         assert iframe.is_visible()
 
-    def test_popout_button_opens_new_window(self, web_page):
-        """Pop-out button opens the same-origin /terminal/ in a new window."""
-        _write_state(
-            {
-                "study_session_id": "test-123",
-                "topic": "Test",
-                "energy": 5,
-                "ttyd_port": 7681,
-            }
-        )
 
-        web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#body-double")
-        web_page.wait_for_load_state("load")
-        panel = web_page.locator(".split-terminal .terminal-panel")
-        panel.wait_for(state="visible", timeout=5000)
-
-        # Pop-out button — find by stable title attribute within the panel.
-        popout_btn = panel.locator(".terminal-controls .timer-btn[title='Open in new window']")
-
-        with web_page.context.expect_page() as new_page_info:
-            popout_btn.click()
-
-        new_page = new_page_info.value
-        # Same-origin /terminal/ path, not a cross-origin port URL.
-        assert "/terminal/" in new_page.url
-
-        # Wait for Alpine to process the embedded=false state change.
-        web_page.wait_for_timeout(500)
-
-        iframe = panel.locator(".terminal-iframe")
-        assert not iframe.is_visible()
-
-        placeholder = panel.locator(".terminal-placeholder")
-        assert placeholder.is_visible()
-        assert "separate window" in placeholder.text_content().lower()
-
-    @pytest.mark.skip(
-        reason="Requires real ttyd — async health check probe to /terminal/ "
-        "delays panel init beyond test timeout when ttyd is not running."
-    )
     def test_iframe_src_uses_proxy_path(self, web_page):
         """iframe src should use the same-origin /terminal/ proxy path."""
         _write_state(
@@ -293,7 +254,7 @@ class TestTerminalPanelUI:
         web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#body-double")
         web_page.wait_for_load_state("load")
 
-        panel = web_page.locator(".split-terminal .terminal-panel")
+        panel = web_page.locator(".terminal-panel")
         panel.wait_for(state="visible", timeout=5000)
 
         iframe = panel.locator(".terminal-iframe")
@@ -426,7 +387,7 @@ class TestRealTtyd:
         web_page_ttyd.goto(f"http://127.0.0.1:{WEB_PORT}/#body-double")
         web_page_ttyd.wait_for_load_state("load")
 
-        panel = web_page_ttyd.locator(".split-terminal .terminal-panel")
+        panel = web_page_ttyd.locator(".terminal-panel")
         panel.wait_for(state="visible", timeout=10000)
 
         # Wait for terminalPanel()._checkAvailability to flip connected=true.
@@ -510,56 +471,3 @@ class TestRealTtyd:
         pane_content = _capture_tmux_pane(ttyd_process["session"])
         assert marker in pane_content, f"Expected '{marker}' in tmux pane, got:\n{pane_content}"
 
-    @pytest.mark.skip(
-        reason="xterm.js canvas keyboard input is unreliable in headless Chromium. "
-        "The pop-out window loads correctly (verified by test_ttyd_iframe_loads_terminal). "
-        "Use headed mode with manual interaction to test typing."
-    )
-    def test_popout_ttyd_window_is_interactive(
-        self, web_server_with_ttyd, ttyd_process, page, context, web_page_ttyd
-    ):
-        """Pop-out window opens /terminal/ and loads an interactive ttyd terminal."""
-        _write_state(
-            {
-                "study_session_id": "test-123",
-                "topic": "ttyd Popout Test",
-                "energy": 5,
-                "ttyd_port": ttyd_process["port"],
-            }
-        )
-
-        web_page_ttyd.goto(f"http://127.0.0.1:{WEB_PORT}/#body-double")
-        web_page_ttyd.wait_for_load_state("load")
-        web_page_ttyd.wait_for_timeout(2000)
-
-        # Pop-out button on the body-double terminal panel.
-        popout_btn = web_page_ttyd.locator(".split-terminal .terminal-panel").locator(
-            ".terminal-controls .timer-btn[title='Open in new window']"
-        )
-        with context.expect_page() as new_page_info:
-            popout_btn.click()
-
-        new_page = new_page_info.value
-        # Use domcontentloaded since the WS keeps the page from completing "load"
-        import contextlib
-
-        with contextlib.suppress(Exception):
-            new_page.wait_for_load_state("domcontentloaded", timeout=15000)
-        new_page.wait_for_timeout(3000)
-
-        # The pop-out page opens /terminal/ which proxies to ttyd — find the xterm element
-        new_page.wait_for_selector(".xterm", timeout=15000)
-        xterm = new_page.locator(".xterm")
-        assert xterm.is_visible()
-
-        # Click the xterm canvas to focus it; use new_page.keyboard for canvas input
-        xterm.click()
-        new_page.wait_for_timeout(1000)
-
-        marker = "POPOUT_TEST_99"
-        new_page.keyboard.type(f"echo {marker}")
-        new_page.keyboard.press("Enter")
-        new_page.wait_for_timeout(3000)
-
-        pane_content = _capture_tmux_pane(ttyd_process["session"])
-        assert marker in pane_content
