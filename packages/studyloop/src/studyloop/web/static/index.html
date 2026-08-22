@@ -839,12 +839,11 @@
         <select id="notes-kind-filter" class="picker-select" x-model="kindFilter">
           <option value="">All kinds</option>
           <option value="note">Note</option>
-          <option value="insight">Insight</option>
           <option value="question">Question</option>
-          <option value="diagram">Diagram</option>
-          <option value="snippet">Snippet</option>
-          <option value="summary">Summary</option>
           <option value="plan">Plan</option>
+          <option value="assessment">Assessment</option>
+          <option value="win">Win</option>
+          <option value="struggle">Struggle</option>
         </select>
         <button id="notes-export-toggle" type="button" class="bulk-btn"
                 @click="toggleExport()">Export</button>
@@ -1645,13 +1644,16 @@
             </div>
             <div id="bd-capture-body" x-show="!captureCollapsed">
               <form id="bd-note-form" x-show="captureTab === 'note'" @submit.prevent>
+                <!-- Exactly NOTE_KINDS from notes.py. That tuple is the closed
+                     set the API validates against, so an option outside it is a
+                     422 the learner cannot act on. -->
                 <select id="bd-note-kind" class="picker-select" x-model="noteKind">
                   <option value="note">Note</option>
-                  <option value="insight">Insight</option>
                   <option value="question">Question</option>
-                  <option value="diagram">Diagram</option>
-                  <option value="snippet">Snippet</option>
-                  <option value="summary">Summary</option>
+                  <option value="plan">Plan</option>
+                  <option value="assessment">Assessment</option>
+                  <option value="win">Win</option>
+                  <option value="struggle">Struggle</option>
                 </select>
                 <button id="bd-note-template" type="button" class="bulk-btn" @click="applyTemplate()">Template</button>
                 <select id="bd-note-topic" class="picker-select" x-model="noteTopic">
