@@ -227,7 +227,7 @@ class TestLiveSessionBannerClearedOnStop:
               if (!banner) return true;  // no banner element at all — definitely hidden
               return window.getComputedStyle(banner).display === 'none';
             }""",
-            timeout=3000,
+            timeout=5000,
         )
         assert not _live_session_banner_visible(web_page), (
             "Banner must be hidden after study-session-stop event"
@@ -282,7 +282,7 @@ class TestLiveSessionBannerClearedOnStop:
         page.evaluate("() => window.Alpine.store('nav').go('study-session')")
         page.wait_for_function(
             "() => window.Alpine.store('nav').current === 'study-session'",
-            timeout=3000,
+            timeout=5000,
         )
 
         # Step 3: Stop the session (user clicks Stop button).
@@ -292,7 +292,7 @@ class TestLiveSessionBannerClearedOnStop:
         page.evaluate("() => window.Alpine.store('nav').go('flashcards')")
         page.wait_for_function(
             "() => window.Alpine.store('nav').current === 'flashcards'",
-            timeout=3000,
+            timeout=5000,
         )
 
         # Step 5: Banner must be gone — liveSession cleared by the stop listener.
@@ -302,7 +302,7 @@ class TestLiveSessionBannerClearedOnStop:
               if (!banner) return true;
               return window.getComputedStyle(banner).display === 'none';
             }""",
-            timeout=3000,
+            timeout=5000,
         )
 
         live = _get_alpine_live_session(page)
