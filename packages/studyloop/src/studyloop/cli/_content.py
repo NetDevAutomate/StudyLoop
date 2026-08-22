@@ -67,6 +67,22 @@ def _run_notebooklm[T](coro: Coroutine[Any, Any, T]) -> T:
         raise click.ClickException(f"NotebookLM operation timed out: {exc}") from exc
     except RuntimeError as exc:
         raise click.ClickException(f"NotebookLM operation failed: {exc}") from exc
+    except ValueError as exc:
+        # notebooklm raises ValueError for an expired or invalid login, and its
+        # message already tells the learner to run `notebooklm login`. Without
+        # this it escaped as a traceback, so the one useful sentence arrived
+        # buried under a stack - for an optional integration the learner may not
+        # even know they are using.
+        raise click.ClickException(f"NotebookLM: {exc}") from exc
+    except FileNotFoundError as exc:
+        # No stored credentials at all - the never-logged-in case, as opposed to
+        # the expired one above. This is the DEFAULT state for anyone who has not
+        # opted into the NotebookLM integration, so it must read as a prompt
+        # rather than a fault.
+        raise click.ClickException(
+            f"NotebookLM is not set up ({exc}). Run 'notebooklm login' first, "
+            "or skip the NotebookLM commands - they are optional."
+        ) from exc
 
 
 def _display_name_for_path(path: Path) -> str:
@@ -771,10 +787,20 @@ def status_cmd(output_dir: Path, book_name: str | None) -> None:
     """Show syllabus progress for chunked generation."""
     from studyloop.content.syllabus import read_state
 
+    from studyloop.content.syllabus import SyllabusStateError
+
     resolved_book_name = book_name or output_dir.resolve().name
     state_path = output_dir / f".{resolved_book_name}-syllabus.json"
 
-    state = read_state(state_path)
+    # read_state RAISES when there is no syllabus, so the `if not state` guard
+    # below was unreachable and the learner got a traceback instead of the
+    # perfectly good message the exception already carries. A traceback for a
+    # "you haven't run the previous step yet" condition is hostile: it buries one
+    # actionable sentence under twenty lines of frames.
+    try:
+        state = read_state(state_path)
+    except SyllabusStateError as exc:
+        raise click.ClickException(str(exc)) from exc
     if not state:
         raise click.ClickException(
             f"No syllabus state at {state_path}. Run 'studyloop content syllabus' first."
