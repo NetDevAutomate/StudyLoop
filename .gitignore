@@ -547,6 +547,9 @@ graphify-out/
 mempalace.yaml
 entities.json
 
+# Understand-anything
+.ua/
+
 # Playwright/e2e failure artifacts
 test-results/
 # Screenshots/HTML/console dumps written by the e2e harness on failure
