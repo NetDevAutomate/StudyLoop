@@ -102,9 +102,14 @@ async def live_session_socket(websocket: WebSocket) -> None:
     # claiming the consumer slot displaces any socket still holding it. The slot
     # is what guarantees the event-stream drain is never split between two
     # terminals (see _grace.py: events() is a drain, one event per consumer).
-    # The return value is the reattach signal: a release was pending, so a
-    # previous client went away and this socket is RESUMING that session.
-    reattached = _grace.cancel_pending_release(session_id)
+    # Is this socket RESUMING a session, or starting one? "A release was
+    # pending" is the tempting test and it is wrong: a page reload opens the new
+    # socket while the old one's finally-block may not have run, so there is
+    # frequently nothing pending to cancel even though the learner is obviously
+    # coming back. "Has anything ever attached to this session" is the honest
+    # test, and it must be read BEFORE acquire_consumer, which sets it.
+    reattached = _grace.has_attached_before(session_id)
+    _grace.cancel_pending_release(session_id)
     mine, _displaced = await _grace.acquire_consumer(session_id)
 
     if reattached:

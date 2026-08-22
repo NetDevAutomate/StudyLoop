@@ -302,6 +302,19 @@ def attached_session_id() -> str | None:
     return _attachment.session_id if _attachment is not None else None
 
 
+def has_attached_before(session_id: str) -> bool:
+    """Whether any consumer has EVER attached to ``session_id``.
+
+    The honest test for "this socket is resuming rather than starting". A pending
+    release is not that test: a page reload opens the new socket while the old
+    one's ``finally`` may not have run yet, so there is often nothing to cancel
+    even though the learner is plainly returning to a live session.
+
+    Read this BEFORE ``acquire_consumer``, which is what adds the id.
+    """
+    return session_id in _ever_attached
+
+
 def is_attached(session_id: str) -> bool:
     """True when ``session_id`` currently has a WebSocket consumer."""
     return _attachment is not None and _attachment.session_id == session_id
