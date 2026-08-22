@@ -443,13 +443,21 @@ class TestTransportPickerNamesTheRealRenderer:
         values = bd_page.eval_on_selector_all(
             "#bd-transport-select option", "(opts) => opts.map((o) => o.value)"
         )
-        assert values == ["pty", "acp", "ttyd"], values
+        # The UI surface is now deliberately NARROWER than the API surface: the
+        # server still honours transport="ttyd" (STUDYLOOP_TRANSPORT=ttyd, one
+        # deprecation window), but the browser no longer OFFERS it, because the
+        # ttyd iframe needs a separately-installed binary and renders an empty
+        # frame without it - indistinguishable from a hang. Offering a option
+        # that usually looks broken is worse than not offering it.
+        assert values == ["pty", "acp"], values
         assert bd_page.eval_on_selector("#bd-transport-select", "(el) => el.value") == "pty"
 
     def test_selecting_a_transport_swaps_the_hint(self, bd_page: Page) -> None:
-        bd_page.select_option("#bd-transport-select", value="ttyd")
+        # Drives acp rather than the retired ttyd option; what is under test is
+        # that CHANGING transport swaps the hint, not which value does it.
+        bd_page.select_option("#bd-transport-select", value="acp")
         bd_page.wait_for_selector("#bd-transport-hint-pty", state="hidden", timeout=5_000)
-        assert bd_page.eval_on_selector("#bd-transport-select", "(el) => el.value") == "ttyd"
+        assert bd_page.eval_on_selector("#bd-transport-select", "(el) => el.value") == "acp"
         bd_page.select_option("#bd-transport-select", value="pty")
         bd_page.wait_for_selector("#bd-transport-hint-pty", state="visible", timeout=5_000)
 
@@ -568,7 +576,13 @@ class TestDevEngineIsVisible:
         values = dev_page.eval_on_selector_all(
             "#bd-transport-select option", "(opts) => opts.map((o) => o.value)"
         )
-        assert values == ["pty", "acp", "ttyd"], values
+        # The UI surface is now deliberately NARROWER than the API surface: the
+        # server still honours transport="ttyd" (STUDYLOOP_TRANSPORT=ttyd, one
+        # deprecation window), but the browser no longer OFFERS it, because the
+        # ttyd iframe needs a separately-installed binary and renders an empty
+        # frame without it - indistinguishable from a hang. Offering a option
+        # that usually looks broken is worse than not offering it.
+        assert values == ["pty", "acp"], values
 
     def test_a_badge_announces_the_experiment_and_lists_its_gaps(self, dev_page: Page) -> None:
         badge = dev_page.locator("#dev-engine-badge")

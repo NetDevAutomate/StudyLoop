@@ -39,7 +39,7 @@
 export function liveAgentConsole(origin = 'study') {
     return {
       /* ---- reactive state (bound to template) --------------------- */
-      terminalMode: null,        /* 'xterm' | 'ttyd-iframe' | 'acp-chat' | null (idle) */
+      terminalMode: null,        /* 'xterm' | 'acp-chat' | 'unavailable' | null (idle) */
       transport: null,           /* 'pty' | 'acp' | 'ttyd' | null (idle) */
       connected: false,
       /* Monotonic guard so an in-flight _adoptLiveSession() fetch cannot mount
@@ -51,7 +51,6 @@ export function liveAgentConsole(origin = 'study') {
       status: 'Waiting',
       statusDot: 'idle',         /* 'idle' | 'live' | 'error' */
       statusMessage: '',
-      legacyTtydUrl: '',
       showJumpToBottom: false,
       acpInput: '',              /* bound to ACP input field */
       acpSending: false,         /* disables submit while a turn is in flight */
@@ -145,7 +144,11 @@ export function liveAgentConsole(origin = 'study') {
         } else if (transport === 'pty' && detail.wsUrl) {
           this._mountXterm(detail);
         } else {
-          this._mountLegacyIframe(detail);
+          /* No usable transport. This used to fall back to a ttyd <iframe>, which
+             required a separately-installed binary and, when absent, rendered an
+             EMPTY frame - indistinguishable from a hang. An explicit error beats a
+             fallback to another broken thing: say what went wrong and what to do. */
+          this._mountUnavailable(detail);
         }
       },
 
@@ -775,20 +778,21 @@ export function liveAgentConsole(origin = 'study') {
       /* ------------------------------------------------------------
        * Legacy ttyd iframe path (transport=ttyd emergency fallback)
        * ------------------------------------------------------------ */
-      _mountLegacyIframe(detail) {
-        this.terminalMode = 'ttyd-iframe';
-        const key = detail.studySessionId || `${Date.now()}`;
-        const params = new URLSearchParams({
-          session: key,
-          agent: detail.resolvedAgent || detail.agent || 'auto',
-          t: `${Date.now()}`,
-        });
-        this.legacyTtydUrl = `/terminal/?${params.toString()}`;
-        this.$nextTick(() => {
-          this.connected = true;
-          this.status = `Legacy terminal · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
-          this.statusDot = 'live';
-        });
+      /* Terminal surfaces are xterm (transport=pty) and ACP chat (transport=acp).
+         The ttyd iframe was retired once the pty path survived a page reload; the
+         server still honours STUDYLOOP_TRANSPORT=ttyd, but it is no longer offered
+         as a browser rendering option. */
+      _mountUnavailable(detail) {
+        this.terminalMode = 'unavailable';
+        this.connected = false;
+        this.statusDot = 'error';
+        this.status = 'No terminal available';
+        this.statusMessage = detail && detail.transport
+          ? `This session reports transport "${detail.transport}", which this view `
+            + 'cannot render. End the session and start it again with the browser '
+            + 'terminal or ACP.'
+          : 'The server did not return a connection for this session. Ending and '
+            + 'restarting it usually clears this.';
       },
 
       /* ------------------------------------------------------------

@@ -143,5 +143,5 @@ See `agents/shared/audhd-framework.md`. Plan-specific applications:
 
 When a plan session needs a terminal workspace, use **herdr**
 (<https://github.com/herdrdev/herdr>) — `herdr --session studyloop-plan-<id>`,
-`herdr pane split`, `herdr agent prompt`. herdr replaces tmux across StudyLoop;
+`herdr pane split`, `herdr agent prompt`. NOTE: herdr is OPT-IN today via `STUDYLOOP_MULTIPLEXER=herdr`; the default backend is still tmux until the herdr journey suite is green (see `multiplexer.py::get_backend`). Both go through the same multiplexer abstraction, so prefer backend-agnostic calls over raw tmux invocations. herdr replaces tmux across StudyLoop;
 do not add new tmux invocations.
