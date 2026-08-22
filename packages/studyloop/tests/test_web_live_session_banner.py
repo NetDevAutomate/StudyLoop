@@ -85,11 +85,27 @@ def _wait_flashcards_init(page: Page) -> None:
     """Wait for reviewApp('flashcards').init() to complete."""
     page.wait_for_function(
         """() => {
-          const el = document.querySelector('.content-area [x-data]');
+          // Find the flashcards component by its OWN identity rather than by
+          // document position. The old form took the first '.content-area
+          // [x-data]', which silently became the hidden todayPanel() when the
+          // Today panel was added - so this helper waited forever for a
+          // component that has no .mode. Searching by mode survives any future
+          // panel being inserted ahead of flashcards.
+          const roots = [...document.querySelectorAll('.content-area [x-data]')];
+          const el = roots.find((node) => {
+            const data = window.Alpine && window.Alpine.$data(node);
+            return data && data.mode === 'flashcards';
+          });
           if (!el) return false;
           const d = window.Alpine.$data(el);
-          // init() sets courses (possibly []) — truthy once assigned
-          return d && Array.isArray(d.courses) && d.mode === 'flashcards';
+          // Wait on coursesLoading flipping to false, NOT on courses being an
+          // array. `courses: []` is the component's INITIAL value, so
+          // Array.isArray(courses) is already true the instant Alpine mounts —
+          // the old predicate therefore returned before init() had run at all,
+          // and a test that then dispatched study-session-stop could beat the
+          // listener registration. coursesLoading starts true and is only
+          // cleared in _loadCourses()'s finally, so false proves init() ran.
+          return d.coursesLoading === false;
         }""",
         timeout=6000,
     )
@@ -110,7 +126,12 @@ def _get_alpine_live_session(page: Page) -> object:
     """Return the liveSession value from the flashcards reviewApp component."""
     return page.evaluate(
         """() => {
-          const el = document.querySelector('.content-area [x-data]');
+          // Identity lookup, not document position - see _wait_flashcards_init.
+          const el = [...document.querySelectorAll('.content-area [x-data]')]
+            .find((node) => {
+              const probe = window.Alpine && window.Alpine.$data(node);
+              return probe && probe.mode === 'flashcards';
+            });
           if (!el) return 'NO_ELEMENT';
           const d = window.Alpine.$data(el);
           if (!d || d.mode !== 'flashcards') return 'NO_DATA';
@@ -142,7 +163,12 @@ class TestLiveSessionBannerClearedOnStop:
 
         web_page.wait_for_function(
             """() => {
-              const el = document.querySelector('.content-area [x-data]');
+              // Identity lookup, not document position - see _wait_flashcards_init.
+              const el = [...document.querySelectorAll('.content-area [x-data]')]
+                .find((node) => {
+                  const probe = window.Alpine && window.Alpine.$data(node);
+                  return probe && probe.mode === 'flashcards';
+                });
               if (!el) return false;
               const d = window.Alpine.$data(el);
               return d && d.mode === 'flashcards' && d.liveSession !== null;
@@ -171,7 +197,12 @@ class TestLiveSessionBannerClearedOnStop:
         # Confirm banner starts visible.
         web_page.wait_for_function(
             """() => {
-              const el = document.querySelector('.content-area [x-data]');
+              // Identity lookup, not document position - see _wait_flashcards_init.
+              const el = [...document.querySelectorAll('.content-area [x-data]')]
+                .find((node) => {
+                  const probe = window.Alpine && window.Alpine.$data(node);
+                  return probe && probe.mode === 'flashcards';
+                });
               if (!el) return false;
               const d = window.Alpine.$data(el);
               return d && d.mode === 'flashcards' && d.liveSession !== null;
@@ -185,7 +216,12 @@ class TestLiveSessionBannerClearedOnStop:
         # Wait until both: Alpine data is null AND DOM reflects it (x-show hides the element).
         web_page.wait_for_function(
             """() => {
-              const el = document.querySelector('.content-area [x-data]');
+              // Identity lookup, not document position - see _wait_flashcards_init.
+              const el = [...document.querySelectorAll('.content-area [x-data]')]
+                .find((node) => {
+                  const probe = window.Alpine && window.Alpine.$data(node);
+                  return probe && probe.mode === 'flashcards';
+                });
               if (!el) return false;
               const d = window.Alpine.$data(el);
               if (!d || d.mode !== 'flashcards' || d.liveSession !== null) return false;
@@ -231,7 +267,12 @@ class TestLiveSessionBannerClearedOnStop:
         # Wait for liveSession to be populated (init() async fetch complete).
         page.wait_for_function(
             """() => {
-              const el = document.querySelector('.content-area [x-data]');
+              // Identity lookup, not document position - see _wait_flashcards_init.
+              const el = [...document.querySelectorAll('.content-area [x-data]')]
+                .find((node) => {
+                  const probe = window.Alpine && window.Alpine.$data(node);
+                  return probe && probe.mode === 'flashcards';
+                });
               if (!el) return false;
               const d = window.Alpine.$data(el);
               return d && d.mode === 'flashcards' && d.liveSession !== null;
