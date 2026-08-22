@@ -1446,7 +1446,7 @@
       <!-- BODY DOUBLE VIEW — timer + terminal                          -->
       <!-- ============================================================ -->
       <div x-show="$store.nav.is('body-double')" x-cloak>
-        <div class="body-double-view" x-data="bodyDoubleView()" x-init="init()">
+        <div class="body-double-view session-dashboard" x-data="bodyDoubleView()" x-init="init()">
           <header class="body-double-header">
             <h2>Body Double</h2>
             <p class="text-muted">A focused workspace with timer and terminal. Just be here.</p>
@@ -1560,6 +1560,11 @@
                   <span x-text="status"></span>
                 </div>
                 <div class="xterm-mount" x-ref="xtermMount"></div>
+                <!-- Legacy ttyd path. The transport select still offers 'ttyd',
+                     so this has to exist or choosing it renders nothing. -->
+                <iframe :src="activeTtydUrl || 'about:blank'" class="terminal-iframe"
+                        x-show="terminalMode === 'ttyd-iframe'"
+                        title="Agent terminal (ttyd)"></iframe>
               </div>
             </div>
           </section>
@@ -3004,7 +3009,7 @@
             this.topics = options.topics || [];
             /* Same renderer descriptor the Body Double view reads. Hydrated here
                too so this picker's pty label names what will ACTUALLY paint —
-               otherwise it reads "xterm.js" while libghostty is doing the work,
+               otherwise it names the stock renderer while a --dev engine is painting,
                which is the exact mislabelling --dev used to cause. */
             Alpine.store('terminalEngine').hydrate(options.terminal_engine);
           }
