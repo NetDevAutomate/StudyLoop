@@ -886,7 +886,7 @@
         <div x-show="loadError" class="explorer-error" x-text="loadError"></div>
 
         <div class="notes-list">
-          <template x-for="n in notes" :key="n.id">
+          <template x-for="n in filteredNotes()" :key="n.id">
             <article class="note-card"
                      tabindex="0"
                      :data-id="n.id"
