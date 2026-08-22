@@ -737,6 +737,12 @@ function reviewApp(defaultMode) {
     courses: [],
     coursesLoading: true,
     liveSession: null,
+    // Monotonic guard against a stale _loadLiveSession() response overwriting a
+    // newer stop. Must be initialised: without it the first bump is
+    // `undefined + 1` === NaN, and the guard would then only work because
+    // NaN !== NaN — correct by accident, and silently broken by anyone who
+    // "tidies" the comparison.
+    _liveSessionEpoch: 0,
     heatmapDays: [],
     history: [],
 
@@ -864,16 +870,27 @@ function reviewApp(defaultMode) {
     // ------------------------------------------------------------------
 
     async init() {
-      await this._loadCourses();
-      await this._loadLiveSession();
-      // The reviewApp factory is mounted with x-data and stays alive while
-      // hidden by x-show — it is never re-init()'d on tab nav. So when the
-      // user stops a session from the Study Session view, _loadLiveSession()
-      // doesn't get called again and the stale banner sticks. Listen for the
-      // stop event globally and clear the banner state at source.
+      // Register the stop listener BEFORE any await. The reviewApp factory is
+      // mounted with x-data and stays alive while hidden by x-show — it is never
+      // re-init()'d on tab nav — so when the user stops a session from the Study
+      // Session view, _loadLiveSession() doesn't get called again and a stale
+      // banner would stick. Hence the global listener.
+      //
+      // Ordering is load-bearing, not style: this used to sit AFTER
+      // `await this._loadCourses()`, which sets this.courses and then keeps
+      // awaiting a stats fetch per course. Any stop dispatched in that window
+      // hit no listener at all and was lost permanently, leaving the banner up
+      // for a session that had ended. An event handler must exist before the
+      // work that can emit the event, so nothing is registered behind an await.
       window.addEventListener('study-session-stop', () => {
+        // Bump the epoch BEFORE clearing: a _loadLiveSession() fetch already in
+        // flight captured the old epoch and must not write its now-stale
+        // "session is active" response over this clear.
+        this._liveSessionEpoch += 1;
         this.liveSession = null;
       });
+      await this._loadCourses();
+      await this._loadLiveSession();
     },
 
     async _loadCourses() {
@@ -893,10 +910,16 @@ function reviewApp(defaultMode) {
     },
 
     async _loadLiveSession() {
+      const epoch = this._liveSessionEpoch;
       try {
         const res = await fetch('/api/session/state');
         if (res.ok) {
           const state = await res.json();
+          // Drop the response if a stop happened while it was in flight: the
+          // user's stop is newer information than a fetch that started before
+          // it, so honouring the fetch would show a banner for a session that
+          // is already over.
+          if (epoch !== this._liveSessionEpoch) return;
           if (state.study_session_id && state.mode !== 'ended') {
             this.liveSession = state;
           }
