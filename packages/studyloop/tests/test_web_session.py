@@ -41,17 +41,26 @@ class TestSessionPage:
 class TestSessionStaticUI:
     def test_course_and_lesson_targets_require_specific_selection(self) -> None:
         """Course/lesson targets must not fall back to the vendor label."""
-        html = (
+        # sessionTimer's resolvedTopic() moved out of index.html's inline script
+        # into its own ES module, so this reads the module. The requirement is
+        # unchanged; only the location is. There are now also direct unit tests for
+        # resolvedTopic in packages/studyloop/tests/js/session-timer.test.js, which
+        # assert the same behaviour by CALLING it rather than by matching source
+        # text - a far better guarantee than this string comparison, which breaks on
+        # a reformat that changes nothing.
+        js = (
             Path(__file__).resolve().parents[1]
             / "src"
             / "studyloop"
             / "web"
             / "static"
-            / "index.html"
+            / "js"
+            / "components"
+            / "session-timer.js"
         ).read_text()
 
-        assert "if (this.targetKind === 'lesson') {\n          return '';" in html
-        assert "if (this.targetKind === 'course') {\n          return '';" in html
+        assert "if (this.targetKind === 'lesson') {\n          return '';" in js
+        assert "if (this.targetKind === 'course') {\n          return '';" in js
 
 
 class TestSessionStateAPI:

@@ -170,11 +170,15 @@ class TestTerminalPaths:
 
     def test_popout_uses_terminal_path(self) -> None:
         """popOut() must open /terminal/ (same-origin) not a cross-origin URL."""
-        html = (STATIC_DIR / "index.html").read_text()
-        assert "popOut" in html
+        # terminalPanel moved out of index.html's inline script into its own ES
+        # module. The requirement is unchanged - this test just has to look where
+        # the code now lives, rather than asserting the source text is embedded in
+        # the served HTML, which was only ever true because of the monolith.
+        js = (STATIC_DIR / "js" / "components" / "terminal-panel.js").read_text()
+        assert "popOut" in js
         import re
 
-        popout_match = re.search(r"popOut\(\).*?\}", html, re.DOTALL)
+        popout_match = re.search(r"popOut\(\).*?\}", js, re.DOTALL)
         assert popout_match, "popOut() function not found"
         popout_body = popout_match.group(0)
         assert "http://" not in popout_body
