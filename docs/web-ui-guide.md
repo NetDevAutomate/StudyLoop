@@ -124,7 +124,7 @@ These fire only while the **Flashcards** panel is the active panel.
 | Y | Mark correct — **only after the card is flipped** |
 | N | Mark incorrect — **only after the card is flipped** |
 | S | Skip card |
-| T | Read card aloud (in-browser neural TTS) |
+| T | Read card aloud |
 | Escape | Return to home |
 | R | On the session summary: retry the cards you got wrong |
 | P | Park a thought (works anywhere outside a text field) |
@@ -133,7 +133,7 @@ Case does not matter — the handler lower-cases the key first.
 
 > **Enter does not flip a card, and there is no auto-voice key.** `V` is unbound; voice is a click-only header toggle (see [Voice Output](#voice-output) below). If you expected either from an older version of this guide, that guide was wrong.
 
-> Voice uses an in-browser neural model (Kokoro via WebGPU/WASM) — no text leaves the browser. See [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts).
+> Voice is synthesised by a Kokoro server you run; the browser posts to StudyLoop's own authenticated `/api/tts/speak` and plays the reply. With no server reachable it uses your operating system's voices instead. See [Voice Output § Web App Voice](voice-output.md#web-app-voice-server-side-kokoro).
 
 ---
 
@@ -656,16 +656,16 @@ The original light/dark **toggle button** is still present and orthogonal to the
 
 ### Voice Output
 
-- **`T`** key, or the speaker icon on a card — read the current card aloud once (in-browser neural TTS — Kokoro on WebGPU/WASM). Works whether or not the header voice toggle is on.
+- **`T`** key, or the speaker icon on a card — read the current card aloud once. Works whether or not the header voice toggle is on.
 - **Header speaker button** — enables voice for the app's own spoken announcements (Pomodoro transitions, "voice enabled", "voice changed") and reveals the voice selector and engine badge. Persists to `localStorage` under `voice`. **This is a click-only control — no key is bound to it.**
-- **Stop button** — appears in the header while speaking; interrupts neural playback mid-utterance.
-- **Voice selector dropdown** in the header lets you choose a Kokoro voice (falls back to OS voices if the device can't run the neural model).
-- **Engine badge** next to the selector names the tier that is actually speaking (`neural-webgpu`, `neural-wasm`, `web-speech`), shown whenever voice is on rather than only on failure — a badge that appears only when something breaks teaches nobody what working looks like.
+- **Stop button** — appears in the header while speaking; interrupts playback mid-utterance.
+- **Voice selector dropdown** in the header lets you choose a voice your Kokoro server offers (it lists the OS voices instead when no server is reachable). The list is filtered to English on purpose: the same model speaks several other languages, and a stray voice id is a valid request that reads your cards in that language rather than an error.
+- **Engine badge** next to the selector names the tier that is actually speaking (`server-openvox`, `web-speech`, `silent`), shown whenever voice is on rather than only on failure — a badge that appears only when something breaks teaches nobody what working looks like.
 
 !!! warning "There is no auto-voice"
     Earlier versions of this guide documented a **`V`** key that toggled "auto-voice — reads every card automatically". **No such feature exists**, and `V` is not bound to anything. Nothing reads cards to you automatically; card reading is always `T` or the speaker icon, one card at a time. Getting this wrong in the Accessibility section is exactly the kind of error that costs a screen-reader or low-vision user their time, so it is called out rather than quietly deleted.
 
-Speech is synthesised entirely on-device — no text is sent to a remote API. The ~92 MB model downloads once on first use and is then served from browser Cache Storage, so voice keeps working with no network. That caching is done by the TTS libraries themselves and is **not** app-shell caching — the app itself still needs its local server. Full details: [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts).
+Speech is synthesised on a Kokoro server you run, not in the browser: the page posts the text to StudyLoop's own password-protected `/api/tts/speak`, which proxies it to whatever `tts.openvox_base_url` names. The device only plays the audio it gets back, which is why a tablet on the LAN gets the same voice as the desktop. With no server reachable the app falls back to your operating system's voices, and failing that to silence. Full details, including which server to run and the LAN-exposure trade-off one of them carries: [Voice Output § Web App Voice](voice-output.md#web-app-voice-server-side-kokoro).
 
 ### Pomodoro Timer (Browser)
 
@@ -688,7 +688,7 @@ The web UI is a Progressive Web App. To install:
     - It is a **local** app, not a hosted one. "Offline" would mean running without your own machine's server process — which is not what the install gives you.
     - Browser install prompts differ. iPadOS Safari offers **Add to Home Screen** from the manifest alone; Chromium's install criteria have historically included a service worker with a fetch handler, so the desktop install button may not appear. Not verified here — no browser was launched.
 
-    The one thing that *is* cached is the **voice model**: transformers.js stores the ~92 MB Kokoro weights in Cache Storage (`transformers-cache`) and the voice embeddings in `kokoro-voices`, both managed by the TTS libraries directly with no service worker involved. So voice keeps working after the first download, and a code change never re-downloads it. See [Voice Output § First-run download](voice-output.md#first-run-download).
+    Nothing is cached, voice included. Speech now comes from a Kokoro server over HTTP (see [Voice Output § Web App Voice](voice-output.md#web-app-voice-server-side-kokoro)), so it needs the network like every other request. An earlier version cached a ~92 MB voice model in the browser; that tier has been removed, partly because the caches it relied on are hidden on a plain-HTTP `--lan` origin in the first place.
 
     Offline app-shell caching is a genuine gap, not an undocumented feature. See the [2026-07-11 review](audit/2026-07-11-comprehensive-review.md) for the cache-versioning work it would need.
 

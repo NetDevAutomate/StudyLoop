@@ -19,27 +19,7 @@
   <link rel="stylesheet" href="/vendor/css/xterm-6.0.0.css">
   <style>[x-cloak] { display: none !important; }</style>
 
-  <!-- ================================================================
-       TTS importmap — must appear before any <script type="module">.
-       Maps bare specifiers used by tts-engine.js to vendored bundles.
-       ort.all.bundle.min.mjs serves both onnxruntime-web and
-       onnxruntime-common (same file, two aliases — ORT self-contains
-       its WASM and does not need a separate common package at runtime).
-       phonemizer-1.2.1.js is the eSpeak-NG WASM bundle (WASM inline
-       as base64 — no external fetch, no Node requires).
-       ================================================================ -->
-  <script type="importmap">
-  {
-    "imports": {
-      "@huggingface/transformers": "/vendor/js/transformers-3.5.2.web.js",
-      "onnxruntime-web":           "/vendor/js/ort.all.bundle.min.mjs",
-      "onnxruntime-common":        "/vendor/js/ort.all.bundle.min.mjs",
-      "phonemizer":                "/vendor/js/phonemizer-1.2.1.js"
-    }
-  }
-  </script>
-
-  <!-- tts-engine.js — ESM module; importmap must precede this tag.
+  <!-- tts-engine.js — ESM module.
        Assigns window.ttsEngine singleton. Does NOT call init() at load
        time — init() is lazy-triggered on the first speak() call. -->
   <script type="module" src="/tts-engine.js"></script>

@@ -17,10 +17,13 @@ The existing browser coverage could not catch this: ``test_web_smoke_browser``
 files exist. These tests drive the real ``components.js`` state machine and the
 real ``tts-engine.js`` module in a real browser.
 
-Determinism note: the neural tier cannot be reached in CI (it needs a ~92 MB
-Hugging Face download), so tier resolution is driven by dispatching the real
+Determinism note: the server tier cannot be reached in CI (it needs a running
+Kokoro server on the host), so tier resolution is driven by dispatching the real
 ``tts:tier-change`` event and by installing a tier-bearing engine stub. What is
-under test is the app's reaction to a tier, not the ONNX runtime.
+under test is the app's reaction to a tier, not the synthesis behind it. The
+tiers are now ``server-openvox``, ``web-speech`` and ``silent``: the in-browser
+neural tiers this file was written against have been removed, because they could
+not run over ``--lan`` at all and were 6.6x real time where they could.
 
 Run:  uv run pytest packages/studyloop/tests/e2e/test_web_tts_engine.py -m e2e
 """
@@ -84,10 +87,20 @@ window.__ttsInitCalls = 0;
 const __engine = {
   _tier: null,
   get tier() { return this._tier; },
+  // Mirrors the real engine: it restores 'serverVoiceId' inside _initServer and
+  // exposes it here. The picker deliberately no longer reads localStorage itself
+  // -- the engine owns which voice is live, so a stub without this getter makes
+  // the picker look broken when it is behaving correctly.
+  get voiceId() {
+    if (this._tier !== 'server-openvox') return null;
+    const saved = localStorage.getItem('serverVoiceId');
+    const ids = this.listVoices().map((v) => v.id);
+    return (saved && ids.includes(saved)) ? saved : (ids[0] || null);
+  },
   tierReason: '',
   tierDetail: '',
   listVoices() {
-    if (this._tier !== 'neural-webgpu' && this._tier !== 'neural-wasm') return [];
+    if (this._tier !== 'server-openvox') return [];
     return [
       { id: 'af_heart',   name: 'Heart (Female)',   lang: 'en-us', grade: 'A'  },
       { id: 'am_michael', name: 'Michael (Male)',   lang: 'en-us', grade: 'C+' },
@@ -111,7 +124,10 @@ window.__resolveTier = (tier, reason, detail) => {
   window.dispatchEvent(new CustomEvent('tts:tier-change', {
     detail: {
       tier, reason: reason || 'ok', detail: detail || '',
-      degraded: tier !== 'neural-webgpu' && tier !== 'neural-wasm',
+      // Derived from the explicit healthy tier, never as "not web-speech and
+      // not silent" -- that negative form is what previously reported the
+      // fastest tier as broken when a new tier was added.
+      degraded: tier !== 'server-openvox',
       environment: null,
     },
   }));
@@ -156,7 +172,7 @@ class TestPickerNeverGuessesTheEngine:
 
         options = _picker_options(web_page)
 
-        assert options == ["Detecting voice engine…"], (
+        assert options == ["Turn on voice to load the engine"], (
             f"picker must not name an engine before the tier resolves: {options}"
         )
         for apple in web_page.evaluate("() => window.__appleVoiceNames"):
@@ -174,7 +190,7 @@ class TestPickerNeverGuessesTheEngine:
             "&& window.speechSynthesis.onvoiceschanged()"
         )
 
-        assert _picker_options(web_page) == ["Detecting voice engine…"]
+        assert _picker_options(web_page) == ["Turn on voice to load the engine"]
 
     def test_placeholder_option_is_disabled_so_it_cannot_be_chosen(self, web_page: Page) -> None:
         web_page.add_init_script(_APPLE_VOICES)
@@ -190,12 +206,13 @@ class TestPickerNeverGuessesTheEngine:
         )
         assert state == {"disabled": True, "optDisabled": True}
 
-    def test_neural_tier_lists_kokoro_voices(self, web_page: Page) -> None:
+    def test_server_tier_lists_the_hosts_voices(self, web_page: Page) -> None:
+        """A resolved server tier must show the HOST's catalogue, not the OS's."""
         web_page.add_init_script(_APPLE_VOICES)
         web_page.add_init_script(_ENGINE_STUB)
         _goto(web_page)
 
-        web_page.evaluate("() => window.__resolveTier('neural-webgpu')")
+        web_page.evaluate("() => window.__resolveTier('server-openvox')")
 
         options = _picker_options(web_page)
         assert any("Michael" in o for o in options)
@@ -203,13 +220,19 @@ class TestPickerNeverGuessesTheEngine:
         assert not any("Samantha" in o for o in options)
         assert web_page.evaluate("() => document.getElementById('voice-select').disabled") is False
 
-    def test_neural_tier_restores_the_saved_kokoro_voice(self, web_page: Page) -> None:
+    def test_server_tier_restores_the_saved_voice(self, web_page: Page) -> None:
+        """Restored from 'serverVoiceId'.
+
+        Host voice ids and system voice NAMES are different namespaces, so they
+        get separate keys -- reusing one applied a host-only voice where no such
+        voice existed. The retired 'neuralVoiceId' key is deliberately not read.
+        """
         web_page.add_init_script(_APPLE_VOICES)
         web_page.add_init_script(_ENGINE_STUB)
-        web_page.add_init_script("localStorage.setItem('neuralVoiceId', 'bf_emma');")
+        web_page.add_init_script("localStorage.setItem('serverVoiceId', 'bf_emma');")
         _goto(web_page)
 
-        web_page.evaluate("() => window.__resolveTier('neural-wasm')")
+        web_page.evaluate("() => window.__resolveTier('server-openvox')")
 
         assert web_page.evaluate("() => document.getElementById('voice-select').value") == "bf_emma"
 
@@ -240,17 +263,25 @@ class TestEngineBadge:
             }"""
         )
 
-    def test_badge_reports_kokoro_when_neural_resolves(self, web_page: Page) -> None:
+    def test_badge_reports_kokoro_when_the_server_tier_resolves(self, web_page: Page) -> None:
+        """The badge must name the engine, and must NOT read as degraded.
+
+        It also must not leak the internal tier id: the label case for
+        'server-openvox' is what stops the badge announcing that string to a user
+        who is running VoiceMode or a container rather than OpenVox.
+        """
         web_page.add_init_script(_APPLE_VOICES)
         web_page.add_init_script(_ENGINE_STUB)
         _goto(web_page)
         self._enable_voice(web_page)
 
-        web_page.evaluate("() => window.__resolveTier('neural-webgpu')")
+        web_page.evaluate("() => window.__resolveTier('server-openvox')")
         web_page.wait_for_timeout(150)
 
         badge = web_page.locator("#tts-engine-badge")
-        assert "Kokoro" in badge.inner_text()
+        text = badge.inner_text()
+        assert "Kokoro" in text
+        assert "server-openvox" not in text, "the badge leaked the internal tier id"
         assert badge.is_visible()
         assert "degraded" not in (badge.get_attribute("class") or "")
 
@@ -328,9 +359,14 @@ class TestTierResolutionIsTriggered:
 
         web_page.wait_for_function("() => window.__ttsInitCalls > 0", timeout=5000)
 
-    def test_init_is_not_forced_when_voice_is_off_and_model_uncached(self, web_page: Page) -> None:
-        """Guardrail: don't spend 92 MB of someone's connection on a feature
-        they have not switched on."""
+    def test_init_is_not_forced_when_voice_is_off(self, web_page: Page) -> None:
+        """Voice is off by default and init must respect that.
+
+        The original reason was bandwidth -- init downloaded a ~92 MB model. That
+        model is gone with the in-browser engine, but the rule survives on
+        different grounds: init probes the host for a TTS server, and a user who
+        has not switched voice on should not have requests made on their behalf.
+        """
         web_page.add_init_script(_APPLE_VOICES)
         web_page.add_init_script(_ENGINE_STUB)
         web_page.add_init_script("localStorage.setItem('voice', 'false');")
@@ -346,127 +382,17 @@ class TestTierResolutionIsTriggered:
 
 
 class TestEngineModule:
-    def test_speed_probe_excludes_the_warmup_inference(self, web_page: Page) -> None:
-        """The probe used to time the FIRST inference, which pays ONNX graph
-        build + kernel compilation. A capable machine measured >3x real time,
-        was declared "too slow", and was demoted to Apple voices permanently.
-        """
-        _goto(web_page)
-        result = web_page.evaluate(
-            """async () => {
-                const { TTSEngine } = await import('/tts-engine.js');
-                const engine = new TTSEngine();
-                let call = 0;
-                const started = [];
-                engine._synthesiseChunk = async () => {
-                    call += 1;
-                    started.push(call);
-                    if (call === 1) {
-                        // Expensive one-off warmup: 300ms of wall clock.
-                        const until = performance.now() + 300;
-                        while (performance.now() < until) { /* busy wait */ }
-                    }
-                    return 0.05;  // 50ms of audio
-                };
-                const probe = await engine._probeSpeed();
-                return { calls: call, passed: probe.passed, ratio: probe.ratio,
-                         reason: probe.reason };
-            }"""
-        )
-        assert result["calls"] == 2, "probe must warm up first, then measure"
-        assert result["passed"] is True, (
-            "300ms of warmup against 50ms of audio must not count as a slow device"
-        )
-        assert result["ratio"] < 3.0
-        assert result["reason"] == "ok"
+    """The engine's own module surface.
 
-    def test_speed_probe_still_rejects_a_genuinely_slow_device(self, web_page: Page) -> None:
-        _goto(web_page)
-        result = web_page.evaluate(
-            """async () => {
-                const { TTSEngine } = await import('/tts-engine.js');
-                const engine = new TTSEngine();
-                engine._synthesiseChunk = async () => {
-                    const until = performance.now() + 250;
-                    while (performance.now() < until) { /* busy wait */ }
-                    return 0.05;
-                };
-                const probe = await engine._probeSpeed();
-                return { passed: probe.passed, reason: probe.reason,
-                         detail: probe.detail };
-            }"""
-        )
-        assert result["passed"] is False
-        assert result["reason"] == "device-too-slow"
-        # The outcome must be explainable, not a bare boolean.
-        assert "real time" in result["detail"]
-
-    def test_probe_reports_a_failed_warmup_distinctly(self, web_page: Page) -> None:
-        _goto(web_page)
-        result = web_page.evaluate(
-            """async () => {
-                const { TTSEngine } = await import('/tts-engine.js');
-                const engine = new TTSEngine();
-                engine._synthesiseChunk = async () => {
-                    throw new Error('voice bin 503');
-                };
-                const probe = await engine._probeSpeed();
-                return { passed: probe.passed, reason: probe.reason,
-                         detail: probe.detail };
-            }"""
-        )
-        assert result["passed"] is False
-        assert result["reason"] == "warmup-failed"
-        assert "503" in result["detail"]
-
-    def test_insecure_context_is_detected_and_explained(self, web_page: Page) -> None:
-        """`studyloop web --lan` opened at http://<ip>:8567 is NOT a secure
-        context: the browser hides navigator.gpu AND caches, which pushes the
-        engine onto WASM, defeats model caching, and makes the speed probe far
-        more likely to trip. This cannot be reproduced from a localhost test
-        page, so the detector takes its inputs as arguments."""
-        _goto(web_page)
-        warnings = web_page.evaluate(
-            """async () => {
-                const mod = await import('/tts-engine.js');
-                const env = mod.describeEnvironment({
-                    secureContext: false, hasGpu: false, hasCaches: false,
-                    origin: 'http://192.168.1.20:8567',
-                });
-                return env.warnings;
-            }"""
-        )
-        codes = [w["code"] for w in warnings]
-        assert "insecure-context" in codes
-        message = next(w["message"] for w in warnings if w["code"] == "insecure-context")
-        assert "192.168.1.20:8567" in message
-        assert "localhost" in message
-
-    def test_secure_context_without_webgpu_is_reported_as_a_lesser_warning(
-        self, web_page: Page
-    ) -> None:
-        _goto(web_page)
-        codes = web_page.evaluate(
-            """async () => {
-                const mod = await import('/tts-engine.js');
-                return mod.describeEnvironment({
-                    secureContext: true, hasGpu: false, hasCaches: true,
-                }).warnings.map((w) => w.code);
-            }"""
-        )
-        assert codes == ["no-webgpu"]
-
-    def test_a_healthy_environment_produces_no_warnings(self, web_page: Page) -> None:
-        _goto(web_page)
-        warnings = web_page.evaluate(
-            """async () => {
-                const mod = await import('/tts-engine.js');
-                return mod.describeEnvironment({
-                    secureContext: true, hasGpu: true, hasCaches: true,
-                }).warnings;
-            }"""
-        )
-        assert warnings == []
+    Six tests were removed here with the in-browser neural engine: three covered
+    _probeSpeed (the slow-device guard that decided whether WebGPU/WASM synthesis
+    was fast enough) and three covered describeEnvironment (which explained why a
+    non-secure origin degraded that engine). Both functions are deleted -- the
+    server does the synthesis now, so neither a speed verdict nor a WebGPU
+    warning has anything to act on. They are not replaced: the equivalent
+    question, "is the host's TTS reachable", is answered by _initServer's probe
+    and covered in test_web_tts_routes.py and tests/e2e/test_server_tts.py.
+    """
 
     def test_set_tier_broadcasts_the_reason_not_just_the_tier(self, web_page: Page) -> None:
         _goto(web_page)

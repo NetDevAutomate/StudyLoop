@@ -188,7 +188,7 @@ studyloop doctor                          # Full health check (Rich table)
 studyloop doctor --json                   # JSON output (for AI agents and CI)
 studyloop doctor --quiet                  # One-line summary
 studyloop doctor --category core          # Check specific category only
-studyloop doctor --category voice         # Check Kokoro, afplay, and optional OpenVox
+studyloop doctor --category voice         # Check local Kokoro files, afplay, and the Kokoro server
 studyloop doctor --fix                    # Apply safe automatic fixes
 studyloop update --json                   # Machine-readable update info
 studyloop upgrade --dry-run               # Preview what would change
@@ -219,7 +219,7 @@ agent/harness files.
 | `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `voice` (Kokoro model files, `afplay`, and OpenVox reachability when configured), `harness` (session-export wiring), `updates` (source-install/version metadata).
+**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring), `updates` (source-install/version metadata).
 
 ### Spaced Repetition Intervals
 
@@ -260,7 +260,7 @@ studyloop practice verify course-practice.json --task 1 --notes "diagram matched
 studyloop practice verify course-practice.json --task 2 --run-command --workdir . --timeout 120
 ```
 
-`studyloop recap today` compresses the day into one win, one repair target, one due item, and one next action. `--speak` calls `study-speak`, so Kokoro/OpenVox/macOS backend configuration is inherited. `--audio-file` saves the same recap as a local audio file, preferring OpenVox when configured and falling back to macOS `say`.
+`studyloop recap today` compresses the day into one win, one repair target, one due item, and one next action. `--speak` calls `study-speak`, so the local-Kokoro / Kokoro-server / macOS backend configuration is inherited. `--audio-file` saves the same recap as a local audio file, preferring the Kokoro server when configured and falling back to macOS `say`.
 
 ```bash
 studyloop recap today
@@ -459,9 +459,9 @@ studyloop web --lan --password SECRET
 
 There is **no browser terminal fallback**: the ttyd iframe surface was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md). Installing ttyd no longer enables anything user-visible in the dashboard. The `ttyd` **server** transport still exists for maintainers (`STUDYLOOP_TRANSPORT=ttyd`, plus the `/terminal/` proxy), but a session started that way has no browser renderer and reports an explicit `unavailable` state.
 
-**Voice:** In-browser neural TTS (Kokoro on WebGPU/WASM — no remote API; Web Speech API fallback). Two modes:
+**Voice:** Server-side Kokoro. The browser posts to StudyLoop's own authenticated `/api/tts/speak`, which proxies to the Kokoro server named by `tts.openvox_base_url`; with none reachable it falls back to the OS's Web Speech voices, then to silence. Off until enabled in the header.
 - **Read once** — speaker icon on card or `T` key
-- **Auto-voice** — header toggle or `V` key (reads everything automatically)
+- **Announcements** — header speaker toggle (Pomodoro transitions and confirmations). It does not read cards automatically; `V` is unbound
 - **Stop** — header stop button interrupts playback mid-utterance
 
 **Web + terminal config** (`~/.config/studyloop/config.yaml`):
