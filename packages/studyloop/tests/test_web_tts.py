@@ -31,6 +31,61 @@ ORT_WASM_FILES = (
 TRANSFORMERS_LIB = "transformers-3.5.2.web.js"
 
 
+class TestEngineLabelsCoverEveryTier:
+    """Every tier the engine can report must have a human label.
+
+    ttsEngineLabel ends in `return String(this.ttsTier)`, so a tier with no case
+    does not fail -- it renders its internal id. That is how the primary path came
+    to announce itself as "server-openvox" on a machine where OpenVox was not even
+    running, reported from a tablet. The fallthrough is worth keeping as a
+    last-resort guard, which is precisely why it needs a test above it.
+    """
+
+    COMPONENTS = STATIC_DIR / "components.js"
+
+    def _label_block(self) -> str:
+        source = self.COMPONENTS.read_text(encoding="utf-8")
+        start = source.index("get ttsEngineLabel()")
+        return source[start : start + 1400]
+
+    def test_every_tier_id_has_an_explicit_label(self):
+        block = self._label_block()
+        # Match the CODE, not a mention of it. An earlier version of this test
+        # looked for the bare quoted id and still passed after the label case was
+        # deleted, because the explanatory comment above it also quotes
+        # 'server-openvox' -- it was asserting on prose. Requiring the whole
+        # `if (...) return` shape is what makes it a test of behaviour.
+        for tier in (
+            "server-openvox",
+            "neural-webgpu",
+            "neural-wasm",
+            "web-speech",
+            "silent",
+        ):
+            needle = f"if (this.ttsTier === '{tier}') return "
+            assert needle in block, (
+                f"tier {tier!r} has no label case, so the picker will show the raw id to the user"
+            )
+
+    def test_the_server_tier_label_does_not_name_a_specific_product(self):
+        """The label must not say OpenVox -- the server is often something else.
+
+        Verified against three interchangeable backends: OpenVox, VoiceMode's
+        Kokoro and a container. Naming one of them in the UI is wrong for the
+        other two, and reads as a bug to anyone running them.
+        """
+        block = self._label_block()
+        marker = "if (this.ttsTier === 'server-openvox') return "
+        assert marker in block, "server tier label case missing"
+        label = block[block.index(marker) + len(marker) :].split(";")[0]
+        assert "openvox" not in label.lower(), (
+            f"the server tier label names OpenVox specifically: {label}"
+        )
+        assert label.strip() not in ("String(this.ttsTier)", ""), (
+            "the server tier must not fall through to its raw id"
+        )
+
+
 class TestNeuralTtsVendorFiles:
     def test_tts_engine_module_exists(self):
         assert ENGINE.exists(), "tts-engine.js missing"

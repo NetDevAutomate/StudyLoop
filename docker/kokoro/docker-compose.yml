@@ -23,24 +23,26 @@
 # │ Linux/Windows  This container, on amd64.                                    │
 # └────────────────────────────────────────────────────────────────────────────┘
 #
-# ⚠️  IF YOU USE VoiceMode's KOKORO, CHECK WHAT IT BINDS TO. It runs uvicorn with
-#     `--host 0.0.0.0`, so the socket listens on EVERY interface -- confirmed by
-#     lsof as `*:8880`, twice, across a restart -- and it requires no
-#     authentication. OpenVox on :8000 binds `127.0.0.1:8000` explicitly, and this
-#     container is pinned to 127.0.0.1 below, so the native route is the one that
-#     opens a port.
-#     Whether another machine can actually reach it was NOT measured here: the
-#     probe ran on the same host, and connecting to your own LAN address proves
-#     only that the socket answers, not that a foreign host can route in. What is
-#     known is that nothing local would stop one -- the macOS application firewall
-#     was disabled, block-all off, stealth off. To settle it, open
-#     http://<this-host>:8880/v1/models from a phone or tablet on the same
-#     network; anything other than a refused connection means it is exposed.
-#     It is worth settling because Kokoro is CPU-intensive, so an open TTS
-#     endpoint lets anything on the network spend your CPU, and StudyLoop never
-#     needs it reachable: tablets get speech through StudyLoop's own
-#     password-protected /api/tts/speak route, not by talking to Kokoro directly.
-#     Bind it to 127.0.0.1, or firewall the port, if you share the network.
+# ⚠️  IF YOU USE VoiceMode's KOKORO, IT IS EXPOSED TO YOUR LAN. Measured, not
+#     inferred: it runs uvicorn with `--host 0.0.0.0` (lsof shows `*:8880`), and a
+#     SEPARATE tablet on the same network fetched http://<host>:8880/v1/models
+#     successfully, with no credentials. So anything on the network can drive it.
+#     OpenVox binds `127.0.0.1:8000` explicitly and this container is pinned to
+#     127.0.0.1 below, so the native VoiceMode route is the one that opens a port.
+#     It is not configurable: VoiceMode exposes VOICEMODE_KOKORO_PORT, MODELS_DIR,
+#     CACHE_DIR, DEFAULT_VOICE and MAX_REQUESTS, but no host setting -- the address
+#     is hardcoded in the start script its service runs, and that script is
+#     git-tracked inside the cloned Kokoro-FastAPI repo, so editing it is reverted
+#     by the next install or pull.
+#     THE TRADE-OFF, STATED PLAINLY, because it is a real choice and not a defect
+#     to route around: Kokoro is CPU-intensive, so an open TTS endpoint lets
+#     anything on your network spend your CPU, and it is the one component here
+#     with no authentication. Against that, it is the only route that gives a
+#     tablet a good voice at all -- the alternative on an insecure-context device
+#     is the system voices, or silence. On a home network that is usually a fine
+#     trade; on a shared, office or public network it is not. StudyLoop itself
+#     never needs the port reachable: tablets get speech through StudyLoop's own
+#     password-protected /api/tts/speak, so firewalling 8880 costs you nothing.
 #
 # ⚠️  THE arm64 IMAGE IS BROKEN UPSTREAM (verified 2026-08-23, Apple Silicon).
 #     `hwdsl2/kokoro-server` advertises linux/arm64, and the arm64 variant does
