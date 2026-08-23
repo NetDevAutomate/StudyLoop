@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 
 import click
@@ -57,14 +58,21 @@ def _get_registry():
     for fn in [check_review_db, check_sessions_db]:
         registry.register("database")(fn)
     config_checks = [
-        check_obsidian_vault,
-        check_obsidian_export,
         check_active_topic_limit,
         check_review_directories,
         check_pandoc,
     ]
-    # The tmux-resurrect check is gone: herdr replaced tmux as the multiplexer,
-    # so a missing tmux restore hook is not a health problem to report.
+    # Obsidian is an OPT-IN integration, so its checks are registered only when
+    # the config actually mentions it. A user who never had Obsidian should not
+    # see two rows about software they do not own -- the setup wizard no longer
+    # asks about it, so reporting on it would be reporting on nothing.
+    from studyloop.settings import load_raw_config
+
+    with contextlib.suppress(Exception):
+        raw = load_raw_config()
+        if raw.get("obsidian") or raw.get("obsidian_base"):
+            config_checks.insert(0, check_obsidian_vault)
+            config_checks.insert(1, check_obsidian_export)
     for fn in config_checks:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)

@@ -332,6 +332,13 @@ class Settings:
     """Application settings loaded from config file."""
 
     obsidian_base: Path = field(default_factory=lambda: Path.home() / "Obsidian")
+    #: Where the user's study notes live. The modern, Obsidian-neutral key.
+    #: Empty means "no notes folder configured", which is a supported state: a
+    #: learner with no notes uses their study sessions as the source instead.
+    #: `notes_base()` resolves this against the legacy `obsidian_base`, so the
+    #: internal field above deliberately keeps its name -- renaming it would
+    #: touch every topic-path consumer for no user-visible gain.
+    notes_path: Path | None = None
     session_db: Path = field(default_factory=_default_session_db)
     state_dir: Path = field(default_factory=_default_state_dir)
     topics: list[TopicConfig] = field(default_factory=list)
@@ -474,6 +481,7 @@ def write_raw_config(data: dict[str, Any]) -> Path:
 # When the YAML key matches settings_attr, the value is coerced and set directly.
 _SCALAR_FIELDS: list[tuple[str, object]] = [
     ("obsidian_base", _path),
+    ("notes_path", _path),
     ("session_db", _path),
     ("state_dir", _path),
     ("sync_remote", str),
@@ -514,6 +522,17 @@ def _default_topic_path(settings: Settings, name: str) -> Path:
     return nested_personal_study
 
 
+def notes_base(settings: Settings) -> Path:
+    """Return the root that relative topic paths resolve against.
+
+    Read order is modern-first: ``notes_path`` wins, then legacy
+    ``obsidian_base``. Keeping both readable means an existing config keeps
+    working untouched -- the setup wizard writes ``notes_path`` beside
+    ``obsidian_base`` rather than replacing it, and never deletes the legacy key.
+    """
+    return settings.notes_path or settings.obsidian_base
+
+
 def _topic_from_raw(raw: object, settings: Settings, position: int) -> TopicConfig | None:
     """Parse one raw topic entry.
 
@@ -543,10 +562,13 @@ def _topic_from_raw(raw: object, settings: Settings, position: int) -> TopicConf
         raise ConfigError(f"Invalid topic at position {position}: missing 'name'.")
 
     slug = str(raw.get("slug") or _slugify_topic_name(name))
-    raw_obsidian_path = raw.get("obsidian_path") or f"Personal/Study/{name}"
-    obsidian_path = Path(str(raw_obsidian_path)).expanduser()
+    # Modern `notes_path` first, then legacy `obsidian_path`. The TopicConfig
+    # field is still called obsidian_path on purpose: renaming it would ripple
+    # through every consumer of topic paths without changing behaviour.
+    raw_topic_path = raw.get("notes_path") or raw.get("obsidian_path") or f"Personal/Study/{name}"
+    obsidian_path = Path(str(raw_topic_path)).expanduser()
     if not obsidian_path.is_absolute():
-        obsidian_path = settings.obsidian_base / str(raw_obsidian_path)
+        obsidian_path = notes_base(settings) / str(raw_topic_path)
 
     return TopicConfig(
         name=name,
