@@ -1,0 +1,98 @@
+# Self-hosted Kokoro text-to-speech for StudyLoop.
+#
+# WHY THIS EXISTS. StudyLoop speaks through a server-side Kokoro rather than the
+# browser, because in-browser Kokoro measured 6.6x real time on a warmed WebGPU
+# tier and cannot run at all on a tablet: `studyloop web --lan` serves plain HTTP,
+# so the origin is not a secure context and the browser hides both navigator.gpu
+# and Cache Storage. A server has none of those limits and the device only has to
+# play an audio response.
+#
+# StudyLoop does NOT depend on this container, or on any particular provider. It
+# POSTs to whatever `tts.openvox_base_url` names, so anything exposing an
+# OpenAI-compatible /v1/audio/speech will do. Verified against two independent
+# implementations: OpenVox on :8000 (2.5s for a sentence) and VoiceMode's Kokoro
+# on :8880 (1.98s) -- byte-identical request, same voice ids, no code change.
+#
+# ┌─ WHICH ONE SHOULD YOU RUN? ────────────────────────────────────────────────┐
+# │ macOS          Prefer a NATIVE server -- no Docker, no image to track:      │
+# │                  • VoiceMode   `voicemode service install kokoro`  (:8880)  │
+# │                    and on Apple Silicon its `mlx-audio` service (:8890)     │
+# │                    bundles an MPS-accelerated Kokoro.                       │
+# │                  • OpenVox     a macOS app, loopback API on :8000.          │
+# │ Linux/Windows  This container, on amd64.                                    │
+# └────────────────────────────────────────────────────────────────────────────┘
+#
+# ⚠️  THE arm64 IMAGE IS BROKEN UPSTREAM (verified 2026-08-23, Apple Silicon).
+#     `hwdsl2/kokoro-server` advertises linux/arm64, and the arm64 variant does
+#     pull and start, but it ships a CUDA-flavoured PyTorch: torch's
+#     _load_global_deps() fails, falls through to _preload_cuda_deps(), and
+#     raises `ValueError: libcublasLt.so.*[0-9] not found` on a machine with no
+#     NVIDIA GPU. The container then crash-loops. Nothing in this file can fix
+#     that -- it is a wrong wheel in the image build, not a configuration
+#     problem, and there is no CPU-only env switch to reach for.
+#     So on Apple Silicon use a native server (above). This file is kept because
+#     it is correct for amd64, which is where Linux and Windows users are.
+#     UNVERIFIED ON amd64 -- no amd64 host was available to test it.
+#
+#   Start:   docker compose -f docker/kokoro/docker-compose.yml up -d
+#   Logs:    docker logs studyloop-kokoro     (wait for "ready")
+#   Stop:    docker compose -f docker/kokoro/docker-compose.yml down
+#
+# Then point StudyLoop at whichever server you chose, in
+# ~/.config/studyloop/config.yaml -- only the URL changes between them:
+#
+#   tts:
+#     backend: openvox
+#     openvox_base_url: http://127.0.0.1:8880/v1   # or :8000/v1 for OpenVox
+#     openvox_model: kokoro
+#     openvox_voice: bf_emma
+#
+# The model is ~320MB, downloaded once and kept in the named volume. Allow ~1.5GB
+# of free RAM: the PyTorch runtime needs it, and the container will not start
+# usefully on a 1GB machine.
+
+services:
+  kokoro:
+    image: hwdsl2/kokoro-server
+    container_name: studyloop-kokoro
+    restart: unless-stopped
+    ports:
+      # Bound to LOOPBACK on purpose. StudyLoop proxies speech through its own
+      # authenticated /api/tts/speak route, so a tablet never needs to reach this
+      # port -- and Kokoro is CPU-intensive, which makes an open TTS endpoint a
+      # free way for anything on the network to burn the host's compute.
+      # Override the host port if 8880 is already taken:
+      #   KOKORO_HOST_PORT=8881 docker compose ... up -d
+      - "127.0.0.1:${KOKORO_HOST_PORT:-8880}:8880/tcp"
+    environment:
+      # British female, matching StudyLoop's own default voice. Per-request
+      # `voice` always overrides this, so it only sets the container default.
+      KOKORO_VOICE: "${KOKORO_VOICE:-bf_emma}"
+      # Load only the British English pipeline at startup. Others are created on
+      # demand, so this trades nothing away -- StudyLoop offers English voices
+      # only, deliberately: the same model can speak Mandarin, Japanese, Spanish,
+      # French, Hindi and Italian, and a stray voice id is a valid request that
+      # speaks that language rather than an error.
+      KOKORO_LANG_CODE: "${KOKORO_LANG_CODE:-b}"
+      KOKORO_LOG_LEVEL: "${KOKORO_LOG_LEVEL:-INFO}"
+      # Left unset so no auth is required on a loopback-only port. Set a token if
+      # you publish this port, and put the same value in StudyLoop's config.
+      KOKORO_API_KEY: "${KOKORO_API_KEY:-}"
+    volumes:
+      # Named volume, not a bind mount: the ~320MB model survives container
+      # recreation, so an update does not re-download it.
+      - studyloop-kokoro-data:/var/lib/kokoro
+    healthcheck:
+      # Checked against /v1/models because every OpenAI-compatible Kokoro server
+      # implements it. The voice-listing path is NOT portable -- three
+      # implementations use three different URLs for it.
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8880/v1/models',timeout=5)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      # Generous: the first start downloads the model before serving.
+      start_period: 300s
+      retries: 5
+
+volumes:
+  studyloop-kokoro-data:
+    name: studyloop-kokoro-data
