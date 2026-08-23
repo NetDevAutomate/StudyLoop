@@ -26,7 +26,13 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-def _make(runner: CliRunner, title: str = "Glue ETL Basics", extra: list[str] | None = None):
+def _make(
+    runner: CliRunner,
+    title: str = "Glue ETL Basics",
+    extra: list[str] | None = None,
+    *,
+    expect_success: bool = True,
+):
     args = [
         "plan",
         "new",
@@ -42,9 +48,11 @@ def _make(runner: CliRunner, title: str = "Glue ETL Basics", extra: list[str] | 
         "Job anatomy (concepts: glue job)",
         "--milestone",
         "Transform (concepts: dynamicframe)",
+        "--confirm",
     ]
     result = runner.invoke(cli, args + (extra or []))
-    assert result.exit_code == 0, result.output
+    if expect_success:
+        assert result.exit_code == 0, result.output
     return result
 
 
@@ -117,14 +125,11 @@ def test_evaluate_record_appends_a_checkpoint(runner: CliRunner) -> None:
     assert "| end |" in doc.replace(" |", " |")
 
 
-def test_milestone_toggle_moves_progress(runner: CliRunner) -> None:
+def test_milestone_incomplete_is_explicit_and_does_not_toggle(runner: CliRunner) -> None:
     _make(runner)
-    result = runner.invoke(cli, ["plan", "milestone", "glue-etl-basics", "0", "--done"])
+    result = runner.invoke(cli, ["plan", "milestone", "glue-etl-basics", "0", "--undone"])
     assert result.exit_code == 0
-    assert "1/2" in result.output
-
-    toggled_back = runner.invoke(cli, ["plan", "milestone", "glue-etl-basics", "0", "--undone"])
-    assert "0/2" in toggled_back.output
+    assert "0/2" in result.output
 
 
 def test_milestone_out_of_range_fails_cleanly(runner: CliRunner) -> None:
@@ -136,13 +141,24 @@ def test_milestone_out_of_range_fails_cleanly(runner: CliRunner) -> None:
 
 
 def test_status_active_is_refused_for_an_incomplete_plan(runner: CliRunner) -> None:
-    created = runner.invoke(cli, ["plan", "new", "--title", "Vague Plan"])
+    created = runner.invoke(
+        cli,
+        [
+            "plan",
+            "new",
+            "--title",
+            "Vague Plan",
+            "--why",
+            "Explore safely",
+            "--confirm",
+        ],
+    )
     assert created.exit_code == 0
 
     result = runner.invoke(cli, ["plan", "status", "vague-plan", "active"])
     assert result.exit_code == 1
-    assert "Cannot activate" in result.output
-    assert "Mission" in result.output
+    assert "not ready to activate" in result.output
+    assert "success criteria" in result.output
     assert "Traceback" not in result.output
 
     still_draft = json.loads(runner.invoke(cli, ["plan", "show", "vague-plan", "--json"]).output)
@@ -150,9 +166,43 @@ def test_status_active_is_refused_for_an_incomplete_plan(runner: CliRunner) -> N
 
 
 def test_new_with_activate_is_refused_when_incomplete(runner: CliRunner) -> None:
-    result = runner.invoke(cli, ["plan", "new", "--title", "Empty", "--activate"])
+    result = runner.invoke(cli, ["plan", "new", "--title", "Empty", "--activate", "--confirm"])
     assert result.exit_code == 1
-    assert "Cannot activate" in result.output
+    assert "deprecated" in result.output.lower()
+    assert "activate" in result.output.lower()
+
+
+def test_new_requires_explicit_confirmation_and_writes_no_canonical_plan(
+    runner: CliRunner,
+) -> None:
+    result = runner.invoke(
+        cli,
+        [
+            "plan",
+            "new",
+            "--title",
+            "Needs Confirmation",
+            "--why",
+            "Learn safely",
+            "--success",
+            "Demonstrate it",
+            "--milestone",
+            "Practise",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "--confirm" in result.output
+    assert json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output) == []
+
+
+def test_new_enforces_maximum_three_current_plans(runner: CliRunner) -> None:
+    for index in range(3):
+        result = _make(runner, title=f"Plan {index}")
+        assert result.exit_code == 0
+
+    refused = _make(runner, title="Plan 4", expect_success=False)
+    assert refused.exit_code == 1
+    assert "maximum of 3 current plans" in refused.output.lower()
 
 
 def test_status_active_succeeds_for_a_complete_plan(runner: CliRunner) -> None:
@@ -198,6 +248,32 @@ def test_duplicate_titles_get_distinct_ids(runner: CliRunner) -> None:
     ids = [p["plan_id"] for p in json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output)]
     assert "glue-etl-basics" in ids
     assert "glue-etl-basics-2" in ids
+
+
+def test_milestone_done_requires_evidence_or_exact_learner_attestation(
+    runner: CliRunner,
+) -> None:
+    _make(runner)
+    bare = runner.invoke(cli, ["plan", "milestone", "glue-etl-basics", "0", "--done"])
+    assert bare.exit_code == 1
+    assert "evidence" in bare.output.lower() or "attestation" in bare.output.lower()
+
+    wrong_confirmation = runner.invoke(
+        cli,
+        [
+            "plan",
+            "milestone",
+            "glue-etl-basics",
+            "0",
+            "--done",
+            "--attest-reason",
+            "I practised this milestone",
+            "--confirmation",
+            "yes",
+        ],
+    )
+    assert wrong_confirmation.exit_code == 1
+    assert "I confirm this records my own completed" in wrong_confirmation.output
 
 
 def test_path_prints_the_plans_directory(runner: CliRunner, isolated_plans_dir) -> None:

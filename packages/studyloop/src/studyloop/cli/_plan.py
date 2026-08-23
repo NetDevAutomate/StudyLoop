@@ -11,6 +11,8 @@ pastes into the conversation at each of the three session checkpoints.
 from __future__ import annotations
 
 import json
+import uuid
+from dataclasses import asdict
 from typing import NoReturn
 
 import click
@@ -19,10 +21,19 @@ from rich.table import Table
 from studyloop.cli._shared import console
 from studyloop.planning import (
     PLAN_STATUSES,
+    ActorContext,
+    DecideProposal,
+    LifecycleError,
+    PlanningCommand,
+    PlanningRef,
+    PlanningRepositoryError,
+    PlanningRequest,
+    RecordCheckpoint,
+    RecordMilestoneOutcome,
     StudyPlan,
-    create_plan,
+    SubmitProposalDraft,
+    TransitionPlanStatus,
     draft_plan,
-    evaluate_and_record,
     evaluate_plan,
     interview_spec,
     list_plans,
@@ -31,15 +42,27 @@ from studyloop.planning import (
     plans_dir,
     readiness,
     reindex_all,
-    save_plan,
     seed_from_history,
     unique_plan_id,
 )
+from studyloop.planning.compat import (
+    PreferredPlanIdGenerator,
+    proposal_draft_from_plan,
+    require_outcome,
+    require_proposal,
+    require_view,
+)
+from studyloop.planning.index import record_checkpoint
+from studyloop.planning.runtime import planning_lifecycle
 from studyloop.planning.store import (
     InvalidPlanIdError,
-    PlanExistsError,
     PlanNotFoundError,
 )
+
+_CLI_LEARNER = ActorContext("learner", "local-learner", "cli")
+_CLI_MODEL = ActorContext("model", "compatibility-translator", "cli")
+_CLI_RECORDER = ActorContext("recorder", "studyloop", "cli")
+_ATTESTATION_CONFIRMATION = "I confirm this records my own completed practice"
 
 
 def _fail(message: str) -> NoReturn:
@@ -182,6 +205,11 @@ def plan_show(plan_id: str, as_markdown: bool, as_json: bool) -> None:
 @click.option("--target-date", default="", help="Target date (YYYY-MM-DD).")
 @click.option("--energy-floor", type=int, default=3, show_default=True, help="Minimum energy 1-10.")
 @click.option("--activate", is_flag=True, help="Activate immediately (refused if incomplete).")
+@click.option(
+    "--confirm",
+    is_flag=True,
+    help="Explicitly approve the exact generated draft proposal.",
+)
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def plan_new(
     title: str,
@@ -195,13 +223,19 @@ def plan_new(
     target_date: str,
     energy_floor: int,
     activate: bool,
+    confirm: bool,
     as_json: bool,
 ) -> None:
-    """Create a study plan.
+    """Deprecated compatibility adapter for creating a draft study plan.
 
     Omitted answers are left explicitly blank in the document rather than
     invented, and ``readiness`` reports what is still missing.
     """
+    if activate:
+        _fail(
+            "--activate is not available on deprecated plan new; "
+            "create a confirmed draft, then activate it explicitly"
+        )
     plan = draft_plan(
         title,
         {
@@ -218,27 +252,92 @@ def plan_new(
         plan_id=unique_plan_id(title),
     )
 
-    check = readiness(plan)
-    if activate:
-        if not check["ready"]:
-            console.print(f"[red]Cannot activate {plan.plan_id!r} — the plan is incomplete.[/red]")
-            _print_readiness(check)
-            raise SystemExit(1)
-        plan.status = "active"
-
     try:
-        path = create_plan(plan)
-    except PlanExistsError as exc:
-        _fail(str(exc))
-    except InvalidPlanIdError as exc:
+        service = planning_lifecycle(ids=PreferredPlanIdGenerator(plan.plan_id))
+        key = uuid.uuid4().hex
+        brief = service.prepare(
+            PlanningRequest(
+                "create",
+                json.dumps(
+                    {
+                        "title": title,
+                        "why": why,
+                        "topics": list(topics),
+                        "success": list(success),
+                        "milestones": list(milestones),
+                        "constraints": list(constraints),
+                        "out_of_scope": list(out_of_scope),
+                        "resources": list(resources),
+                        "target_date": target_date,
+                        "energy_floor": energy_floor,
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                f"cli-new:{key}",
+            ),
+            _CLI_LEARNER,
+        )
+        review = require_proposal(
+            service.handle(
+                PlanningCommand(
+                    _CLI_MODEL,
+                    SubmitProposalDraft(
+                        brief.run_id,
+                        f"cli-proposal:{key}",
+                        brief.brief_context_digest,
+                        proposal_draft_from_plan(plan),
+                    ),
+                ),
+            )
+        )
+        if not confirm:
+            if as_json:
+                click.echo(
+                    json.dumps(
+                        {
+                            "confirmed": False,
+                            "proposal_id": review.proposal_id,
+                            "proposal_digest": review.proposal_digest,
+                            "plan": review.plan_preview.summary(),
+                        },
+                        indent=2,
+                    )
+                )
+                raise click.exceptions.Exit(1)
+            _fail("No plan was created. Review the proposal and repeat with --confirm.")
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    _CLI_LEARNER,
+                    DecideProposal(
+                        review.proposal_id,
+                        review.proposal_digest,
+                        "approve",
+                        f"cli-decision:{key}",
+                    ),
+                ),
+            )
+        )
+        created = require_view(service.inspect(PlanningRef(outcome.plan_id)))
+        created_plan = created.plan
+    except (InvalidPlanIdError, LifecycleError, PlanningRepositoryError) as exc:
         _fail(str(exc))
 
+    check = readiness(created_plan)
     if as_json:
         click.echo(
-            json.dumps({"plan": plan.summary(), "readiness": check, "path": str(path)}, indent=2)
+            json.dumps(
+                {
+                    "outcome": asdict(outcome),
+                    "plan": created_plan.summary(),
+                    "readiness": check,
+                },
+                indent=2,
+            )
         )
         return
-    console.print(f"[green]Created[/green] {plan.plan_id} → {path}")
+    console.print(f"[green]Created confirmed draft[/green] {created_plan.plan_id}")
     _print_readiness(check)
 
 
@@ -289,11 +388,26 @@ def plan_interview(as_json: bool) -> None:
 def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json: bool) -> None:
     """Evaluate a plan against your study and session history."""
     plan = _load(plan_id)
-    evaluation = (
-        evaluate_and_record(plan, phase, study_id=study_id)
-        if record
-        else evaluate_plan(plan, phase, study_id=study_id)
-    )
+    evaluation = evaluate_plan(plan, phase, study_id=study_id)
+    if record:
+        try:
+            service = planning_lifecycle(evidence=plan.evidence)
+            service.handle(
+                PlanningCommand(
+                    _CLI_RECORDER,
+                    RecordCheckpoint(
+                        plan.plan_id,
+                        evaluation.to_checkpoint(),
+                        f"cli-checkpoint:{uuid.uuid4().hex}",
+                    ),
+                )
+            )
+            try:
+                record_checkpoint(evaluation, study_id=study_id)
+            except Exception:
+                evaluation.warnings.append("checkpoint not saved to the database")
+        except (LifecycleError, PlanningRepositoryError) as exc:
+            _fail(str(exc))
     if as_json:
         click.echo(json.dumps(evaluation.to_dict(), indent=2, default=str))
         return
@@ -306,18 +420,60 @@ def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json
 @click.argument("plan_id")
 @click.argument("index", type=int)
 @click.option("--done/--undone", "done", default=None, help="Set explicitly instead of toggling.")
-def plan_milestone(plan_id: str, index: int, done: bool | None) -> None:
-    """Toggle (or set) a milestone's completion state."""
+@click.option("--evidence-id", "evidence_ids", multiple=True, help="Trusted evidence id.")
+@click.option("--attest-reason", default="", help="Milestone-specific learner reason.")
+@click.option("--confirmation", default="", help="Exact learner attestation confirmation.")
+def plan_milestone(
+    plan_id: str,
+    index: int,
+    done: bool | None,
+    evidence_ids: tuple[str, ...],
+    attest_reason: str,
+    confirmation: str,
+) -> None:
+    """Record an explicit evidence-backed milestone outcome."""
     plan = _load(plan_id)
     if index < 0 or index >= len(plan.milestones):
         _fail(f"No milestone at index {index} (plan has {len(plan.milestones)}).")
+    if done is None:
+        _fail("Choose --done or --undone explicitly; milestone toggles are forbidden.")
     milestone = plan.milestones[index]
-    milestone.done = (not milestone.done) if done is None else done
-    save_plan(plan)
-    state = "done" if milestone.done else "not done"
+    if done and not evidence_ids and not attest_reason:
+        _fail("--done requires trusted --evidence-id or an explicit learner attestation.")
+    if done and attest_reason and confirmation != _ATTESTATION_CONFIRMATION:
+        _fail(f"Learner attestation requires exactly: {_ATTESTATION_CONFIRMATION}")
+    if not done:
+        outcome_kind = "incomplete"
+    elif attest_reason:
+        outcome_kind = "learner_attested"
+    else:
+        outcome_kind = "verified_complete"
+    actor = _CLI_LEARNER if outcome_kind != "verified_complete" else _CLI_RECORDER
+    try:
+        service = planning_lifecycle(evidence=plan.evidence)
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    actor,
+                    RecordMilestoneOutcome(
+                        plan.plan_id,
+                        milestone.milestone_id,
+                        outcome_kind,
+                        evidence_ids,
+                        f"cli-milestone:{uuid.uuid4().hex}",
+                        reason=attest_reason,
+                        confirmation=confirmation,
+                    ),
+                ),
+            )
+        )
+        updated = require_view(service.inspect(PlanningRef(plan.plan_id))).plan
+    except (LifecycleError, PlanningRepositoryError) as exc:
+        _fail(str(exc))
+    state = "verified done" if outcome.status == "verified_complete" else outcome.status
     console.print(
         f"[green]{milestone.title}[/green] → {state}  "
-        f"({plan.milestone_done}/{plan.milestone_total}, {plan.progress_pct}%)"
+        f"({updated.milestone_done}/{updated.milestone_total}, {updated.progress_pct}%)"
     )
 
 
@@ -331,15 +487,22 @@ def plan_status(plan_id: str, status: str) -> None:
     criteria, or milestones — an unevaluable plan must not look active.
     """
     plan = _load(plan_id)
-    if status == "active":
-        check = readiness(plan)
-        if not check["ready"]:
-            console.print(f"[red]Cannot activate {plan.plan_id!r} — the plan is incomplete.[/red]")
-            _print_readiness(check)
-            raise SystemExit(1)
-    plan.status = status
-    save_plan(plan)
-    console.print(f"[green]{plan.plan_id}[/green] → {status}")
+    try:
+        outcome = require_outcome(
+            planning_lifecycle(evidence=plan.evidence).handle(
+                PlanningCommand(
+                    _CLI_LEARNER,
+                    TransitionPlanStatus(
+                        plan.plan_id,
+                        status,
+                        f"cli-status:{uuid.uuid4().hex}",
+                    ),
+                ),
+            )
+        )
+    except (LifecycleError, PlanningRepositoryError) as exc:
+        _fail(str(exc))
+    console.print(f"[green]{plan.plan_id}[/green] → {status} ({outcome.status})")
 
 
 @plan_group.command("reindex")

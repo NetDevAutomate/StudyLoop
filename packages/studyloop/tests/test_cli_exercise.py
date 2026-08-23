@@ -215,7 +215,8 @@ def test_path_prints_the_documents_directory(runner) -> None:
 
 def test_from_milestone_seeds_from_the_plan(runner, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("STUDYLOOP_PLANS_DIR", str(tmp_path / "plans"))
-    from studyloop.planning import create_plan, draft_plan
+    from studyloop.planning import draft_plan
+    from studyloop.planning.store import _create_plan
 
     plan = draft_plan(
         "Master Closures",
@@ -226,7 +227,7 @@ def test_from_milestone_seeds_from_the_plan(runner, tmp_path, monkeypatch) -> No
         },
         plan_id="master-closures",
     )
-    create_plan(plan)
+    _create_plan(plan)
 
     result = runner.invoke(cli, ["exercise", "from-milestone", "master-closures", "--json"])
     assert result.exit_code == 0, result.output

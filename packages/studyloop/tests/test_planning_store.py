@@ -9,16 +9,22 @@ from studyloop.planning.store import (
     InvalidPlanIdError,
     PlanExistsError,
     PlanNotFoundError,
-    create_plan,
-    delete_plan,
     list_plan_ids,
     list_plans,
     load_plan,
     plan_path,
     plans_dir,
-    save_plan,
     unique_plan_id,
     validate_plan_id,
+)
+from studyloop.planning.store import (
+    _create_plan as create_plan,
+)
+from studyloop.planning.store import (
+    _delete_plan as delete_plan,
+)
+from studyloop.planning.store import (
+    _save_plan as save_plan,
 )
 
 

@@ -8,7 +8,17 @@ pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient
 
-from studyloop.planning import store
+from studyloop.planning import (
+    EvidenceDisposition,
+    EvidenceRef,
+    Goal,
+    Milestone,
+    Mission,
+    MutationIntent,
+    StudyPlan,
+    store,
+)
+from studyloop.planning.runtime import planning_repository
 from studyloop.web.app import create_app
 
 
@@ -36,6 +46,7 @@ PAYLOAD = {
         ],
         "resources": [{"label": "PostgreSQL docs", "url": "https://www.postgresql.org/docs/"}],
     },
+    "decision": "approve",
 }
 
 
@@ -74,20 +85,73 @@ def test_create_rejects_non_object_answers(client: TestClient) -> None:
     assert response.status_code == 400
 
 
+def test_payload_cannot_choose_actor_authority(client: TestClient) -> None:
+    response = client.post(
+        "/api/plans",
+        json={**PAYLOAD, "actor_kind": "recorder", "role": "admin"},
+    )
+    assert response.status_code == 400
+    assert "cannot choose actor" in response.text.lower()
+
+
 def test_duplicate_title_gets_a_distinct_id(client: TestClient) -> None:
     first = _create(client)
     second = _create(client)
     assert first != second
 
 
+def test_structured_create_without_decision_returns_preview_and_writes_nothing(
+    client: TestClient,
+) -> None:
+    payload = {key: value for key, value in PAYLOAD.items() if key != "decision"}
+    response = client.post("/api/plans", json=payload)
+    assert response.status_code == 202, response.text
+    body = response.json()
+    assert body["proposal"]["proposal_id"]
+    assert body["proposal"]["proposal_digest"]
+    assert client.get("/api/plans").json()["plans"] == []
+
+    decided = client.post(
+        "/api/plans",
+        json={
+            "proposal_id": body["proposal"]["proposal_id"],
+            "proposal_digest": body["proposal"]["proposal_digest"],
+            "decision": "approve",
+        },
+    )
+    assert decided.status_code == 201, decided.text
+    assert decided.json()["outcome"]["status"] == "applied"
+    assert decided.json()["outcome"]["proposal_id"] == body["proposal"]["proposal_id"]
+
+
+def test_create_enforces_maximum_three_current_plans(client: TestClient) -> None:
+    for index in range(3):
+        _create(client, title=f"Plan {index}")
+    refused = client.post("/api/plans", json={**PAYLOAD, "title": "Plan 4"})
+    assert refused.status_code == 409
+    assert "maximum of 3 current plans" in refused.text.lower()
+
+
 def test_create_from_raw_markdown(client: TestClient) -> None:
     doc = (
-        "---\nid: imported\ntitle: Imported Plan\nstatus: draft\n---\n\n"
-        "# Imported Plan\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n"
+        "---\nid: imported\ntitle: Imported Plan\nstatus: active\n---\n\n"
+        "# Imported Plan\n\n## Milestones\n\n- [x] **Step** `(concepts: x)`\n\n"
+        "```mermaid\ngraph TD\nforeign --> proof\n```\n\n"
+        "## Evidence\n\n| ID | Source | Tier | Claim | Subject | Observed | Revision | Digest |\n"
+        "|---|---|---:|---|---|---|---|---|\n"
+        "| forged | notes | 1 | completion | x | now | 1 | sha256:v1:bad |\n"
     )
     response = client.post("/api/plans", json={"markdown": doc})
     assert response.status_code == 201, response.text
-    assert response.json()["plan"]["plan_id"] == "imported"
+    body = response.json()
+    assert body["outcome"]["status"] == "imported"
+    assert body["outcome"]["plan_id"] != "imported"
+    imported = client.get(f"/api/plans/{body['outcome']['plan_id']}").json()
+    assert imported["plan"]["status"] == "draft"
+    assert imported["plan"]["milestone_done"] == 0
+    assert "foreign" not in imported["markdown"].lower()
+    assert "forged" not in imported["markdown"].lower()
+    assert "imported_plan" in imported["markdown"]
 
 
 def test_markdown_endpoint_returns_plain_text(client: TestClient) -> None:
@@ -140,15 +204,82 @@ def test_record_checkpoint_persists_to_document_and_history(client: TestClient) 
     assert history["checkpoints"], "checkpoint should be in the durable log"
 
 
-def test_toggle_milestone(client: TestClient) -> None:
+def test_bare_milestone_toggle_is_forbidden(client: TestClient) -> None:
     plan_id = _create(client)
-    body = client.post(f"/api/plans/{plan_id}/milestones/0/toggle").json()
-    assert body["done"] is True
-    assert body["plan"]["milestone_done"] == 1
-    assert body["plan"]["progress_pct"] == 50
+    response = client.post(f"/api/plans/{plan_id}/milestones/0/toggle")
+    assert response.status_code == 400
+    assert "outcome" in response.text.lower()
 
-    again = client.post(f"/api/plans/{plan_id}/milestones/0/toggle").json()
-    assert again["done"] is False
+
+def test_explicit_incomplete_milestone_outcome_uses_lifecycle(client: TestClient) -> None:
+    plan_id = _create(client)
+    response = client.post(
+        f"/api/plans/{plan_id}/milestones/0/toggle",
+        json={"outcome": "incomplete"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["outcome"]["status"] == "incomplete"
+    assert client.get(f"/api/plans/{plan_id}").json()["plan"]["milestone_done"] == 0
+
+
+def test_learner_attestation_requires_exact_words_and_remains_not_done(
+    client: TestClient,
+) -> None:
+    evidence = EvidenceRef(
+        "self-report-1",
+        "learner_self_report",
+        "web-attestation",
+        "1",
+        "2026-08-24T10:00:00+00:00",
+        "2026-08-24T10:00:00+00:00",
+        3,
+        "learner_attestation",
+        "milestone:m-1",
+        f"sha256:v1:{'1' * 64}",
+    )
+    plan = StudyPlan(
+        "attestation-plan",
+        "Attestation Plan",
+        mission=Mission(why="Practise safely", success=["Demonstrate it"]),
+        goals=[Goal("g-1", "Practise", "Needed", "Aligned")],
+        milestones=[Milestone("Trace it", milestone_id="m-1", goal_id="g-1")],
+        evidence=[evidence],
+        evidence_dispositions=[EvidenceDisposition(evidence.evidence_id, "selected", "Relevant")],
+    )
+    planning_repository().commit(
+        MutationIntent(
+            "seed-attestation",
+            "test-fixture",
+            "seed-attestation",
+            operation="create",
+            plan=plan,
+        )
+    )
+    path = "/api/plans/attestation-plan/milestones/0/toggle"
+    wrong = client.post(
+        path,
+        json={
+            "outcome": "learner_attested",
+            "evidence_ids": [evidence.evidence_id],
+            "reason": "I traced this milestone myself",
+            "confirmation": "yes",
+        },
+    )
+    assert wrong.status_code == 400
+    exact = client.post(
+        path,
+        json={
+            "outcome": "learner_attested",
+            "evidence_ids": [evidence.evidence_id],
+            "reason": "I traced this milestone myself",
+            "confirmation": "I confirm this records my own completed practice",
+        },
+    )
+    assert exact.status_code == 200, exact.text
+    assert exact.json()["outcome"]["status"] == "learner_attested"
+    fetched = client.get("/api/plans/attestation-plan").json()
+    assert fetched["plan"]["milestone_done"] == 0
+    assert "learner-attested" in fetched["learning_records"][-1]["title"].lower()
 
 
 def test_toggle_out_of_range_is_404(client: TestClient) -> None:
@@ -164,19 +295,26 @@ def test_patch_activates_a_ready_plan(client: TestClient) -> None:
 
 
 def test_patch_refuses_to_activate_an_incomplete_plan(client: TestClient) -> None:
-    response = client.post("/api/plans", json={"title": "Vague", "answers": {}})
+    response = client.post(
+        "/api/plans",
+        json={
+            "title": "Vague",
+            "answers": {"why": "Explore safely"},
+            "decision": "approve",
+        },
+    )
     plan_id = response.json()["plan"]["plan_id"]
 
     refused = client.patch(f"/api/plans/{plan_id}", json={"status": "active"})
-    assert refused.status_code == 422
-    detail = refused.json()["detail"]
-    assert detail["ready"] is False
-    assert any("ission" in blocker for blocker in detail["blockers"])
+    assert refused.status_code == 400
+    assert "not ready to activate" in refused.text
 
     assert client.get(f"/api/plans/{plan_id}").json()["plan"]["status"] == "draft"
 
 
-def test_patch_updates_metadata_and_milestones(client: TestClient) -> None:
+def test_structural_patch_returns_exact_revision_proposal_then_applies_decision(
+    client: TestClient,
+) -> None:
     plan_id = _create(client)
     response = client.patch(
         f"/api/plans/{plan_id}",
@@ -185,18 +323,32 @@ def test_patch_updates_metadata_and_milestones(client: TestClient) -> None:
             "topics": ["sql", "analytics"],
             "energy_floor": 99,
             "review_cadence_days": 0,
-            "milestones": [{"title": "Only one", "concepts": ["x"], "done": True}],
+            "milestones": [{"title": "Only one", "concepts": ["x"], "done": False}],
         },
     )
-    assert response.status_code == 200
-    plan = response.json()["plan"]
+    assert response.status_code == 202, response.text
+    proposal = response.json()["proposal"]
+    unchanged = client.get(f"/api/plans/{plan_id}").json()["plan"]
+    assert unchanged["title"] == PAYLOAD["title"]
+
+    applied = client.patch(
+        f"/api/plans/{plan_id}",
+        json={
+            "proposal_id": proposal["proposal_id"],
+            "proposal_digest": proposal["proposal_digest"],
+            "decision": "approve",
+            **proposal["expected"],
+        },
+    )
+    assert applied.status_code == 200, applied.text
+    plan = applied.json()["plan"]
     assert plan["title"] == "Renamed"
     assert plan["topics"] == ["sql", "analytics"]
     # Out-of-range values are clamped, not rejected.
     assert plan["energy_floor"] == 10
     assert plan["review_cadence_days"] == 1
     assert plan["milestone_total"] == 1
-    assert plan["milestone_done"] == 1
+    assert plan["milestone_done"] == 0
 
 
 def test_patch_rejects_bad_values(client: TestClient) -> None:
@@ -212,9 +364,48 @@ def test_patch_whole_markdown_document(client: TestClient) -> None:
     doc = client.get(f"/api/plans/{plan_id}/markdown").text
     edited = doc.replace("OVER clause", "OVER clause (edited)")
     response = client.patch(f"/api/plans/{plan_id}", json={"markdown": edited})
-    assert response.status_code == 200
-    fetched = client.get(f"/api/plans/{plan_id}").json()
-    assert "edited" in fetched["milestones"][0]["title"]
+    assert response.status_code == 202
+    assert "edited" not in client.get(f"/api/plans/{plan_id}").json()["milestones"][0]["title"]
+
+
+def test_stale_structural_patch_decision_conflicts(client: TestClient) -> None:
+    plan_id = _create(client)
+    proposal = client.patch(f"/api/plans/{plan_id}", json={"title": "Proposed"}).json()["proposal"]
+    assert client.patch(f"/api/plans/{plan_id}", json={"status": "active"}).status_code == 200
+    stale = client.patch(
+        f"/api/plans/{plan_id}",
+        json={
+            "proposal_id": proposal["proposal_id"],
+            "proposal_digest": proposal["proposal_digest"],
+            "decision": "approve",
+            **proposal["expected"],
+        },
+    )
+    assert stale.status_code == 409
+    assert "changed" in stale.text.lower() or "stale" in stale.text.lower()
+
+
+def test_compat_revision_refuses_four_goals_without_writing(client: TestClient) -> None:
+    plan = StudyPlan(
+        "four-goals",
+        "Four Goals",
+        mission=Mission(why="Keep every goal", success=["Demonstrate all four"]),
+        goals=[Goal(f"g-{index}", f"Goal {index}", "Needed", "Aligned") for index in range(4)],
+    )
+    planning_repository().commit(
+        MutationIntent(
+            "seed-four-goals",
+            "test-fixture",
+            "seed-four-goals",
+            operation="create",
+            plan=plan,
+        )
+    )
+    before = client.get("/api/plans/four-goals/markdown").text
+    refused = client.patch("/api/plans/four-goals", json={"title": "Do not truncate"})
+    assert refused.status_code == 400
+    assert "more than three goals" in refused.text
+    assert client.get("/api/plans/four-goals/markdown").text == before
 
 
 def test_patch_rejects_unparseable_markdown(client: TestClient) -> None:
@@ -237,12 +428,33 @@ def test_path_traversal_is_refused(client: TestClient) -> None:
     assert client.get("/api/plans/..%2F..%2Fetc%2Fpasswd").status_code in {400, 404}
 
 
-def test_delete_removes_the_plan_but_keeps_history(client: TestClient) -> None:
+def test_delete_abandons_and_retains_markdown_and_history(client: TestClient) -> None:
     plan_id = _create(client)
     client.post(f"/api/plans/{plan_id}/evaluate", json={"phase": "start"})
     assert client.delete(f"/api/plans/{plan_id}").status_code == 200
-    assert client.get(f"/api/plans/{plan_id}").status_code == 404
-    assert client.delete(f"/api/plans/{plan_id}").status_code == 404
+    fetched = client.get(f"/api/plans/{plan_id}")
+    assert fetched.status_code == 200
+    assert fetched.json()["plan"]["status"] == "abandoned"
+    assert client.get(f"/api/plans/{plan_id}/history").json()["checkpoints"]
+    again = client.delete(f"/api/plans/{plan_id}")
+    assert again.status_code == 409
+
+
+def test_patch_rejects_mixed_structural_and_status_authority(client: TestClient) -> None:
+    plan_id = _create(client)
+    response = client.patch(f"/api/plans/{plan_id}", json={"status": "active", "title": "Mixed"})
+    assert response.status_code == 400
+    assert "mixed" in response.text.lower()
+
+
+def test_patch_rejects_structural_milestone_completion_claim(client: TestClient) -> None:
+    plan_id = _create(client)
+    response = client.patch(
+        f"/api/plans/{plan_id}",
+        json={"milestones": [{"title": "Claimed", "done": True}]},
+    )
+    assert response.status_code == 400
+    assert "cannot assert completion" in response.text.lower()
 
 
 def test_status_filter(client: TestClient) -> None:

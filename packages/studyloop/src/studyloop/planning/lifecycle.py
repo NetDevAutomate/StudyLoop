@@ -902,7 +902,11 @@ class PlanningLifecycle:
                     "Imported material is tier-4 context and needs learner review",
                 )
             ],
-            notes=parsed.notes,
+            # Generic parsed notes may include unknown headings, foreign
+            # Mermaid, or evidence-shaped prose. Imported documents are
+            # untrusted curriculum context, so only typed recognised fields
+            # cross this boundary in release one.
+            notes="",
             decisions=[
                 DecisionRecord(
                     self.ids.new_id("decision"),

@@ -447,10 +447,11 @@ def evaluate_and_record(
     study_id: str = "",
     append_to_plan: bool = True,
 ) -> PlanEvaluation:
-    """Evaluate a plan, log the checkpoint, and append it to the document.
+    """Deprecated compatibility helper that records DB history only.
 
-    The DB write and the Markdown write are independent: either can fail
-    without losing the other, and the evaluation is always returned.
+    Normal adapters must append the checkpoint with ``RecordCheckpoint`` before
+    calling this helper.  ``append_to_plan`` is retained only to make unsafe
+    legacy callers fail visibly rather than silently performing a raw write.
     """
     evaluation = evaluate_plan(plan, phase, study_id=study_id)
 
@@ -463,13 +464,8 @@ def evaluate_and_record(
         evaluation.warnings.append("checkpoint not saved to the database")
 
     if append_to_plan:
-        try:
-            from .store import save_plan
-
-            plan.checkpoints.append(evaluation.to_checkpoint())
-            save_plan(plan)
-        except Exception:
-            logger.debug("checkpoint markdown write failed", exc_info=True)
-            evaluation.warnings.append("checkpoint not appended to the plan document")
+        evaluation.warnings.append(
+            "checkpoint not appended to the plan document; use PlanningLifecycle.RecordCheckpoint"
+        )
 
     return evaluation

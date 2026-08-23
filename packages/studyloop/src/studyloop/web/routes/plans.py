@@ -5,27 +5,43 @@ Markdown (for the client-side ``marked → DOMPurify → hljs/mermaid`` pipeline
 Course Explorer already uses), so the plan renders as a proper document rather
 than a bespoke widget.
 
-Write paths are deliberately narrow: create from an interview payload, patch
-metadata/milestones, toggle one milestone, and run an evaluation checkpoint.
-Free-form Markdown replacement is allowed but validated by re-parsing, so a
-malformed body is rejected instead of corrupting a plan.
+Compatibility writes translate into typed lifecycle commands. Structural
+creation and revision require exact learner decisions; checkpoints, milestone
+outcomes, status transitions, imports, and abandonment keep their distinct
+authority and evidence rules.
 """
 
 from __future__ import annotations
 
+import copy
+import json
 import logging
-from typing import Annotated
+import uuid
+from typing import Annotated, Literal, NoReturn
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Response
 from fastapi.responses import PlainTextResponse
 
 from studyloop.planning import (
     CHECKPOINT_PHASES,
     PLAN_STATUSES,
+    ActorContext,
+    DecideProposal,
+    ImportPlanDraft,
+    LifecycleError,
+    PlanCapacityError,
+    PlanConflictError,
+    PlanningCommand,
+    PlanningRepositoryError,
+    PlanningRequest,
+    ProposalConflictError,
+    ProposalRef,
+    RecordCheckpoint,
+    RecordMilestoneOutcome,
+    SubmitProposalDraft,
+    TransitionPlanStatus,
     checkpoint_history,
-    create_plan,
     draft_plan,
-    evaluate_and_record,
     evaluate_plan,
     interview_spec,
     list_plans,
@@ -33,20 +49,67 @@ from studyloop.planning import (
     load_plan_text,
     parse_plan,
     readiness,
-    save_plan,
     seed_from_history,
     unique_plan_id,
 )
+from studyloop.planning.compat import (
+    PreferredPlanIdGenerator,
+    outcome_payload,
+    proposal_draft_from_plan,
+    proposal_payload,
+    require_outcome,
+    require_proposal,
+)
+from studyloop.planning.index import record_checkpoint
+from studyloop.planning.runtime import planning_lifecycle
 from studyloop.planning.store import (
     InvalidPlanIdError,
-    PlanExistsError,
     PlanNotFoundError,
-    delete_plan,
 )
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_WEB_LEARNER = ActorContext("learner", "local-learner", "web")
+_WEB_MODEL = ActorContext("model", "compatibility-translator", "web")
+_WEB_RECORDER = ActorContext("recorder", "studyloop", "web")
+
+
+def _request_key(payload: dict, prefix: str) -> str:
+    supplied = str(payload.get("idempotency_key", "")).strip()
+    return f"{prefix}:{supplied or uuid.uuid4().hex}"
+
+
+def _raise_lifecycle(exc: Exception) -> NoReturn:
+    if isinstance(exc, (PlanCapacityError, PlanConflictError, ProposalConflictError)) or (
+        isinstance(exc, LifecycleError) and "terminal status" in str(exc)
+    ):
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if isinstance(exc, (LifecycleError, PlanningRepositoryError, InvalidPlanIdError)):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    raise exc
+
+
+def _plan_decision(value: object) -> Literal["approve", "reject"]:
+    decision = str(value or "").strip().lower()
+    if decision not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="decision must be approve or reject")
+    return decision  # type: ignore[return-value]
+
+
+def _milestone_outcome(
+    value: object,
+) -> Literal["verified_complete", "learner_attested", "incomplete"]:
+    outcome = str(value or "").strip().lower()
+    if outcome not in {"verified_complete", "learner_attested", "incomplete"}:
+        raise HTTPException(status_code=400, detail="unsupported milestone outcome")
+    return outcome  # type: ignore[return-value]
+
+
+def _plan_response(plan_id: str) -> dict:
+    plan = _load_or_404(plan_id)
+    return {"plan": plan.summary(), "readiness": readiness(plan)}
 
 
 def _load_or_404(plan_id: str):
@@ -156,20 +219,37 @@ def preview_evaluation(
 
 @router.post("/plans/{plan_id}/evaluate", status_code=201)
 def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = None) -> dict:
-    """Run and record a checkpoint (DB log + appended to the plan document)."""
+    """Run and record a checkpoint through the authoritative lifecycle."""
     payload = payload or {}
     phase = str(payload.get("phase", "start")).strip().lower()
     if phase not in CHECKPOINT_PHASES:
         raise HTTPException(status_code=400, detail=f"phase must be one of {CHECKPOINT_PHASES}")
     plan = _load_or_404(plan_id)
-    evaluation = evaluate_and_record(
-        plan,
-        phase,
-        study_id=str(payload.get("study_id", "")).strip(),
-        append_to_plan=bool(payload.get("append_to_plan", True)),
-    )
+    study_id = str(payload.get("study_id", "")).strip()
+    evaluation = evaluate_plan(plan, phase, study_id=study_id)
+    try:
+        outcome = require_outcome(
+            planning_lifecycle(evidence=plan.evidence).handle(
+                PlanningCommand(
+                    _WEB_RECORDER,
+                    RecordCheckpoint(
+                        plan.plan_id,
+                        evaluation.to_checkpoint(),
+                        _request_key(payload, "web-checkpoint"),
+                    ),
+                ),
+            )
+        )
+    except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+        _raise_lifecycle(exc)
+    try:
+        record_checkpoint(evaluation, study_id=study_id)
+    except Exception:
+        logger.debug("checkpoint DB write failed", exc_info=True)
+        evaluation.warnings.append("checkpoint not saved to the database")
     return {
         "recorded": True,
+        "outcome": outcome_payload(outcome),
         "evaluation": evaluation.to_dict(),
         "markdown": evaluation.as_markdown(),
     }
@@ -181,57 +261,234 @@ def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = No
 
 
 @router.post("/plans", status_code=201)
-def post_plan(payload: Annotated[dict, Body()]) -> dict:
-    """Create a plan from interview answers, or from raw Markdown.
+def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
+    """Compatibility create/import adapter backed only by the lifecycle."""
+    if {"actor", "actor_kind", "role"} & set(payload):
+        raise HTTPException(status_code=400, detail="request payload cannot choose actor authority")
+    if payload.get("overwrite"):
+        raise HTTPException(status_code=400, detail="overwrite is not supported")
+    if payload.get("proposal_id"):
+        try:
+            service = planning_lifecycle()
+            review = require_proposal(service.inspect(ProposalRef(str(payload["proposal_id"]))))
+            outcome = require_outcome(
+                service.handle(
+                    PlanningCommand(
+                        _WEB_LEARNER,
+                        DecideProposal(
+                            review.proposal_id,
+                            str(payload.get("proposal_digest", "")),
+                            _plan_decision(payload.get("decision")),
+                            _request_key(payload, "web-create-decision"),
+                        ),
+                    ),
+                )
+            )
+        except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+            _raise_lifecycle(exc)
+        body = {"outcome": outcome_payload(outcome)}
+        if outcome.status == "applied":
+            body.update(_plan_response(outcome.plan_id))
+        return body
 
-    ``{"markdown": "..."}`` imports a document verbatim (validated by
-    re-parsing).  Otherwise ``{"title", "answers"}`` drafts one from the
-    interview, which is what the agent and the UI wizard both use.
-    """
     raw_markdown = payload.get("markdown")
     if raw_markdown:
         try:
-            plan = parse_plan(str(raw_markdown))
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"unparseable markdown: {exc}") from exc
-        if not payload.get("plan_id") and not plan.plan_id:
-            plan.plan_id = unique_plan_id(plan.title)
-    else:
-        title = str(payload.get("title", "")).strip()
-        if not title:
-            raise HTTPException(status_code=400, detail="title is required")
-        answers = payload.get("answers") or {}
-        if not isinstance(answers, dict):
-            raise HTTPException(status_code=400, detail="answers must be an object")
-        status = str(payload.get("status", "draft")).strip().lower()
-        if status not in PLAN_STATUSES:
-            raise HTTPException(status_code=400, detail=f"status must be one of {PLAN_STATUSES}")
-        plan = draft_plan(
-            title,
-            answers,
-            plan_id=str(payload.get("plan_id", "")).strip() or unique_plan_id(title),
-            status=status,
-        )
+            outcome = require_outcome(
+                planning_lifecycle().handle(
+                    PlanningCommand(
+                        _WEB_LEARNER,
+                        ImportPlanDraft(
+                            str(raw_markdown),
+                            _request_key(payload, "web-import"),
+                        ),
+                    ),
+                )
+            )
+        except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+            _raise_lifecycle(exc)
+        return {"outcome": outcome_payload(outcome), **_plan_response(outcome.plan_id)}
 
+    title = str(payload.get("title", "")).strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="title is required")
+    answers = payload.get("answers") or {}
+    if not isinstance(answers, dict):
+        raise HTTPException(status_code=400, detail="answers must be an object")
+    if str(payload.get("status", "draft")).strip().lower() != "draft":
+        raise HTTPException(status_code=400, detail="new compatibility plans are always drafts")
+    plan = draft_plan(
+        title,
+        answers,
+        plan_id=str(payload.get("plan_id", "")).strip() or unique_plan_id(title),
+        status="draft",
+    )
+    key = _request_key(payload, "web-create")
     try:
-        create_plan(plan, overwrite=bool(payload.get("overwrite", False)))
-    except PlanExistsError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except InvalidPlanIdError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    return {"created": True, "plan": plan.summary(), "readiness": readiness(plan)}
+        service = planning_lifecycle(ids=PreferredPlanIdGenerator(plan.plan_id))
+        brief = service.prepare(
+            PlanningRequest(
+                "create",
+                json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                f"{key}:prepare",
+            ),
+            _WEB_LEARNER,
+        )
+        review = require_proposal(
+            service.handle(
+                PlanningCommand(
+                    _WEB_MODEL,
+                    SubmitProposalDraft(
+                        brief.run_id,
+                        f"{key}:proposal",
+                        brief.brief_context_digest,
+                        proposal_draft_from_plan(plan),
+                    ),
+                ),
+            )
+        )
+        decision = str(payload.get("decision", "")).strip().lower()
+        if not decision:
+            response.status_code = 202
+            return {"created": False, "proposal": proposal_payload(review, brief)}
+        typed_decision = _plan_decision(decision)
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    _WEB_LEARNER,
+                    DecideProposal(
+                        review.proposal_id,
+                        review.proposal_digest,
+                        typed_decision,
+                        f"{key}:decision",
+                    ),
+                ),
+            )
+        )
+    except HTTPException:
+        raise
+    except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+        _raise_lifecycle(exc)
+    body = {"outcome": outcome_payload(outcome), "created": outcome.status == "applied"}
+    if outcome.status == "rejected":
+        response.status_code = 200
+    if outcome.status == "applied":
+        body.update(_plan_response(outcome.plan_id))
+    return body
 
 
 @router.patch("/plans/{plan_id}")
-def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
-    """Update plan fields in place.
-
-    Accepts ``status``, ``title``, ``topics``, ``target_date``,
-    ``energy_floor``, ``review_cadence_days``, ``notes``, ``milestones``
-    (full replacement), and ``markdown`` (whole-document replacement).
-    """
+def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Response) -> dict:
+    """Transition status or create/decide an exact structural revision proposal."""
     plan = _load_or_404(plan_id)
+
+    if payload.get("proposal_id"):
+        allowed = {
+            "proposal_id",
+            "proposal_digest",
+            "decision",
+            "idempotency_key",
+            "expected_document_digest",
+            "expected_structure_digest",
+            "expected_document_revision",
+            "expected_structure_revision",
+            "reason",
+        }
+        if set(payload) - allowed:
+            raise HTTPException(
+                status_code=400,
+                detail="proposal decision cannot be mixed with structural or status fields",
+            )
+        try:
+            service = planning_lifecycle(evidence=plan.evidence)
+            outcome = require_outcome(
+                service.handle(
+                    PlanningCommand(
+                        _WEB_LEARNER,
+                        DecideProposal(
+                            str(payload["proposal_id"]),
+                            str(payload.get("proposal_digest", "")),
+                            _plan_decision(payload.get("decision")),
+                            _request_key(payload, "web-revision-decision"),
+                            reason=str(payload.get("reason", "")),
+                            expected_document_digest=str(
+                                payload.get("expected_document_digest", "")
+                            ),
+                            expected_structure_digest=str(
+                                payload.get("expected_structure_digest", "")
+                            ),
+                            expected_document_revision=payload.get("expected_document_revision"),
+                            expected_structure_revision=payload.get("expected_structure_revision"),
+                        ),
+                    ),
+                )
+            )
+        except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+            _raise_lifecycle(exc)
+        body = {"outcome": outcome_payload(outcome)}
+        if outcome.status == "applied":
+            body.update(_plan_response(plan_id))
+        return body
+
+    mutation_fields = set(payload) - {"idempotency_key"}
+    if not mutation_fields:
+        raise HTTPException(status_code=400, detail="patch contains no mutation")
+    if mutation_fields == {"reason"}:
+        raise HTTPException(status_code=400, detail="reason requires a status transition")
+    outcome_fields = {"done", "outcome", "evidence_ids", "attest_reason", "confirmation"}
+    if mutation_fields & outcome_fields:
+        raise HTTPException(
+            status_code=400,
+            detail="milestone outcomes must use the milestone outcome endpoint",
+        )
+    structural_fields = mutation_fields - {"status", "reason"}
+    if "status" in mutation_fields and structural_fields:
+        raise HTTPException(
+            status_code=400,
+            detail="mixed structural and status changes are not allowed",
+        )
+    if "status" in mutation_fields:
+        status = str(payload["status"]).strip().lower()
+        if status not in PLAN_STATUSES:
+            raise HTTPException(status_code=400, detail=f"status must be one of {PLAN_STATUSES}")
+        try:
+            outcome = require_outcome(
+                planning_lifecycle(evidence=plan.evidence).handle(
+                    PlanningCommand(
+                        _WEB_LEARNER,
+                        TransitionPlanStatus(
+                            plan.plan_id,
+                            status,
+                            _request_key(payload, "web-status"),
+                            reason=str(payload.get("reason", "")),
+                        ),
+                    ),
+                )
+            )
+        except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+            _raise_lifecycle(exc)
+        return {"outcome": outcome_payload(outcome), **_plan_response(plan_id)}
+
+    supported_structural = {
+        "markdown",
+        "title",
+        "topics",
+        "target_date",
+        "energy_floor",
+        "review_cadence_days",
+        "milestones",
+    }
+    unknown = structural_fields - supported_structural
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported structural patch fields: {sorted(unknown)}",
+        )
+    if "markdown" in structural_fields and len(structural_fields) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="whole-Markdown revision cannot be mixed with individual structural fields",
+        )
 
     if "markdown" in payload:
         try:
@@ -240,33 +497,32 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
             raise HTTPException(status_code=400, detail=f"unparseable markdown: {exc}") from exc
         replacement.plan_id = plan.plan_id
         replacement.created = plan.created
-        save_plan(replacement)
-        return {"updated": True, "plan": replacement.summary(), "readiness": readiness(replacement)}
-
-    if "status" in payload:
-        status = str(payload["status"]).strip().lower()
-        if status not in PLAN_STATUSES:
-            raise HTTPException(status_code=400, detail=f"status must be one of {PLAN_STATUSES}")
-        if status == "active":
-            check = readiness(plan)
-            if not check["ready"]:
-                raise HTTPException(
-                    status_code=422,
-                    detail={"message": "plan is not ready to activate", **check},
-                )
-        plan.status = status
+        replacement.status = plan.status
+        replacement.evidence = copy.deepcopy(plan.evidence)
+        replacement.evidence_dispositions = copy.deepcopy(plan.evidence_dispositions)
+        replacement.checkpoints = copy.deepcopy(plan.checkpoints)
+        replacement.learning_records = copy.deepcopy(plan.learning_records)
+        replacement.decisions = copy.deepcopy(plan.decisions)
+        if replacement.notes != plan.notes:
+            raise HTTPException(
+                status_code=400,
+                detail="top-level notes cannot be changed by the compatibility revision adapter",
+            )
+        candidate = replacement
+    else:
+        candidate = copy.deepcopy(plan)
 
     if "title" in payload:
         title = str(payload["title"]).strip()
         if not title:
             raise HTTPException(status_code=400, detail="title cannot be empty")
-        plan.title = title
+        candidate.title = title
     if "topics" in payload:
-        plan.topics = [str(t).strip() for t in payload["topics"] if str(t).strip()]
+        candidate.topics = [str(t).strip() for t in payload["topics"] if str(t).strip()]
     if "target_date" in payload:
-        plan.target_date = str(payload["target_date"]).strip()
+        candidate.target_date = str(payload["target_date"]).strip()
     if "notes" in payload:
-        plan.notes = str(payload["notes"])
+        candidate.notes = str(payload["notes"])
     for field_name, lo, hi in (("energy_floor", 1, 10), ("review_cadence_days", 1, 90)):
         if field_name in payload:
             try:
@@ -275,7 +531,7 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
                 raise HTTPException(
                     status_code=400, detail=f"{field_name} must be an integer"
                 ) from exc
-            setattr(plan, field_name, max(lo, min(hi, value)))
+            setattr(candidate, field_name, max(lo, min(hi, value)))
 
     if "milestones" in payload:
         from studyloop.planning.models import Milestone
@@ -283,7 +539,12 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
         items = payload["milestones"]
         if not isinstance(items, list):
             raise HTTPException(status_code=400, detail="milestones must be a list")
-        plan.milestones = [
+        if any(isinstance(item, dict) and item.get("done") is True for item in items):
+            raise HTTPException(
+                status_code=400,
+                detail="structural milestone replacement cannot assert completion",
+            )
+        candidate.milestones = [
             Milestone(
                 title=str(item.get("title", "")).strip() or "Untitled milestone",
                 done=bool(item.get("done", False)),
@@ -294,33 +555,105 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
             if isinstance(item, dict)
         ]
 
-    save_plan(plan)
-    return {"updated": True, "plan": plan.summary(), "readiness": readiness(plan)}
+    key = _request_key(payload, "web-revision")
+    try:
+        service = planning_lifecycle(evidence=plan.evidence)
+        brief = service.prepare(
+            PlanningRequest(
+                "revise",
+                json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                f"{key}:prepare",
+                plan_id=plan.plan_id,
+                evidence_ids=tuple(item.evidence_id for item in plan.evidence),
+            ),
+            _WEB_LEARNER,
+        )
+        review = require_proposal(
+            service.handle(
+                PlanningCommand(
+                    _WEB_MODEL,
+                    SubmitProposalDraft(
+                        brief.run_id,
+                        f"{key}:proposal",
+                        brief.brief_context_digest,
+                        proposal_draft_from_plan(candidate, revise=True),
+                    ),
+                ),
+            )
+        )
+    except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+        _raise_lifecycle(exc)
+    response.status_code = 202
+    return {"updated": False, "proposal": proposal_payload(review, brief)}
 
 
 @router.post("/plans/{plan_id}/milestones/{index}/toggle")
-def toggle_milestone(plan_id: str, index: int) -> dict:
-    """Flip one milestone's done state — the checkbox in the plan view."""
+def toggle_milestone(
+    plan_id: str,
+    index: int,
+    payload: Annotated[dict | None, Body()] = None,
+) -> dict:
+    """Compatibility path for an explicit evidence-backed milestone outcome."""
     plan = _load_or_404(plan_id)
     if index < 0 or index >= len(plan.milestones):
         raise HTTPException(status_code=404, detail=f"no milestone at index {index}")
-    plan.milestones[index].done = not plan.milestones[index].done
-    save_plan(plan)
-    return {
-        "updated": True,
-        "index": index,
-        "done": plan.milestones[index].done,
-        "plan": plan.summary(),
-    }
+    payload = payload or {}
+    if not str(payload.get("outcome", "")).strip():
+        raise HTTPException(
+            status_code=400,
+            detail="outcome is required; bare milestone toggles are forbidden",
+        )
+    outcome_kind = _milestone_outcome(payload.get("outcome"))
+    if "done" in payload:
+        raise HTTPException(status_code=400, detail="done toggles are forbidden; use outcome")
+    evidence_ids = tuple(str(item) for item in payload.get("evidence_ids", ()))
+    actor = _WEB_RECORDER if outcome_kind == "verified_complete" else _WEB_LEARNER
+    try:
+        service = planning_lifecycle(evidence=plan.evidence)
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    actor,
+                    RecordMilestoneOutcome(
+                        plan.plan_id,
+                        plan.milestones[index].milestone_id,
+                        outcome_kind,
+                        evidence_ids,
+                        _request_key(payload, "web-milestone"),
+                        reason=str(payload.get("reason", "")),
+                        confirmation=str(payload.get("confirmation", "")),
+                    ),
+                ),
+            )
+        )
+    except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+        _raise_lifecycle(exc)
+    return {"outcome": outcome_payload(outcome), "index": index, **_plan_response(plan_id)}
 
 
 @router.delete("/plans/{plan_id}")
 def remove_plan(plan_id: str) -> dict:
-    """Delete a plan document. Checkpoint history is intentionally retained."""
+    """Abandon a plan while retaining Markdown and audit history."""
+    plan = _load_or_404(plan_id)
     try:
-        deleted = delete_plan(plan_id)
-    except InvalidPlanIdError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if not deleted:
-        raise HTTPException(status_code=404, detail=f"no study plan with id {plan_id!r}")
-    return {"deleted": True, "plan_id": plan_id}
+        outcome = require_outcome(
+            planning_lifecycle(evidence=plan.evidence).handle(
+                PlanningCommand(
+                    _WEB_LEARNER,
+                    TransitionPlanStatus(
+                        plan.plan_id,
+                        "abandoned",
+                        f"web-abandon:{uuid.uuid4().hex}",
+                        reason="Learner abandoned plan through compatibility API",
+                    ),
+                ),
+            )
+        )
+    except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
+        _raise_lifecycle(exc)
+    return {
+        "deleted": False,
+        "abandoned": True,
+        "outcome": outcome_payload(outcome),
+        **_plan_response(plan_id),
+    }
