@@ -12,9 +12,16 @@ import pytest
 from studyloop.planning.markdown import parse_plan, render_plan
 from studyloop.planning.models import (
     Checkpoint,
+    ConceptRef,
+    ConceptRelation,
+    DecisionRecord,
+    EvidenceDisposition,
+    EvidenceRef,
+    Goal,
     LearningRecord,
     Milestone,
     Mission,
+    PlanUnknown,
     Resource,
     StudyPlan,
 )
@@ -268,3 +275,182 @@ def test_fenced_code_headings_are_not_treated_as_sections() -> None:
     )
     parsed = parse_plan(doc, plan_id="fence")
     assert "## Not a heading" in parsed.notes
+
+
+def test_v2_plan_round_trips_every_structured_field() -> None:
+    plan = StudyPlan(
+        plan_id="schema-v2",
+        title="Schema v2",
+        status="active",
+        created="2026-08-20T09:00:00+00:00",
+        updated="2026-08-23T18:30:00+00:00",
+        topics=["python", "data-engineering"],
+        mission=Mission(
+            why="Ship a trustworthy planner.",
+            success=["Explain every plan decision"],
+            constraints=["Keep a | visible boundary"],
+            out_of_scope=["Automatic approval"],
+        ),
+        goals=[
+            Goal(
+                goal_id="goal-architect",
+                title="Plan architecture",
+                reason="The learner needs a coherent route.",
+                alignment_rationale="Supports the mission directly.",
+            )
+        ],
+        milestones=[
+            Milestone(
+                title="Model evidence provenance",
+                done=True,
+                concepts=["evidence", "provenance"],
+                notes="Keep source identity.",
+                milestone_id="milestone-evidence",
+                goal_id="goal-architect",
+            )
+        ],
+        evidence=[
+            EvidenceRef(
+                evidence_id="evidence-7",
+                source_kind="studyloop_practice",
+                source_native_id="practice-42",
+                source_revision="3",
+                observed_at="2026-08-21T10:11:12+00:00",
+                ingested_at="2026-08-21T10:12:00+00:00",
+                tier=1,
+                claim_kind="demonstrated_skill",
+                subject_ref="concept:evidence",
+                provenance_digest="sha256:evidence",
+            )
+        ],
+        evidence_dispositions=[
+            EvidenceDisposition(
+                evidence_id="evidence-7",
+                disposition="selected",
+                reason="Directly demonstrated in StudyLoop.",
+            )
+        ],
+        concepts=[ConceptRef(concept_id="concept-evidence", display_label="Evidence")],
+        concept_relations=[
+            ConceptRelation(
+                source_ref="concept-evidence",
+                target_ref="concept-provenance",
+                relation="related",
+                reason="Provenance qualifies the evidence.",
+                decided_by="learner",
+            )
+        ],
+        unknowns=[
+            PlanUnknown(
+                unknown_id="unknown-1",
+                question="Which course version?",
+                impact="Resource ordering may change.",
+            )
+        ],
+        learning_records=[LearningRecord(number=1, title="Keep identities stable")],
+        resources=[Resource(label="Course", url="https://example.test/course")],
+        checkpoints=[
+            Checkpoint(
+                phase="mid",
+                verdict="on-track",
+                at="2026-08-22T12:00:00+00:00",
+                summary="Stable IDs retained.",
+            )
+        ],
+        decisions=[
+            DecisionRecord(
+                decision_id="decision-1",
+                proposal_id="proposal-9",
+                outcome="approve",
+                actor_kind="learner",
+                channel="web",
+                reason="The preview matches my intent.",
+                decided_at="2026-08-23T18:29:59+00:00",
+            )
+        ],
+        notes="Keep the next action concrete.",
+        schema_version=2,
+        document_revision=7,
+        structure_revision=4,
+        document_digest="sha256:document",
+        structure_digest="sha256:structure",
+        brief_context_digest="sha256:brief",
+    )
+
+    document = render_plan(plan)
+    parsed = parse_plan(document, plan_id=plan.plan_id)
+
+    assert parsed == plan
+    assert parsed.evidence[0].observed_at == "2026-08-21T10:11:12+00:00"
+    assert parsed.evidence[0].ingested_at == "2026-08-21T10:12:00+00:00"
+    assert parsed.decisions[0].decided_at == "2026-08-23T18:29:59+00:00"
+    assert render_plan(parsed) == document
+
+
+def test_v2_document_uses_the_fixed_section_order() -> None:
+    document = render_plan(StudyPlan(plan_id="ordered", title="Ordered"))
+    headings = [
+        "## Mission",
+        "## Goals",
+        "## Learning Map",
+        "## Milestones",
+        "## Evidence Ledger",
+        "## Concept Mappings",
+        "## Unknowns",
+        "## Learning Records",
+        "## Resources",
+        "## Checkpoints",
+        "## Decisions",
+        "## Notes",
+    ]
+
+    assert [document.index(heading) for heading in headings] == sorted(
+        document.index(heading) for heading in headings
+    )
+
+
+def test_v1_document_loads_with_legacy_defaults_and_constructor_shape() -> None:
+    document = """---
+id: legacy
+title: Legacy plan
+status: active
+created: 2026-08-01T09:00:00+00:00
+updated: 2026-08-02T09:00:00+00:00
+topics:
+  - python
+---
+
+# Legacy plan
+
+## Mission
+
+### Why
+
+Learn the old shape safely.
+
+### Success looks like
+
+- Load without migration
+
+## Milestones
+
+- [ ] **Keep the constructor** `(concepts: compatibility)`
+
+## Notes
+
+Still useful.
+"""
+
+    parsed = parse_plan(document, plan_id="legacy")
+
+    assert parsed.schema_version == 1
+    assert parsed.document_revision == 1
+    assert parsed.structure_revision == 1
+    assert parsed.goals == []
+    assert parsed.evidence == []
+    assert parsed.decisions == []
+    assert parsed.milestones == [
+        Milestone(title="Keep the constructor", concepts=["compatibility"])
+    ]
+    assert parsed.milestones[0].milestone_id == ""
+    assert parsed.milestones[0].goal_id == ""

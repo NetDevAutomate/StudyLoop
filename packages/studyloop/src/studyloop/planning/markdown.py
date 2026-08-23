@@ -39,14 +39,23 @@ Canonical document shape::
 
 from __future__ import annotations
 
+import html
 import re
 from datetime import date, datetime
 
+from .learning_map import render_learning_map
 from .models import (
     Checkpoint,
+    ConceptRef,
+    ConceptRelation,
+    DecisionRecord,
+    EvidenceDisposition,
+    EvidenceRef,
+    Goal,
     LearningRecord,
     Milestone,
     Mission,
+    PlanUnknown,
     Resource,
     StudyPlan,
     slugify,
@@ -64,10 +73,16 @@ _BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
 #: Headings the parser understands at ``##`` level, normalised to lower case.
 _KNOWN_SECTIONS = {
     "mission",
+    "goals",
+    "learning map",
     "milestones",
+    "evidence ledger",
+    "concept mappings",
+    "unknowns",
     "learning records",
     "resources",
     "checkpoints",
+    "decisions",
     "notes",
 }
 
@@ -81,9 +96,16 @@ PLACEHOLDER_SUCCESS = "No success criteria captured yet."
 PLACEHOLDER_CONSTRAINTS = "None recorded."
 PLACEHOLDER_OUT_OF_SCOPE = "Nothing explicitly excluded."
 PLACEHOLDER_MILESTONES = "_No milestones yet._"
+PLACEHOLDER_GOALS = "_No goals yet._"
+PLACEHOLDER_EVIDENCE = "_No evidence recorded yet._"
+PLACEHOLDER_DISPOSITIONS = "_No evidence dispositions recorded yet._"
+PLACEHOLDER_CONCEPTS = "_No concepts recorded yet._"
+PLACEHOLDER_RELATIONS = "_No concept mappings recorded yet._"
+PLACEHOLDER_UNKNOWNS = "_No unresolved unknowns._"
 PLACEHOLDER_LEARNING_RECORDS = "_No learning records yet._"
 PLACEHOLDER_RECORD_BODY = "_No detail recorded._"
 PLACEHOLDER_RESOURCES = "_No resources gathered yet._"
+PLACEHOLDER_DECISIONS = "_No decisions recorded yet._"
 PLACEHOLDER_NOTES = "_No notes._"
 
 #: Every placeholder the parser must read back as "absent".
@@ -269,6 +291,17 @@ def _parse_milestone_line(text: str, *, done: bool) -> Milestone:
 
 
 def _parse_milestones(lines: list[str]) -> list[Milestone]:
+    table_rows = _parse_table(lines)
+    if table_rows and "id" in table_rows[0]:
+        out: list[Milestone] = []
+        for row in table_rows:
+            done = row.get("done", "").lower() in {"true", "yes", "x", "done"}
+            milestone = _parse_milestone_line(row.get("milestone", ""), done=done)
+            milestone.milestone_id = row.get("id", "")
+            milestone.goal_id = row.get("goal id", "")
+            out.append(milestone)
+        return out
+
     out: list[Milestone] = []
     for line in lines:
         match = _CHECKBOX_RE.match(line.strip())
@@ -331,6 +364,117 @@ def _split_table_row(row: str) -> list[str]:
     """
     cells = re.split(r"(?<!\\)\|", row.strip().strip("|"))
     return [cell.strip().replace("\\|", "|") for cell in cells]
+
+
+def _decode_cell(value: str) -> str:
+    return html.unescape(value.strip())
+
+
+def _parse_table(lines: list[str]) -> list[dict[str, str]]:
+    rows = [_split_table_row(line) for line in lines if line.strip().startswith("|")]
+    if len(rows) < 2:
+        return []
+    headers = [_decode_cell(cell).lower() for cell in rows[0]]
+    out: list[dict[str, str]] = []
+    for cells in rows[1:]:
+        if cells and all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
+            continue
+        decoded = [_decode_cell(cell) for cell in cells]
+        decoded.extend([""] * (len(headers) - len(decoded)))
+        out.append(dict(zip(headers, decoded, strict=False)))
+    return out
+
+
+def _parse_goals(lines: list[str]) -> list[Goal]:
+    return [
+        Goal(
+            goal_id=row.get("id", ""),
+            title=row.get("title", ""),
+            reason=row.get("reason", ""),
+            alignment_rationale=row.get("alignment rationale", ""),
+            status=row.get("status", "active") or "active",
+        )
+        for row in _parse_table(lines)
+    ]
+
+
+def _parse_evidence(lines: list[str]) -> tuple[list[EvidenceRef], list[EvidenceDisposition]]:
+    subsections = _subsections(lines)
+    evidence = [
+        EvidenceRef(
+            evidence_id=row.get("id", ""),
+            source_kind=row.get("source kind", ""),
+            source_native_id=row.get("source native id", ""),
+            source_revision=row.get("source revision", ""),
+            observed_at=row.get("observed at", ""),
+            ingested_at=row.get("ingested at", ""),
+            tier=_as_int(row.get("tier"), 4),
+            claim_kind=row.get("claim kind", ""),
+            subject_ref=row.get("subject ref", ""),
+            provenance_digest=row.get("provenance digest", ""),
+        )
+        for row in _parse_table(subsections.get("evidence references", []))
+    ]
+    dispositions = [
+        EvidenceDisposition(
+            evidence_id=row.get("evidence id", ""),
+            disposition=row.get("disposition", ""),
+            reason=row.get("reason", ""),
+        )
+        for row in _parse_table(subsections.get("dispositions", []))
+    ]
+    return evidence, dispositions
+
+
+def _parse_concept_mappings(
+    lines: list[str],
+) -> tuple[list[ConceptRef], list[ConceptRelation]]:
+    subsections = _subsections(lines)
+    concepts = [
+        ConceptRef(
+            concept_id=row.get("id", ""),
+            display_label=row.get("display label", ""),
+        )
+        for row in _parse_table(subsections.get("concepts", []))
+    ]
+    relations = [
+        ConceptRelation(
+            source_ref=row.get("source ref", ""),
+            target_ref=row.get("target ref", ""),
+            relation=row.get("relation", ""),
+            reason=row.get("reason", ""),
+            decided_by=row.get("decided by", ""),
+        )
+        for row in _parse_table(subsections.get("relations", []))
+    ]
+    return concepts, relations
+
+
+def _parse_unknowns(lines: list[str]) -> list[PlanUnknown]:
+    return [
+        PlanUnknown(
+            unknown_id=row.get("id", ""),
+            question=row.get("question", ""),
+            impact=row.get("impact", ""),
+            status=row.get("status", "open") or "open",
+        )
+        for row in _parse_table(lines)
+    ]
+
+
+def _parse_decisions(lines: list[str]) -> list[DecisionRecord]:
+    return [
+        DecisionRecord(
+            decision_id=row.get("id", ""),
+            proposal_id=row.get("proposal id", ""),
+            outcome=row.get("outcome", ""),
+            actor_kind=row.get("actor kind", ""),
+            channel=row.get("channel", ""),
+            reason=row.get("reason", ""),
+            decided_at=row.get("decided at", ""),
+        )
+        for row in _parse_table(lines)
+    ]
 
 
 def _parse_checkpoints(lines: list[str]) -> list[Checkpoint]:
@@ -414,6 +558,9 @@ def parse_plan(text: str, *, plan_id: str = "") -> StudyPlan:
         leftover = _prose(unknown)
         notes = f"{notes}\n\n{leftover}".strip() if notes else leftover
 
+    evidence, dispositions = _parse_evidence(sections.get("evidence ledger", []))
+    concepts, concept_relations = _parse_concept_mappings(sections.get("concept mappings", []))
+
     return StudyPlan(
         plan_id=resolved_id,
         title=title,
@@ -425,11 +572,24 @@ def parse_plan(text: str, *, plan_id: str = "") -> StudyPlan:
         target_date=_as_scalar_str(meta.get("target_date")),
         review_cadence_days=_as_int(meta.get("review_cadence_days"), 3),
         mission=_parse_mission(sections.get("mission", [])),
+        goals=_parse_goals(sections.get("goals", [])),
         milestones=_parse_milestones(sections.get("milestones", [])),
+        evidence=evidence,
+        evidence_dispositions=dispositions,
+        concepts=concepts,
+        concept_relations=concept_relations,
+        unknowns=_parse_unknowns(sections.get("unknowns", [])),
         learning_records=_parse_learning_records(sections.get("learning records", [])),
         resources=_parse_resources(sections.get("resources", [])),
         checkpoints=_parse_checkpoints(sections.get("checkpoints", [])),
+        decisions=_parse_decisions(sections.get("decisions", [])),
         notes=notes,
+        schema_version=_as_int(meta.get("schema_version"), 1),
+        document_revision=_as_int(meta.get("document_revision"), 1),
+        structure_revision=_as_int(meta.get("structure_revision"), 1),
+        document_digest=_as_scalar_str(meta.get("document_digest")),
+        structure_digest=_as_scalar_str(meta.get("structure_digest")),
+        brief_context_digest=_as_scalar_str(meta.get("brief_context_digest")),
     )
 
 
@@ -439,14 +599,27 @@ def parse_plan(text: str, *, plan_id: str = "") -> StudyPlan:
 
 
 def _render_frontmatter(plan: StudyPlan) -> list[str]:
-    lines = [
-        "---",
-        f"id: {plan.plan_id}",
-        f"title: {plan.title}",
-        f"status: {plan.status}",
-        f"created: {plan.created}",
-        f"updated: {plan.updated}",
-    ]
+    lines = ["---"]
+    if plan.schema_version >= 2:
+        lines.extend(
+            [
+                f"schema_version: {plan.schema_version}",
+                f"document_revision: {plan.document_revision}",
+                f"structure_revision: {plan.structure_revision}",
+                f"document_digest: {plan.document_digest}",
+                f"structure_digest: {plan.structure_digest}",
+                f"brief_context_digest: {plan.brief_context_digest}",
+            ]
+        )
+    lines.extend(
+        [
+            f"id: {plan.plan_id}",
+            f"title: {plan.title}",
+            f"status: {plan.status}",
+            f"created: {plan.created}",
+            f"updated: {plan.updated}",
+        ]
+    )
     if plan.topics:
         lines.append("topics:")
         lines.extend(f"  - {topic}" for topic in plan.topics)
@@ -463,6 +636,162 @@ def _render_bullets(items: list[str], *, empty: str) -> list[str]:
     if not items:
         return [f"_{empty}_", ""]
     return [f"- {item}" for item in items] + [""]
+
+
+def _encode_cell(value: object) -> str:
+    escaped = html.escape(str(value), quote=True)
+    return escaped.replace("|", "&#124;").replace("\n", "&#10;")
+
+
+def _render_table(
+    headers: list[str],
+    rows: list[list[object]],
+    *,
+    empty: str,
+) -> list[str]:
+    if not rows:
+        return [empty, ""]
+    lines = [
+        f"| {' | '.join(headers)} |",
+        f"| {' | '.join('---' for _ in headers)} |",
+    ]
+    lines.extend(f"| {' | '.join(_encode_cell(cell) for cell in row)} |" for row in rows)
+    lines.append("")
+    return lines
+
+
+def _render_goals(plan: StudyPlan) -> list[str]:
+    return _render_table(
+        ["ID", "Title", "Status", "Reason", "Alignment rationale"],
+        [
+            [goal.goal_id, goal.title, goal.status, goal.reason, goal.alignment_rationale]
+            for goal in plan.goals
+        ],
+        empty=PLACEHOLDER_GOALS,
+    )
+
+
+def _render_v2_milestones(plan: StudyPlan) -> list[str]:
+    return _render_table(
+        ["ID", "Goal ID", "Done", "Milestone"],
+        [
+            [
+                milestone.milestone_id,
+                milestone.goal_id,
+                str(milestone.done).lower(),
+                render_milestone(milestone)[6:],
+            ]
+            for milestone in plan.milestones
+        ],
+        empty=PLACEHOLDER_MILESTONES,
+    )
+
+
+def _render_evidence_ledger(plan: StudyPlan) -> list[str]:
+    lines = ["### Evidence references", ""]
+    lines.extend(
+        _render_table(
+            [
+                "ID",
+                "Source kind",
+                "Source native ID",
+                "Source revision",
+                "Observed at",
+                "Ingested at",
+                "Tier",
+                "Claim kind",
+                "Subject ref",
+                "Provenance digest",
+            ],
+            [
+                [
+                    item.evidence_id,
+                    item.source_kind,
+                    item.source_native_id,
+                    item.source_revision,
+                    item.observed_at,
+                    item.ingested_at,
+                    item.tier,
+                    item.claim_kind,
+                    item.subject_ref,
+                    item.provenance_digest,
+                ]
+                for item in plan.evidence
+            ],
+            empty=PLACEHOLDER_EVIDENCE,
+        )
+    )
+    lines.extend(["### Dispositions", ""])
+    lines.extend(
+        _render_table(
+            ["Evidence ID", "Disposition", "Reason"],
+            [
+                [item.evidence_id, item.disposition, item.reason]
+                for item in plan.evidence_dispositions
+            ],
+            empty=PLACEHOLDER_DISPOSITIONS,
+        )
+    )
+    return lines
+
+
+def _render_concept_mappings(plan: StudyPlan) -> list[str]:
+    lines = ["### Concepts", ""]
+    lines.extend(
+        _render_table(
+            ["ID", "Display label"],
+            [[concept.concept_id, concept.display_label] for concept in plan.concepts],
+            empty=PLACEHOLDER_CONCEPTS,
+        )
+    )
+    lines.extend(["### Relations", ""])
+    lines.extend(
+        _render_table(
+            ["Source ref", "Target ref", "Relation", "Reason", "Decided by"],
+            [
+                [
+                    relation.source_ref,
+                    relation.target_ref,
+                    relation.relation,
+                    relation.reason,
+                    relation.decided_by,
+                ]
+                for relation in plan.concept_relations
+            ],
+            empty=PLACEHOLDER_RELATIONS,
+        )
+    )
+    return lines
+
+
+def _render_unknowns(plan: StudyPlan) -> list[str]:
+    return _render_table(
+        ["ID", "Question", "Impact", "Status"],
+        [
+            [unknown.unknown_id, unknown.question, unknown.impact, unknown.status]
+            for unknown in plan.unknowns
+        ],
+        empty=PLACEHOLDER_UNKNOWNS,
+    )
+
+
+def _render_decisions(plan: StudyPlan) -> list[str]:
+    return _render_table(
+        ["ID", "Proposal ID", "Outcome", "Actor kind", "Channel", "Reason", "Decided at"],
+        [
+            [
+                decision.decision_id,
+                decision.proposal_id,
+                decision.outcome,
+                decision.actor_kind,
+                decision.channel,
+                decision.reason,
+                decision.decided_at,
+            ]
+            for decision in plan.decisions
+        ],
+        empty=PLACEHOLDER_DECISIONS,
+    )
 
 
 def render_milestone(milestone: Milestone) -> str:
@@ -500,13 +829,39 @@ def render_plan(plan: StudyPlan) -> str:
     out.append("")
     out.extend(_render_bullets(plan.mission.out_of_scope, empty=PLACEHOLDER_OUT_OF_SCOPE))
 
-    out.append("## Milestones")
-    out.append("")
-    if plan.milestones:
-        out.extend(render_milestone(m) for m in plan.milestones)
+    if plan.schema_version >= 2:
+        out.append("## Goals")
+        out.append("")
+        out.extend(_render_goals(plan))
+
+        out.append("## Learning Map")
+        out.append("")
+        out.extend(render_learning_map(plan).splitlines())
+        out.append("")
+
+        out.append("## Milestones")
+        out.append("")
+        out.extend(_render_v2_milestones(plan))
+
+        out.append("## Evidence Ledger")
+        out.append("")
+        out.extend(_render_evidence_ledger(plan))
+
+        out.append("## Concept Mappings")
+        out.append("")
+        out.extend(_render_concept_mappings(plan))
+
+        out.append("## Unknowns")
+        out.append("")
+        out.extend(_render_unknowns(plan))
     else:
-        out.append(PLACEHOLDER_MILESTONES)
-    out.append("")
+        out.append("## Milestones")
+        out.append("")
+        if plan.milestones:
+            out.extend(render_milestone(m) for m in plan.milestones)
+        else:
+            out.append(PLACEHOLDER_MILESTONES)
+        out.append("")
 
     out.append("## Learning Records")
     out.append("")
@@ -552,6 +907,11 @@ def render_plan(plan: StudyPlan) -> str:
             f"| {summary} | {checkpoint.study_id} |"
         )
     out.append("")
+
+    if plan.schema_version >= 2:
+        out.append("## Decisions")
+        out.append("")
+        out.extend(_render_decisions(plan))
 
     out.append("## Notes")
     out.append("")

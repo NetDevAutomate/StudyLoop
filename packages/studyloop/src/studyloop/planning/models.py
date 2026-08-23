@@ -62,6 +62,84 @@ class Mission:
 
 
 @dataclass
+class Goal:
+    """A stable, mission-aligned outcome that milestones work toward."""
+
+    goal_id: str
+    title: str
+    reason: str
+    alignment_rationale: str
+    status: str = "active"
+
+
+@dataclass
+class EvidenceRef:
+    """A provenance-preserving reference to evidence owned by another store."""
+
+    evidence_id: str
+    source_kind: str
+    source_native_id: str
+    source_revision: str
+    observed_at: str
+    ingested_at: str
+    tier: int
+    claim_kind: str
+    subject_ref: str
+    provenance_digest: str
+
+
+@dataclass
+class EvidenceDisposition:
+    """How one evidence item was treated by a learner-reviewed proposal."""
+
+    evidence_id: str
+    disposition: str
+    reason: str
+
+
+@dataclass
+class ConceptRef:
+    """A stable concept identity with a learner-facing label."""
+
+    concept_id: str
+    display_label: str
+
+
+@dataclass
+class ConceptRelation:
+    """An explicit, reasoned relation between two concept identities."""
+
+    source_ref: str
+    target_ref: str
+    relation: str
+    reason: str
+    decided_by: str
+
+
+@dataclass
+class PlanUnknown:
+    """A visible gap that must not be converted into invented certainty."""
+
+    unknown_id: str
+    question: str
+    impact: str
+    status: str = "open"
+
+
+@dataclass
+class DecisionRecord:
+    """An auditable learner decision about a typed plan proposal."""
+
+    decision_id: str
+    proposal_id: str
+    outcome: str
+    actor_kind: str
+    channel: str
+    reason: str
+    decided_at: str
+
+
+@dataclass
 class Milestone:
     """One checkable step toward the mission.
 
@@ -75,6 +153,8 @@ class Milestone:
     done: bool = False
     concepts: list[str] = field(default_factory=list)
     notes: str = ""
+    milestone_id: str = ""
+    goal_id: str = ""
 
     def concept_set(self) -> set[str]:
         """Normalised (lower-cased, stripped) concept names."""
@@ -139,6 +219,19 @@ class StudyPlan:
     resources: list[Resource] = field(default_factory=list)
     checkpoints: list[Checkpoint] = field(default_factory=list)
     notes: str = ""
+    schema_version: int = 2
+    document_revision: int = 1
+    structure_revision: int = 1
+    document_digest: str = ""
+    structure_digest: str = ""
+    brief_context_digest: str = ""
+    goals: list[Goal] = field(default_factory=list)
+    evidence: list[EvidenceRef] = field(default_factory=list)
+    evidence_dispositions: list[EvidenceDisposition] = field(default_factory=list)
+    concepts: list[ConceptRef] = field(default_factory=list)
+    concept_relations: list[ConceptRelation] = field(default_factory=list)
+    unknowns: list[PlanUnknown] = field(default_factory=list)
+    decisions: list[DecisionRecord] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.status not in PLAN_STATUSES:
