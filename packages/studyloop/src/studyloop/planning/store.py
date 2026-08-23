@@ -141,8 +141,8 @@ def list_plans(*, status: str = "") -> list[StudyPlan]:
     return out
 
 
-def save_plan(plan: StudyPlan, *, touch_updated: bool = True) -> Path:
-    """Write ``plan`` to disk atomically, returning the path written.
+def _save_plan(plan: StudyPlan, *, touch_updated: bool = True) -> Path:
+    """Legacy raw write implementation retained until lifecycle migration.
 
     The write goes to a temp file in the same directory and is then renamed, so
     a crash mid-write cannot truncate an existing plan.
@@ -166,17 +166,35 @@ def save_plan(plan: StudyPlan, *, touch_updated: bool = True) -> Path:
     return path
 
 
-def create_plan(plan: StudyPlan, *, overwrite: bool = False) -> Path:
-    """Persist a new plan, refusing to clobber an existing id unless told to."""
+def save_plan(plan: StudyPlan, *, touch_updated: bool = True) -> Path:
+    """Deprecated raw writer; use PlanningRepository/PlanningLifecycle for new code.
+
+    .. deprecated:: Task 3
+       Preserved only until every caller migrates in Task 5.
+    """
+    return _save_plan(plan, touch_updated=touch_updated)
+
+
+def _create_plan(plan: StudyPlan, *, overwrite: bool = False) -> Path:
+    """Legacy raw create implementation retained until lifecycle migration."""
     plan.plan_id = validate_plan_id(plan.plan_id or slugify(plan.title))
     if not overwrite and plan_path(plan.plan_id).exists():
         msg = f"study plan {plan.plan_id!r} already exists"
         raise PlanExistsError(msg)
-    return save_plan(plan, touch_updated=False)
+    return _save_plan(plan, touch_updated=False)
 
 
-def delete_plan(plan_id: str) -> bool:
-    """Delete a plan document. Returns False when it was already absent."""
+def create_plan(plan: StudyPlan, *, overwrite: bool = False) -> Path:
+    """Deprecated raw creator; use PlanningRepository/PlanningLifecycle for new code.
+
+    .. deprecated:: Task 3
+       Preserved only until every caller migrates in Task 5.
+    """
+    return _create_plan(plan, overwrite=overwrite)
+
+
+def _delete_plan(plan_id: str) -> bool:
+    """Legacy hard-delete implementation retained for maintenance migration."""
     path = plan_path(plan_id)
     if not path.is_file():
         return False
@@ -188,6 +206,15 @@ def delete_plan(plan_id: str) -> bool:
     except Exception:
         logger.debug("Plan index cleanup failed for %s", plan_id, exc_info=True)
     return True
+
+
+def delete_plan(plan_id: str) -> bool:
+    """Deprecated hard delete retained for compatibility until Task 5.
+
+    .. deprecated:: Task 3
+       This becomes an explicit maintenance-only operation in Task 5.
+    """
+    return _delete_plan(plan_id)
 
 
 def unique_plan_id(title: str) -> str:
