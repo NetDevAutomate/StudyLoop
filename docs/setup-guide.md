@@ -299,7 +299,7 @@ studyloop web
 
 This starts a web server on `http://127.0.0.1:8567`. Use `studyloop web --lan` if you want to expose it to other devices on your network.
 
-**Add to home screen (iOS/iPadOS):** Open in Safari → Share → Add to Home Screen. `manifest.json` sets `display: standalone`, so it launches without browser chrome.
+**Add to home screen (iPadOS):** Open in Safari → Share → Add to Home Screen. `manifest.json` sets `display: standalone`, so it launches without browser chrome.
 
 > **The web app does not work offline.** There is no service worker anywhere in
 > the app, so no page and no asset is cached. Every launch — including from a
@@ -328,7 +328,7 @@ See [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neu
 
 ### Remote Study (iPad on the Bus)
 
-Use `--lan` to make the web dashboard and terminal accessible from any device on your network — phone, iPad, second laptop:
+Use `--lan` to make the web dashboard and terminal accessible from any tablet or laptop on your network — iPad, Android tablet, second laptop:
 
 ```bash
 studyloop study "Python Decorators" --energy 7 --lan

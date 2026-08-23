@@ -17,7 +17,7 @@ Five things:
 1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
 2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes, flashcards, and hands-on practice tasks locally, without requiring external notebook services.
 3. **Active learning decisions** — `studyloop now` chooses one useful next action from due reviews, weak concepts, practice tasks, energy, modality, and time available.
-4. **Flashcard review** — Spaced repetition (SM-2) in the browser app. Works on phone, tablet, laptop.
+4. **Flashcard review** — Spaced repetition (SM-2) in the browser app. Works on tablet and laptop.
 5. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
 
 Built by a neurodivergent learner transitioning from networking to data engineering. If you're self-teaching and AuDHD, this might help.
@@ -201,7 +201,12 @@ session-sync push/pull/sync HOST     # Cross-machine sync
 
 ## Web PWA
 
-Launch with `studyloop web`. Accessible from any device on the network.
+Launch with `studyloop web`. Reachable from any tablet or laptop on the network.
+
+> **Not designed for phone screens.** The layout collapses to a single column
+> and the sidebar becomes a bottom bar below 600px wide, but the study panels
+> themselves — flashcards, quizzes, plans, Mastery — have no phone treatment and
+> are unusable at phone width. Tablet and laptop are the supported sizes.
 
 **Flashcard review:**
 - SM-2 spaced repetition with source/chapter filter
