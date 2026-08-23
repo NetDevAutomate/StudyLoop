@@ -37,6 +37,17 @@ def _node_id(kind: str, stable_id: str, *, fallback: str) -> str:
     return f"{kind}_{digest}"
 
 
+def _reject_duplicate_ids(kind: str, identities: list[str]) -> None:
+    seen: set[str] = set()
+    for identity in identities:
+        if not identity:
+            continue
+        if identity in seen:
+            msg = f"duplicate {kind}: {identity}"
+            raise ValueError(msg)
+        seen.add(identity)
+
+
 def render_learning_map(plan: StudyPlan) -> str:
     """Return an accessible hierarchy and derived Mermaid learning map.
 
@@ -46,6 +57,9 @@ def render_learning_map(plan: StudyPlan) -> str:
     """
     if not plan.goals and not plan.milestones:
         return "### Text learning map\n\n_No goals or milestones yet._"
+
+    _reject_duplicate_ids("goal_id", [goal.goal_id for goal in plan.goals])
+    _reject_duplicate_ids("milestone_id", [milestone.milestone_id for milestone in plan.milestones])
 
     goal_node_lines: list[str] = []
     milestone_node_lines: list[str] = []
@@ -70,7 +84,7 @@ def render_learning_map(plan: StudyPlan) -> str:
         text_lines.append(f"- Goal: {text_label}")
 
         for milestone_index, milestone in enumerate(plan.milestones):
-            if milestone.goal_id != goal.goal_id:
+            if not milestone.goal_id or not goal.goal_id or milestone.goal_id != goal.goal_id:
                 continue
             linked_milestones.add(milestone_index)
             milestone_fallback = f"{plan.plan_id}:milestone:{milestone_index}"

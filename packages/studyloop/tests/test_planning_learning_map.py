@@ -128,6 +128,54 @@ def test_duplicate_and_empty_names_have_distinct_nodes() -> None:
     assert "Untitled milestone" in rendered
 
 
+def test_blank_ids_remain_distinct_and_blank_goal_links_are_unassigned() -> None:
+    plan = StudyPlan(
+        plan_id="blank-identities",
+        title="Blank identities",
+        goals=[
+            Goal("", "Goal A", "reason", "alignment"),
+            Goal("", "Goal B", "reason", "alignment"),
+        ],
+        milestones=[Milestone("Step 1"), Milestone("Step 2")],
+    )
+
+    rendered = render_learning_map(plan)
+    source = _diagram_source(rendered)
+
+    assert len(_node_ids(rendered)) == 4
+    assert len(set(_node_ids(rendered))) == 4
+    assert "- Goal: Goal A\n- Goal: Goal B\n- Unassigned milestones" in rendered
+    assert " --> " not in source
+
+
+def test_duplicate_non_empty_goal_ids_fail_closed() -> None:
+    plan = StudyPlan(
+        plan_id="duplicate-goals",
+        title="Duplicate goals",
+        goals=[
+            Goal("goal-duplicate", "Goal A", "reason", "alignment"),
+            Goal("goal-duplicate", "Goal B", "reason", "alignment"),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="duplicate goal_id: goal-duplicate"):
+        render_learning_map(plan)
+
+
+def test_duplicate_non_empty_milestone_ids_fail_closed() -> None:
+    plan = StudyPlan(
+        plan_id="duplicate-milestones",
+        title="Duplicate milestones",
+        milestones=[
+            Milestone("Step 1", milestone_id="milestone-duplicate"),
+            Milestone("Step 2", milestone_id="milestone-duplicate"),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="duplicate milestone_id: milestone-duplicate"):
+        render_learning_map(plan)
+
+
 def test_learning_map_includes_textual_hierarchy_before_the_diagram() -> None:
     plan = StudyPlan(
         plan_id="fallback",

@@ -39,9 +39,11 @@ Canonical document shape::
 
 from __future__ import annotations
 
+import csv
 import html
 import re
 from datetime import date, datetime
+from io import StringIO
 
 from .learning_map import render_learning_map
 from .models import (
@@ -290,17 +292,28 @@ def _parse_milestone_line(text: str, *, done: bool) -> Milestone:
     return Milestone(title=title, done=done, concepts=concepts, notes=notes.strip())
 
 
+def _parse_v2_concepts(value: str) -> list[str]:
+    if not value:
+        return []
+    payload = value.removeprefix("(concepts: ").removesuffix(")")
+    rows = list(csv.reader(StringIO(payload, newline="")))
+    return rows[0] if rows else []
+
+
 def _parse_milestones(lines: list[str]) -> list[Milestone]:
     table_rows = _parse_table(lines)
     if table_rows and "id" in table_rows[0]:
-        out: list[Milestone] = []
-        for row in table_rows:
-            done = row.get("done", "").lower() in {"true", "yes", "x", "done"}
-            milestone = _parse_milestone_line(row.get("milestone", ""), done=done)
-            milestone.milestone_id = row.get("id", "")
-            milestone.goal_id = row.get("goal id", "")
-            out.append(milestone)
-        return out
+        return [
+            Milestone(
+                title=row.get("title", ""),
+                done=row.get("done", "").lower() in {"true", "yes", "x", "done"},
+                concepts=_parse_v2_concepts(row.get("concepts", "")),
+                notes=row.get("notes", ""),
+                milestone_id=row.get("id", ""),
+                goal_id=row.get("goal id", ""),
+            )
+            for row in table_rows
+        ]
 
     out: list[Milestone] = []
     for line in lines:
@@ -671,15 +684,26 @@ def _render_goals(plan: StudyPlan) -> list[str]:
     )
 
 
+def _render_v2_concepts(concepts: list[str]) -> str:
+    if not concepts:
+        return ""
+    buffer = StringIO(newline="")
+    csv.writer(buffer, lineterminator="\n").writerow(concepts)
+    payload = buffer.getvalue().removesuffix("\n")
+    return f"(concepts: {payload})"
+
+
 def _render_v2_milestones(plan: StudyPlan) -> list[str]:
     return _render_table(
-        ["ID", "Goal ID", "Done", "Milestone"],
+        ["ID", "Goal ID", "Done", "Title", "Notes", "Concepts"],
         [
             [
                 milestone.milestone_id,
                 milestone.goal_id,
                 str(milestone.done).lower(),
-                render_milestone(milestone)[6:],
+                milestone.title,
+                milestone.notes,
+                _render_v2_concepts(milestone.concepts),
             ]
             for milestone in plan.milestones
         ],

@@ -387,6 +387,35 @@ def test_v2_plan_round_trips_every_structured_field() -> None:
     assert render_plan(parsed) == document
 
 
+def test_v2_milestone_title_and_notes_do_not_use_legacy_prose_grammar() -> None:
+    milestone = Milestone(
+        title="Title with — en – and double -- separators",  # noqa: RUF001
+        notes="Literal note ending (concepts: not metadata)",
+        concepts=["real concept"],
+        milestone_id="milestone-grammar",
+        goal_id="goal-1",
+    )
+    plan = StudyPlan(plan_id="grammar", title="Grammar", milestones=[milestone])
+
+    parsed = parse_plan(render_plan(plan), plan_id=plan.plan_id)
+
+    assert parsed.milestones == [milestone]
+
+
+def test_v2_milestone_concepts_preserve_commas_pipes_and_newlines() -> None:
+    milestone = Milestone(
+        title="Structured concepts",
+        concepts=["comma, inside", "pipe | inside", "line one\nline two"],
+        milestone_id="milestone-concepts",
+        goal_id="goal-1",
+    )
+    plan = StudyPlan(plan_id="concepts", title="Concepts", milestones=[milestone])
+
+    parsed = parse_plan(render_plan(plan), plan_id=plan.plan_id)
+
+    assert parsed.milestones == [milestone]
+
+
 def test_v2_document_uses_the_fixed_section_order() -> None:
     document = render_plan(StudyPlan(plan_id="ordered", title="Ordered"))
     headings = [
