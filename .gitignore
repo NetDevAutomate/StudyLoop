@@ -542,6 +542,7 @@ graphify-out/
 .graphify_python
 .qdrant-initialized
 .codex/
+.worktrees/
 
 # MemPalace per-project files (issue #185)
 mempalace.yaml
