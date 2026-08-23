@@ -106,19 +106,26 @@ def test_spa_html_renders_without_console_errors(page: Page, env) -> None:
     try:
         page.goto(f"{env.base_url}/")
         page.wait_for_load_state("domcontentloaded")
-        page.wait_for_function("() => !!window.Alpine", timeout=15000)
-        page.wait_for_function(
-            "() => !!window.Alpine && !!window.Alpine.store('plans')", timeout=15000
-        )
 
         failed_js = [(url, status) for url, status in js_responses if status == 404]
         assert js_responses, "the SPA made no /js/* requests"
         assert not failed_js, f"SPA JavaScript module requests returned 404: {failed_js}"
+        module_errors = [
+            error
+            for error in _watch(page).errors
+            if "module" in error.lower() or "import" in error.lower()
+        ]
+        assert not module_errors, f"browser reported module errors: {module_errors}"
+
+        # Keep the targeted network/module diagnostics above the readiness
+        # waits: a missing import can prevent Alpine from booting, and the
+        # resulting timeout must not hide the actionable 404/module failure.
+        page.wait_for_function("() => !!window.Alpine", timeout=15000)
+        page.wait_for_function(
+            "() => !!window.Alpine && !!window.Alpine.store('plans')", timeout=15000
+        )
         assert page.evaluate("() => typeof window.plansPanel === 'function'")
         assert page.evaluate("() => !!window.Alpine.store('plans')")
-        assert not [
-            error for error in _watch(page).errors if "module" in error.lower()
-        ], f"browser reported module errors: {_watch(page).errors}"
 
         # 1. Structural: exactly one document shell, and no XML parser error
         #    nodes (which is how a malformed inline SVG surfaces).

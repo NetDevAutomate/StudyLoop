@@ -4,7 +4,7 @@
  * Uses `node --test` — built into Node, zero dependencies, no package.json and no
  * build step, which keeps the project's "no build step" property intact.
  *
- * Run with:  node --test packages/studyloop/tests/js/
+ * Run with:  node --test packages/studyloop/tests/js/*.test.js
  *
  * WHY THIS MATTERS: before this file, every frontend assertion in the repo cost a
  * Playwright browser launch (the full e2e suite takes ~24 minutes). Logic that
