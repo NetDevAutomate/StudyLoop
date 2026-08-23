@@ -367,6 +367,13 @@ document.addEventListener("alpine:init", () => {
        loud — a silent downgrade is indistinguishable from working software. */
     get ttsEngineLabel() {
       if (!this.ttsTier) return 'Detecting…';
+      // 'server-openvox' is an internal tier id, kept stable because the
+      // healthy-tier lists and their tests key off it -- but it must NOT reach the
+      // user, who may well be running VoiceMode's Kokoro or a container rather
+      // than OpenVox. With no case here it fell through to String(tier) and the
+      // picker named a product that was not installed, which is how it was
+      // reported: "OpenVox is down but it still says server-openvox".
+      if (this.ttsTier === 'server-openvox') return 'Kokoro (server)';
       if (this.ttsTier === 'neural-webgpu') return 'Kokoro (WebGPU)';
       if (this.ttsTier === 'neural-wasm') return 'Kokoro (WASM)';
       if (this.ttsTier === 'web-speech') return 'System voices';
