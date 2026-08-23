@@ -77,7 +77,15 @@ const KOKORO_DTYPE = 'q8';
    is required — ORT treats it as a directory prefix. */
 const ORT_WASM_PATH = '/vendor/js/';
 const KOKORO_SAMPLE_RATE = 24000;
-const DEFAULT_VOICE = 'am_michael';
+/* The voice used until the learner picks one.
+ *
+ * British female, chosen deliberately over the previous 'am_michael': this is a
+ * study companion for a British learner, and an accent that matches the user
+ * reduces the low-grade friction of listening to it for an hour. Any voice in
+ * KOKORO_VOICES is a valid value here; a value NOT in that object would leave
+ * the engine with no voice metadata, so keep the two in step.
+ */
+const DEFAULT_VOICE = 'bf_emma';
 const DEFAULT_SPEED = 1.0;
 const WARMUP_TEXT = 'Hello world.';
 const SLOW_DEVICE_RATIO = 3.0; // synthesis_wall / audio_duration threshold
@@ -131,16 +139,42 @@ function describeEnvironment({ secureContext, hasGpu, hasCaches, origin = '' } =
 
 // ─── Voice catalogue (mirrors kokoro-js) ──────────────────────────────────────
 
+/* Voices exposed in the picker.
+ *
+ * The model repo ships 54 voice files; this catalogue is the allowlist of what
+ * StudyLoop offers, and it is ALSO the security boundary. The same CDN path
+ * serves jf_* (Japanese), zf_* (Mandarin), ef_* (Spanish), ff_* (French),
+ * hf_* (Hindi) and if_* (Italian) voices, and Kokoro-82M-v1.0 can speak all of
+ * them -- so a voice id that is not in this object must never reach synthesis.
+ *
+ * `grade` is the upstream model card's quality rating and is OPTIONAL: the
+ * picker renders "Name [grade]" when present and just "Name" when absent.
+ * Grades are omitted for the voices added later rather than guessed, because a
+ * fabricated grade is worse than no grade -- it would misdirect the choice.
+ *
+ * British voices are prefix `b` and drive the eSpeak 'en' phonemizer; American
+ * are prefix `a` and drive 'en-us'. Both are English -- no other language is
+ * offered, deliberately.
+ */
 const KOKORO_VOICES = Object.freeze({
-  af_heart:   { name: 'Heart',    lang: 'en-us', gender: 'Female', grade: 'A'  },
-  af_bella:   { name: 'Bella',    lang: 'en-us', gender: 'Female', grade: 'A-' },
-  af_nicole:  { name: 'Nicole',   lang: 'en-us', gender: 'Female', grade: 'B-' },
-  af_sarah:   { name: 'Sarah',    lang: 'en-us', gender: 'Female', grade: 'C+' },
-  am_michael: { name: 'Michael',  lang: 'en-us', gender: 'Male',   grade: 'C+' },
-  am_fenrir:  { name: 'Fenrir',   lang: 'en-us', gender: 'Male',   grade: 'C+' },
-  am_puck:    { name: 'Puck',     lang: 'en-us', gender: 'Male',   grade: 'C+' },
-  bf_emma:    { name: 'Emma',     lang: 'en-gb', gender: 'Female', grade: 'B-' },
-  bm_george:  { name: 'George',   lang: 'en-gb', gender: 'Male',   grade: 'B-' },
+  af_heart:    { name: 'Heart',    lang: 'en-us', gender: 'Female', grade: 'A'  },
+  af_bella:    { name: 'Bella',    lang: 'en-us', gender: 'Female', grade: 'A-' },
+  af_nicole:   { name: 'Nicole',   lang: 'en-us', gender: 'Female', grade: 'B-' },
+  af_sarah:    { name: 'Sarah',    lang: 'en-us', gender: 'Female', grade: 'C+' },
+  am_michael:  { name: 'Michael',  lang: 'en-us', gender: 'Male',   grade: 'C+' },
+  am_fenrir:   { name: 'Fenrir',   lang: 'en-us', gender: 'Male',   grade: 'C+' },
+  am_puck:     { name: 'Puck',     lang: 'en-us', gender: 'Male',   grade: 'C+' },
+  bf_emma:     { name: 'Emma',     lang: 'en-gb', gender: 'Female', grade: 'B-' },
+  bm_george:   { name: 'George',   lang: 'en-gb', gender: 'Male',   grade: 'B-' },
+  // The remaining British voices. Verified present in the model repo's
+  // voices/ directory before being listed here, because a missing .bin is a
+  // silent 404 that leaves the picker offering a voice that cannot speak.
+  bf_alice:    { name: 'Alice',    lang: 'en-gb', gender: 'Female' },
+  bf_isabella: { name: 'Isabella', lang: 'en-gb', gender: 'Female' },
+  bf_lily:     { name: 'Lily',     lang: 'en-gb', gender: 'Female' },
+  bm_daniel:   { name: 'Daniel',   lang: 'en-gb', gender: 'Male'   },
+  bm_fable:    { name: 'Fable',    lang: 'en-gb', gender: 'Male'   },
+  bm_lewis:    { name: 'Lewis',    lang: 'en-gb', gender: 'Male'   },
 });
 
 // ─── Text normalisation (ported from kokoro-js m() function) ──────────────────
@@ -723,8 +757,22 @@ class TTSEngine {
    * Pre-fetches the voice .bin file so the next speak() is instant.
    */
   async setVoice(voiceId) {
+    const isNeural = this._tier === 'neural-webgpu' || this._tier === 'neural-wasm';
+    // Validate BEFORE assigning. The assignment used to happen first, with the
+    // catalogue check guarding only the pre-warm below -- so an id outside the
+    // catalogue still became the live voice. That matters because the voice .bin
+    // files come from a CDN directory that also holds Mandarin, Japanese,
+    // Spanish, French, Hindi and Italian voices for this same model: an
+    // unvalidated id does not 404, it SUCCEEDS and speaks another language.
+    // Reachable in normal use, too -- on the web-speech tier setVoice() is
+    // called with a system voice NAME ('Daniel', 'Ting-Ting'), which would then
+    // persist into a later neural tier as a bogus id.
+    if (isNeural && !KOKORO_VOICES[voiceId]) {
+      console.warn(`[tts] ignoring unknown voice '${voiceId}' — keeping '${this._voiceId}'`);
+      return;
+    }
     this._voiceId = voiceId;
-    if ((this._tier === 'neural-webgpu' || this._tier === 'neural-wasm') && KOKORO_VOICES[voiceId]) {
+    if (isNeural) {
       // Pre-warm the voice style cache
       try { await _loadVoiceStyle(voiceId); } catch (_) {}
     }

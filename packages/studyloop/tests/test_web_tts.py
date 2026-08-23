@@ -13,6 +13,7 @@ which breaks offline use AND triggers `_OrtGetInputName is not a function`.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "src" / "studyloop" / "web" / "static"
@@ -115,3 +116,58 @@ class TestStopControl:
         assert "_currentSource" in src
         assert ".stop()" in src
         assert "_pendingPlayResolve" in src, "stop() must settle the in-flight playback promise"
+
+
+class TestVoiceCatalogueIsEnglishOnly:
+    """The catalogue is a security boundary, not just a menu.
+
+    Voice embeddings are fetched at runtime from the model repo's voices/
+    directory, which ships 54 files — including jf_* (Japanese), zf_* (Mandarin),
+    ef_* (Spanish), ff_* (French), hf_* (Hindi) and if_* (Italian) — and
+    Kokoro-82M-v1.0 can speak every one of them. So an id outside the catalogue
+    does NOT 404: it loads successfully and speaks another language. That is the
+    mechanism behind the reported "the voice suddenly sounds Mandarin" symptom,
+    and the catalogue plus the setVoice() guard are the only things preventing it.
+    """
+
+    #: Only American (a) and British (b) English prefixes may appear.
+    ALLOWED_PREFIXES = ("af_", "am_", "bf_", "bm_")
+
+    def _catalogue_ids(self) -> list[str]:
+        src = ENGINE.read_text()
+        start = src.index("const KOKORO_VOICES")
+        end = src.index("});", start)
+        body = src[start:end]
+        return re.findall(r"^\s{2}([a-z]{2}_[a-z]+):", body, re.MULTILINE)
+
+    def test_catalogue_is_not_empty(self) -> None:
+        """A vacuous pass here would make every assertion below meaningless."""
+        assert len(self._catalogue_ids()) >= 9
+
+    def test_every_voice_is_english(self) -> None:
+        offenders = [v for v in self._catalogue_ids() if not v.startswith(self.ALLOWED_PREFIXES)]
+        assert not offenders, (
+            f"non-English voices in the catalogue: {offenders}. These load fine from "
+            "the CDN and will speak that language — remove them."
+        )
+
+    def test_default_voice_is_in_the_catalogue(self) -> None:
+        """A default outside the catalogue leaves the engine with no voice
+        metadata, so the phonemiser language falls back silently."""
+        src = ENGINE.read_text()
+        match = re.search(r"const DEFAULT_VOICE = '([a-z]{2}_[a-z]+)'", src)
+        assert match, "DEFAULT_VOICE not found or not a bare voice id"
+        assert match.group(1) in self._catalogue_ids()
+
+    def test_set_voice_validates_before_assigning(self) -> None:
+        """Regression guard: setVoice() used to assign this._voiceId FIRST and
+        only check the catalogue when deciding whether to pre-warm, so an
+        unknown id still became the live voice."""
+        src = ENGINE.read_text()
+        start = src.index("async setVoice(voiceId)")
+        body = src[start : start + 1200]
+        guard = body.index("!KOKORO_VOICES[voiceId]")
+        assign = body.index("this._voiceId = voiceId")
+        assert guard < assign, (
+            "setVoice() assigns the voice before validating it against the catalogue"
+        )
