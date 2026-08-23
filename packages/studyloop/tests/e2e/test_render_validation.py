@@ -96,10 +96,29 @@ def test_spa_html_renders_without_console_errors(page: Page, env) -> None:
     (1) a JS exception during boot, (2) markup that parses but paints on top of
     itself, (3) markup that paints off-screen. All three have shipped before.
     """
+    js_responses: list[tuple[str, int]] = []
+
+    def capture_js_response(response) -> None:
+        if "/js/" in response.url:
+            js_responses.append((response.url, response.status))
+
+    page.on("response", capture_js_response)
     try:
         page.goto(f"{env.base_url}/")
         page.wait_for_load_state("domcontentloaded")
         page.wait_for_function("() => !!window.Alpine", timeout=15000)
+        page.wait_for_function(
+            "() => !!window.Alpine && !!window.Alpine.store('plans')", timeout=15000
+        )
+
+        failed_js = [(url, status) for url, status in js_responses if status == 404]
+        assert js_responses, "the SPA made no /js/* requests"
+        assert not failed_js, f"SPA JavaScript module requests returned 404: {failed_js}"
+        assert page.evaluate("() => typeof window.plansPanel === 'function'")
+        assert page.evaluate("() => !!window.Alpine.store('plans')")
+        assert not [
+            error for error in _watch(page).errors if "module" in error.lower()
+        ], f"browser reported module errors: {_watch(page).errors}"
 
         # 1. Structural: exactly one document shell, and no XML parser error
         #    nodes (which is how a malformed inline SVG surfaces).

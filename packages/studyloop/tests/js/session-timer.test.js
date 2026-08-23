@@ -43,14 +43,13 @@ import { sessionTimer } from
   '../../src/studyloop/web/static/js/components/session-timer.js';
 import { energyBand } from
   '../../src/studyloop/web/static/js/lib/chunk-text.js';
+import { THRESHOLDS } from
+  '../../src/studyloop/web/static/js/lib/timer-thresholds.js';
 
-// Mirrors index.html's inline `const THRESHOLDS` at extraction time.
-// checkThresholds/progress/timerPhase all read this as a free reference.
-globalThis.THRESHOLDS = {
-  high: { green: 25, amber: 50 },
-  medium: { green: 20, amber: 40 },
-  low: { green: 15, amber: 30 },
-};
+// session-timer.js reads these as free references, matching main.js's browser
+// wiring. The threshold values themselves come from the production module so
+// this test cannot silently drift from the SPA's timer contract.
+globalThis.THRESHOLDS = THRESHOLDS;
 // checkThresholds/progress/timerPhase also call energyBand(...) as a free
 // reference (not this.energyBand) — session-timer.js expects it as a global,
 // exactly like main.js's `window.energyBand = energyBand` wiring.
