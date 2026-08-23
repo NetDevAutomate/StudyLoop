@@ -24,14 +24,23 @@
 # └────────────────────────────────────────────────────────────────────────────┘
 #
 # ⚠️  IF YOU USE VoiceMode's KOKORO, CHECK WHAT IT BINDS TO. It runs uvicorn with
-#     `--host 0.0.0.0`, so it answers on every interface: verified reachable and
-#     UNAUTHENTICATED from another machine on the LAN. OpenVox on :8000 is
-#     loopback-only, and this container is pinned to 127.0.0.1 below, so the
-#     native route is the one that opens a port. That matters because Kokoro is
-#     CPU-intensive -- an open TTS endpoint lets anything on the network spend
-#     your CPU -- and StudyLoop never needs it exposed: tablets reach speech
-#     through StudyLoop's own authenticated /api/tts/speak route, not directly.
-#     Bind it to 127.0.0.1, or firewall the port, if you are on a shared network.
+#     `--host 0.0.0.0`, so the socket listens on EVERY interface -- confirmed by
+#     lsof as `*:8880`, twice, across a restart -- and it requires no
+#     authentication. OpenVox on :8000 binds `127.0.0.1:8000` explicitly, and this
+#     container is pinned to 127.0.0.1 below, so the native route is the one that
+#     opens a port.
+#     Whether another machine can actually reach it was NOT measured here: the
+#     probe ran on the same host, and connecting to your own LAN address proves
+#     only that the socket answers, not that a foreign host can route in. What is
+#     known is that nothing local would stop one -- the macOS application firewall
+#     was disabled, block-all off, stealth off. To settle it, open
+#     http://<this-host>:8880/v1/models from a phone or tablet on the same
+#     network; anything other than a refused connection means it is exposed.
+#     It is worth settling because Kokoro is CPU-intensive, so an open TTS
+#     endpoint lets anything on the network spend your CPU, and StudyLoop never
+#     needs it reachable: tablets get speech through StudyLoop's own
+#     password-protected /api/tts/speak route, not by talking to Kokoro directly.
+#     Bind it to 127.0.0.1, or firewall the port, if you share the network.
 #
 # ⚠️  THE arm64 IMAGE IS BROKEN UPSTREAM (verified 2026-08-23, Apple Silicon).
 #     `hwdsl2/kokoro-server` advertises linux/arm64, and the arm64 variant does
