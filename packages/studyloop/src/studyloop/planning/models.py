@@ -214,6 +214,7 @@ class StudyPlan:
     target_date: str = ""
     review_cadence_days: int = 3
     mission: Mission = field(default_factory=Mission)
+    next_action: str = ""
     milestones: list[Milestone] = field(default_factory=list)
     learning_records: list[LearningRecord] = field(default_factory=list)
     resources: list[Resource] = field(default_factory=list)

@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeVar
 
 from .digests import compute_document_digest, compute_structure_digest
 from .journal import (
@@ -45,6 +45,8 @@ _PRIVATE_COMPONENT_RE = re.compile(r"\A[a-zA-Z0-9][a-zA-Z0-9._-]{0,119}\Z")
 MutationOperation = Literal["create", "update", "upsert", "record", "journal"]
 CrashInjector = Callable[[str], None]
 IndexRefresher = Callable[[StudyPlan], None]
+TransactionGuard = Callable[["PlanSnapshot", tuple[JournalEvent, ...], "MutationIntent"], None]
+ProjectionT = TypeVar("ProjectionT")
 _DEFAULT_INDEX_REFRESHER = object()
 
 
@@ -281,7 +283,28 @@ class PlanningRepository:
             raise PlanConflictError(f"no study plan with id {plan_id!r}")
         return self._read_view(path)
 
-    def commit(self, intent: MutationIntent) -> CommitResult:
+    def project(
+        self,
+        projector: Callable[[PlanSnapshot, tuple[JournalEvent, ...]], ProjectionT],
+    ) -> ProjectionT:
+        """Fold a validated snapshot and journal while holding the root lock.
+
+        This is intentionally generic: application policy lives in a caller's
+        pure projection rather than becoming a second policy layer in the
+        repository.
+        """
+        with self._root_lock():
+            self._recover_locked()
+            snapshot = self._scan_locked()
+            events = tuple(self._read_journal_locked())
+            return projector(snapshot, events)
+
+    def commit(
+        self,
+        intent: MutationIntent,
+        *,
+        guard: TransactionGuard | None = None,
+    ) -> CommitResult:
         """Apply one idempotent mutation under the root-wide filesystem lock."""
         self._validate_intent(intent)
         payload_digest = _payload_digest(intent)
@@ -293,6 +316,9 @@ class PlanningRepository:
             replay = self._idempotent_replay(intent, payload_digest, events)
             if replay is not None:
                 return replay
+
+            if guard is not None:
+                guard(snapshot, tuple(events), intent)
 
             before = self._find_view(snapshot, intent.plan_id)
             after_text: str | None
@@ -387,6 +413,22 @@ class PlanningRepository:
                 raise PathContainmentError("private run directory escapes planning root")
             os.chmod(run_dir, 0o700)
             path = run_dir / name
+            if path.is_symlink():
+                raise PathContainmentError("private run artifact cannot be a symlink")
+            if path.exists():
+                if not path.is_file() or path.resolve().parent != run_dir.resolve():
+                    raise PathContainmentError("private run artifact escapes planning root")
+                try:
+                    existing = path.read_bytes()
+                except OSError as error:
+                    raise PlanConflictError(
+                        f"cannot verify immutable private run artifact: {error}"
+                    ) from error
+                if existing == content:
+                    return path
+                raise PlanConflictError(
+                    f"immutable private run artifact {name!r} already has different content"
+                )
             temporary = run_dir / f".{name}.{uuid.uuid4().hex}.tmp"
             self._write_temporary(temporary, content)
             os.replace(temporary, path)

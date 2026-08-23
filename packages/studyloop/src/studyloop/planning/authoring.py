@@ -301,3 +301,29 @@ def readiness(plan: StudyPlan) -> dict:
         "blockers": blockers,
         "nudges": nudges,
     }
+
+
+def lifecycle_readiness(plan: StudyPlan) -> dict:
+    """Stricter activation readiness for learner-confirmed lifecycle writes.
+
+    The legacy authoring readiness remains compatible for existing adapters;
+    activation additionally requires stable, aligned goal identities and
+    milestones linked to those identities.
+    """
+    result = readiness(plan)
+    blockers = list(result["blockers"])
+    goal_ids = [goal.goal_id for goal in plan.goals]
+    if not goal_ids:
+        blockers.append("No goals — an active plan needs at least one aligned goal.")
+    if any(not goal_id.strip() for goal_id in goal_ids):
+        blockers.append("Every active goal needs a stable nonblank identity.")
+    if len(set(goal_ids)) != len(goal_ids):
+        blockers.append("Goal identities must be unique within the plan.")
+    if any(not goal.alignment_rationale.strip() for goal in plan.goals):
+        blockers.append("Every active goal needs an alignment rationale.")
+    known_goals = set(goal_ids)
+    if any(not item.milestone_id.strip() for item in plan.milestones):
+        blockers.append("Every milestone needs a stable nonblank identity.")
+    if any(item.goal_id not in known_goals for item in plan.milestones):
+        blockers.append("Every milestone must link to a goal in this plan.")
+    return {**result, "ready": not blockers, "blockers": blockers}

@@ -67,6 +67,7 @@ def structure_projection(plan: StudyPlan) -> dict[str, Any]:
         "target_date": plan.target_date,
         "review_cadence_days": plan.review_cadence_days,
         "mission": asdict(plan.mission),
+        "next_action": plan.next_action,
         "goals": [asdict(item) for item in plan.goals],
         "milestones": [asdict(item) for item in plan.milestones],
         "concepts": [asdict(item) for item in plan.concepts],

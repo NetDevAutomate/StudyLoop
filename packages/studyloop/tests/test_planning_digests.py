@@ -41,6 +41,7 @@ def _plan() -> StudyPlan:
             success=["Explain file-first transactions"],
             constraints=["Keep recovery deterministic"],
         ),
+        next_action="Trace a failed write.",
         goals=[Goal("goal-1", "Transactions", "Needed", "Mission aligned")],
         milestones=[
             Milestone(
@@ -163,6 +164,7 @@ def test_audit_and_free_form_fields_are_document_only() -> None:
         lambda plan: setattr(plan, "title", "Changed title"),
         lambda plan: setattr(plan, "status", "paused"),
         lambda plan: setattr(plan.mission, "why", "Changed mission"),
+        lambda plan: setattr(plan, "next_action", "Trace a recovered write."),
         lambda plan: setattr(plan.goals[0], "title", "Changed goal"),
         lambda plan: setattr(plan.milestones[0], "title", "Changed milestone"),
         lambda plan: plan.topics.append("sql"),
@@ -175,6 +177,7 @@ def test_audit_and_free_form_fields_are_document_only() -> None:
         "title",
         "status",
         "mission",
+        "next-action",
         "goal",
         "milestone",
         "topics",

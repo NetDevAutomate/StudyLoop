@@ -19,6 +19,7 @@ Canonical document shape::
     ## Mission
     ### Why
     ### Success looks like
+    ### Next action
     ### Constraints
     ### Out of scope
 
@@ -95,6 +96,7 @@ _KNOWN_SECTIONS = {
 # check would report a plan as ready when it is not.
 PLACEHOLDER_WHY = "_Not yet captured — the agent should interview for this._"
 PLACEHOLDER_SUCCESS = "No success criteria captured yet."
+PLACEHOLDER_NEXT_ACTION = "No next action agreed yet."
 PLACEHOLDER_CONSTRAINTS = "None recorded."
 PLACEHOLDER_OUT_OF_SCOPE = "Nothing explicitly excluded."
 PLACEHOLDER_MILESTONES = "_No milestones yet._"
@@ -120,6 +122,7 @@ _PLACEHOLDERS = frozenset(
         PLACEHOLDER_RESOURCES,
         PLACEHOLDER_NOTES,
         f"_{PLACEHOLDER_SUCCESS}_",
+        f"_{PLACEHOLDER_NEXT_ACTION}_",
         f"_{PLACEHOLDER_CONSTRAINTS}_",
         f"_{PLACEHOLDER_OUT_OF_SCOPE}_",
     }
@@ -585,6 +588,7 @@ def parse_plan(text: str, *, plan_id: str = "") -> StudyPlan:
         target_date=_as_scalar_str(meta.get("target_date")),
         review_cadence_days=_as_int(meta.get("review_cadence_days"), 3),
         mission=_parse_mission(sections.get("mission", [])),
+        next_action=_prose(_subsections(sections.get("mission", [])).get("next action", [])),
         goals=_parse_goals(sections.get("goals", [])),
         milestones=_parse_milestones(sections.get("milestones", [])),
         evidence=evidence,
@@ -846,6 +850,11 @@ def render_plan(plan: StudyPlan) -> str:
     out.append("### Success looks like")
     out.append("")
     out.extend(_render_bullets(plan.mission.success, empty=PLACEHOLDER_SUCCESS))
+    if plan.schema_version >= 2:
+        out.append("### Next action")
+        out.append("")
+        out.append(plan.next_action or f"_{PLACEHOLDER_NEXT_ACTION}_")
+        out.append("")
     out.append("### Constraints")
     out.append("")
     out.extend(_render_bullets(plan.mission.constraints, empty=PLACEHOLDER_CONSTRAINTS))

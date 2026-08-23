@@ -44,6 +44,7 @@ def _populated_plan() -> StudyPlan:
             constraints=["4 evenings a week, 30 minutes each"],
             out_of_scope=["EMR tuning"],
         ),
+        next_action="Trace one bookmark decision in the nightly run.",
         milestones=[
             Milestone(
                 title="Understand Glue job anatomy",
@@ -98,11 +99,23 @@ def test_empty_plan_round_trips_and_placeholders_read_back_as_absent() -> None:
     assert parsed.mission.success == []
     assert parsed.mission.constraints == []
     assert parsed.mission.out_of_scope == []
+    assert parsed.next_action == ""
     assert parsed.milestones == []
     assert parsed.learning_records == []
     assert parsed.resources == []
     assert parsed.notes == ""
     assert render_plan(parsed) == doc
+
+
+def test_next_action_is_canonical_mission_structure() -> None:
+    plan = _populated_plan()
+
+    document = render_plan(plan)
+    parsed = parse_plan(document, plan_id=plan.plan_id)
+
+    assert "### Next action\n\nTrace one bookmark decision in the nightly run." in document
+    assert parsed.next_action == plan.next_action
+    assert render_plan(parsed) == document
 
 
 def test_stable_across_two_generations() -> None:

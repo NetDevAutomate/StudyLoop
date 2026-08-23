@@ -149,6 +149,38 @@ def test_same_idempotency_tuple_and_payload_replays_but_changed_payload_conflict
         repository.commit(changed)
 
 
+def test_transaction_guard_observes_validated_snapshot_and_events_under_lock(
+    tmp_path: Path,
+) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    repository.commit(_intent(_plan("existing")))
+    observed: list[tuple[int, int]] = []
+
+    def guard(snapshot, events, _intent) -> None:
+        observed.append((snapshot.current_count, len(events)))
+
+    repository.commit(_intent(_plan("guarded")), guard=guard)
+
+    assert observed == [(1, 2)]
+
+
+def test_idempotent_replay_returns_before_transaction_guard(tmp_path: Path) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    intent = _intent(_plan("guard-replay"))
+    calls = 0
+
+    def guard(_snapshot, _events, _intent) -> None:
+        nonlocal calls
+        calls += 1
+
+    first = repository.commit(intent, guard=guard)
+    replay = repository.commit(intent, guard=guard)
+
+    assert first.status == "committed"
+    assert replay.status == "replayed"
+    assert calls == 1
+
+
 def test_default_operation_is_create_and_same_slug_never_clobbers(tmp_path: Path) -> None:
     repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
     first = MutationIntent(
@@ -477,6 +509,22 @@ def test_private_run_artifacts_are_mode_0600(tmp_path: Path) -> None:
 
     assert path.read_text() == "private learner input"
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_private_run_artifacts_are_immutable_but_identical_retry_is_safe(
+    tmp_path: Path,
+) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    artifact = PrivateRunArtifact("run-immutable", "brief.json", "first payload")
+
+    path = repository.write_private_artifact(artifact)
+    assert repository.write_private_artifact(artifact) == path
+    with pytest.raises(PlanConflictError, match="immutable private run artifact"):
+        repository.write_private_artifact(
+            PrivateRunArtifact("run-immutable", "brief.json", "changed payload")
+        )
+
+    assert path.read_text() == "first payload"
 
 
 def test_outside_temporary_path_is_rejected_before_open(tmp_path: Path) -> None:
