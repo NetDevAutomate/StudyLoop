@@ -181,6 +181,30 @@ def test_after_replace_recovery_fsyncs_plan_directory_before_terminal_event(
     assert actions.index(("fsync", paths.plans)) < actions.index(("event", "recovered"))
 
 
+def test_journal_rejects_forged_recovered_result_revisions(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_replace"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError):
+        crashing.commit(_intent())
+
+    restarted = PlanningRepository(paths, index_refresher=None)
+    assert [item.classification for item in restarted.recover().recovered] == ["after"]
+    events = [json.loads(line) for line in paths.journal.read_text().splitlines()]
+    events[1]["result"]["document_revision"] = 99
+    events[1]["result"]["structure_revision"] = 88
+    paths.journal.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(JournalCorruptionError, match="result revisions"):
+        restarted.commit(_intent())
+
+
 def test_recovery_truncates_only_a_torn_intent_at_eof(tmp_path: Path) -> None:
     paths = _paths(tmp_path)
     repository = PlanningRepository(paths, index_refresher=None)

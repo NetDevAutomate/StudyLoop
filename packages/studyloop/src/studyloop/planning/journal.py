@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Literal, cast
+
+from .digests import compute_document_digest, compute_structure_digest
+from .markdown import parse_plan
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -269,7 +273,7 @@ def validate_event_sequence(events: list[JournalEvent]) -> None:
             raise JournalCorruptionError("terminal event does not match the pending intent_id")
         if not _matching_transaction(active, event):
             raise JournalCorruptionError("terminal does not match prior intent")
-        classification = _validate_terminal_event(event)
+        classification = _validate_terminal_event(event, active)
         prior_terminals[event.intent_id] = event
         if classification == "after":
             completed_idempotency.add(key)
@@ -324,9 +328,12 @@ def _validate_intent_event(event: JournalEvent) -> None:
     ):
         raise JournalCorruptionError("journal-only intent changes canonical state")
     _validate_terminal_result(event)
+    _validate_result_revisions_against_recovery(event)
 
 
-def _validate_terminal_event(event: JournalEvent) -> Literal["before", "after"]:
+def _validate_terminal_event(
+    event: JournalEvent, intent: JournalEvent
+) -> Literal["before", "after"]:
     classification = event.recovery.get("classification")
     if event.event == "committed":
         if classification != "after":
@@ -342,6 +349,13 @@ def _validate_terminal_event(event: JournalEvent) -> Literal["before", "after"]:
             raise JournalCorruptionError("before recovery terminal must not contain a result")
         return resolved
     _validate_terminal_result(event)
+    if any(
+        event.result.get(field_name) != intent.result.get(field_name)
+        for field_name in ("document_revision", "structure_revision")
+    ):
+        raise JournalCorruptionError("terminal result revisions disagree with prior intent")
+    if event.result != intent.result:
+        raise JournalCorruptionError("terminal result disagrees with prior intent")
     return resolved
 
 
@@ -369,6 +383,46 @@ def _validate_terminal_result(event: JournalEvent) -> None:
         or structure_revision < 1
     ):
         raise JournalCorruptionError("terminal result revisions must be positive integers")
+
+
+def _validate_result_revisions_against_recovery(event: JournalEvent) -> None:
+    """Bind redundant result revisions to the exact intended after bytes."""
+    if event.recovery.get("recovery_version") != 1:
+        raise JournalCorruptionError("intent has unsupported recovery payload version")
+    encoded = event.recovery.get("after_bytes_b64")
+    if encoded is None:
+        if event.after_document_digest is not None:
+            raise JournalCorruptionError("intent after state is missing recovery bytes")
+        return
+    if not isinstance(encoded, str):
+        raise JournalCorruptionError("intent recovery bytes must be base64 text or null")
+    try:
+        after_bytes = base64.b64decode(encoded.encode("ascii"), validate=True)
+        after_text = after_bytes.decode("utf-8")
+        plan = parse_plan(after_text, plan_id=event.plan_id)
+    except Exception as error:
+        raise JournalCorruptionError("intent has invalid after recovery bytes") from error
+
+    if event.after_document_digest is None:
+        raise JournalCorruptionError("intent has recovery bytes without an after state")
+    if plan.plan_id != event.plan_id:
+        raise JournalCorruptionError("intent recovery plan_id disagrees with event")
+    document_digest = compute_document_digest(after_bytes)
+    structure_digest = compute_structure_digest(plan)
+    if (
+        document_digest != event.after_document_digest
+        or structure_digest != event.after_structure_digest
+    ):
+        raise JournalCorruptionError("intent recovery bytes disagree with after digests")
+    if plan.schema_version >= 2 and (
+        plan.document_digest != document_digest or plan.structure_digest != structure_digest
+    ):
+        raise JournalCorruptionError("intent recovery plan stores inconsistent digests")
+    if (
+        event.result.get("document_revision") != plan.document_revision
+        or event.result.get("structure_revision") != plan.structure_revision
+    ):
+        raise JournalCorruptionError("terminal result revisions disagree with recovery state")
 
 
 def fsync_directory(directory: Path) -> None:

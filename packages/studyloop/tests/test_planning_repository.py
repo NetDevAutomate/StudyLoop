@@ -281,6 +281,64 @@ def test_journal_rejects_terminal_result_that_disagrees_with_event(tmp_path: Pat
         repository.commit(intent)
 
 
+@pytest.mark.parametrize(
+    "forge_intent_result",
+    [False, True],
+    ids=["terminal-only", "intent-and-terminal"],
+)
+def test_journal_rejects_forged_committed_result_revisions(
+    tmp_path: Path, forge_intent_result: bool
+) -> None:
+    paths = _paths(tmp_path)
+    repository = PlanningRepository(paths, index_refresher=None)
+    intent = _intent(_plan("journal-revisions"))
+    repository.commit(intent)
+    events = [json.loads(line) for line in paths.journal.read_text().splitlines()]
+    terminal = events[1]["result"]
+    terminal["document_revision"] = 99
+    terminal["structure_revision"] = 88
+    if forge_intent_result:
+        events[0]["result"] = terminal.copy()
+    paths.journal.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(JournalCorruptionError, match="result revisions"):
+        repository.commit(intent)
+
+    current = repository.inspect(PlanningRef("journal-revisions"))
+    assert current.plan.document_revision == 1
+    assert current.plan.structure_revision == 1
+
+
+@pytest.mark.parametrize("operation", ["record", "journal"])
+def test_absent_plan_journal_result_revisions_must_remain_null(
+    tmp_path: Path, operation: str
+) -> None:
+    paths = _paths(tmp_path)
+    repository = PlanningRepository(paths, index_refresher=None)
+    intent = MutationIntent(
+        intent_id=f"intent-absent-{operation}",
+        caller="pytest",
+        idempotency_key=f"key-absent-{operation}",
+        operation=operation,
+        ref=PlanningRef("absent-plan"),
+    )
+    repository.commit(intent)
+    events = [json.loads(line) for line in paths.journal.read_text().splitlines()]
+    for event in events:
+        event["result"]["document_revision"] = 99
+        event["result"]["structure_revision"] = 88
+    paths.journal.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(JournalCorruptionError, match="unexpectedly has revisions"):
+        repository.commit(intent)
+
+
 def test_journal_rejects_terminal_that_disagrees_with_prior_intent(tmp_path: Path) -> None:
     paths = _paths(tmp_path)
     repository = PlanningRepository(paths, index_refresher=None)
