@@ -145,6 +145,7 @@ def create_app(
         parking,
         plans,
         session,
+        tts,
     )
 
     app.include_router(courses.router, prefix="/api")
@@ -162,6 +163,7 @@ def create_app(
     app.include_router(notes.router, prefix="/api")
     app.include_router(parking.router, prefix="/api")
     app.include_router(plans.router, prefix="/api")
+    app.include_router(tts.router, prefix="/api")
 
     try:
         from studyloop.web.routes.session._options import warm_session_options_index

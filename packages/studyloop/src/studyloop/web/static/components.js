@@ -439,8 +439,14 @@ document.addEventListener("alpine:init", () => {
         this.ttsTier = window.ttsEngine.tier;
         this.ttsTierReason = window.ttsEngine.tierReason || '';
         this.ttsTierDetail = window.ttsEngine.tierDetail || '';
-        this.ttsDegraded =
-          this.ttsTier !== 'neural-webgpu' && this.ttsTier !== 'neural-wasm';
+        // Mirrors _setTier's derivation in tts-engine.js. 'server-openvox' is
+        // the fastest tier, not a degraded one -- this second copy predates the
+        // server tier and would have reported the best path as broken.
+        this.ttsDegraded = !(
+          this.ttsTier === 'server-openvox' ||
+          this.ttsTier === 'neural-webgpu' ||
+          this.ttsTier === 'neural-wasm'
+        );
       }
 
       /* Start the engine when voice is already on. tts-engine.js deliberately
@@ -627,7 +633,33 @@ document.addEventListener("alpine:init", () => {
         if (select) {
           select.innerHTML = "";
           const opt = document.createElement("option");
-          opt.textContent = "Detecting voice engine…";
+          // Three different situations shared one misleading message. Voice is
+          // OFF by default and the engine is only started once it is on, so
+          // "Detecting…" was usually describing work that was never going to
+          // happen — a placeholder that looks like progress is worse than none.
+          opt.textContent = this.voiceOn
+            ? "Starting voice engine…"
+            : "Turn on voice to load the engine";
+          opt.value = "";
+          opt.disabled = true;
+          select.appendChild(opt);
+          select.disabled = true;
+        }
+        this._voicesLoaded = false;
+        return;
+      }
+
+      /* A resolved-but-mute engine must explain itself. The 'silent' tier makes
+         speak() an explicit no-op, so without this the learner gets an empty
+         picker and no audio — indistinguishable from a broken install. The
+         engine already reports WHY in the tier-change detail; surface it. */
+      if (window.ttsEngine.tier === 'silent') {
+        if (select) {
+          select.innerHTML = "";
+          const opt = document.createElement("option");
+          opt.textContent = this.ttsTierDetail
+            ? `No voice available — ${this.ttsTierDetail}`
+            : "No voice available on this device";
           opt.value = "";
           opt.disabled = true;
           select.appendChild(opt);

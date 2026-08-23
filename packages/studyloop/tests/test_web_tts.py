@@ -162,12 +162,36 @@ class TestVoiceCatalogueIsEnglishOnly:
     def test_set_voice_validates_before_assigning(self) -> None:
         """Regression guard: setVoice() used to assign this._voiceId FIRST and
         only check the catalogue when deciding whether to pre-warm, so an
-        unknown id still became the live voice."""
+        unknown id still became the live voice.
+
+        Scoped to the NEURAL branch deliberately. An earlier version of this test
+        took a fixed 1200-character window from the top of setVoice(), which broke
+        the moment a server-tier branch was added ahead of it -- the behaviour was
+        still correct, but the test was measuring position in a string rather than
+        the ordering it cared about. Anchoring on `const isNeural` pins the branch
+        this rule is actually about.
+        """
         src = ENGINE.read_text()
         start = src.index("async setVoice(voiceId)")
-        body = src[start : start + 1200]
+        neural = src.index("const isNeural", start)
+        body = src[neural : src.index("\n  }", neural)]
         guard = body.index("!KOKORO_VOICES[voiceId]")
         assign = body.index("this._voiceId = voiceId")
         assert guard < assign, (
             "setVoice() assigns the voice before validating it against the catalogue"
         )
+
+    def test_the_server_branch_also_validates_before_assigning(self) -> None:
+        """The server tier has its own catalogue and needs the same ordering.
+
+        Its voices come from the host rather than KOKORO_VOICES, so the neural
+        guard above does not cover it -- and the same hazard applies: an id the
+        host does not offer must never become the live voice.
+        """
+        src = ENGINE.read_text()
+        start = src.index("async setVoice(voiceId)")
+        branch = src[start : src.index("const isNeural", start)]
+        assert "_serverVoices" in branch, "server branch does not consult the host catalogue"
+        guard = branch.index("if (!known)")
+        assign = branch.index("this._voiceId = voiceId")
+        assert guard < assign, "server branch assigns before validating"

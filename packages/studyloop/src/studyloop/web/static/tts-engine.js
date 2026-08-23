@@ -65,6 +65,16 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+
+// ─── Server-side speech (preferred tier) ──────────────────────────────────────
+// The host can synthesise far faster than this browser and reaches devices the
+// neural tier cannot. Endpoints are same-origin so the --lan Basic credentials
+// the browser already holds are replayed automatically.
+const SERVER_TTS_HEALTH = '/api/tts/health';
+const SERVER_TTS_SPEAK = '/api/tts/speak';
+const SERVER_TTS_WARM = '/api/tts/warm';
+// A host that is not answering must not hold the voice system in 'warming'.
+const SERVER_PROBE_TIMEOUT_MS = 2500;
 /* q8 (~92 MB) is the kokoro-js default and the right browser tradeoff — the
    model card notes Kokoro is "resilient to quantization". fp32 is 326 MB and
    needlessly large for in-browser use. */
@@ -156,6 +166,13 @@ function describeEnvironment({ secureContext, hasGpu, hasCaches, origin = '' } =
  * are prefix `a` and drive 'en-us'. Both are English -- no other language is
  * offered, deliberately.
  */
+function _voiceLabel(voiceId) {
+  const meta = KOKORO_VOICES[voiceId];
+  if (meta) return meta.name;
+  const bare = String(voiceId || '').split('_').slice(1).join(' ');
+  return bare ? bare.charAt(0).toUpperCase() + bare.slice(1) : String(voiceId || '');
+}
+
 const KOKORO_VOICES = Object.freeze({
   af_heart:    { name: 'Heart',    lang: 'en-us', gender: 'Female', grade: 'A'  },
   af_bella:    { name: 'Bella',    lang: 'en-us', gender: 'Female', grade: 'A-' },
@@ -266,6 +283,8 @@ class TTSEngine {
   constructor() {
     this._state = 'idle';
     this._tier = null;
+    this._serverVoices = [];
+    this._serverAudio = null;
     this._kokoroModel = null;
     this._tokenizer = null;
     this._Tensor = null;      // cached Tensor constructor from transformers.js
@@ -321,9 +340,15 @@ class TTSEngine {
    */
   _setTier(tier, reason = 'ok', detail = '') {
     this._tier = tier;
-    const degraded = tier !== 'neural-webgpu' && tier !== 'neural-wasm';
+    // 'server-openvox' is the BEST tier, not a degraded one: synthesis runs
+    // natively on the host (measured 2.5s per sentence warm, against 22.7s for
+    // the same sentence in this browser on WebGPU) and it works on devices that
+    // cannot reach a neural tier at all. Deriving degraded as "not neural" would
+    // have labelled the fastest path as broken.
+    const healthy =
+      tier === 'server-openvox' || tier === 'neural-webgpu' || tier === 'neural-wasm';
     window.dispatchEvent(new CustomEvent('tts:tier-change', {
-      detail: { tier, reason, detail, degraded },
+      detail: { tier, reason, detail, degraded: !healthy },
     }));
   }
 
@@ -355,6 +380,20 @@ class TTSEngine {
   async _doInit() {
     this._setState('warming');
 
+    // ── Tier 0: server-side OpenVox ───────────────────────────────────────────
+    // Tried FIRST because it is both faster and more widely usable than anything
+    // this browser can do. In-browser Kokoro measured 6.6x real time on a warmed
+    // WebGPU tier (22.7s of work for 3.45s of audio) and the engine's own
+    // slow-device guard sends anything past 3x down a ladder that ends in a
+    // silent no-op -- which is what "I can't hear any voice" actually was. On a
+    // tablet over `--lan` the origin is not secure, so WebGPU and Cache Storage
+    // are hidden and the neural tier cannot work well at all. The server has none
+    // of those constraints and needs nothing from the device but an audio player.
+    if (await this._initServer()) {
+      this._setState('ready');
+      return;
+    }
+
     try {
       await this._initNeural();
     } catch (err) {
@@ -376,6 +415,126 @@ class TTSEngine {
     // WSA restores per-utterance from localStorage 'voiceName' in _speakWSA.
 
     this._setState('ready');
+  }
+
+  /**
+   * _initServer() — adopt server-side OpenVox when the host offers it.
+   *
+   * Returns true when the server tier is now live. Deliberately quiet on
+   * failure: a host without OpenVox is a completely normal configuration, not an
+   * error, and the ladder continues to the neural tier.
+   *
+   * The probe is bounded by a timeout because an unreachable host must not hold
+   * the whole voice system in 'warming' -- an init that never resolves is
+   * indistinguishable from broken software, which is the failure mode this
+   * entire path exists to remove.
+   */
+  async _initServer() {
+    let health;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), SERVER_PROBE_TIMEOUT_MS);
+      const response = await fetch(SERVER_TTS_HEALTH, {
+        signal: controller.signal,
+        // Same-origin so the browser replays the --lan Basic credentials it
+        // already holds for the page; no second token to manage.
+        credentials: 'same-origin',
+      });
+      clearTimeout(timer);
+      if (!response.ok) return false;
+      health = await response.json();
+    } catch (_) {
+      return false;
+    }
+
+    if (!health || !health.available) {
+      if (health && health.detail) {
+        console.info('[tts-engine] server speech unavailable:', health.detail);
+      }
+      return false;
+    }
+
+    this._serverVoices = Array.isArray(health.voices) ? health.voices : [];
+    if (!this._serverVoices.length) return false;
+
+    // Prefer a British voice, then whatever the saved preference was, then the
+    // first offered. A saved id is only honoured when the server still offers it.
+    const saved = localStorage.getItem('serverVoiceId');
+    const ids = this._serverVoices.map(v => v.id);
+    const british = this._serverVoices.find(v => v.british);
+    this._voiceId =
+      (saved && ids.includes(saved) && saved) ||
+      (british && british.id) ||
+      ids[0];
+
+    // Fire and forget: a cold model costs ~51s on the first utterance versus
+    // ~2.5s warm, so warming now is the difference between "slow" and "broken".
+    fetch(SERVER_TTS_WARM, { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+
+    this._setTier('server-openvox', 'ok', `${this._serverVoices.length} voices on the host`);
+    return true;
+  }
+
+  /**
+   * _speakServer(text, gen) — synthesise on the host and play the response.
+   *
+   * Plays through an Audio element rather than the AudioContext used by the
+   * neural path: an <audio> element needs no WebGPU, no secure context and no
+   * model download, which is precisely why this tier reaches a tablet at all.
+   *
+   * Resolves when playback ends so the caller's state machine stays truthful --
+   * returning early would report 'idle' while audio was still playing.
+   */
+  async _speakServer(text, gen) {
+    let blob;
+    try {
+      const response = await fetch(SERVER_TTS_SPEAK, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: this._voiceId }),
+      });
+      if (!response.ok) {
+        // 503 means "ask someone else", so drop to the local ladder for the rest
+        // of this session rather than failing every future utterance the same way.
+        let detail = `HTTP ${response.status}`;
+        try {
+          const body = await response.json();
+          if (body && body.detail) detail = body.detail;
+        } catch (_) { /* non-JSON error body */ }
+        console.warn('[tts-engine] server speech failed, falling back:', detail);
+        this._serverVoices = [];
+        this._tier = null;
+        await this.init();
+        if (gen !== this._generation) return;
+        if (this._tier && this._tier !== 'server-openvox') {
+          this._setState('speaking');
+          if (this._tier === 'web-speech') this._speakWSA(text);
+          else if (this._tier !== 'silent') await this._speakNeural(text, gen);
+        }
+        return;
+      }
+      blob = await response.blob();
+    } catch (err) {
+      console.warn('[tts-engine] server speech unreachable:', err && err.message);
+      return;
+    }
+
+    if (this._stopped || gen !== this._generation) return;
+
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    this._serverAudio = audio;
+    try {
+      await new Promise((resolve) => {
+        audio.onended = resolve;
+        audio.onerror = resolve;
+        audio.play().catch(() => resolve());
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+      if (this._serverAudio === audio) this._serverAudio = null;
+    }
   }
 
   async _initNeural() {
@@ -650,7 +809,9 @@ class TTSEngine {
 
     this._setState('speaking');
 
-    if (this._tier === 'neural-webgpu' || this._tier === 'neural-wasm') {
+    if (this._tier === 'server-openvox') {
+      await this._speakServer(trimmed, gen);
+    } else if (this._tier === 'neural-webgpu' || this._tier === 'neural-wasm') {
       await this._speakNeural(trimmed, gen);
     } else if (this._tier === 'web-speech') {
       this._speakWSA(trimmed);
@@ -698,6 +859,12 @@ class TTSEngine {
    */
   stop() {
     this._stopped = true;
+    // Server-tier audio plays through an Audio element, which the AudioContext
+    // teardown below does not touch -- without this, stop() left it playing.
+    if (this._serverAudio) {
+      try { this._serverAudio.pause(); } catch (_) { /* already gone */ }
+      this._serverAudio = null;
+    }
 
     // Stop WebAudio playback
     if (this._currentSource) {
@@ -730,6 +897,16 @@ class TTSEngine {
    * web-speech tier delegates to speechSynthesis.getVoices().
    */
   listVoices() {
+    if (this._tier === 'server-openvox') {
+      // The host already filtered to English voices; it also holds Mandarin,
+      // Japanese, Spanish, French, Hindi and Italian voices for the same model.
+      return (this._serverVoices || []).map(v => ({
+        id: v.id,
+        name: v.british ? `${_voiceLabel(v.id)} (British)` : _voiceLabel(v.id),
+        lang: v.british ? 'en-gb' : 'en-us',
+        tier: this._tier,
+      }));
+    }
     if (this._tier === 'neural-webgpu' || this._tier === 'neural-wasm') {
       return Object.entries(KOKORO_VOICES).map(([id, meta]) => ({
         id,
@@ -757,6 +934,19 @@ class TTSEngine {
    * Pre-fetches the voice .bin file so the next speak() is instant.
    */
   async setVoice(voiceId) {
+    if (this._tier === 'server-openvox') {
+      const known = (this._serverVoices || []).some(v => v.id === voiceId);
+      if (!known) {
+        console.warn(`[tts] host does not offer voice '${voiceId}' — keeping '${this._voiceId}'`);
+        return;
+      }
+      this._voiceId = voiceId;
+      // Persisted under its own key: a host voice id and a browser Kokoro id are
+      // different namespaces, and reusing one key would apply a host-only voice
+      // to the neural tier where it does not exist.
+      localStorage.setItem('serverVoiceId', voiceId);
+      return;
+    }
     const isNeural = this._tier === 'neural-webgpu' || this._tier === 'neural-wasm';
     // Validate BEFORE assigning. The assignment used to happen first, with the
     // catalogue check guarding only the pre-warm below -- so an id outside the
