@@ -147,6 +147,7 @@ class MutationIntent:
     intent_id: str
     caller: str
     idempotency_key: str
+    idempotency_digest: str = ""
     operation: MutationOperation = "create"
     plan: StudyPlan | None = None
     ref: PlanningRef | None = None
@@ -155,6 +156,7 @@ class MutationIntent:
     expected_document_revision: int | None = None
     expected_structure_revision: int | None = None
     metadata: dict[str, object] = field(default_factory=dict)
+    private_artifacts: tuple[PrivateRunArtifact, ...] = ()
 
     @property
     def plan_id(self) -> str:
@@ -226,6 +228,14 @@ def _utc_now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _private_artifact_bytes(content: str | bytes) -> bytes:
+    return content.encode("utf-8") if isinstance(content, str) else content
+
+
+def _private_artifact_digest(content: str | bytes) -> str:
+    return f"sha256:v1:{sha256(_private_artifact_bytes(content)).hexdigest()}"
+
+
 def _payload_digest(intent: MutationIntent) -> str:
     plan_payload = asdict(intent.plan) if intent.plan is not None else None
     if isinstance(plan_payload, dict):
@@ -234,6 +244,7 @@ def _payload_digest(intent: MutationIntent) -> str:
     payload = {
         "payload_version": 1,
         "operation": intent.operation,
+        "idempotency_digest": intent.idempotency_digest,
         "plan": plan_payload,
         "plan_id": intent.plan_id,
         "expected_document_digest": intent.expected_document_digest,
@@ -241,6 +252,14 @@ def _payload_digest(intent: MutationIntent) -> str:
         "expected_document_revision": intent.expected_document_revision,
         "expected_structure_revision": intent.expected_structure_revision,
         "metadata": intent.metadata,
+        "private_artifacts": [
+            {
+                "run_id": artifact.run_id,
+                "name": artifact.name,
+                "content_digest": _private_artifact_digest(artifact.content),
+            }
+            for artifact in intent.private_artifacts
+        ],
     }
     encoded = json.dumps(
         payload,
@@ -308,17 +327,25 @@ class PlanningRepository:
         """Apply one idempotent mutation under the root-wide filesystem lock."""
         self._validate_intent(intent)
         payload_digest = _payload_digest(intent)
+        idempotency_digest = intent.idempotency_digest or payload_digest
         committed_plan: StudyPlan | None = None
         with self._root_lock():
             self._recover_locked()
             snapshot = self._scan_locked()
             events = self._read_journal_locked()
-            replay = self._idempotent_replay(intent, payload_digest, events)
+            replay = self._idempotent_replay(
+                intent,
+                payload_digest,
+                idempotency_digest,
+                events,
+            )
             if replay is not None:
                 return replay
 
             if guard is not None:
                 guard(snapshot, tuple(events), intent)
+
+            self._validate_transactional_artifacts_locked(intent.private_artifacts)
 
             before = self._find_view(snapshot, intent.plan_id)
             after_text: str | None
@@ -345,10 +372,19 @@ class PlanningRepository:
                 "before_bytes_b64": _encode_optional(before_text),
                 "after_bytes_b64": _encode_optional(after_text),
                 "temporary_name": temporary_name,
+                "private_artifacts": [
+                    {
+                        "run_id": artifact.run_id,
+                        "name": artifact.name,
+                        "content_digest": _private_artifact_digest(artifact.content),
+                    }
+                    for artifact in intent.private_artifacts
+                ],
             }
             event_fields = self._event_fields(
                 intent=intent,
                 payload_digest=payload_digest,
+                idempotency_digest=idempotency_digest,
                 before=before,
                 after=after_plan,
             )
@@ -364,6 +400,11 @@ class PlanningRepository:
                 ),
             )
             self._inject("after_journal_intent")
+
+            for artifact in intent.private_artifacts:
+                self._write_private_artifact_locked(artifact, allow_identical=False)
+            if intent.private_artifacts:
+                self._inject("after_private_artifacts")
 
             if after_text is not None and intent.operation not in {"record", "journal"}:
                 target = self._plan_path(intent.plan_id)
@@ -399,42 +440,74 @@ class PlanningRepository:
 
     def write_private_artifact(self, artifact: PrivateRunArtifact) -> Path:
         """Durably write a private brain dump/brief with mode 0600."""
+        with self._root_lock():
+            return self._write_private_artifact_locked(artifact, allow_identical=True)
+
+    def _validate_transactional_artifacts_locked(
+        self,
+        artifacts: tuple[PrivateRunArtifact, ...],
+    ) -> None:
+        seen: set[tuple[str, str]] = set()
+        for artifact in artifacts:
+            run_id = self._private_component(artifact.run_id, "run id")
+            name = self._private_component(artifact.name, "artifact name")
+            identity = (run_id, name)
+            if identity in seen:
+                raise PlanConflictError("transaction repeats a private artifact path")
+            seen.add(identity)
+            run_dir = self.paths.private_runs / run_id
+            if run_dir.is_symlink() or (
+                run_dir.exists()
+                and (
+                    not run_dir.is_dir()
+                    or run_dir.resolve().parent != self.paths.private_runs.resolve()
+                )
+            ):
+                raise PathContainmentError("private run directory escapes planning root")
+            path = run_dir / name
+            if path.exists() or path.is_symlink():
+                raise PlanConflictError(f"transactional private artifact {name!r} already exists")
+
+    def _write_private_artifact_locked(
+        self,
+        artifact: PrivateRunArtifact,
+        *,
+        allow_identical: bool,
+    ) -> Path:
         run_id = self._private_component(artifact.run_id, "run id")
         name = self._private_component(artifact.name, "artifact name")
-        content = (
-            artifact.content.encode("utf-8")
-            if isinstance(artifact.content, str)
-            else artifact.content
-        )
-        with self._root_lock():
-            run_dir = self.paths.private_runs / run_id
-            run_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-            if run_dir.resolve().parent != self.paths.private_runs.resolve():
-                raise PathContainmentError("private run directory escapes planning root")
-            os.chmod(run_dir, 0o700)
-            path = run_dir / name
-            if path.is_symlink():
-                raise PathContainmentError("private run artifact cannot be a symlink")
-            if path.exists():
-                if not path.is_file() or path.resolve().parent != run_dir.resolve():
-                    raise PathContainmentError("private run artifact escapes planning root")
-                try:
-                    existing = path.read_bytes()
-                except OSError as error:
-                    raise PlanConflictError(
-                        f"cannot verify immutable private run artifact: {error}"
-                    ) from error
-                if existing == content:
-                    return path
+        content = _private_artifact_bytes(artifact.content)
+        run_dir = self.paths.private_runs / run_id
+        if run_dir.is_symlink():
+            raise PathContainmentError("private run directory escapes planning root")
+        run_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if run_dir.resolve().parent != self.paths.private_runs.resolve():
+            raise PathContainmentError("private run directory escapes planning root")
+        os.chmod(run_dir, 0o700)
+        path = run_dir / name
+        if path.is_symlink():
+            raise PathContainmentError("private run artifact cannot be a symlink")
+        if path.exists():
+            if not path.is_file() or path.resolve().parent != run_dir.resolve():
+                raise PathContainmentError("private run artifact escapes planning root")
+            try:
+                existing = path.read_bytes()
+            except OSError as error:
                 raise PlanConflictError(
-                    f"immutable private run artifact {name!r} already has different content"
-                )
-            temporary = run_dir / f".{name}.{uuid.uuid4().hex}.tmp"
-            self._write_temporary(temporary, content)
-            os.replace(temporary, path)
-            os.chmod(path, 0o600)
-            fsync_directory(run_dir)
-            return path
+                    f"cannot verify immutable private run artifact: {error}"
+                ) from error
+            if allow_identical and existing == content:
+                return path
+            difference = "different content" if allow_identical else "an existing path"
+            raise PlanConflictError(
+                f"immutable private run artifact {name!r} conflicts with {difference}"
+            )
+        temporary = run_dir / f".{name}.{uuid.uuid4().hex}.tmp"
+        self._write_temporary(temporary, content)
+        os.replace(temporary, path)
+        os.chmod(path, 0o600)
+        fsync_directory(run_dir)
+        return path
 
     def _validate_configured_paths(self) -> None:
         root = self.paths.root.expanduser().resolve(strict=False)
@@ -694,6 +767,7 @@ class PlanningRepository:
         *,
         intent: MutationIntent,
         payload_digest: str,
+        idempotency_digest: str,
         before: PlanningView | None,
         after: StudyPlan | None,
     ) -> dict[str, object]:
@@ -701,6 +775,7 @@ class PlanningRepository:
             "intent_id": intent.intent_id,
             "caller": intent.caller,
             "idempotency_key": intent.idempotency_key,
+            "idempotency_digest": idempotency_digest,
             "payload_digest": payload_digest,
             "operation": intent.operation,
             "plan_id": intent.plan_id,
@@ -714,6 +789,7 @@ class PlanningRepository:
     def _idempotent_replay(
         intent: MutationIntent,
         payload_digest: str,
+        idempotency_digest: str,
         events: list[JournalEvent],
     ) -> CommitResult | None:
         matching_intents: dict[str, JournalEvent] = {}
@@ -722,9 +798,14 @@ class PlanningRepository:
             same_tuple = (
                 event.caller == intent.caller and event.idempotency_key == intent.idempotency_key
             )
-            if same_tuple and event.payload_digest != payload_digest:
+            if same_tuple and event.idempotency_digest != idempotency_digest:
+                difference = (
+                    "different semantic input"
+                    if intent.idempotency_digest
+                    else "a different payload"
+                )
                 raise IdempotencyConflictError(
-                    "idempotency key was already used with a different payload"
+                    f"idempotency key was already used with {difference}"
                 )
             if (
                 event.intent_id == intent.intent_id
@@ -772,6 +853,7 @@ class PlanningRepository:
                     f"pending intent {event.intent_id!r} is neither its before nor after state"
                 )
             self._cleanup_recovery_temporary(event)
+            self._reconcile_recovery_private_artifacts(event, classification)
             if (
                 classification == "after"
                 and event.operation in {"create", "update", "upsert"}
@@ -785,6 +867,7 @@ class PlanningRepository:
                     intent_id=event.intent_id,
                     caller=event.caller,
                     idempotency_key=event.idempotency_key,
+                    idempotency_digest=event.idempotency_digest,
                     payload_digest=event.payload_digest,
                     operation=event.operation,
                     plan_id=event.plan_id,
@@ -837,6 +920,84 @@ class PlanningRepository:
         if temporary.exists():
             temporary.unlink()
             fsync_directory(self.paths.plans)
+
+    def _reconcile_recovery_private_artifacts(
+        self,
+        event: JournalEvent,
+        classification: Literal["before", "after"],
+    ) -> None:
+        records = event.recovery.get("private_artifacts", [])
+        if not isinstance(records, list):
+            raise RecoveryError("recovery private_artifacts must be a list")
+        touched_dirs: set[Path] = set()
+        for record in records:
+            if not isinstance(record, dict):
+                raise RecoveryError("recovery private artifact must be an object")
+            run_id = record.get("run_id")
+            name = record.get("name")
+            expected_digest = record.get("content_digest")
+            if (
+                not isinstance(run_id, str)
+                or not run_id
+                or not isinstance(name, str)
+                or not name
+                or not isinstance(expected_digest, str)
+                or not expected_digest
+            ):
+                raise RecoveryError("recovery private artifact fields must be non-empty strings")
+            try:
+                safe_run_id = self._private_component(run_id, "run id")
+                safe_name = self._private_component(name, "artifact name")
+            except PathContainmentError as error:
+                raise RecoveryError("unsafe recovery private artifact path") from error
+            run_dir = self.paths.private_runs / safe_run_id
+            if run_dir.is_symlink() or (
+                run_dir.exists()
+                and (
+                    not run_dir.is_dir()
+                    or run_dir.resolve().parent != self.paths.private_runs.resolve()
+                )
+            ):
+                raise RecoveryError("recovery private run directory escapes planning root")
+            artifact = run_dir / safe_name
+            temporary_prefix = f".{safe_name}."
+            temporaries = (
+                [
+                    candidate
+                    for candidate in run_dir.iterdir()
+                    if candidate.name.startswith(temporary_prefix)
+                    and candidate.name.endswith(".tmp")
+                    and len(candidate.name) == len(temporary_prefix) + 32 + len(".tmp")
+                    and all(
+                        character in "0123456789abcdef"
+                        for character in candidate.name[len(temporary_prefix) : -len(".tmp")]
+                    )
+                ]
+                if run_dir.is_dir()
+                else []
+            )
+            if artifact.exists() or artifact.is_symlink():
+                if artifact.is_symlink() or not artifact.is_file():
+                    raise RecoveryError("recovery private artifact is not a regular file")
+                actual_digest = _private_artifact_digest(artifact.read_bytes())
+                if actual_digest != expected_digest:
+                    raise RecoveryError("recovery private artifact digest mismatch")
+                if classification == "before":
+                    artifact.unlink()
+                    touched_dirs.add(run_dir)
+            elif classification == "after":
+                raise RecoveryError("committed recovery private artifact is missing")
+            for temporary in temporaries:
+                if temporary.is_symlink() or not temporary.is_file():
+                    raise RecoveryError("unsafe recovery private artifact temporary")
+                temporary.unlink()
+                touched_dirs.add(run_dir)
+        for run_dir in touched_dirs:
+            if run_dir.exists():
+                fsync_directory(run_dir)
+                if not any(run_dir.iterdir()):
+                    run_dir.rmdir()
+                    fsync_directory(self.paths.private_runs)
 
     def _write_temporary(self, path: Path, payload: bytes) -> None:
         resolved_parent = path.parent.resolve()

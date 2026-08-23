@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -103,6 +104,79 @@ def _proposal(service, *, key: str = "proposal-1"):
         )
     )
     return brief, review
+
+
+def _revision_proposal(
+    service,
+    target,
+    *,
+    evidence_dispositions: tuple[EvidenceDisposition, ...] = (),
+):
+    brief = service.prepare(
+        PlanningRequest("revise", "Keep this focused", "revision-run", plan_id=target.plan_id),
+        MODEL,
+    )
+    draft = PlanProposalDraft(
+        title=target.title,
+        mission=target.mission,
+        goals=(
+            GoalProposal(
+                "existing-goal",
+                target.goals[0].title,
+                target.goals[0].reason,
+                target.goals[0].alignment_rationale,
+                existing_goal_id=target.goals[0].goal_id,
+            ),
+        ),
+        milestones=(
+            MilestoneProposal(
+                "existing-milestone",
+                "existing-goal",
+                target.milestones[0].title,
+                existing_milestone_id=target.milestones[0].milestone_id,
+            ),
+        ),
+        evidence_dispositions=evidence_dispositions,
+        next_action="Continue the same practice",
+    )
+    review = service.handle(
+        PlanningCommand(
+            MODEL,
+            SubmitProposalDraft(
+                brief.run_id,
+                "revision-proposal",
+                brief.brief_context_digest,
+                draft,
+            ),
+        )
+    )
+    return brief, review
+
+
+def _revision_rejection(brief, review, key: str) -> DecideProposal:
+    return DecideProposal(
+        review.proposal_id,
+        review.proposal_digest,
+        "reject",
+        key,
+        reason="This revision no longer reflects the current context",
+        expected_document_digest=brief.target_document_digest,
+        expected_structure_digest=brief.target_structure_digest,
+        expected_document_revision=brief.target_document_revision,
+        expected_structure_revision=brief.target_structure_revision,
+    )
+
+
+def _terminal_decision_count(root: Path, proposal_id: str) -> int:
+    events = [
+        json.loads(line) for line in (root / "planning-journal.jsonl").read_text().splitlines()
+    ]
+    return sum(
+        event["event"] == "committed"
+        and event.get("payload", {}).get("lifecycle", {}).get("type") == "proposal_decided"
+        and event["payload"]["lifecycle"].get("proposal_id") == proposal_id
+        for event in events
+    )
 
 
 def test_submission_assigns_ids_and_persists_no_canonical_markdown(tmp_path: Path) -> None:
@@ -254,6 +328,16 @@ def test_exact_learner_approval_applies_and_fold_survives_restart(tmp_path: Path
     assert view.plan.decisions[-1].proposal_id == review.proposal_id
     assert view.plan.concept_relations[0].relation == "distinct"
 
+    changed = DecideProposal(
+        review.proposal_id,
+        review.proposal_digest,
+        "approve",
+        "decision-1",
+        reason="Changed semantic input",
+    )
+    with pytest.raises(IdempotencyConflictError, match="different proposal decision"):
+        lifecycle(tmp_path).handle(PlanningCommand(LEARNER, changed))
+
 
 def test_revise_preserves_explicit_existing_ids_and_allocates_only_new_aliases(
     tmp_path: Path,
@@ -359,6 +443,21 @@ def test_rejection_is_journal_only_and_conflicting_second_decision_refuses(
 
     assert rejected.status == "rejected"
     assert not list((tmp_path / "plans").glob("*.md"))
+    assert (
+        lifecycle(tmp_path).handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(
+                    review.proposal_id,
+                    review.proposal_digest,
+                    "reject",
+                    "decision-reject",
+                    reason="This is not my intent",
+                ),
+            )
+        )
+        == rejected
+    )
     with pytest.raises(ProposalConflictError, match="already rejected"):
         service.handle(
             PlanningCommand(
@@ -371,6 +470,125 @@ def test_rejection_is_journal_only_and_conflicting_second_decision_refuses(
                 ),
             )
         )
+
+
+def test_fresh_revision_rejection_is_journal_only_and_idempotent(tmp_path: Path) -> None:
+    target = canonical_plan("target", goal_ids=("goal-target",))
+    store_plan(tmp_path, target)
+    service = lifecycle(tmp_path)
+    brief, review = _revision_proposal(service, target)
+    before = service.inspect(PlanningRef("target"))
+    command = PlanningCommand(
+        LEARNER,
+        _revision_rejection(brief, review, "fresh-revision-rejection"),
+    )
+
+    rejected = service.handle(command)
+    replayed = lifecycle(tmp_path).handle(command)
+
+    assert rejected.status == "rejected"
+    assert replayed == rejected
+    current = service.inspect(PlanningRef("target"))
+    assert current.canonical_text == before.canonical_text
+    assert current.plan.document_revision == 1
+    assert _terminal_decision_count(tmp_path, review.proposal_id) == 1
+
+
+def test_checkpoint_makes_revision_rejection_stale_without_terminal_decision(
+    tmp_path: Path,
+) -> None:
+    target = canonical_plan("target", goal_ids=("goal-target",))
+    store_plan(tmp_path, target)
+    service = lifecycle(tmp_path)
+    brief, review = _revision_proposal(service, target)
+    service.handle(
+        PlanningCommand(
+            RECORDER,
+            RecordCheckpoint(
+                "target",
+                Checkpoint("mid", "on-track", "2026-08-23T16:00:00+00:00", "Changed"),
+                "checkpoint-before-reject",
+            ),
+        )
+    )
+    intervening = service.inspect(PlanningRef("target"))
+
+    with pytest.raises(ProposalConflictError, match="stale"):
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                _revision_rejection(brief, review, "reject-after-checkpoint"),
+            )
+        )
+
+    current = service.inspect(PlanningRef("target"))
+    assert current.canonical_text == intervening.canonical_text
+    assert current.plan.document_revision == 2
+    assert _terminal_decision_count(tmp_path, review.proposal_id) == 0
+
+
+def test_trusted_evidence_makes_revision_rejection_stale_without_terminal_decision(
+    tmp_path: Path,
+) -> None:
+    item = evidence_ref("practice-reject", source_kind="studyloop_practice", tier=1)
+    target = canonical_plan("target", goal_ids=("goal-target",))
+    store_plan(tmp_path, target)
+    service = lifecycle(tmp_path, evidence=(item,))
+    brief, review = _revision_proposal(
+        service,
+        target,
+        evidence_dispositions=(EvidenceDisposition(item.evidence_id, "selected", "Relevant"),),
+    )
+    service.handle(
+        PlanningCommand(
+            RECORDER,
+            RecordTrustedEvidence("target", (item.evidence_id,), "evidence-before-reject"),
+        )
+    )
+    intervening = service.inspect(PlanningRef("target"))
+
+    with pytest.raises(ProposalConflictError, match="stale"):
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                _revision_rejection(brief, review, "reject-after-evidence"),
+            )
+        )
+
+    current = service.inspect(PlanningRef("target"))
+    assert current.canonical_text == intervening.canonical_text
+    assert current.plan.document_revision == 2
+    assert _terminal_decision_count(tmp_path, review.proposal_id) == 0
+
+
+def test_canonical_transition_makes_revision_rejection_stale_without_terminal_decision(
+    tmp_path: Path,
+) -> None:
+    target = canonical_plan("target", goal_ids=("goal-target",))
+    store_plan(tmp_path, target)
+    service = lifecycle(tmp_path)
+    brief, review = _revision_proposal(service, target)
+    service.handle(
+        PlanningCommand(
+            LEARNER,
+            TransitionPlanStatus("target", "complete", "complete-before-reject"),
+        )
+    )
+    intervening = service.inspect(PlanningRef("target"))
+
+    with pytest.raises(ProposalConflictError, match="stale"):
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                _revision_rejection(brief, review, "reject-after-transition"),
+            )
+        )
+
+    current = service.inspect(PlanningRef("target"))
+    assert current.canonical_text == intervening.canonical_text
+    assert current.plan.document_revision == 2
+    assert current.plan.status == "complete"
+    assert _terminal_decision_count(tmp_path, review.proposal_id) == 0
 
 
 def test_checkpoint_after_submission_makes_revision_approval_stale(tmp_path: Path) -> None:
@@ -571,6 +789,10 @@ evil --> shell
         PlanningCommand(LEARNER, ImportPlanDraft(imported, "import-1"))
     )
     assert replay == outcome
+    with pytest.raises(IdempotencyConflictError, match="different lifecycle command"):
+        lifecycle(tmp_path).handle(
+            PlanningCommand(LEARNER, ImportPlanDraft("# Changed import", "import-1"))
+        )
 
 
 def test_import_rejects_executable_markdown_without_canonical_mutation(tmp_path: Path) -> None:

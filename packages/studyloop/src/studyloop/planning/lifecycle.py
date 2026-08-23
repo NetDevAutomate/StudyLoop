@@ -273,9 +273,6 @@ class PlanningLifecycle:
             ),
             created_at=self.clock.now(),
         )
-        self.repository.write_private_artifact(
-            PrivateRunArtifact(run_id, "brain-dump.txt", request.brain_dump)
-        )
         brain_digest = _canonical_digest(
             "studyloop.private-brain-dump", {"content_exact": request.brain_dump}
         )
@@ -299,17 +296,25 @@ class PlanningLifecycle:
             if _brief_context_digest(request, current, offered) != context_digest:
                 raise PlanConflictError("planning context changed while capturing the request")
 
-        self.repository.commit(
+        committed = self.repository.commit(
             MutationIntent(
                 intent_id=self.ids.new_id("intent"),
                 caller=actor.actor_id,
                 idempotency_key=f"prepare:{request.idempotency_key}",
+                idempotency_digest=digest,
                 operation="journal",
                 ref=PlanningRef(run_id),
                 metadata=metadata,
+                private_artifacts=(
+                    PrivateRunArtifact(run_id, "brain-dump.txt", request.brain_dump),
+                ),
             ),
             guard=guard,
         )
+        if committed.status == "replayed":
+            current = self.repository.project(lambda _snapshot, events: self._fold(events))
+            _, winning_run_id = current.request_keys[key]
+            return current.briefs_by_run[winning_run_id]
         return brief
 
     def inspect(self, ref: PlanningInspectRef) -> PlanningResult:
@@ -436,9 +441,6 @@ class PlanningLifecycle:
         )
         proposal_payload = persisted_proposal_payload(persisted)
         artifact_text = json.dumps(proposal_payload, ensure_ascii=False, sort_keys=True)
-        self.repository.write_private_artifact(
-            PrivateRunArtifact(command.run_id, f"{proposal_id}.json", artifact_text)
-        )
         metadata: dict[str, object] = {
             "lifecycle": {
                 "type": "proposal_issued",
@@ -463,17 +465,29 @@ class PlanningLifecycle:
             if prior_proposal and decision is not None:
                 raise ProposalConflictError("planning run already has a terminal proposal decision")
 
-        self.repository.commit(
+        committed = self.repository.commit(
             MutationIntent(
                 intent_id=self.ids.new_id("intent"),
                 caller=actor.actor_id,
                 idempotency_key=f"proposal:{command.idempotency_key}",
+                idempotency_digest=input_digest,
                 operation="journal",
                 ref=PlanningRef(plan.plan_id),
                 metadata=metadata,
+                private_artifacts=(
+                    PrivateRunArtifact(
+                        command.run_id,
+                        f"{proposal_id}.json",
+                        artifact_text,
+                    ),
+                ),
             ),
             guard=guard,
         )
+        if committed.status == "replayed":
+            current = self.repository.project(lambda _snapshot, events: self._fold(events))
+            _, winning_proposal_id = current.proposal_keys[key]
+            return current.proposals_by_id[winning_proposal_id].review
         return review
 
     def _decide(self, command: DecideProposal, actor: ActorContext) -> PlanOutcome:
@@ -502,31 +516,39 @@ class PlanningLifecycle:
             raise ProposalConflictError(
                 f"proposal {review.proposal_id!r} was superseded by {latest!r}"
             )
+        brief = state.briefs_by_run[review.run_id]
+        self._proposal_policy.validate_decision_cas(command, proposal)
         if command.decision == "reject":
             outcome = PlanOutcome("rejected", review.plan_preview.plan_id, review.proposal_id)
             metadata = self._decision_metadata(actor, command, input_digest, outcome)
 
-            def rejection_guard(_snapshot, events: tuple[JournalEvent, ...], _intent) -> None:
+            def rejection_guard(
+                current_snapshot: PlanSnapshot,
+                events: tuple[JournalEvent, ...],
+                _intent,
+            ) -> None:
                 current = self._fold(events)
                 self._open_proposal(current, command.proposal_id)
                 if current.latest_proposal_by_run.get(review.run_id) != review.proposal_id:
                     raise ProposalConflictError("a newer proposal superseded this rejection")
+                self._assert_brief_current(brief, current_snapshot)
 
-            self.repository.commit(
+            committed = self.repository.commit(
                 MutationIntent(
                     intent_id=self.ids.new_id("intent"),
                     caller=actor.actor_id,
                     idempotency_key=f"decision:{command.idempotency_key}",
+                    idempotency_digest=input_digest,
                     operation="journal",
                     ref=PlanningRef(review.plan_preview.plan_id),
                     metadata=metadata,
                 ),
                 guard=rejection_guard,
             )
+            if committed.status == "replayed":
+                return self._decision_replay(actor, command.idempotency_key, input_digest)
             return outcome
 
-        brief = state.briefs_by_run[review.run_id]
-        self._proposal_policy.validate_decision_cas(command, proposal)
         plan = copy.deepcopy(review.plan_preview)
         for relation in plan.concept_relations:
             relation.decided_by = "learner"
@@ -599,6 +621,7 @@ class PlanningLifecycle:
             intent_id=self.ids.new_id("intent"),
             caller=actor.actor_id,
             idempotency_key=f"decision:{command.idempotency_key}",
+            idempotency_digest=input_digest,
             operation="create" if brief.mode == "create" else "update",
             plan=plan,
             expected_document_digest=proposal.base_document_digest,
@@ -608,6 +631,8 @@ class PlanningLifecycle:
             metadata=metadata,
         )
         committed = self.repository.commit(intent, guard=approval_guard)
+        if committed.status == "replayed":
+            return self._decision_replay(actor, command.idempotency_key, input_digest)
         return PlanOutcome(
             "applied",
             plan.plan_id,
@@ -910,12 +935,18 @@ class PlanningLifecycle:
                 intent_id=self.ids.new_id("intent"),
                 caller=actor.actor_id,
                 idempotency_key=f"import:{command.idempotency_key}",
+                idempotency_digest=input_digest,
                 operation="create",
                 plan=plan,
                 metadata=metadata,
             ),
             guard=import_guard,
         )
+        if committed.status == "replayed":
+            replay = self._direct_replay(actor, command.idempotency_key, input_digest)
+            if replay is None:  # pragma: no cover - repository/journal invariant
+                raise PlanConflictError("replayed import outcome is missing from the journal")
+            return replay
         self.evidence.add_trusted(import_evidence)
         return PlanOutcome(
             "imported",
@@ -955,6 +986,7 @@ class PlanningLifecycle:
                 intent_id=self.ids.new_id("intent"),
                 caller=actor.actor_id,
                 idempotency_key=f"{event_type}:{idempotency_key}",
+                idempotency_digest=input_digest,
                 operation="update",
                 plan=plan,
                 expected_document_digest=view.document_digest,
@@ -965,6 +997,11 @@ class PlanningLifecycle:
             ),
             guard=guard,
         )
+        if result.status == "replayed":
+            replay = self._direct_replay(actor, idempotency_key, input_digest)
+            if replay is None:  # pragma: no cover - repository/journal invariant
+                raise PlanConflictError("replayed command outcome is missing from the journal")
+            return replay
         return PlanOutcome(
             status,
             plan.plan_id,
@@ -988,6 +1025,23 @@ class PlanningLifecycle:
         if prior_digest != input_digest:
             raise IdempotencyConflictError(
                 "idempotency key was already used for a different lifecycle command"
+            )
+        return outcome
+
+    def _decision_replay(
+        self,
+        actor: ActorContext,
+        idempotency_key: str,
+        input_digest: str,
+    ) -> PlanOutcome:
+        state = self.repository.project(lambda _snapshot, events: self._fold(events))
+        prior = state.decision_keys.get((actor.actor_id, idempotency_key))
+        if prior is None:  # pragma: no cover - repository/journal invariant
+            raise PlanConflictError("replayed decision outcome is missing from the journal")
+        prior_digest, outcome = prior
+        if prior_digest != input_digest:  # pragma: no cover - repository checked under lock
+            raise IdempotencyConflictError(
+                "idempotency key was already used for a different proposal decision"
             )
         return outcome
 

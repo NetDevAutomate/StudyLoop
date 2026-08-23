@@ -22,6 +22,7 @@ JournalEventKind = Literal["intent", "committed", "recovered"]
 _TERMINAL_MATCH_FIELDS = (
     "caller",
     "idempotency_key",
+    "idempotency_digest",
     "payload_digest",
     "operation",
     "plan_id",
@@ -49,6 +50,7 @@ class JournalEvent:
     intent_id: str
     caller: str
     idempotency_key: str
+    idempotency_digest: str
     payload_digest: str
     operation: str
     plan_id: str
@@ -89,6 +91,11 @@ class JournalEvent:
                 intent_id=_required_str(payload, "intent_id"),
                 caller=_required_str(payload, "caller"),
                 idempotency_key=_required_str(payload, "idempotency_key"),
+                idempotency_digest=(
+                    _required_str(payload, "idempotency_digest")
+                    if payload.get("idempotency_digest") is not None
+                    else _required_str(payload, "payload_digest")
+                ),
                 payload_digest=_required_str(payload, "payload_digest"),
                 operation=_required_str(payload, "operation"),
                 plan_id=_required_str(payload, "plan_id"),

@@ -18,6 +18,7 @@ from studyloop.planning.repository import (
     PlanningPaths,
     PlanningRef,
     PlanningRepository,
+    PrivateRunArtifact,
     RecoveryError,
 )
 
@@ -61,6 +62,24 @@ def _intent() -> MutationIntent:
         idempotency_key="key-crash",
         operation="create",
         plan=plan,
+    )
+
+
+def _private_intent() -> MutationIntent:
+    return MutationIntent(
+        intent_id="intent-private-crash",
+        caller="pytest-private-crash",
+        idempotency_key="key-private-crash",
+        idempotency_digest="sha256:v1:" + "d" * 64,
+        operation="journal",
+        ref=PlanningRef("private-crash-run"),
+        private_artifacts=(
+            PrivateRunArtifact(
+                "private-crash-run",
+                "brain-dump.txt",
+                "sensitive orphan candidate",
+            ),
+        ),
     )
 
 
@@ -146,6 +165,30 @@ def test_recovery_refuses_an_unclassifiable_third_state(tmp_path: Path) -> None:
 
     events = [json.loads(line) for line in paths.journal.read_text().splitlines()]
     assert [event["event"] for event in events] == ["intent"]
+
+
+def test_recovery_removes_uncommitted_transactional_private_artifact(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_private_artifacts"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_private_artifacts"):
+        crashing.commit(_private_intent())
+    artifact = paths.private_runs / "private-crash-run" / "brain-dump.txt"
+    assert artifact.is_file()
+
+    restarted = PlanningRepository(paths, index_refresher=None)
+    report = restarted.recover()
+
+    assert [item.classification for item in report.recovered] == ["before"]
+    assert not artifact.exists()
+    assert not artifact.parent.exists()
+    assert restarted.commit(_private_intent()).status == "committed"
+    assert artifact.read_text() == "sensitive orphan candidate"
 
 
 def test_after_replace_recovery_fsyncs_plan_directory_before_terminal_event(

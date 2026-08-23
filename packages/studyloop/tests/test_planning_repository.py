@@ -149,6 +149,75 @@ def test_same_idempotency_tuple_and_payload_replays_but_changed_payload_conflict
         repository.commit(changed)
 
 
+def test_semantic_idempotency_replays_winning_generated_payload_without_weakening_integrity(
+    tmp_path: Path,
+) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    first = MutationIntent(
+        intent_id="generated-intent-a",
+        caller="same-adapter",
+        idempotency_key="same-command",
+        idempotency_digest="sha256:v1:" + "a" * 64,
+        plan=_plan("generated-plan-a"),
+    )
+    retry = replace(
+        first,
+        intent_id="generated-intent-b",
+        plan=_plan("generated-plan-b"),
+    )
+
+    committed = repository.commit(first)
+    replayed = repository.commit(retry)
+
+    assert replayed == replace(committed, status="replayed")
+    assert (tmp_path / "plans" / "generated-plan-a.md").is_file()
+    assert not (tmp_path / "plans" / "generated-plan-b.md").exists()
+
+    changed_semantics = replace(retry, idempotency_digest="sha256:v1:" + "b" * 64)
+    with pytest.raises(IdempotencyConflictError, match="different semantic input"):
+        repository.commit(changed_semantics)
+
+    reused_intent = replace(
+        retry,
+        intent_id="generated-intent-a",
+        plan=_plan("generated-plan-c"),
+    )
+    with pytest.raises(IdempotencyConflictError, match="intent_id"):
+        repository.commit(reused_intent)
+
+
+def test_semantic_replay_writes_only_the_winning_transactional_private_artifact(
+    tmp_path: Path,
+) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    first = MutationIntent(
+        intent_id="private-intent-a",
+        caller="same-adapter",
+        idempotency_key="private-command",
+        idempotency_digest="sha256:v1:" + "c" * 64,
+        operation="journal",
+        ref=PlanningRef("private-run-a"),
+        private_artifacts=(
+            PrivateRunArtifact("private-run-a", "brain-dump.txt", "sensitive input"),
+        ),
+    )
+    retry = replace(
+        first,
+        intent_id="private-intent-b",
+        ref=PlanningRef("private-run-b"),
+        private_artifacts=(
+            PrivateRunArtifact("private-run-b", "brain-dump.txt", "sensitive input"),
+        ),
+    )
+
+    committed = repository.commit(first)
+    replayed = repository.commit(retry)
+
+    assert replayed == replace(committed, status="replayed")
+    assert (tmp_path / "private-runs" / "private-run-a" / "brain-dump.txt").is_file()
+    assert not (tmp_path / "private-runs" / "private-run-b").exists()
+
+
 def test_transaction_guard_observes_validated_snapshot_and_events_under_lock(
     tmp_path: Path,
 ) -> None:

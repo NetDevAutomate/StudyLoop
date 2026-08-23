@@ -166,3 +166,102 @@ migrated in this task.
 - Import rejects executable Markdown patterns and never dereferences user text
   as a filesystem path. Browser-side rendering sanitization and accessible
   Mermaid fallback remain Task 9 concerns.
+
+## Fix round 1 — atomic semantic retries and stale rejection
+
+### Review findings resolved
+
+The repository now keeps two independent digests for each transaction:
+
+- `idempotency_digest` represents trusted caller + key + normalized semantic
+  command input and decides whether a concurrent attempt is a replay or a
+  conflict;
+- `payload_digest` continues to bind the complete generated transaction and
+  still rejects reuse of an `intent_id` for different bytes.
+
+Lifecycle commands supply their existing normalized request/command digest as
+the semantic digest. A losing concurrent attempt receives the journal-folded
+winning run, proposal, decision, import, or direct-command result, including
+the winner's IDs, revisions, digests and status.
+
+Brain dumps and proposal payloads are now transactional private artifacts.
+The repository checks semantic replay while holding the root lock before it
+writes either artifact, so a normal losing race creates no private data. The
+journal intent records only artifact path and content digest; if a process dies
+after an artifact write but before the terminal event, recovery verifies the
+digest, removes the uncommitted artifact and narrowly matched temporary, fsyncs
+the directory, and removes the empty run directory. It refuses unknown paths,
+symlinks, non-regular files, or digest mismatches rather than deleting them.
+
+Revision rejection now validates the complete target CAS before dispatch and
+recomputes brief context inside its repository guard. Checkpoint, trusted
+evidence, canonical document, evidence provenance, capacity/context, or newer
+proposal changes therefore make rejection stale without appending a terminal
+`proposal_decided` event. A fresh revision rejection remains journal-only and
+idempotent.
+
+### RED evidence
+
+The first public-lifecycle run synchronized two spawned processes inside
+`PlanningRepository.commit()`, after both lifecycle pre-reads and generated
+candidate state:
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_lifecycle_commands.py::test_checkpoint_makes_revision_rejection_stale_without_terminal_decision \
+  packages/studyloop/tests/test_planning_lifecycle_commands.py::test_trusted_evidence_makes_revision_rejection_stale_without_terminal_decision \
+  packages/studyloop/tests/test_planning_lifecycle_commands.py::test_canonical_transition_makes_revision_rejection_stale_without_terminal_decision \
+  packages/studyloop/tests/test_planning_lifecycle_capacity.py::test_concurrent_identical_prepare_replays_one_captured_run \
+  packages/studyloop/tests/test_planning_lifecycle_capacity.py::test_concurrent_identical_submission_replays_one_proposal \
+  packages/studyloop/tests/test_planning_lifecycle_capacity.py::test_concurrent_identical_approval_replays_one_canonical_decision \
+  packages/studyloop/tests/test_planning_lifecycle_capacity.py::test_concurrent_identical_import_replays_one_canonical_plan \
+  packages/studyloop/tests/test_planning_lifecycle_capacity.py::test_concurrent_identical_checkpoint_replays_one_canonical_append -q
+# 8 failed: three stale rejections did not raise; every spawned race returned one ok + one error
+```
+
+Repository tracer tests then covered semantic replay without weakened payload
+integrity, transactional artifact winner-only behavior, and crash cleanup.
+
+### GREEN evidence
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_lifecycle_*.py \
+  packages/studyloop/tests/test_planning_repository.py \
+  packages/studyloop/tests/test_planning_repository_crash.py -q
+# 96 passed in 2.51s
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning_*.py -q
+# 265 passed in 3.07s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli_plan.py \
+  packages/studyloop/tests/test_web_plans.py \
+  packages/studyloop/tests/test_planning_evaluation.py \
+  packages/studyloop/tests/test_planning_store.py -q
+# 84 passed, 1 pre-existing Starlette TestClient deprecation warning in 1.42s
+
+rtk uv run --group dev pyright \
+  packages/studyloop/src/studyloop/planning/contracts.py \
+  packages/studyloop/src/studyloop/planning/evidence.py \
+  packages/studyloop/src/studyloop/planning/lifecycle.py \
+  packages/studyloop/src/studyloop/planning/lifecycle_journal.py \
+  packages/studyloop/src/studyloop/planning/lifecycle_proposals.py \
+  packages/studyloop/src/studyloop/planning/models.py \
+  packages/studyloop/src/studyloop/planning/markdown.py \
+  packages/studyloop/src/studyloop/planning/digests.py \
+  packages/studyloop/src/studyloop/planning/authoring.py
+# 0 errors, 0 warnings, 0 informations
+```
+
+Ruff formatting/checks and `git diff --check` passed. Changed-input controls
+remain green for prepare, proposal submission, approval, import and checkpoint;
+the semantic replay path does not turn a changed command into a replay.
+
+### Compatibility note
+
+`idempotency_digest` is additive and optional at the generic repository seam.
+Existing callers and older journal events fall back to the complete payload
+digest, preserving their prior byte-identical replay behavior. Lifecycle
+callers opt into semantic replay explicitly because their candidate payloads
+contain server-generated IDs and audit timestamps.
