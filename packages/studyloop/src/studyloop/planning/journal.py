@@ -18,6 +18,7 @@ JOURNAL_SCHEMA_VERSION = 1
 JOURNAL_EVENT_VERSION = 1
 
 JournalEventKind = Literal["intent", "committed", "recovered"]
+SemanticRetryState = Literal["pending", "retryable", "completed"]
 
 _TERMINAL_MATCH_FIELDS = (
     "caller",
@@ -40,6 +41,14 @@ class JournalError(RuntimeError):
 
 class JournalCorruptionError(JournalError):
     """Raised when an append-only journal line is malformed or unsupported."""
+
+
+class SemanticRetryConflictError(ValueError):
+    """Raised when a candidate disagrees with its durable semantic lineage."""
+
+    def __init__(self, reason: Literal["semantic", "operation"]) -> None:
+        self.reason = reason
+        super().__init__(reason)
 
 
 @dataclass(frozen=True)
@@ -112,6 +121,52 @@ class JournalEvent:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise JournalCorruptionError(f"invalid planning journal event: {error}") from error
+
+
+@dataclass(frozen=True)
+class SemanticRetryLineage:
+    """Authoritative state for one caller/idempotency tuple."""
+
+    idempotency_digest: str
+    operation: str
+    state: SemanticRetryState
+
+
+@dataclass
+class SemanticRetryProjection:
+    """Fold and validate semantic retry identity independently of raw payload bytes."""
+
+    lineages: dict[tuple[str, str], SemanticRetryLineage] = field(default_factory=dict)
+
+    def validate_candidate(
+        self,
+        *,
+        caller: str,
+        idempotency_key: str,
+        idempotency_digest: str,
+        operation: str,
+    ) -> None:
+        lineage = self.lineages.get((caller, idempotency_key))
+        if lineage is None:
+            return
+        if lineage.idempotency_digest != idempotency_digest:
+            raise SemanticRetryConflictError("semantic")
+        if lineage.operation != operation:
+            raise SemanticRetryConflictError("operation")
+
+    def begin(self, event: JournalEvent) -> None:
+        self.lineages[(event.caller, event.idempotency_key)] = SemanticRetryLineage(
+            event.idempotency_digest,
+            event.operation,
+            "pending",
+        )
+
+    def finish(self, event: JournalEvent, state: Literal["retryable", "completed"]) -> None:
+        self.lineages[(event.caller, event.idempotency_key)] = SemanticRetryLineage(
+            event.idempotency_digest,
+            event.operation,
+            state,
+        )
 
 
 def _optional_str(value: object) -> str | None:
@@ -240,30 +295,36 @@ def read_events(path: Path) -> list[JournalEvent]:
     return events
 
 
-def validate_event_sequence(events: list[JournalEvent]) -> None:
-    """Fail closed unless events form one internally consistent state machine."""
+def validate_event_sequence(events: list[JournalEvent]) -> SemanticRetryProjection:
+    """Validate journal state and return its authoritative semantic retry projection."""
     active: JournalEvent | None = None
     prior_intents: dict[str, JournalEvent] = {}
     prior_terminals: dict[str, JournalEvent] = {}
-    idempotency_semantics: dict[tuple[str, str], str] = {}
-    idempotency_operations: dict[tuple[str, str], str] = {}
-    idempotency_states: dict[tuple[str, str], Literal["pending", "retryable", "completed"]] = {}
+    projection = SemanticRetryProjection()
 
     for event in events:
         key = (event.caller, event.idempotency_key)
-        prior_semantics = idempotency_semantics.setdefault(key, event.idempotency_digest)
-        if prior_semantics != event.idempotency_digest:
-            raise JournalCorruptionError("idempotency tuple has conflicting semantic digests")
 
         if event.event == "intent":
+            try:
+                projection.validate_candidate(
+                    caller=event.caller,
+                    idempotency_key=event.idempotency_key,
+                    idempotency_digest=event.idempotency_digest,
+                    operation=event.operation,
+                )
+            except SemanticRetryConflictError as error:
+                message = (
+                    "idempotency tuple has conflicting semantic digests"
+                    if error.reason == "semantic"
+                    else "semantic retry changes transaction operation"
+                )
+                raise JournalCorruptionError(message) from error
             if active is not None:
                 raise JournalCorruptionError("duplicate intent while another intent is pending")
-            state = idempotency_states.get(key)
-            if state == "completed":
+            lineage = projection.lineages.get(key)
+            if lineage is not None and lineage.state == "completed":
                 raise JournalCorruptionError("intent follows a terminal after outcome")
-            prior_operation = idempotency_operations.setdefault(key, event.operation)
-            if state == "retryable" and prior_operation != event.operation:
-                raise JournalCorruptionError("semantic retry changes transaction operation")
             previous_terminal = prior_terminals.get(event.intent_id)
             if previous_terminal is not None:
                 previous_intent = prior_intents[event.intent_id]
@@ -276,7 +337,7 @@ def validate_event_sequence(events: list[JournalEvent]) -> None:
             _validate_intent_event(event)
             active = event
             prior_intents[event.intent_id] = event
-            idempotency_states[key] = "pending"
+            projection.begin(event)
             continue
 
         if active is None:
@@ -289,10 +350,11 @@ def validate_event_sequence(events: list[JournalEvent]) -> None:
         classification = _validate_terminal_event(event, active)
         prior_terminals[event.intent_id] = event
         if classification == "after":
-            idempotency_states[key] = "completed"
+            projection.finish(event, "completed")
         else:
-            idempotency_states[key] = "retryable"
+            projection.finish(event, "retryable")
         active = None
+    return projection
 
 
 def _matching_transaction(intent: JournalEvent, other: JournalEvent) -> bool:

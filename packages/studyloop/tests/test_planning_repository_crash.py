@@ -105,6 +105,46 @@ def _semantic_plan_intent() -> MutationIntent:
     )
 
 
+def _operation_lineage_intent(paths: PlanningPaths, operation: str) -> MutationIntent:
+    common = {
+        "intent_id": f"intent-lineage-{operation}",
+        "caller": "semantic-lineage-adapter",
+        "idempotency_key": "semantic-lineage-key",
+        "idempotency_digest": "sha256:v1:" + "9" * 64,
+        "operation": operation,
+    }
+    if operation == "create":
+        return replace(_intent(), **common)
+    if operation == "update":
+        repository = PlanningRepository(paths, index_refresher=None)
+        repository.commit(_intent())
+        before = repository.inspect(PlanningRef("crash-plan"))
+        updated = deepcopy(before.plan)
+        updated.title = "Updated only after a valid retry"
+        return MutationIntent(
+            plan=updated,
+            expected_document_digest=before.document_digest,
+            expected_structure_digest=before.structure_digest,
+            expected_document_revision=before.plan.document_revision,
+            expected_structure_revision=before.plan.structure_revision,
+            **common,
+        )
+    return MutationIntent(
+        ref=PlanningRef("lineage-run"),
+        private_artifacts=(PrivateRunArtifact("lineage-run", "lineage.txt", "sensitive lineage"),),
+        **common,
+    )
+
+
+def _durable_payloads(paths: PlanningPaths) -> dict[str, bytes]:
+    return {
+        str(path.relative_to(paths.root)): path.read_bytes()
+        for directory in (paths.plans, paths.private_runs)
+        for path in directory.rglob("*")
+        if path.is_file()
+    }
+
+
 def _lifecycle(
     root: Path,
     *,
@@ -266,6 +306,117 @@ def test_recovery_removes_uncommitted_transactional_private_artifact(
     assert not artifact.parent.exists()
     assert restarted.commit(_private_intent()).status == "committed"
     assert artifact.read_text() == "sensitive orphan candidate"
+
+
+@pytest.mark.parametrize(
+    ("lineage_operation", "retry_operation"),
+    [
+        ("create", "upsert"),
+        ("update", "upsert"),
+        ("record", "journal"),
+        ("journal", "record"),
+    ],
+)
+def test_commit_rejects_operation_incompatible_recovered_before_retry_without_mutation(
+    tmp_path: Path,
+    lineage_operation: str,
+    retry_operation: str,
+) -> None:
+    paths = _paths(tmp_path)
+    intent = _operation_lineage_intent(paths, lineage_operation)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_journal_intent"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_journal_intent"):
+        crashing.commit(intent)
+
+    restarted = PlanningRepository(paths, index_refresher=None)
+    assert [item.classification for item in restarted.recover().recovered] == ["before"]
+    journal_before = paths.journal.read_bytes()
+    payloads_before = _durable_payloads(paths)
+    retry = replace(
+        intent,
+        intent_id=f"{intent.intent_id}-incompatible",
+        operation=retry_operation,
+    )
+
+    with pytest.raises(IdempotencyConflictError, match="transaction operation"):
+        restarted.commit(retry)
+
+    assert paths.journal.read_bytes() == journal_before
+    assert _durable_payloads(paths) == payloads_before
+    assert restarted.recover().recovered == ()
+    assert restarted.project(lambda snapshot, events: (snapshot.current_count, len(events)))[
+        1
+    ] == len(_journal_dicts(paths))
+
+
+def test_commit_accepts_compatible_regenerated_payload_after_recovered_before(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_journal_intent"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_journal_intent"):
+        crashing.commit(_private_intent())
+    restarted = PlanningRepository(paths, index_refresher=None)
+    assert [item.classification for item in restarted.recover().recovered] == ["before"]
+    retry = replace(
+        _private_intent(),
+        intent_id="intent-private-compatible-retry",
+        ref=PlanningRef("private-compatible-run"),
+        private_artifacts=(
+            PrivateRunArtifact(
+                "private-compatible-run",
+                "brain-dump.txt",
+                "sensitive orphan candidate",
+            ),
+        ),
+    )
+
+    committed = restarted.commit(retry)
+
+    assert committed.status == "committed"
+    assert restarted.commit(retry).status == "replayed"
+    assert (
+        paths.private_runs / "private-compatible-run" / "brain-dump.txt"
+    ).read_text() == "sensitive orphan candidate"
+    assert not (paths.private_runs / "private-crash-run").exists()
+    assert PlanningRepository(paths, index_refresher=None).recover().recovered == ()
+
+
+def test_commit_rejects_changed_semantics_after_recovered_before_without_mutation(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_journal_intent"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_journal_intent"):
+        crashing.commit(_private_intent())
+    restarted = PlanningRepository(paths, index_refresher=None)
+    assert [item.classification for item in restarted.recover().recovered] == ["before"]
+    journal_before = paths.journal.read_bytes()
+    payloads_before = _durable_payloads(paths)
+    retry = replace(
+        _private_intent(),
+        intent_id="intent-private-changed-semantics",
+        idempotency_digest="sha256:v1:" + "8" * 64,
+    )
+
+    with pytest.raises(IdempotencyConflictError, match="different semantic input"):
+        restarted.commit(retry)
+
+    assert paths.journal.read_bytes() == journal_before
+    assert _durable_payloads(paths) == payloads_before
+    assert restarted.recover().recovered == ()
 
 
 @pytest.mark.parametrize("crash_point", ["after_journal_intent", "after_private_artifacts"])

@@ -25,6 +25,7 @@ from typing import Literal, TypeVar
 from .digests import compute_document_digest, compute_structure_digest
 from .journal import (
     JournalEvent,
+    SemanticRetryConflictError,
     append_event,
     fsync_directory,
     read_events,
@@ -792,21 +793,32 @@ class PlanningRepository:
         idempotency_digest: str,
         events: list[JournalEvent],
     ) -> CommitResult | None:
+        projection = validate_event_sequence(events)
+        try:
+            projection.validate_candidate(
+                caller=intent.caller,
+                idempotency_key=intent.idempotency_key,
+                idempotency_digest=idempotency_digest,
+                operation=intent.operation,
+            )
+        except SemanticRetryConflictError as error:
+            if error.reason == "operation":
+                raise IdempotencyConflictError(
+                    "idempotency key retry changes transaction operation"
+                ) from error
+            difference = (
+                "different semantic input" if intent.idempotency_digest else "a different payload"
+            )
+            raise IdempotencyConflictError(
+                f"idempotency key was already used with {difference}"
+            ) from error
+
         matching_intents: dict[str, JournalEvent] = {}
         terminal_after: dict[str, JournalEvent] = {}
         for event in events:
             same_tuple = (
                 event.caller == intent.caller and event.idempotency_key == intent.idempotency_key
             )
-            if same_tuple and event.idempotency_digest != idempotency_digest:
-                difference = (
-                    "different semantic input"
-                    if intent.idempotency_digest
-                    else "a different payload"
-                )
-                raise IdempotencyConflictError(
-                    f"idempotency key was already used with {difference}"
-                )
             if (
                 event.intent_id == intent.intent_id
                 and event.event == "intent"

@@ -343,3 +343,74 @@ rtk uv run --group dev pyright \
 Ruff formatting/checks and `git diff --check` passed. No repository or
 lifecycle interface changed; this round only corrects validation of durable
 history already emitted by the semantic-idempotency contract.
+
+## Fix round 3 — reject invalid semantic retries before append
+
+### Review finding resolved
+
+`validate_event_sequence()` now returns the same authoritative semantic retry
+projection used by the repository's locked idempotency check. The projection
+binds each `(caller, idempotency_key)` to its semantic digest, mutation
+operation and pending/retryable/completed state. Repository commit validates a
+candidate against that projection before guards, artifact writes, canonical
+plan replacement or journal append. Journal sequence validation uses the same
+projection while folding durable history, so the pre-append and restart rules
+cannot diverge.
+
+An operation-incompatible retry now raises deterministic
+`IdempotencyConflictError` without changing journal bytes, private artifacts or
+canonical plans. Parameterized public repository tests cover recovered-before
+lineages for create, update, record and journal operations; their otherwise
+valid retries attempt upsert, upsert, journal and record respectively. Each
+rejection is followed by successful recovery/projection of the unchanged
+history. Controls prove that a compatible regenerated raw payload still
+commits and replays, while a changed semantic digest still conflicts before
+mutation.
+
+### RED evidence
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_repository_crash.py \
+  -k 'commit_rejects_operation_incompatible or commit_accepts_compatible or commit_rejects_changed_semantics' -q
+# 4 failed, 2 passed, 27 deselected in 0.14s
+# Every create/update/record/journal incompatible retry returned instead of
+# raising IdempotencyConflictError.
+```
+
+### GREEN evidence
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_lifecycle_*.py \
+  packages/studyloop/tests/test_planning_repository.py \
+  packages/studyloop/tests/test_planning_repository_crash.py -q
+# 111 passed in 3.26s
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning_*.py -q
+# 280 passed in 3.55s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli_plan.py \
+  packages/studyloop/tests/test_web_plans.py \
+  packages/studyloop/tests/test_planning_evaluation.py \
+  packages/studyloop/tests/test_planning_store.py -q
+# 84 passed, 1 pre-existing Starlette TestClient deprecation warning in 1.69s
+
+rtk uv run --group dev pyright \
+  packages/studyloop/src/studyloop/planning/contracts.py \
+  packages/studyloop/src/studyloop/planning/evidence.py \
+  packages/studyloop/src/studyloop/planning/lifecycle.py \
+  packages/studyloop/src/studyloop/planning/lifecycle_journal.py \
+  packages/studyloop/src/studyloop/planning/lifecycle_proposals.py \
+  packages/studyloop/src/studyloop/planning/models.py \
+  packages/studyloop/src/studyloop/planning/markdown.py \
+  packages/studyloop/src/studyloop/planning/digests.py \
+  packages/studyloop/src/studyloop/planning/authoring.py \
+  packages/studyloop/src/studyloop/planning/journal.py
+# 0 errors, 0 warnings, 0 informations
+```
+
+All previous Task 3 corruption and Task 4 crash/race tests remain green. Ruff
+format/check and staged/unstaged diff checks passed. No lifecycle or repository
+public command shape changed, and no Task 5 adapter migration was started.
