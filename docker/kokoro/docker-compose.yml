@@ -58,6 +58,19 @@
 #     openvox_model: kokoro
 #     openvox_voice: bf_emma
 #
+# Or repoint it for a single command without editing anything, which is the
+# quickest way to compare two servers back to back:
+#
+#   STUDYLOOP_TTS_BASE_URL=http://127.0.0.1:8880/v1 \
+#     STUDYLOOP_TTS_VOICE=bf_lily studyloop recap today --speak
+#
+# (STUDYLOOP_TTS_MODEL too. These override the config FILE only -- code that
+# names its own endpoint is never silently repointed by a stray variable. The
+# project prefix follows both this repo's convention and VoiceMode's own, which
+# namespaces the equivalent settings as VOICEMODE_TTS_BASE_URLS /
+# VOICEMODE_TTS_VOICE / VOICEMODE_TTS_MODEL. Two voice tools sharing an
+# unprefixed TTS_BASE_URL would fight over the same shell.)
+#
 # The model is ~320MB, downloaded once and kept in the named volume. Allow ~1.5GB
 # of free RAM: the PyTorch runtime needs it, and the container will not start
 # usefully on a 1GB machine.
