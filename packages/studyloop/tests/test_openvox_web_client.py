@@ -174,18 +174,30 @@ class TestHealthIsHonest:
 
 
 class TestVoiceCatalogue:
-    def test_unreachable_returns_empty_not_an_exception(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Callers must read empty as 'cannot validate', never 'no voices'."""
+    def test_falls_back_to_the_models_own_voices(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When no known listing path answers, assume the MODEL's voices.
+
+        Changed deliberately from returning empty. Three Kokoro servers use three
+        different listing URLs, so a 404 on all of them means "this server
+        organises its catalogue differently", not "there are no voices" -- and an
+        empty list made the browser refuse server speech outright even though
+        synthesis worked. The ids ship with Kokoro-82M, so they belong to the
+        model rather than to any server.
+        """
 
         def _down(*_a: object, **_k: object) -> None:
             raise urllib.error.URLError("nope")
 
         monkeypatch.setattr(learning_voice.urllib.request, "urlopen", _down)
-        assert learning_voice.openvox_voices() == {}
+        voices = learning_voice.openvox_voices()
+        assert "bf_emma" in voices
+        assert "af_heart" in voices
+        assert voices["bf_emma"] == "British English"
+        assert all(v.startswith(("af_", "am_", "bf_", "bm_")) for v in voices), (
+            "the fallback must offer English voices only"
+        )
 
-    def test_parses_id_and_language(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_parses_the_openvox_shape(self, monkeypatch: pytest.MonkeyPatch) -> None:
         body = (
             b'{"data":[{"id":"bf_emma","language":"British English"},'
             b'{"id":"af_heart","language":"US English"},{"no_id":true}]}'
@@ -195,3 +207,43 @@ class TestVoiceCatalogue:
         )
         voices = learning_voice.openvox_voices()
         assert voices == {"bf_emma": "British English", "af_heart": "US English"}
+
+    def test_parses_the_kokoro_fastapi_shape(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Kokoro-FastAPI returns bare id strings under a different key.
+
+        Verified against a live server on port 8880: it 404s both other paths and
+        answers /audio/voices with {"voices": ["af_heart", ...]}.
+        """
+        calls: list[str] = []
+
+        def _urlopen(request: object, **_k: object):
+            url = getattr(request, "full_url", "")
+            calls.append(url)
+            if url.endswith("/audio/voices"):
+                return _FakeResponse(b'{"voices":["af_heart","bf_emma","bm_george"]}')
+            raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(learning_voice.urllib.request, "urlopen", _urlopen)
+        voices = learning_voice.openvox_voices()
+        assert set(voices) == {"af_heart", "bf_emma", "bm_george"}
+        # Language is derived from the prefix, since this shape carries no language.
+        assert voices["bf_emma"] == "British English"
+        assert voices["af_heart"] == ""
+        assert any("/models/kokoro/voices" in c for c in calls), "OpenVox path tried first"
+
+    def test_a_404_on_one_path_does_not_stop_the_search(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The first path 404ing must not be read as "no voices"."""
+        attempts = {"n": 0}
+
+        def _urlopen(request: object, **_k: object):
+            attempts["n"] += 1
+            url = getattr(request, "full_url", "")
+            if attempts["n"] < 3:
+                raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)  # type: ignore[arg-type]
+            return _FakeResponse(b'{"voices":["bf_lily"]}')
+
+        monkeypatch.setattr(learning_voice.urllib.request, "urlopen", _urlopen)
+        assert set(learning_voice.openvox_voices()) == {"bf_lily"}
+        assert attempts["n"] == 3

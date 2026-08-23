@@ -334,27 +334,106 @@ def _openvox_get_json(base_url: str, path: str, timeout: float) -> dict | None:
         return None
 
 
+#: Voice-listing is the ONE endpoint OpenAI-compatible Kokoro servers do not
+#: agree on, measured against live servers rather than taken from docs:
+#:
+#:   OpenVox            GET /models/{model}/voices   -> {"data":[{"id":..}]}
+#:   Kokoro-FastAPI     GET /audio/voices            -> {"voices":["af_heart",..]}
+#:   hwdsl2/kokoro      GET /voices
+#:
+#: Each returns 404 for the others' path, so all three are tried in turn. Speech
+#: itself is portable -- /audio/speech, the request body and the voice ids are
+#: identical -- which is why this list is worth having rather than pinning
+#: StudyLoop to one implementation.
+_OPENVOX_VOICE_PATHS = (
+    "/models/{model}/voices",
+    "/audio/voices",
+    "/voices",
+)
+
+#: Kokoro's English voice ids, used when a server offers no listing path we know.
+#: Hard-coded deliberately: these ship with the Kokoro-82M model itself, so they
+#: are a property of the model rather than of any server, and refusing to speak
+#: because a catalogue URL was unfamiliar would be a worse failure than assuming
+#: the model's own voices exist.
+_KOKORO_ENGLISH_VOICES = (
+    "af_alloy",
+    "af_aoede",
+    "af_bella",
+    "af_heart",
+    "af_jessica",
+    "af_kore",
+    "af_nicole",
+    "af_nova",
+    "af_river",
+    "af_sarah",
+    "af_sky",
+    "am_adam",
+    "am_echo",
+    "am_eric",
+    "am_fenrir",
+    "am_liam",
+    "am_michael",
+    "am_onyx",
+    "am_puck",
+    "am_santa",
+    "bf_alice",
+    "bf_emma",
+    "bf_isabella",
+    "bf_lily",
+    "bm_daniel",
+    "bm_fable",
+    "bm_george",
+    "bm_lewis",
+)
+
+
+def _parse_voice_payload(payload: object) -> dict[str, str]:
+    """Normalise the two shapes servers return into ``{voice_id: language}``."""
+    if not isinstance(payload, dict):
+        return {}
+    voices: dict[str, str] = {}
+    # OpenVox: {"data": [{"id": "bf_emma", "language": "British English"}, ...]}
+    entries = payload.get("data")
+    if isinstance(entries, list):
+        for entry in entries:
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+                voices[entry["id"]] = str(entry.get("language", ""))
+        if voices:
+            return voices
+    # Kokoro-FastAPI: {"voices": ["af_heart", "bf_emma", ...]} -- ids only, so the
+    # language is derived from the prefix the model itself encodes.
+    plain = payload.get("voices")
+    if isinstance(plain, list):
+        for entry in plain:
+            if isinstance(entry, str):
+                voices[entry] = "British English" if entry[:1] == "b" else ""
+            elif isinstance(entry, dict) and isinstance(entry.get("id"), str):
+                voices[entry["id"]] = str(entry.get("language", ""))
+    return voices
+
+
 def openvox_voices(cfg: dict | None = None) -> dict[str, str]:
     """Return ``{voice_id: language}`` for the configured model.
 
-    Empty when OpenVox is unreachable -- callers must treat an empty mapping as
-    "cannot validate" rather than "no voices exist", because refusing every
-    voice on a transient network blip would be worse than not checking.
+    Tries each known listing path, then falls back to the model's own English
+    voice ids. Never returns empty just because a server organises its catalogue
+    differently -- an empty list made the browser refuse server speech outright,
+    even though synthesis worked perfectly.
     """
     settings = _openvox_settings(cfg)
-    payload = _openvox_get_json(
-        settings["base_url"], f"/models/{settings['model']}/voices", settings["timeout"]
-    )
-    if not isinstance(payload, dict):
-        return {}
-    entries = payload.get("data")
-    if not isinstance(entries, list):
-        return {}
-    voices: dict[str, str] = {}
-    for entry in entries:
-        if isinstance(entry, dict) and isinstance(entry.get("id"), str):
-            voices[entry["id"]] = str(entry.get("language", ""))
-    return voices
+    for template in _OPENVOX_VOICE_PATHS:
+        payload = _openvox_get_json(
+            settings["base_url"],
+            template.format(model=settings["model"]),
+            settings["timeout"],
+        )
+        voices = _parse_voice_payload(payload)
+        if voices:
+            return voices
+    # No known listing path answered. Assume the model's own voices rather than
+    # reporting none: these are Kokoro-82M's, not any server's.
+    return {v: ("British English" if v[:1] == "b" else "") for v in _KOKORO_ENGLISH_VOICES}
 
 
 def openvox_is_english_voice(voice_id: object) -> bool:
