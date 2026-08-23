@@ -5,18 +5,21 @@ from __future__ import annotations
 import json
 import multiprocessing
 import stat
+from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from studyloop.planning.journal import JournalCorruptionError
+from studyloop.planning.markdown import render_plan
 from studyloop.planning.models import Goal, Milestone, Mission, StudyPlan
 from studyloop.planning.repository import (
     IdempotencyConflictError,
     MutationIntent,
     PathContainmentError,
     PlanCapacityError,
+    PlanConflictError,
     PlanningPaths,
     PlanningRef,
     PlanningRepository,
@@ -87,6 +90,26 @@ def _race_commit(root: str, plan_id: str, actor: str, barrier, results) -> None:
         results.put(("ok", result.status, result.plan_id))
 
 
+def _cas_update(
+    view,
+    plan: StudyPlan,
+    *,
+    intent_id: str,
+    operation: str = "update",
+) -> MutationIntent:
+    return MutationIntent(
+        intent_id=intent_id,
+        caller="pytest-cas",
+        idempotency_key=f"key-{intent_id}",
+        operation=operation,
+        plan=plan,
+        expected_document_digest=view.document_digest,
+        expected_structure_digest=view.structure_digest,
+        expected_document_revision=view.plan.document_revision,
+        expected_structure_revision=view.plan.structure_revision,
+    )
+
+
 def test_create_commits_a_digested_plan_and_a_durable_decision_record(tmp_path: Path) -> None:
     paths = _paths(tmp_path)
     repository = PlanningRepository(paths, index_refresher=None)
@@ -126,6 +149,69 @@ def test_same_idempotency_tuple_and_payload_replays_but_changed_payload_conflict
         repository.commit(changed)
 
 
+def test_default_operation_is_create_and_same_slug_never_clobbers(tmp_path: Path) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    first = MutationIntent(
+        intent_id="intent-default-first",
+        caller="pytest-default",
+        idempotency_key="key-default-first",
+        plan=_plan("default-slug", title="First title"),
+    )
+    second = replace(
+        first,
+        intent_id="intent-default-second",
+        idempotency_key="key-default-second",
+        plan=_plan("default-slug", title="Must not win"),
+    )
+
+    repository.commit(first)
+    with pytest.raises(PlanConflictError, match="already exists"):
+        repository.commit(second)
+
+    assert repository.inspect(PlanningRef("default-slug")).plan.title == "First title"
+
+
+@pytest.mark.parametrize("operation", ["update", "upsert"])
+def test_existing_plan_update_requires_complete_compare_and_swap(
+    tmp_path: Path, operation: str
+) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    repository.commit(_intent(_plan("cas-required")))
+    changed = _plan("cas-required", title="Must not overwrite")
+
+    with pytest.raises(PlanConflictError, match="complete expected state"):
+        repository.commit(
+            MutationIntent(
+                intent_id=f"intent-missing-cas-{operation}",
+                caller="pytest-cas",
+                idempotency_key=f"key-missing-cas-{operation}",
+                operation=operation,
+                plan=changed,
+            )
+        )
+
+    assert repository.inspect(PlanningRef("cas-required")).plan.title == "Cas Required"
+
+
+def test_stale_old_view_cannot_overwrite_a_newer_signed_plan(tmp_path: Path) -> None:
+    repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
+    repository.commit(_intent(_plan("stale-view", title="Original")))
+    stale = repository.inspect(PlanningRef("stale-view"))
+
+    current_plan = deepcopy(stale.plan)
+    current_plan.title = "Newer accepted title"
+    repository.commit(_cas_update(stale, current_plan, intent_id="intent-newer-accepted"))
+
+    stale_plan = deepcopy(stale.plan)
+    stale_plan.title = "Stale overwrite"
+    with pytest.raises(PlanConflictError, match="stale document digest"):
+        repository.commit(_cas_update(stale, stale_plan, intent_id="intent-stale"))
+
+    current = repository.inspect(PlanningRef("stale-view"))
+    assert current.plan.title == "Newer accepted title"
+    assert current.plan.document_revision == 2
+
+
 def test_journal_only_transaction_persists_typed_audit_payload(tmp_path: Path) -> None:
     paths = _paths(tmp_path)
     repository = PlanningRepository(paths, index_refresher=None)
@@ -161,6 +247,74 @@ def test_corrupt_journal_blocks_mutation_without_touching_plans(tmp_path: Path) 
         repository.commit(_intent(_plan("must-not-write")))
 
     assert not (paths.plans / "must-not-write.md").exists()
+
+
+def test_unsigned_schema_v2_plan_blocks_every_mutation_scan(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    repository = PlanningRepository(paths, index_refresher=None)
+    unsigned = _plan("unsigned-v2")
+    assert unsigned.schema_version == 2
+    assert unsigned.document_digest == unsigned.structure_digest == ""
+    (paths.plans / "unsigned-v2.md").write_text(render_plan(unsigned), encoding="utf-8")
+
+    with pytest.raises(PlanScanError, match="schema v2 plan requires versioned digests"):
+        repository.scan_for_mutation()
+    with pytest.raises(PlanScanError, match="schema v2 plan requires versioned digests"):
+        repository.commit(_intent(_plan("must-not-write")))
+
+    assert not (paths.plans / "must-not-write.md").exists()
+
+
+def test_journal_rejects_terminal_result_that_disagrees_with_event(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    repository = PlanningRepository(paths, index_refresher=None)
+    intent = _intent(_plan("journal-result"))
+    repository.commit(intent)
+    events = [json.loads(line) for line in paths.journal.read_text().splitlines()]
+    events[1]["result"]["plan_id"] = "wrong-plan"
+    paths.journal.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(JournalCorruptionError, match="terminal result plan_id"):
+        repository.commit(intent)
+
+
+def test_journal_rejects_terminal_that_disagrees_with_prior_intent(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    repository = PlanningRepository(paths, index_refresher=None)
+    intent = _intent(_plan("journal-identity"))
+    repository.commit(intent)
+    events = [json.loads(line) for line in paths.journal.read_text().splitlines()]
+    events[0]["after_document_digest"] = "sha256:v1:" + ("0" * 64)
+    paths.journal.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        JournalCorruptionError,
+        match=r"result document_digest|terminal does not match prior intent",
+    ):
+        repository.commit(intent)
+
+
+def test_journal_rejects_orphan_and_duplicate_terminal_events(tmp_path: Path) -> None:
+    for corruption in ("orphan", "duplicate"):
+        root = tmp_path / corruption
+        paths = _paths(root)
+        repository = PlanningRepository(paths, index_refresher=None)
+        intent = _intent(_plan(f"journal-{corruption}"))
+        repository.commit(intent)
+        lines = paths.journal.read_text().splitlines(keepends=True)
+        if corruption == "orphan":
+            paths.journal.write_text(lines[1], encoding="utf-8")
+        else:
+            paths.journal.write_text("".join([*lines, lines[1]]), encoding="utf-8")
+
+        with pytest.raises(JournalCorruptionError, match=f"{corruption} terminal"):
+            repository.recover()
 
 
 def test_fourth_current_plan_is_refused_under_the_root_snapshot(tmp_path: Path) -> None:
@@ -216,14 +370,7 @@ def test_document_only_update_keeps_structure_identity_and_structural_update_bum
     document_only.notes = "Non-structural working note"
 
     document_result = repository.commit(
-        MutationIntent(
-            intent_id="intent-document-update",
-            caller="pytest",
-            idempotency_key="key-document-update",
-            operation="update",
-            plan=document_only,
-            expected_document_digest=before.document_digest,
-        )
+        _cas_update(before, document_only, intent_id="intent-document-update")
     )
     after_document = repository.inspect(PlanningRef("revisions"))
 
@@ -234,15 +381,7 @@ def test_document_only_update_keeps_structure_identity_and_structural_update_bum
     structural = after_document.plan
     structural.goals[0].title = "Changed learning path"
     structure_result = repository.commit(
-        MutationIntent(
-            intent_id="intent-structure-update",
-            caller="pytest",
-            idempotency_key="key-structure-update",
-            operation="update",
-            plan=structural,
-            expected_document_digest=after_document.document_digest,
-            expected_structure_digest=after_document.structure_digest,
-        )
+        _cas_update(after_document, structural, intent_id="intent-structure-update")
     )
 
     assert structure_result.document_revision == 3

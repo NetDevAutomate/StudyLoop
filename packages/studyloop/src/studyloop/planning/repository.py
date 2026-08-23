@@ -23,7 +23,14 @@ from pathlib import Path
 from typing import Literal
 
 from .digests import compute_document_digest, compute_structure_digest
-from .journal import JournalEvent, append_event, fsync_directory, read_events
+from .journal import (
+    JournalEvent,
+    append_event,
+    fsync_directory,
+    read_events,
+    repair_torn_tail,
+    validate_event_sequence,
+)
 from .markdown import parse_plan, render_plan
 from .models import StudyPlan
 from .store import validate_plan_id
@@ -138,7 +145,7 @@ class MutationIntent:
     intent_id: str
     caller: str
     idempotency_key: str
-    operation: MutationOperation = "upsert"
+    operation: MutationOperation = "create"
     plan: StudyPlan | None = None
     ref: PlanningRef | None = None
     expected_document_digest: str = ""
@@ -282,7 +289,7 @@ class PlanningRepository:
         with self._root_lock():
             self._recover_locked()
             snapshot = self._scan_locked()
-            events = read_events(self.paths.journal)
+            events = self._read_journal_locked()
             replay = self._idempotent_replay(intent, payload_digest, events)
             if replay is not None:
                 return replay
@@ -291,7 +298,10 @@ class PlanningRepository:
             after_text: str | None
             after_plan: StudyPlan | None
             if intent.operation in {"record", "journal"}:
-                after_plan = before.plan if before is not None else None
+                after_plan = copy.deepcopy(before.plan) if before is not None else None
+                if after_plan is not None and before is not None:
+                    after_plan.document_digest = before.document_digest
+                    after_plan.structure_digest = before.structure_digest
                 after_text = before.canonical_text if before is not None else None
             else:
                 after_plan, after_text = self._prepare_plan(intent, before, snapshot)
@@ -472,6 +482,8 @@ class PlanningRepository:
         computed_structure = compute_structure_digest(plan)
         if bool(plan.document_digest) != bool(plan.structure_digest):
             raise PlanScanError(f"incomplete digest metadata in {path.name}")
+        if plan.schema_version >= 2 and not plan.document_digest:
+            raise PlanScanError(f"schema v2 plan requires versioned digests in {path.name}")
         if plan.document_digest and plan.document_digest != computed_document:
             raise PlanScanError(f"document digest mismatch in {path.name}")
         if plan.structure_digest and plan.structure_digest != computed_structure:
@@ -599,6 +611,16 @@ class PlanningRepository:
             ):
                 raise PlanConflictError("expected existing plan state, but target is absent")
             return
+        supplied = (
+            intent.expected_document_digest,
+            intent.expected_structure_digest,
+            intent.expected_document_revision,
+            intent.expected_structure_revision,
+        )
+        if any(value in {"", None} for value in supplied):
+            raise PlanConflictError(
+                "complete expected state is required for an existing plan update"
+            )
         checks = (
             (intent.expected_document_digest, before.document_digest, "document digest"),
             (intent.expected_structure_digest, before.structure_digest, "structure digest"),
@@ -687,7 +709,7 @@ class PlanningRepository:
         return None
 
     def _recover_locked(self) -> RecoveryReport:
-        events = read_events(self.paths.journal)
+        events = self._read_journal_locked(repair_tail=True)
         pending: dict[str, JournalEvent] = {}
         for event in events:
             if event.event == "intent":
@@ -708,6 +730,12 @@ class PlanningRepository:
                     f"pending intent {event.intent_id!r} is neither its before nor after state"
                 )
             self._cleanup_recovery_temporary(event)
+            if (
+                classification == "after"
+                and event.operation in {"create", "update", "upsert"}
+                and after_bytes is not None
+            ):
+                fsync_directory(self.paths.plans)
             append_event(
                 self.paths.journal,
                 JournalEvent(
@@ -730,6 +758,13 @@ class PlanningRepository:
             )
             recovered.append(RecoveredIntent(event.intent_id, event.plan_id, classification))
         return RecoveryReport(tuple(recovered))
+
+    def _read_journal_locked(self, *, repair_tail: bool = False) -> list[JournalEvent]:
+        if repair_tail:
+            repair_torn_tail(self.paths.journal)
+        events = read_events(self.paths.journal)
+        validate_event_sequence(events)
+        return events
 
     def _current_bytes(self, plan_id: str) -> bytes | None:
         if not plan_id:

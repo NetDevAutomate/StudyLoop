@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -14,6 +14,19 @@ JOURNAL_SCHEMA_VERSION = 1
 JOURNAL_EVENT_VERSION = 1
 
 JournalEventKind = Literal["intent", "committed", "recovered"]
+
+_TERMINAL_MATCH_FIELDS = (
+    "caller",
+    "idempotency_key",
+    "payload_digest",
+    "operation",
+    "plan_id",
+    "before_document_digest",
+    "after_document_digest",
+    "before_structure_digest",
+    "after_structure_digest",
+    "payload",
+)
 
 
 class JournalError(RuntimeError):
@@ -55,26 +68,31 @@ class JournalEvent:
         """Validate and construct one supported journal event."""
         if not isinstance(payload, dict):
             raise JournalCorruptionError("journal event must be a JSON object")
-        if payload.get("schema_version") != JOURNAL_SCHEMA_VERSION:
+        if type(payload.get("schema_version")) is not int or (
+            payload.get("schema_version") != JOURNAL_SCHEMA_VERSION
+        ):
             raise JournalCorruptionError("unsupported planning journal schema version")
-        if payload.get("event_version") != JOURNAL_EVENT_VERSION:
+        if type(payload.get("event_version")) is not int or (
+            payload.get("event_version") != JOURNAL_EVENT_VERSION
+        ):
             raise JournalCorruptionError("unsupported planning journal event version")
-        if payload.get("event") not in {"intent", "committed", "recovered"}:
+        event_kind = payload.get("event")
+        if event_kind not in {"intent", "committed", "recovered"}:
             raise JournalCorruptionError("unsupported planning journal event kind")
         try:
             return cls(
-                event=payload["event"],
-                intent_id=str(payload["intent_id"]),
-                caller=str(payload["caller"]),
-                idempotency_key=str(payload["idempotency_key"]),
-                payload_digest=str(payload["payload_digest"]),
-                operation=str(payload["operation"]),
-                plan_id=str(payload["plan_id"]),
+                event=cast("JournalEventKind", event_kind),
+                intent_id=_required_str(payload, "intent_id"),
+                caller=_required_str(payload, "caller"),
+                idempotency_key=_required_str(payload, "idempotency_key"),
+                payload_digest=_required_str(payload, "payload_digest"),
+                operation=_required_str(payload, "operation"),
+                plan_id=_required_str(payload, "plan_id"),
                 before_document_digest=_optional_str(payload.get("before_document_digest")),
                 after_document_digest=_optional_str(payload.get("after_document_digest")),
                 before_structure_digest=_optional_str(payload.get("before_structure_digest")),
                 after_structure_digest=_optional_str(payload.get("after_structure_digest")),
-                occurred_at=str(payload["occurred_at"]),
+                occurred_at=_required_str(payload, "occurred_at"),
                 payload=_object_dict(payload.get("payload", {}), "payload"),
                 recovery=_object_dict(payload.get("recovery", {}), "recovery"),
                 result=_object_dict(payload.get("result", {}), "result"),
@@ -86,7 +104,18 @@ class JournalEvent:
 
 
 def _optional_str(value: object) -> str | None:
-    return None if value is None else str(value)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise JournalCorruptionError("journal digest fields must be strings or null")
+    return value
+
+
+def _required_str(payload: dict[object, object], name: str) -> str:
+    value = payload.get(name)
+    if not isinstance(value, str) or not value:
+        raise JournalCorruptionError(f"journal {name} must be a non-empty string")
+    return value
 
 
 def _object_dict(value: object, name: str) -> dict[str, object]:
@@ -119,6 +148,62 @@ def append_event(path: Path, event: JournalEvent) -> None:
         fsync_directory(path.parent)
 
 
+def repair_torn_tail(path: Path) -> Literal["truncated", "completed"] | None:
+    """Repair only a non-newline-terminated final journal fragment.
+
+    Invalid bytes at EOF are truncated to the last complete newline. A fully
+    valid event missing only its newline is completed. Newline-terminated and
+    interior corruption remain the responsibility of strict ``read_events``.
+    Callers must hold the repository root lock.
+    """
+    if not path.exists():
+        return None
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise JournalCorruptionError(f"cannot read planning journal: {error}") from error
+    if not data or data.endswith(b"\n"):
+        return None
+
+    last_newline = data.rfind(b"\n")
+    tail_start = last_newline + 1
+    tail = data[tail_start:]
+    try:
+        decoded = tail.decode("utf-8")
+        parsed = json.loads(decoded)
+    except (UnicodeError, json.JSONDecodeError):
+        _truncate_tail(path, tail_start)
+        return "truncated"
+
+    # Valid JSON that is not a valid event is schema corruption, not a torn
+    # append. Refuse it rather than silently discarding an intelligible record.
+    JournalEvent.from_dict(parsed)
+    _complete_final_line(path)
+    return "completed"
+
+
+def _truncate_tail(path: Path, length: int) -> None:
+    """Truncate only the invalid EOF bytes without rewriting valid history."""
+    descriptor = os.open(path, os.O_WRONLY)
+    try:
+        os.ftruncate(descriptor, length)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _complete_final_line(path: Path) -> None:
+    """Append only the missing newline to an otherwise valid final event."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_APPEND)
+    try:
+        written = os.write(descriptor, b"\n")
+        if written != 1:  # pragma: no cover - defensive OS failure
+            raise OSError("short write while completing planning journal line")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def read_events(path: Path) -> list[JournalEvent]:
     """Read all durable events, failing closed on any malformed line."""
     if not path.exists():
@@ -142,6 +227,148 @@ def read_events(path: Path) -> list[JournalEvent]:
         except JournalCorruptionError as error:
             raise JournalCorruptionError(f"planning journal line {line_number}: {error}") from error
     return events
+
+
+def validate_event_sequence(events: list[JournalEvent]) -> None:
+    """Fail closed unless events form one internally consistent state machine."""
+    active: JournalEvent | None = None
+    prior_intents: dict[str, JournalEvent] = {}
+    prior_terminals: dict[str, JournalEvent] = {}
+    idempotency_payloads: dict[tuple[str, str], str] = {}
+    completed_idempotency: set[tuple[str, str]] = set()
+
+    for event in events:
+        key = (event.caller, event.idempotency_key)
+        prior_payload = idempotency_payloads.setdefault(key, event.payload_digest)
+        if prior_payload != event.payload_digest:
+            raise JournalCorruptionError("idempotency tuple has conflicting payload digests")
+
+        if event.event == "intent":
+            if active is not None:
+                raise JournalCorruptionError("duplicate intent while another intent is pending")
+            if key in completed_idempotency:
+                raise JournalCorruptionError("intent follows a terminal after outcome")
+            previous_terminal = prior_terminals.get(event.intent_id)
+            if previous_terminal is not None:
+                previous_intent = prior_intents[event.intent_id]
+                retry_after_before = (
+                    previous_terminal.event == "recovered"
+                    and previous_terminal.recovery.get("classification") == "before"
+                )
+                if not retry_after_before or not _matching_transaction(previous_intent, event):
+                    raise JournalCorruptionError("duplicate intent_id has conflicting transaction")
+            _validate_intent_event(event)
+            active = event
+            prior_intents[event.intent_id] = event
+            continue
+
+        if active is None:
+            label = "duplicate" if event.intent_id in prior_terminals else "orphan"
+            raise JournalCorruptionError(f"{label} terminal event for {event.intent_id!r}")
+        if active.intent_id != event.intent_id:
+            raise JournalCorruptionError("terminal event does not match the pending intent_id")
+        if not _matching_transaction(active, event):
+            raise JournalCorruptionError("terminal does not match prior intent")
+        classification = _validate_terminal_event(event)
+        prior_terminals[event.intent_id] = event
+        if classification == "after":
+            completed_idempotency.add(key)
+        active = None
+
+
+def _matching_transaction(intent: JournalEvent, other: JournalEvent) -> bool:
+    return intent.intent_id == other.intent_id and all(
+        getattr(intent, field_name) == getattr(other, field_name)
+        for field_name in _TERMINAL_MATCH_FIELDS
+    )
+
+
+def _validate_digest_pair(document: str | None, structure: str | None, label: str) -> None:
+    if (document is None) != (structure is None):
+        raise JournalCorruptionError(f"{label} document/structure digest pair is incomplete")
+    for digest in (document, structure):
+        if digest is None:
+            continue
+        prefix = "sha256:v1:"
+        payload = digest.removeprefix(prefix)
+        if (
+            not digest.startswith(prefix)
+            or len(payload) != 64
+            or any(character not in "0123456789abcdef" for character in payload)
+        ):
+            raise JournalCorruptionError(f"{label} digest is not a supported versioned SHA-256")
+
+
+def _validate_intent_event(event: JournalEvent) -> None:
+    if event.operation not in {"create", "update", "upsert", "record", "journal"}:
+        raise JournalCorruptionError("journal intent has unsupported operation")
+    _validate_digest_pair(
+        event.before_document_digest,
+        event.before_structure_digest,
+        "before",
+    )
+    _validate_digest_pair(
+        event.after_document_digest,
+        event.after_structure_digest,
+        "after",
+    )
+    if event.operation == "create" and event.before_document_digest is not None:
+        raise JournalCorruptionError("create intent unexpectedly has a before state")
+    if event.operation == "update" and event.before_document_digest is None:
+        raise JournalCorruptionError("update intent is missing its before state")
+    if event.operation in {"create", "update", "upsert"} and (event.after_document_digest is None):
+        raise JournalCorruptionError("file mutation intent is missing its after state")
+    if event.operation in {"record", "journal"} and (
+        event.before_document_digest != event.after_document_digest
+        or event.before_structure_digest != event.after_structure_digest
+    ):
+        raise JournalCorruptionError("journal-only intent changes canonical state")
+    _validate_terminal_result(event)
+
+
+def _validate_terminal_event(event: JournalEvent) -> Literal["before", "after"]:
+    classification = event.recovery.get("classification")
+    if event.event == "committed":
+        if classification != "after":
+            raise JournalCorruptionError("committed terminal must classify the after state")
+        resolved: Literal["before", "after"] = "after"
+    elif classification in {"before", "after"}:
+        resolved = cast("Literal['before', 'after']", classification)
+    else:
+        raise JournalCorruptionError("recovered terminal has invalid classification")
+
+    if resolved == "before":
+        if event.result:
+            raise JournalCorruptionError("before recovery terminal must not contain a result")
+        return resolved
+    _validate_terminal_result(event)
+    return resolved
+
+
+def _validate_terminal_result(event: JournalEvent) -> None:
+    expected = {
+        "status": "committed",
+        "intent_id": event.intent_id,
+        "plan_id": event.plan_id,
+        "document_digest": event.after_document_digest,
+        "structure_digest": event.after_structure_digest,
+    }
+    for field_name, expected_value in expected.items():
+        if event.result.get(field_name) != expected_value:
+            raise JournalCorruptionError(f"terminal result {field_name} disagrees with event")
+    document_revision = event.result.get("document_revision")
+    structure_revision = event.result.get("structure_revision")
+    if event.after_document_digest is None:
+        if document_revision is not None or structure_revision is not None:
+            raise JournalCorruptionError("journal-only absent result unexpectedly has revisions")
+        return
+    if (
+        type(document_revision) is not int
+        or document_revision < 1
+        or type(structure_revision) is not int
+        or structure_revision < 1
+    ):
+        raise JournalCorruptionError("terminal result revisions must be positive integers")
 
 
 def fsync_directory(directory: Path) -> None:
