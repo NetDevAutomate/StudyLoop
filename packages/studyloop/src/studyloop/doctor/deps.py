@@ -16,45 +16,6 @@ OPTIONAL_DEPS: dict[str, tuple[str, str]] = {
 }
 
 
-def check_system_binaries() -> list[CheckResult]:
-    """Check for optional system binaries (not Python packages)."""
-    import shutil
-
-    results: list[CheckResult] = []
-
-    ttyd_path = shutil.which("ttyd")
-    if ttyd_path:
-        results.append(
-            CheckResult(
-                "deps",
-                "bin_ttyd",
-                "pass",
-                f"ttyd installed ({ttyd_path}) — only used by STUDYLOOP_TRANSPORT=ttyd",
-                "",
-                False,
-            )
-        )
-    else:
-        # ADR-0005 retired the ttyd BROWSER surface. The live terminal is
-        # xterm.js over a same-origin WebSocket, or an ACP chat surface — neither
-        # needs ttyd. Only the maintainer-only STUDYLOOP_TRANSPORT=ttyd server
-        # path uses the binary, so this check must NOT suggest installing it:
-        # doing so previously told users a missing package was blocking a
-        # feature that had already stopped depending on it.
-        results.append(
-            CheckResult(
-                "deps",
-                "bin_ttyd",
-                "info",
-                "ttyd not installed — not needed; the browser terminal uses xterm.js",
-                "",
-                False,
-            )
-        )
-
-    return results
-
-
 def check_optional_deps() -> list[CheckResult]:
     results: list[CheckResult] = []
     for import_name, (display_name, install_cmd) in OPTIONAL_DEPS.items():
