@@ -438,10 +438,20 @@ milestones) rather than swallowing the failure. That is the same refusal
 | Kiro CLI | `study-plan-architect` | `kiro-cli chat --agent study-plan-architect` |
 | Gemini CLI | `study-plan-architect` | auto-detected |
 | OpenCode | `study-plan-architect` | Tab to switch agent |
-| Codex / pi / omp | `AGENTS.md` | Study Plans section |
+| Codex / pi / omp | not yet available | see below |
 
-Install with `studyloop install agents`. The shared methodology lives in
-`agents/shared/study-plan-protocol.md`.
+> **Not yet installable.** `studyloop install agents` does **not** currently
+> place `study-plan-architect` — its link table ships `study-mentor` only. The
+> agent definition exists in the repo for the four harnesses above, so it has to
+> be copied into that harness's agent directory by hand until the installer is
+> fixed. Codex, pi and omp read `AGENTS.md`, which does not yet reference the
+> plan protocol at all, so the architect is unavailable on those three.
+>
+> The agent itself is validated working — it was driven end to end on Kiro CLI,
+> authoring a plan from a free-text brain dump with no API key. The gap is
+> distribution, not capability.
+
+The shared methodology lives in `agents/shared/study-plan-protocol.md`.
 
 ## Lineage
 

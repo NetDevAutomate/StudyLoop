@@ -34,7 +34,6 @@ def _get_registry():
         check_obsidian_vault,
         check_pandoc,
         check_review_directories,
-        check_tmux_resurrect,
     )
     from studyloop.doctor.core import (
         check_agent_session_tools,
@@ -43,9 +42,8 @@ def _get_registry():
         check_studyloop_installed,
     )
     from studyloop.doctor.database import check_review_db, check_sessions_db
-    from studyloop.doctor.deps import check_optional_deps, check_system_binaries
+    from studyloop.doctor.deps import check_optional_deps
     from studyloop.doctor.harness import check_harness_export
-    from studyloop.doctor.updates import check_pypi_versions
     from studyloop.doctor.voice import check_voice_readiness
 
     registry = CheckerRegistry()
@@ -65,20 +63,20 @@ def _get_registry():
         check_review_directories,
         check_pandoc,
     ]
-    # Only run tmux-specific health check when tmux is the active backend
-    from studyloop.multiplexer import TmuxBackend, get_backend
-
-    if isinstance(get_backend(), TmuxBackend):
-        config_checks.append(check_tmux_resurrect)
+    # The tmux-resurrect check is gone: herdr replaced tmux as the multiplexer,
+    # so a missing tmux restore hook is not a health problem to report.
     for fn in config_checks:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
-    registry.register("deps")(check_system_binaries)
+    # check_system_binaries (bin_ttyd) is gone: ADR-0005 retired the ttyd
+    # browser surface, so reporting ttyd's absence is noise with no signal.
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
     registry.register("agents")(check_local_llm_servers)
     registry.register("harness")(check_harness_export)
-    registry.register("updates")(check_pypi_versions)
+    # check_pypi_versions is deliberately NOT registered. Nothing is published
+    # yet, so it can only ever report "no release found", which is noise on
+    # every run. The module is retained for when a release exists.
     registry.register("voice")(check_voice_readiness)
     return registry
 
@@ -160,6 +158,23 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
     if needs("database", "review_db"):
         db_path = ensure_review_database()
         actions.append(f"migrated review DB: {db_path}")
+
+    if needs("database", "sessions_fts"):
+        # Call the library directly rather than shelling out to
+        # `session-maint fts-check --fix`. Shelling out is what left the remedy
+        # printed but unexecuted, and it would depend on that console script
+        # being on PATH inside whatever environment doctor happens to run in.
+        import sqlite3
+
+        from agent_session_tools.tiering import repair_fts
+        from studyloop.doctor.database import _get_sessions_db_path
+
+        with sqlite3.connect(_get_sessions_db_path()) as conn:
+            integrity = repair_fts(conn)
+        actions.append(
+            f"repaired FTS index: {integrity.fts_rows:,} rows for "
+            f"{integrity.messages_with_content:,} messages"
+        )
 
     if any(r.category == "agents" and r.status in ("warn", "fail") and r.fix_auto for r in results):
         repo_root = require_repo_root()

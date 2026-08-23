@@ -186,6 +186,9 @@ def _check_fts_drift(conn: sqlite3.Connection, db_path: Path) -> list[CheckResul
             severity,
             f"FTS index drift: {fts_rows:,} index rows for {messages:,} messages ({drift:+,})",
             "session-maint fts-check --fix",
-            fix_auto=False,
+            # Auto-fixable: `doctor --fix` calls tiering.repair_fts() directly.
+            # This was False while the remedy string was still shown, so
+            # `doctor --fix` printed the repair command and never ran it.
+            fix_auto=True,
         )
     ]
