@@ -574,20 +574,15 @@ MagicMock/
 # uses the `dir/*` form rather than `dir/`: git cannot re-include anything whose
 # parent directory is excluded by a trailing-slash pattern, which made the
 # negations below silently dead and left those files tracked-but-ignored.
-.pi/*
-!.pi/prompts/
-# Three steps, and all three are required. `.pi/*` excludes `.pi/skills` itself,
-# so a negation nested inside it can never fire - the intermediate directory has
-# to be un-excluded first, then its children re-excluded, then the specific
-# openspec skills negated. Only those are project content; the tavily-* skill
-# directories that harness plugins drop here stay ignored, which is what the
-# original rule existed to do.
-!.pi/skills/
-.pi/skills/*
-!.pi/skills/openspec-*/
+.pi/
 agent/
 skills-lock.json
-
+#
+# openspec files
+openspec/
+# dotfiles/dirs
+.graphify-labels.json
+.graphifyignore
 # Personal / throwaway scripts only.
 #
 # Do NOT ignore the whole scripts/ directory. 16 scripts in it are TRACKED and
