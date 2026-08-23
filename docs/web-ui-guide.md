@@ -13,7 +13,7 @@ studyloop web --lan --password SECRET  # LAN with explicit password
 studyloop web -p 9000                # custom port
 ```
 
-Open your browser to `http://localhost:8567`. The PWA is installable; add it to your home screen on mobile for review and session visibility.
+Open your browser to `http://localhost:8567`. The PWA is installable; add it to your home screen on a tablet for review and session visibility. Phone screens are not supported — the study panels have no phone layout.
 
 !!! note "Core workflow"
     The core workflow is interactive study with an agent. Flashcards and quizzes are useful support tools, but the web UI should increasingly serve the live mentor/body-doubling experience.
@@ -293,7 +293,7 @@ displaying a subset.
 
 ## Live Interactive Sessions
 
-When you start a study session with `--web`, the dashboard provides a real-time view of your session from any device:
+When you start a study session with `--web`, the dashboard provides a real-time view of your session from any tablet or laptop:
 
 ```bash
 studyloop study "Python Decorators" --energy 7 --web
@@ -678,7 +678,7 @@ The web UI has its own Pomodoro timer in the header (independent of the TUI side
 The web UI is a Progressive Web App. To install:
 
 1. Open `http://localhost:8567` in Chrome/Safari
-2. Click "Add to Home Screen" (mobile) or the install icon in the address bar (desktop)
+2. Click "Add to Home Screen" (tablet) or the install icon in the address bar (desktop)
 3. The app opens in its own window, with the StudyLoop icon and theme colour from `manifest.json`
 
 !!! warning "The app does **not** work offline"
@@ -686,7 +686,7 @@ The web UI is a Progressive Web App. To install:
 
     - Installing the app does not make it usable without the server. Every page load fetches `index.html`, the vendored JS/CSS, and every `/api/…` call from `studyloop web` on your machine or LAN. With the server down or out of reach, the installed app shows a browser network error.
     - It is a **local** app, not a hosted one. "Offline" would mean running without your own machine's server process — which is not what the install gives you.
-    - Browser install prompts differ. iOS/iPadOS Safari offers **Add to Home Screen** from the manifest alone; Chromium's install criteria have historically included a service worker with a fetch handler, so the desktop install button may not appear. Not verified here — no browser was launched.
+    - Browser install prompts differ. iPadOS Safari offers **Add to Home Screen** from the manifest alone; Chromium's install criteria have historically included a service worker with a fetch handler, so the desktop install button may not appear. Not verified here — no browser was launched.
 
     The one thing that *is* cached is the **voice model**: transformers.js stores the ~92 MB Kokoro weights in Cache Storage (`transformers-cache`) and the voice embeddings in `kokoro-voices`, both managed by the TTS libraries directly with no service worker involved. So voice keeps working after the first download, and a code change never re-downloads it. See [Voice Output § First-run download](voice-output.md#first-run-download).
 
