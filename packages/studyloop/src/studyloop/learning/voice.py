@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -299,9 +300,34 @@ class OpenVoxHealth:
     detail: str = ""
 
 
+#: Env overrides for the TTS endpoint, so a backend can be swapped for one command
+#: without editing config.yaml -- `STUDYLOOP_TTS_BASE_URL=http://127.0.0.1:8881/v1
+#: studyloop recap today --speak`. Named for this repo's existing convention
+#: (STUDYLOOP_CONFIG, STUDYLOOP_DB, STUDYLOOP_STATE_DIR) rather than the bare
+#: TTS_BASE_URL some voice tools use: a bare name is too easy to have already set
+#: in a shared shell for a different tool, which would silently repoint speech.
+_ENV_OVERRIDES = {
+    "openvox_base_url": "STUDYLOOP_TTS_BASE_URL",
+    "openvox_model": "STUDYLOOP_TTS_MODEL",
+    "openvox_voice": "STUDYLOOP_TTS_VOICE",
+}
+
+
 def _openvox_settings(cfg: dict | None = None) -> dict:
     """Resolve the OpenVox connection settings, with the documented defaults."""
     resolved = cfg if cfg is not None else _tts_config()
+    if cfg is None:
+        # Env is layered over the CONFIG FILE only, never over an explicit cfg.
+        # A caller that passed cfg has chosen deliberately, and a test or a
+        # route that named its endpoint must not be silently repointed by a
+        # variable left in the environment.
+        overrides = {
+            key: value
+            for key, name in _ENV_OVERRIDES.items()
+            if (value := os.environ.get(name, "").strip())
+        }
+        if overrides:
+            resolved = {**resolved, **overrides}
     return {
         "base_url": str(resolved.get("openvox_base_url", _OPENVOX_DEFAULT_BASE_URL)),
         "model": str(resolved.get("openvox_model", _OPENVOX_DEFAULT_MODEL)),

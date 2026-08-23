@@ -173,6 +173,60 @@ class TestHealthIsHonest:
         assert learning_voice.openvox_warm() is False
 
 
+class TestEnvOverride:
+    """Repointing the backend must not require editing config.yaml.
+
+    Swapping between OpenVox, VoiceMode's Kokoro and a container is a URL change,
+    so it should be a one-command change -- that is the whole reason the client is
+    backend-agnostic.
+    """
+
+    def test_env_repoints_the_base_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(learning_voice, "_tts_config", lambda: {})
+        monkeypatch.setenv("STUDYLOOP_TTS_BASE_URL", "http://127.0.0.1:8881/v1")
+        monkeypatch.setenv("STUDYLOOP_TTS_VOICE", "bf_lily")
+        monkeypatch.setenv("STUDYLOOP_TTS_MODEL", "tts-1")
+        settings = learning_voice._openvox_settings()
+        assert settings["base_url"] == "http://127.0.0.1:8881/v1"
+        assert settings["voice"] == "bf_lily"
+        assert settings["model"] == "tts-1"
+
+    def test_env_beats_the_config_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            learning_voice,
+            "_tts_config",
+            lambda: {"openvox_base_url": "http://127.0.0.1:8000/v1"},
+        )
+        monkeypatch.setenv("STUDYLOOP_TTS_BASE_URL", "http://127.0.0.1:8880/v1")
+        assert learning_voice._openvox_settings()["base_url"] == "http://127.0.0.1:8880/v1"
+
+    def test_env_never_overrides_an_explicit_cfg(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A caller that named its endpoint must not be silently repointed.
+
+        This is the hazard that makes env-over-everything wrong: a variable left
+        in a shell (or a CI runner) would reach into a route or a test that had
+        already chosen a specific server, and the failure would look like the
+        server misbehaving rather than the environment leaking in.
+        """
+        monkeypatch.setenv("STUDYLOOP_TTS_BASE_URL", "http://127.0.0.1:9999/v1")
+        settings = learning_voice._openvox_settings(
+            cfg={"openvox_base_url": "http://127.0.0.1:8000/v1"}
+        )
+        assert settings["base_url"] == "http://127.0.0.1:8000/v1"
+
+    def test_blank_env_is_ignored_not_treated_as_a_value(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An exported-but-empty var is the shell's idea of unset, not a URL."""
+        monkeypatch.setattr(
+            learning_voice,
+            "_tts_config",
+            lambda: {"openvox_base_url": "http://127.0.0.1:8000/v1"},
+        )
+        monkeypatch.setenv("STUDYLOOP_TTS_BASE_URL", "   ")
+        assert learning_voice._openvox_settings()["base_url"] == "http://127.0.0.1:8000/v1"
+
+
 class TestVoiceCatalogue:
     def test_falls_back_to_the_models_own_voices(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When no known listing path answers, assume the MODEL's voices.
