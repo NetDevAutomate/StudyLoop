@@ -265,3 +265,81 @@ Existing callers and older journal events fall back to the complete payload
 digest, preserving their prior byte-identical replay behavior. Lifecycle
 callers opt into semantic replay explicitly because their candidate payloads
 contain server-generated IDs and audit timestamps.
+
+## Fix round 2 — recovered-before semantic retry history
+
+### Review finding resolved
+
+Journal validation now models each `(caller, idempotency_key)` as an explicit
+semantic state machine. The first intent binds the semantic digest and
+transaction operation. An exactly matched recovered-before terminal moves that
+lineage to `retryable`, allowing a later intent to carry regenerated IDs,
+timestamps, private-artifact paths and therefore a different raw payload
+digest. A committed or recovered-after terminal moves it permanently to
+`completed`.
+
+Every terminal still has to match its own intent byte-for-byte across the
+complete transaction fields. Validation continues to fail closed when a retry
+changes semantic digest or operation, follows a terminal-after outcome, or is
+appended while another intent is pending. Older events without an explicit
+semantic digest still fall back to their raw payload digest, so their historical
+byte-identical contract is unchanged.
+
+Public lifecycle crash tests cover preparation and proposal submission at both
+`after_journal_intent` and `after_private_artifacts`. Recovery classifies the
+failed attempt before, removes any uncommitted private artifact, and an exact
+retry deliberately using a different clock and ID generator commits a new
+winner. A third lifecycle instance can inspect and replay that winner, only the
+winner's referenced private artifact remains, and changed semantic input still
+conflicts. Direct tamper controls cover committed, recovered-after, changed
+semantic digest, changed operation and parallel-intent histories.
+
+### RED evidence
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_repository_crash.py \
+  -k 'recovered_before_semantic_lineage or semantic_payload_change or different_semantic_digest' -q
+# 8 failed, 18 deselected in 0.25s
+# Four lifecycle retries returned successfully but the next read raised:
+# JournalCorruptionError: idempotency tuple has conflicting payload digests
+# Four tamper controls were rejected only by that blanket payload check rather
+# than the required semantic-lineage transition.
+```
+
+### GREEN evidence
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_lifecycle_*.py \
+  packages/studyloop/tests/test_planning_repository.py \
+  packages/studyloop/tests/test_planning_repository_crash.py -q
+# 105 passed in 2.57s
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning_*.py -q
+# 274 passed in 2.88s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli_plan.py \
+  packages/studyloop/tests/test_web_plans.py \
+  packages/studyloop/tests/test_planning_evaluation.py \
+  packages/studyloop/tests/test_planning_store.py -q
+# 84 passed, 1 pre-existing Starlette TestClient deprecation warning
+
+rtk uv run --group dev pyright \
+  packages/studyloop/src/studyloop/planning/contracts.py \
+  packages/studyloop/src/studyloop/planning/evidence.py \
+  packages/studyloop/src/studyloop/planning/lifecycle.py \
+  packages/studyloop/src/studyloop/planning/lifecycle_journal.py \
+  packages/studyloop/src/studyloop/planning/lifecycle_proposals.py \
+  packages/studyloop/src/studyloop/planning/models.py \
+  packages/studyloop/src/studyloop/planning/markdown.py \
+  packages/studyloop/src/studyloop/planning/digests.py \
+  packages/studyloop/src/studyloop/planning/authoring.py \
+  packages/studyloop/src/studyloop/planning/journal.py
+# 0 errors, 0 warnings, 0 informations
+```
+
+Ruff formatting/checks and `git diff --check` passed. No repository or
+lifecycle interface changed; this round only corrects validation of durable
+history already emitted by the semantic-idempotency contract.

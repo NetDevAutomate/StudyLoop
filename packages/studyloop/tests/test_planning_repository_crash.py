@@ -6,11 +6,26 @@ import fcntl
 import json
 import multiprocessing
 import os
+from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from planning_lifecycle_support import MODEL, FixedClock, PrefixIds
 
 import studyloop.planning.repository as repository_module
+from studyloop.planning import (
+    GoalProposal,
+    IdempotencyConflictError,
+    MilestoneProposal,
+    PlanningCommand,
+    PlanningLifecycle,
+    PlanningRequest,
+    PlanningRunRef,
+    PlanProposalDraft,
+    ProposalRef,
+    SubmitProposalDraft,
+)
 from studyloop.planning.journal import JournalCorruptionError
 from studyloop.planning.models import Goal, Milestone, Mission, StudyPlan
 from studyloop.planning.repository import (
@@ -81,6 +96,68 @@ def _private_intent() -> MutationIntent:
             ),
         ),
     )
+
+
+def _semantic_plan_intent() -> MutationIntent:
+    return replace(
+        _intent(),
+        idempotency_digest="sha256:v1:" + "e" * 64,
+    )
+
+
+def _lifecycle(
+    root: Path,
+    *,
+    clock: str,
+    crash_point: str | None = None,
+) -> PlanningLifecycle:
+    return PlanningLifecycle(
+        PlanningRepository(
+            _paths(root),
+            crash_injector=_inject_at(crash_point) if crash_point else None,
+            index_refresher=None,
+        ),
+        clock=FixedClock(clock),
+        ids=PrefixIds(),
+    )
+
+
+def _proposal_draft() -> PlanProposalDraft:
+    return PlanProposalDraft(
+        title="Recover proposal submission",
+        mission=Mission(why="Keep retry state durable", success=["Submit one proposal"]),
+        goals=(GoalProposal("retry-goal", "Retry safely", "Needed", "Supports mission"),),
+        milestones=(MilestoneProposal("retry-step", "retry-goal", "Exercise proposal recovery"),),
+        next_action="Exercise proposal recovery",
+    )
+
+
+def _journal_dicts(paths: PlanningPaths) -> list[dict[str, object]]:
+    return [json.loads(line) for line in paths.journal.read_text().splitlines()]
+
+
+def _append_forged_retry(
+    paths: PlanningPaths,
+    source: dict[str, object],
+    *,
+    intent_id: str,
+    payload_digest: str,
+    idempotency_digest: str | None = None,
+    operation: str | None = None,
+) -> None:
+    forged = deepcopy(source)
+    forged["event"] = "intent"
+    forged["intent_id"] = intent_id
+    forged["payload_digest"] = payload_digest
+    if idempotency_digest is not None:
+        forged["idempotency_digest"] = idempotency_digest
+    if operation is not None:
+        forged["operation"] = operation
+    result = forged["result"]
+    assert isinstance(result, dict)
+    result["intent_id"] = intent_id
+    with paths.journal.open("a", encoding="utf-8") as journal:
+        journal.write(json.dumps(forged, sort_keys=True) + "\n")
 
 
 def _inject_at(selected: str):
@@ -189,6 +266,256 @@ def test_recovery_removes_uncommitted_transactional_private_artifact(
     assert not artifact.parent.exists()
     assert restarted.commit(_private_intent()).status == "committed"
     assert artifact.read_text() == "sensitive orphan candidate"
+
+
+@pytest.mark.parametrize("crash_point", ["after_journal_intent", "after_private_artifacts"])
+def test_prepare_retries_a_recovered_before_semantic_lineage_with_new_generated_state(
+    tmp_path: Path,
+    crash_point: str,
+) -> None:
+    paths = _paths(tmp_path)
+    request = PlanningRequest("create", "Exact sensitive dump", "recover-prepare")
+    crashing = _lifecycle(
+        tmp_path,
+        clock="2026-08-23T12:00:00+00:00",
+        crash_point=crash_point,
+    )
+
+    with pytest.raises(InjectedCrashError, match=crash_point):
+        crashing.prepare(request, MODEL)
+    failed_intent = _journal_dicts(paths)[-1]
+    failed_run_id = failed_intent["plan_id"]
+    assert isinstance(failed_run_id, str)
+
+    report = PlanningRepository(paths, index_refresher=None).recover()
+    assert [item.classification for item in report.recovered] == ["before"]
+    assert not (paths.private_runs / failed_run_id).exists()
+
+    retrying = _lifecycle(tmp_path, clock="2026-08-23T13:00:00+00:00")
+    winner = retrying.prepare(request, MODEL)
+
+    assert winner.run_id != failed_run_id
+    assert winner.created_at == "2026-08-23T13:00:00+00:00"
+    assert _lifecycle(tmp_path, clock="2026-08-23T14:00:00+00:00").prepare(request, MODEL) == winner
+    assert (
+        _lifecycle(tmp_path, clock="2026-08-23T15:00:00+00:00").inspect(
+            PlanningRunRef(winner.run_id)
+        )
+        == winner
+    )
+    assert sorted(path.name for path in paths.private_runs.iterdir()) == [winner.run_id]
+    assert [path.name for path in (paths.private_runs / winner.run_id).iterdir()] == [
+        "brain-dump.txt"
+    ]
+    assert (paths.private_runs / winner.run_id / "brain-dump.txt").read_text() == request.brain_dump
+    history = _journal_dicts(paths)
+    assert [event["event"] for event in history] == [
+        "intent",
+        "recovered",
+        "intent",
+        "committed",
+    ]
+    assert history[2]["plan_id"] == winner.run_id
+
+    with pytest.raises(IdempotencyConflictError, match="different planning request"):
+        _lifecycle(tmp_path, clock="2026-08-23T16:00:00+00:00").prepare(
+            replace(request, brain_dump="Changed semantic input"),
+            MODEL,
+        )
+
+
+@pytest.mark.parametrize("crash_point", ["after_journal_intent", "after_private_artifacts"])
+def test_proposal_retries_a_recovered_before_semantic_lineage_with_only_winner_artifact(
+    tmp_path: Path,
+    crash_point: str,
+) -> None:
+    paths = _paths(tmp_path)
+    seed = _lifecycle(tmp_path, clock="2026-08-23T10:00:00+00:00")
+    brief = seed.prepare(
+        PlanningRequest("create", "Need a safe proposal", "proposal-run"),
+        MODEL,
+    )
+    command = SubmitProposalDraft(
+        brief.run_id,
+        "recover-proposal",
+        brief.brief_context_digest,
+        _proposal_draft(),
+    )
+    crashing = _lifecycle(
+        tmp_path,
+        clock="2026-08-23T12:00:00+00:00",
+        crash_point=crash_point,
+    )
+
+    with pytest.raises(InjectedCrashError, match=crash_point):
+        crashing.handle(PlanningCommand(MODEL, command))
+    failed_intent = _journal_dicts(paths)[-1]
+    lifecycle_payload = failed_intent["payload"]
+    assert isinstance(lifecycle_payload, dict)
+    lifecycle_event = lifecycle_payload["lifecycle"]
+    assert isinstance(lifecycle_event, dict)
+    failed_proposal_id = lifecycle_event["proposal_id"]
+    assert isinstance(failed_proposal_id, str)
+
+    report = PlanningRepository(paths, index_refresher=None).recover()
+    assert [item.classification for item in report.recovered] == ["before"]
+    assert not (paths.private_runs / brief.run_id / f"{failed_proposal_id}.json").exists()
+
+    retrying = _lifecycle(tmp_path, clock="2026-08-23T13:00:00+00:00")
+    winner = retrying.handle(PlanningCommand(MODEL, command))
+
+    assert winner.proposal_id != failed_proposal_id
+    assert winner.created_at == "2026-08-23T13:00:00+00:00"
+    assert (
+        _lifecycle(tmp_path, clock="2026-08-23T14:00:00+00:00").handle(
+            PlanningCommand(MODEL, command)
+        )
+        == winner
+    )
+    assert (
+        _lifecycle(tmp_path, clock="2026-08-23T15:00:00+00:00").inspect(
+            ProposalRef(winner.proposal_id)
+        )
+        == winner
+    )
+    proposal_artifacts = sorted((paths.private_runs / brief.run_id).glob("*.json"))
+    assert [path.name for path in proposal_artifacts] == [f"{winner.proposal_id}.json"]
+    history = [
+        event
+        for event in _journal_dicts(paths)
+        if event["idempotency_key"] == "proposal:recover-proposal"
+    ]
+    assert [event["event"] for event in history] == [
+        "intent",
+        "recovered",
+        "intent",
+        "committed",
+    ]
+    winning_payload = history[2]["payload"]
+    assert isinstance(winning_payload, dict)
+    winning_lifecycle = winning_payload["lifecycle"]
+    assert isinstance(winning_lifecycle, dict)
+    assert winning_lifecycle["proposal_id"] == winner.proposal_id
+
+    changed = replace(command, draft=replace(command.draft, title="Changed proposal"))
+    with pytest.raises(IdempotencyConflictError, match="different proposal draft"):
+        _lifecycle(tmp_path, clock="2026-08-23T16:00:00+00:00").handle(
+            PlanningCommand(MODEL, changed)
+        )
+
+
+def test_semantic_payload_change_is_rejected_after_committed_outcome(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    repository = PlanningRepository(paths, index_refresher=None)
+    repository.commit(_private_intent())
+    source = _journal_dicts(paths)[0]
+    _append_forged_retry(
+        paths,
+        source,
+        intent_id="forged-after-committed",
+        payload_digest="sha256:v1:" + "1" * 64,
+    )
+
+    with pytest.raises(JournalCorruptionError, match="intent follows a terminal after outcome"):
+        PlanningRepository(paths, index_refresher=None).recover()
+
+
+def test_semantic_payload_change_is_rejected_after_recovered_after_outcome(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_replace"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_replace"):
+        crashing.commit(_semantic_plan_intent())
+    restarted = PlanningRepository(paths, index_refresher=None)
+    assert [item.classification for item in restarted.recover().recovered] == ["after"]
+    source = _journal_dicts(paths)[0]
+    _append_forged_retry(
+        paths,
+        source,
+        intent_id="forged-after-recovered-after",
+        payload_digest="sha256:v1:" + "2" * 64,
+    )
+
+    with pytest.raises(JournalCorruptionError, match="intent follows a terminal after outcome"):
+        PlanningRepository(paths, index_refresher=None).recover()
+
+
+def test_recovered_before_retry_rejects_a_different_semantic_digest(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_journal_intent"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_journal_intent"):
+        crashing.commit(_private_intent())
+    restarted = PlanningRepository(paths, index_refresher=None)
+    assert [item.classification for item in restarted.recover().recovered] == ["before"]
+    source = _journal_dicts(paths)[0]
+    _append_forged_retry(
+        paths,
+        source,
+        intent_id="forged-different-semantics",
+        payload_digest="sha256:v1:" + "3" * 64,
+        idempotency_digest="sha256:v1:" + "f" * 64,
+    )
+
+    with pytest.raises(JournalCorruptionError, match="conflicting semantic digests"):
+        PlanningRepository(paths, index_refresher=None).recover()
+
+
+def test_recovered_before_retry_rejects_a_different_operation(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_journal_intent"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_journal_intent"):
+        crashing.commit(_private_intent())
+    restarted = PlanningRepository(paths, index_refresher=None)
+    assert [item.classification for item in restarted.recover().recovered] == ["before"]
+    source = _journal_dicts(paths)[0]
+    _append_forged_retry(
+        paths,
+        source,
+        intent_id="forged-different-operation",
+        payload_digest="sha256:v1:" + "5" * 64,
+        operation="record",
+    )
+
+    with pytest.raises(
+        JournalCorruptionError, match="semantic retry changes transaction operation"
+    ):
+        PlanningRepository(paths, index_refresher=None).recover()
+
+
+def test_semantic_payload_change_is_rejected_for_parallel_intents(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    crashing = PlanningRepository(
+        paths,
+        crash_injector=_inject_at("after_journal_intent"),
+        index_refresher=None,
+    )
+    with pytest.raises(InjectedCrashError, match="after_journal_intent"):
+        crashing.commit(_private_intent())
+    source = _journal_dicts(paths)[0]
+    _append_forged_retry(
+        paths,
+        source,
+        intent_id="forged-parallel",
+        payload_digest="sha256:v1:" + "4" * 64,
+    )
+
+    with pytest.raises(
+        JournalCorruptionError, match="duplicate intent while another intent is pending"
+    ):
+        PlanningRepository(paths, index_refresher=None).recover()
 
 
 def test_after_replace_recovery_fsyncs_plan_directory_before_terminal_event(

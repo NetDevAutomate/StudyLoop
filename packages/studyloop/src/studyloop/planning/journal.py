@@ -245,20 +245,25 @@ def validate_event_sequence(events: list[JournalEvent]) -> None:
     active: JournalEvent | None = None
     prior_intents: dict[str, JournalEvent] = {}
     prior_terminals: dict[str, JournalEvent] = {}
-    idempotency_payloads: dict[tuple[str, str], str] = {}
-    completed_idempotency: set[tuple[str, str]] = set()
+    idempotency_semantics: dict[tuple[str, str], str] = {}
+    idempotency_operations: dict[tuple[str, str], str] = {}
+    idempotency_states: dict[tuple[str, str], Literal["pending", "retryable", "completed"]] = {}
 
     for event in events:
         key = (event.caller, event.idempotency_key)
-        prior_payload = idempotency_payloads.setdefault(key, event.payload_digest)
-        if prior_payload != event.payload_digest:
-            raise JournalCorruptionError("idempotency tuple has conflicting payload digests")
+        prior_semantics = idempotency_semantics.setdefault(key, event.idempotency_digest)
+        if prior_semantics != event.idempotency_digest:
+            raise JournalCorruptionError("idempotency tuple has conflicting semantic digests")
 
         if event.event == "intent":
             if active is not None:
                 raise JournalCorruptionError("duplicate intent while another intent is pending")
-            if key in completed_idempotency:
+            state = idempotency_states.get(key)
+            if state == "completed":
                 raise JournalCorruptionError("intent follows a terminal after outcome")
+            prior_operation = idempotency_operations.setdefault(key, event.operation)
+            if state == "retryable" and prior_operation != event.operation:
+                raise JournalCorruptionError("semantic retry changes transaction operation")
             previous_terminal = prior_terminals.get(event.intent_id)
             if previous_terminal is not None:
                 previous_intent = prior_intents[event.intent_id]
@@ -271,6 +276,7 @@ def validate_event_sequence(events: list[JournalEvent]) -> None:
             _validate_intent_event(event)
             active = event
             prior_intents[event.intent_id] = event
+            idempotency_states[key] = "pending"
             continue
 
         if active is None:
@@ -283,7 +289,9 @@ def validate_event_sequence(events: list[JournalEvent]) -> None:
         classification = _validate_terminal_event(event, active)
         prior_terminals[event.intent_id] = event
         if classification == "after":
-            completed_idempotency.add(key)
+            idempotency_states[key] = "completed"
+        else:
+            idempotency_states[key] = "retryable"
         active = None
 
 
