@@ -10,6 +10,7 @@ from itertools import pairwise
 from typing import TYPE_CHECKING
 
 from studyloop.history import _connection
+from studyloop.learning.concept_quality import is_usable_concept
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -233,7 +234,16 @@ def _seed_from_markdown(topic: str, *, max_files: int = 75) -> int:
             ):
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
-            headings = [m.group(2).strip() for m in _HEADING_RE.finditer(text)]
+            # Headings are a good signal for concepts and a terrible one for
+            # ONLY concepts: the same regex happily harvests quiz options,
+            # worked examples and markdown-converter artefacts. Filtering here
+            # rather than at render time keeps the debris out of the database,
+            # so it cannot reach the mastery graph OR the plan agent's evidence.
+            headings = [
+                h
+                for h in (m.group(2).strip() for m in _HEADING_RE.finditer(text))
+                if is_usable_concept(h)
+            ]
             for source, target in pairwise(headings):
                 if upsert_dependency(
                     ConceptDependency(
@@ -249,6 +259,8 @@ def _seed_from_markdown(topic: str, *, max_files: int = 75) -> int:
                     count += 1
             note_stem = _normalise(path.stem)
             for target in _WIKILINK_RE.findall(text):
+                if not is_usable_concept(target):
+                    continue
                 if upsert_dependency(
                     ConceptDependency(
                         topic=topic,
@@ -262,6 +274,8 @@ def _seed_from_markdown(topic: str, *, max_files: int = 75) -> int:
                 ):
                     count += 1
             for tag in _TAG_RE.findall(text):
+                if not is_usable_concept(tag):
+                    continue
                 if upsert_dependency(
                     ConceptDependency(
                         topic=topic,
@@ -370,6 +384,16 @@ def _fetch_dependencies(topic: str) -> list[ConceptDependency]:
                 confidence=float(row["confidence"] or 0.0),
             )
             for row in rows
+            # Filter on READ as well as on write. The write-side filter stops
+            # new debris accumulating, but it does nothing for the rows already
+            # in every existing database -- and a graph showing
+            # "'this is terrible. any competent developer would use a decorator'"
+            # as a concept is one the learner stops believing. Filtering here
+            # means an existing install looks right immediately, with no
+            # migration and nothing destroyed: the rows stay on disk, they just
+            # stop being rendered as concepts. An edge needs BOTH ends usable,
+            # since a dependency pointing at debris teaches nothing.
+            if is_usable_concept(row["source_concept"]) and is_usable_concept(row["target_concept"])
         ]
     except sqlite3.OperationalError:
         return []

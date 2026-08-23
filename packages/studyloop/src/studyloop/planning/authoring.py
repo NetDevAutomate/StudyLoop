@@ -16,6 +16,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from studyloop.learning.concept_quality import is_usable_concept
+
 from .models import Milestone, Mission, Resource, StudyPlan, slugify, utc_now_iso
 
 logger = logging.getLogger(__name__)
@@ -129,6 +131,7 @@ def seed_from_history(*, days: int = 30, limit: int = 8) -> dict:
         suggestions["struggling_topics"] = [
             {"topic": row.get("topic", ""), "last_seen": row.get("last_seen", "")}
             for row in history.progress.get_struggling_topics(days=days)[:limit]
+            if is_usable_concept(row.get("topic"))
         ]
     except Exception:
         suggestions["notes"].append("struggle signal unavailable")
@@ -145,6 +148,11 @@ def seed_from_history(*, days: int = 30, limit: int = 8) -> dict:
 
     if keyword_map:
         try:
+            # The due-concepts rows are where the worst debris arrived: a
+            # truncated path (`study-notes/introd`), a single character (`x`),
+            # and a row whose topic and concept disagreed. An agent handed a
+            # concept called `x` either invents a meaning for it or burns a turn
+            # asking what it is, so reject before it ever reaches the brief.
             suggestions["due_concepts"] = [
                 {
                     "topic": row.get("topic", ""),
@@ -152,6 +160,7 @@ def seed_from_history(*, days: int = 30, limit: int = 8) -> dict:
                     "review_type": row.get("review_type", ""),
                 }
                 for row in history.spaced_repetition_due(keyword_map)[:limit]
+                if is_usable_concept(row.get("concept") or row.get("topic"))
             ]
         except Exception:
             suggestions["notes"].append("spaced-repetition data unavailable")
