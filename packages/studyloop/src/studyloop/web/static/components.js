@@ -730,13 +730,35 @@ document.addEventListener("alpine:init", () => {
           english[0] ||
           null;
         if (this._preferredVoice && select) select.value = this._preferredVoice.name;
+        // PERSIST the computed preference. Without this the dropdown displayed a
+        // chosen voice while the engine read nothing from 'voiceName' and let the
+        // browser pick its own default -- the label and the audio disagreed on
+        // first load, which is the same defect already fixed on the neural tier.
+        // Only the engine's stored key is read at speak time, so choosing a
+        // voice here and not writing it is indistinguishable from choosing none.
+        if (this._preferredVoice) {
+          localStorage.setItem("voiceName", this._preferredVoice.name);
+        }
       }
     },
 
     onVoiceChange(name) {
+      const tier = (window.ttsEngine && window.ttsEngine.tier) || null;
+
+      // Server tier: the id belongs to the HOST's catalogue, not Kokoro's, and
+      // setVoice() validates it and stores it under 'serverVoiceId'. This branch
+      // exists because the neural test below is written as "any tier that is not
+      // web-speech or silent", which silently swallowed the server tier when it
+      // was added -- writing a host voice id into the neural key, where it would
+      // later be handed to an engine that has no such voice.
+      if (tier === 'server-openvox') {
+        window.ttsEngine.setVoice(name);
+        if (this.voiceOn) this.speakNow("Voice changed");
+        return;
+      }
+
       // Neural tier: name is a Kokoro voice id (e.g. 'am_michael')
-      if (window.ttsEngine && window.ttsEngine.tier &&
-          window.ttsEngine.tier !== 'web-speech' && window.ttsEngine.tier !== 'silent') {
+      if (tier && tier !== 'web-speech' && tier !== 'silent') {
         localStorage.setItem("neuralVoiceId", name);
         window.ttsEngine.setVoice(name);
         if (this.voiceOn) this.speakNow("Voice changed");

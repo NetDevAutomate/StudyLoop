@@ -195,3 +195,70 @@ class TestVoiceCatalogueIsEnglishOnly:
         guard = branch.index("if (!known)")
         assign = branch.index("this._voiceId = voiceId")
         assert guard < assign, "server branch assigns before validating"
+
+
+COMPONENTS = STATIC_DIR / "components.js"
+
+
+class TestWebSpeechFallbackFoundOnRealDevices:
+    """Guards for three defects found by testing on an iPad and an Android tablet.
+
+    All three share one shape: the picker and the engine disagreed about which
+    voice was live, so the UI named one voice and another spoke -- or none
+    changed at all. None was visible on a desktop browser, which is why they
+    survived until real hardware ran them.
+
+    Context that makes these load-bearing rather than cosmetic: a tablet loading
+    the app over `--lan` gets a plain-HTTP origin, so `isSecureContext` is false
+    and the browser hides BOTH navigator.gpu and Cache Storage (verified against
+    the real LAN address). In-browser Kokoro therefore cannot run there at all,
+    which makes Web Speech the permanent tablet fallback rather than a last
+    resort -- so its bugs matter as much as the neural tier's.
+    """
+
+    def test_utterance_language_is_set_alongside_the_voice(self) -> None:
+        """Android exposes one voice per locale and ignores `voice` on its own.
+
+        Selecting "English (Australia)" instead of "English (United Kingdom)"
+        changed the dropdown label and nothing audible. Setting `lang` from the
+        matched voice is what makes the selection take effect.
+        """
+        src = ENGINE.read_text()
+        # Anchor on the DEFINITION, not a call site: `this._speakWSA(text);` now
+        # appears earlier inside the server tier's fallback path, and matching it
+        # sliced the wrong function.
+        start = src.index("_speakWSA(text) {")
+        body = src[start : src.index("\n  }", start)]
+        assert "utter.voice = match" in body
+        assert "utter.lang = match.lang" in body, (
+            "utter.lang is not set from the matched voice — Android will ignore the selection"
+        )
+
+    def test_the_computed_default_voice_is_persisted(self) -> None:
+        """The picker chose a preferred voice, displayed it, and never stored it.
+
+        Only the stored key is read at speak time, so a displayed-but-unstored
+        choice let the browser's own default speak while the UI named something
+        better. Same defect already fixed once on the neural tier.
+        """
+        src = COMPONENTS.read_text()
+        start = src.index("_preferredVoice =")
+        window = src[start : start + 1400]
+        assert 'localStorage.setItem("voiceName"' in window, (
+            "the computed default voice is never persisted, so the engine cannot use it"
+        )
+
+    def test_the_server_tier_does_not_write_the_neural_voice_key(self) -> None:
+        """onVoiceChange's neural test is "any tier that isn't web-speech or
+        silent", which swallowed the server tier when it was added and wrote a
+        HOST voice id into 'neuralVoiceId' — where it would later be offered to
+        an engine with no such voice. The server branch must come first.
+        """
+        src = COMPONENTS.read_text()
+        start = src.index("onVoiceChange(name)")
+        body = src[start : src.index("\n    },", start)]
+        server = body.index("'server-openvox'")
+        neural = body.index('localStorage.setItem("neuralVoiceId"')
+        assert server < neural, (
+            "the server tier is handled after the neural branch, so it writes the wrong key"
+        )

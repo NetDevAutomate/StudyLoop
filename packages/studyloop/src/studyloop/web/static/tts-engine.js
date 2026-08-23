@@ -844,7 +844,16 @@ class TTSEngine {
     if (savedVoice && window.speechSynthesis) {
       const voices = window.speechSynthesis.getVoices();
       const match = voices.find(v => v.name === savedVoice);
-      if (match) utter.voice = match;
+      if (match) {
+        utter.voice = match;
+        // `lang` must be set ALONGSIDE `voice`, not instead of it. Android's TTS
+        // exposes one voice per locale ("English (Australia)", "English (United
+        // Kingdom)"), and Chrome there ignores `voice` on its own -- picking a
+        // different entry changed the label and nothing else, which is exactly
+        // the "no actual change of voice" symptom reported on an Android tablet.
+        // Harmless everywhere else: it restates the voice's own language.
+        utter.lang = match.lang;
+      }
     }
     utter.onend = () => {
       if (!this._stopped) this._setState('idle');
