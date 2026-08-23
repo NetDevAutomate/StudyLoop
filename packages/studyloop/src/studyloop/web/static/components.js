@@ -344,7 +344,7 @@ document.addEventListener("alpine:init", () => {
        attribute mechanism as `font` — see _applyFont(). */
     fontScale: localStorage.getItem("fontScale") || "md",
     // isSpeaking: driven by 'tts:state-change' events from tts-engine.js.
-    // true while any tier (neural or Web Speech API) is producing audio.
+    // true while any tier (host-side or Web Speech API) is producing audio.
     isSpeaking: false,
     // ttsDownloadPct: 0-100 during first-run model download, -1 when idle.
     ttsDownloadPct: -1,
@@ -362,7 +362,7 @@ document.addEventListener("alpine:init", () => {
     _preferredVoice: null,
     _voicesLoaded: false,
 
-    /* Engine badge. Three states: pending (tier unknown), ok (a neural tier is
+    /* Engine badge. Three states: pending (tier unknown), ok (the server tier is
        live), degraded (something else is speaking). "Degraded" is deliberately
        loud — a silent downgrade is indistinguishable from working software. */
     get ttsEngineLabel() {
@@ -374,8 +374,6 @@ document.addEventListener("alpine:init", () => {
       // picker named a product that was not installed, which is how it was
       // reported: "OpenVox is down but it still says server-openvox".
       if (this.ttsTier === 'server-openvox') return 'Kokoro (server)';
-      if (this.ttsTier === 'neural-webgpu') return 'Kokoro (WebGPU)';
-      if (this.ttsTier === 'neural-wasm') return 'Kokoro (WASM)';
       if (this.ttsTier === 'web-speech') return 'System voices';
       if (this.ttsTier === 'silent') return 'No audio';
       return String(this.ttsTier);
@@ -391,7 +389,7 @@ document.addEventListener("alpine:init", () => {
         return 'Detecting which speech engine this device can run…';
       }
       if (!this.ttsDegraded) {
-        return `Kokoro neural speech is active (${this.ttsTier}).`;
+        return `Kokoro is speaking from the host (${this.ttsTier}).`;
       }
       const why = this.ttsTierDetail || this.ttsTierReason || 'reason unknown';
       return (
@@ -446,14 +444,11 @@ document.addEventListener("alpine:init", () => {
         this.ttsTier = window.ttsEngine.tier;
         this.ttsTierReason = window.ttsEngine.tierReason || '';
         this.ttsTierDetail = window.ttsEngine.tierDetail || '';
-        // Mirrors _setTier's derivation in tts-engine.js. 'server-openvox' is
-        // the fastest tier, not a degraded one -- this second copy predates the
-        // server tier and would have reported the best path as broken.
-        this.ttsDegraded = !(
-          this.ttsTier === 'server-openvox' ||
-          this.ttsTier === 'neural-webgpu' ||
-          this.ttsTier === 'neural-wasm'
-        );
+        // Mirrors _setTier's derivation in tts-engine.js: an EXPLICIT
+        // healthy-tier list, never "is not web-speech and not silent". A
+        // negative derivation here would report the fastest tier as broken --
+        // 'server-openvox' is the best path, not a degraded one.
+        this.ttsDegraded = !(this.ttsTier === 'server-openvox');
       }
 
       /* Start the engine when voice is already on. tts-engine.js deliberately
@@ -624,7 +619,7 @@ document.addEventListener("alpine:init", () => {
     },
 
     // loadVoices() — populates the #voice-select dropdown.
-    // Neural tiers: uses ttsEngine.listVoices() (Kokoro catalogue).
+    // Server tier: uses ttsEngine.listVoices() (the host's catalogue).
     // web-speech tier / no engine: uses speechSynthesis.getVoices().
     loadVoices() {
       const select = document.getElementById("voice-select");
@@ -677,9 +672,11 @@ document.addEventListener("alpine:init", () => {
       }
       if (select) select.disabled = false;
 
-      // Neural tier: ttsEngine is initialised and not web-speech
-      if (window.ttsEngine && window.ttsEngine.tier &&
-          window.ttsEngine.tier !== 'web-speech' && window.ttsEngine.tier !== 'silent') {
+      /* Server tier: the host reports its own catalogue, so ask the engine.
+         Matched EXPLICITLY rather than as "any tier that is not web-speech or
+         silent" — a negative derivation here is what previously let an
+         unexpected tier fall into the wrong branch. */
+      if (window.ttsEngine.tier === 'server-openvox') {
         const voices = window.ttsEngine.listVoices();
         if (select) {
           select.innerHTML = "";
@@ -693,13 +690,12 @@ document.addEventListener("alpine:init", () => {
           // With no saved preference the <select> fell to option index 0 while
           // the engine stayed on its own DEFAULT_VOICE — so the dropdown named
           // one voice and a different one was heard, with nothing in the UI
-          // admitting the disagreement. Prefer the saved id, fall back to the
-          // engine's live voice, and only then let the browser pick index 0.
-          const saved = localStorage.getItem("neuralVoiceId");
+          // admitting the disagreement. The engine has already reconciled the
+          // saved 'serverVoiceId' against what the host offers, so its live
+          // voice is the authority here.
           const engineVoice = window.ttsEngine && window.ttsEngine.voiceId;
-          const active = saved || engineVoice;
-          if (active && voices.find((v) => v.id === active)) {
-            select.value = active;
+          if (engineVoice && voices.find((v) => v.id === engineVoice)) {
+            select.value = engineVoice;
           }
         }
         this._voicesLoaded = true;
@@ -740,7 +736,7 @@ document.addEventListener("alpine:init", () => {
         // PERSIST the computed preference. Without this the dropdown displayed a
         // chosen voice while the engine read nothing from 'voiceName' and let the
         // browser pick its own default -- the label and the audio disagreed on
-        // first load, which is the same defect already fixed on the neural tier.
+        // first load, which is the same defect already fixed on the server tier.
         // Only the engine's stored key is read at speak time, so choosing a
         // voice here and not writing it is indistinguishable from choosing none.
         if (this._preferredVoice) {
@@ -752,25 +748,17 @@ document.addEventListener("alpine:init", () => {
     onVoiceChange(name) {
       const tier = (window.ttsEngine && window.ttsEngine.tier) || null;
 
-      // Server tier: the id belongs to the HOST's catalogue, not Kokoro's, and
-      // setVoice() validates it and stores it under 'serverVoiceId'. This branch
-      // exists because the neural test below is written as "any tier that is not
-      // web-speech or silent", which silently swallowed the server tier when it
-      // was added -- writing a host voice id into the neural key, where it would
-      // later be handed to an engine that has no such voice.
+      // Server tier: the id belongs to the HOST's catalogue, and setVoice()
+      // validates it against that catalogue and stores it under 'serverVoiceId'.
+      // Matched EXPLICITLY rather than as "any tier that is not web-speech or
+      // silent": that negative form silently swallowed the server tier when it
+      // was added, writing a host voice id into a key meant for another engine.
       if (tier === 'server-openvox') {
         window.ttsEngine.setVoice(name);
         if (this.voiceOn) this.speakNow("Voice changed");
         return;
       }
 
-      // Neural tier: name is a Kokoro voice id (e.g. 'am_michael')
-      if (tier && tier !== 'web-speech' && tier !== 'silent') {
-        localStorage.setItem("neuralVoiceId", name);
-        window.ttsEngine.setVoice(name);
-        if (this.voiceOn) this.speakNow("Voice changed");
-        return;
-      }
       // WSA fallback
       const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
       this._preferredVoice = voices.find((v) => v.name === name) || null;
@@ -1371,8 +1359,8 @@ function reviewApp(defaultMode) {
       const text = this.currentCard.type === 'flashcard'
         ? (this.revealed ? this.currentCard.back : this.currentCard.front)
         : this.currentCard.question;
-      // Route through the unified tts-engine (all three tiers: neural-webgpu,
-      // neural-wasm, web-speech). ttsEngine.speak() handles stop + restart
+      // Route through the unified tts-engine (all three tiers: server-openvox,
+      // web-speech, silent). ttsEngine.speak() handles stop + restart
       // internally so calling it mid-utterance is safe.
       if (window.ttsEngine) {
         window.ttsEngine.speak(text);
@@ -1964,8 +1952,8 @@ function courseExplorer() {
     // it and no-ops, so the button can ship now and "lights up" once TTS lands.
     //
     // Contract (verified against the TTS worktree):
-    //   window.ttsEngine.speak(plainText) — takes PLAIN TEXT (not markdown/HTML),
-    //     normalises + sentence-splits internally. Resolves when playback starts.
+    //   window.ttsEngine.speak(plainText) — takes PLAIN TEXT (not markdown/HTML)
+    //     and passes it to the host as given. Resolves when playback ends.
     //   window.ttsEngine.stop() — halts synthesis + audio.
     //   window 'tts:state-change' event, detail.state === 'speaking' | 'idle' | …
     // We must convert markdown -> plain text ourselves (_mdToPlainText) so the

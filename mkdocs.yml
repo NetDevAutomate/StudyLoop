@@ -55,7 +55,6 @@ extra_javascript:
 
 exclude_docs: |
   archive/**
-  browser-neural-tts-design.md
   course-explorer/**
   designs/**
   handoffs/**

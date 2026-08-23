@@ -223,7 +223,7 @@ Launch with `studyloop web`. Reachable from any tablet or laptop on the network.
 - Global fuzzy search (Fuse.js, instant over titles) + full-text search (SQLite FTS5, over lesson bodies)
 - "Struggling?" button in the reader flags a lesson to the session DB; surfaces in next study session and deck generation
 - "Discuss" copies a Socratic prompt from the current lesson so the reader becomes an active recall or diagram session without a separate chat backend
-- "▶ Listen" TTS read-aloud button (appears only when the `browser-neural-tts` feature is installed)
+- "▶ Listen" read-aloud button — speaks the lesson through the Kokoro server configured in `tts.openvox_base_url`, falling back to your OS voices when none is reachable
 
 **Live session dashboard** (`/session`):
 - Real-time activity feed via SSE (Server-Sent Events)

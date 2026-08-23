@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-06-12. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, in-browser neural TTS engine, Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, optional OpenVox terminal voice, and the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving).
+> Last updated: 2026-08-23. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, server-side Kokoro TTS (replacing the removed in-browser neural engine), Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, and the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving).
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -12,7 +12,7 @@ For the planned direction, see [Target Architecture](target.md).
 
 StudyLoop is single-user and runs primarily on one host. External systems are
 the AI agent CLIs (Kiro, Claude Code, Gemini, Codex, OpenCode), optional
-generation providers, and the first-run browser TTS model fetch.
+generation providers, and an optional local Kokoro TTS server.
 
 ```mermaid
 flowchart TB
@@ -39,8 +39,8 @@ flowchart TB
       Bedrock["AWS Bedrock<br/>(cloud LLM)"]
     end
 
-    subgraph "Model hosting (first-run only)"
-      HF["Hugging Face<br/>(Kokoro-82M TTS weights,<br/>fetched by the browser,<br/>then cached on-device)"]
+    subgraph "Voice (optional, local)"
+      Kokoro["Kokoro TTS server<br/>(OpenVox, VoiceMode,<br/>or the bundled container)<br/>OpenAI-compatible /v1/audio/speech"]
     end
 
     Learner -->|"studyloop study<br/>or browser"| StudyLoop
@@ -55,17 +55,24 @@ flowchart TB
     StudyLoop -.->|"flashcard /<br/>quiz generation"| Anthropic
     StudyLoop -.->|"flashcard /<br/>quiz generation"| Ollama
     StudyLoop -.->|"flashcard /<br/>quiz generation"| Bedrock
-    Learner -.->|"browser fetches TTS model<br/>(first run, then offline)"| HF
+    StudyLoop -.->|"POST /v1/audio/speech<br/>(proxied from /api/tts/speak)"| Kokoro
 ```
 
 **Trust boundaries** — the learner controls a single-user local StudyLoop
 process, but optional providers can create outbound calls. The outbound surfaces
 are (a) the agent CLI's own model calls (the agent owns those creds and policy),
 (b) optional content generation via OpenAI, OpenRouter, Gemini, Anthropic, AWS
-Bedrock, or Ollama on a configured local/remote endpoint, and (c) a first-run
-browser fetch of the in-browser TTS model weights from Hugging Face (cached
-on-device thereafter; voice synthesis itself is fully local and does not send
-review text to a TTS API). StudyLoop does not phone home.
+Bedrock, or Ollama on a configured local/remote endpoint, and (c) speech
+synthesis, which StudyLoop proxies from its own authenticated `/api/tts/speak`
+to whatever `tts.openvox_base_url` names — normally a Kokoro server on loopback,
+so review text does not leave the host. StudyLoop does not phone home.
+
+One caveat worth stating where an operator will see it: if the configured server
+is VoiceMode's Kokoro, that server itself listens on `0.0.0.0` with no
+authentication and was confirmed reachable from another device on the LAN. That
+is the server's behaviour, not StudyLoop's — StudyLoop never needs the port
+reachable from anywhere but the host. See
+[Voice Output](../voice-output.md#kokoro-server-backends).
 
 ---
 
@@ -269,8 +276,9 @@ flowchart LR
   Teach-back/progress records and weak links feed the next `studyloop now`
   decision.
 - **Voice is optional.** `--speak` surfaces shell out through `study-speak`.
-  `--audio-file` writes a recap file through OpenVox or macOS `say`. The Web PWA
-  keeps browser-local TTS for in-browser reading.
+  `--audio-file` writes a recap file through the Kokoro server or macOS `say`.
+  The Web app reads cards through the same server, proxied by
+  `/api/tts/speak`.
 - **Web graph rendering is bounded.** CLI mastery commands can print the full
   graph, while `/api/mastery/graph` and `/api/mastery/weak-links` accept
   `limit` parameters so the Web tab stays responsive on broad topics. The Web
@@ -289,7 +297,7 @@ flowchart LR
 | Practice verification | `packages/studyloop/src/studyloop/learning/practice.py` + `cli/_practice.py` | attempt recording, metadata surfacing, progress updates |
 | Daily recap | `packages/studyloop/src/studyloop/learning/recap.py` + `cli/_recap.py` | one win, repair target, due item, next action, optional audio file |
 | Mastery graph | `packages/studyloop/src/studyloop/learning/mastery.py` + `cli/_mastery.py` + `web/routes/mastery.py` | dependency seeding, Mermaid output, weak links, bounded Web UI API |
-| Voice doctor | `packages/studyloop/src/studyloop/doctor/voice.py` | Kokoro files, `afplay`, optional OpenVox reachability |
+| Voice doctor | `packages/studyloop/src/studyloop/doctor/voice.py` | local Kokoro files, `afplay`, Kokoro-server reachability |
 | DB migration v24 | `packages/agent-session-tools/src/agent_session_tools/migrations.py` | `practice_attempts`, `concept_dependencies` |
 
 ---
@@ -692,65 +700,63 @@ flowchart TB
 
 ---
 
-## C4 Level 3 — Component (zoomed into in-browser neural TTS)
+## C4 Level 3 — Component (zoomed into server-side TTS)
 
-Shipped 2026-06-01. Voice output is a **browser-only** subsystem — there is no server-side TTS component for the web path. The page downloads a neural model once and synthesises speech on-device (WebGPU/WASM); StudyLoop's FastAPI server only serves the static engine module and the vendored ONNX-runtime WASM. This is the first part of the system that reaches an external network host (Hugging Face) directly from the browser.
+Voice output is a **proxy**, not a synthesiser. The page asks StudyLoop's own FastAPI app for audio; the app forwards the request to a Kokoro server and returns the bytes. The browser's only job is playback, which is what makes voice work on a tablet.
 
 ```mermaid
 flowchart TB
     subgraph Browser["Browser"]
       direction TB
-      Settings["Alpine settings store<br/>(components.js)<br/>──────────<br/>speak() / stopSpeaking()<br/>isSpeaking, ttsDownloadPct<br/>listens: tts:state-change,<br/>tts:download-progress"]
+      Settings["Alpine settings store<br/>(components.js)<br/>──────────<br/>speak() / stopSpeaking()<br/>isSpeaking<br/>listens: tts:state-change"]
       Review["reviewApp.speakCurrentCard()<br/>(T key / speaker button)"]
       Engine["ttsEngine singleton<br/>(tts-engine.js)<br/>──────────<br/>init() tier-select,<br/>speak(), stop(),<br/>listVoices()"]
-      Tiers["Tier selection<br/>──────────<br/>1. neural-webgpu (navigator.gpu)<br/>2. neural-wasm (numThreads=1)<br/>3. web-speech (fallback)"]
-      Kokoro["Kokoro-82M via transformers.js<br/>StyleTextToSpeech2Model<br/>+ AutoTokenizer + phonemizer"]
-      ORT["onnxruntime-web<br/>wasmPaths → /vendor/js/<br/>(jsep WASM: webgpu + wasm)"]
-      Audio["WebAudio<br/>──────────<br/>AudioBufferSourceNode;<br/>stop() halts source +<br/>settles play promise"]
-      Cache[("IndexedDB (model, ~92 MB)<br/>+ Cache Storage ('kokoro-voices')<br/>──────────<br/>managed by ORT Web / transformers.js<br/>(no service worker)")]
+      Tiers["Tier selection<br/>──────────<br/>1. server-openvox<br/>2. web-speech (OS voices)<br/>3. silent"]
+      Audio["HTMLAudioElement / WebAudio<br/>──────────<br/>plays the returned audio;<br/>stop() halts it and settles<br/>the play promise"]
+      WSA["speechSynthesis<br/>(web-speech tier)"]
     end
 
-    subgraph Server["studyloop web (FastAPI StaticFiles)"]
-      Static["/tts-engine.js<br/>/vendor/js/transformers-*.web.js<br/>/vendor/js/ort.all.bundle.min.mjs<br/>/vendor/js/ort-wasm-*.jsep.{wasm,mjs}"]
+    subgraph Server["studyloop web (FastAPI)"]
+      Route["POST /api/tts/speak<br/>web/routes/tts.py<br/>──────────<br/>authenticated; filters the<br/>voice list to English"]
+      Static["/tts-engine.js<br/>(StaticFiles)"]
     end
 
-    HF["Hugging Face<br/>(onnx-community/Kokoro-82M-v1.0-ONNX)<br/>model_quantized.onnx + voices"]
+    Kokoro["Kokoro server<br/>(OpenVox :8000 | VoiceMode :8880 |<br/>container :8880)<br/>POST /v1/audio/speech"]
 
     Settings --> Engine
     Review --> Engine
     Engine --> Tiers
-    Tiers --> Kokoro
-    Kokoro --> ORT
+    Tiers -->|"tier 1"| Route
+    Tiers -->|"tier 2"| WSA
     Engine --> Audio
-    Engine -.->|"import (importmap)"| Static
-    ORT -.->|"WASM from"| Static
-    Kokoro -->|"first run only"| HF
-    HF -->|"cached after 1st load"| Cache
-    Cache -->|"subsequent loads (offline)"| Kokoro
+    Engine -.->|"module load"| Static
+    Route -->|"proxied request"| Kokoro
+    Kokoro -->|"audio bytes"| Route
+    Route --> Audio
     Engine -->|"events"| Settings
 ```
 
 **Key invariants**:
 
-- **No COOP/COEP headers.** `env.backends.onnx.wasm.numThreads = 1` + WebGPU preference means `SharedArrayBuffer` is never requested, so `SecurityHeadersMiddleware` is untouched and the same-origin ttyd iframe (which relies on `X-Frame-Options: SAMEORIGIN`) keeps working. This is a deliberate engine-choice constraint, not an oversight.
-- **ORT WASM is pinned to vendored files.** `wasmPaths = '/vendor/js/'` stops transformers.js falling back to the jsdelivr CDN — which both breaks offline use and triggers a JS-glue/WASM version mismatch (`_OrtGetInputName is not a function`). The vendored `ort-wasm-simd-threaded.jsep.wasm` (23 MB, stored via Git LFS) serves both the webgpu and wasm execution providers.
-- **Model persists across reloads.** ONNX Runtime Web stores the compiled ~92 MB q8 model in IndexedDB and transformers.js caches voice embeddings in Cache Storage (`kokoro-voices`) — both managed by the libraries themselves, so a code-asset refresh never forces a re-download. There is no PWA service worker (`sw.js` was removed 2026-07-12; it was never registered).
-- **`stop()` is unified across tiers.** It halts the neural `AudioBufferSourceNode` (`.stop()` + `disconnect()`) AND settles the in-flight playback promise *before* suspending the AudioContext — a suspended context freezes the clock so `onended` never fires. Web-speech tier delegates to `speechSynthesis.cancel()`.
-- **Browser → Hugging Face is TTS egress only.** First-run model fetch is the
-  single direct browser-to-internet call for voice; optional content providers
-  may also create outbound calls from the Python server during generation.
-  Engine module and WASM assets are same-origin from FastAPI. After first load
-  the model is served from Cache Storage and voice works fully offline.
+- **The server tier is the best tier, not a degraded one.** `server-openvox` sits at the top of the ladder. Only `web-speech` and `silent` below it are fallbacks.
+- **The browser never talks to the TTS server directly.** Everything goes through `/api/tts/speak`, which carries StudyLoop's own authentication. A LAN tablet therefore needs no route to the Kokoro port, which is why binding that port to loopback costs nothing.
+- **Any OpenAI-compatible Kokoro server works.** Three were verified with a byte-identical request and the same voice ids: OpenVox (:8000, 2.4–2.5 s warm per sentence), VoiceMode (:8880, 0.37–1.8 s), and the bundled container. `/v1/models` is the only portable health path — the voice-listing URL differs between implementations.
+- **The voice list is filtered to English on purpose.** One server offered 67 voices and 41 were kept. The same model speaks Mandarin, Japanese, Spanish, French, Hindi, Italian and Portuguese, and a stray voice id is a *valid request that speaks that language* rather than an error, so an unfiltered list is a silent foot-gun.
+- **No model weights, no vendored runtime, no COOP/COEP question.** The in-browser tier (Kokoro-82M via transformers.js on WebGPU/WASM, the vendored ONNX Runtime, the phonemiser, ~27 MB of LFS-tracked runtime) was removed. It measured 6.6x real time on a warmed WebGPU tier, self-downgraded to silence, once spoke Mandarin unprompted, and — decisively — could not run at all over `studyloop web --lan`, because plain HTTP is not a secure context so the browser hides both `navigator.gpu` and Cache Storage. Design notes are kept at `docs/archive/browser-neural-tts-design.md`.
+- **`stop()` is unified across tiers.** It halts server-audio playback and settles the in-flight playback promise; the web-speech tier delegates to `speechSynthesis.cancel()`.
+- **Voice adds no browser-to-internet egress.** Synthesis is a call from the Python server to a host you configured, normally on loopback. Optional content providers remain the only outbound surface for generation.
 
 ### Component → file map (for the TTS surface)
 
 | Component | File | Notable lines |
 |---|---|---|
+| TTS proxy route + English voice filter | `packages/studyloop/src/studyloop/web/routes/tts.py` | `POST /tts/speak` |
 | TTS engine (singleton, tiers, speak/stop) | `packages/studyloop/src/studyloop/web/static/tts-engine.js` | full file |
-| Settings store TTS wiring (speak / stopSpeaking / isSpeaking / download progress) | `packages/studyloop/src/studyloop/web/static/components.js` | ~44–200 |
+| Settings store TTS wiring (speak / stopSpeaking / isSpeaking) | `packages/studyloop/src/studyloop/web/static/components.js` | ~44–200 |
 | `reviewApp.speakCurrentCard()` | `components.js` | ~590 |
-| Importmap + module load + stop button + progress bar | `index.html` | head (importmap) + header controls |
-| Vendored libs (LFS for `*.wasm`) | `packages/studyloop/src/studyloop/web/static/vendor/js/` | — |
+| Module load + stop button + voice selector | `index.html` | header controls |
+| Server config (`openvox_*`, `STUDYLOOP_TTS_*`) | `~/.config/studyloop/config.yaml` | `tts:` block |
+| Bundled Kokoro container | `docker/kokoro/docker-compose.yml` | full file |
 | TTS contract + stop-control tests | `packages/studyloop/tests/test_web_tts.py` | full file |
 
 ---
@@ -861,7 +867,7 @@ flowchart TB
   backend chat endpoint or mutates `sessions.db`.
 - **Tree cache is keyed by visible source state.** `GET /api/explorer/tree` stores the provider/course tree on `app.state` behind `_tree_fingerprint(base)`, which walks visible providers, courses, and source files while skipping dot directories and generated output directories. Adding/deleting nested courses refreshes the tree; writing generated decks does not.
 - **FTS index is a derived cache.** `explorer_fts.db` lives in `<session_db_dir>/` alongside `sessions.db` but is never opened by the session migration system. It can be deleted and will be rebuilt on the next search call. No schema migration is required.
-- **TTS is gated by feature detection.** `ttsAvailable = !!window.ttsEngine`. The "▶ Listen" button is `x-show="ttsAvailable && activeLesson"` — hidden entirely when the `browser-neural-tts` worktree is not merged.
+- **TTS is gated by feature detection.** `ttsAvailable = !!window.ttsEngine`. The "▶ Listen" button is `x-show="ttsAvailable && activeLesson"`, so it hides if the engine module fails to load. The engine itself is always shipped; speech reaches a Kokoro server through `/api/tts/speak`, and falls back to the OS voices when no server is reachable.
 - **Struggle write reuses the existing pipeline.** `POST /api/history/struggling-topics` calls the same `record_progress()` / `get_struggling_topics()` helpers used by the agent session path and writes `source_course`, `source_section`, `source_publisher`, and `created_by='web'`. The Generate panel's "Topic I'm struggling on" scope sees the web-flagged rows with no extra plumbing and can resolve back to the lesson provenance instead of only a generic topic name.
 
 ### Component → file map (Course Explorer)

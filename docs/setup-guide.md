@@ -22,7 +22,7 @@ Step-by-step installation and configuration for StudyLoop.
 - **tmux 3.1+** — required for `studyloop study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
 - **Obsidian** — for study notes (any vault structure works)
 - **Optional**: `sentence-transformers` for semantic search
-- **Optional**: [OpenVox](https://openvoxai.com/) — local macOS voice API for terminal/MCP `study-speak` output when its Local API is enabled
+- **Optional**: a Kokoro TTS server for voice output — [VoiceMode](https://github.com/mbailey/voicemode), [OpenVox](https://openvoxai.com/), or `docker/kokoro/docker-compose.yml`. Used by both `study-speak` and the web app. Without one, the web app uses your OS voices. See [Voice Output](voice-output.md#kokoro-server-backends)
 
 > **tmux-resurrect / tmux-continuum users**: studyloop automatically cleans up
 > zombie sessions on startup, so resurrect-restored sessions are handled
@@ -315,14 +315,14 @@ review:
     - ~/Desktop/Python/downloads
 ```
 
-**Voice output** synthesises speech with a neural model (Kokoro-82M) **entirely in the browser** via WebGPU/WASM — no text is sent to a remote API, and no OS voice setup is needed. On first use the model downloads once (~92 MB) from Hugging Face and is kept in the browser's Cache Storage (`transformers-cache`) so later sessions do not re-download it; that caches the *model*, not the app, so it does not make StudyLoop usable offline. If the device can't run the neural model it falls back to the browser's Web Speech API.
+**Voice output** is synthesised by a Kokoro server you run, not in the browser. The page posts text to StudyLoop's own authenticated `/api/tts/speak`, which proxies it to whatever `tts.openvox_base_url` names; the device just plays the audio. That is why a tablet gets the same voice as the desktop. With no server reachable, the app falls back to your operating system's own voices — no install, lower quality — and failing that, to silence. Voice is off until you turn it on in the header.
 
-Two voice modes in the PWA:
+Two ways to hear a card:
 - **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once.
-- **Auto-voice** — toggle the header speaker icon, or press `V`. Reads everything automatically as you navigate.
-- **Stop** — a stop button appears while audio plays; it interrupts neural playback mid-utterance.
+- **Announcements** — the header speaker toggle enables the app's own spoken announcements (Pomodoro transitions and confirmations) and reveals the voice selector. It does **not** read cards to you automatically; there is no auto-voice mode and `V` is not bound.
+- **Stop** — a stop button appears while audio plays; it interrupts mid-utterance.
 
-See [Voice Output § Web PWA Voice](voice-output.md#web-pwa-voice-in-browser-neural-tts) for the full picture.
+See [Voice Output § Web App Voice](voice-output.md#web-app-voice-server-side-kokoro) for the full picture, including which server to run and the LAN-exposure trade-off one of them carries.
 
 **Accessibility:** The `Aa` button toggles [OpenDyslexic](https://opendyslexic.org) font. The sun icon toggles light/dark theme. Both are persisted across sessions.
 
@@ -508,14 +508,14 @@ tts:
   macos_voice: Samantha
 ```
 
-Optional OpenVox terminal/MCP profile:
+Kokoro server profile — used by `study-speak` **and** by the web app:
 
 ```yaml
 tts:
   backend: openvox
-  openvox_base_url: http://127.0.0.1:8000/v1
+  openvox_base_url: http://127.0.0.1:8000/v1   # or :8880/v1 for VoiceMode / the container
   openvox_model: kokoro
-  openvox_voice: af_bella
+  openvox_voice: bf_emma
   openvox_language: en
   openvox_response_format: wav
   openvox_timeout: 30
@@ -527,14 +527,23 @@ tts:
   macos_voice: Samantha
 ```
 
-Test OpenVox voice:
+The `openvox_*` keys are named that way for historical reasons and accept **any** OpenAI-compatible Kokoro endpoint — OpenVox, VoiceMode, or the container. Only the URL changes between them. To repoint for one command without editing the file:
 
 ```bash
-study-speak "StudyLoop is speaking through OpenVox." -b openvox
+STUDYLOOP_TTS_BASE_URL=http://127.0.0.1:8880/v1 \
+  STUDYLOOP_TTS_VOICE=bf_lily studyloop recap today --speak
+```
+
+`STUDYLOOP_TTS_MODEL` works the same way. All three override the config **file** only.
+
+Test the server voice:
+
+```bash
+study-speak "StudyLoop is speaking through a Kokoro server." -b openvox
 studyloop doctor --category voice
 ```
 
-If OpenVox is not running, its Local API toggle is off, or it is busy, StudyLoop falls back to the existing local voice path so the study session can continue.
+If the server is not running or is busy, StudyLoop falls back to the existing local voice path so the study session can continue.
 
 ## Obsidian Vault Setup
 

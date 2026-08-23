@@ -1,11 +1,13 @@
 # Voice Output
 
-StudyLoop has two complementary neural-TTS paths for AuDHD learners who benefit from auditory reinforcement alongside visual text:
+StudyLoop has two neural-TTS surfaces for AuDHD learners who benefit from auditory reinforcement alongside visual text:
 
-- **`study-speak` CLI** (this page, below) — speaks agent responses aloud during terminal sessions via OpenVox, `kokoro-onnx`, Qwen3/ltts, or macOS `say`.
-- **Web PWA in-browser TTS** ([jump to section](#web-pwa-voice-in-browser-neural-tts)) — synthesises speech entirely in the browser via WebGPU/WASM, no remote API. Same model, runs on-device.
+- **`study-speak` CLI** (this page, below) — speaks agent responses aloud during terminal sessions via `kokoro-onnx` on the local filesystem, a Kokoro server, Qwen3/ltts, or macOS `say`.
+- **Web app voice** ([jump to section](#web-app-voice-server-side-kokoro)) — the browser posts text to StudyLoop's own server, which proxies it to a Kokoro server you run. The device only plays the audio it gets back.
 
-`study-speak` is a TTS CLI tool that speaks agent responses aloud. Kokoro remains the safest default because it is controlled directly by StudyLoop; OpenVox is an optional terminal/agent backend when you already have its local API enabled.
+Both surfaces read the same `tts:` block in `~/.config/studyloop/config.yaml`. `tts.backend` is **not** CLI-only: the web app's server-side path uses the same `openvox_*` connection settings.
+
+Voice is **off by default** on both surfaces. You turn it on deliberately — a toggle in the web header, a command in an agent session.
 
 ---
 
@@ -86,14 +88,14 @@ tts:
   macos_voice: Samantha  # fallback voice for macOS say
 ```
 
-Optional OpenVox profile:
+Kokoro server profile — used by the CLI **and** by the web app:
 
 ```yaml
 tts:
   backend: openvox
-  openvox_base_url: http://127.0.0.1:8000/v1
+  openvox_base_url: http://127.0.0.1:8000/v1   # or :8880/v1 for VoiceMode / the container
   openvox_model: kokoro
-  openvox_voice: af_bella
+  openvox_voice: bf_emma
   openvox_language: en
   openvox_response_format: wav
   openvox_timeout: 30
@@ -104,9 +106,65 @@ tts:
   macos_voice: Samantha  # fallback voice for macOS say
 ```
 
-### OpenVox Local API Backend
+!!! note "The keys are named `openvox_*` for historical reasons only"
+    They accept **any** OpenAI-compatible Kokoro endpoint — OpenVox was simply
+    the first one wired up. Nothing about the name restricts you to that
+    product, and no code path is specific to it. Only the URL changes between
+    servers.
 
-[OpenVox](https://openvoxai.com/) runs a local macOS API server with low-latency voices. This is best treated as an optional backend for terminal/MCP sessions, not as the primary Web PWA voice engine. StudyLoop calls the documented local endpoint at `http://127.0.0.1:8000/v1/audio/speech`, saves the returned WAV to a temporary file, plays it with `afplay`, and then removes the temporary file.
+### Overriding the server for a single command
+
+`STUDYLOOP_TTS_BASE_URL`, `STUDYLOOP_TTS_VOICE` and `STUDYLOOP_TTS_MODEL` override
+the config file without editing it — the quickest way to compare two servers back
+to back:
+
+```bash
+STUDYLOOP_TTS_BASE_URL=http://127.0.0.1:8880/v1 \
+  STUDYLOOP_TTS_VOICE=bf_lily studyloop recap today --speak
+```
+
+They override the config **file** only. Code that names its own endpoint is never
+silently repointed by a stray variable. The `STUDYLOOP_` prefix is deliberate:
+VoiceMode namespaces its equivalents as `VOICEMODE_TTS_BASE_URLS` and friends, and
+two voice tools sharing an unprefixed `TTS_BASE_URL` would fight over the same
+shell.
+
+### Kokoro Server Backends
+
+StudyLoop does not depend on a particular provider. It POSTs to whatever
+`openvox_base_url` names, so anything exposing an OpenAI-compatible
+`/v1/audio/speech` will do. Three are known to work with a byte-identical request
+and the same voice ids:
+
+| Server | Port | Warm latency per sentence | Notes |
+|---|---|---|---|
+| **[VoiceMode](https://github.com/mbailey/voicemode)** | 8880 | 0.37–1.8 s | `voicemode service install kokoro`. Native, no Docker. On Apple Silicon its `mlx-audio` service (:8890) bundles an MPS-accelerated Kokoro alongside Whisper. **Binds to your LAN — see the trade-off below.** |
+| **[OpenVox](https://openvoxai.com/)** | 8000 | 2.4–2.5 s | A macOS app. Binds `127.0.0.1` only. |
+| **Container** | 8880 | not measured | `docker/kokoro/docker-compose.yml` in this repo, pinned to `127.0.0.1`. Correct for amd64 but **untested** there; the arm64 image is broken upstream (ships a CUDA PyTorch, fails with `libcublasLt.so not found`, crash-loops). On Apple Silicon use a native server. |
+
+On macOS prefer a native server — no Docker, no image to track. On Linux and
+Windows the container is the intended route.
+
+!!! warning "VoiceMode's Kokoro is reachable from your whole network"
+    Measured, not inferred: it runs uvicorn with `--host 0.0.0.0`, and a separate
+    tablet on the same network fetched `http://<host>:8880/v1/models`
+    successfully **with no credentials**. It is not configurable — VoiceMode
+    exposes port, models dir, cache dir, default voice and max-requests settings,
+    but no host setting, and the address is hardcoded in a git-tracked start
+    script that the next install or pull reverts.
+
+    **The trade-off, stated plainly, because it is a real choice and not a defect
+    to route around.** Kokoro is CPU-intensive, so an open TTS port lets anything
+    on the network spend your host's CPU, and it is the one component here with no
+    authentication. Against that, it is the only route that gives a tablet a good
+    voice at all — the alternative on such a device is the system voices, or
+    silence. On a home network that is usually a fine trade; on a shared, office
+    or public network it is not.
+
+    StudyLoop itself never needs the port reachable: tablets get speech through
+    StudyLoop's own password-protected `/api/tts/speak`, so firewalling 8880 costs
+    you nothing. OpenVox and the container both bind loopback and raise none of
+    this.
 
 Smoke test:
 
@@ -116,26 +174,27 @@ studyloop recap today --audio-file recap.wav
 ```
 
 `studyloop recap today --audio-file` saves the same compact daily recap that
-`--speak` reads aloud. It prefers OpenVox when `tts.backend: openvox` is
-configured, and falls back to macOS `say` when OpenVox is unavailable.
+`--speak` reads aloud. It prefers the configured server when `tts.backend:
+openvox` is set, and falls back to macOS `say` when the server is unavailable.
 
-Manual API check:
+Manual API check — the same request works against any of the three servers, with
+only the port changed:
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/v1/audio/speech" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "kokoro",
-    "input": "StudyLoop is speaking through OpenVox.",
+    "input": "StudyLoop is speaking through a Kokoro server.",
     "language": "en",
-    "voice": "af_bella",
+    "voice": "bf_emma",
     "response_format": "wav"
   }' \
-  --output openvox-test.wav
-afplay openvox-test.wav
+  --output kokoro-test.wav
+afplay kokoro-test.wav
 ```
 
-If OpenVox is closed, busy, unreachable, or its Local API toggle is off, `study-speak` continues through the existing fallback chain instead of blocking the study session.
+If the server is closed, busy or unreachable, `study-speak` continues through the existing fallback chain instead of blocking the study session.
 
 ### Available Kokoro Voices
 
@@ -176,48 +235,54 @@ Replace the path with your actual clone location. The `scripts/install-agents.sh
 
 ---
 
-## Web PWA Voice (in-browser neural TTS)
+## Web App Voice (server-side Kokoro)
 
-The study web app (`studyloop web`) synthesises speech **entirely in the browser** with a neural model — the same Kokoro-82M voice quality as the `study-speak` CLI, running locally via WebGPU/WASM. **No text is ever sent to a remote API.** This replaces the old Web Speech API path, which depended on the OS's built-in voices (poor quality on macOS without manual voice downloads).
+The study web app (`studyloop web`) speaks through a **server-side** Kokoro. The browser POSTs the text to StudyLoop's own authenticated route `/api/tts/speak`, which proxies the request to whatever `tts.openvox_base_url` names and returns the audio. The device only has to play a response, which is why this works on a tablet where in-browser synthesis could not.
 
-### How it works
+Set it up in the [Kokoro Server Backends](#kokoro-server-backends) section above — the web app needs no separate configuration.
 
-`tts-engine.js` loads [Kokoro-82M](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX) via [transformers.js](https://github.com/huggingface/transformers.js) and runs inference on-device. It auto-selects the best available tier:
+### The fallback ladder
+
+Three tiers, in order. This is **not** a chain of servers: StudyLoop points at **one** server URL, and the ladder is what happens when that one is absent or unreachable.
 
 | Tier | Engine | When |
 |---|---|---|
-| **`neural-webgpu`** | Kokoro on WebGPU | Browser exposes `navigator.gpu` (Chrome/Edge, recent Safari) |
-| **`neural-wasm`** | Kokoro on single-thread WASM | No WebGPU, but device is fast enough (passes a warm-up speed probe) |
-| **`web-speech`** | Web Speech API (OS voices) | Neural unavailable or device too slow — graceful fallback |
+| **`server-openvox`** | Kokoro on the server you configured | A reachable `openvox_base_url`. The best tier, not a degraded one. |
+| **`web-speech`** | Web Speech API — your operating system's own voices | No server configured, or it cannot be reached |
+| **`silent`** | Nothing speaks | No server and no OS speech support |
 
-There is **no COOP/COEP requirement** — the engine forces single-thread WASM (`numThreads=1`) and prefers WebGPU, so it never needs `SharedArrayBuffer`. That keeps the page's cross-origin isolation headers off, which matters because isolating the origin would break the same-origin embeds and WebSocket the session dashboard relies on.
+The middle rung matters: with no Kokoro server at all, the app still talks, using voices the device already has. They need no install and work everywhere, they are simply not as good.
 
-### First-run download
+### Why synthesis is not in the browser
 
-On first use the model downloads **once** (~92 MB: the q8-quantised Kokoro weights + tokenizer + voice embeddings) from Hugging Face, with a progress indicator in the header. The compiled model is cached in the browser's **IndexedDB** (by ONNX Runtime Web) and the voice embeddings in **Cache Storage** (`kokoro-voices`), and reused on every subsequent load — **subsequent loads are offline and fast** (init drops from ~30 s to ~4 s). This caching is managed by the TTS libraries directly and needs no service worker.
+An earlier tier ran Kokoro-82M in the page itself, via transformers.js on WebGPU or WASM. It has been removed, along with the vendored ONNX Runtime, the phonemiser and ~27 MB of model runtime. The reasons, in order of how badly each hurt:
 
-> **First run needs internet** to fetch the weights. After that, voice works fully offline.
+- **It could not run at all over `studyloop web --lan`.** That serves plain HTTP, which is not a secure context, so the browser hides both `navigator.gpu` and Cache Storage. The tablets voice was mostly *for* were exactly the devices it could not reach.
+- **6.6x real time on a warmed WebGPU tier** — slower than reading the card.
+- **It self-downgraded to a silent tier** rather than failing visibly.
+- **It occasionally spoke Mandarin**, for reasons never established.
 
-### Future: fully-offline (cold-start) voice
+A server has none of those limits. The design notes for the removed tier are kept at `docs/archive/browser-neural-tts-design.md`.
 
-The current design needs internet **once** (the first-run fetch). Making voice work with *zero* internet from a cold install is possible but deliberately **not** done yet — and notably, it **cannot** be solved by the install script.
+### English voices only, deliberately
 
-**Why the install script can't help:** the model is downloaded *by the browser* into the browser's per-origin **Cache Storage**. `scripts/install.sh` runs in the shell, server-side — it has no path to write into a browser's Cache Storage (unlike the `study-speak` CLI, which reads weights from `~/.cache/kokoro-onnx/` on the filesystem and *can* be pre-warmed by a shell `curl`). A shell download would land the bytes somewhere the web engine can't read.
+StudyLoop filters the server's voice list to English. One real server offered 67 voices; the picker showed 41.
 
-**The only real cold-offline path is to self-host the weights:**
+This is not tidiness. The same Kokoro model speaks Mandarin, Japanese, Spanish, French, Hindi, Italian and Portuguese, and a stray voice id is **a valid request that speaks that language** rather than an error you would notice. Filtering is what stops a mistyped voice reading your flashcards in Mandarin.
 
-1. Vendor the ~92 MB Kokoro model under `web/static/` (tracked via Git LFS, like the ORT WASM already is).
-2. Point `KOKORO_MODEL_ID` / the transformers.js model path at that same-origin location instead of the Hugging Face hub.
-3. The browser then fetches the model from `localhost` on first load — no internet, ever. (It still populates Cache Storage once; that's a local fetch.)
+The default voice is `bf_emma`, British female.
 
-**Why deferred:** it adds 92 MB to the repo/LFS for a one-time-internet saving that most LAN/desktop users don't need. A lighter middle-ground is a "warm voice cache" button in settings that calls `ttsEngine.init()` on demand, so the download happens deliberately (with progress) rather than on first card-read — still internet-once, but user-controlled.
+### Verified devices
+
+An iPad (both Brave and Chrome) and an Android tablet all speak through the server tier over the LAN.
 
 ### Controls
 
-- **Voice selector dropdown** — choose a Kokoro voice (e.g. `am_michael`, `af_heart`, `bf_emma`). Appears in the header; selection persists across sessions. (Falls back to listing OS voices if the engine is on the `web-speech` tier.)
+- **Voice selector dropdown** — choose a voice offered by your Kokoro server (e.g. `bf_emma`, `am_michael`, `af_heart`). Appears in the header; selection persists across sessions. On the `web-speech` tier it lists the OS voices instead.
 - **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once. This works whether or not the header voice toggle is on.
 - **Voice toggle** — the header speaker button. It enables the app's own spoken announcements (Pomodoro transitions and confirmations such as "voice enabled") and reveals the voice selector and engine badge. Persists to `localStorage` under `voice`. **Click-only — no key is bound to it, and it does not read cards to you automatically.**
-- **Stop** — a stop button appears in the header while audio is playing; click it (or it clears automatically when playback ends) to interrupt mid-utterance. The stop control halts neural WebGPU/WASM playback, not just Web Speech API output.
+- **Engine badge** — names the tier actually speaking (`server-openvox`, `web-speech`, `silent`), shown whenever voice is on rather than only on failure. A badge that appears only when something breaks teaches nobody what working looks like.
+- **Stop** — a stop button appears in the header while audio is playing; click it (or it clears automatically when playback ends) to interrupt mid-utterance. It halts server-audio playback, not just Web Speech API output.
 
 !!! warning "There is no auto-voice, and `V` is unbound"
     This page previously described pressing `V` to "read everything automatically as you navigate". No such feature exists in the web app — there is no auto-read mode, and `V` is not bound to anything. Reading is always one deliberate action: `T`, or the speaker icon.
@@ -243,7 +308,7 @@ study-speak "text" -b qwen3 --instruct "speak warmly"    # Qwen3 with emotion
 | Backend | Model Size | Latency | Notes |
 |---------|-----------|---------|-------|
 | `kokoro` (default) | 82M params | ~1.5s | ONNX runtime on CPU. Best balance of quality, speed, and StudyLoop-controlled reliability. |
-| `openvox` | Depends on selected OpenVox model | Low | Optional local macOS API backend for terminal/MCP voice when the OpenVox Local API is enabled. Falls back gracefully if unavailable. |
+| `openvox` | Depends on the server's model | 0.37–2.5s warm, by server | A Kokoro server over HTTP — OpenVox, VoiceMode, or the container. Also the engine behind web-app voice. Falls back gracefully if unreachable. |
 | `qwen3` (via ltts) | 1.7B params | 30–60s | Highest quality. Emotional control via `--instruct`. Apple Silicon MPS. Only use when quality matters more than speed. |
 | `macos` (say) | Built-in | Instant | Low quality. Last resort fallback. |
 
@@ -260,8 +325,11 @@ study-speak "text" -b qwen3 --instruct "speak warmly"    # Qwen3 with emotion
 **No sound**
 :   Check for errors: `study-speak "test" 2>&1`. Verify models exist in `~/.cache/kokoro-onnx/`.
 
-**OpenVox does not speak**
-:   Start the OpenVox app/local API server, then run `studyloop doctor --category voice` and `study-speak "test" -b openvox`. If OpenVox returns `429`, it is already generating or preloading a model; wait a moment and retry. StudyLoop will fall back automatically for normal agent sessions.
+**The Kokoro server does not speak**
+:   Start the server, then run `studyloop doctor --category voice` and `study-speak "test" -b openvox`. Check `/v1/models` answers on the port you configured — every OpenAI-compatible Kokoro server implements it, whereas the voice-listing path differs between implementations. If OpenVox returns `429`, it is already generating or preloading a model; wait a moment and retry. StudyLoop falls back automatically for normal agent sessions.
+
+**The web app uses the OS voices instead of Kokoro**
+:   The engine badge reads `web-speech`, which means `/api/tts/speak` could not reach your server. Check `openvox_base_url` and that the server is running. Nothing is broken — you are on the middle rung of the ladder.
 
 **AirPlay latency**
 :   Short clips (<2s) may not play through AirPlay due to buffer timing. Use longer text or switch to local speakers.
