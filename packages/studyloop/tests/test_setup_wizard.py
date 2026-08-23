@@ -1,7 +1,12 @@
-"""Tests for studyloop setup wizard (studyloop setup command).
+"""Tests for the studyloop setup wizard.
 
-Uses Click's CliRunner with mocked input to exercise the interactive wizard.
-All tests redirect CONFIG_DIR to a tmp_path to avoid touching real user config.
+Uses Click's CliRunner with scripted input. Every test redirects CONFIG_DIR to a
+tmp_path so the real user config is never touched, and every test pins harness
+detection: the wizard reads PATH, so without pinning these would pass on a
+developer machine with six CLIs installed and fail in CI with none.
+
+The design under test is deliberately small -- two prompts on the happy path,
+three at most -- so most of these assert what is NOT asked as much as what is.
 """
 
 from __future__ import annotations
@@ -28,438 +33,278 @@ def _patch_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Redirect CONFIG_DIR in _setup.py to a temp directory."""
     import studyloop.cli._setup as setup_mod
 
-    monkeypatch.setattr(setup_mod, "CONFIG_DIR", tmp_path)
-    return tmp_path
+    config_dir = tmp_path / "config"
+    monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
+    monkeypatch.delenv("STUDYLOOP_CONFIG", raising=False)
+    return config_dir
+
+
+@pytest.fixture
+def _no_harness(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin harness detection to 'none found'.
+
+    Without this the wizard's third question depends on which CLIs happen to be
+    installed on the machine running the suite, so the number of prompts -- and
+    therefore the input script -- would differ between a developer laptop and CI.
+    """
+    import studyloop.cli._setup as setup_mod
+
+    monkeypatch.setattr(setup_mod, "_detect_harness", lambda: [])
+
+
+@pytest.fixture
+def _one_harness(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin detection to exactly one harness, which must NOT prompt."""
+    import studyloop.cli._setup as setup_mod
+
+    monkeypatch.setattr(setup_mod, "_detect_harness", lambda: ["kiro"])
+
+
+def _written(config_dir: Path) -> dict:
+    path = config_dir / "config.yaml"
+    assert path.exists(), f"wizard wrote no config to {path}"
+    return yaml.safe_load(path.read_text()) or {}
+
+
+def _notes_dir(tmp_path: Path, layout: dict[str, int]) -> Path:
+    """Build a notes folder: {subfolder: note_count}. Root-level notes use ''."""
+    root = tmp_path / "notes"
+    root.mkdir(parents=True, exist_ok=True)
+    for folder, count in layout.items():
+        target = root / folder if folder else root
+        target.mkdir(parents=True, exist_ok=True)
+        for i in range(count):
+            (target / f"note{i}.md").write_text(f"# Note {i}\n\nbody\n")
+    return root
 
 
 # ---------------------------------------------------------------------------
-# Default values
+# DoD item 5 -- Andy's correction. A learner with no notes is a supported user,
+# not a degraded one, because "collecting notes" is the habit this tool exists
+# to replace. Skipping the notes question must still produce a usable config.
 # ---------------------------------------------------------------------------
 
 
-class TestSetupDefaults:
-    def test_setup_exits_zero_with_defaults(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+class TestNotesAreOptional:
+    def test_blank_notes_answer_still_writes_valid_config(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Accepting all defaults completes successfully."""
-        # Inputs: materials(Enter), has_ai(y), assistant(Enter=claude-code),
-        # notebooklm(Enter=n), obsidian(Enter=y), vault(Enter=~/Obsidian),
-        # export(Enter=n — new prompt when vault exists), launch(Enter=n)
-        # Extra "n" handles the export confirm if ~/Obsidian already exists on disk.
-        user_input = "\ny\n\nn\ny\n\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
+        result = runner.invoke(cli, ["setup"], input="\n")
         assert result.exit_code == 0, result.output
+        config = _written(_patch_config_dir)
+        assert "notes_path" not in config, "blank answer must not invent a notes folder"
+        assert config.get("content", {}).get("note_extensions") == [".md", ".txt"]
 
-    def test_setup_writes_config_file(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_blank_notes_answer_points_at_sessions_instead(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Config file is created when it didn't exist before."""
-        config_path = _patch_config_dir / "config.yaml"
-        assert not config_path.exists()
+        """The no-notes path must name the alternative, not just fall silent."""
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert result.exit_code == 0
+        assert "study sessions" in result.output.lower()
+        assert "studyloop study" in result.output
 
-        user_input = "\ny\n\nn\ny\n\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
+    def test_no_notes_means_a_single_prompt(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
+    ) -> None:
+        """One Enter is enough. Every extra prompt is a chance to lose someone."""
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert result.exit_code == 0
+        # Two questions would leave a second unconsumed prompt in the output.
+        assert result.output.count("Notes folder") == 1
+        assert "Focus on up to" not in result.output
+
+
+class TestNotesFolderIsUsed:
+    def test_notes_path_written_and_scanned(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None, tmp_path: Path
+    ) -> None:
+        notes = _notes_dir(tmp_path, {"Python": 3, "SQL": 2})
+        result = runner.invoke(cli, ["setup"], input=f"{notes}\n\n")
         assert result.exit_code == 0, result.output
-        assert config_path.exists()
+        config = _written(_patch_config_dir)
+        assert config["notes_path"] == str(notes)
+        assert "Found 5 notes" in result.output
 
-    def test_setup_default_materials_path(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_topics_are_offered_ranked_and_capped_at_three(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None, tmp_path: Path
     ) -> None:
-        """Default study-materials path is written to content.base_path."""
-        config_path = _patch_config_dir / "config.yaml"
-
-        user_input = "\ny\n\nn\ny\n\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["content"]["base_path"] == "~/study-materials"
-
-    def test_setup_default_obsidian_path(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
-    ) -> None:
-        """Default Obsidian vault path ~/Obsidian is written to obsidian_base."""
-        config_path = _patch_config_dir / "config.yaml"
-
-        user_input = "\ny\n\nn\ny\n\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["obsidian_base"] == "~/Obsidian"
-
-    def test_setup_notebooklm_disabled_by_default(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
-    ) -> None:
-        """NotebookLM defaults to disabled."""
-        config_path = _patch_config_dir / "config.yaml"
-
-        user_input = "\ny\n\nn\ny\n\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["notebooklm"]["enabled"] is False
-
-    def test_setup_honors_studyloop_config_env(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-    ) -> None:
-        """STUDYLOOP_CONFIG controls where setup writes config."""
-        config_path = tmp_path / "custom" / "studyloop.yaml"
-        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
-
-        user_input = "\ny\n\nn\ny\n\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
-
+        """DoD item 3. Five candidate folders, at most three active."""
+        notes = _notes_dir(tmp_path, {"Python": 9, "SQL": 7, "Spark": 5, "Terraform": 3, "Rust": 1})
+        result = runner.invoke(cli, ["setup"], input=f"{notes}\n\n")
         assert result.exit_code == 0, result.output
-        assert config_path.exists()
+        topics = _written(_patch_config_dir)["topics"]
+        assert len(topics) == 3, topics
+        # Ranked by note count, so the busiest folders are offered first.
+        assert [t["name"] for t in topics] == ["Python", "SQL", "Spark"]
+        assert "2 more folders found" in result.output
 
-
-# ---------------------------------------------------------------------------
-# Custom values
-# ---------------------------------------------------------------------------
-
-
-class TestSetupCustomValues:
-    def test_custom_materials_path(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_txt_notes_are_recognised(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None, tmp_path: Path
     ) -> None:
-        """Custom study materials path is persisted."""
-        config_path = _patch_config_dir / "config.yaml"
+        """DoD item 4, .txt half. Format is scanned, never asked."""
+        notes = tmp_path / "notes"
+        (notes / "Ops").mkdir(parents=True)
+        (notes / "Ops" / "a.txt").write_text("plain text note")
+        result = runner.invoke(cli, ["setup"], input=f"{notes}\n\n")
+        assert result.exit_code == 0, result.output
+        assert ".txt" in result.output
+        assert "Found 1 notes" in result.output
 
-        # custom materials path, has_ai=y, claude-code, nlm=n, obsidian=n, launch=n
-        user_input = "~/courses\ny\n\nn\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["content"]["base_path"] == "~/courses"
-
-    def test_notebooklm_enabled_when_confirmed(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_pdf_is_not_a_note(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None, tmp_path: Path
     ) -> None:
-        """NotebookLM is written as enabled when user confirms."""
-        config_path = _patch_config_dir / "config.yaml"
+        notes = tmp_path / "notes"
+        notes.mkdir(parents=True)
+        (notes / "slides.pdf").write_bytes(b"%PDF-1.4")
+        result = runner.invoke(cli, ["setup"], input=f"{notes}\n")
+        assert result.exit_code == 0, result.output
+        assert "No .md or .txt files found" in result.output
 
-        # materials=default, ai=n, nlm=y, obsidian=n, launch=n
-        user_input = "\nn\ny\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
 
-        config = yaml.safe_load(config_path.read_text())
-        assert config["notebooklm"]["enabled"] is True
-
-    def test_custom_obsidian_path(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+class TestScanIsBounded:
+    def test_template_and_attachment_folders_are_not_offered_as_topics(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None, tmp_path: Path
     ) -> None:
-        """Custom Obsidian vault path is persisted."""
-        config_path = _patch_config_dir / "config.yaml"
+        """A real vault is full of these. Suggesting `Templates` as a study
+        topic is the thing that makes the whole suggestion untrustworthy."""
+        notes = _notes_dir(
+            tmp_path,
+            {"Templates": 20, "Archive": 15, "attachments": 10, "Python": 2},
+        )
+        result = runner.invoke(cli, ["setup"], input=f"{notes}\n\n")
+        assert result.exit_code == 0, result.output
+        names = [t["name"] for t in _written(_patch_config_dir)["topics"]]
+        assert names == ["Python"], f"excluded folders leaked into topics: {names}"
 
-        # materials=default, ai=n, nlm=n, obsidian=y, custom path, launch=n
-        user_input = "\nn\nn\ny\n~/MyVault\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["obsidian_base"] == "~/MyVault"
-
-    def test_ai_assistant_selection(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_obsidian_vault_is_treated_as_a_plain_folder(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None, tmp_path: Path
     ) -> None:
-        """Selected AI assistant is written to config."""
-        config_path = _patch_config_dir / "config.yaml"
+        """Obsidian users must not feel demoted; non-users must not see the word."""
+        notes = _notes_dir(tmp_path, {"Python": 2})
+        (notes / ".obsidian").mkdir()
+        result = runner.invoke(cli, ["setup"], input=f"{notes}\n\n")
+        assert result.exit_code == 0, result.output
+        assert "treated as a plain markdown folder" in result.output
+        assert "obsidian_base" not in _written(_patch_config_dir)
 
-        # materials=default, ai=y, kiro, nlm=n, obsidian=n, launch=n
-        user_input = "\ny\nkiro\nn\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
 
-        config = yaml.safe_load(config_path.read_text())
-        assert config["ai_assistant"] == "kiro"
+class TestRetiredQuestions:
+    """The wizard must not ask about optional third-party integrations."""
 
-    def test_codex_ai_assistant_selection(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_notebooklm_is_not_asked(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Codex can be selected in the setup wizard."""
-        config_path = _patch_config_dir / "config.yaml"
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert "Enable NotebookLM integration?" not in result.output
+        assert "Do you use Google NotebookLM" not in result.output
 
-        user_input = "\ny\ncodex\nn\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["ai_assistant"] == "codex"
-
-    def test_no_ai_assistant(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_obsidian_is_not_asked(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Declining AI assistant does not write ai_assistant key."""
-        config_path = _patch_config_dir / "config.yaml"
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert "Configure Obsidian integration?" not in result.output
+        assert "Obsidian vault path" not in result.output
+        assert "Where is your Obsidian vault" not in result.output
 
-        user_input = "\nn\nn\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert "ai_assistant" not in config
-
-    def test_skip_obsidian(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_web_ui_launch_is_not_offered(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Declining Obsidian integration does not write obsidian_base key."""
-        config_path = _patch_config_dir / "config.yaml"
-
-        user_input = "\nn\nn\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert "obsidian_base" not in config
+        """It was a fourth question that spawned a process; a hint does the job."""
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert "Launch the studyloop web UI" not in result.output
 
 
-# ---------------------------------------------------------------------------
-# Config directory creation
-# ---------------------------------------------------------------------------
-
-
-class TestConfigDirCreation:
-    def test_config_dir_is_created(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
+class TestHarnessDetection:
+    def test_single_detected_harness_is_not_asked_about(
+        self, runner: CliRunner, _patch_config_dir: Path, _one_harness: None
     ) -> None:
-        """Config directory is created if it doesn't exist."""
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert result.exit_code == 0, result.output
+        assert _written(_patch_config_dir)["ai_assistant"] == "kiro"
+        assert "Which AI assistant" not in result.output
+
+    def test_ambiguous_detection_asks(
+        self, runner: CliRunner, _patch_config_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import studyloop.cli._setup as setup_mod
 
-        nested = tmp_path / "deep" / "nested" / "studyloop"
-        assert not nested.exists()
-        monkeypatch.setattr(setup_mod, "CONFIG_DIR", nested)
-
-        user_input = "\nn\nn\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
-
+        monkeypatch.setattr(setup_mod, "_detect_harness", lambda: ["kiro", "codex"])
+        result = runner.invoke(cli, ["setup"], input="\ncodex\n")
         assert result.exit_code == 0, result.output
-        assert nested.exists()
-        assert (nested / "config.yaml").exists()
+        assert _written(_patch_config_dir)["ai_assistant"] == "codex"
 
 
-# ---------------------------------------------------------------------------
-# Merge behaviour — existing config is preserved
-# ---------------------------------------------------------------------------
-
-
-class TestSetupMerge:
-    def test_existing_keys_preserved(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+class TestLegacyConfigSurvives:
+    def test_twenty_topic_config_is_not_truncated_or_reordered(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Keys in an existing config.yaml that the wizard doesn't touch are preserved."""
-        config_path = _patch_config_dir / "config.yaml"
-        config_path.write_text(
-            yaml.dump({"sync_remote": "my-hub", "session_db": "~/.config/studyloop/sessions.db"})
-        )
+        """load_settings() slices to 3 at READ time. The stored config must keep
+        all 20, or re-running setup would silently destroy 17 of them."""
+        _patch_config_dir.mkdir(parents=True, exist_ok=True)
+        legacy = {
+            "obsidian_base": "~/Obsidian",
+            "topics": [{"name": f"Topic{i}", "notebook_id": f"nb-{i}"} for i in range(20)],
+            "notebooklm": {"enabled": True},
+            "some_hand_edited_key": "keep me",
+        }
+        (_patch_config_dir / "config.yaml").write_text(yaml.dump(legacy))
 
-        user_input = "\nn\nn\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert result.exit_code == 0, result.output
+        config = _written(_patch_config_dir)
+        assert len(config["topics"]) == 20, "legacy topics were truncated"
+        assert [t["name"] for t in config["topics"]] == [f"Topic{i}" for i in range(20)]
+        assert config["topics"][7]["notebook_id"] == "nb-7", "notebook IDs were dropped"
+        assert config["some_hand_edited_key"] == "keep me"
+        assert config["notebooklm"] == {"enabled": True}
+        assert config["obsidian_base"] == "~/Obsidian", "legacy key must never be deleted"
 
-        config = yaml.safe_load(config_path.read_text())
-        assert config["sync_remote"] == "my-hub"
-        assert config["session_db"] == "~/.config/studyloop/sessions.db"
-
-    def test_wizard_values_overwrite_existing(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+    def test_rerun_with_all_enter_is_a_no_op(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None, tmp_path: Path
     ) -> None:
-        """Wizard answers overwrite the same keys from a prior run."""
-        config_path = _patch_config_dir / "config.yaml"
-        config_path.write_text(yaml.dump({"obsidian_base": "~/OldVault"}))
+        notes = _notes_dir(tmp_path, {"Python": 2})
+        first = runner.invoke(cli, ["setup"], input=f"{notes}\n\n")
+        assert first.exit_code == 0, first.output
+        before = _written(_patch_config_dir)
 
-        # materials=default, ai=n, nlm=n, obsidian=y, new path, launch=n
-        user_input = "\nn\nn\ny\n~/NewVault\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["obsidian_base"] == "~/NewVault"
+        second = runner.invoke(cli, ["setup"], input="\n\n")
+        assert second.exit_code == 0, second.output
+        assert _written(_patch_config_dir) == before, "re-run changed the config"
 
 
-# ---------------------------------------------------------------------------
-# Output / UX
-# ---------------------------------------------------------------------------
-
-
-class TestSetupOutput:
-    def test_banner_shown(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+class TestSetupBasics:
+    def test_config_dir_is_created(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Welcome banner is printed at the start."""
-        user_input = "\nn\nn\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
-        assert "studyloop setup" in result.output
+        assert not _patch_config_dir.exists()
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert result.exit_code == 0, result.output
+        assert _patch_config_dir.is_dir()
+
+    def test_honors_studyloop_config_env(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, _no_harness: None
+    ) -> None:
+        target = tmp_path / "custom" / "config.yaml"
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(target))
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert result.exit_code == 0, result.output
+        assert target.exists()
+
+    def test_banner_does_not_assume_obsidian_or_notebooklm(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
+    ) -> None:
+        """The old banner's first sentence named both. That is the bug."""
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert "turns a folder of notes into a study system" in result.output
 
     def test_saved_confirmation_shown(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """Confirmation message with config path is printed after saving."""
-        user_input = "\nn\nn\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
-        assert "Configuration saved" in result.output
-
-    def test_next_steps_shown_when_no_launch(
-        self,
-        runner: CliRunner,
-        _patch_config_dir: Path,
-    ) -> None:
-        """Next steps are shown when user declines to launch the web UI."""
-        user_input = "\nn\nn\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
-        assert "studyloop --help" in result.output
+        result = runner.invoke(cli, ["setup"], input="\n")
+        assert "Configuration saved to" in result.output
 
     def test_help_text(self, runner: CliRunner) -> None:
-        """Help text is accessible."""
         result = runner.invoke(cli, ["setup", "--help"])
         assert result.exit_code == 0
         assert "setup" in result.output.lower()
-
-
-# ---------------------------------------------------------------------------
-# Obsidian export integration (Step 4 extension)
-# ---------------------------------------------------------------------------
-
-
-class TestObsidianExport:
-    """Tests for the export-session-memory prompt added to Step 4."""
-
-    @pytest.fixture
-    def vault_with_obsidian(self, tmp_path: Path) -> Path:
-        """Return a temp vault dir that contains a .obsidian/ marker."""
-        vault = tmp_path / "vault"
-        vault.mkdir()
-        (vault / ".obsidian").mkdir()
-        return vault
-
-    def test_export_enabled_written_when_confirmed(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-        vault_with_obsidian: Path,
-    ) -> None:
-        """When user answers yes to export, config has obsidian.export_enabled True."""
-        import studyloop.cli._setup as setup_mod
-
-        config_dir = tmp_path / "cfg"
-        config_dir.mkdir()
-        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
-        config_path = config_dir / "config.yaml"
-
-        # Sequence:
-        # Step 1 materials: Enter (default ~/study-materials)
-        # Step 2 has_ai: n
-        # Step 3 notebooklm: n
-        # Step 4 use_obsidian: y
-        #         vault path: <vault>
-        #         export confirm: y   ← new prompt (vault exists + has .obsidian/)
-        # Step 5 launch: n
-        user_input = f"\nn\nn\ny\n{vault_with_obsidian}\ny\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
-        assert result.exit_code == 0, result.output
-
-        config = yaml.safe_load(config_path.read_text())
-        assert config["obsidian"]["export_enabled"] is True
-
-    def test_obsidian_base_set_with_export_enabled(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-        vault_with_obsidian: Path,
-    ) -> None:
-        """obsidian_base is written alongside the obsidian: section."""
-        import studyloop.cli._setup as setup_mod
-
-        config_dir = tmp_path / "cfg"
-        config_dir.mkdir()
-        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
-        config_path = config_dir / "config.yaml"
-
-        user_input = f"\nn\nn\ny\n{vault_with_obsidian}\ny\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        assert "obsidian_base" in config
-        assert str(vault_with_obsidian) in config["obsidian_base"]
-
-    def test_export_not_written_when_declined(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-        vault_with_obsidian: Path,
-    ) -> None:
-        """When user answers no to export, obsidian: section is absent from config."""
-        import studyloop.cli._setup as setup_mod
-
-        config_dir = tmp_path / "cfg"
-        config_dir.mkdir()
-        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
-        config_path = config_dir / "config.yaml"
-
-        # Same sequence but export confirm: n
-        user_input = f"\nn\nn\ny\n{vault_with_obsidian}\nn\nn\n"
-        runner.invoke(cli, ["setup"], input=user_input)
-
-        config = yaml.safe_load(config_path.read_text())
-        # No obsidian: section when export was declined
-        assert "obsidian" not in config
-
-    def test_export_prompt_shown_even_without_obsidian_marker(
-        self,
-        runner: CliRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-    ) -> None:
-        """Export confirm appears whenever the vault dir exists, even without .obsidian/."""
-        import studyloop.cli._setup as setup_mod
-
-        # vault dir exists but no .obsidian/ marker
-        bare_vault = tmp_path / "bare_vault"
-        bare_vault.mkdir()
-
-        config_dir = tmp_path / "cfg"
-        config_dir.mkdir()
-        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
-        config_path = config_dir / "config.yaml"
-
-        # materials=default, ai=n, nlm=n, obsidian=y, vault=bare_vault,
-        # export=n (prompt IS shown — vault exists), launch=n
-        user_input = f"\nn\nn\ny\n{bare_vault}\nn\nn\n"
-        result = runner.invoke(cli, ["setup"], input=user_input)
-        assert result.exit_code == 0, result.output
-
-        config = yaml.safe_load(config_path.read_text())
-        # Declined export → no obsidian: section
-        assert "obsidian" not in config
