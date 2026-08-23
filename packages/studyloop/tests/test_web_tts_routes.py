@@ -51,6 +51,109 @@ class TestHealth:
         assert "zf_xiaobei" not in ids
         assert "jf_alpha" not in ids
 
+    def test_filters_a_real_servers_full_multilingual_catalogue(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The filter is load-bearing, not precautionary -- proved against a live server.
+
+        VoiceMode's Kokoro on :8880 returns all 67 voices the model ships, across
+        seven language families: Spanish (ef_/em_), French (ff_), Hindi (hf_/hm_),
+        Italian (if_/im_), Japanese (jf_/jm_), Portuguese (pf_/pm_) and Mandarin
+        (zf_/zm_). OpenVox on :8000 does not, which is why this went unnoticed:
+        swapping the backend is what makes those ids reachable.
+
+        This payload is that server's actual response, so the test fails if the
+        allowlist is ever loosened into a denylist that only knows the two
+        prefixes an earlier test happened to name.
+        """
+        real_catalogue = [
+            # English -- must survive.
+            "af_alloy",
+            "af_aoede",
+            "af_bella",
+            "af_heart",
+            "af_jessica",
+            "af_kore",
+            "af_nicole",
+            "af_nova",
+            "af_river",
+            "af_sarah",
+            "af_sky",
+            "am_adam",
+            "am_echo",
+            "am_eric",
+            "am_fenrir",
+            "am_liam",
+            "am_michael",
+            "am_onyx",
+            "am_puck",
+            "am_santa",
+            "bf_alice",
+            "bf_emma",
+            "bf_isabella",
+            "bf_lily",
+            "bm_daniel",
+            "bm_fable",
+            "bm_george",
+            "bm_lewis",
+            # Everything else -- must be dropped.
+            "ef_dora",
+            "em_alex",
+            "em_santa",
+            "ff_siwis",
+            "hf_alpha",
+            "hf_beta",
+            "hm_omega",
+            "hm_psi",
+            "if_sara",
+            "im_nicola",
+            "jf_alpha",
+            "jf_gongitsune",
+            "jf_nezumi",
+            "jf_tebukuro",
+            "jm_kumo",
+            "pf_dora",
+            "pm_alex",
+            "pm_santa",
+            "zf_xiaobei",
+            "zf_xiaoni",
+            "zf_xiaoxiao",
+            "zf_xiaoyi",
+            "zm_yunjian",
+            "zm_yunxi",
+            "zm_yunxia",
+            "zm_yunyang",
+        ]
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_health",
+            lambda: OpenVoxHealth(reachable=True, model="kokoro", voice_count=len(real_catalogue)),
+        )
+        monkeypatch.setattr(tts_route, "openvox_voices", lambda: dict.fromkeys(real_catalogue, ""))
+        offered = [v["id"] for v in client.get("/api/tts/health").json()["voices"]]
+        assert offered, "the route must still offer the English voices"
+        assert all(v.startswith(("af_", "am_", "bf_", "bm_")) for v in offered), (
+            f"non-English voice offered to the browser: "
+            f"{[v for v in offered if not v.startswith(('af_', 'am_', 'bf_', 'bm_'))]}"
+        )
+        # Every one of the seven other families must be gone, not just Mandarin.
+        for prefix in (
+            "ef_",
+            "em_",
+            "ff_",
+            "hf_",
+            "hm_",
+            "if_",
+            "im_",
+            "jf_",
+            "jm_",
+            "pf_",
+            "pm_",
+            "zf_",
+            "zm_",
+        ):
+            assert not any(v.startswith(prefix) for v in offered), f"{prefix} leaked"
+
     def test_marks_british_voices(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
