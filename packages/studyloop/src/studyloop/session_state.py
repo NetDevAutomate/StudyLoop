@@ -82,6 +82,10 @@ def _read_session_state_locked() -> dict:
             _write_file_secure(STATE_FILE, "{}")
         return {}
     if not isinstance(state, dict):
+        # A JSON array/scalar is invalid session state. Replacing it immediately
+        # ensures nested or stringified legacy credentials cannot survive into
+        # the next unsandboxed agent launch.
+        _write_file_secure(STATE_FILE, "{}")
         return {}
     safe_state = redact_session_credentials(state)
     if safe_state != state:

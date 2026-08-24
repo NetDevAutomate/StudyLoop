@@ -9,9 +9,8 @@ from click.testing import CliRunner
 
 from studyloop.cli import cli
 from studyloop.web.runtime_feedback import (
-    LanCredentialFeedback,
     build_web_access_info,
-    format_lan_credential_lines,
+    emit_lan_credential_lines,
     format_web_access_lines,
 )
 
@@ -47,22 +46,22 @@ def test_format_web_access_lines_uses_client_urls_for_lan() -> None:
 
     assert "Local: http://127.0.0.1:8567/session" in "\n".join(lines)
     assert "LAN:   http://10.0.0.9:8567/session" in "\n".join(lines)
+    assert "no transport confidentiality" in "\n".join(lines).casefold()
+    assert "offline" in "\n".join(lines).casefold()
 
 
 def test_format_lan_credentials_shows_generated_password_only() -> None:
-    generated = format_lan_credential_lines(
-        LanCredentialFeedback(
-            username="study",
-            password="generated-secret",  # pragma: allowlist secret
-            password_generated=True,
-        )
+    generated: list[str] = []
+    configured: list[str] = []
+    emit_lan_credential_lines(
+        username="study",
+        generated_password="generated-secret",  # pragma: allowlist secret
+        emit=generated.append,
     )
-    configured = format_lan_credential_lines(
-        LanCredentialFeedback(
-            username="study",
-            password="stored-secret",  # pragma: allowlist secret
-            password_generated=False,
-        )
+    emit_lan_credential_lines(
+        username="study",
+        generated_password=None,
+        emit=configured.append,
     )
 
     assert "generated-secret" in "\n".join(generated)

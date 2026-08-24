@@ -15,6 +15,13 @@ studyloop web -p 9000                # custom port
 Use `studyloop config lan-password` from a human terminal to reuse a password
 across launches. StudyLoop stores only its salted one-way verifier.
 
+!!! warning "LAN mode needs trusted transport"
+    HTTP Basic authenticates requests; it does not protect a plain-HTTP
+    connection from observation. Use LAN mode only on a trusted network with
+    TLS or a trusted VPN/encrypted tunnel. A copied verifier for a weak password
+    is offline guessable, so choose a strong unique password. Basic Auth is
+    access control and is not learner-decision authority for agentic planning.
+
 Open your browser to `http://localhost:8567`. The PWA is installable; add it to your home screen on a tablet for review and session visibility. Phone screens are not supported — the study panels have no phone layout.
 
 !!! note "Core workflow"
@@ -454,9 +461,12 @@ studyloop study "topic" --web --lan
 ```
 
 Access from a tablet or laptop at `http://<host-ip>:8567/session`. Phone screens
-are not supported. HTTP Basic Auth protects the connection, and the WebSocket
+are not supported. HTTP Basic Auth protects access, and the WebSocket
 rides the same authenticated origin — no extra port to open. The password is
 entered or generated on the human terminal before the agent process starts.
+Plain HTTP does not provide transport confidentiality: use a trusted network
+with TLS or a trusted VPN/encrypted tunnel. Weak-password verifiers are offline
+guessable if copied.
 
 ---
 

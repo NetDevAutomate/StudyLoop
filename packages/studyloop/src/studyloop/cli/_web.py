@@ -12,9 +12,7 @@ import click
 
 from studyloop.cli._shared import console
 from studyloop.web.runtime_feedback import (
-    LanCredentialFeedback,
     build_web_access_info,
-    format_lan_credential_lines,
     format_web_access_lines,
 )
 
@@ -125,21 +123,11 @@ def web(
     elif lan:
         from studyloop.learner_credentials import LearnerCredentialError, prepare_lan_auth
 
-        def display(user: str, password: str, generated: bool) -> None:
-            for line in format_lan_credential_lines(
-                LanCredentialFeedback(
-                    username=user,
-                    password=password,
-                    password_generated=generated,
-                )
-            ):
-                console.print(line)
-
         try:
             username, password_verifier = prepare_lan_auth(
                 username=username,
                 configured_verifier=settings.lan_password_verifier,
-                display=display,
+                emit=console.print,
             )
         except LearnerCredentialError as exc:
             raise click.ClickException(str(exc)) from exc

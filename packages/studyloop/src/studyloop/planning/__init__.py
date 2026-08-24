@@ -20,6 +20,14 @@ from .authoring import (
     readiness,
     seed_from_history,
 )
+from .capabilities import (
+    PLANNING_CAPABILITY_SCHEMAS,
+    CapabilityRefusedError,
+    PlanningCapabilityCall,
+    PlanningCapabilityDispatcher,
+    PlanningCapabilityName,
+    PlanningCapabilityResult,
+)
 from .contracts import (
     ActorContext,
     AuthorityError,
@@ -70,6 +78,23 @@ from .index import checkpoint_history, indexed_plans, reindex_all
 from .learning_map import render_learning_map
 from .lifecycle import PlanningLifecycle
 from .markdown import parse_plan, render_plan
+from .model_config import (
+    DEFAULT_LOOPBACK_CANDIDATES,
+    LoopbackCandidate,
+    PlanningModelProfile,
+    detect_loopback_litellm,
+)
+from .model_port import (
+    MODEL_WIRE_VERSION,
+    ArchitectPrompt,
+    ModelEvent,
+    ModelRequest,
+    ModelTextDelta,
+    ModelToolCall,
+    ModelTurnCompleted,
+    PlanningModelPort,
+    load_architect_prompt,
+)
 from .models import (
     PLAN_STATUSES,
     Checkpoint,
@@ -113,6 +138,13 @@ from .repository import (
     RecoveryError,
     RecoveryReport,
 )
+from .scripted_model import (
+    ScriptedModelError,
+    ScriptedPlanningModel,
+    ScriptedPreflightResult,
+    ScriptedResponse,
+    run_scripted_preflight,
+)
 from .store import (
     InvalidPlanIdError,
     PlanExistsError,
@@ -128,11 +160,16 @@ from .store import (
 
 __all__ = [
     "CHECKPOINT_PHASES",
+    "DEFAULT_LOOPBACK_CANDIDATES",
     "INTERVIEW",
+    "MODEL_WIRE_VERSION",
+    "PLANNING_CAPABILITY_SCHEMAS",
     "PLAN_STATUSES",
     "SOURCE_TIERS",
     "ActorContext",
+    "ArchitectPrompt",
     "AuthorityError",
+    "CapabilityRefusedError",
     "Checkpoint",
     "Clock",
     "CommitResult",
@@ -159,9 +196,15 @@ __all__ = [
     "LearningRecord",
     "LifecycleError",
     "LifecycleValidationError",
+    "LoopbackCandidate",
     "Milestone",
     "MilestoneProposal",
     "Mission",
+    "ModelEvent",
+    "ModelRequest",
+    "ModelTextDelta",
+    "ModelToolCall",
+    "ModelTurnCompleted",
     "Multiplexer",
     "MutationIntent",
     "PathContainmentError",
@@ -176,8 +219,14 @@ __all__ = [
     "PlanSnapshot",
     "PlanUnknown",
     "PlanningBrief",
+    "PlanningCapabilityCall",
+    "PlanningCapabilityDispatcher",
+    "PlanningCapabilityName",
+    "PlanningCapabilityResult",
     "PlanningCommand",
     "PlanningLifecycle",
+    "PlanningModelPort",
+    "PlanningModelProfile",
     "PlanningPaths",
     "PlanningRef",
     "PlanningRepository",
@@ -196,6 +245,10 @@ __all__ = [
     "RecoveryError",
     "RecoveryReport",
     "Resource",
+    "ScriptedModelError",
+    "ScriptedPlanningModel",
+    "ScriptedPreflightResult",
+    "ScriptedResponse",
     "SourceReference",
     "StudyPlan",
     "SubmitProposalDraft",
@@ -207,6 +260,7 @@ __all__ = [
     "checkpoint_history",
     "compute_document_digest",
     "compute_structure_digest",
+    "detect_loopback_litellm",
     "draft_plan",
     "evaluate_and_record",
     "evaluate_plan",
@@ -215,6 +269,7 @@ __all__ = [
     "lifecycle_readiness",
     "list_plan_ids",
     "list_plans",
+    "load_architect_prompt",
     "load_plan",
     "load_plan_text",
     "parse_plan",
@@ -225,6 +280,7 @@ __all__ = [
     "reindex_all",
     "render_learning_map",
     "render_plan",
+    "run_scripted_preflight",
     "seed_from_history",
     "slugify",
     "structure_projection",

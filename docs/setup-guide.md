@@ -76,6 +76,25 @@ studyloop setup
 studyloop doctor --fix
 ```
 
+`studyloop setup` also installs and validates the packaged Plan Architect
+contract. It asks no extra curriculum questionnaire: notes remain optional,
+and a coding harness is used only for study sessions. Setup checks a fixed list
+of literal loopback LiteLLM addresses and records a reachable model profile
+when it finds one. To configure another server-owned OpenAI-compatible endpoint
+without exposing a provider credential to the browser, use:
+
+```bash
+studyloop setup \
+  --planning-base-url https://gateway.example.test/v1 \
+  --planning-model chosen-model \
+  --planning-api-key-ref env:STUDYLOOP_PLANNING_KEY
+```
+
+The key option is a reference, not the key itself. `studyloop doctor` reports
+the packaged prompt and exact three-capability schema, deterministic scripted
+preflight, configured model, and live reachability separately. An installed
+coding harness does not by itself mean agentic planning is supported.
+
 `studyloop self-test` is the fastest post-install confidence check. It verifies
 that the CLI imports, config is readable if present, the sessions database path
 is usable, and the web module imports. A warning exit (`1`) is acceptable before
@@ -348,6 +367,14 @@ Without a migrated verifier, the command requires an interactive terminal;
 enter a password twice or leave the first prompt blank to generate one.
 To reuse a password safely across launches, run `studyloop config lan-password`;
 it stores only the salted one-way verifier.
+
+!!! warning "LAN authentication is not encrypted transport"
+    These URLs use plain HTTP unless you put StudyLoop behind TLS. HTTP Basic
+    authenticates access but provides no transport confidentiality: anyone who
+    can observe that network traffic can observe the reusable credential. Use
+    LAN mode only on a trusted network with TLS or a trusted VPN/encrypted
+    tunnel. A copied scrypt verifier for a weak password is also offline
+    guessable, so use a strong unique password.
 
 ### Hosts — Cross-Machine Sync
 

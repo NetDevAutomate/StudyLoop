@@ -156,7 +156,11 @@ Run `studyloop study` without a topic to open the textual picker for body double
   `--web`). Authentication is established interactively before an agent starts;
   leave the prompt blank to generate a password. Passwords are never accepted
   in argv or stored in agent-readable config/session state. Legacy plaintext
-  config is atomically migrated to a one-way verifier.
+  config is atomically migrated to a one-way verifier. Plain HTTP Basic does
+  **not** encrypt the connection: use a trusted network plus TLS or a trusted
+  VPN/encrypted tunnel, and use a strong unique password because a copied
+  weak-password verifier is offline guessable. Basic Auth is LAN access
+  control, not proof that a learner approved a plan.
 
 **Session lifecycle:**
 - **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar
@@ -199,6 +203,14 @@ studyloop upgrade --component packages    # Upgrade only packages
 studyloop upgrade --component database    # Run DB migrations only
 studyloop upgrade --component agents      # Update agent definitions only
 ```
+
+Planning readiness is intentionally split in doctor output. **Scripted only**
+means the packaged Architect prompt, versioned wire contract, and exact
+`prepare_plan`, `submit_plan_proposal`, `get_plan_proposal` catalogue work
+without a provider. **Configured but unreachable** means that deterministic
+preflight still passes but the fixed model endpoint cannot currently be
+reached. **Live certified** requires both. Coding-harness detection is never a
+planning-readiness signal.
 
 Use `studyloop self-test` immediately after install when you only need to
 confirm the CLI imports, config can be read, the sessions database path is

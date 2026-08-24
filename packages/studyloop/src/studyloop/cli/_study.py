@@ -330,28 +330,14 @@ def _handle_start(
     if lan:
         from studyloop.learner_credentials import LearnerCredentialError, prepare_lan_auth
         from studyloop.settings import load_settings
-        from studyloop.web.runtime_feedback import (
-            LanCredentialFeedback,
-            format_lan_credential_lines,
-        )
 
         try:
             settings = load_settings()
 
-            def display(user: str, password: str, generated: bool) -> None:
-                for line in format_lan_credential_lines(
-                    LanCredentialFeedback(
-                        username=user,
-                        password=password,
-                        password_generated=generated,
-                    )
-                ):
-                    console.print(line)
-
             lan_username, password_verifier = prepare_lan_auth(
                 username=settings.lan_username or "study",
                 configured_verifier=settings.lan_password_verifier,
-                display=display,
+                emit=console.print,
             )
         except (LearnerCredentialError, click.ClickException) as exc:
             console.print(f"[red]{exc}[/red]")

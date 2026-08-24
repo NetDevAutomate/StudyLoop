@@ -127,19 +127,20 @@ def test_interactive_credential_preparation_hashes_before_returning(
     from studyloop.learner_credentials import prepare_lan_auth, verify_password
 
     prompts = iter(["human-entered-password", "human-entered-password"])
-    shown: list[tuple[str, str, bool]] = []
+    shown: list[str] = []
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("getpass.getpass", lambda _prompt: next(prompts))
 
     username, verifier = prepare_lan_auth(
         username="learner",
         configured_verifier="",
-        display=lambda user, password, generated: shown.append((user, password, generated)),
+        emit=shown.append,
     )
 
     assert username == "learner"
     assert verify_password("human-entered-password", verifier)
-    assert shown == [("learner", "human-entered-password", False)]
+    assert "human-entered-password" not in "\n".join(shown)
+    assert "configured; not shown" in "\n".join(shown)
 
 
 def test_noninteractive_credential_preparation_refuses_to_generate_authority(
@@ -151,7 +152,29 @@ def test_noninteractive_credential_preparation_refuses_to_generate_authority(
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
 
     with pytest.raises(LearnerCredentialError, match="interactive terminal"):
-        prepare_lan_auth(username="learner", configured_verifier="", display=lambda *_: None)
+        prepare_lan_auth(username="learner", configured_verifier="", emit=lambda _line: None)
+
+
+def test_generated_password_uses_ephemeral_output_without_a_plaintext_feedback_dto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A repr-visible dataclass carrying the reusable password is an avoidable leak."""
+    import studyloop.web.runtime_feedback as feedback
+    from studyloop.learner_credentials import prepare_lan_auth, verify_password
+
+    output: list[str] = []
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("getpass.getpass", lambda _prompt: "")
+    monkeypatch.setattr("secrets.token_urlsafe", lambda _size: "one-time-generated-password")
+
+    username, verifier = prepare_lan_auth(
+        username="learner", configured_verifier="", emit=output.append
+    )
+
+    assert username == "learner"
+    assert verify_password("one-time-generated-password", verifier)
+    assert "one-time-generated-password" in "\n".join(output)
+    assert not hasattr(feedback, "LanCredentialFeedback")
 
 
 def test_real_web_process_migrates_config_without_password_in_argv(tmp_path) -> None:

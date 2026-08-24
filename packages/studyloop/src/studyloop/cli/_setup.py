@@ -206,8 +206,100 @@ def _default_notes_answer(existing: dict) -> str:
     return str(value) if value else ""
 
 
+def _detect_planning_profile():
+    """Keep endpoint detection replaceable without coupling setup to HTTP details."""
+    from studyloop.planning.model_config import (
+        DEFAULT_LOOPBACK_CANDIDATES,
+        detect_loopback_litellm,
+    )
+
+    return detect_loopback_litellm(DEFAULT_LOOPBACK_CANDIDATES)
+
+
+def _probe_planning_profile(profile) -> bool:
+    from studyloop.planning.model_config import probe_model_profile
+
+    return probe_model_profile(profile)
+
+
+def _planning_setup_config(
+    existing: dict,
+    *,
+    explicit_base_url: str,
+    explicit_model: str,
+    explicit_api_key_ref: str,
+) -> tuple[dict[str, object], str]:
+    """Build server-owned planning config without adding a wizard question."""
+    from studyloop.planning.capabilities import PLANNING_CAPABILITY_SCHEMAS
+    from studyloop.planning.model_config import (
+        PlanningModelProfile,
+        profile_from_config,
+        profile_to_config,
+    )
+    from studyloop.planning.model_port import MODEL_WIRE_VERSION, load_architect_prompt
+    from studyloop.planning.scripted_model import run_scripted_preflight
+
+    if bool(explicit_base_url) != bool(explicit_model):
+        raise click.ClickException(
+            "--planning-base-url and --planning-model must be supplied together"
+        )
+    try:
+        explicit = (
+            PlanningModelProfile.from_explicit(
+                base_url=explicit_base_url,
+                model=explicit_model,
+                api_key_ref=explicit_api_key_ref or None,
+            )
+            if explicit_base_url
+            else None
+        )
+    except ValueError as exc:
+        raise click.ClickException(f"Invalid planning model profile: {exc}") from exc
+
+    existing_planning = existing.get("planning")
+    existing_model = existing_planning.get("model") if isinstance(existing_planning, dict) else None
+    profile = explicit or profile_from_config(existing_model)
+    detected_live = False
+    if profile is None:
+        profile = _detect_planning_profile()
+        detected_live = profile is not None
+
+    preflight = run_scripted_preflight()
+    if not preflight.ok:
+        raise click.ClickException("Planning protocol preflight failed")
+    prompt = load_architect_prompt()
+    planning: dict[str, object] = {
+        "prompt_version": prompt.version,
+        "capability_schema_version": MODEL_WIRE_VERSION,
+        "capabilities": [item.name.value for item in PLANNING_CAPABILITY_SCHEMAS],
+        "readiness": "scripted_only",
+    }
+    status = "scripted_only"
+    if profile is not None:
+        planning["model"] = profile_to_config(profile)
+        live = detected_live or _probe_planning_profile(profile)
+        status = "live_configured" if live else "configured_unreachable"
+        planning["readiness"] = status
+    return planning, status
+
+
 @click.command(name="setup")
-def setup() -> None:
+@click.option(
+    "--planning-base-url",
+    default="",
+    help="Explicit server-owned OpenAI-compatible base URL (no browser credential).",
+)
+@click.option("--planning-model", default="", help="Model name for the explicit planning URL.")
+@click.option(
+    "--planning-api-key-ref",
+    default="",
+    help="Secret reference such as env:PLANNING_KEY; raw API keys are refused.",
+)
+def setup(
+    planning_base_url: str,
+    planning_model: str,
+    planning_api_key_ref: str,
+) -> None:
     """First-run setup wizard — two questions, both optional."""
     console.print()
     console.print("[bold cyan]studyloop setup[/bold cyan]")
@@ -316,6 +408,40 @@ def setup() -> None:
         console.print(
             "[dim]No AI assistant found on your PATH. studyloop works standalone; "
             "install one later for live sessions.[/dim]\n"
+        )
+    console.print(
+        "[dim]Coding harnesses remain study-session integrations and do not provide "
+        "agentic planning.[/dim]\n"
+    )
+
+    # Planning is StudyLoop-owned and deliberately independent of the coding
+    # harness above. Detection is bounded to literal loopback candidates and
+    # introduces no curriculum/intake question.
+    planning, planning_status = _planning_setup_config(
+        existing,
+        explicit_base_url=planning_base_url,
+        explicit_model=planning_model,
+        explicit_api_key_ref=planning_api_key_ref,
+    )
+    managed["planning"] = planning
+    console.print("[green]Planning protocol preflight passed.[/green]")
+    if planning_status == "live_configured":
+        model = planning.get("model", {})
+        model_name = (
+            model.get("model", "configured model")
+            if isinstance(model, dict)
+            else "configured model"
+        )
+        console.print(f"[green]Planning model ready: {model_name}[/green]\n")
+    elif planning_status == "configured_unreachable":
+        console.print(
+            "[yellow]Planning model saved but currently unreachable; "
+            "scripted readiness passed.[/yellow]\n"
+        )
+    else:
+        console.print(
+            "[yellow]No live planning model detected; scripted readiness passed. "
+            "Use setup options to configure one.[/yellow]\n"
         )
 
     # ------------------------------------------------------------------

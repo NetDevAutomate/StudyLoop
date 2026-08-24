@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from ipaddress import ip_address
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass(frozen=True)
@@ -14,15 +18,6 @@ class WebAccessInfo:
     lan_urls: tuple[str, ...]
     bind_url: str
     lan_enabled: bool
-
-
-@dataclass(frozen=True)
-class LanCredentialFeedback:
-    """Credential feedback safe for terminal output."""
-
-    username: str
-    password: str
-    password_generated: bool
 
 
 def _format_url(host: str, port: int, path: str = "") -> str:
@@ -76,26 +71,38 @@ def format_web_access_lines(info: WebAccessInfo) -> list[str]:
         else:
             lines.append("  LAN:   unable to detect LAN IP; use this device's network IP")
         lines.append(f"  [dim]Listening on {info.bind_url}[/dim]")
+        lines.append(
+            "  [bold yellow]Security:[/bold yellow] Plain HTTP provides no transport "
+            "confidentiality; use only a trusted network with TLS or a trusted "
+            "VPN/encrypted tunnel."
+        )
+        lines.append(
+            "  [yellow]A copied verifier for a weak password is offline guessable; "
+            "use a strong unique password.[/yellow]"
+        )
     else:
         lines.append("  [dim]Use --lan to expose to network[/dim]")
     return lines
 
 
-def format_lan_credential_lines(feedback: LanCredentialFeedback) -> list[str]:
-    """Format LAN credentials without echoing stored or user-provided passwords."""
-    if not feedback.password:
-        return []
-
-    lines = [
+def emit_lan_credential_lines(
+    *,
+    username: str,
+    generated_password: str | None,
+    emit: Callable[[str], None],
+) -> None:
+    """Emit credential feedback without retaining plaintext in a DTO or return value."""
+    lines: list[str] = [
         "[bold yellow]LAN authentication:[/bold yellow]",
-        f"  Username: [green]{feedback.username}[/green]",
+        f"  Username: [green]{username}[/green]",
     ]
-    if feedback.password_generated:
-        lines.append(f"  Password: [green]{feedback.password}[/green]")
+    if generated_password is not None:
+        lines.append(f"  Password: [green]{generated_password}[/green]")
         lines.append(
             "  [dim]Generated for this launch; it is not stored in agent-readable "
             "config or session state.[/dim]"
         )
     else:
         lines.append("  Password: [dim]configured; not shown[/dim]")
-    return lines
+    for line in lines:
+        emit(line)

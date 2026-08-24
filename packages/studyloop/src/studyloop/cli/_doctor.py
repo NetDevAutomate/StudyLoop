@@ -45,6 +45,7 @@ def _get_registry():
     from studyloop.doctor.database import check_review_db, check_sessions_db
     from studyloop.doctor.deps import check_optional_deps
     from studyloop.doctor.harness import check_harness_export
+    from studyloop.doctor.planning import check_planning_readiness
     from studyloop.doctor.voice import check_voice_readiness
 
     registry = CheckerRegistry()
@@ -75,6 +76,7 @@ def _get_registry():
             config_checks.insert(1, check_obsidian_export)
     for fn in config_checks:
         registry.register("config")(fn)
+    registry.register("config")(check_planning_readiness)
     registry.register("deps")(check_optional_deps)
     # check_system_binaries (bin_ttyd) is gone: ADR-0005 retired the ttyd
     # browser surface, so reporting ttyd's absence is noise with no signal.

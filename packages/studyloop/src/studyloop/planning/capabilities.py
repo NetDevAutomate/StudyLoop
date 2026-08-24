@@ -1,0 +1,657 @@
+"""Closed, pre-bound capability catalogue for the confined planning model."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, is_dataclass
+from enum import StrEnum
+from types import MappingProxyType
+from typing import Any, Protocol
+from urllib.parse import urlsplit
+
+from .contracts import (
+    ActorContext,
+    ConceptProposal,
+    ConceptRelationProposal,
+    GoalProposal,
+    MilestoneProposal,
+    PlanningCommand,
+    PlanningRequest,
+    PlanProposalDraft,
+    ProposalRef,
+    SubmitProposalDraft,
+)
+from .models import EvidenceDisposition, Mission, PlanUnknown, Resource
+
+
+class CapabilityRefusedError(ValueError):
+    """A model call is outside the immutable planning capability contract."""
+
+
+class PlanningCapabilityName(StrEnum):
+    PREPARE_PLAN = "prepare_plan"
+    SUBMIT_PLAN_PROPOSAL = "submit_plan_proposal"
+    GET_PLAN_PROPOSAL = "get_plan_proposal"
+
+
+type FrozenJson = (
+    str | int | float | bool | None | tuple["FrozenJson", ...] | Mapping[str, "FrozenJson"]
+)
+
+
+def _freeze(value: Any) -> FrozenJson:
+    if isinstance(value, dict):
+        return MappingProxyType({str(key): _freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise TypeError(f"unsupported schema value {type(value).__name__}")
+
+
+def _thaw(value: FrozenJson) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return value
+
+
+def _freeze_mapping(value: dict[str, object]) -> Mapping[str, FrozenJson]:
+    frozen = _freeze(value)
+    if not isinstance(frozen, Mapping):  # pragma: no cover - input is a mapping
+        raise TypeError("frozen schema is not a mapping")
+    return frozen
+
+
+@dataclass(frozen=True, slots=True)
+class PlanningCapabilitySchema:
+    name: PlanningCapabilityName
+    description: str
+    input_schema: Mapping[str, FrozenJson]
+
+    def to_wire(self) -> dict[str, object]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name.value,
+                "description": self.description,
+                "parameters": _thaw(self.input_schema),
+            },
+        }
+
+
+_STRING_ARRAY = {"type": "array", "items": {"type": "string"}}
+_MISSION = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["why", "success"],
+    "properties": {
+        "why": {"type": "string"},
+        "success": _STRING_ARRAY,
+        "constraints": _STRING_ARRAY,
+        "out_of_scope": _STRING_ARRAY,
+    },
+}
+_GOAL = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["alias", "title", "reason", "alignment_rationale"],
+    "properties": {
+        "alias": {"type": "string"},
+        "title": {"type": "string"},
+        "reason": {"type": "string"},
+        "alignment_rationale": {"type": "string"},
+        "status": {"type": "string", "enum": ["active", "paused", "complete"]},
+        "existing_goal_id": {"type": "string"},
+    },
+}
+_MILESTONE = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["alias", "goal_alias", "title"],
+    "properties": {
+        "alias": {"type": "string"},
+        "goal_alias": {"type": "string"},
+        "title": {"type": "string"},
+        "notes": {"type": "string"},
+        "concept_aliases": _STRING_ARRAY,
+        "existing_milestone_id": {"type": "string"},
+    },
+}
+_RESOURCE = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["label"],
+    "properties": {
+        "label": {"type": "string"},
+        "url": {
+            "type": "string",
+            "description": "Inert HTTP(S) citation; never fetched by StudyLoop",
+            "maxLength": 2048,
+        },
+        "note": {"type": "string"},
+    },
+}
+_DRAFT = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["title", "mission", "goals", "milestones", "next_action"],
+    "properties": {
+        "title": {"type": "string"},
+        "mission": _MISSION,
+        "goals": {"type": "array", "maxItems": 3, "items": _GOAL},
+        "milestones": {"type": "array", "items": _MILESTONE},
+        "topics": _STRING_ARRAY,
+        "concepts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["alias", "display_label"],
+                "properties": {
+                    "alias": {"type": "string"},
+                    "display_label": {"type": "string"},
+                    "existing_concept_id": {"type": "string"},
+                },
+            },
+        },
+        "concept_relations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["source_alias", "target_alias", "relation", "reason", "provenance"],
+                "properties": {
+                    "source_alias": {"type": "string"},
+                    "target_alias": {"type": "string"},
+                    "relation": {
+                        "type": "string",
+                        "enum": ["equivalent", "broader", "narrower", "related", "distinct"],
+                    },
+                    "reason": {"type": "string"},
+                    "provenance": {"type": "string"},
+                },
+            },
+        },
+        "evidence_dispositions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["evidence_id", "disposition", "reason"],
+                "properties": {
+                    "evidence_id": {"type": "string"},
+                    "disposition": {
+                        "type": "string",
+                        "enum": ["selected", "rejected", "unresolved"],
+                    },
+                    "reason": {"type": "string"},
+                },
+            },
+        },
+        "resources": {"type": "array", "items": _RESOURCE},
+        "unknowns": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["unknown_id", "question", "impact"],
+                "properties": {
+                    "unknown_id": {"type": "string"},
+                    "question": {"type": "string"},
+                    "impact": {"type": "string"},
+                    "status": {"type": "string", "enum": ["open", "resolved"]},
+                },
+            },
+        },
+        "next_action": {"type": "string"},
+        "requested_status": {"type": "string", "enum": ["draft"]},
+        "target_date": {"type": "string"},
+        "energy_floor": {"type": "integer", "minimum": 1, "maximum": 10},
+        "review_cadence_days": {"type": "integer", "minimum": 1},
+        "goal_limit_override_requested": {"type": "boolean"},
+        "goal_limit_override_reason": {"type": "string"},
+    },
+}
+
+
+PLANNING_CAPABILITY_SCHEMAS: tuple[PlanningCapabilitySchema, ...] = (
+    PlanningCapabilitySchema(
+        PlanningCapabilityName.PREPARE_PLAN,
+        "Prepare the server-bound learner brain dump and return its lifecycle brief.",
+        _freeze_mapping({"type": "object", "additionalProperties": False, "properties": {}}),
+    ),
+    PlanningCapabilitySchema(
+        PlanningCapabilityName.SUBMIT_PLAN_PROPOSAL,
+        "Submit a typed proposal for learner review; this never approves it.",
+        _freeze_mapping(
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["run_id", "brief_context_digest", "draft"],
+                "properties": {
+                    "run_id": {"type": "string"},
+                    "brief_context_digest": {"type": "string"},
+                    "draft": _DRAFT,
+                },
+            }
+        ),
+    ),
+    PlanningCapabilitySchema(
+        PlanningCapabilityName.GET_PLAN_PROPOSAL,
+        "Inspect one proposal from the current bound planning run.",
+        _freeze_mapping(
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["run_id", "proposal_id"],
+                "properties": {
+                    "run_id": {"type": "string"},
+                    "proposal_id": {"type": "string"},
+                },
+            }
+        ),
+    ),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class PlanningCapabilityCall:
+    call_id: str
+    name: str
+    arguments: Mapping[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class PlanningCapabilityResult:
+    call_id: str
+    name: PlanningCapabilityName
+    status: str
+    payload: Mapping[str, FrozenJson]
+
+
+class _LifecyclePort(Protocol):
+    def prepare(self, request: PlanningRequest, actor: ActorContext) -> object: ...
+
+    def handle(self, command: PlanningCommand) -> object: ...
+
+    def inspect(self, ref: ProposalRef) -> object: ...
+
+
+_MODEL_ACTOR = ActorContext("model", "planning-conversation-runtime", "confined-model")
+
+
+class PlanningCapabilityDispatcher:
+    """Deep module: exact schema validation plus three lifecycle operations."""
+
+    def __init__(
+        self,
+        lifecycle: _LifecyclePort,
+        request: PlanningRequest,
+        *,
+        expected_run_id: str = "",
+    ) -> None:
+        self._lifecycle = lifecycle
+        self._request = request
+        self._run_id = expected_run_id
+
+    def execute(self, call: PlanningCapabilityCall) -> PlanningCapabilityResult:
+        if not call.call_id.strip():
+            raise CapabilityRefusedError("capability call ID is required")
+        try:
+            name = PlanningCapabilityName(call.name)
+        except ValueError as exc:
+            raise CapabilityRefusedError(f"unsupported planning capability {call.name!r}") from exc
+        arguments = _mapping(call.arguments, "capability arguments")
+
+        if name is PlanningCapabilityName.PREPARE_PLAN:
+            _exact_keys(arguments, required=(), optional=(), label=name.value)
+            result = self._lifecycle.prepare(self._request, _MODEL_ACTOR)
+            run_id = str(getattr(result, "run_id", ""))
+            if not run_id or (self._run_id and self._run_id != run_id):
+                raise CapabilityRefusedError("prepared run does not match the bound planning run")
+            self._run_id = run_id
+            return _result(call, name, result)
+
+        run_id = _string(arguments.get("run_id"), "run_id")
+        if not self._run_id or run_id != self._run_id:
+            raise CapabilityRefusedError("capability run ID does not match the bound planning run")
+
+        if name is PlanningCapabilityName.SUBMIT_PLAN_PROPOSAL:
+            _exact_keys(
+                arguments,
+                required=("run_id", "brief_context_digest", "draft"),
+                optional=(),
+                label=name.value,
+            )
+            command = SubmitProposalDraft(
+                run_id=run_id,
+                idempotency_key=f"capability:{call.call_id}",
+                brief_context_digest=_string(
+                    arguments.get("brief_context_digest"), "brief_context_digest"
+                ),
+                draft=_decode_draft(arguments.get("draft")),
+            )
+            return _result(
+                call,
+                name,
+                self._lifecycle.handle(PlanningCommand(_MODEL_ACTOR, command)),
+            )
+
+        if name is PlanningCapabilityName.GET_PLAN_PROPOSAL:
+            _exact_keys(
+                arguments,
+                required=("run_id", "proposal_id"),
+                optional=(),
+                label=name.value,
+            )
+            result = self._lifecycle.inspect(
+                ProposalRef(_string(arguments.get("proposal_id"), "proposal_id"))
+            )
+            if str(getattr(result, "run_id", "")) != self._run_id:
+                raise CapabilityRefusedError("proposal does not belong to the bound planning run")
+            return _result(call, name, result)
+
+        raise CapabilityRefusedError(f"unsupported planning capability {name.value!r}")
+
+
+def _result(
+    call: PlanningCapabilityCall,
+    name: PlanningCapabilityName,
+    value: object,
+) -> PlanningCapabilityResult:
+    if is_dataclass(value) and not isinstance(value, type):
+        payload = asdict(value)
+    elif isinstance(value, dict):
+        payload = value
+    else:
+        payload = {"value": str(value)}
+    frozen = _freeze(payload)
+    if not isinstance(frozen, Mapping):  # pragma: no cover - payload is always a mapping
+        raise TypeError("capability result payload is not a mapping")
+    return PlanningCapabilityResult(call.call_id, name, "ok", frozen)
+
+
+def _mapping(value: object, label: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping) or any(not isinstance(key, str) for key in value):
+        raise CapabilityRefusedError(f"{label} must be an object with string keys")
+    return value
+
+
+def _exact_keys(
+    value: Mapping[str, object],
+    *,
+    required: tuple[str, ...],
+    optional: tuple[str, ...],
+    label: str,
+) -> None:
+    keys = set(value)
+    missing = set(required) - keys
+    extra = keys - set(required) - set(optional)
+    if missing or extra:
+        raise CapabilityRefusedError(
+            f"{label} arguments do not match the closed schema; "
+            f"missing={sorted(missing)}, unexpected={sorted(extra)}"
+        )
+
+
+def _string(value: object, label: str, *, allow_empty: bool = False) -> str:
+    if not isinstance(value, str) or (not allow_empty and not value.strip()):
+        raise CapabilityRefusedError(f"{label} must be a non-empty string")
+    return value
+
+
+def _strings(value: object, label: str) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, (list, tuple)):
+        raise CapabilityRefusedError(f"{label} must be an array of strings")
+    return tuple(_string(item, label) for item in value)
+
+
+def _objects(value: object, label: str) -> tuple[Mapping[str, object], ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, (list, tuple)):
+        raise CapabilityRefusedError(f"{label} must be an array")
+    return tuple(_mapping(item, label) for item in value)
+
+
+def _integer(value: object, label: str, default: int) -> int:
+    if value is None:
+        return default
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise CapabilityRefusedError(f"{label} must be an integer")
+    return value
+
+
+def _boolean(value: object, label: str, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if not isinstance(value, bool):
+        raise CapabilityRefusedError(f"{label} must be a boolean")
+    return value
+
+
+def _decode_draft(value: object) -> PlanProposalDraft:
+    raw = _mapping(value, "draft")
+    _exact_keys(
+        raw,
+        required=("title", "mission", "goals", "milestones", "next_action"),
+        optional=(
+            "topics",
+            "concepts",
+            "concept_relations",
+            "evidence_dispositions",
+            "resources",
+            "unknowns",
+            "requested_status",
+            "target_date",
+            "energy_floor",
+            "review_cadence_days",
+            "goal_limit_override_requested",
+            "goal_limit_override_reason",
+        ),
+        label="draft",
+    )
+    mission_raw = _mapping(raw.get("mission"), "mission")
+    _exact_keys(
+        mission_raw,
+        required=("why", "success"),
+        optional=("constraints", "out_of_scope"),
+        label="mission",
+    )
+    mission = Mission(
+        why=_string(mission_raw.get("why"), "mission.why"),
+        success=list(_strings(mission_raw.get("success"), "mission.success")),
+        constraints=list(_strings(mission_raw.get("constraints"), "mission.constraints")),
+        out_of_scope=list(_strings(mission_raw.get("out_of_scope"), "mission.out_of_scope")),
+    )
+
+    goals: list[GoalProposal] = []
+    for item in _objects(raw.get("goals"), "goals"):
+        _exact_keys(
+            item,
+            required=("alias", "title", "reason", "alignment_rationale"),
+            optional=("status", "existing_goal_id"),
+            label="goal",
+        )
+        goals.append(
+            GoalProposal(
+                _string(item.get("alias"), "goal.alias"),
+                _string(item.get("title"), "goal.title"),
+                _string(item.get("reason"), "goal.reason"),
+                _string(item.get("alignment_rationale"), "goal.alignment_rationale"),
+                _string(item.get("status", "active"), "goal.status"),
+                _string(item.get("existing_goal_id", ""), "existing_goal_id", allow_empty=True),
+            )
+        )
+    if len(goals) > 3:
+        raise CapabilityRefusedError("proposal has more than three goals")
+
+    milestones: list[MilestoneProposal] = []
+    for item in _objects(raw.get("milestones"), "milestones"):
+        _exact_keys(
+            item,
+            required=("alias", "goal_alias", "title"),
+            optional=("notes", "concept_aliases", "existing_milestone_id"),
+            label="milestone",
+        )
+        milestones.append(
+            MilestoneProposal(
+                _string(item.get("alias"), "milestone.alias"),
+                _string(item.get("goal_alias"), "milestone.goal_alias"),
+                _string(item.get("title"), "milestone.title"),
+                _string(item.get("notes", ""), "milestone.notes", allow_empty=True),
+                _strings(item.get("concept_aliases"), "milestone.concept_aliases"),
+                _string(
+                    item.get("existing_milestone_id", ""),
+                    "existing_milestone_id",
+                    allow_empty=True,
+                ),
+            )
+        )
+
+    concepts: list[ConceptProposal] = []
+    for item in _objects(raw.get("concepts"), "concepts"):
+        _exact_keys(
+            item,
+            required=("alias", "display_label"),
+            optional=("existing_concept_id",),
+            label="concept",
+        )
+        concepts.append(
+            ConceptProposal(
+                _string(item.get("alias"), "concept.alias"),
+                _string(item.get("display_label"), "concept.display_label"),
+                _string(
+                    item.get("existing_concept_id", ""),
+                    "existing_concept_id",
+                    allow_empty=True,
+                ),
+            )
+        )
+
+    relations: list[ConceptRelationProposal] = []
+    for item in _objects(raw.get("concept_relations"), "concept_relations"):
+        _exact_keys(
+            item,
+            required=("source_alias", "target_alias", "relation", "reason", "provenance"),
+            optional=(),
+            label="concept relation",
+        )
+        relation = _string(item.get("relation"), "concept relation.relation")
+        if relation not in {"equivalent", "broader", "narrower", "related", "distinct"}:
+            raise CapabilityRefusedError("concept relation has an unsupported relation")
+        relations.append(
+            ConceptRelationProposal(
+                _string(item.get("source_alias"), "concept relation.source_alias"),
+                _string(item.get("target_alias"), "concept relation.target_alias"),
+                relation,  # type: ignore[arg-type]
+                _string(item.get("reason"), "concept relation.reason"),
+                _string(item.get("provenance"), "concept relation.provenance"),
+            )
+        )
+
+    dispositions: list[EvidenceDisposition] = []
+    for item in _objects(raw.get("evidence_dispositions"), "evidence dispositions"):
+        _exact_keys(
+            item,
+            required=("evidence_id", "disposition", "reason"),
+            optional=(),
+            label="evidence disposition",
+        )
+        disposition = _string(item.get("disposition"), "evidence disposition.disposition")
+        if disposition not in {"selected", "rejected", "unresolved"}:
+            raise CapabilityRefusedError("evidence disposition is unsupported")
+        dispositions.append(
+            EvidenceDisposition(
+                _string(item.get("evidence_id"), "evidence disposition.evidence_id"),
+                disposition,
+                _string(item.get("reason"), "evidence disposition.reason"),
+            )
+        )
+
+    resources: list[Resource] = []
+    for item in _objects(raw.get("resources"), "resources"):
+        _exact_keys(
+            item,
+            required=("label",),
+            optional=("url", "note"),
+            label="resource",
+        )
+        url = _string(item.get("url", ""), "resource.url", allow_empty=True)
+        _validate_citation_url(url)
+        resources.append(
+            Resource(
+                _string(item.get("label"), "resource.label"),
+                url,
+                _string(item.get("note", ""), "resource.note", allow_empty=True),
+            )
+        )
+
+    unknowns: list[PlanUnknown] = []
+    for item in _objects(raw.get("unknowns"), "unknowns"):
+        _exact_keys(
+            item,
+            required=("unknown_id", "question", "impact"),
+            optional=("status",),
+            label="unknown",
+        )
+        unknowns.append(
+            PlanUnknown(
+                _string(item.get("unknown_id"), "unknown.unknown_id"),
+                _string(item.get("question"), "unknown.question"),
+                _string(item.get("impact"), "unknown.impact"),
+                _string(item.get("status", "open"), "unknown.status"),
+            )
+        )
+
+    requested_status = _string(raw.get("requested_status", "draft"), "requested_status")
+    if requested_status != "draft":
+        raise CapabilityRefusedError("the model may only request draft plan status")
+    return PlanProposalDraft(
+        title=_string(raw.get("title"), "draft.title"),
+        mission=mission,
+        goals=tuple(goals),
+        milestones=tuple(milestones),
+        topics=_strings(raw.get("topics"), "topics"),
+        concepts=tuple(concepts),
+        concept_relations=tuple(relations),
+        evidence_dispositions=tuple(dispositions),
+        resources=tuple(resources),
+        unknowns=tuple(unknowns),
+        next_action=_string(raw.get("next_action"), "next_action"),
+        requested_status=requested_status,
+        target_date=_string(raw.get("target_date", ""), "target_date", allow_empty=True),
+        energy_floor=_integer(raw.get("energy_floor"), "energy_floor", 3),
+        review_cadence_days=_integer(raw.get("review_cadence_days"), "review_cadence_days", 3),
+        goal_limit_override_requested=_boolean(
+            raw.get("goal_limit_override_requested"), "goal_limit_override_requested"
+        ),
+        goal_limit_override_reason=_string(
+            raw.get("goal_limit_override_reason", ""),
+            "goal_limit_override_reason",
+            allow_empty=True,
+        ),
+    )
+
+
+def _validate_citation_url(url: str) -> None:
+    if not url:
+        return
+    if len(url) > 2048 or any(ord(char) < 32 for char in url):
+        raise CapabilityRefusedError(
+            "resource citation URL has an invalid length or control character"
+        )
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        raise CapabilityRefusedError(
+            "resource citation URL must be an inert absolute HTTP(S) citation"
+        )

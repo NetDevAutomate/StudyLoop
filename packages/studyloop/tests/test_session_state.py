@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 def test_read_session_state_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -55,6 +55,31 @@ def test_read_corrupt_legacy_state_scrubs_recognisable_credential_bytes(
     assert read_session_state() == {}
     assert "corrupt-secret" not in state_file.read_text()
     assert "lan_password" not in state_file.read_text()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [{"lan_password": "array-secret"}],  # pragma: allowlist secret
+        "lan_password=scalar-secret",
+        42,
+        {"nested": [{"credentials": "mapping-secret"}]},
+    ],
+)
+def test_schema_invalid_json_shapes_are_replaced_before_agent_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, payload: object
+) -> None:
+    """Returning early for an array/scalar can leave reusable credential bytes on disk."""
+    state_file = tmp_path / "session-state.json"
+    state_file.write_text(json.dumps(payload))
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", state_file)
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    from studyloop.session_state import read_session_state
+
+    result = read_session_state()
+    assert json.loads(state_file.read_text()) == result
+    for secret in ("array-secret", "scalar-secret", "mapping-secret"):
+        assert secret not in state_file.read_text()
 
 
 def test_write_session_state_creates_and_merges(

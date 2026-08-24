@@ -99,19 +99,24 @@ def prepare_lan_auth(
     *,
     username: str,
     configured_verifier: str,
-    display: Callable[[str, str, bool], None],
+    emit: Callable[[str], None],
 ) -> tuple[str, str]:
     """Prepare LAN auth interactively and return only username plus verifier.
 
-    ``display`` receives the plaintext only while this function owns it. The
-    caller never receives the reusable secret, so it cannot accidentally carry
-    it across a later agent launch.
+    User-entered plaintext never leaves this function. A generated one-time
+    password crosses only the deliberately non-retaining output callback.
     """
     normalized_username = username or "study"
+    from studyloop.web.runtime_feedback import emit_lan_credential_lines
+
     if configured_verifier:
         if not is_password_verifier(configured_verifier):
             raise LearnerCredentialError("The configured LAN password verifier is invalid")
-        display(normalized_username, "configured", False)
+        emit_lan_credential_lines(
+            username=normalized_username,
+            generated_password=None,
+            emit=emit,
+        )
         return normalized_username, configured_verifier
 
     import getpass
@@ -133,7 +138,11 @@ def prepare_lan_auth(
             if not hmac.compare_digest(password, confirmation):
                 raise LearnerCredentialError("LAN passwords did not match; nothing was started")
         verifier = hash_password(password)
-        display(normalized_username, password, generated)
+        emit_lan_credential_lines(
+            username=normalized_username,
+            generated_password=password if generated else None,
+            emit=emit,
+        )
         return normalized_username, verifier
     except (EOFError, KeyboardInterrupt) as exc:
         raise LearnerCredentialError(

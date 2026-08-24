@@ -35,6 +35,8 @@ def _patch_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
     config_dir = tmp_path / "config"
     monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(setup_mod, "_detect_planning_profile", lambda: None)
+    monkeypatch.setattr(setup_mod, "_probe_planning_profile", lambda _profile: False)
     monkeypatch.delenv("STUDYLOOP_CONFIG", raising=False)
     return config_dir
 
@@ -308,3 +310,79 @@ class TestSetupBasics:
         result = runner.invoke(cli, ["setup", "--help"])
         assert result.exit_code == 0
         assert "setup" in result.output.lower()
+
+
+class TestPlanningSetup:
+    def test_no_notes_or_harness_still_runs_scripted_planning_preflight(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
+    ) -> None:
+        """Treating missing notes or a coding harness as planning failure breaks onboarding."""
+        result = runner.invoke(cli, ["setup"], input="\n")
+
+        assert result.exit_code == 0, result.output
+        planning = _written(_patch_config_dir)["planning"]
+        assert planning["prompt_version"] == "architect-v1"
+        assert planning["capability_schema_version"] == 1
+        assert planning["readiness"] == "scripted_only"
+        assert "Planning protocol preflight passed" in result.output
+        assert "No live planning model detected" in result.output
+
+    def test_local_litellm_detection_records_server_owned_profile_without_a_question(
+        self,
+        runner: CliRunner,
+        _patch_config_dir: Path,
+        _no_harness: None,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import studyloop.cli._setup as setup_mod
+        from studyloop.planning.model_config import PlanningModelProfile
+
+        profile = PlanningModelProfile.from_explicit(
+            base_url="http://127.0.0.1:4000/v1", model="planner-model"
+        )
+        monkeypatch.setattr(setup_mod, "_detect_planning_profile", lambda: profile)
+
+        result = runner.invoke(cli, ["setup"], input="\n")
+
+        assert result.exit_code == 0, result.output
+        planning = _written(_patch_config_dir)["planning"]
+        assert planning["model"]["base_url"] == "http://127.0.0.1:4000/v1"
+        assert planning["model"]["model"] == "planner-model"
+        assert planning["readiness"] == "live_configured"
+        assert result.output.count("Notes folder") == 1
+        assert "planning model" not in result.output.casefold().split("notes folder", 1)[0]
+
+    def test_explicit_profile_uses_options_and_adds_no_curriculum_questions(
+        self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
+    ) -> None:
+        result = runner.invoke(
+            cli,
+            [
+                "setup",
+                "--planning-base-url",
+                "https://gateway.example.test/v1/",
+                "--planning-model",
+                "chosen-model",
+                "--planning-api-key-ref",
+                "env:PLANNING_KEY",
+            ],
+            input="\n",
+        )
+
+        assert result.exit_code == 0, result.output
+        model = _written(_patch_config_dir)["planning"]["model"]
+        assert model["base_url"] == "https://gateway.example.test/v1"
+        assert model["model"] == "chosen-model"
+        assert model["api_key_ref"] == "env:PLANNING_KEY"  # pragma: allowlist secret
+        assert result.output.count("Notes folder") == 1
+        assert "Which planning" not in result.output
+
+    def test_detected_study_harness_never_claims_agentic_planning_support(
+        self, runner: CliRunner, _patch_config_dir: Path, _one_harness: None
+    ) -> None:
+        result = runner.invoke(cli, ["setup"], input="\n")
+
+        assert result.exit_code == 0, result.output
+        assert "using it for study sessions" in result.output
+        normalized = " ".join(result.output.casefold().split())
+        assert "do not provide agentic planning" in normalized
