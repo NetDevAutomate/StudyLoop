@@ -52,6 +52,10 @@ if TYPE_CHECKING:
 pytestmark = [pytest.mark.e2e]
 
 WEB_PORT = 18624  # unique; 18611 is the developer's live server, 18616 the plan journey
+LEGACY_WIZARD_REASON = (
+    "The structured wizard was replaced by the conversational Architect; "
+    "create, approve, reload, and revise are covered by test_agentic_planning_browser.py"
+)
 
 # ---------------------------------------------------------------------------
 # The learner's own words. Kept verbatim rather than sanitised, because the
@@ -200,37 +204,39 @@ def test_phase1_first_screen_invites_an_action(page: Page) -> None:
         raise
 
 
-def test_phase2_braindump_leads_the_create_form(page: Page) -> None:
-    """Phase 2 — the free-text box is reachable first, before the structure.
+def test_phase2_braindump_leads_the_architect_capture(page: Page) -> None:
+    """Phase 2 — the free-text box is reachable before optional context.
 
     A learner who knew the decomposition would not need the tool. The brain-dump
-    field exists so they can describe the situation in their own words, so it
-    must be present and above the structured fields in document order — not
-    hidden behind a disclosure or placed after them as an afterthought.
+    field exists so they can describe the situation in their own words. It must
+    be the primary visible input, while optional notes remain secondary.
     """
     try:
         page.locator('[data-testid="plan-new"]').click()
-        form = page.locator('[data-testid="plan-create-form"]')
-        form.wait_for(state="visible", timeout=8000)
+        capture = page.locator('[data-testid="architect-capture"]')
+        capture.wait_for(state="visible", timeout=8000)
 
-        dump = page.locator('[data-testid="plan-field-braindump"]')
+        dump = page.locator('[data-testid="architect-brain-dump"]')
         dump.wait_for(state="visible", timeout=8000)
 
         ordered_first = page.evaluate(
             """() => {
-                const dump = document.querySelector('[data-testid="plan-field-braindump"]');
-                const title = document.querySelector('[data-testid="plan-field-title"]');
-                if (!dump || !title) return false;
+                const dump = document.querySelector('[data-testid="architect-brain-dump"]');
+                const context = document.querySelector('[data-testid="architect-context-text"]');
+                if (!dump || !context) return false;
                 // Node.DOCUMENT_POSITION_FOLLOWING === 4
-                return !!(dump.compareDocumentPosition(title) & 4);
+                return !!(dump.compareDocumentPosition(context) & 4);
             }"""
         )
-        assert ordered_first, "brain-dump field does not precede the structured fields"
+        assert ordered_first, "brain-dump field does not precede optional study context"
+        dump.fill(BRAIN_DUMP)
+        assert dump.input_value() == BRAIN_DUMP
     except Exception:
         _diag(page, "newuser-phase2-fail")
         raise
 
 
+@pytest.mark.skip(reason=LEGACY_WIZARD_REASON)
 def test_phase3_the_learners_own_words_survive_the_round_trip(page: Page) -> None:
     """Phase 3 — create the plan from realistic, awkward input.
 
@@ -287,6 +293,7 @@ def test_phase3_the_learners_own_words_survive_the_round_trip(page: Page) -> Non
         raise
 
 
+@pytest.mark.skip(reason=LEGACY_WIZARD_REASON)
 def test_phase4_plan_appears_in_the_sidebar_with_progress(page: Page) -> None:
     """Phase 4 — the plan joins the left-pane list and the empty state retires.
 
@@ -314,6 +321,7 @@ def test_phase4_plan_appears_in_the_sidebar_with_progress(page: Page) -> None:
         raise
 
 
+@pytest.mark.skip(reason=LEGACY_WIZARD_REASON)
 def test_phase5_a_reload_still_finds_the_plan(page: Page) -> None:
     """Phase 5 — the plan survives a browser reload.
 
@@ -341,6 +349,7 @@ def test_phase5_a_reload_still_finds_the_plan(page: Page) -> None:
         raise
 
 
+@pytest.mark.skip(reason=LEGACY_WIZARD_REASON)
 def test_phase6_evaluation_is_honest_with_no_history(page: Page) -> None:
     """Phase 6 — evaluating a brand-new plan must not invent progress.
 

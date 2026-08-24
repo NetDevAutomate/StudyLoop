@@ -31,8 +31,9 @@ NOTICE = (
 )
 BRAIN_DUMP = (
     "I can follow Python examples but I cannot yet design a service confidently. "
-    "I own several courses and do not know what should come first. I need a small, "
-    "practical path that does not pretend my collected notes are completed study."
+    "I own ArjanCodes Software Design Mastery 1/3 | CORE DESIGNER, and it isn't "
+    "completed study just because I collected the notes. I do not know what should "
+    "come first. I need a small, practical path."
 )
 
 
