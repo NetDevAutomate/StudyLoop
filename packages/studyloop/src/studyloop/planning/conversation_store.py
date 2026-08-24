@@ -29,6 +29,7 @@ from .conversation_contracts import (
     CompleteModelAttempt,
     ContextAttachment,
     ConversationConflictError,
+    ConversationRecord,
     ConversationRefusedError,
     DecisionIntent,
     DecisionProjection,
@@ -470,6 +471,12 @@ class ConversationStore:
                     next_outbox_seq INTEGER NOT NULL DEFAULT 0,
                     acknowledged_outbox_seq INTEGER NOT NULL DEFAULT 0
                 );
+                CREATE TABLE IF NOT EXISTS conversation_profiles (
+                    conversation_id TEXT PRIMARY KEY REFERENCES conversations(conversation_id),
+                    mode TEXT NOT NULL CHECK(mode IN ('create','revise')),
+                    plan_id TEXT NOT NULL DEFAULT '',
+                    created_at REAL NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS context_attachments (
                     conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
                     generation INTEGER NOT NULL,
@@ -795,6 +802,69 @@ class ConversationStore:
                 (command.conversation_id, generation, command.context_id),
             ).fetchone()
             return self._context_from_row(row)
+
+    def create_conversation(
+        self,
+        conversation_id: str,
+        mode: str,
+        plan_id: str = "",
+    ) -> ConversationRecord:
+        if mode not in {"create", "revise"}:
+            raise ConversationRefusedError("conversation mode must be create or revise")
+        if mode == "create" and plan_id:
+            raise ConversationRefusedError("create conversation cannot name a plan")
+        if mode == "revise" and not plan_id.strip():
+            raise ConversationRefusedError("revise conversation requires a plan ID")
+        with self._transaction() as connection:
+            self._ensure_conversation(connection, conversation_id)
+            prior = connection.execute(
+                "SELECT * FROM conversation_profiles WHERE conversation_id=?",
+                (conversation_id,),
+            ).fetchone()
+            if prior is not None:
+                if prior["mode"] != mode or prior["plan_id"] != plan_id:
+                    raise ConversationConflictError(
+                        "conversation ID was reused with different scope"
+                    )
+                return self._conversation_from_row(prior)
+            created_at = self._clock()
+            connection.execute(
+                "INSERT INTO conversation_profiles VALUES (?,?,?,?)",
+                (conversation_id, mode, plan_id, created_at),
+            )
+            return ConversationRecord(conversation_id, cast("Any", mode), plan_id, created_at)
+
+    def get_conversation(self, conversation_id: str) -> ConversationRecord:
+        connection = self._connect()
+        try:
+            row = connection.execute(
+                "SELECT * FROM conversation_profiles WHERE conversation_id=?",
+                (conversation_id,),
+            ).fetchone()
+            if row is None:
+                raise ConversationConflictError("planning conversation does not exist")
+            return self._conversation_from_row(row)
+        finally:
+            connection.close()
+
+    def list_conversations(self) -> list[ConversationRecord]:
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                "SELECT * FROM conversation_profiles ORDER BY created_at, conversation_id"
+            ).fetchall()
+            return [self._conversation_from_row(row) for row in rows]
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _conversation_from_row(row: sqlite3.Row) -> ConversationRecord:
+        return ConversationRecord(
+            str(row["conversation_id"]),
+            cast("Any", str(row["mode"])),
+            str(row["plan_id"]),
+            float(row["created_at"]),
+        )
 
     @staticmethod
     def _context_from_row(row: sqlite3.Row) -> ContextAttachment:
@@ -1474,6 +1544,49 @@ class ConversationStore:
                 "SELECT * FROM decision_intents WHERE intent_id=?", (intent_id,)
             ).fetchone()
             return self._decision_from_row(row)
+
+    def mark_decision_dispatching(self, intent_id: str) -> DecisionIntent:
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM decision_intents WHERE intent_id=?", (intent_id,)
+            ).fetchone()
+            if row is None:
+                raise ConversationConflictError("decision intent does not exist")
+            if row["status"] in {"projected", "refused"}:
+                return self._decision_from_row(row)
+            connection.execute(
+                "UPDATE decision_intents SET status='dispatching' WHERE intent_id=?",
+                (intent_id,),
+            )
+            row = connection.execute(
+                "SELECT * FROM decision_intents WHERE intent_id=?", (intent_id,)
+            ).fetchone()
+            return self._decision_from_row(row)
+
+    def get_decision_intent(self, intent_id: str) -> tuple[DecisionIntent, dict[str, object]]:
+        connection = self._connect()
+        try:
+            row = connection.execute(
+                "SELECT * FROM decision_intents WHERE intent_id=?", (intent_id,)
+            ).fetchone()
+            if row is None:
+                raise ConversationConflictError("decision intent does not exist")
+            payload = json.loads(row["payload_json"])
+            if not isinstance(payload, dict):
+                raise ConversationConflictError("stored decision intent is invalid")
+            return self._decision_from_row(row), cast("dict[str, object]", payload)
+        finally:
+            connection.close()
+
+    def get_decision_projection(self, intent_id: str) -> DecisionProjection | None:
+        connection = self._connect()
+        try:
+            row = connection.execute(
+                "SELECT * FROM decision_projections WHERE intent_id=?", (intent_id,)
+            ).fetchone()
+            return self._decision_projection_from_row(row) if row is not None else None
+        finally:
+            connection.close()
 
     def project_decision_result(self, command: ProjectDecisionResult) -> DecisionProjection:
         payload_json = _canonical_json(_jsonable(command.payload))

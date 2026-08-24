@@ -6,6 +6,7 @@ import hmac
 import secrets
 import time
 from dataclasses import dataclass
+from ipaddress import ip_address
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, Request
@@ -38,11 +39,16 @@ def initialise_browser_learner_sessions(app: object) -> None:
 
 
 def mint_browser_learner_session(request: Request, response: Response) -> None:
-    """Mint authority only after configured Basic Auth and navigation checks."""
-    if not getattr(request.app.state, "lan_auth_configured", False):
-        return
+    """Mint authority for loopback navigation or authenticated LAN navigation."""
+    hostname = request.url.hostname or ""
+    try:
+        loopback = ip_address(hostname).is_loopback
+    except ValueError:
+        loopback = hostname.casefold() == "localhost"
     authenticated_identity = getattr(request.state, "basic_auth_identity", "")
-    if not authenticated_identity:
+    if not loopback and (
+        not getattr(request.app.state, "lan_auth_configured", False) or not authenticated_identity
+    ):
         return
     if request.headers.get("sec-fetch-mode", "").casefold() != "navigate":
         return
@@ -59,7 +65,7 @@ def mint_browser_learner_session(request: Request, response: Response) -> None:
         sessions.pop(min(sessions, key=lambda key: sessions[key].expires_at), None)
     session_id = secrets.token_urlsafe(32)
     csrf_token = secrets.token_urlsafe(32)
-    actor_id = f"basic:{authenticated_identity}"
+    actor_id = "loopback:local" if loopback else f"basic:{authenticated_identity}"
     sessions[session_id] = BrowserLearnerSession(
         actor_id=actor_id,
         csrf_token=csrf_token,
@@ -88,9 +94,12 @@ def mint_browser_learner_session(request: Request, response: Response) -> None:
 
 def require_browser_learner(request: Request) -> ActorContext:
     """Authenticate a same-origin, CSRF-bound server-side browser session."""
-    if not getattr(request.app.state, "lan_auth_configured", False) or not getattr(
-        request.state, "basic_auth_identity", ""
-    ):
+    session_id = request.cookies.get(SESSION_COOKIE, "")
+    sessions: dict[str, BrowserLearnerSession] = request.app.state.browser_learner_sessions
+    session = sessions.get(session_id)
+    if session is None or session.expires_at <= time.monotonic():
+        if session_id:
+            sessions.pop(session_id, None)
         raise HTTPException(status_code=403, detail=WEB_AUTH_REQUIRED)
     origin = request.headers.get("origin", "")
     expected_origin = str(request.base_url).rstrip("/")
@@ -98,15 +107,12 @@ def require_browser_learner(request: Request) -> ActorContext:
         raise HTTPException(status_code=403, detail="same-origin browser learner request required")
     if request.headers.get("sec-fetch-site", "").casefold() != "same-origin":
         raise HTTPException(status_code=403, detail="same-origin browser learner request required")
-    session_id = request.cookies.get(SESSION_COOKIE, "")
     csrf_cookie = request.cookies.get(CSRF_COOKIE, "")
     csrf_header = request.headers.get(CSRF_HEADER, "")
-    sessions: dict[str, BrowserLearnerSession] = request.app.state.browser_learner_sessions
-    session = sessions.get(session_id)
-    if session is None or session.expires_at <= time.monotonic():
-        if session_id:
-            sessions.pop(session_id, None)
-        raise HTTPException(status_code=403, detail="valid browser learner session required")
+    if session.actor_id.startswith("basic:") and not getattr(
+        request.state, "basic_auth_identity", ""
+    ):
+        raise HTTPException(status_code=403, detail=WEB_AUTH_REQUIRED)
     if not csrf_cookie or not csrf_header:
         raise HTTPException(status_code=403, detail="browser learner CSRF token required")
     if not hmac.compare_digest(csrf_cookie, session.csrf_token) or not hmac.compare_digest(
@@ -116,10 +122,19 @@ def require_browser_learner(request: Request) -> ActorContext:
     return ActorContext("learner", session.actor_id, "web-browser")
 
 
+def browser_csrf_token(request: Request) -> str:
+    """Return the current server-bound token after learner authentication."""
+    session_id = request.cookies.get(SESSION_COOKIE, "")
+    sessions: dict[str, BrowserLearnerSession] = request.app.state.browser_learner_sessions
+    session = sessions.get(session_id)
+    return session.csrf_token if session is not None else ""
+
+
 __all__ = [
     "CSRF_COOKIE",
     "CSRF_HEADER",
     "SESSION_COOKIE",
+    "browser_csrf_token",
     "initialise_browser_learner_sessions",
     "mint_browser_learner_session",
     "require_browser_learner",

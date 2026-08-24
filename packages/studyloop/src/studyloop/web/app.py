@@ -38,9 +38,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from studyloop.web.routes.session import _grace
 
     _grace.start_reaper()
+    planning_services = app.state.planning_services
+    if planning_services.runtime is not None:
+        for conversation in planning_services.store.list_conversations():
+            await planning_services.runtime.recover(conversation.conversation_id)
     try:
         yield
     finally:
+        await planning_services.shutdown()
         await _grace.shutdown()
 
 
@@ -64,6 +69,7 @@ def create_app(
     dev_mode: bool = False,
     dev_renderer: str | None = None,
     dev_engine: str | None = None,
+    planning_services: object | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -117,6 +123,11 @@ def create_app(
     app.state.explorer_tree_fingerprint = None
     app.state.session_options_targets_cache = None
     app.state.session_options_targets_fingerprint = None
+    if planning_services is None:
+        from studyloop.web.planning_services import create_planning_services
+
+        planning_services = create_planning_services()
+    app.state.planning_services = planning_services
     from studyloop.web.learner_auth import initialise_browser_learner_sessions
 
     initialise_browser_learner_sessions(app)
@@ -145,6 +156,8 @@ def create_app(
         notes,
         now,
         parking,
+        planning,
+        planning_ws,
         plans,
         session,
         tts,
@@ -164,6 +177,8 @@ def create_app(
     app.include_router(exercises.router, prefix="/api")
     app.include_router(notes.router, prefix="/api")
     app.include_router(parking.router, prefix="/api")
+    app.include_router(planning.router, prefix="/api")
+    app.include_router(planning_ws.router, prefix="/api")
     app.include_router(plans.router, prefix="/api")
     app.include_router(tts.router, prefix="/api")
 

@@ -59,6 +59,14 @@ class PlanningConversationBounds:
 
 
 @dataclass(frozen=True, slots=True)
+class ConversationRecord:
+    conversation_id: str
+    mode: Literal["create", "revise"]
+    plan_id: str
+    created_at: float
+
+
+@dataclass(frozen=True, slots=True)
 class LearnerTurn:
     turn_id: str
     text: str
@@ -227,6 +235,8 @@ class PrepareDecisionIntent:
     base_structure_digest: str
     outcome: Literal["approve", "reject"]
     lifecycle_idempotency_key: str
+    base_document_revision: int | None = None
+    base_structure_revision: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

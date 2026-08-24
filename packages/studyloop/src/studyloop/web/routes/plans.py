@@ -132,10 +132,17 @@ def get_plans(
 ) -> dict:
     """List plans (summaries only) for the left-pane Study Plan section."""
     plans = list_plans(status=status)
+    current = [plan for plan in list_plans() if plan.status in {"draft", "active", "paused"}]
     return {
         "plans": [plan.summary() for plan in plans],
         "count": len(plans),
         "statuses": list(PLAN_STATUSES),
+        "capacity": {
+            "current": len(current),
+            "max": 3,
+            "available": max(0, 3 - len(current)),
+            "can_create": len(current) < 3,
+        },
     }
 
 

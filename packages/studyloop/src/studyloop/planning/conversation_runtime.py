@@ -96,17 +96,23 @@ class PlanningConversationRuntime:
 
     async def accept_turn(self, conversation_id: str, turn: LearnerTurn) -> TurnReceipt:
         """Durably capture a turn, then run exactly one bounded model attempt."""
-        receipt = self.store.capture_turn_and_freeze_context(
-            CaptureLearnerTurn(conversation_id, turn)
-        )
+        receipt = self.capture_turn(conversation_id, turn)
+        return await self.run_captured_turn(receipt)
+
+    def capture_turn(self, conversation_id: str, turn: LearnerTurn) -> TurnReceipt:
+        """Persist the exact learner input before an adapter schedules model work."""
+        return self.store.capture_turn_and_freeze_context(CaptureLearnerTurn(conversation_id, turn))
+
+    async def run_captured_turn(self, receipt: TurnReceipt) -> TurnReceipt:
+        """Run a previously captured turn without accepting a second input shape."""
         if receipt.status == "completed":
             return receipt
         if receipt.status != "ready":
             raise ConversationConflictError("learner turn is already scheduled or retryable")
         attempt = self.store.begin_attempt(
             BeginModelAttempt(
-                conversation_id,
-                turn.turn_id,
+                receipt.conversation_id,
+                receipt.turn_id,
                 receipt.turn_version,
                 None,
                 self._owner_id,
