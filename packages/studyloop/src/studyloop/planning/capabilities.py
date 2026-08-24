@@ -21,6 +21,7 @@ from .contracts import (
     ProposalRef,
     SubmitProposalDraft,
 )
+from .lifecycle_journal import canonical_lifecycle_digest
 from .models import EvidenceDisposition, Mission, PlanUnknown, Resource
 
 
@@ -136,7 +137,14 @@ _RESOURCE = {
 _DRAFT = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["title", "mission", "goals", "milestones", "next_action"],
+    "required": [
+        "title",
+        "mission",
+        "goals",
+        "milestones",
+        "evidence_dispositions",
+        "next_action",
+    ],
     "properties": {
         "title": {"type": "string"},
         "mission": _MISSION,
@@ -264,6 +272,37 @@ class PlanningCapabilityCall:
 
 
 @dataclass(frozen=True, slots=True)
+class PlanningCapabilityScope:
+    """Server-owned durable identity for one provider attempt's capability calls."""
+
+    conversation_id: str
+    turn_id: str
+    attempt_id: str
+
+    def __post_init__(self) -> None:
+        for label, value in (
+            ("conversation_id", self.conversation_id),
+            ("turn_id", self.turn_id),
+            ("attempt_id", self.attempt_id),
+        ):
+            if not value.strip() or len(value) > 256 or any(ord(char) < 32 for char in value):
+                raise ValueError(f"planning capability {label} is invalid")
+
+    def lifecycle_idempotency_key(self, *, run_id: str, tool_call_id: str) -> str:
+        """Derive the key Task 7 persists beside the complete original call tuple."""
+        return "capability:" + canonical_lifecycle_digest(
+            "studyloop.planning-capability-call",
+            {
+                "conversation_id": self.conversation_id,
+                "turn_id": self.turn_id,
+                "attempt_id": self.attempt_id,
+                "run_id": run_id,
+                "tool_call_id": tool_call_id,
+            },
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class PlanningCapabilityResult:
     call_id: str
     name: PlanningCapabilityName
@@ -290,10 +329,12 @@ class PlanningCapabilityDispatcher:
         lifecycle: _LifecyclePort,
         request: PlanningRequest,
         *,
+        scope: PlanningCapabilityScope,
         expected_run_id: str = "",
     ) -> None:
         self._lifecycle = lifecycle
         self._request = request
+        self._scope = scope
         self._run_id = expected_run_id
 
     def execute(self, call: PlanningCapabilityCall) -> PlanningCapabilityResult:
@@ -327,7 +368,10 @@ class PlanningCapabilityDispatcher:
             )
             command = SubmitProposalDraft(
                 run_id=run_id,
-                idempotency_key=f"capability:{call.call_id}",
+                idempotency_key=self._scope.lifecycle_idempotency_key(
+                    run_id=run_id,
+                    tool_call_id=call.call_id,
+                ),
                 brief_context_digest=_string(
                     arguments.get("brief_context_digest"), "brief_context_digest"
                 ),
@@ -426,6 +470,28 @@ def _integer(value: object, label: str, default: int) -> int:
     return value
 
 
+def _bounded_integer(
+    value: object,
+    label: str,
+    default: int,
+    *,
+    minimum: int,
+    maximum: int | None = None,
+) -> int:
+    result = _integer(value, label, default)
+    if result < minimum or (maximum is not None and result > maximum):
+        limit = f"{minimum}..{maximum}" if maximum is not None else f">= {minimum}"
+        raise CapabilityRefusedError(f"{label} must be {limit}")
+    return result
+
+
+def _enum_string(value: object, label: str, allowed: frozenset[str]) -> str:
+    result = _string(value, label)
+    if result not in allowed:
+        raise CapabilityRefusedError(f"{label} has an unsupported value")
+    return result
+
+
 def _boolean(value: object, label: str, default: bool = False) -> bool:
     if value is None:
         return default
@@ -438,12 +504,18 @@ def _decode_draft(value: object) -> PlanProposalDraft:
     raw = _mapping(value, "draft")
     _exact_keys(
         raw,
-        required=("title", "mission", "goals", "milestones", "next_action"),
+        required=(
+            "title",
+            "mission",
+            "goals",
+            "milestones",
+            "evidence_dispositions",
+            "next_action",
+        ),
         optional=(
             "topics",
             "concepts",
             "concept_relations",
-            "evidence_dispositions",
             "resources",
             "unknowns",
             "requested_status",
@@ -483,7 +555,11 @@ def _decode_draft(value: object) -> PlanProposalDraft:
                 _string(item.get("title"), "goal.title"),
                 _string(item.get("reason"), "goal.reason"),
                 _string(item.get("alignment_rationale"), "goal.alignment_rationale"),
-                _string(item.get("status", "active"), "goal.status"),
+                _enum_string(
+                    item.get("status", "active"),
+                    "goal.status",
+                    frozenset({"active", "paused", "complete"}),
+                ),
                 _string(item.get("existing_goal_id", ""), "existing_goal_id", allow_empty=True),
             )
         )
@@ -565,11 +641,18 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         disposition = _string(item.get("disposition"), "evidence disposition.disposition")
         if disposition not in {"selected", "rejected", "unresolved"}:
             raise CapabilityRefusedError("evidence disposition is unsupported")
+        reason = _string(
+            item.get("reason"),
+            "evidence disposition.reason",
+            allow_empty=True,
+        )
+        if disposition in {"rejected", "unresolved"} and not reason.strip():
+            raise CapabilityRefusedError(f"{disposition} evidence requires a visible reason")
         dispositions.append(
             EvidenceDisposition(
                 _string(item.get("evidence_id"), "evidence disposition.evidence_id"),
                 disposition,
-                _string(item.get("reason"), "evidence disposition.reason"),
+                reason,
             )
         )
 
@@ -604,7 +687,11 @@ def _decode_draft(value: object) -> PlanProposalDraft:
                 _string(item.get("unknown_id"), "unknown.unknown_id"),
                 _string(item.get("question"), "unknown.question"),
                 _string(item.get("impact"), "unknown.impact"),
-                _string(item.get("status", "open"), "unknown.status"),
+                _enum_string(
+                    item.get("status", "open"),
+                    "unknown.status",
+                    frozenset({"open", "resolved"}),
+                ),
             )
         )
 
@@ -625,8 +712,12 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         next_action=_string(raw.get("next_action"), "next_action"),
         requested_status=requested_status,
         target_date=_string(raw.get("target_date", ""), "target_date", allow_empty=True),
-        energy_floor=_integer(raw.get("energy_floor"), "energy_floor", 3),
-        review_cadence_days=_integer(raw.get("review_cadence_days"), "review_cadence_days", 3),
+        energy_floor=_bounded_integer(
+            raw.get("energy_floor"), "energy_floor", 3, minimum=1, maximum=10
+        ),
+        review_cadence_days=_bounded_integer(
+            raw.get("review_cadence_days"), "review_cadence_days", 3, minimum=1
+        ),
         goal_limit_override_requested=_boolean(
             raw.get("goal_limit_override_requested"), "goal_limit_override_requested"
         ),

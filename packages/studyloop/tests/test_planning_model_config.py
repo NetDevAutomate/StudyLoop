@@ -164,6 +164,37 @@ def test_loopback_detection_refuses_lan_dns_redirect_and_non_loopback_peer(
         assert "url" not in capture
 
 
+@pytest.mark.parametrize("timeout", [float("nan"), float("inf"), 10.01])
+def test_loopback_candidate_timeout_is_bounded_before_network(
+    monkeypatch: pytest.MonkeyPatch,
+    timeout: float,
+) -> None:
+    """Even the finite code-owned discovery tuple must fail closed if misconfigured."""
+    from studyloop.planning.model_config import LoopbackCandidate, detect_loopback_litellm
+
+    client_created = False
+
+    def factory(**kwargs: Any) -> _Client:
+        nonlocal client_created
+        client_created = True
+        return _Client({}, _Response(), **kwargs)
+
+    monkeypatch.setattr("studyloop.planning.model_config.httpx.Client", factory)
+
+    assert (
+        detect_loopback_litellm(
+            (
+                LoopbackCandidate(
+                    "http://127.0.0.1:4000/v1",
+                    connect_timeout_seconds=timeout,
+                ),
+            )
+        )
+        is None
+    )
+    assert client_created is False
+
+
 def test_explicit_profile_is_normalized_once_and_contains_only_a_secret_reference() -> None:
     """Storing a raw provider key or accepting a model-controlled path must fail validation."""
     from studyloop.planning.model_config import PlanningModelProfile
@@ -277,3 +308,101 @@ def test_profile_config_refuses_unknown_or_plaintext_credential_fields() -> None
         )
         is None
     )
+
+
+@pytest.mark.parametrize(
+    ("connect_timeout", "turn_timeout"),
+    [
+        (float("nan"), 120.0),
+        (float("inf"), 120.0),
+        (10.01, 120.0),
+        (0.35, float("nan")),
+        (0.35, float("inf")),
+        (0.35, 300.01),
+    ],
+)
+def test_profile_rejects_nonfinite_or_policy_excessive_timeouts(
+    connect_timeout: float,
+    turn_timeout: float,
+) -> None:
+    """Removing finite/max checks would make doctor or a future model turn unbounded."""
+    from studyloop.planning.model_config import PlanningModelProfile
+
+    with pytest.raises(ValueError, match=r"finite|at most"):
+        PlanningModelProfile.from_explicit(
+            base_url="https://gateway.example.test/v1",
+            model="planner-model",
+            connect_timeout_seconds=connect_timeout,
+            turn_timeout_seconds=turn_timeout,
+        )
+
+
+def test_profile_accepts_exact_timeout_policy_boundaries() -> None:
+    """The upper bound itself remains usable; only values above it are refused."""
+    from studyloop.planning.model_config import PlanningModelProfile
+
+    profile = PlanningModelProfile.from_explicit(
+        base_url="https://gateway.example.test/v1",
+        model="planner-model",
+        connect_timeout_seconds=10.0,
+        turn_timeout_seconds=300.0,
+    )
+
+    assert profile.connect_timeout_seconds == 10.0
+    assert profile.turn_timeout_seconds == 300.0
+
+
+def test_direct_profile_construction_cannot_bypass_timeout_invariants() -> None:
+    """The dataclass constructor is public, so invariants cannot live only in one factory."""
+    from studyloop.planning.model_config import PlanningModelProfile
+
+    with pytest.raises(ValueError, match="finite"):
+        PlanningModelProfile(
+            "https://gateway.example.test/v1",
+            "planner-model",
+            None,
+            float("inf"),
+            120.0,
+        )
+
+
+@pytest.mark.parametrize(
+    "timeout_yaml",
+    [
+        "connect_timeout_seconds: .nan\nturn_timeout_seconds: 120.0",
+        "connect_timeout_seconds: .inf\nturn_timeout_seconds: 120.0",
+        "connect_timeout_seconds: 10.01\nturn_timeout_seconds: 120.0",
+        "connect_timeout_seconds: true\nturn_timeout_seconds: 120.0",
+        "connect_timeout_seconds: '1.0'\nturn_timeout_seconds: 120.0",
+        "connect_timeout_seconds: 0.35\nturn_timeout_seconds: .nan",
+        "connect_timeout_seconds: 0.35\nturn_timeout_seconds: .inf",
+        "connect_timeout_seconds: 0.35\nturn_timeout_seconds: 300.01",
+    ],
+)
+def test_yaml_timeout_abuse_is_rejected_before_network_client_creation(
+    monkeypatch: pytest.MonkeyPatch,
+    timeout_yaml: str,
+) -> None:
+    """A corrupt hand-edited profile must fail closed before endpoint probing."""
+    import yaml
+
+    from studyloop.planning.model_config import probe_model_profile, profile_from_config
+
+    client_created = False
+
+    def factory(**kwargs: Any) -> _Client:
+        nonlocal client_created
+        client_created = True
+        return _Client({}, _Response(), **kwargs)
+
+    monkeypatch.setattr("studyloop.planning.model_config.httpx.Client", factory)
+    value = yaml.safe_load(
+        f"base_url: https://gateway.example.test/v1\nmodel: planner-model\n{timeout_yaml}\n"
+    )
+
+    profile = profile_from_config(value)
+    if profile is not None:
+        probe_model_profile(profile)
+
+    assert profile is None
+    assert client_created is False

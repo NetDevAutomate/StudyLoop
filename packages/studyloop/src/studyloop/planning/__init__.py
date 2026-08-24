@@ -27,6 +27,7 @@ from .capabilities import (
     PlanningCapabilityDispatcher,
     PlanningCapabilityName,
     PlanningCapabilityResult,
+    PlanningCapabilityScope,
 )
 from .contracts import (
     ActorContext,
@@ -223,6 +224,7 @@ __all__ = [
     "PlanningCapabilityDispatcher",
     "PlanningCapabilityName",
     "PlanningCapabilityResult",
+    "PlanningCapabilityScope",
     "PlanningCommand",
     "PlanningLifecycle",
     "PlanningModelPort",

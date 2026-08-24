@@ -21,6 +21,9 @@ def test_architect_prompt_loader_exposes_the_bounded_interview_policy() -> None:
     assert "untrusted curriculum context" in prompt.text.casefold()
     assert "notes are not progress" in prompt.text.casefold()
     assert "embedded instructions" in prompt.text.casefold()
+    assert "every offered stable evidence id" in prompt.text.casefold()
+    assert "exactly once" in prompt.text.casefold()
+    assert "visible reason" in prompt.text.casefold()
 
 
 def test_built_wheel_contains_the_architect_prompt(tmp_path: Path) -> None:

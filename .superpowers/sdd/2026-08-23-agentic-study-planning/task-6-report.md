@@ -167,3 +167,110 @@ historical documentation; the Task 6 changed-file scan is clean.
 No Task 7+ conversation, browser, learner-auth, evidence-stewardship, release-
 manifest, or external-harness implementation was added. The progress ledger
 was not edited.
+
+## Independent-review fix round 1
+
+The first clean-context review found four Important gaps between the advertised
+confined contract and the executable boundary. All four are now closed without
+beginning Task 7:
+
+- The wire decoder now enforces every advertised required/minimum/maximum/enum
+  constraint before `PlanningLifecycle.handle()`. This includes exact goal and
+  unknown statuses, the full concept-relation/evidence/requested-status enums,
+  goal `maxItems`, resource URL `maxLength`, energy floor 1-10, positive review
+  cadence, and a visible reason for rejected/unresolved evidence. A mechanical
+  omission table also covers all 34 advertised nested/top-level required fields.
+  Eleven malformed scalar payload forms make zero fake-lifecycle calls and
+  leave a prepared real lifecycle's journal/private artifacts byte-for-byte
+  unchanged.
+- `PlanningCapabilityScope` is a frozen server-owned
+  conversation/turn/attempt tuple. It derives the lifecycle idempotency key from
+  that tuple plus the bound run and provider tool-call ID using canonical
+  domain-separated hashing. The provider ID remains correlation data rather
+  than a global key. Real-lifecycle tests prove identical provider IDs in two
+  conversations create independent proposals, an exact replay returns the same
+  proposal, and changed input under the original tuple conflicts. No schema
+  field lets the model choose scope or key. Task 7 will persist the original
+  tuple and derived key before dispatch.
+- `evidence_dispositions` is required in the submit schema/decoder; an explicit
+  empty array is valid when no evidence was offered. The installed prompt
+  requires every offered stable ID exactly once as selected/rejected/unresolved
+  and requires a visible learner-facing reason for rejected/unresolved items.
+  The scripted preflight no longer uses a permissive fake: it offers real
+  tier-four evidence and crosses an actual temporary `PlanningLifecycle`, then
+  proves the proposal contains exact offered/disposition coverage.
+- The profile type itself now normalizes/validates its fixed endpoint, model,
+  secret reference, and numeric timeouts in `__post_init__`; direct construction
+  cannot bypass the invariant. Connect timeouts are finite and at most 10
+  seconds; turn timeouts are finite and at most 300 seconds. YAML `.nan`,
+  `.inf`, numeric strings, booleans, and excessive finite values fail before an
+  HTTPX client exists. Loopback-candidate timeouts cross the same validation
+  before discovery networking.
+
+### Fix-round RED evidence
+
+1. The new advertised-constraint tests produced ten failures: forged goal and
+   unknown statuses plus zero/over-limit energy and zero cadence either reached
+   the fake lifecycle or persisted through the real lifecycle. After the first
+   fix, the audit table was expanded to every remaining enum/max/reason rule.
+2. Both scope tests initially failed import because no server-owned capability
+   scope existed. The old implementation reproduced the review's global
+   `capability:<provider-call-id>` collision.
+3. Four evidence-contract tests failed independently: the schema omitted the
+   required field, the decoder accepted omission, the prompt lacked the exact
+   rule, and the preflight result had no validated evidence coverage.
+4. Twelve timeout tests accepted NaN, infinity, and excessive finite profile or
+   YAML values. Three more showed invalid loopback candidate bounds constructed
+   an HTTP client, and the direct-constructor test showed the public dataclass
+   could bypass factory checks.
+
+### Fix-round verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_doctor_planning.py -q
+# 123 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web_runtime_feedback.py -q
+# 179 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning*.py \
+  packages/studyloop/tests/test_plan_agent_harness.py \
+  packages/studyloop/tests/test_doctor_planning.py \
+  packages/studyloop/tests/e2e/test_plans_api.py -q
+# 430 passed, 12 deselected
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_doctor*.py \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web*.py -q
+# 656 passed, 295 deselected, one pre-existing Starlette/httpx warning
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli*.py \
+  packages/studyloop/tests/test_study*.py \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py -q
+# 195 passed, 54 deselected
+```
+
+Targeted Ruff check/format, Pyright, Python compilation, strict MkDocs, wheel
+prompt packaging, changed-file detect-secrets, and `git diff --check` were rerun
+on the fix-round tree. The pre-existing repository-wide secret-scan baseline
+limitation reported above is unchanged.

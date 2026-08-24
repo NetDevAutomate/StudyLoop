@@ -48,6 +48,7 @@ async def test_scripted_model_uses_the_production_port_and_versioned_events() ->
     events = [event async for event in model.stream(request)]
 
     assert [event.sequence for event in events] == [1, 2, 3]
+    assert isinstance(events[1], ModelToolCall)
     assert events[1].name == "prepare_plan"
     assert model.requests == (request,)
 
@@ -98,4 +99,5 @@ def test_scripted_preflight_is_provider_free_and_exercises_exact_catalogue() -> 
         "get_plan_proposal",
     )
     assert result.lifecycle_operations == ("prepare", "handle", "inspect")
+    assert result.validated_evidence_ids == ("preflight-evidence",)
     assert result.live_provider_used is False

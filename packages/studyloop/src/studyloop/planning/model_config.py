@@ -6,14 +6,33 @@ import os
 import re
 from dataclasses import dataclass
 from ipaddress import ip_address
+from math import isfinite
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
 DEFAULT_CONNECT_TIMEOUT_SECONDS = 0.35
 DEFAULT_TURN_TIMEOUT_SECONDS = 120.0
+MAX_CONNECT_TIMEOUT_SECONDS = 10.0
+MAX_TURN_TIMEOUT_SECONDS = 300.0
 _ENV_REFERENCE = re.compile(r"env:[A-Za-z_][A-Za-z0-9_]{0,127}\Z")
 _SECRET_REFERENCE = re.compile(r"secret:[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
+
+
+def _validated_timeout(value: float | int, label: str, maximum: float) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"planning model {label} timeout must be numeric")
+    try:
+        timeout = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"planning model {label} timeout must be numeric") from exc
+    if not isfinite(timeout):
+        raise ValueError(f"planning model {label} timeout must be finite")
+    if timeout <= 0:
+        raise ValueError(f"planning model {label} timeout must be positive")
+    if timeout > maximum:
+        raise ValueError(f"planning model {label} timeout must be at most {maximum:g} seconds")
+    return timeout
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +42,28 @@ class PlanningModelProfile:
     api_key_ref: str | None
     connect_timeout_seconds: float
     turn_timeout_seconds: float
+
+    def __post_init__(self) -> None:
+        normalized = _normalize_base_url(self.base_url)
+        selected_model = self.model.strip()
+        if not selected_model or len(selected_model) > 256:
+            raise ValueError("planning model is required and must be at most 256 characters")
+        reference = self.api_key_ref.strip() if self.api_key_ref else None
+        if reference and not (
+            _ENV_REFERENCE.fullmatch(reference) or _SECRET_REFERENCE.fullmatch(reference)
+        ):
+            raise ValueError("api_key_ref must use env: or secret: and never contain a raw key")
+        connect_timeout = _validated_timeout(
+            self.connect_timeout_seconds, "connect", MAX_CONNECT_TIMEOUT_SECONDS
+        )
+        turn_timeout = _validated_timeout(
+            self.turn_timeout_seconds, "turn", MAX_TURN_TIMEOUT_SECONDS
+        )
+        object.__setattr__(self, "base_url", normalized)
+        object.__setattr__(self, "model", selected_model)
+        object.__setattr__(self, "api_key_ref", reference)
+        object.__setattr__(self, "connect_timeout_seconds", connect_timeout)
+        object.__setattr__(self, "turn_timeout_seconds", turn_timeout)
 
     @classmethod
     def from_explicit(
@@ -34,23 +75,12 @@ class PlanningModelProfile:
         connect_timeout_seconds: float = DEFAULT_CONNECT_TIMEOUT_SECONDS,
         turn_timeout_seconds: float = DEFAULT_TURN_TIMEOUT_SECONDS,
     ) -> PlanningModelProfile:
-        normalized = _normalize_base_url(base_url)
-        selected_model = model.strip()
-        if not selected_model or len(selected_model) > 256:
-            raise ValueError("planning model is required and must be at most 256 characters")
-        reference = api_key_ref.strip() if api_key_ref else None
-        if reference and not (
-            _ENV_REFERENCE.fullmatch(reference) or _SECRET_REFERENCE.fullmatch(reference)
-        ):
-            raise ValueError("api_key_ref must use env: or secret: and never contain a raw key")
-        if connect_timeout_seconds <= 0 or turn_timeout_seconds <= 0:
-            raise ValueError("planning model timeouts must be positive")
         return cls(
-            normalized,
-            selected_model,
-            reference,
-            float(connect_timeout_seconds),
-            float(turn_timeout_seconds),
+            base_url,
+            model,
+            api_key_ref,
+            connect_timeout_seconds,
+            turn_timeout_seconds,
         )
 
 
@@ -142,12 +172,22 @@ def detect_loopback_litellm(
         if not _literal_loopback_host(candidate.base_url):
             continue
         try:
+            connect_timeout = _validated_timeout(
+                candidate.connect_timeout_seconds,
+                "connect",
+                MAX_CONNECT_TIMEOUT_SECONDS,
+            )
+            _validated_timeout(
+                candidate.turn_timeout_seconds,
+                "turn",
+                MAX_TURN_TIMEOUT_SECONDS,
+            )
             base_url = _normalize_base_url(candidate.base_url)
             with (
                 httpx.Client(
                     trust_env=False,
                     follow_redirects=False,
-                    timeout=httpx.Timeout(candidate.connect_timeout_seconds),
+                    timeout=httpx.Timeout(connect_timeout),
                 ) as client,
                 client.stream("GET", _models_url(base_url)) as response,
             ):
@@ -219,17 +259,22 @@ def profile_from_config(value: object) -> PlanningModelProfile | None:
     }
     if not set(value) <= allowed:
         return None
+    connect_timeout = value.get("connect_timeout_seconds", DEFAULT_CONNECT_TIMEOUT_SECONDS)
+    turn_timeout = value.get("turn_timeout_seconds", DEFAULT_TURN_TIMEOUT_SECONDS)
+    if (
+        isinstance(connect_timeout, bool)
+        or not isinstance(connect_timeout, (int, float))
+        or isinstance(turn_timeout, bool)
+        or not isinstance(turn_timeout, (int, float))
+    ):
+        return None
     try:
         return PlanningModelProfile.from_explicit(
             base_url=str(value["base_url"]),
             model=str(value["model"]),
             api_key_ref=str(value["api_key_ref"]) if value.get("api_key_ref") else None,
-            connect_timeout_seconds=float(
-                value.get("connect_timeout_seconds", DEFAULT_CONNECT_TIMEOUT_SECONDS)
-            ),
-            turn_timeout_seconds=float(
-                value.get("turn_timeout_seconds", DEFAULT_TURN_TIMEOUT_SECONDS)
-            ),
+            connect_timeout_seconds=connect_timeout,
+            turn_timeout_seconds=turn_timeout,
         )
     except (KeyError, TypeError, ValueError):
         return None
