@@ -114,7 +114,6 @@ graph LR
 - **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents
 - **[AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md)** — How teach-back, `studyloop now`, note conversation, verification, recap, mastery graphs, and interleaving turn notes into learning
 - **[AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md)** — Implementation status and remaining refinements for the six active-learning features
-- **[Outstanding Work Plan](superpowers/plans/2026-07-12-studyloop-outstanding-work-plan.md)** — Consolidated outstanding remediation, MCP parity, and the next AuDHD-focused UX slice
 - **[Network Bridges](network-bridges.md)** — Network→Data Engineering analogies for infrastructure people
 - **[Roadmap](roadmap.md)** — What's coming next
 
