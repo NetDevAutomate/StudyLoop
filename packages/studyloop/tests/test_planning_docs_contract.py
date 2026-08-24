@@ -81,6 +81,18 @@ def test_setup_guide_treats_notes_as_optional_context_not_progress() -> None:
     assert "the default study material source is `~/obsidian/personal/study`" not in normalized
 
 
+def test_public_docs_do_not_treat_notes_or_reading_as_learning_evidence() -> None:
+    readme = " ".join(_read("README.md").casefold().split())
+    home = " ".join(_read("docs/index.md").casefold().split())
+    learning_loop = " ".join(_read("docs/audhd-learning-loop-implementation.md").casefold().split())
+
+    assert "how notes become recall" not in readme
+    assert "optional notes feed recall and practice" in readme
+    assert "opening the docs is orientation, not progress evidence" in home
+    assert "notes are never progress evidence on their own" in learning_loop
+    assert "evidence comes from recorded sessions" in learning_loop
+
+
 def test_setup_guide_describes_the_actual_bounded_wizard() -> None:
     guide = _read("docs/setup-guide.md")
     normalized = " ".join(guide.casefold().split())

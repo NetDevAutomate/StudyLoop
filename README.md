@@ -296,7 +296,7 @@ studyloop install tools
 - [System Overview](docs/system-overview.md) — architecture and data flow diagrams
 - [Repository Standards](docs/standards/repo-standards.md)
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
-- [AuDHD Learning Loop Implementation](docs/audhd-learning-loop-implementation.md) — how notes become recall, practice, verification, recap, and mastery evidence
+- [AuDHD Learning Loop Implementation](docs/audhd-learning-loop-implementation.md) — how optional notes feed recall and practice, while sessions, teach-backs, and verified attempts become mastery evidence
 - [AuDHD Deep Technical Learning Roadmap](docs/audhd-deep-technical-learning-roadmap.md) — implementation status and next refinements for the six active-learning features
 - [Voice Output Guide](docs/voice-output.md)
 - [Contributing](CONTRIBUTING.md)

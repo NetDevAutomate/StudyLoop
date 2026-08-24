@@ -112,10 +112,10 @@ graph LR
 - **[CLI Reference](cli-reference.md)** — Full command reference for `studyloop` and `session-query`
 - **[Repository Standards](standards/repo-standards.md)** — naming, doc, and structure standards
 - **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents
-- **[AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md)** — How teach-back, `studyloop now`, note conversation, verification, recap, mastery graphs, and interleaving turn notes into learning
+- **[AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md)** — How optional notes feed active practice while recorded sessions, teach-back, and verified attempts provide learning evidence
 - **[AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md)** — Implementation status and remaining refinements for the six active-learning features
 - **[Network Bridges](network-bridges.md)** — Network→Data Engineering analogies for infrastructure people
 - **[Roadmap](roadmap.md)** — What's coming next
 
 !!! micro-celebration "You're here"
-    Reading docs is the first step. That counts.
+    You reduced uncertainty by finding the start. Opening the docs is orientation, not progress evidence; one small tracked session is next.
