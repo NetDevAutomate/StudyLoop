@@ -76,12 +76,15 @@ graph LR
         DB[(SQLite DB)]
     end
 
-    subgraph "AI Agents"
+    subgraph "Released Live Web Harnesses"
         CA[Claude Code]
         CX[Codex CLI]
         KA[Kiro CLI]
         GA[Gemini CLI]
         OA[OpenCode]
+    end
+
+    subgraph "CLI-only Local-model Adapters"
         OL[Ollama]
         LM[LM Studio]
     end
@@ -189,7 +192,9 @@ session-query stats-cmd              # Database statistics
 session-sync push/pull/sync HOST     # Cross-machine sync
 ```
 
-## Agent Support
+## Integration Support
+
+### Five release-gated live web harnesses
 
 | Platform | Agent | Start With |
 |----------|-------|------------|
@@ -198,10 +203,25 @@ session-sync push/pull/sync HOST     # Cross-machine sync
 | Kiro CLI | `study-mentor` | `kiro-cli chat --agent study-mentor` |
 | Gemini CLI | `study-mentor` | `gemini` (auto-detected) |
 | OpenCode | `study-mentor` | Tab to switch agent |
-| pi | `AGENTS.md` | `pi` in the project root |
-| omp | `AGENTS.md` | `omp` in the project root |
-| Ollama | (local LLM) | `studyloop study "topic" --agent ollama` |
-| LM Studio | (local LLM) | `studyloop study "topic" --agent lmstudio` |
+
+These are the v0.1 browser Study Session matrix. The strict release gate drives
+each real TUI through terminal paint, resize, refresh, automatic reattachment,
+post-refresh input, and regrowth. Missing binaries or authentication fail the
+gate rather than becoming skips.
+
+### Other integrations (not v0.1 live web harnesses)
+
+| Integration | What StudyLoop supports |
+|-------------|--------------------------|
+| pi | `AGENTS.md` persona/steering install and session export |
+| omp | `AGENTS.md` persona/steering install and session export |
+| Ollama | CLI-only local-model launch adapter: `studyloop study "topic" --agent ollama` |
+| LM Studio | CLI-only local-model launch adapter: `studyloop study "topic" --agent lmstudio` |
+
+Those rows are useful integrations, but they are not evidence that the v0.1 web
+terminal supports nine harnesses. See [Agent Installation](docs/agent-install.md)
+for persona/export setup and [CI Workflows](docs/ci.md) for the strict live
+matrix.
 
 ## Web PWA
 

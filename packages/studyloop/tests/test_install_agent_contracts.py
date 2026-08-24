@@ -125,3 +125,20 @@ def test_agent_install_docs_tool_options_match_installer_choices() -> None:
     documented_tools = set(re.findall(r"studyloop install agents --tool ([a-z-]+)", text))
 
     assert documented_tools == set(installers._AGENT_CHOICES)
+
+
+def test_public_agent_docs_distinguish_live_web_from_other_integrations() -> None:
+    repo_root = _repo_root()
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    install_guide = (repo_root / "docs/agent-install.md").read_text(encoding="utf-8")
+    pi_omp_guide = (repo_root / "docs/architecture/pi-omp-harness-integration.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Five release-gated live web harnesses" in readme
+    assert "Other integrations (not v0.1 live web harnesses)" in readme
+    assert "eight supported platforms" not in install_guide
+    assert "Persona installation is not the same support claim" in install_guide
+    assert "agents/amp/AGENTS.md" not in install_guide
+    assert "not v0.1 live web harnesses" in pi_omp_guide
+    assert '"codex", "grok", "amp"' not in pi_omp_guide

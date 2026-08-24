@@ -2,6 +2,13 @@
 
 > Last updated: 2026-05-31.
 
+!!! important "Session export integration, not live web support"
+
+    pi and omp install StudyLoop steering and feed their completed sessions into
+    the searchable session database. They are **not v0.1 live web harnesses** and
+    do not appear in the browser Study Session picker. The release-gated browser
+    matrix is Claude Code, Codex, Gemini CLI, Kiro CLI, and OpenCode.
+
 **TL;DR:** pi (`@earendil-works/pi-coding-agent`) and oh-my-pi (omp, `@oh-my-pi/pi-coding-agent`) are two separate JSONL-on-disk coding agents that plug into StudyLoop the same way as Kiro or Gemini — one parametrized exporter handles both, the installer writes their AGENTS.md symlinks and a steering mandate, and the doctor picks them up automatically because they are in `_HARNESS_EXPORT`.
 
 ---
@@ -149,7 +156,7 @@ _TOOL_LINKS = {
     "omp": (LinkSpec("agents/omp/AGENTS.md", str(_HOME / ".omp/agent/AGENTS.md")),),
 }
 
-_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "grok", "amp", "pi", "omp")
+_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "amp", "pi", "omp")
 ```
 
 And in `_HARNESS_EXPORT`:

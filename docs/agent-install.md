@@ -1,6 +1,7 @@
 # Agent Installation Guide
 
-How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini CLI, OpenCode, Amp, pi, and oh-my-pi (omp).
+How to set up StudyLoop persona and session-export integrations for kiro-cli,
+Claude Code, Codex CLI, Gemini CLI, OpenCode, Amp, pi, and oh-my-pi (omp).
 
 ## Table of Contents
 
@@ -38,13 +39,18 @@ The install-mentor uses `studyloop doctor --json` as its contract — it parses 
 
 AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.
 
-This project ships agents for eight supported platforms:
+The installer recognises eight tool families. **Important:** Persona installation is not the same support claim as a v0.1 live web harness. The
+release-gated browser Study
+Session matrix is Claude Code, Codex, Gemini CLI, Kiro CLI, and OpenCode. Amp,
+pi, and omp remain persona/shared-framework or session-export integrations.
+
+What the installer wires:
 - **study-mentor** (kiro-cli) — full study pipeline with spaced repetition
 - **socratic-mentor** (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
 - **AGENTS.md** (Codex CLI) — Socratic mentoring auto-loaded from project context
 - **study-mentor** (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
 - **study-mentor** (OpenCode) — AuDHD-aware study mentor with spaced repetition
-- **AGENTS.md** (Amp) — Socratic mentoring loaded automatically from project context
+- **shared framework** (Amp) — no dedicated Amp persona file currently ships
 - **AGENTS.md** (pi) — session-export mandate + studyloop context for pi coding agent
 - **AGENTS.md** (omp) — session-export mandate + studyloop context for oh-my-pi
 
@@ -308,9 +314,6 @@ studyloop install agents --tool amp
 ### Manual install
 
 ```bash
-# Symlink AGENTS.md to project root
-ln -s "$(pwd)/agents/amp/AGENTS.md" ./AGENTS.md
-
 # Symlink shared framework
 mkdir -p ~/.agents
 ln -s "$(pwd)/agents/shared" ~/.agents/shared
@@ -320,7 +323,7 @@ ln -s "$(pwd)/agents/shared" ~/.agents/shared
 
 ```bash
 amp
-# AGENTS.md is loaded automatically — just start asking for a study session
+# No StudyLoop-specific persona is auto-loaded; Amp is not a v0.1 live web harness.
 ```
 
 ## pi Setup
@@ -432,7 +435,10 @@ The `<cwd-slug>` is the working directory path with `/` replaced by `-`. See the
 
 ## Local LLMs
 
-studyloop can use local LLMs as the study mentor backend instead of cloud Claude. This uses Claude Code as the frontend but points it at a local model server via environment variables.
+studyloop can use local LLMs as the study mentor backend instead of cloud
+Claude. These are CLI-only launch adapters, not v0.1 live web harnesses. They
+use Claude Code as the frontend but point it at a local model server via
+environment variables.
 
 ### Honest expectations
 
