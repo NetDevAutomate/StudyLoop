@@ -320,7 +320,6 @@ function resetStore() {
     evaluating: false,
     recording: false,
     activating: false,
-    togglingIndex: -1,
     initDone: false,
     _epoch: 0,
     _afterRender: [],
@@ -568,43 +567,6 @@ test('recordCheckpoint: records the phase the learner clicked, not a stale one',
 });
 
 /* ---------------------------------------------------------------- *
- * milestones.
- * ---------------------------------------------------------------- */
-
-test('toggleMilestone: the server summary drives both the reader and the sidebar', async () => {
-  const ticked = summary({ milestone_done: 1, progress_pct: 33 });
-  server({
-    'POST /api/plans/p1/milestones/0/toggle': () =>
-      json(200, { updated: true, index: 0, done: true, plan: ticked }),
-    'GET /api/plans/p1': () =>
-      json(200, {
-        ...detail({ plan: { milestone_done: 1, progress_pct: 33 } }),
-        milestones: [{ index: 0, title: 'A', done: true, concepts: ['glue job'], notes: '' }],
-      }),
-  });
-  plansStore.items = [summary()];
-  plansStore.selected = summary();
-
-  await plansStore.toggleMilestone(0);
-
-  /* Same formatter, same numbers — the whole reason this state is in a store. */
-  assert.equal(plansStore.progressLabel(plansStore.items[0]), '1/3 \u00b7 33%');
-  assert.equal(plansStore.progressText, '1/3 \u00b7 33%');
-  assert.equal(plansStore.milestones[0].done, true);
-  assert.equal(plansStore.togglingIndex, -1);
-});
-
-test('toggleMilestone: ignores a bad index and a toggle already in flight', async () => {
-  const calls = server({});
-  plansStore.selected = summary();
-  await plansStore.toggleMilestone(-1);
-  await plansStore.toggleMilestone('nope');
-  plansStore.togglingIndex = 0;
-  await plansStore.toggleMilestone(1);
-  assert.equal(calls.length, 0);
-});
-
-/* ---------------------------------------------------------------- *
  * activation — the refusal must actually refuse.
  * ---------------------------------------------------------------- */
 
@@ -725,7 +687,6 @@ test('plansPanel: a factory returning a plain object, never a class instance', (
   /* Own-properties, because Alpine proxies the returned object and prototype
      methods are invisible to it. */
   assert.ok(Object.prototype.hasOwnProperty.call(panel, 'init'));
-  assert.ok(Object.prototype.hasOwnProperty.call(panel, 'toggleMilestone'));
 });
 
 test('plansPanel: getters forward to the store and form writes land on it', () => {

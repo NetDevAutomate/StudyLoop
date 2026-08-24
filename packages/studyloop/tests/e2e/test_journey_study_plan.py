@@ -6,14 +6,15 @@ Every assertion runs against the actual Alpine/HTMX UI served by
 The journey mirrors what a learner actually does:
 
   Phase 1  Left pane exposes a Study Plan section (empty state honest)
-  Phase 2  Create a plan through the interview wizard
+  Phase 2  Seed a digest-approved plan through the real compatibility API
   Phase 3  The plan appears in the left-pane list, with progress
   Phase 4  The plan document renders as *structured* Markdown — real
            headings, task lists, and a table in the DOM, not a code dump
   Phase 5  Evaluate at all three checkpoints (start / mid / end)
   Phase 6  Record a checkpoint and see it land in the rendered document
-  Phase 7  Tick a milestone and watch progress move
-  Phase 8  A plan missing its mission is refused activation, with reasons
+  Phase 7  Milestone progress is read-only and evidence-driven
+  Phase 8  A ready plan can be activated from the reader
+  Phase 9  An incomplete plan is refused activation, with reasons
 
 Run:
     cd packages/studyloop
@@ -97,12 +98,60 @@ def page(browser, running_server: RunningServer):
         context.close()
 
 
-def _fill(page: Page, testid: str, value: str) -> None:
-    """Fill an Alpine-bound field and let x-model flush."""
-    field = page.locator(f'[data-testid="{testid}"]')
-    field.wait_for(state="visible", timeout=8000)
-    field.fill(value)
-    field.dispatch_event("input")
+def _create_approved_plan(page: Page, payload: dict[str, object]) -> str:
+    """Create and approve the exact proposal through the browser-authority API."""
+    plan_id = page.evaluate(
+        """async (payload) => {
+            const csrf = document.cookie
+                .split(';')
+                .map(item => item.trim().split('='))
+                .find(parts => parts[0] === 'studyloop_csrf')?.slice(1).join('=') || '';
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': decodeURIComponent(csrf),
+            };
+            const previewResponse = await fetch('/api/plans', {
+                method: 'POST', headers, body: JSON.stringify(payload),
+            });
+            const preview = await previewResponse.json();
+            if (previewResponse.status !== 202) {
+                throw new Error(
+                    `proposal failed (${previewResponse.status}): ${JSON.stringify(preview)}`
+                );
+            }
+            const proposal = preview.proposal;
+            const decisionResponse = await fetch('/api/plans', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    proposal_id: proposal.proposal_id,
+                    proposal_digest: proposal.proposal_digest,
+                    decision: 'approve',
+                }),
+            });
+            const decision = await decisionResponse.json();
+            if (decisionResponse.status !== 201) {
+                throw new Error(
+                    `approval failed (${decisionResponse.status}): ${JSON.stringify(decision)}`
+                );
+            }
+            return decision.plan.plan_id;
+        }""",
+        payload,
+    )
+    assert isinstance(plan_id, str) and plan_id
+    return plan_id
+
+
+def _load_and_select_plan(page: Page, plan_id: str) -> None:
+    page.evaluate(
+        """async (planId) => {
+            const store = window.Alpine.store('plans');
+            await store.load();
+            await store.select(planId);
+        }""",
+        plan_id,
+    )
 
 
 def test_phase1_left_pane_has_study_plan_section(page: Page) -> None:
@@ -133,29 +182,38 @@ def test_phase1_left_pane_has_study_plan_section(page: Page) -> None:
         raise
 
 
-def test_phase2_create_plan_through_wizard(page: Page) -> None:
-    """Phase 2 — the interview wizard creates a real plan document."""
+def test_phase2_seed_digest_approved_plan_for_the_reader(page: Page) -> None:
+    """Phase 2 — a real proposal decision creates the reader's canonical plan."""
     try:
-        page.locator('[data-testid="plan-new"]').click()
-        page.locator('[data-testid="plan-create-form"]').wait_for(state="visible", timeout=8000)
-
-        _fill(page, "plan-field-title", PLAN_TITLE)
-        _fill(page, "plan-field-why", PLAN_WHY)
-        _fill(
+        plan_id = _create_approved_plan(
             page,
-            "plan-field-success",
-            "Deploy a Glue job unaided\nExplain the job bookmark to a colleague",
+            {
+                "title": PLAN_TITLE,
+                "status": "draft",
+                "answers": {
+                    "why": PLAN_WHY,
+                    "success": [
+                        "Deploy a Glue job unaided",
+                        "Explain the job bookmark to a colleague",
+                    ],
+                    "topics": ["data-engineering", "python"],
+                    "out_of_scope": ["EMR tuning"],
+                    "milestones": [
+                        {
+                            "title": "Understand Glue job anatomy",
+                            "concepts": ["glue job", "job bookmark"],
+                        },
+                        {"title": "Write the transform", "concepts": ["dynamicframe"]},
+                        {
+                            "title": "Schedule and monitor it",
+                            "concepts": ["cloudwatch"],
+                        },
+                    ],
+                },
+            },
         )
-        _fill(page, "plan-field-topics", "data-engineering\npython")
-        _fill(
-            page,
-            "plan-field-milestones",
-            "Understand Glue job anatomy (concepts: glue job, job bookmark)\n"
-            "Write the transform (concepts: dynamicframe)\n"
-            "Schedule and monitor it (concepts: cloudwatch)",
-        )
-
-        page.locator('[data-testid="plan-create-submit"]').click()
+        assert plan_id == "ship-a-glue-etl-job"
+        _load_and_select_plan(page, plan_id)
         page.locator('[data-testid="plan-detail"]').wait_for(state="visible", timeout=12000)
 
         title = page.locator('[data-testid="plan-detail-title"]').inner_text()
@@ -193,6 +251,7 @@ def test_phase4_markdown_renders_as_structured_html(page: Page) -> None:
     try:
         doc = page.locator('[data-testid="plan-markdown"]')
         doc.wait_for(state="visible", timeout=8000)
+        doc.locator("svg").wait_for(state="visible", timeout=10_000)
 
         structure = page.evaluate(
             """() => {
@@ -206,7 +265,7 @@ def test_phase4_markdown_renders_as_structured_html(page: Page) -> None:
                     tables: el.querySelectorAll('table').length,
                     tableHeaders: [...el.querySelectorAll('th')].map(n => n.textContent.trim()),
                     strong: el.querySelectorAll('strong').length,
-                    codeSpans: el.querySelectorAll('code').length,
+                    diagrams: el.querySelectorAll('svg').length,
                     links: [...el.querySelectorAll('a')].map(n => n.getAttribute('href')),
                     rawFrontmatterLeaked: el.textContent.includes('review_cadence_days:'),
                     text: el.textContent,
@@ -230,9 +289,11 @@ def test_phase4_markdown_renders_as_structured_html(page: Page) -> None:
         headers = " ".join(structure["tableHeaders"]).lower()
         assert "verdict" in headers, f"checkpoint table headers wrong: {structure['tableHeaders']}"
 
-        # Milestone concepts are rendered as inline code, and the mission prose
-        # must be present as text — proof the body parsed, not just the shell.
-        assert structure["codeSpans"] >= 1, "milestone concept spans did not render as <code>"
+        # Schema-v2 milestone concepts live in table cells, while the learning
+        # map's Mermaid fence must render as SVG rather than remain a code dump.
+        for concept in ("glue job", "dynamicframe", "cloudwatch"):
+            assert concept in structure["text"], f"missing milestone concept: {concept}"
+        assert structure["diagrams"] >= 1, "learning-map Mermaid did not render as SVG"
         assert PLAN_WHY in structure["text"], "mission 'why' missing from rendered document"
 
         # Frontmatter is metadata, not content: it must not leak into the page.
@@ -292,9 +353,12 @@ def test_phase6_record_checkpoint_lands_in_document(page: Page) -> None:
         # The checkpoint table in the rendered document must now have a data row.
         rows = page.evaluate(
             """() => {
-                const el = document.querySelector('[data-testid="plan-markdown"]');
-                if (!el) return [];
-                const table = [...el.querySelectorAll('table')].pop();
+                    const el = document.querySelector('[data-testid="plan-markdown"]');
+                    if (!el) return [];
+                    const table = [...el.querySelectorAll('table')].find(table =>
+                        [...table.querySelectorAll('th')]
+                            .some(th => th.textContent.trim() === 'Phase')
+                    );
                 if (!table) return [];
                 return [...table.querySelectorAll('tbody tr')].map(
                     tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim())
@@ -309,31 +373,23 @@ def test_phase6_record_checkpoint_lands_in_document(page: Page) -> None:
         raise
 
 
-def test_phase7_toggling_a_milestone_moves_progress(page: Page) -> None:
-    """Phase 7 — ticking a milestone updates progress and the left pane."""
+def test_phase7_milestone_progress_is_evidence_driven(page: Page) -> None:
+    """Phase 7 — collected notes and manual clicks cannot claim completion."""
     try:
         before = page.locator('[data-testid="plan-detail-progress"]').inner_text()
         assert "0/3" in before, before
 
-        page.locator('[data-testid="plan-milestone-0"]').click()
-        page.wait_for_function(
-            """() => {
-                const el = document.querySelector('[data-testid="plan-detail-progress"]');
-                return el && el.textContent.includes('1/3');
-            }""",
-            timeout=12000,
-        )
-        after = page.locator('[data-testid="plan-detail-progress"]').inner_text()
-        assert "1/3" in after and "33%" in after, after
+        evidence_note = page.locator('[data-testid="plan-progress-evidence-note"]')
+        evidence_note.wait_for(state="visible", timeout=8000)
+        note_text = evidence_note.inner_text().lower()
+        assert "verified studyloop" in note_text, note_text
+        assert "notes" in note_text and "never" in note_text, note_text
 
-        # The sidebar summary is fed from the same store and must agree.
-        sidebar = page.locator(
-            '.sidebar-plan-item[data-plan-id="ship-a-glue-etl-job"]'
-        ).inner_text()
-        assert "1/3" in sidebar, f"left pane did not follow progress: {sidebar!r}"
+        milestone = page.locator('[data-testid="plan-milestone-0"]')
+        assert milestone.is_disabled(), "milestone completion is still a manual control"
+        assert not milestone.is_checked(), "unverified milestone appears complete"
 
-        # A real browser reload must reconstruct the plan from persistence,
-        # rather than retaining the checkbox only in the Alpine store.
+        # A reload must reconstruct the same evidence-backed state.
         page.reload()
         page.wait_for_load_state("domcontentloaded")
         page.evaluate("() => window.Alpine.store('nav').go('study-plans')")
@@ -344,22 +400,43 @@ def test_phase7_toggling_a_milestone_moves_progress(page: Page) -> None:
         page.locator('[data-testid="plan-detail"]').wait_for(state="visible", timeout=8000)
 
         reloaded_progress = page.locator('[data-testid="plan-detail-progress"]').inner_text()
-        assert "1/3" in reloaded_progress, reloaded_progress
+        assert "0/3" in reloaded_progress, reloaded_progress
         checked = page.locator('[data-testid="plan-milestone-0"]').is_checked()
-        assert checked, "milestone checkbox did not persist across browser reload"
+        assert not checked, "unverified completion appeared after browser reload"
     except Exception:
         _diag(page, "plan-phase7")
         raise
 
 
-def test_phase8_incomplete_plan_is_refused_activation(page: Page) -> None:
-    """Phase 8 — a plan with no mission cannot be activated, and says why."""
+def test_phase8_ready_plan_can_be_activated_from_the_reader(page: Page) -> None:
+    """Phase 8 — the browser supplies learner authority for a valid transition."""
     try:
-        page.locator('[data-testid="plan-new"]').click()
-        page.locator('[data-testid="plan-create-form"]').wait_for(state="visible", timeout=8000)
-        _fill(page, "plan-field-title", INCOMPLETE_TITLE)
-        # Deliberately no why / success / milestones.
-        page.locator('[data-testid="plan-create-submit"]').click()
+        page.locator('[data-testid="plan-activate"]').click()
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('[data-testid="plan-detail-status"]');
+                return el && el.textContent.trim().toLowerCase() === 'active';
+            }""",
+            timeout=10_000,
+        )
+        error = page.locator('[data-testid="plan-error"]')
+        assert not (error.count() and error.is_visible()), error.inner_text()
+    except Exception:
+        _diag(page, "plan-phase8")
+        raise
+
+
+def test_phase9_incomplete_plan_is_refused_activation(page: Page) -> None:
+    """Phase 9 — a plan with no success criteria or milestones cannot activate."""
+    try:
+        plan_id = _create_approved_plan(
+            page,
+            {
+                "title": INCOMPLETE_TITLE,
+                "answers": {"why": "Explore this safely before committing to a direction."},
+            },
+        )
+        _load_and_select_plan(page, plan_id)
         page.locator('[data-testid="plan-detail"]').wait_for(state="visible", timeout=12000)
 
         assert INCOMPLETE_TITLE in page.locator('[data-testid="plan-detail-title"]').inner_text()
@@ -367,7 +444,7 @@ def test_phase8_incomplete_plan_is_refused_activation(page: Page) -> None:
         blockers = page.locator('[data-testid="plan-blockers"]')
         blockers.wait_for(state="visible", timeout=8000)
         blocker_text = blockers.inner_text().lower()
-        assert "mission" in blocker_text, blocker_text
+        assert "success" in blocker_text, blocker_text
         assert "milestone" in blocker_text, blocker_text
 
         page.locator('[data-testid="plan-activate"]').click()
@@ -386,5 +463,5 @@ def test_phase8_incomplete_plan_is_refused_activation(page: Page) -> None:
         status = page.locator('[data-testid="plan-detail-status"]').inner_text().strip().lower()
         assert status == "draft", f"plan activated despite blockers: {status!r}"
     except Exception:
-        _diag(page, "plan-phase8")
+        _diag(page, "plan-phase9")
         raise

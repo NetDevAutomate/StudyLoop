@@ -43,12 +43,25 @@
  *                                readiness}
  *   GET    /api/plans/{id}/evaluate?phase=…          {evaluation, markdown}
  *   POST   /api/plans/{id}/evaluate  201             {recorded, evaluation, …}
- *   POST   /api/plans                201             {created, plan, readiness}
- *   PATCH  /api/plans/{id}           422 on refusal  detail={message, blockers…}
- *   POST   /api/plans/{id}/milestones/{i}/toggle     {updated, index, done, plan}
+ *   POST   /api/plans                202             {created:false, proposal}
+ *   POST   /api/plans (decision)     201             {outcome, plan, readiness}
+ *   PATCH  /api/plans/{id} (status)                  {outcome, plan, readiness}
  * ------------------------------------------------------------------ */
 
 const API = '/api/plans';
+
+function browserMutationHeaders() {
+  const result = { 'Content-Type': 'application/json' };
+  const cookie = globalThis.document?.cookie || '';
+  for (const item of cookie.split(';')) {
+    const [name, ...rest] = item.trim().split('=');
+    if (name === 'studyloop_csrf') {
+      result['X-CSRF-Token'] = decodeURIComponent(rest.join('='));
+      break;
+    }
+  }
+  return result;
+}
 
 /* ==================================================================
  * Pure helpers — no DOM, no fetch, no Alpine.
@@ -351,7 +364,6 @@ export const plansStore = {
   evaluating: false,
   recording: false,
   activating: false,
-  togglingIndex: -1,
   /* A REAL completion flag, not a proxy signal: `items: []` is already truthy
      before init runs and `loading` flips before the data is applied, so
      neither can be used to answer "is the store ready?". */
@@ -565,51 +577,6 @@ export const plansStore = {
     await this.submitPlan();
   },
 
-  /* ---------------- milestones ---------------- */
-
-  /**
-   * Flip one milestone and re-read the document.
-   *
-   * Not optimistic: the POST returns the authoritative summary, and the plan
-   * document has to be re-fetched so the rendered `- [x]` and the counts
-   * cannot drift from each other. Persistence across a browser reload is the
-   * point — the checkbox state must live on the server, never only here.
-   *
-   * @param {number} index
-   */
-  async toggleMilestone(index) {
-    const planId = this.selected?.plan_id;
-    const i = Number(index);
-    if (!planId || !Number.isInteger(i) || i < 0) return;
-    if (this.togglingIndex !== -1) return;
-    const epoch = this._bump();
-    this.togglingIndex = i;
-    this.error = '';
-    try {
-      const resp = await fetch(
-        `${API}/${encodeURIComponent(planId)}/milestones/${i}/toggle`,
-        { method: 'POST' }
-      );
-      if (epoch !== this._epoch) return;
-      if (!resp.ok) {
-        const { message } = await readError(resp, 'could not update the milestone');
-        if (epoch === this._epoch) this.error = message;
-        return;
-      }
-      const data = await resp.json();
-      if (epoch !== this._epoch) return;
-      this._applySummary(data.plan);
-      if (this.selected?.milestones?.[i]) {
-        this.selected.milestones[i].done = !!data.done;
-      }
-      await this._fetchDetail(planId, epoch);
-    } catch (e) {
-      if (epoch === this._epoch) this.error = `Network error: ${e.message ?? e}`;
-    } finally {
-      if (epoch === this._epoch) this.togglingIndex = -1;
-    }
-  },
-
   /* ---------------- evaluation ---------------- */
 
   /**
@@ -722,7 +689,7 @@ export const plansStore = {
    *
    * A refusal is surfaced, never swallowed, and the local status is NOT
    * changed on failure — a refusal that leaves the pill reading "active" has
-   * not refused anything. The 422 body carries fresh readiness, so the
+   * not refused anything. The refusal body carries fresh readiness, so the
    * blockers list is updated from it too.
    *
    * @param {string} [status] — defaults to 'active'
@@ -737,7 +704,7 @@ export const plansStore = {
     try {
       const resp = await fetch(`${API}/${encodeURIComponent(planId)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: browserMutationHeaders(),
         body: JSON.stringify({ status: want }),
       });
       if (epoch !== this._epoch) return;
@@ -1064,10 +1031,6 @@ export function plansPanel() {
     get activating() {
       return this._plans().activating;
     },
-    get togglingIndex() {
-      return this._plans().togglingIndex;
-    },
-
     /* `form` is the x-model target: the getter returns the store's OWN object,
        so `x-model="form.title"` writes land on the store rather than shadowing
        it with a component-local copy. */
@@ -1117,9 +1080,6 @@ export function plansPanel() {
     },
     async createPlan() {
       await this._plans().submitPlan();
-    },
-    async toggleMilestone(index) {
-      await this._plans().toggleMilestone(index);
     },
     async evaluate(phase) {
       await this._plans().evaluate(phase);

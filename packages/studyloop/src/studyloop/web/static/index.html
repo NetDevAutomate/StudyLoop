@@ -2945,12 +2945,16 @@
               </ol>
             </div>
 
-            <!-- Milestones — the interactive layer over the document.  Native
-                 checkboxes on purpose: a custom control that hides the input
-                 stops being clickable.  :checked + @click, never x-model — the
-                 server owns this state and must survive a reload. -->
+            <!-- Milestones are evidence-driven. A collected note or a manual
+                 click is not verified practice, so the reader displays the
+                 authoritative state without offering a false completion write. -->
             <div class="plan-milestones" x-show="(milestones || []).length > 0">
               <p class="plan-section-title">Milestones</p>
+              <p class="plan-field-hint" id="plan-progress-evidence-note"
+                 data-testid="plan-progress-evidence-note">
+                Milestones become complete only from verified StudyLoop practice or
+                session evidence. Notes and course access never count as completion.
+              </p>
               <ul class="plan-milestone-list">
                 <template x-for="(m, i) in (milestones || [])" :key="i">
                   <li class="plan-milestone">
@@ -2958,7 +2962,8 @@
                       <input type="checkbox" class="plan-milestone-check"
                              :data-testid="'plan-milestone-' + i"
                              :checked="m.done"
-                             @click="toggleMilestone(i)">
+                             aria-describedby="plan-progress-evidence-note"
+                             disabled>
                       <span class="plan-milestone-title" :class="{ 'plan-milestone-done': m.done }"
                             x-text="m.title"></span>
                       <small class="text-muted" x-show="(m.concepts || []).length > 0"
