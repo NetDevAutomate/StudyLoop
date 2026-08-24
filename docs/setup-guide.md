@@ -312,7 +312,7 @@ To make Codex CLI the default coding assistant for study sessions, set the agent
 
 ```yaml
 agents:
-  priority: [codex, grok, claude, gemini, opencode, kiro, ollama, lmstudio]
+  priority: [codex, claude, gemini, opencode, kiro, ollama, lmstudio]
 ```
 
 ### Web PWA (recommended)

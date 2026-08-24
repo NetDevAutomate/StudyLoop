@@ -506,7 +506,7 @@ lan_password_verifier: ""  # opaque one-way value; never replace with plaintext
 
 ```yaml
 agents:
-  priority: [codex, grok, claude, gemini, opencode, kiro, ollama, lmstudio]
+  priority: [codex, claude, gemini, opencode, kiro, ollama, lmstudio]
 ```
 
 ---

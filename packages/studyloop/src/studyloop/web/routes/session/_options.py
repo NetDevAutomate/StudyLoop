@@ -462,7 +462,11 @@ def _existing_unique_dirs(paths: list[Path]) -> list[Path]:
 
 def _agent_options(*, dev_mode: bool = False) -> list[dict[str, object]]:
     """Describe installed agents, exposing experimental ACP only in dev mode."""
-    names = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
+    names = ["claude", "codex", "gemini", "kiro", "opencode"]
+    if dev_mode:
+        # Grok Build remains implemented for future integration work, but it
+        # is not a supported v1 study-session harness.
+        names.append("grok")
     if os.environ.get("STUDYLOOP_TEST_AGENT") == "1":
         # Harness-only: surface the deterministic fake agent in the picker so
         # browser e2e can drive the real UI spawn path (adapters/fake.py).
@@ -470,7 +474,7 @@ def _agent_options(*, dev_mode: bool = False) -> list[dict[str, object]]:
     try:
         from studyloop.agent_launcher import AGENTS, detect_agents
 
-        detected = set(detect_agents())
+        detected = set(detect_agents(include_experimental=dev_mode))
         return [
             {
                 "label": _agent_label(name),

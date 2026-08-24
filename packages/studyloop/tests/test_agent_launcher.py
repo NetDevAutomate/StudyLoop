@@ -92,6 +92,22 @@ class TestAgentRegistry:
 
 
 class TestDetectAgents:
+    def test_detect_excludes_experimental_grok_by_default(self):
+        from studyloop.agent_launcher import detect_agents
+
+        with patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/agent"):
+            agents = detect_agents()
+
+        assert "grok" not in agents
+
+    def test_detect_includes_experimental_grok_for_dev_callers(self):
+        from studyloop.agent_launcher import detect_agents
+
+        with patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/agent"):
+            agents = detect_agents(include_experimental=True)
+
+        assert "grok" in agents
+
     def test_detect_claude_installed(self):
         from studyloop.agent_launcher import detect_agents
 

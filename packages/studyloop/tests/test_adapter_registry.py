@@ -141,6 +141,47 @@ class TestRegistry:
 
 
 class TestDetectAgentsPriority:
+    def test_experimental_grok_is_not_auto_detected_for_release_sessions(self):
+        """An installed future adapter must not become the default v1 mentor."""
+        from studyloop.adapters import registry
+
+        registry.reset_registry()
+        registry._registry = {
+            "claude": _make_fake_adapter("claude", "claude"),
+            "grok": _make_fake_adapter("grok", "grok"),
+        }
+        settings_mock = MagicMock()
+        settings_mock.agents.priority = ["grok", "claude"]
+
+        with (
+            patch("studyloop.adapters.registry.shutil.which", return_value="/usr/bin/agent"),
+            patch("studyloop.settings.load_settings", return_value=settings_mock),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            result = registry.detect_agents()
+
+        assert result == ["claude"]
+        registry.reset_registry()
+
+    def test_dev_detection_can_include_experimental_grok(self):
+        """The explicit dev surface keeps the retained adapter testable."""
+        from studyloop.adapters import registry
+
+        registry.reset_registry()
+        registry._registry = {"grok": _make_fake_adapter("grok", "grok")}
+        settings_mock = MagicMock()
+        settings_mock.agents.priority = ["grok"]
+
+        with (
+            patch("studyloop.adapters.registry.shutil.which", return_value="/usr/bin/grok"),
+            patch("studyloop.settings.load_settings", return_value=settings_mock),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            result = registry.detect_agents(include_experimental=True)
+
+        assert result == ["grok"]
+        registry.reset_registry()
+
     def test_respects_config_priority_order(self):
         """detect_agents returns agents in config.yaml priority order."""
         from studyloop.adapters import registry

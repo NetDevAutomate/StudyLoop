@@ -31,6 +31,7 @@ from studyloop.adapters.kiro import _KIRO_BACKUP_SUFFIX, KIRO_AGENT_NAME
 from studyloop.adapters.lmstudio import _lmstudio_launch
 from studyloop.adapters.opencode import _opencode_launch, _opencode_setup
 from studyloop.adapters.registry import (
+    EXPERIMENTAL_AGENT_NAMES,
     get_all_adapters,
 )
 
@@ -245,7 +246,7 @@ def _kiro_teardown(_session_dir: Path) -> None:  # type: ignore[misc]
 # ---------------------------------------------------------------------------
 
 
-def detect_agents() -> list[str]:
+def detect_agents(*, include_experimental: bool = False) -> list[str]:
     """Return names of installed agents, in configured priority order.
 
     Priority comes from (highest to lowest):
@@ -255,6 +256,8 @@ def detect_agents() -> list[str]:
     """
     env_agent = os.environ.get("STUDYLOOP_AGENT")
     if env_agent and env_agent in AGENTS:
+        if env_agent in EXPERIMENTAL_AGENT_NAMES and not include_experimental:
+            return []
         if shutil.which(AGENTS[env_agent].binary):
             return [env_agent]
         return []
@@ -266,8 +269,11 @@ def detect_agents() -> list[str]:
     except Exception:
         priority = list(AGENTS.keys())
 
-    ordered = [n for n in priority if n in AGENTS]
-    ordered += [n for n in AGENTS if n not in ordered]
+    allowed = [
+        name for name in AGENTS if include_experimental or name not in EXPERIMENTAL_AGENT_NAMES
+    ]
+    ordered = [name for name in priority if name in allowed]
+    ordered += [name for name in allowed if name not in ordered]
 
     found: list[str] = []
     for name in ordered:

@@ -21,6 +21,10 @@ from studyloop.adapters._protocol import AgentAdapter
 
 log = logging.getLogger(__name__)
 
+# Adapters retained for future work but deliberately unavailable in public v1
+# session surfaces. ``studyloop web --dev`` is the explicit dogfood boundary.
+EXPERIMENTAL_AGENT_NAMES: frozenset[str] = frozenset({"grok"})
+
 # Module-level cache — None means "not yet built"
 _registry: dict[str, AgentAdapter] | None = None
 
@@ -118,7 +122,7 @@ def get_adapter(name: str) -> AgentAdapter:
     return adapters[name]
 
 
-def detect_agents() -> list[str]:
+def detect_agents(*, include_experimental: bool = False) -> list[str]:
     """Return installed agent names in priority order.
 
     Priority:
@@ -127,6 +131,7 @@ def detect_agents() -> list[str]:
     3. Registry insertion order as the final fallback
 
     Only agents whose binary is resolvable via ``shutil.which`` are included.
+    Future adapters are excluded unless an explicit dev caller opts in.
     """
     from studyloop.settings import load_settings
 
@@ -134,6 +139,8 @@ def detect_agents() -> list[str]:
 
     env_override = os.environ.get("STUDYLOOP_AGENT", "").strip()
     if env_override:
+        if env_override in EXPERIMENTAL_AGENT_NAMES and not include_experimental:
+            return []
         adapter = adapters.get(env_override)
         if adapter is not None and shutil.which(adapter.binary):
             return [env_override]
@@ -152,12 +159,16 @@ def detect_agents() -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
     for name in priority_names:
-        if name in adapters and name not in seen:
+        if (
+            name in adapters
+            and name not in seen
+            and (include_experimental or name not in EXPERIMENTAL_AGENT_NAMES)
+        ):
             ordered.append(name)
             seen.add(name)
     # Append any registry entries not covered by config priority
     for name in adapters:
-        if name not in seen:
+        if name not in seen and (include_experimental or name not in EXPERIMENTAL_AGENT_NAMES):
             ordered.append(name)
 
     return [name for name in ordered if shutil.which(adapters[name].binary)]

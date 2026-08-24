@@ -137,6 +137,26 @@ def _stub_db(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+def test_release_mode_rejects_experimental_grok_before_starting_transport(
+    client: TestClient,
+) -> None:
+    """Grok Build is retained for dev work but is not a supported v1 harness."""
+    with patch(
+        "studyloop.session.active.acquire",
+        side_effect=AssertionError("release mode must not launch Grok"),
+    ):
+        response = client.post(
+            "/api/session/start",
+            json={"topic": "Python", "energy": 5, "agent": "grok", "transport": "pty"},
+        )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "error": "Grok Build is experimental and disabled in release mode.",
+        "repair": "Restart StudyLoop with 'studyloop web --dev' to enable Grok Build.",
+    }
+
+
 class TestPtyStartHappyPath:
     def test_pty_start_returns_ws_url_and_no_tmux(
         self,

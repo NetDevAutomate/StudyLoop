@@ -70,7 +70,7 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
 
 _SHARED_LINKS: tuple[LinkSpec, ...] = (LinkSpec("agents/shared", str(_HOME / ".agents/shared")),)
 
-_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "grok", "amp", "pi", "omp")
+_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "amp", "pi", "omp")
 
 # ---------------------------------------------------------------------------
 # Cross-harness session-export wiring (W4)
@@ -320,8 +320,6 @@ def detect_available_agent_tools() -> list[str]:
         available.append("opencode")
     if shutil.which("codex"):
         available.append("codex")
-    if shutil.which("grok"):
-        available.append("grok")
     if shutil.which("amp"):
         available.append("amp")
     if (_HOME / ".pi").is_dir():
@@ -381,7 +379,7 @@ def install_agent_definitions(
     if not selected:
         raise InstallError(
             "No supported AI tools detected. "
-            "Install Claude Code, Kiro, Gemini, OpenCode, Codex, Grok, or Amp first."
+            "Install Claude Code, Kiro, Gemini, OpenCode, Codex, or Amp first."
         )
 
     invalid = [tool for tool in selected if tool not in _AGENT_CHOICES]

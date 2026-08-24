@@ -7,9 +7,10 @@ the locally installed vendor TUI must actually paint and remain interactive in
 the stock xterm surface.
 
 It is deliberately excluded from normal/e2e runs because it starts real agents
-and may use provider quota. Run it explicitly with ``-m live_harness``.
-StudyLoop state is hermetic; HOME remains real only so each CLI can use its
-existing authentication.
+and may use provider quota. Run it explicitly with ``-m live_harness`` for a
+permissive local smoke check, or use ``just test-live-harnesses`` for the
+fail-closed five-harness release gate. StudyLoop state is hermetic; HOME remains
+real only so each CLI can use its existing authentication.
 """
 
 from __future__ import annotations
@@ -35,7 +36,6 @@ if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
 from test_web_agent_matrix import (  # noqa: E402
-    AGENTS,
     _empty_backlog,
     _end_any_active_session,
     _session_state,
@@ -52,10 +52,10 @@ _BINARY = {
     "claude": "claude",
     "codex": "codex",
     "gemini": "gemini",
-    "grok": "grok",
     "kiro": "kiro-cli",
     "opencode": "opencode",
 }
+LIVE_HARNESS_AGENTS = ["claude", "codex", "gemini", "kiro", "opencode"]
 _BASE_PORT = 18730
 _STUDY_CONSOLE = '.session-terminal-area.agent-console[x-data="liveAgentConsole()"]'
 _AUTH_GATE_TEXT = (
@@ -64,6 +64,15 @@ _AUTH_GATE_TEXT = (
     "not authenticated",
     "please log in",
 )
+_STRICT_GATE_ENV = "STUDYLOOP_STRICT_LIVE_HARNESSES"
+
+
+def _unavailable_harness(agent: str, reason: str) -> None:
+    """Skip local smoke runs, but fail closed for an explicit release gate."""
+    message = f"{agent}: {reason}"
+    if os.environ.get(_STRICT_GATE_ENV) == "1":
+        pytest.fail(message, pytrace=False)
+    pytest.skip(message)
 
 
 def _start_live_server(root: Path, agent: str, port: int) -> subprocess.Popen:
@@ -78,10 +87,7 @@ def _start_live_server(root: Path, agent: str, port: int) -> subprocess.Popen:
     db_path = root / "sessions.db"
     config_path = root / "config.yaml"
     config_path.write_text(
-        f"session_db: {db_path}\n"
-        "content:\n"
-        f"  base_path: {vault}\n"
-        f"  study_paths:\n    - {vault}\n",
+        f"session_db: {db_path}\ncontent:\n  base_path: {vault}\n  study_paths:\n    - {vault}\n",
         encoding="utf-8",
     )
     from agent_session_tools.export_sessions import init_db
@@ -111,9 +117,7 @@ def _start_live_server(root: Path, agent: str, port: int) -> subprocess.Popen:
     for _ in range(60):
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1).close()
-            urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/api/session/state", timeout=5
-            ).close()
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/api/session/state", timeout=5).close()
             return proc
         except urllib.error.HTTPError:
             time.sleep(0.25)
@@ -124,22 +128,20 @@ def _start_live_server(root: Path, agent: str, port: int) -> subprocess.Popen:
     raise RuntimeError(f"live {agent} web server failed to start on port {port}")
 
 
-@pytest.fixture(params=AGENTS)
+@pytest.fixture(params=LIVE_HARNESS_AGENTS)
 def live_harness(request, tmp_path_factory: pytest.TempPathFactory):
     agent = request.param
     binary = _BINARY[agent]
     if not shutil.which(binary):
-        pytest.skip(f"{binary} is not installed")
-    port = _BASE_PORT + AGENTS.index(agent)
+        _unavailable_harness(agent, f"{binary} is not installed")
+    port = _BASE_PORT + LIVE_HARNESS_AGENTS.index(agent)
     root = tmp_path_factory.mktemp(f"live-web-{agent}").resolve()
     proc = _start_live_server(root, agent, port)
     try:
         yield agent, port, root
     finally:
         try:
-            req = urllib.request.Request(
-                f"http://127.0.0.1:{port}/api/session/end", method="POST"
-            )
+            req = urllib.request.Request(f"http://127.0.0.1:{port}/api/session/end", method="POST")
             urllib.request.urlopen(req, timeout=10).close()
         except Exception:
             pass
@@ -173,9 +175,7 @@ def _wait_for_real_tui_text(page: Page) -> str:
     return _terminal_snapshot(page)["text"]
 
 
-def test_real_harness_tui_renders_resizes_and_reattaches(
-    browser: Browser, live_harness
-) -> None:
+def test_real_harness_tui_renders_resizes_and_reattaches(browser: Browser, live_harness) -> None:
     """Real TUI smoke: paint, shrink, refresh, type, and grow."""
     agent, port, root = live_harness
     context = browser.new_context(viewport={"width": 1440, "height": 900})
@@ -254,8 +254,9 @@ def test_real_harness_tui_renders_resizes_and_reattaches(
         assert after.get("study_session_id") == session_id
         reattached_text = _wait_for_real_tui_text(page)
         if any(marker in reattached_text.lower() for marker in _AUTH_GATE_TEXT):
-            pytest.skip(
-                f"{agent} TUI rendered and reattached, but local harness auth is incomplete"
+            _unavailable_harness(
+                agent,
+                "TUI rendered and reattached, but local harness auth is incomplete",
             )
 
         # Do not press Enter: this proves post-refresh keyboard input reaches

@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from fastapi import Request  # noqa: TC002 - FastAPI inspects this annotation at runtime.
 from fastapi.responses import JSONResponse
 
+from studyloop.adapters.registry import EXPERIMENTAL_AGENT_NAMES
 from studyloop.session_state import (
     PARKING_FILE,
     SESSION_DIR,
@@ -151,8 +152,18 @@ async def start_session(body: StartSessionRequest, request: Request) -> JSONResp
             status_code=400,
         )
 
+    dev_mode = bool(getattr(request.app.state, "dev_mode", False))
+    if body.agent in EXPERIMENTAL_AGENT_NAMES and not dev_mode:
+        return JSONResponse(
+            {
+                "error": "Grok Build is experimental and disabled in release mode.",
+                "repair": "Restart StudyLoop with 'studyloop web --dev' to enable Grok Build.",
+            },
+            status_code=403,
+        )
+
     transport = _resolve_transport(body.transport)
-    if transport == "acp" and not bool(getattr(request.app.state, "dev_mode", False)):
+    if transport == "acp" and not dev_mode:
         return JSONResponse(
             {
                 "error": "ACP transport is experimental and disabled in release mode.",

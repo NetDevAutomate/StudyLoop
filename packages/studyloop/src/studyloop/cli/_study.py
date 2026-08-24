@@ -174,9 +174,10 @@ def _prompt_study_session() -> StudySessionSelection | None:
 
 def _agent_names() -> list[str]:
     """Registered agent names for CLI --agent choices."""
+    from studyloop.adapters.registry import EXPERIMENTAL_AGENT_NAMES
     from studyloop.agent_launcher import AGENTS
 
-    return list(AGENTS.keys())
+    return [name for name in AGENTS if name not in EXPERIMENTAL_AGENT_NAMES]
 
 
 @click.command()

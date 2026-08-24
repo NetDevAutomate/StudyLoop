@@ -308,7 +308,6 @@ class AgentsConfig:
             "gemini",
             "opencode",
             "codex",
-            "grok",
             "ollama",
             "lmstudio",
         ]
@@ -746,7 +745,6 @@ def load_settings() -> Settings:
             "gemini",
             "opencode",
             "codex",
-            "grok",
             "ollama",
             "lmstudio",
         ]
@@ -881,7 +879,7 @@ topics:
 # Override per-session with: studyloop study "topic" --agent gemini
 # Override via env var: STUDYLOOP_AGENT=gemini
 # agents:
-#   priority: [codex, grok, claude, kiro, gemini, opencode, ollama, lmstudio]
+#   priority: [codex, claude, kiro, gemini, opencode, ollama, lmstudio]
 #   ollama:
 #     model: qwen3-coder                # Model name from 'ollama list'
 #     # base_url: http://localhost:4000   # LiteLLM proxy (Ollama needs a translation layer)

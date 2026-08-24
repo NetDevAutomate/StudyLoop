@@ -15,7 +15,8 @@ agent exits before the JSON-RPC handshake; `kiro-cli acp --agent study-mentor`
 works. Treating ACP as an ordinary release option made a partially compatible
 protocol path look as dependable as the PTY path.
 
-The PTY/xterm.js path has one contract across all six supported harnesses and
+The PTY/xterm.js path has one contract across the five v1-supported harnesses
+(Claude Code, Codex, Gemini CLI, Kiro CLI, and OpenCode) and
 now has browser gates for painting, shrink/grow resize, refresh, automatic
 reattachment, stable session identity, and post-refresh input. It is the safer
 v1 baseline.
@@ -33,6 +34,8 @@ v1 baseline.
 5. Deterministic all-harness PTY Playwright tests are required. Credentialled
    real-TUI tests are an opt-in `live_harness` lane because they depend on local
    installation/authentication and may use provider quota.
+6. Grok Build remains available only under `--dev` for future compatibility
+   work and is not part of the v1 support or release-test matrix.
 
 ## Consequences
 

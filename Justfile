@@ -36,6 +36,13 @@ test-web:
 test-browser-smoke:
     uv run --group dev pytest packages/studyloop/tests/test_web_smoke_browser.py -m e2e -q
 
+# Pre-release proof against the five supported coding-agent TUIs. Unlike a
+# permissive local smoke run, missing binaries and authentication fail closed.
+test-live-harnesses:
+    STUDYLOOP_STRICT_LIVE_HARNESSES=1 uv run --group dev pytest \
+        packages/studyloop/tests/test_web_live_harness_rendering.py \
+        -m live_harness -q -rs -o timeout=240
+
 test-content:
     uv run --group dev pytest \
         packages/studyloop/tests/test_content_cli.py \

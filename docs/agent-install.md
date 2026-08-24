@@ -1,6 +1,6 @@
 # Agent Installation Guide
 
-How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Grok Build CLI, Gemini CLI, OpenCode, Amp, pi, and oh-my-pi (omp).
+How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Gemini CLI, OpenCode, Amp, pi, and oh-my-pi (omp).
 
 ## Table of Contents
 
@@ -9,7 +9,6 @@ How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Grok Bu
 - [Kiro CLI Setup](#kiro-cli-setup)
 - [Claude Code Setup](#claude-code-setup)
 - [Codex CLI Setup](#codex-cli-setup)
-- [Grok Build CLI Setup](#grok-build-cli-setup)
 - [Gemini CLI Setup](#gemini-cli-setup)
 - [OpenCode Setup](#opencode-setup)
 - [Amp Setup](#amp-setup)
@@ -39,11 +38,10 @@ The install-mentor uses `studyloop doctor --json` as its contract — it parses 
 
 AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.
 
-This project ships agents for nine platforms:
+This project ships agents for eight supported platforms:
 - **study-mentor** (kiro-cli) — full study pipeline with spaced repetition
 - **socratic-mentor** (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
 - **AGENTS.md** (Codex CLI) — Socratic mentoring auto-loaded from project context
-- **AGENTS.md** (Grok Build CLI) — Socratic mentoring auto-loaded from project context
 - **study-mentor** (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
 - **study-mentor** (OpenCode) — AuDHD-aware study mentor with spaced repetition
 - **AGENTS.md** (Amp) — Socratic mentoring loaded automatically from project context
@@ -64,7 +62,7 @@ The compatibility wrapper still exists if you are working from a repo checkout:
 ./scripts/install-agents.sh
 ```
 
-It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `opencode`/`codex`/`grok`/`amp` commands on PATH. If found, it creates symlinks from the repo's `agents/` directory into the tool's config.
+It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `opencode`/`codex`/`amp` commands on PATH. If found, it creates symlinks from the repo's `agents/` directory into the tool's config.
 
 Options:
 
@@ -72,7 +70,6 @@ Options:
 studyloop install agents --tool kiro
 studyloop install agents --tool claude
 studyloop install agents --tool codex
-studyloop install agents --tool grok
 studyloop install agents --tool gemini
 studyloop install agents --tool opencode
 studyloop install agents --tool amp
@@ -188,38 +185,6 @@ codex
 
 # Or let studyloop launch Codex directly
 studyloop study "Python" --agent codex
-```
-
-## Grok Build CLI Setup
-
-### Prerequisites
-
-- Grok Build CLI installed (`npm i -g @xai-official/grok` or the installer from xAI)
-- `grok` command available on PATH
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/codex/AGENTS.md` | `AGENTS.md` (project root) | Project-level Socratic mentor instructions |
-| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
-
-Grok reads the AGENTS.md instruction-file family from the current working directory, so StudyLoop reuses the project-level mentor instructions that Codex uses.
-
-### Auto-install
-
-```bash
-studyloop install agents --tool grok
-```
-
-### Starting a session
-
-```bash
-grok
-# AGENTS.md is loaded automatically
-
-# Or let studyloop launch Grok directly
-studyloop study "Python" --agent grok
 ```
 
 ## Gemini CLI Setup

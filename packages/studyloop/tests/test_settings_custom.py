@@ -432,7 +432,7 @@ def test_agents_priority_parsed(tmp_path):
     assert s.agents.priority == ["gemini", "claude"]
 
 
-def test_agents_default_priority_includes_codex_and_grok():
+def test_agents_default_priority_excludes_experimental_grok():
     from studyloop.settings import Settings
 
     s = Settings()
@@ -442,7 +442,6 @@ def test_agents_default_priority_includes_codex_and_grok():
         "gemini",
         "opencode",
         "codex",
-        "grok",
         "ollama",
         "lmstudio",
     ]

@@ -71,6 +71,19 @@ def test_session_options_hides_acp_capability_without_dev_mode(
     assert all(agent["supports_acp"] is False for agent in response.json()["agents"])
 
 
+def test_session_options_hides_experimental_grok_without_dev_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The release picker must list only the live harnesses claimed for v1."""
+    monkeypatch.setenv("STUDYLOOP_PLANS_DIR", str(tmp_path / "plans"))
+    client = TestClient(create_app())
+
+    response = client.get("/api/session/options")
+
+    assert response.status_code == 200
+    assert "grok" not in {agent["value"] for agent in response.json()["agents"]}
+
+
 def test_session_options_exposes_acp_capability_in_dev_mode(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -81,9 +94,7 @@ def test_session_options_exposes_acp_capability_in_dev_mode(
     response = client.get("/api/session/options")
 
     assert response.status_code == 200
-    supported = {
-        agent["value"] for agent in response.json()["agents"] if agent["supports_acp"]
-    }
+    supported = {agent["value"] for agent in response.json()["agents"] if agent["supports_acp"]}
     assert supported == {"gemini", "grok", "kiro"}
 
 
@@ -269,7 +280,6 @@ def test_agent_options_fall_back_when_detection_fails() -> None:
         "claude",
         "codex",
         "gemini",
-        "grok",
         "kiro",
         "opencode",
     }

@@ -2,7 +2,7 @@
 
 Exercises the full start-session → WebSocket-handshake → Started-event
 path end-to-end for each registered agent (``claude``, ``codex``,
-``gemini``, ``grok``, ``kiro``, ``opencode``). Real agent binaries are not
+``gemini``, ``kiro``, ``opencode``). Real agent binaries are not
 required: the ``STUDYLOOP_TEST_AGENT_CMD`` env var stubs the PTY child
 with a tiny shell snippet that prints a banner then sleeps.
 
@@ -57,7 +57,7 @@ WEB_PORT = 18574
 # appear here. The stub command doesn't care which agent is selected —
 # the point is that each agent's launch path is driven uniformly
 # through ``_build_pty_transport`` without the real binary.
-AGENTS = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
+AGENTS = ["claude", "codex", "gemini", "kiro", "opencode"]
 
 _STUDY_CONSOLE = '.session-terminal-area.agent-console[x-data="liveAgentConsole()"]'
 
@@ -80,9 +80,7 @@ def _empty_backlog(route) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _start_web_server_with_stub_agent(
-    shim_dir: Path, world_root: Path
-) -> subprocess.Popen:
+def _start_web_server_with_stub_agent(shim_dir: Path, world_root: Path) -> subprocess.Popen:
     """Spin up a studyloop server where every PTY agent launch is a
     benign ``echo ready; cat`` that reads stdin forever.
 
@@ -103,10 +101,7 @@ def _start_web_server_with_stub_agent(
     db_path = world_root / "sessions.db"
     config_path = world_root / "config.yaml"
     config_path.write_text(
-        f"session_db: {db_path}\n"
-        "content:\n"
-        f"  base_path: {vault}\n"
-        f"  study_paths:\n    - {vault}\n",
+        f"session_db: {db_path}\ncontent:\n  base_path: {vault}\n  study_paths:\n    - {vault}\n",
         encoding="utf-8",
     )
     # Complete the schema before the browser's concurrently-mounted components
@@ -163,7 +158,7 @@ def _start_web_server_with_stub_agent(
 def stub_agent_server(tmp_path_factory: pytest.TempPathFactory):
     world_root = tmp_path_factory.mktemp("web-agent-matrix-world").resolve()
     shim_dir = tmp_path_factory.mktemp("web-agent-matrix-binaries")
-    for binary in ("claude", "codex", "gemini", "grok", "kiro-cli", "opencode"):
+    for binary in ("claude", "codex", "gemini", "kiro-cli", "opencode"):
         shim = shim_dir / binary
         shim.write_text("#!/bin/sh\necho agent-shim-ready\nexec cat\n")
         shim.chmod(0o755)
