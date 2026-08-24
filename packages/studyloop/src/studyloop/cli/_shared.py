@@ -47,7 +47,7 @@ def get_topic(name: str) -> Topic | None:
 
 
 def offer_agent_install(flag: bool | None) -> None:
-    """Offer to install AI agent definitions after config init.
+    """Install agent definitions when explicitly requested by a setup caller.
 
     Args:
         flag: True = install, False = skip, None = ask interactively.

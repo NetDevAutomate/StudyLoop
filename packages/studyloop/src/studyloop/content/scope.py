@@ -12,7 +12,7 @@ so the resolver is testable from a script and reusable from a future
 CLI ``content generate-from-scope`` command.
 
 The on-disk shape this resolver depends on is whatever's already under
-``content.base_path`` (defaults to ``~/Obsidian/Personal/Study``):
+``content.base_path`` (defaults to ``~/study-materials``):
 
     Study/
       <CourseProvider>/

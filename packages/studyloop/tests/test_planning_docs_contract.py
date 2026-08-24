@@ -59,3 +59,41 @@ def test_release_notes_distinguish_supported_harnesses_from_other_integrations()
     assert "12 failed, 8 errors" not in normalized
     assert "does not pass, because the surface" not in normalized
     assert "no packaged distribution" not in normalized
+
+
+def test_setup_guide_treats_notes_as_optional_context_not_progress() -> None:
+    guide = _read("docs/setup-guide.md")
+    normalized = " ".join(guide.casefold().split())
+
+    assert "obsidian — for study notes" not in normalized
+    assert "notes are optional" in normalized
+    assert "sessions are evidence" in normalized
+    assert "notes and course files show access, not completed study" in normalized
+    assert "topics[].notes_path" in guide
+    assert "topics[].obsidian_path" in guide
+    assert "legacy alias" in normalized
+    assert "the default study material source is `~/obsidian/personal/study`" not in normalized
+
+
+def test_setup_guide_describes_the_actual_bounded_wizard() -> None:
+    guide = _read("docs/setup-guide.md")
+    normalized = " ".join(guide.casefold().split())
+
+    assert "this walks you through three core questions" not in normalized
+    assert "knowledge bridging — do you want" not in normalized
+    assert "setup asks whether to enable export" not in normalized
+    assert "one prompt on the no-notes path" in normalized
+    assert "only when" in normalized
+    assert "`studyloop config init` is a deprecated alias" in normalized
+
+
+def test_public_content_guides_use_neutral_notes_defaults() -> None:
+    content = _read("docs/content-pipeline.md")
+    web_guide = _read("docs/web-ui-guide.md")
+    export_guide = _read("docs/obsidian-export.md")
+
+    assert "~/study-materials" in content
+    assert "~/Obsidian/Personal/Study" not in content
+    assert "default `~/study-materials`" in web_guide
+    assert "Setup wizard:** `studyloop setup` asks" not in export_guide
+    assert "first-run setup wizard deliberately does not ask" in export_guide

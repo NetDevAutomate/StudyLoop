@@ -6,7 +6,6 @@ import click
 from rich.table import Table
 
 from studyloop.cli._shared import console, offer_agent_install
-from studyloop.shared import init_interactive_config
 
 
 def _stdin_is_interactive() -> bool:
@@ -25,33 +24,39 @@ def config_group() -> None:
 @click.option(
     "--install-agents/--no-install-agents",
     default=None,
-    help="Install AI agent definitions after config (auto-detects available tools).",
+    help="Explicitly install agent definitions after setup; omitted means no extra prompt.",
 )
-def config_init(install_agents: bool | None) -> None:
-    """Interactive setup — configure knowledge bridging, NotebookLM, and Obsidian integration."""
-    path = init_interactive_config(console)
-    console.print(f"\n[bold green]\u2713 Configuration saved to {path}[/bold green]")
+@click.pass_context
+def config_init(ctx: click.Context, install_agents: bool | None) -> None:
+    """Deprecated alias for studyloop setup."""
+    from studyloop.cli._setup import setup as setup_command
 
-    # Offer to install agents
-    offer_agent_install(install_agents)
-
-    console.print("\nNext steps:")
-    console.print("  1. Add study topics:  studyloop topics")
-    console.print("  2. Start a session:   /agent socratic-mentor  (Claude Code)")
-    console.print("                        kiro-cli chat --agent study-mentor  (Kiro)")
+    console.print(
+        "[yellow]studyloop config init is a deprecated alias; using studyloop setup.[/yellow]"
+    )
+    ctx.invoke(
+        setup_command,
+        planning_base_url="",
+        planning_model="",
+        planning_api_key_ref="",
+    )
+    if install_agents is True:
+        offer_agent_install(True)
 
 
 @config_group.command(name="show")
 def config_show() -> None:
     """Display current configuration."""
-    from studyloop.settings import get_config_path, load_settings
+    from studyloop.settings import get_config_path, load_raw_config, load_settings
 
     settings = load_settings()
     config_path = get_config_path()
 
     if not config_path.exists():
-        console.print("[red]No config file found.[/red] Run: studyloop config init")
+        console.print("[red]No config file found.[/red] Run: studyloop setup")
         return
+
+    raw = load_raw_config()
 
     console.print(f"[bold]Configuration[/bold] \u2014 {config_path}\n")
 
@@ -61,14 +66,20 @@ def config_show() -> None:
     table.add_column("Value")
     table.add_column("Status", justify="center")
 
-    # Obsidian
-    obsidian_path = settings.obsidian_base
-    obsidian_exists = obsidian_path.exists()
-    table.add_row(
-        "Obsidian vault",
-        str(obsidian_path),
-        "[green]\u2713[/green]" if obsidian_exists else "[red]\u2717[/red]",
-    )
+    # Optional notes. Do not display Settings.obsidian_base's compatibility
+    # default unless the legacy key is actually present in the user's config.
+    raw_notes = raw.get("notes_path") or raw.get("obsidian_base")
+    if raw_notes:
+        notes_path = settings.notes_path or settings.obsidian_base
+        notes_exists = notes_path.exists()
+        label = "Notes folder" if raw.get("notes_path") else "Notes folder (legacy Obsidian)"
+        table.add_row(
+            label,
+            str(notes_path),
+            "[green]\u2713[/green]" if notes_exists else "[red]\u2717[/red]",
+        )
+    else:
+        table.add_row("Notes folder", "Not configured", "[dim]\u2014[/dim]")
 
     # Session DB
     db_exists = settings.session_db.exists()

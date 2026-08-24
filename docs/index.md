@@ -29,8 +29,8 @@ studyloop study "Python" --mode co-study
 
 # 4. Ask for one active next step, then optionally generate review artefacts
 studyloop now --energy medium --time 20
-studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode recall
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop chat-note ~/study-materials/Python/decorators.md --mode recall
+studyloop content generate-cards ~/study-materials/Python --course python
 studyloop review
 ```
 

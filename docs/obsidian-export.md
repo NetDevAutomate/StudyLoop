@@ -46,15 +46,17 @@ project in reverse-chronological order.
 
 ## How `AgentMemory/` differs from your study notes
 
-`obsidian_base` (the flat config key) points StudyLoop at your **study sources** —
-the notes you write and study from. The `obsidian:` section configures this
+`notes_path` points StudyLoop at optional **study context** — notes or course
+material you may refer to. It is not evidence that you completed the material.
+The legacy `obsidian_base` key remains readable for existing configs. The
+`obsidian:` section configures this
 **export sink** — machine-generated session memory. Keeping them in a separate
 `AgentMemory/` folder means hundreds of auto-generated notes never dilute your
 curated `Sessions/`/`Study/` material, while Dataview can still query across both.
 
 ## Enabling it
 
-Three ways, in order of convenience:
+Two ways, in order of convenience:
 
 **1. Per run (no config needed):**
 
@@ -71,15 +73,14 @@ session-export --no-obsidian                   # force-off even if config enable
 ```yaml
 obsidian:
   export_enabled: true            # turn the gate on
-  vault_path: ~/Obsidian/Personal # defaults to obsidian_base if omitted
+  vault_path: ~/Obsidian/Personal # set explicitly for new configs
   memory_dir: AgentMemory
   moc_dir: AgentMemory/MOC
   backlinks: true
   granularity: both               # both | session
 ```
 
-**3. Setup wizard:** `studyloop setup` asks whether to enable export at the
-Obsidian step and writes the section for you.
+The first-run setup wizard deliberately does not ask about this optional export.
 
 ## Incremental vs backfill
 

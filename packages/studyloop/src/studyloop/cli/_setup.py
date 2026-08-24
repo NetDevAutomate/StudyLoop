@@ -300,13 +300,13 @@ def setup(
     planning_model: str,
     planning_api_key_ref: str,
 ) -> None:
-    """First-run setup wizard — two questions, both optional."""
+    """First-run setup with one prompt normally and three only when needed."""
     console.print()
     console.print("[bold cyan]studyloop setup[/bold cyan]")
     console.print(
-        "studyloop turns a folder of notes into a study system: spaced-repetition "
-        "reviews, focused sessions, and flashcards. Press Enter to accept the "
-        "suggestion in brackets.\n"
+        "Study sessions are evidence of what you have practised; notes are optional "
+        "context, not proof of progress. Press Enter to accept the suggestion in "
+        "brackets.\n"
     )
 
     config_path = _setup_config_path()

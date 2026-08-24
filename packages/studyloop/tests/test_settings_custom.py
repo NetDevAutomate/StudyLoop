@@ -39,8 +39,16 @@ def test_defaults_when_no_config_file(tmp_path):
     assert s.web_port == 8567
     assert s.browser == ""
     assert s.topics == []
-    assert s.content.study_paths == [Path.home() / "Obsidian" / "Personal" / "Study"]
+    assert s.content.base_path == Path.home() / "study-materials"
+    assert s.content.study_paths == []
+    assert s.obsidian_base_configured is False
     assert s.agents.custom == {}
+
+
+def test_legacy_obsidian_marker_reflects_user_config(tmp_path):
+    configured = _load(_write_config(tmp_path, {"obsidian_base": "~/Obsidian"}))
+
+    assert configured.obsidian_base_configured is True
 
 
 def test_get_config_path_honors_env_lazily(monkeypatch, tmp_path):
@@ -331,12 +339,17 @@ def test_topics_are_limited_to_three_active_entries(tmp_path):
     assert [topic.slug for topic in s.topics] == ["python", "sql", "data-engineering"]
 
 
-def test_default_config_keeps_active_topics_to_three():
-    from studyloop.settings import MAX_ACTIVE_TOPICS, generate_default_config
+def test_default_config_does_not_invent_notes_or_study_topics():
+    from studyloop.settings import generate_default_config
 
-    parsed = yaml.safe_load(generate_default_config())
+    rendered = generate_default_config()
+    parsed = yaml.safe_load(rendered)
 
-    assert len(parsed["topics"]) == MAX_ACTIVE_TOPICS
+    assert parsed["topics"] == []
+    assert "notes_path" not in parsed
+    assert "obsidian_base" not in parsed
+    assert "notes are optional" in rendered.casefold()
+    assert "study sessions are evidence" in rendered.casefold()
 
 
 # ---------------------------------------------------------------------------
@@ -416,7 +429,7 @@ def test_content_defaults_when_absent(tmp_path):
     s = _load(config_path)
 
     assert s.content.base_path == Path.home() / "study-materials"
-    assert s.content.study_paths == [Path.home() / "Obsidian" / "Personal" / "Study"]
+    assert s.content.study_paths == []
     assert s.content.notebooklm_timeout == 900
     assert s.content.pandoc_path == "pandoc"
 

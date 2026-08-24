@@ -25,7 +25,7 @@ def check_obsidian_vault() -> list[CheckResult]:
                 "obsidian_vault",
                 "info",
                 "Obsidian vault not configured",
-                "studyloop config init",
+                "studyloop setup",
                 False,
             )
         ]
@@ -76,7 +76,7 @@ def check_review_directories() -> list[CheckResult]:
                 "review_directories",
                 "info",
                 "No review topics configured",
-                "studyloop config init",
+                "studyloop setup",
                 False,
             )
         ]

@@ -105,7 +105,7 @@ studyloop prune --days 30 --apply         # Actually delete (only verified-in-fu
 studyloop setup                           # Interactive setup wizard
 studyloop install tools                   # Install global CLI entrypoints from repo
 studyloop install agents                  # Install agent definitions for detected tools
-studyloop config init                     # Advanced/legacy config initializer
+studyloop config init                     # Deprecated compatibility alias for setup
 studyloop config show                     # Display current configuration
 studyloop config lan-password             # Secure persistent LAN auth (interactive)
 studyloop self-test                       # Lightweight post-install smoke check
@@ -262,7 +262,7 @@ Default ranking is due review first, then struggling or low teach-back score, th
 `studyloop chat-note` turns one markdown/text note into a compact Socratic context pack. V1 prints or speaks the mentor prompt; it does not run a separate chat backend.
 
 ```bash
-studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md
+studyloop chat-note ~/study-materials/Python/decorators.md
 studyloop chat-note NOTE.md --mode diagram
 studyloop chat-note NOTE.md --mode trace --json
 ```

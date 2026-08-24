@@ -318,7 +318,10 @@ If 70% questions feels too intense, edit the agent persona to shift the ratio. S
 
 ### Change the concept bridges
 
-The default bridges assume a networking background. If you're coming from a different domain, run `studyloop config init` to configure your primary expertise domain. The AI agents will then use your configured domain to draw analogies during Socratic sessions.
+The bundled examples often use networking bridges. If another familiar domain
+would work better, set `knowledge_domains.primary` in `config.yaml`. The study
+mentor can then use that domain for analogies during Socratic sessions; first-run
+setup does not interrogate you about it.
 
 ### Modify session types
 

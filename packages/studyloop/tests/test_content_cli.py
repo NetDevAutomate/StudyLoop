@@ -190,6 +190,19 @@ def test_discover_uses_configured_study_sources_json(
     assert payload[0]["path"] == str(note)
 
 
+def test_configured_sources_default_to_neutral_content_base(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from studyloop.cli._content import _configured_study_sources
+
+    content_root = tmp_path / "study-materials"
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump({"content": {"base_path": str(content_root)}}))
+    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+
+    assert _configured_study_sources() == [content_root]
+
+
 def test_discover_explicit_missing_source_reports_error(runner: CliRunner, tmp_path: Path) -> None:
     result = runner.invoke(cli, ["content", "discover", str(tmp_path / "missing")])
 

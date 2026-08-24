@@ -207,7 +207,7 @@ Bug fixes, agent framework unification, and documentation polish.
 - [x] **Bug fixes**: `record_progress()` case sensitivity, legacy DB paths removed, `init_config()` hardcoded machine names
 - [x] **Study sessions wired up**: `start_study_session()`, `end_study_session()`, `get_study_session_stats()` for the orphaned `study_sessions` table
 - [x] **Unified agent framework**: All 5 platforms (Kiro, Claude Code, Gemini, OpenCode, Amp) reference `agents/shared/` — eliminated ~700 lines of inline duplication
-- [x] **Interactive config wizard**: `studyloop config init` with knowledge bridging, NotebookLM, Obsidian vault questions
+- [x] **Historical interactive config wizard**: the original `studyloop config init` questionnaire shipped during development; it is now a deprecated alias for the bounded `studyloop setup` flow
 - [x] **Config viewer**: `studyloop config show` with Rich tables
 - [x] **Docs site**: `studyloop docs serve/open/list/read` commands
 - [x] **Agent installation integration**: `install-agents.sh` called from `config init` flow

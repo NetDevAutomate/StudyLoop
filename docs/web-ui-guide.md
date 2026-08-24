@@ -559,7 +559,10 @@ Run it locally with `uv run pytest -m live_kiro` (requires `kiro-cli` authentica
 
 > **Status (2026-05-29):** Shipped end-to-end. Backend (registry, two HTTP adapters, scope resolver, job orchestrator), HTTP surface (REST + WS + 4 supporting routes), and the sidebar UI all live on `main`. The Generate tab is now first-class alongside Flashcards / Quizzes / Body Double / Study Session.
 
-The Generate tab in the sidebar (between **Quizzes** and **Body Double**) lets you produce flashcard and quiz decks from any course/section in your `~/Obsidian/Personal/Study/` tree, or from topics you've struggled with recently, without dropping to the CLI.
+The Generate tab in the sidebar (between **Quizzes** and **Body Double**) lets
+you produce flashcard and quiz decks from courses or sections under the
+configured `content.base_path` (default `~/study-materials`), or from topics
+you've struggled with recently, without dropping to the CLI.
 
 ### Form fields
 

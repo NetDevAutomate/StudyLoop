@@ -14,7 +14,7 @@ For deeper diagrams, see:
 ```mermaid
 flowchart TB
     subgraph "Study Sources"
-        Obsidian["Obsidian<br/>~/Obsidian/Personal/Study"]
+        Notes["Optional notes/course context<br/>default ~/study-materials"]
         PDF["PDF/eBook"]
         Text["Markdown/text"]
     end
@@ -50,7 +50,7 @@ flowchart TB
         AgentMemory["AgentMemory/<br/>(Obsidian vault notes)<br/>Dataview frontmatter +<br/>[[wikilinks]] + MOC index"]
     end
 
-    Obsidian --> StudyLoop
+    Notes --> StudyLoop
     PDF --> StudyLoop
     Text --> StudyLoop
     StudyLoop --> Picker
@@ -59,7 +59,7 @@ flowchart TB
     StudyLoop --> Web
     Web -->|"WebSocket /api/session/ws"| Term
     Web --> Explorer
-    Explorer -->|"reads source material"| Obsidian
+    Explorer -->|"reads source material"| Notes
     Explorer -->|"writes struggle flags<br/>with lesson provenance"| DB
     Explorer -->|"copies Socratic<br/>discussion prompt"| Companion
     Term -->|"PTY bytes"| Agent
@@ -127,7 +127,7 @@ again.
 
 ```bash
 studyloop now --energy medium --time 20
-studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode trace
+studyloop chat-note ~/study-materials/Python/decorators.md --mode trace
 studyloop practice verify decorators-practice.json --task 1 --notes "what passed"
 studyloop recap today --speak --audio-file recap.wav
 studyloop mastery weak-links --topic python
@@ -163,7 +163,7 @@ creating another menu to manage.
 Flashcards and quizzes support study, but they are not the product centre.
 
 ```bash
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/study-materials/Python --course python
 studyloop web
 ```
 

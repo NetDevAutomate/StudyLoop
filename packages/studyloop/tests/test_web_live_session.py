@@ -126,6 +126,60 @@ def test_session_options_caps_topic_choices_to_three(
     ]
 
 
+def test_study_roots_do_not_probe_an_unconfigured_obsidian_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.web.routes.session import _options
+
+    content_root = tmp_path / "study-materials"
+    content_root.mkdir()
+    historical_root = tmp_path / "Obsidian" / "Personal" / "Study"
+    historical_root.mkdir(parents=True)
+
+    class Content:
+        def __init__(self) -> None:
+            self.base_path = content_root
+            self.study_paths: list[Path] = []
+
+    class Settings:
+        def __init__(self) -> None:
+            self.content = Content()
+            self.notes_path = None
+            self.topics: list[object] = []
+            self.obsidian_base = tmp_path / "Obsidian"
+            self.obsidian_base_configured = False
+
+    monkeypatch.setattr("studyloop.settings.load_settings", Settings)
+
+    assert _options._study_roots() == [content_root]
+
+
+def test_study_roots_preserve_an_explicit_legacy_obsidian_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.web.routes.session import _options
+
+    historical_root = tmp_path / "Obsidian" / "Personal" / "Study"
+    historical_root.mkdir(parents=True)
+
+    class Content:
+        def __init__(self) -> None:
+            self.base_path = tmp_path / "missing-study-materials"
+            self.study_paths: list[Path] = []
+
+    class Settings:
+        def __init__(self) -> None:
+            self.content = Content()
+            self.notes_path = None
+            self.topics: list[object] = []
+            self.obsidian_base = tmp_path / "Obsidian"
+            self.obsidian_base_configured = True
+
+    monkeypatch.setattr("studyloop.settings.load_settings", Settings)
+
+    assert historical_root in _options._study_roots()
+
+
 def test_session_options_lists_vendors_directly_under_study_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

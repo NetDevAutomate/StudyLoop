@@ -296,9 +296,12 @@ class TestSetupBasics:
     def test_banner_does_not_assume_obsidian_or_notebooklm(
         self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None
     ) -> None:
-        """The old banner's first sentence named both. That is the bug."""
+        """Setup must lead with sessions; notes are optional context."""
         result = runner.invoke(cli, ["setup"], input="\n")
-        assert "turns a folder of notes into a study system" in result.output
+        normalized = " ".join(result.output.casefold().split())
+        assert "turns a folder of notes into a study system" not in result.output
+        assert "study sessions are evidence" in normalized
+        assert "notes are optional context" in normalized
 
     def test_saved_confirmation_shown(
         self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None

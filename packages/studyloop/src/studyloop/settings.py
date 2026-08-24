@@ -165,9 +165,7 @@ class ContentConfig:
     """Configuration for the content pipeline (pdf-by-chapters absorption)."""
 
     base_path: Path = field(default_factory=lambda: Path.home() / "study-materials")
-    study_paths: list[Path] = field(
-        default_factory=lambda: [Path.home() / "Obsidian" / "Personal" / "Study"]
-    )
+    study_paths: list[Path] = field(default_factory=list)
     notebooklm_timeout: int = 900
     inter_episode_gap: int = 30
     default_types: list[str] = field(default_factory=lambda: ["audio"])
@@ -332,6 +330,9 @@ class Settings:
     """Application settings loaded from config file."""
 
     obsidian_base: Path = field(default_factory=lambda: Path.home() / "Obsidian")
+    #: True only when the compatibility key was present in the loaded YAML.
+    #: Consumers must not treat obsidian_base's historical default as user intent.
+    obsidian_base_configured: bool = False
     #: Where the user's study notes live. The modern, Obsidian-neutral key.
     #: Empty means "no notes folder configured", which is a supported state: a
     #: learner with no notes uses their study sessions as the source instead.
@@ -430,7 +431,7 @@ def load_raw_config() -> dict[str, Any]:
         loaded = yaml.safe_load(config_path.read_text())
     except yaml.YAMLError as exc:
         raise ConfigError(
-            f"Invalid YAML in {config_path}. Fix the file or rerun 'studyloop config init'."
+            f"Invalid YAML in {config_path}. Fix the file or rerun 'studyloop setup'."
         ) from exc
 
     if loaded is None:
@@ -662,6 +663,7 @@ def load_settings() -> Settings:
     for key, coerce in _SCALAR_FIELDS:
         if key in raw:
             setattr(settings, key, coerce(raw[key]))  # type: ignore[operator]
+    settings.obsidian_base_configured = "obsidian_base" in raw
 
     # --- topics (bespoke: legacy support + path resolution) -----------------
     raw_topics = raw.get("topics", [])
@@ -840,8 +842,9 @@ def generate_default_config() -> str:
 # studyloop configuration
 # Location: ~/.config/studyloop/config.yaml
 
-# Base path to your Obsidian vault
-obsidian_base: ~/Obsidian
+# Notes are optional context. Study sessions are evidence of completed work.
+# Uncomment only if you already have Markdown or plain-text notes to reference.
+# notes_path: ~/study-materials
 
 # Path to the AI session database
 session_db: ~/.config/studyloop/sessions.db
@@ -853,26 +856,9 @@ state_dir: ~/.local/share/studyloop
 # sync_remote: your-remote-host
 # sync_user: your-username
 
-# Study topics
-# Keep active topics to three or fewer. Put extra ideas in the study backlog
-# with: studyloop backlog add "topic to revisit"
-# Each active topic maps to an Obsidian directory and optionally a NotebookLM notebook.
-topics:
-  - name: Python
-    slug: python
-    obsidian_path: 2-Areas/Study/Python
-    # notebook_id: your-notebooklm-notebook-id
-    tags: [python, programming]
-
-  - name: SQL
-    slug: sql
-    obsidian_path: 2-Areas/Study/SQL
-    tags: [sql, databases]
-
-  - name: Data Engineering
-    slug: data-engineering
-    obsidian_path: 2-Areas/Study/Data-Engineering
-    tags: [data-engineering, spark, glue]
+# No focus is invented during installation. Create a study plan with the browser
+# Architect, or add one to three topics explicitly with `studyloop focus set`.
+topics: []
 
 # AI agent configuration
 # Priority order for auto-detection (first installed agent wins)
@@ -896,12 +882,12 @@ topics:
 #   duration_hours: 8         # Total duration before wearing off
 
 # Google NotebookLM integration (optional)
-# Run 'studyloop config init' for interactive setup
+# Configure this block manually only if you use the optional integration.
 # notebooklm:
 #   enabled: true
 
 # Knowledge domains for concept bridging (optional)
-# Run 'studyloop config init' for interactive setup
+# Configure this block manually only if you want familiar-domain analogies.
 # knowledge_domains:
 #   primary: networking
 #   anchors:
@@ -932,7 +918,7 @@ topics:
 # content:
 #   base_path: ~/study-materials       # Where course directories are stored
 #   study_paths:
-#     - ~/Obsidian/Personal/Study      # Default study material source directory
+#     - ~/study-materials/Python       # Optional additional source directory
 #   notebooklm_timeout: 900            # Timeout for generation (seconds)
 #   inter_episode_gap: 30              # Seconds between episode generations
 #   default_types: [audio]             # Default artifact types to generate

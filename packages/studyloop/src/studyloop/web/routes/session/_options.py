@@ -273,21 +273,22 @@ def _study_roots() -> list[Path]:
         from studyloop.settings import load_settings
 
         settings = load_settings()
-        candidates.extend(Path(path).expanduser() for path in settings.content.study_paths)
-        candidates.extend(
-            [
-                settings.obsidian_base / "Personal" / "Study",
-                settings.obsidian_base / "Personal" / "2-Areas" / "Study",
-            ]
-        )
-        candidates.extend(topic.obsidian_path for topic in settings.topics)
+        content = settings.content
+        candidates.extend(Path(path).expanduser() for path in getattr(content, "study_paths", []))
+        if content_base := getattr(content, "base_path", None):
+            candidates.append(Path(content_base).expanduser())
+        if notes_path := getattr(settings, "notes_path", None):
+            candidates.append(Path(notes_path).expanduser())
+        if getattr(settings, "obsidian_base_configured", False):
+            candidates.extend(
+                [
+                    settings.obsidian_base / "Personal" / "Study",
+                    settings.obsidian_base / "Personal" / "2-Areas" / "Study",
+                ]
+            )
+        candidates.extend(topic.obsidian_path for topic in getattr(settings, "topics", []))
     except Exception:
-        candidates.extend(
-            [
-                Path("~/Obsidian/Personal/Study").expanduser(),
-                Path("~/Obsidian/Personal/2-Areas/Study").expanduser(),
-            ]
-        )
+        candidates.append(Path("~/study-materials").expanduser())
     return _existing_unique_dirs(candidates)
 
 
@@ -436,12 +437,6 @@ def _courses_roots() -> list[Path]:
             candidates.append(nested)
         else:
             candidates.append(root)
-    candidates.extend(
-        [
-            Path("~/Obsidian/Personal/Study/Courses").expanduser(),
-            Path("~/Obsidian/Personal/2-Areas/Study/Courses").expanduser(),
-        ]
-    )
     return _existing_unique_dirs(candidates)
 
 

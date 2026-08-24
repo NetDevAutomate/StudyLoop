@@ -78,7 +78,7 @@ the two disagree. This limitation is tracked in the [Study Plans guide](study-pl
 2. Open the source note it points at, or pick one note from your current course:
 
    ```bash
-   studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode recall
+   studyloop chat-note ~/study-materials/Python/decorators.md --mode recall
    ```
 
 3. End with a small evidence record. Use the command printed by `studyloop now`

@@ -136,78 +136,70 @@ class TestStruggles:
 
 
 # ---------------------------------------------------------------------------
-# config init (interactive wizard)
+# config init (compatibility alias)
 # ---------------------------------------------------------------------------
 
 
 class TestConfigInit:
-    def test_config_init_all_yes(
+    @staticmethod
+    def _pin_setup(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+        import studyloop.cli._setup as setup_mod
+
+        target = tmp_path / "config.yaml"
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(target))
+        monkeypatch.setattr(setup_mod, "_detect_harness", lambda: [])
+        monkeypatch.setattr(setup_mod, "_detect_planning_profile", lambda: None)
+        monkeypatch.setattr(setup_mod, "_probe_planning_profile", lambda _profile: False)
+        return target
+
+    def test_config_init_routes_to_notes_optional_setup(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """Config init with all options enabled writes correct YAML."""
-        config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
+        config_file = self._pin_setup(monkeypatch, tmp_path)
 
-        # Simulate: yes bridging, "cooking" domain, yes nlm, yes obsidian, path, no agent install
-        user_input = "y\ncooking\ny\ny\n~/MyVault\nn\n"
-        result = runner.invoke(cli, ["config", "init"], input=user_input)
-        assert result.exit_code == 0
-        assert "Configuration saved" in result.output
+        result = runner.invoke(cli, ["config", "init"], input="\n")
 
+        assert result.exit_code == 0, result.output
+        assert "deprecated alias" in result.output.casefold()
+        assert "Where do your study notes live?" in result.output
+        assert "Knowledge Bridging" not in result.output
+        assert "NotebookLM Integration" not in result.output
+        assert "Obsidian Vault Integration" not in result.output
         import yaml
 
         config = yaml.safe_load(config_file.read_text())
-        assert config["knowledge_domains"]["primary"] == "cooking"
-        assert config["notebooklm"]["enabled"] is True
-        assert config["obsidian_base"] == "~/MyVault"
+        assert "notes_path" not in config
+        assert config.get("topics", []) == []
 
-    def test_config_init_all_no(
+    def test_config_init_does_not_add_an_agent_install_question(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """Config init with all options declined."""
-        config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
+        self._pin_setup(monkeypatch, tmp_path)
+        calls: list[bool | None] = []
+        monkeypatch.setattr("studyloop.cli._config.offer_agent_install", calls.append)
 
-        user_input = "n\nn\nn\nn\n"
-        result = runner.invoke(cli, ["config", "init"], input=user_input)
-        assert result.exit_code == 0
-        assert "Configuration saved" in result.output
+        result = runner.invoke(cli, ["config", "init"], input="\n")
 
-        import yaml
-
-        config = yaml.safe_load(config_file.read_text())
-        assert "knowledge_domains" not in config
-        assert config["notebooklm"]["enabled"] is False
-
-    def test_config_init_defaults(
-        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
-        """Config init accepting all defaults (just pressing Enter)."""
-        config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
-
-        # All empty = accept defaults: yes bridging, "networking", no nlm, yes obsidian
-        user_input = "\n\n\n\n\n\n"
-        result = runner.invoke(cli, ["config", "init"], input=user_input)
-        assert result.exit_code == 0
-        assert "Configuration saved" in result.output
-
-    def test_config_init_skip_agents(
-        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
-        """Config init with --no-install-agents skips agent installation prompt."""
-        config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
-
-        user_input = "n\nn\nn\n"
-        result = runner.invoke(cli, ["config", "init", "--no-install-agents"], input=user_input)
-        assert result.exit_code == 0
+        assert result.exit_code == 0, result.output
+        assert calls == []
         assert "Agent Installation" not in result.output
+
+    def test_config_init_preserves_explicit_agent_install_flag(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        self._pin_setup(monkeypatch, tmp_path)
+        calls: list[bool | None] = []
+        monkeypatch.setattr("studyloop.cli._config.offer_agent_install", calls.append)
+
+        result = runner.invoke(cli, ["config", "init", "--install-agents"], input="\n")
+
+        assert result.exit_code == 0, result.output
+        assert calls == [True]
 
     def test_config_init_help(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["config", "init", "--help"])
         assert result.exit_code == 0
-        assert "Interactive setup" in result.output
+        assert "Deprecated alias for studyloop setup" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +248,20 @@ class TestConfigShow:
         assert result.exit_code == 0
         assert "Core Settings" in result.output
         assert "cooking" in result.output
+
+    def test_config_show_does_not_invent_an_obsidian_vault(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("topics: []\n")
+        monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_file)
+
+        result = runner.invoke(cli, ["config", "show"])
+
+        assert result.exit_code == 0
+        assert "Notes folder" in result.output
+        assert "Not configured" in result.output
+        assert "~/Obsidian" not in result.output
 
     def test_config_show_help(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["config", "show", "--help"])

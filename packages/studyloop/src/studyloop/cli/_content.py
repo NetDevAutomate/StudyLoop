@@ -91,7 +91,7 @@ def _display_name_for_path(path: Path) -> str:
 
 
 def _configured_study_sources() -> list[Path]:
-    """Return configured Obsidian/content sources for NotebookLM uploads."""
+    """Return configured notes/content sources for optional content workflows."""
     from studyloop.settings import load_raw_config, load_settings
 
     settings = load_settings()
@@ -99,6 +99,8 @@ def _configured_study_sources() -> list[Path]:
     raw_content = load_raw_config().get("content", {})
     if isinstance(raw_content, dict) and "study_paths" in raw_content:
         paths.extend(settings.content.study_paths)
+    if settings.notes_path:
+        paths.append(settings.notes_path)
 
     seen: set[Path] = set()
     unique: list[Path] = []
@@ -112,8 +114,7 @@ def _configured_study_sources() -> list[Path]:
     if unique:
         return unique
 
-    default_study_path = Path.home() / "Obsidian" / "Personal" / "Study"
-    return [default_study_path.expanduser()]
+    return [settings.content.base_path.expanduser()]
 
 
 @click.group(name="content")
@@ -125,7 +126,7 @@ def content_group() -> None:
 @click.argument("source_dirs", nargs=-1, type=click.Path(path_type=Path))
 @click.option("--json", "as_json", is_flag=True, help="Output discovered materials as JSON.")
 def discover(source_dirs: tuple[Path, ...], as_json: bool) -> None:
-    """Discover configured Obsidian/course materials without uploading anything."""
+    """Discover configured notes/course materials without uploading anything."""
     from studyloop.content.discovery import discover_materials
 
     sources = list(source_dirs) if source_dirs else _configured_study_sources()

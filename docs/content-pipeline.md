@@ -5,8 +5,8 @@ The content pipeline turns study sources into review artefacts that support inte
 The primary path is local:
 
 ```bash
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/study-materials/Python --course python
+studyloop content generate-practice ~/study-materials/Python --course python
 studyloop web
 ```
 
@@ -20,7 +20,7 @@ flowchart TB
         MD["Markdown"]
         TXT["Text"]
         PDF["PDF/eBook<br/>(split first)"]
-        OBS["Obsidian<br/>~/Obsidian/Personal/Study"]
+        NOTES["Optional notes folder<br/>plain text, Markdown, or Obsidian"]
     end
 
     Discover["studyloop content discover"]
@@ -35,7 +35,7 @@ flowchart TB
     MD --> Discover
     TXT --> Discover
     PDF --> Discover
-    OBS --> Discover
+    NOTES --> Discover
     Discover --> Generate
     Discover --> Practice
     Generate --> Backend
@@ -160,13 +160,17 @@ The `thinking` flag on a model entry triggers a 3× `request_timeout` multiplier
 The default study material source is:
 
 ```text
-~/Obsidian/Personal/Study
+~/study-materials
 ```
 
-Recommended structure:
+This folder is optional context, not evidence of completed study. A learner with
+no local notes or course files can use StudyLoop normally; recorded sessions
+remain the stronger progress signal.
+
+Example structure:
 
 ```text
-~/Obsidian/Personal/Study/
+~/study-materials/
 ├── Python/
 ├── Data-Engineering/
 ├── SQL/
@@ -183,28 +187,28 @@ Recommended structure:
 
 ```bash
 studyloop content discover
-studyloop content discover ~/Obsidian/Personal/Study/Python
+studyloop content discover ~/study-materials/Python
 studyloop content discover --json
 ```
 
 ### Generate Flashcards And Quizzes
 
 ```bash
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCourse --course my-course
+studyloop content generate-cards ~/study-materials/Python --course python
+studyloop content generate-cards ~/study-materials/Courses/Udemy/MyCourse --course my-course
 ```
 
 Generate only one artefact type:
 
 ```bash
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-quiz
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python --no-flashcards
+studyloop content generate-cards ~/study-materials/Python --course python --no-quiz
+studyloop content generate-cards ~/study-materials/Python --course python --no-flashcards
 ```
 
 ### Generate Hands-On Practice Tasks
 
 ```bash
-studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-practice ~/study-materials/Python --course python
 ```
 
 Practice decks are written to `content.base_path/<course>/practice/` as `*-practice.json`.
@@ -274,9 +278,9 @@ Quizzes:
 
 ```yaml
 content:
-  base_path: ~/Obsidian/Personal/Study   # where generated decks are WRITTEN
+  base_path: ~/study-materials   # where generated decks are WRITTEN
   study_paths:
-    - ~/Obsidian/Personal/Study
+    - ~/study-materials
 
 card_generator:
   backend: ollama
@@ -290,7 +294,7 @@ card_generator:
 # extra config. Set this only to point the reviewer at additional roots.
 # review:
 #   directories:
-#     - ~/Obsidian/Personal/Study
+#     - ~/study-materials
 ```
 
 > **Write root vs read root.** The CLI command `studyloop content generate-cards`

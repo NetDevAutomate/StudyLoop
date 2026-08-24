@@ -8,7 +8,7 @@ Step-by-step installation and configuration for StudyLoop.
   - [tmux-resurrect Compatibility](#tmux-resurrect-compatibility)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [Obsidian Vault Setup](#obsidian-vault-setup)
+- [Optional Notes and Obsidian Export](#obsidian-vault-setup)
 - [Session Database](#session-database)
 - [Content Pipeline](#content-pipeline)
 - [Cross-Machine Sync](#cross-machine-sync)
@@ -20,7 +20,7 @@ Step-by-step installation and configuration for StudyLoop.
 - **Python 3.12+** (both studyloop and agent-session-tools require 3.12+)
 - **[uv](https://docs.astral.sh/uv/)** — Python package manager
 - **tmux 3.1+** — required for `studyloop study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
-- **Obsidian** — for study notes (any vault structure works)
+- **Optional**: a Markdown or plain-text notes folder, including an Obsidian vault. Notes are context only; they never count as completed study.
 - **Optional**: `sentence-transformers` for semantic search
 - **Optional**: a Kokoro TTS server for voice output — [VoiceMode](https://github.com/mbailey/voicemode), [OpenVox](https://openvoxai.com/), or `docker/kokoro/docker-compose.yml`. Used by both `study-speak` and the web app. Without one, the web app uses your OS voices. See [Voice Output](voice-output.md#kokoro-server-backends)
 
@@ -241,17 +241,21 @@ Run the interactive wizard to configure your study environment:
 studyloop setup
 ```
 
-This walks you through three core questions:
+The bounded setup flow asks only what it cannot safely infer:
 
-1. **Knowledge bridging** — Do you want to leverage a topic you already know well (e.g. networking, cooking, music theory) so the mentor can draw analogies to new topics you're studying?
-2. **Study material location** — Where are your study sources? The default is `~/Obsidian/Personal/Study`.
-3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Personal`).
+1. **Notes folder** — one optional prompt. Leave it blank if you have no notes.
+2. **Initial topics** — only when the notes scan finds candidate subfolders; confirm up to three.
+3. **Coding harness** — only when more than one supported harness is detected.
+
+That is one prompt on the no-notes path. Planning-model discovery is automatic,
+and there is no curriculum questionnaire. Study sessions are evidence of what
+you practised. Notes and course files show access, not completed study.
 
 The wizard creates or updates `~/.config/studyloop/config.yaml` with your choices. You can re-run it at any time to change settings.
 
-`studyloop config init` is the older low-level config initializer. Prefer
-`studyloop setup` for first-run setup because it also covers current install,
-agent, and Obsidian export checks.
+`studyloop config init` is a deprecated alias for this same setup flow. It no
+longer opens the retired knowledge-bridging, NotebookLM, and Obsidian
+questionnaire. Use `studyloop setup` in scripts and documentation.
 
 ### Manual Configuration
 
@@ -266,24 +270,35 @@ studyloop config show
 
 TOML is not currently supported. Use YAML for the production config contract; adding TOML would require a deliberate parser, migration, and compatibility test pass.
 
-Minimal production example:
+Minimal production example with no notes configured:
 
 ```yaml
-obsidian_base: ~/Obsidian/Personal
 session_db: ~/.config/studyloop/sessions.db
 state_dir: ~/.local/share/studyloop
+topics: []
+
+# Optional: only set this if you already have Markdown or plain-text notes.
+# notes_path: ~/study-materials
+
+content:
+  base_path: ~/study-materials
+  inter_episode_gap: 30
+```
+
+An optional notes and Obsidian-export configuration can be added separately:
+
+```yaml
+notes_path: ~/study-materials
 
 content:
   base_path: ~/study-materials
   study_paths:
-    - ~/Obsidian/Personal/Study
-  inter_episode_gap: 30
+    - ~/study-materials
 
 # Opt-in: write one Markdown note per AI session into the vault.
-# Coexists with the flat `obsidian_base` key above (which is for study sources).
 obsidian:
   export_enabled: false          # off by default; --obsidian overrides per-run
-  vault_path: ~/Obsidian/Personal # defaults to obsidian_base when omitted
+  vault_path: ~/Obsidian/Personal
   memory_dir: AgentMemory         # notes written under <vault>/AgentMemory/
   moc_dir: AgentMemory/MOC        # per-project index notes
   backlinks: true                 # inject [[wikilink]]s to matching topic notes
@@ -292,20 +307,16 @@ obsidian:
 topics:
   - name: Python
     slug: python
-    obsidian_path: 2-Areas/Study/Python
+    notes_path: Python
     tags: [python, programming]
-
-  - name: Data Engineering
-    slug: data-engineering
-    obsidian_path: ~/Obsidian/Work/Study/Data-Engineering
-    tags: [data-engineering, analytics]
 ```
 
 Path rules:
 
-- Relative `topics[].obsidian_path` values are resolved under `obsidian_base`.
-- Absolute `topics[].obsidian_path` values are used as-is.
-- Relative `content.study_paths` values are resolved under `obsidian_base`.
+- Relative `topics[].notes_path` values are resolved under top-level `notes_path`.
+- Absolute `topics[].notes_path` values are used as-is.
+- `topics[].obsidian_path` and top-level `obsidian_base` remain readable as a legacy alias for existing configs; do not use them in new configs.
+- Relative `content.study_paths` values in legacy configs are resolved under `obsidian_base`; prefer absolute paths for new configs.
 - `content.study_paths` augments topic paths for `studyloop content discover` and `studyloop content generate-cards` when you do not pass source directories manually.
 
 To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:
@@ -468,23 +479,26 @@ session-sync endpoints            # list all remote hosts
 ### Study Topics
 
 ```yaml
+notes_path: ~/study-materials
+
 topics:
   - name: Python
     slug: python
-    obsidian_path: 2-Areas/Study/Python
+    notes_path: Python
     tags: [python, programming]
 
   - name: SQL
     slug: sql
-    obsidian_path: 2-Areas/Study/SQL
+    notes_path: SQL
     tags: [sql, databases]
 ```
 
 | Field | Description | Default |
 |-------|-------------|---------|
 | `topics[].name` | Display name for the topic | required |
-| `topics[].slug` | URL-safe identifier | required |
-| `topics[].obsidian_path` | Path relative to `obsidian_base` | required |
+| `topics[].slug` | URL-safe identifier | derived from `name` |
+| `topics[].notes_path` | Optional path relative to top-level `notes_path` | derived from `name` |
+| `topics[].obsidian_path` | Legacy alias retained for existing configs | optional |
 | `topics[].tags` | Keywords for session search matching | `[]` |
 
 ### Database & Search Settings
@@ -580,9 +594,17 @@ studyloop doctor --category voice
 
 If the server is not running or is busy, StudyLoop falls back to the existing local voice path so the study session can continue.
 
-## Obsidian Vault Setup
+## Optional Notes and Obsidian Export {#obsidian-vault-setup}
 
-studyloop expects your study notes in directories under your Obsidian vault. The structure is flexible — just point each topic's `obsidian_path` at the right directory.
+Notes are optional. StudyLoop accepts ordinary `.md` and `.txt` folders; an
+Obsidian vault is treated as one kind of Markdown folder, not a prerequisite.
+Notes and course files show that material is available. They do not prove that
+the learner watched, read, practised, or understood it. Recorded StudyLoop
+sessions and progress therefore take precedence as evidence.
+
+If you do use Obsidian, point `notes_path` at the relevant study folder rather
+than an entire personal vault. This keeps scanning bounded and avoids turning
+unrelated folders into suggested topics.
 
 Example vault layout:
 
@@ -634,12 +656,14 @@ content_hash: 39fa1138   # drives idempotent re-export
 ---
 ```
 
-Enable it three ways:
+Enable it two ways:
 
 1. **Per-run:** `session-export --obsidian` (or `--obsidian-backfill` for all history).
 2. **Config:** set `obsidian.export_enabled: true` (see the `obsidian:` block under
    [Manual Configuration](#manual-configuration)).
-3. **Setup wizard:** `studyloop setup` asks whether to enable export at the Obsidian step.
+
+The setup wizard does not ask about export. This keeps optional third-party
+integrations out of first-run onboarding.
 
 `studyloop doctor` validates the vault path, checks for the `.obsidian/` marker, and
 (when export is enabled) confirms the memory directory is writable.
@@ -699,14 +723,15 @@ studyloop install tools
 
 ### Configure study sources
 
-The default study material source is `~/Obsidian/Personal/Study`.
+The default content base is `~/study-materials`. Configure other paths only if
+you already have local course material or notes to use as optional context.
 
 ```yaml
 # ~/.config/studyloop/config.yaml
 content:
   base_path: ~/study-materials
   study_paths:
-    - ~/Obsidian/Personal/Study
+    - ~/study-materials
 ```
 
 ### Typical workflow
@@ -716,8 +741,8 @@ content:
 studyloop content discover
 
 # 2. Generate local flashcards, quizzes, and hands-on practice
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyloop content generate-practice ~/Obsidian/Personal/Study/Python --course python
+studyloop content generate-cards ~/study-materials/Python --course python
+studyloop content generate-practice ~/study-materials/Python --course python
 
 # 3. Review
 studyloop web
@@ -792,12 +817,14 @@ Claude Desktop runs on Windows but can connect to MCP servers inside WSL2:
 }
 ```
 
-### Obsidian vault path
+### Optional Obsidian notes path
 
-If your Obsidian vault is on the Windows filesystem, configure the path in `~/.config/studyloop/config.yaml`:
+If your study notes are in an Obsidian vault on the Windows filesystem, point
+`notes_path` at the relevant study folder rather than making Obsidian a setup
+requirement:
 
 ```yaml
-obsidian_base: /mnt/c/Users/YourName/Obsidian
+notes_path: /mnt/c/Users/YourName/Obsidian/Study
 ```
 
 For better performance, consider keeping the vault inside WSL2's native filesystem (`~/Obsidian/`) and syncing with Obsidian Sync or Git.
