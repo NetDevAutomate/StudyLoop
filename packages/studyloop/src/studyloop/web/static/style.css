@@ -1838,6 +1838,13 @@ main:has(.split-container) .session-dashboard {
   margin-top: 8px;
   padding-top: 8px;
 }
+.sidebar-activity > [hx-ext="sse"] {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .sidebar-activity .activity-feed.sidebar-feed {
   flex: 1;
   min-height: 0;

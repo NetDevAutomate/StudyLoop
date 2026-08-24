@@ -128,6 +128,9 @@ and its list of known limitations.
 
 ### Fixed
 
+- The live-session message in the sidebar is now contained by its scrollable
+  activity rail instead of overlapping Study Plans and Courses when the window
+  becomes short or the text wraps.
 - Web voice now falls back from the configured OpenVox-compatible endpoint to
   VoiceMode's local Kokoro endpoint, then to Web Speech if every server fails.
   A server that passed health-check and subsequently returns 503 no longer

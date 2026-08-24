@@ -192,6 +192,60 @@ class TestStudySessionLayout:
         if has_hint:
             assert_scroll_reachable(web_page, ".session-start-picker .picker-hint", ".content-area")
 
+    @pytest.mark.parametrize("viewport", [(1400, 900), (1024, 768), (820, 560)])
+    def test_sidebar_activity_cannot_overlap_the_next_navigation_item(
+        self, web_page: Page, viewport: tuple[int, int]
+    ) -> None:
+        """The live-session empty message used to paint across Study Plans/Courses."""
+        web_page.set_viewport_size({"width": viewport[0], "height": viewport[1]})
+        _goto(web_page, "study-session")
+        web_page.locator("#activity-feed").evaluate(
+            """(feed) => {
+                feed.innerHTML = '<p class="activity-empty">Session live — wins and '
+                    + 'parked questions appear here as you record them.</p>';
+            }"""
+        )
+        web_page.wait_for_timeout(100)
+
+        geometry = web_page.evaluate(
+            """() => {
+                const activity = document.querySelector('.sidebar-activity');
+                const wrapper = activity.querySelector('[hx-ext="sse"]');
+                const feed = document.querySelector('#activity-feed');
+                const message = feed && feed.querySelector('.activity-empty');
+                const next = document.querySelector('[data-testid="nav-study-plans"]');
+                const rect = (element) => {
+                    const box = element.getBoundingClientRect();
+                    return { top: box.top, bottom: box.bottom, height: box.height };
+                };
+                return {
+                    activity: rect(activity),
+                    wrapper: rect(wrapper),
+                    feed: rect(feed),
+                    message: rect(message),
+                    next: rect(next),
+                    feedScrollHeight: feed.scrollHeight,
+                    feedClientHeight: feed.clientHeight,
+                    feedOverflowY: getComputedStyle(feed).overflowY,
+                    wrapperOverflow: getComputedStyle(wrapper).overflow,
+                    nextOwnsItsCentre: (() => {
+                        const box = next.getBoundingClientRect();
+                        const hit = document.elementFromPoint(
+                            box.left + box.width / 2,
+                            box.top + box.height / 2,
+                        );
+                        return !!(hit && hit.closest('[data-testid="nav-study-plans"]'));
+                    })(),
+                };
+            }"""
+        )
+
+        assert geometry["activity"]["bottom"] <= geometry["next"]["top"] + 1, geometry
+        assert geometry["wrapper"]["bottom"] <= geometry["next"]["top"] + 1, geometry
+        assert geometry["wrapperOverflow"] == "hidden", geometry
+        assert geometry["feedOverflowY"] == "auto", geometry
+        assert geometry["nextOwnsItsCentre"] is True, geometry
+
 
 # ---------------------------------------------------------------------------
 # Body Double — header stacking + voice-select hidden (bug 1 sibling + bug 2)
