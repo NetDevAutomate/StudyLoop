@@ -751,11 +751,6 @@ Learn it
 | ID | Title | Status | Reason | Alignment rationale |
 | --- | --- | --- | --- | --- |
 | foreign-goal | Goal | complete | reason | aligned |
-## Learning Map
-```mermaid
-flowchart TD
-evil --> shell
-```
 ## Milestones
 | ID | Goal ID | Done | Title | Notes | Concepts |
 | --- | --- | --- | --- | --- | --- |
@@ -782,7 +777,6 @@ evil --> shell
     assert view.plan.milestones[0].milestone_id != "foreign-step"
     assert view.plan.milestones[0].done is False
     assert all(item.evidence_id != "foreign-evidence" for item in view.plan.evidence)
-    assert "evil --> shell" not in view.canonical_text
     assert "flowchart TD" in view.canonical_text
 
     replay = lifecycle(tmp_path).handle(

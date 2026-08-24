@@ -79,6 +79,16 @@ def proposal_draft_from_plan(plan: StudyPlan, *, revise: bool = False) -> PlanPr
                     f"compatibility revision contains duplicate {label} ids; "
                     "use the planning agent to repair identities without cross-linking"
                 )
+        normalised_labels: dict[str, list[str]] = {}
+        for concept in plan.concepts:
+            normalised = " ".join(concept.display_label.casefold().split())
+            if normalised:
+                normalised_labels.setdefault(normalised, []).append(concept.concept_id)
+        if any(len(ids) > 1 for ids in normalised_labels.values()):
+            raise LifecycleValidationError(
+                "compatibility revision contains duplicate concept labels; "
+                "use explicit concept identities before revising milestone links"
+            )
         if len(goals) > 1 and any(not item.goal_id for item in goals):
             raise LifecycleValidationError(
                 "compatibility revision has multiple goals with blank identity; "
@@ -126,6 +136,7 @@ def proposal_draft_from_plan(plan: StudyPlan, *, revise: bool = False) -> PlanPr
                 title=item.title,
                 reason=item.reason,
                 alignment_rationale=item.alignment_rationale,
+                status=item.status,
                 existing_goal_id=existing_goal_id,
             )
         )
@@ -223,7 +234,7 @@ def proposal_draft_from_plan(plan: StudyPlan, *, revise: bool = False) -> PlanPr
         resources=tuple(plan.resources),
         unknowns=tuple(plan.unknowns),
         next_action=next_action,
-        requested_status="draft",
+        requested_status=plan.status if revise else "draft",
         target_date=plan.target_date,
         energy_floor=plan.energy_floor,
         review_cadence_days=plan.review_cadence_days,

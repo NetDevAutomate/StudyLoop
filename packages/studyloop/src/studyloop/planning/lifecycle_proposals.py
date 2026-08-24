@@ -61,7 +61,13 @@ class ProposalPolicy:
             raise LifecycleValidationError("proposal title and mission are required")
         if not draft.next_action.strip():
             raise LifecycleValidationError("proposal requires one concrete next action")
-        if draft.requested_status not in {"draft", "active"}:
+        target = brief.target_plan
+        if brief.mode == "revise":
+            if target is None or draft.requested_status != target.status:
+                raise LifecycleValidationError(
+                    "structural revision cannot change plan lifecycle status"
+                )
+        elif draft.requested_status not in {"draft", "active"}:
             raise LifecycleValidationError("proposal status must be draft or active")
         if not 1 <= len(draft.goals) <= 3:
             raise LifecycleValidationError("a proposal must contain one to three aligned goals")
@@ -70,7 +76,6 @@ class ProposalPolicy:
         self._unique_aliases("concept", [item.alias for item in draft.concepts])
         goal_aliases = {item.alias for item in draft.goals}
         concept_aliases = {item.alias for item in draft.concepts}
-        target = brief.target_plan
         offered_goals = {item.goal_id for item in target.goals} if target else set()
         offered_concepts = {item.concept_id for item in target.concepts} if target else set()
         offered_milestones = {item.milestone_id for item in target.milestones} if target else set()
@@ -97,12 +102,18 @@ class ProposalPolicy:
                 raise LifecycleValidationError(
                     f"an existing {label} id may be referenced only once"
                 )
+        target_goal_statuses = (
+            {item.goal_id: item.status for item in target.goals} if target else {}
+        )
         for item in draft.goals:
             values = (item.alias, item.title, item.reason, item.alignment_rationale)
             if not all(" ".join(value.strip().split()) for value in values):
                 raise LifecycleValidationError("every goal needs title, reason, and alignment")
-            if item.status != "active":
-                raise LifecycleValidationError("release-one proposal goals must be active")
+            expected_status = target_goal_statuses.get(item.existing_goal_id, "active")
+            if item.status != expected_status:
+                raise LifecycleValidationError(
+                    "structural revision cannot change existing goal lifecycle status"
+                )
         for item in draft.milestones:
             if item.goal_alias not in goal_aliases:
                 raise LifecycleValidationError(
@@ -172,6 +183,11 @@ class ProposalPolicy:
             else None
         )
         base = copy.deepcopy(base_view.plan) if base_view is not None else None
+        base_milestones = (
+            {item.milestone_id: item for item in base.milestones if item.milestone_id}
+            if base
+            else {}
+        )
         aliases: dict[str, str] = {}
         for item in draft.goals:
             aliases[f"goal:{item.alias}"] = item.existing_goal_id or self.ids.new_id("goal")
@@ -201,7 +217,11 @@ class ProposalPolicy:
         milestones = [
             Milestone(
                 item.title.strip(),
-                done=False,
+                done=(
+                    base_milestones[item.existing_milestone_id].done
+                    if item.existing_milestone_id in base_milestones
+                    else False
+                ),
                 concepts=[concept_labels[alias] for alias in item.concept_aliases],
                 notes=item.notes.strip(),
                 milestone_id=aliases[f"milestone:{item.alias}"],

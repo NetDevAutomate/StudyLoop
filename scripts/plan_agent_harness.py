@@ -43,6 +43,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,6 +51,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AGENT_NAME = "study-plan-architect"
 ANSI = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
+
+
+def fresh_plans_dir(parent: Path) -> Path:
+    """Allocate one isolated lifecycle root without touching sibling plans."""
+    parent.mkdir(parents=True, exist_ok=True)
+    run_root = Path(tempfile.mkdtemp(prefix="studyloop-plan-harness-", dir=parent))
+    plans = run_root / "study-plans"
+    plans.mkdir()
+    return plans
+
 
 # --------------------------------------------------------------------------
 # Harness argv shapes. `{prompt}` is substituted as a single argv element, so
@@ -568,7 +579,10 @@ def main() -> int:
         "--plans-dir",
         type=Path,
         default=Path("/tmp/plan_harness"),
-        help="scratch plans dir; real plans are never touched (default /tmp/plan_harness)",
+        help=(
+            "parent for a fresh per-run scratch root; existing plans are never touched "
+            "(default /tmp/plan_harness)"
+        ),
     )
     ap.add_argument("--fixture", type=Path, help="write the transcript + plan here for CI replay")
     ap.add_argument("--dry-run", action="store_true", help="print the scripted turns and exit")
@@ -584,9 +598,7 @@ def main() -> int:
         return 0
 
     h = pick_harness(args.harness)
-    args.plans_dir.mkdir(parents=True, exist_ok=True)
-    for stale in args.plans_dir.glob("*.md"):
-        stale.unlink()
+    args.plans_dir = fresh_plans_dir(args.plans_dir)
 
     result = Result(harness=h.name)
     result.persona = persona.name

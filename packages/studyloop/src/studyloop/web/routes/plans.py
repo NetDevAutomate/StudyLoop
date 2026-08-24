@@ -227,6 +227,7 @@ def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = No
     plan = _load_or_404(plan_id)
     study_id = str(payload.get("study_id", "")).strip()
     evaluation = evaluate_plan(plan, phase, study_id=study_id)
+    command_key = _request_key(payload, "web-checkpoint")
     try:
         outcome = require_outcome(
             planning_lifecycle(evidence=plan.evidence).handle(
@@ -235,7 +236,7 @@ def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = No
                     RecordCheckpoint(
                         plan.plan_id,
                         evaluation.to_checkpoint(),
-                        _request_key(payload, "web-checkpoint"),
+                        command_key,
                     ),
                 ),
             )
@@ -243,7 +244,8 @@ def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = No
     except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
         _raise_lifecycle(exc)
     try:
-        record_checkpoint(evaluation, study_id=study_id)
+        if not record_checkpoint(evaluation, study_id=study_id, idempotency_key=command_key):
+            evaluation.warnings.append("checkpoint not saved to the database")
     except Exception:
         logger.debug("checkpoint DB write failed", exc_info=True)
         evaluation.warnings.append("checkpoint not saved to the database")
@@ -271,6 +273,11 @@ def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
         try:
             service = planning_lifecycle()
             review = require_proposal(service.inspect(ProposalRef(str(payload["proposal_id"]))))
+            if review.mode != "create":
+                raise HTTPException(
+                    status_code=409,
+                    detail="POST /plans can decide only a creation proposal",
+                )
             outcome = require_outcome(
                 service.handle(
                     PlanningCommand(
@@ -317,6 +324,14 @@ def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
         raise HTTPException(status_code=400, detail="answers must be an object")
     if str(payload.get("status", "draft")).strip().lower() != "draft":
         raise HTTPException(status_code=400, detail="new compatibility plans are always drafts")
+    if str(payload.get("decision", "")).strip():
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "creation approval must be a separate request containing the displayed "
+                "proposal_id and proposal_digest"
+            ),
+        )
     plan = draft_plan(
         title,
         answers,
@@ -347,34 +362,13 @@ def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
                 ),
             )
         )
-        decision = str(payload.get("decision", "")).strip().lower()
-        if not decision:
-            response.status_code = 202
-            return {"created": False, "proposal": proposal_payload(review, brief)}
-        typed_decision = _plan_decision(decision)
-        outcome = require_outcome(
-            service.handle(
-                PlanningCommand(
-                    _WEB_LEARNER,
-                    DecideProposal(
-                        review.proposal_id,
-                        review.proposal_digest,
-                        typed_decision,
-                        f"{key}:decision",
-                    ),
-                ),
-            )
-        )
+        response.status_code = 202
+        return {"created": False, "proposal": proposal_payload(review, brief)}
     except HTTPException:
         raise
     except (LifecycleError, PlanningRepositoryError, InvalidPlanIdError) as exc:
         _raise_lifecycle(exc)
-    body = {"outcome": outcome_payload(outcome), "created": outcome.status == "applied"}
-    if outcome.status == "rejected":
-        response.status_code = 200
-    if outcome.status == "applied":
-        body.update(_plan_response(outcome.plan_id))
-    return body
+    raise AssertionError("proposal preparation must return a review response")
 
 
 @router.patch("/plans/{plan_id}")
@@ -401,6 +395,17 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Respons
             )
         try:
             service = planning_lifecycle(evidence=plan.evidence)
+            review = require_proposal(service.inspect(ProposalRef(str(payload["proposal_id"]))))
+            if review.mode != "revise":
+                raise HTTPException(
+                    status_code=409,
+                    detail="PATCH /plans/{plan_id} can decide only a revision proposal",
+                )
+            if review.plan_preview.plan_id != plan_id:
+                raise HTTPException(
+                    status_code=409,
+                    detail="revision proposal target does not match the route plan",
+                )
             outcome = require_outcome(
                 service.handle(
                     PlanningCommand(
@@ -604,16 +609,23 @@ def toggle_milestone(
             detail="outcome is required; bare milestone toggles are forbidden",
         )
     outcome_kind = _milestone_outcome(payload.get("outcome"))
+    if outcome_kind == "verified_complete":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "browser learner requests may use only learner attestation; "
+                "verified completion is recorded by the trusted internal recorder"
+            ),
+        )
     if "done" in payload:
         raise HTTPException(status_code=400, detail="done toggles are forbidden; use outcome")
     evidence_ids = tuple(str(item) for item in payload.get("evidence_ids", ()))
-    actor = _WEB_RECORDER if outcome_kind == "verified_complete" else _WEB_LEARNER
     try:
         service = planning_lifecycle(evidence=plan.evidence)
         outcome = require_outcome(
             service.handle(
                 PlanningCommand(
-                    actor,
+                    _WEB_LEARNER,
                     RecordMilestoneOutcome(
                         plan.plan_id,
                         plan.milestones[index].milestone_id,

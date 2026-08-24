@@ -25,8 +25,11 @@ NORMAL_PRODUCT_AREAS = (
     PACKAGE_ROOT / "cli",
     PACKAGE_ROOT / "web",
     PACKAGE_ROOT / "mcp",
-    PACKAGE_ROOT / "sessions",
-    PACKAGE_ROOT / "agents",
+    PACKAGE_ROOT / "session",
+    PACKAGE_ROOT / "session_runtime",
+    PACKAGE_ROOT / "session_state.py",
+    PACKAGE_ROOT / "agent_launcher.py",
+    PACKAGE_ROOT / "adapters",
     PACKAGE_ROOT / "planning" / "evaluation.py",
 )
 RAW_WRITERS = {
@@ -53,6 +56,17 @@ def _source_files() -> list[Path]:
 def _raw_writer_violations(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     aliases: set[str] = set()
+    import_module_aliases = {"__import__"}
+    importlib_aliases: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for imported in node.names:
+                if imported.name == "importlib":
+                    importlib_aliases.add(imported.asname or imported.name)
+        elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
+            for imported in node.names:
+                if imported.name == "import_module":
+                    import_module_aliases.add(imported.asname or imported.name)
     violations: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
@@ -67,6 +81,30 @@ def _raw_writer_violations(path: Path) -> list[str]:
                 violations.append(f"line {node.lineno}: calls {node.func.id}")
             elif isinstance(node.func, ast.Attribute) and node.func.attr in RAW_WRITERS:
                 violations.append(f"line {node.lineno}: qualified call {node.func.attr}")
+            elif (
+                isinstance(node.func, ast.Name)
+                and node.func.id == "getattr"
+                and len(node.args) >= 2
+                and isinstance(node.args[1], ast.Constant)
+                and node.args[1].value in RAW_WRITERS
+            ):
+                violations.append(f"line {node.lineno}: dynamic writer lookup {node.args[1].value}")
+            elif (
+                node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                module_name = node.args[0].value
+                dynamic_import = (
+                    isinstance(node.func, ast.Name) and node.func.id in import_module_aliases
+                ) or (
+                    isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "import_module"
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id in importlib_aliases
+                )
+                if dynamic_import and module_name == "studyloop.planning.store":
+                    violations.append(f"line {node.lineno}: dynamically imports planning.store")
         elif isinstance(node, ast.Attribute) and node.attr in RAW_WRITERS:
             violations.append(f"line {node.lineno}: references qualified {node.attr}")
         elif (
@@ -87,6 +125,51 @@ def test_normal_product_code_cannot_bypass_the_planning_lifecycle() -> None:
         if (found := _raw_writer_violations(path))
     }
     assert violations == {}
+
+
+def test_architecture_gate_scans_the_actual_session_and_agent_roots() -> None:
+    relative = {path.relative_to(PACKAGE_ROOT).as_posix() for path in _source_files()}
+    assert "session/__init__.py" in relative
+    assert "session_runtime/__init__.py" in relative
+    assert "session_state.py" in relative
+    assert "agent_launcher.py" in relative
+    assert "adapters/__init__.py" in relative
+    assert "mcp/__init__.py" in relative
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        (
+            (
+                'import importlib\nstore = importlib.import_module("studyloop.planning.store")\n'
+                "store.save_plan(plan)\n"
+            ),
+            "dynamically imports planning.store",
+        ),
+        (
+            (
+                "from importlib import import_module as load\n"
+                'store = load("studyloop.planning.store")\n'
+                'getattr(store, "save_plan")(plan)\n'
+            ),
+            "dynamic writer lookup save_plan",
+        ),
+        (
+            (
+                'store = __import__("studyloop.planning.store", fromlist=["save_plan"])\n'
+                'getattr(store, "save_plan")(plan)\n'
+            ),
+            "dynamically imports planning.store",
+        ),
+    ],
+)
+def test_architecture_gate_detects_dynamic_writer_bypasses(
+    tmp_path: Path, source: str, expected: str
+) -> None:
+    module = tmp_path / "bypass.py"
+    module.write_text(source, encoding="utf-8")
+    assert any(expected in violation for violation in _raw_writer_violations(module))
 
 
 @pytest.mark.parametrize("relative", ["study-plans", "nested/custom-plans"])
@@ -216,6 +299,27 @@ def test_revision_translation_preserves_explicit_concept_relations() -> None:
     assert relation.source_alias != relation.target_alias
     assert relation.relation == "distinct"
     assert relation.reason == "Different abstractions"
+
+
+def test_revision_translation_refuses_duplicate_normalised_concept_labels() -> None:
+    plan = StudyPlan(
+        "duplicate-labels",
+        "Duplicate labels",
+        mission=Mission(why="Keep identity", success=["Explain both"]),
+        goals=[Goal("g-1", "Explain", "Needed", "Aligned")],
+        concepts=[ConceptRef("c-1", "Window Function"), ConceptRef("c-2", " window   function ")],
+        milestones=[
+            Milestone(
+                "Ambiguous",
+                concepts=["Window Function"],
+                milestone_id="m-1",
+                goal_id="g-1",
+            )
+        ],
+    )
+    with pytest.raises(LifecycleValidationError, match="duplicate concept labels"):
+        proposal_draft_from_plan(plan, revise=True)
+    assert len(plan.concepts) == 2
 
 
 def test_revision_translation_refuses_ambiguous_milestone_goal_link() -> None:

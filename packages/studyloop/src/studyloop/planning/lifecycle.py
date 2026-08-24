@@ -90,10 +90,45 @@ _EXECUTABLE_MARKDOWN = re.compile(
     r"<\s*(?:script|iframe|object|embed)\b|javascript\s*:|\bon\w+\s*=",
     re.IGNORECASE,
 )
+_UNTRUSTED_IMPORT_MARKUP = re.compile(
+    r"```+\s*mermaid\b|<!--|<\s*/?\s*[a-z][^>]*>",
+    re.IGNORECASE,
+)
+_VERIFIED_CLAIMS = frozenset(
+    {"demonstrated_skill", "verified_completion", "milestone_completion", "completed_practice"}
+)
 
 
 def _canonical_digest(domain: str, payload: object) -> str:
     return canonical_lifecycle_digest(domain, payload)
+
+
+def _evidence_matches_milestone(item: EvidenceRef, plan: StudyPlan, milestone: Milestone) -> bool:
+    """Require both a completion claim and a subject tied to this milestone."""
+    if item.claim_kind not in _VERIFIED_CLAIMS:
+        return False
+    subject = item.subject_ref.strip().casefold()
+    milestone_id = milestone.milestone_id.strip().casefold()
+    exact_subjects = {
+        f"milestone:{milestone_id}",
+        f"plan:{plan.plan_id.casefold()}/milestone:{milestone_id}",
+    }
+    if subject in exact_subjects:
+        return True
+    if not subject.startswith("concept:"):
+        return False
+    concept = " ".join(subject.removeprefix("concept:").replace("-", " ").split())
+    if not concept:
+        return False
+    milestone_concepts = {
+        " ".join(value.casefold().replace("-", " ").split())
+        for value in milestone.concepts
+        if value.strip()
+    }
+    if concept in milestone_concepts:
+        return True
+    milestone_title = " ".join(milestone.title.casefold().replace("-", " ").split())
+    return concept in milestone_title
 
 
 def _request_digest(request: PlanningRequest) -> str:
@@ -213,6 +248,10 @@ class PlanningLifecycle:
         target = _find_view(snapshot, request.plan_id) if request.mode == "revise" else None
         if request.mode == "revise" and target is None:
             raise PlanConflictError(f"no study plan with id {request.plan_id!r}")
+        if target is not None and target.plan.status in {"complete", "abandoned"}:
+            raise LifecycleValidationError(
+                f"terminal plan {request.plan_id!r} cannot be structurally revised"
+            )
 
         offered = self.evidence.offered(request.evidence_ids)
         context_digest = _brief_context_digest(request, snapshot, offered)
@@ -747,6 +786,17 @@ class PlanningLifecycle:
         if milestone is None:
             raise LifecycleValidationError(f"unknown milestone {command.milestone_id!r}")
         if command.outcome == "verified_complete":
+            irrelevant = [
+                item.evidence_id
+                for item in evidence
+                if not _evidence_matches_milestone(item, plan, milestone)
+            ]
+            if irrelevant:
+                raise EvidenceValidationError(
+                    "tier 1 evidence must carry a completion claim for the target milestone; "
+                    f"irrelevant evidence: {irrelevant}"
+                )
+        if command.outcome == "verified_complete":
             milestone.done = True
             title = f"Verified milestone completion: {milestone.title}"
         elif command.outcome == "learner_attested":
@@ -829,6 +879,11 @@ class PlanningLifecycle:
             raise LifecycleValidationError("imported Markdown cannot be empty")
         if _EXECUTABLE_MARKDOWN.search(command.markdown):
             raise LifecycleValidationError("imported Markdown contains executable content")
+        if _UNTRUSTED_IMPORT_MARKUP.search(command.markdown):
+            raise LifecycleValidationError(
+                "imported Markdown contains untrusted markup; "
+                "foreign Mermaid, raw HTML, and concealed instructions are not accepted"
+            )
         parsed = parse_plan(command.markdown)
         now = self.clock.now()
         plan_id = self.ids.new_id("plan")

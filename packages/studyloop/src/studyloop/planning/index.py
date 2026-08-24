@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS study_plan_checkpoints (
     verdict TEXT NOT NULL,
     summary TEXT NOT NULL DEFAULT '',
     payload TEXT NOT NULL DEFAULT '{}',
+    command_key TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )
 """
@@ -64,6 +65,8 @@ _INDEXES = (
     "CREATE INDEX IF NOT EXISTS idx_plan_checkpoints_plan "
     "ON study_plan_checkpoints(plan_id, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_plan_checkpoints_study ON study_plan_checkpoints(study_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_plan_checkpoints_command "
+    "ON study_plan_checkpoints(command_key) WHERE command_key <> ''",
 )
 
 
@@ -71,6 +74,13 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     """Create the plan tables/indexes if they are missing (idempotent)."""
     conn.execute(_PLANS_DDL)
     conn.execute(_CHECKPOINTS_DDL)
+    checkpoint_columns = {
+        str(row[1]) for row in conn.execute("PRAGMA table_info(study_plan_checkpoints)")
+    }
+    if "command_key" not in checkpoint_columns:
+        conn.execute(
+            "ALTER TABLE study_plan_checkpoints ADD COLUMN command_key TEXT NOT NULL DEFAULT ''"
+        )
     for statement in _INDEXES:
         conn.execute(statement)
 
@@ -171,17 +181,22 @@ def reindex_all() -> int:
     return count
 
 
-def record_checkpoint(evaluation: PlanEvaluation, *, study_id: str = "") -> bool:
-    """Append an evaluation to the durable checkpoint log."""
+def record_checkpoint(
+    evaluation: PlanEvaluation,
+    *,
+    study_id: str = "",
+    idempotency_key: str = "",
+) -> bool:
+    """Append a checkpoint once for a lifecycle command key."""
     conn = _connect()
     if conn is None:
         return False
     try:
         conn.execute(
             """
-            INSERT INTO study_plan_checkpoints
-                (plan_id, study_id, phase, verdict, summary, payload)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO study_plan_checkpoints
+                (plan_id, study_id, phase, verdict, summary, payload, command_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 evaluation.plan_id,
@@ -190,6 +205,7 @@ def record_checkpoint(evaluation: PlanEvaluation, *, study_id: str = "") -> bool
                 evaluation.verdict,
                 evaluation.headline[:1000],
                 json.dumps(evaluation.to_dict(), default=str),
+                idempotency_key,
             ),
         )
         conn.commit()

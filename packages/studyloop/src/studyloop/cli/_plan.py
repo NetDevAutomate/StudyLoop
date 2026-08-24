@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import asdict
-from typing import NoReturn
+from typing import Literal, NoReturn
 
 import click
 from rich.table import Table
@@ -28,6 +28,7 @@ from studyloop.planning import (
     PlanningRef,
     PlanningRepositoryError,
     PlanningRequest,
+    ProposalRef,
     RecordCheckpoint,
     RecordMilestoneOutcome,
     StudyPlan,
@@ -208,7 +209,7 @@ def plan_show(plan_id: str, as_markdown: bool, as_json: bool) -> None:
 @click.option(
     "--confirm",
     is_flag=True,
-    help="Explicitly approve the exact generated draft proposal.",
+    help="Deprecated: approval requires a separate digest-bound 'plan decide' command.",
 )
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def plan_new(
@@ -235,6 +236,12 @@ def plan_new(
         _fail(
             "--activate is not available on deprecated plan new; "
             "create a confirmed draft, then activate it explicitly"
+        )
+    if confirm:
+        _fail(
+            "--confirm cannot approve a proposal created by this same command. "
+            "Run plan new without it, review the displayed proposal, then use plan decide "
+            "with that exact proposal ID and digest."
         )
     plan = draft_plan(
         title,
@@ -291,54 +298,89 @@ def plan_new(
                 ),
             )
         )
-        if not confirm:
-            if as_json:
-                click.echo(
-                    json.dumps(
-                        {
-                            "confirmed": False,
-                            "proposal_id": review.proposal_id,
-                            "proposal_digest": review.proposal_digest,
-                            "plan": review.plan_preview.summary(),
-                        },
-                        indent=2,
-                    )
-                )
-                raise click.exceptions.Exit(1)
-            _fail("No plan was created. Review the proposal and repeat with --confirm.")
+    except (InvalidPlanIdError, LifecycleError, PlanningRepositoryError) as exc:
+        _fail(str(exc))
+
+    if as_json:
+        click.echo(
+            json.dumps(
+                {
+                    "confirmed": False,
+                    "proposal_id": review.proposal_id,
+                    "proposal_digest": review.proposal_digest,
+                    "plan": review.plan_preview.summary(),
+                },
+                indent=2,
+            )
+        )
+        raise click.exceptions.Exit(1)
+    _fail(
+        "No plan was created. Review the proposal, then run: "
+        f"studyloop plan decide {review.proposal_id} {review.proposal_digest} --approve"
+    )
+
+
+@plan_group.command("decide")
+@click.argument("proposal_id")
+@click.argument("proposal_digest")
+@click.option("--approve", "decision", flag_value="approve", default=None)
+@click.option("--reject", "decision", flag_value="reject")
+@click.option("--reason", default="", help="Visible reason for the learner decision.")
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def plan_decide(
+    proposal_id: str,
+    proposal_digest: str,
+    decision: str | None,
+    reason: str,
+    as_json: bool,
+) -> None:
+    """Apply a separately reviewed proposal by exact ID and digest."""
+    if decision == "approve":
+        typed_decision: Literal["approve", "reject"] = "approve"
+    elif decision == "reject":
+        typed_decision = "reject"
+    else:
+        _fail("Choose exactly one of --approve or --reject.")
+    try:
+        service = planning_lifecycle()
+        review = require_proposal(service.inspect(ProposalRef(proposal_id)))
         outcome = require_outcome(
             service.handle(
                 PlanningCommand(
                     _CLI_LEARNER,
                     DecideProposal(
-                        review.proposal_id,
-                        review.proposal_digest,
-                        "approve",
-                        f"cli-decision:{key}",
+                        proposal_id,
+                        proposal_digest,
+                        typed_decision,
+                        f"cli-decision:{uuid.uuid4().hex}",
+                        reason=reason,
                     ),
-                ),
+                )
             )
         )
-        created = require_view(service.inspect(PlanningRef(outcome.plan_id)))
-        created_plan = created.plan
+        view = (
+            require_view(service.inspect(PlanningRef(outcome.plan_id)))
+            if outcome.status == "applied"
+            else None
+        )
     except (InvalidPlanIdError, LifecycleError, PlanningRepositoryError) as exc:
         _fail(str(exc))
-
-    check = readiness(created_plan)
     if as_json:
         click.echo(
             json.dumps(
                 {
                     "outcome": asdict(outcome),
-                    "plan": created_plan.summary(),
-                    "readiness": check,
+                    "plan": view.plan.summary() if view else review.plan_preview.summary(),
                 },
                 indent=2,
             )
         )
         return
-    console.print(f"[green]Created confirmed draft[/green] {created_plan.plan_id}")
-    _print_readiness(check)
+    if outcome.status == "applied" and view is not None:
+        console.print(f"[green]Applied reviewed proposal[/green] {proposal_id}")
+        _print_readiness(readiness(view.plan))
+    else:
+        console.print(f"[yellow]Rejected proposal[/yellow] {proposal_id}")
 
 
 @plan_group.command("interview")
@@ -390,6 +432,7 @@ def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json
     plan = _load(plan_id)
     evaluation = evaluate_plan(plan, phase, study_id=study_id)
     if record:
+        command_key = f"cli-checkpoint:{uuid.uuid4().hex}"
         try:
             service = planning_lifecycle(evidence=plan.evidence)
             service.handle(
@@ -398,12 +441,15 @@ def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json
                     RecordCheckpoint(
                         plan.plan_id,
                         evaluation.to_checkpoint(),
-                        f"cli-checkpoint:{uuid.uuid4().hex}",
+                        command_key,
                     ),
                 )
             )
             try:
-                record_checkpoint(evaluation, study_id=study_id)
+                if not record_checkpoint(
+                    evaluation, study_id=study_id, idempotency_key=command_key
+                ):
+                    evaluation.warnings.append("checkpoint not saved to the database")
             except Exception:
                 evaluation.warnings.append("checkpoint not saved to the database")
         except (LifecycleError, PlanningRepositoryError) as exc:
@@ -438,23 +484,25 @@ def plan_milestone(
     if done is None:
         _fail("Choose --done or --undone explicitly; milestone toggles are forbidden.")
     milestone = plan.milestones[index]
-    if done and not evidence_ids and not attest_reason:
-        _fail("--done requires trusted --evidence-id or an explicit learner attestation.")
+    if done and not attest_reason:
+        _fail(
+            "CLI learner completion requires a milestone-specific learner attestation; "
+            "trusted verification is recorded only by the internal recorder."
+        )
     if done and attest_reason and confirmation != _ATTESTATION_CONFIRMATION:
         _fail(f"Learner attestation requires exactly: {_ATTESTATION_CONFIRMATION}")
     if not done:
         outcome_kind = "incomplete"
     elif attest_reason:
         outcome_kind = "learner_attested"
-    else:
-        outcome_kind = "verified_complete"
-    actor = _CLI_LEARNER if outcome_kind != "verified_complete" else _CLI_RECORDER
+    else:  # pragma: no cover - guarded above
+        _fail("--done requires a learner attestation")
     try:
         service = planning_lifecycle(evidence=plan.evidence)
         outcome = require_outcome(
             service.handle(
                 PlanningCommand(
-                    actor,
+                    _CLI_LEARNER,
                     RecordMilestoneOutcome(
                         plan.plan_id,
                         milestone.milestone_id,

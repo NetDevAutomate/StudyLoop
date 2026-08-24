@@ -15,11 +15,15 @@ the runtime never silently writes to `<configured-dir>/plans`.
 
 ## Delivered behavior
 
-- Deprecated `studyloop plan new` creates a typed draft proposal and requires
-  `--confirm`; it cannot activate or bypass three-plan capacity.
+- Deprecated `studyloop plan new` creates a typed draft proposal but cannot
+  approve it in the same invocation. `--confirm` is refused; a separate
+  `plan decide <proposal-id> <proposal-digest> --approve|--reject` action binds
+  learner authority to the exact displayed proposal. It cannot activate or
+  bypass three-plan capacity.
 - Structured `POST /api/plans` returns an exact proposal preview with HTTP 202
-  when no decision is supplied. A trusted learner decision can approve/reject
-  that exact proposal, or an explicit same-request approval can apply it.
+  for every structured creation request. A later request can approve/reject
+  only that persisted proposal ID and displayed digest; same-request approval
+  is refused.
   Request JSON cannot select `ActorContext` and overwrite is refused.
 - Raw Markdown POST is learner-only `ImportPlanDraft`: fresh IDs, draft status,
   incomplete milestones, regenerated Mermaid, canonical tier-4 import context,
@@ -131,7 +135,8 @@ and `git diff --check` also pass.
 
 ## Compatibility changes
 
-- `plan new` requires `--confirm`; `--activate` is refused.
+- `plan new` never approves in the same command; deprecated `--confirm` and
+  `--activate` are refused. `plan decide` is the separate exact-digest action.
 - New structured REST plans default to draft, cannot overwrite, and require an
   explicit learner decision. Unconfirmed requests return 202 proposal previews.
 - Structural PATCH is asynchronous proposal creation (202), not an immediate
@@ -155,9 +160,81 @@ and `git diff --check` also pass.
 - Top-level free-form notes cannot be represented by the current typed proposal
   contract. Direct notes PATCH is refused, and raw import generic notes are
   stripped rather than silently trusted or lost during approval.
-- CLI compatibility approval is a single command with `--confirm`; interactive
-  agent conversation, safe harness tools, and onboarding installation belong to
-  Task 6.
+- CLI compatibility approval is deliberately a second digest-bound command.
+  Interactive agent conversation and onboarding installation belong to Task 6.
 - Planning workspace/ACP transport, new planning HTTP/WebSocket routes, browser
   Markdown/Mermaid rendering, stewardship, and aggregate release gates remain
   Tasks 7-12.
+
+## Independent-review fix round 1
+
+The first implementation passed its Task 5 suite but an independent adversarial
+review found three Critical and five Important boundary defects. This round
+closed all eight without beginning Task 6 or later transport/workspace work:
+
+- Creation approval is now necessarily two-phase in CLI and REST. Both paths
+  require the persisted proposal ID and exact displayed digest; the CLI
+  `--confirm` shortcut and structured same-request REST decision are rejected.
+- Structural revisions merge lifecycle-owned state by stable ID. Plan status,
+  existing goal status, and verified milestone completion survive title-only
+  and full structural proposals; completed/abandoned plans cannot be revised.
+- CLI and browser learner input can record only explicit tier-3 attestation,
+  never mint recorder authority. Internal verified completion additionally
+  requires selected tier-1 evidence with a completion claim whose subject
+  matches the target milestone (or its named concept).
+- PATCH decisions inspect the persisted proposal before dispatch and reject a
+  creation proposal or a revision targeting a different route plan.
+- Raw imports reject foreign Mermaid fences, all raw HTML, HTML comments, and
+  concealed markup before any recognised Mission/Milestone field is accepted.
+  Canonical Mermaid remains renderer-generated. Ambiguous duplicate normalised
+  legacy concept labels are refused rather than cross-linked.
+- The architecture gate scans the real `session/`, `session_runtime/`, root
+  session/agent modules, adapters, and MCP tree. Self-tests cover dynamic
+  `importlib`, `__import__`, string `getattr`, aliases, nested calls, qualified
+  calls, and public re-exports.
+- Every plan-agent harness invocation receives a fresh private scratch root;
+  caller-selected directories and their existing Markdown are never unlinked.
+- Checkpoint DB history uses the same lifecycle command key with a partial
+  unique index, so lifecycle replay cannot append a second history row. Both
+  CLI and REST now surface the helper's `False` result as a warning.
+
+### Fix-round RED evidence
+
+The added regression slices reproduced each defect before production changes,
+including immediate approval (`201` instead of `400`), state regression
+(`active`/`paused` previewed as `draft`), cross-plan PATCH returning `200`,
+irrelevant tier-1 evidence being accepted, concealed import markup returning
+`201`, dynamic-writer self-tests returning no violation, the harness helper
+being absent while direct unlink remained, and a replay producing two DB
+history rows.
+
+### Fix-round final verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli_plan.py \
+  packages/studyloop/tests/test_web_plans.py \
+  packages/studyloop/tests/test_planning_evaluation.py \
+  packages/studyloop/tests/test_planning_architecture.py \
+  packages/studyloop/tests/test_plan_agent_harness.py -q
+# 112 passed, one pre-existing Starlette/httpx deprecation warning
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning*.py -q
+# 299 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli*.py \
+  packages/studyloop/tests/test_web*.py -q
+# 620 passed, 295 deselected, one pre-existing Starlette/httpx warning
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_e2e_coverage_gate.py \
+  packages/studyloop/tests/test_e2e_coverage_gate_selftest.py -q
+# 27 passed
+
+rtk uv run --group dev pyright <changed Task 5 source and harness files>
+# 0 errors, 0 warnings, 0 informations
+```
+
+Ruff check, Ruff formatting, Python compilation, the expanded AST architecture
+gate, and `git diff --check` also passed on the final formatted tree.

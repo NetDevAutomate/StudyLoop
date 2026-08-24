@@ -48,9 +48,25 @@ def _make(
         "Job anatomy (concepts: glue job)",
         "--milestone",
         "Transform (concepts: dynamicframe)",
-        "--confirm",
+        "--json",
     ]
-    result = runner.invoke(cli, args + (extra or []))
+    preview = runner.invoke(cli, args + (extra or []))
+    if preview.exit_code not in {0, 1}:
+        return preview
+    try:
+        proposal = json.loads(preview.output)
+    except json.JSONDecodeError:
+        return preview
+    result = runner.invoke(
+        cli,
+        [
+            "plan",
+            "decide",
+            proposal["proposal_id"],
+            proposal["proposal_digest"],
+            "--approve",
+        ],
+    )
     if expect_success:
         assert result.exit_code == 0, result.output
     return result
@@ -125,6 +141,18 @@ def test_evaluate_record_appends_a_checkpoint(runner: CliRunner) -> None:
     assert "| end |" in doc.replace(" |", " |")
 
 
+def test_evaluate_record_reports_secondary_database_failure(
+    runner: CliRunner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make(runner)
+    monkeypatch.setattr("studyloop.cli._plan.record_checkpoint", lambda *a, **k: False)
+    result = runner.invoke(
+        cli, ["plan", "evaluate", "glue-etl-basics", "--phase", "mid", "--record"]
+    )
+    assert result.exit_code == 0
+    assert "checkpoint not saved to the database" in result.output.lower()
+
+
 def test_milestone_incomplete_is_explicit_and_does_not_toggle(runner: CliRunner) -> None:
     _make(runner)
     result = runner.invoke(cli, ["plan", "milestone", "glue-etl-basics", "0", "--undone"])
@@ -141,7 +169,7 @@ def test_milestone_out_of_range_fails_cleanly(runner: CliRunner) -> None:
 
 
 def test_status_active_is_refused_for_an_incomplete_plan(runner: CliRunner) -> None:
-    created = runner.invoke(
+    preview = runner.invoke(
         cli,
         [
             "plan",
@@ -150,10 +178,15 @@ def test_status_active_is_refused_for_an_incomplete_plan(runner: CliRunner) -> N
             "Vague Plan",
             "--why",
             "Explore safely",
-            "--confirm",
+            "--json",
         ],
     )
-    assert created.exit_code == 0
+    proposal = json.loads(preview.output)
+    created = runner.invoke(
+        cli,
+        ["plan", "decide", proposal["proposal_id"], proposal["proposal_digest"], "--approve"],
+    )
+    assert created.exit_code == 0, created.output
 
     result = runner.invoke(cli, ["plan", "status", "vague-plan", "active"])
     assert result.exit_code == 1
@@ -191,7 +224,51 @@ def test_new_requires_explicit_confirmation_and_writes_no_canonical_plan(
         ],
     )
     assert result.exit_code == 1
-    assert "--confirm" in result.output
+    assert "plan decide" in result.output
+    assert json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output) == []
+
+
+def test_new_confirm_flag_cannot_approve_an_unreviewed_proposal(runner: CliRunner) -> None:
+    result = runner.invoke(
+        cli,
+        [
+            "plan",
+            "new",
+            "--title",
+            "Unsafe confirmation",
+            "--why",
+            "Prove the boundary",
+            "--confirm",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "cannot approve" in result.output.lower()
+    assert json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output) == []
+
+
+def test_decide_requires_the_exact_displayed_digest(runner: CliRunner) -> None:
+    preview = runner.invoke(
+        cli,
+        [
+            "plan",
+            "new",
+            "--title",
+            "Digest bound",
+            "--why",
+            "Prove exact review",
+            "--success",
+            "Explain it",
+            "--milestone",
+            "Practise",
+            "--json",
+        ],
+    )
+    proposal = json.loads(preview.output)
+    refused = runner.invoke(
+        cli,
+        ["plan", "decide", proposal["proposal_id"], "wrong-digest", "--approve"],
+    )
+    assert refused.exit_code == 1
     assert json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output) == []
 
 
@@ -274,6 +351,24 @@ def test_milestone_done_requires_evidence_or_exact_learner_attestation(
     )
     assert wrong_confirmation.exit_code == 1
     assert "I confirm this records my own completed" in wrong_confirmation.output
+
+
+def test_cli_evidence_argument_cannot_mint_recorder_authority(runner: CliRunner) -> None:
+    _make(runner)
+    refused = runner.invoke(
+        cli,
+        [
+            "plan",
+            "milestone",
+            "glue-etl-basics",
+            "0",
+            "--done",
+            "--evidence-id",
+            "claimed-proof",
+        ],
+    )
+    assert refused.exit_code == 1
+    assert "learner attestation" in refused.output.lower()
 
 
 def test_path_prints_the_plans_directory(runner: CliRunner, isolated_plans_dir) -> None:

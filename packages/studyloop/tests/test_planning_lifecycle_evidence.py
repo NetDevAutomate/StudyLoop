@@ -262,3 +262,53 @@ def test_verified_completion_and_learner_attestation_are_visibly_distinct(
     assert verified_outcome.status == "verified_complete"
     assert verified_view.plan.milestones[0].done is True
     assert "verified" in verified_view.plan.learning_records[-1].title.lower()
+
+
+def test_tier_one_evidence_must_match_the_target_milestone(tmp_path: Path) -> None:
+    unrelated = evidence_ref(
+        "practice-other",
+        source_kind="studyloop_practice",
+        tier=1,
+        subject_ref="milestone:some-other-milestone",
+    )
+    service, plan_id, milestone_id = _accepted_plan(tmp_path, (unrelated,))
+
+    with pytest.raises(EvidenceValidationError, match="target milestone"):
+        service.handle(
+            PlanningCommand(
+                RECORDER,
+                RecordMilestoneOutcome(
+                    plan_id,
+                    milestone_id,
+                    "verified_complete",
+                    (unrelated.evidence_id,),
+                    "irrelevant-tier-one",
+                ),
+            )
+        )
+    assert service.inspect(PlanningRef(plan_id)).plan.milestones[0].done is False
+
+
+def test_tier_one_evidence_must_carry_a_completion_claim(tmp_path: Path) -> None:
+    wrong_claim = evidence_ref(
+        "practice-context",
+        source_kind="studyloop_practice",
+        tier=1,
+        subject_ref="concept:protocols",
+    )
+    wrong_claim.claim_kind = "curriculum_context"
+    service, plan_id, milestone_id = _accepted_plan(tmp_path, (wrong_claim,))
+
+    with pytest.raises(EvidenceValidationError, match="completion claim"):
+        service.handle(
+            PlanningCommand(
+                RECORDER,
+                RecordMilestoneOutcome(
+                    plan_id,
+                    milestone_id,
+                    "verified_complete",
+                    (wrong_claim.evidence_id,),
+                    "wrong-claim",
+                ),
+            )
+        )
