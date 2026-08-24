@@ -2264,6 +2264,10 @@
                      class="picker-input"
                      @input="selectedTopic = ''">
             </div>
+            <p id="topic-source-hint" class="picker-hint">
+              Suggestions are the first three topics from <code>config.yaml</code>.
+              You can type any other course material or topic instead.
+            </p>
           </div>
 
           <div class="picker-field" x-show="targetKind === 'vendor' || targetKind === 'course' || targetKind === 'lesson'">
