@@ -35,19 +35,17 @@ and is targeted for the first release. See `releases/v0.1.0.md` for the draft re
 and its list of known limitations.
 
 ### Added
-- **Study plans in the browser** — the planning backend and the
-  `study-plan-architect` agent already existed; the web surface did not, which
-  meant neither was reachable without the CLI. Adds a plan list in the sidebar,
-  a rendered plan reader in the content column, a create/interview wizard, and
-  milestone evaluation. The create form leads with a free-text brain-dump field
-  above the five structured fields on purpose: a blank structured form asks the
-  learner for the decomposition they do not have yet, which is the paralysis the
-  feature exists to prevent. The structured fields remain as the editable
-  result. Implemented as an Alpine **store** plus a thin factory — new for this
-  codebase, and necessary because the sidebar list and the content-column reader
-  live in different DOM subtrees and cannot share one `x-data`. The store's own
-  `init()` loads the list, so a full browser reload repopulates the sidebar
-  instead of showing an empty list until something is clicked.
+- **Agentic study plans in the browser** — open **Study Plans → Create with
+  Architect** and type or dictate one unstructured brain dump; there is no
+  structured intake form. The server-owned Architect preserves that capture,
+  can use optional course or notes context without treating it as progress,
+  asks focused follow-up questions, and presents the exact Markdown proposal
+  with a rendered Mermaid learning map. Nothing is written until the learner
+  approves that digest-bound proposal; revise and reject remain explicit
+  choices. Existing plans use the same conversation for proposed changes, at
+  most three plans stay current, and a same-tab reload restores the active
+  conversation. CLI plan commands remain manual document-management adapters,
+  not a second agentic intake path.
 - **Origin-aware session recovery in both start pickers** — `sessionActive`
   previously meant only "a session exists", so a picker would hide on a session
   it did not own, and the surface that *did* render its picker offered a Start

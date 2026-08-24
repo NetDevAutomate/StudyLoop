@@ -97,3 +97,17 @@ def test_public_content_guides_use_neutral_notes_defaults() -> None:
     assert "default `~/study-materials`" in web_guide
     assert "Setup wizard:** `studyloop setup` asks" not in export_guide
     assert "first-run setup wizard deliberately does not ask" in export_guide
+
+
+def test_current_changelog_describes_the_released_architect_conversation() -> None:
+    changelog = _read("CHANGELOG.md")
+    release_entry = changelog.split("## [0.1.0]", 1)[1]
+    normalized = " ".join(release_entry.casefold().split())
+
+    assert "create with architect" in normalized
+    assert "server-owned architect" in normalized
+    assert "exact markdown proposal" in normalized
+    assert "at most three plans" in normalized
+    assert "five structured fields" not in normalized
+    assert "study-plan-architect` agent already existed" not in normalized
+    assert "create/interview wizard" not in normalized
