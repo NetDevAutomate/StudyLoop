@@ -25,14 +25,12 @@
  * imported because components.js is not yet a module; when it is split, these
  * become real imports.
  *
- * KNOWN GAPS (see docs/handoffs/2026-08-22-frontend-modularisation-findings.md)
- * ---------------------------------------------------------------------------
- * The 3 TestLiveRefresh tests are red because this console has no LOAD-TIME
- * ADOPTION path: init() registers a study-session-start listener, but on a page
- * reload that event was dispatched before the page existed, so nothing ever mounts
- * a terminal. The fix is to read GET /api/session/state on init and, when a live
- * session's origin matches this console's, mount and connect. `origin` is already
- * echoed by that endpoint for exactly this purpose.
+ * LOAD-TIME ADOPTION
+ * ------------------
+ * init() reads GET /api/session/state because a page reload cannot receive the
+ * study-session-start event that originally mounted the terminal. When the live
+ * session belongs to this console, it mounts a fresh local terminal and reconnects
+ * to the existing PTY. Earlier terminal scrollback is deliberately not replayed.
  *
  * Extracted verbatim from index.html lines 2652-3371.
  */
@@ -247,6 +245,14 @@ export function liveAgentConsole(origin = 'study') {
           }
 
           try { fit.fit(); } catch { /* container may be hidden; retry on show */ }
+          if (detail.reattached) {
+            /* This line is local UI context, not PTY output. Replaying it through
+               the backend would put synthetic bytes ahead of buffered agent
+               output and could change the agent stream's ordering contract. */
+            term.writeln(
+              '\x1b[2m[reattached to your running session — earlier terminal output is not replayed]\x1b[0m',
+            );
+          }
           term.writeln('\x1b[2mConnecting to agent...\x1b[0m');
 
           /* ResizeObserver → TIOCSWINSZ. `onResize` fires when fit()
