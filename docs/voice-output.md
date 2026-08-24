@@ -246,11 +246,16 @@ Set it up in the [Kokoro Server Backends](#kokoro-server-backends) section above
 
 ### The fallback ladder
 
-Three tiers, in order. This is **not** a chain of servers: StudyLoop points at **one** server URL, and the ladder is what happens when that one is absent or unreachable.
+Fallback has two layers:
+
+1. The **server candidate chain** tries the configured primary, then each
+   configured fallback. VoiceMode on port 8880 is the default fallback.
+2. The browser then chooses one of three **playback tiers**. The whole server
+   candidate chain is tier one; OS speech and silence are the lower tiers.
 
 | Tier | Engine | When |
 |---|---|---|
-| **`server-openvox`** | Kokoro on the server you configured | A reachable `openvox_base_url`. The best tier, not a degraded one. |
+| **`server-openvox`** | The first reachable Kokoro server candidate | The configured primary or one of its fallbacks answered. The best tier, not a degraded one. |
 | **`web-speech`** | Web Speech API — your operating system's own voices | No server configured, or it cannot be reached |
 | **`silent`** | Nothing speaks | No server and no OS speech support |
 

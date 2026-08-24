@@ -717,7 +717,7 @@ flowchart TB
     end
 
     subgraph Server["studyloop web (FastAPI)"]
-      Route["POST /api/tts/speak<br/>web/routes/tts.py<br/>──────────<br/>authenticated; filters the<br/>voice list to English"]
+      Route["POST /api/tts/speak<br/>web/routes/tts.py<br/>──────────<br/>authenticated; tries primary<br/>then fallback server candidates;<br/>filters voices to English"]
       Static["/tts-engine.js<br/>(StaticFiles)"]
     end
 

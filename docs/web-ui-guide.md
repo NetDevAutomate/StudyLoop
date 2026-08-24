@@ -164,7 +164,11 @@ Case does not matter — the handler lower-cases the key first.
 
 > **Enter does not flip a card, and there is no auto-voice key.** `V` is unbound; voice is a click-only header toggle (see [Voice Output](#voice-output) below). If you expected either from an older version of this guide, that guide was wrong.
 
-> Voice is synthesised by a Kokoro server you run; the browser posts to StudyLoop's own authenticated `/api/tts/speak` and plays the reply. With no server reachable it uses your operating system's voices instead. See [Voice Output § Web App Voice](voice-output.md#web-app-voice-server-side-kokoro).
+> Voice is synthesised by a Kokoro server you run; the browser posts to
+> StudyLoop's own authenticated `/api/tts/speak` and plays the reply. StudyLoop
+> tries the configured primary, then its fallback list (VoiceMode on port 8880
+> by default). With no server reachable it uses your operating system's voices
+> instead. See [Voice Output § Web App Voice](voice-output.md#web-app-voice-server-side-kokoro).
 
 ---
 

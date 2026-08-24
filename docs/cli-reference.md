@@ -471,13 +471,12 @@ studyloop web --lan              # LAN access; prompts securely before startup
 
 | Key | Action | When |
 |-----|--------|------|
-| `Space`/`Enter` | Flip card | Flashcard, before reveal |
+| `Space` | Flip card | Flashcard, before reveal |
 | `Y` | I knew it | Flashcard, after reveal |
 | `N` | Didn't know | Flashcard, after reveal |
-| `A`-`D` | Select quiz option | Quiz mode |
+| `1`-`4` | Select quiz option | Quiz mode |
 | `S` | Skip card | During review |
 | `T` | Read aloud (once) | During review |
-| `V` | Toggle auto-voice | During review |
 | `R` | Retry wrong answers | After session |
 | `Esc` | Back to home | Anywhere |
 

@@ -352,7 +352,14 @@ review:
     - ~/Desktop/Python/downloads
 ```
 
-**Voice output** is synthesised by a Kokoro server you run, not in the browser. The page posts text to StudyLoop's own authenticated `/api/tts/speak`, which proxies it to whatever `tts.openvox_base_url` names; the device just plays the audio. That is why a tablet gets the same voice as the desktop. With no server reachable, the app falls back to your operating system's own voices — no install, lower quality — and failing that, to silence. Voice is off until you turn it on in the header.
+**Voice output** is synthesised by a Kokoro server you run, not in the browser.
+The page posts text to StudyLoop's own authenticated `/api/tts/speak`.
+StudyLoop tries `tts.openvox_base_url`, then each
+`tts.openvox_fallback_base_urls` entry; VoiceMode on port 8880 is the default
+fallback. The device just plays the returned audio, so a tablet gets the same
+voice as the desktop. If every server fails, the app uses your operating
+system's own voices — no install, lower quality — and failing that, silence.
+Voice is off until you turn it on in the header.
 
 Two ways to hear a card:
 - **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once.
