@@ -197,6 +197,13 @@ def _set_path(value: dict[str, object], path: tuple[str | int, ...], replacement
     target[path[-1]] = replacement
 
 
+def _value_at_path(value: dict[str, object], path: tuple[str | int, ...]) -> object:
+    target: Any = value
+    for segment in path:
+        target = target[segment]
+    return target
+
+
 _SCHEMA_PROPERTY_TYPE_PATHS: tuple[tuple[str, tuple[str | int, ...], object], ...] = (
     ("draft.title", ("title",), 7),
     ("draft.mission", ("mission",), []),
@@ -264,6 +271,21 @@ _SCHEMA_ARRAY_ITEM_TYPE_PATHS: tuple[tuple[str, tuple[str | int, ...], object], 
     ("resources.item", ("resources", 0), "not-an-object"),
     ("unknowns.item", ("unknowns", 0), "not-an-object"),
     ("milestone.concept_aliases.item", ("milestones", 0, "concept_aliases", 0), {}),
+)
+
+_SCHEMA_ARRAY_PROPERTY_PATHS: tuple[tuple[str, tuple[str | int, ...]], ...] = (
+    ("draft.goals", ("goals",)),
+    ("draft.milestones", ("milestones",)),
+    ("draft.topics", ("topics",)),
+    ("draft.concepts", ("concepts",)),
+    ("draft.concept_relations", ("concept_relations",)),
+    ("draft.evidence_dispositions", ("evidence_dispositions",)),
+    ("draft.resources", ("resources",)),
+    ("draft.unknowns", ("unknowns",)),
+    ("mission.success", ("mission", "success")),
+    ("mission.constraints", ("mission", "constraints")),
+    ("mission.out_of_scope", ("mission", "out_of_scope")),
+    ("milestone.concept_aliases", ("milestones", 0, "concept_aliases")),
 )
 
 _SCHEMA_TYPE_CASES = tuple(
@@ -610,6 +632,38 @@ def test_every_schema_property_rejects_null_and_wrong_type_before_lifecycle(
     assert lifecycle.calls == []
 
 
+@pytest.mark.parametrize(
+    "path",
+    [pytest.param(path, id=label) for label, path in _SCHEMA_ARRAY_PROPERTY_PATHS],
+)
+def test_every_wire_array_property_rejects_python_tuple_before_lifecycle(
+    path: tuple[str | int, ...],
+) -> None:
+    """Native/scripted adapters must not widen a JSON array into another sequence type."""
+    from studyloop.planning.capabilities import CapabilityRefusedError, PlanningCapabilityCall
+
+    dispatcher, lifecycle = _dispatcher()
+    draft = deepcopy(_draft_with_every_schema_property())
+    array_value = _value_at_path(draft, path)
+    assert isinstance(array_value, list)
+    _set_path(draft, path, tuple(array_value))
+
+    with pytest.raises(CapabilityRefusedError):
+        dispatcher.execute(
+            PlanningCapabilityCall(
+                "tuple-array",
+                "submit_plan_proposal",
+                {
+                    "run_id": "run-bound",
+                    "brief_context_digest": "sha256:v1:" + "b" * 64,
+                    "draft": draft,
+                },
+            )
+        )
+
+    assert lifecycle.calls == []
+
+
 @pytest.mark.parametrize(("name", "path", "invalid"), _TOP_LEVEL_SCHEMA_TYPE_CASES)
 def test_every_top_level_schema_property_rejects_null_and_wrong_type_before_lifecycle(
     name: str,
@@ -637,7 +691,7 @@ def test_every_top_level_schema_property_rejects_null_and_wrong_type_before_life
     assert lifecycle.calls == []
 
 
-@pytest.mark.parametrize("arguments", [None, [], "not-an-object", 7])
+@pytest.mark.parametrize("arguments", [None, [], (), "not-an-object", 7])
 def test_capability_argument_root_rejects_every_non_object_json_type(arguments: object) -> None:
     """A tool argument root must be an object before even prepare can touch lifecycle state."""
     from studyloop.planning.capabilities import CapabilityRefusedError, PlanningCapabilityCall
@@ -835,6 +889,62 @@ def test_explicit_null_creates_no_real_lifecycle_journal_or_private_artifact(
         dispatcher.execute(
             PlanningCapabilityCall(
                 "explicit-null",
+                "submit_plan_proposal",
+                {
+                    "run_id": run_id,
+                    "brief_context_digest": prepared.payload["brief_context_digest"],
+                    "draft": draft,
+                },
+            )
+        )
+
+    assert _durable_planning_state(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    ("case", "path"),
+    [
+        ("required-milestones-tuple", ("milestones",)),
+        ("required-evidence-tuple", ("evidence_dispositions",)),
+        ("optional-unknowns-tuple", ("unknowns",)),
+        ("nested-required-success-tuple", ("mission", "success")),
+        ("nested-optional-concept-aliases-tuple", ("milestones", 0, "concept_aliases")),
+    ],
+)
+def test_tuple_array_creates_no_real_lifecycle_journal_or_private_artifact(
+    tmp_path,
+    case: str,
+    path: tuple[str | int, ...],
+) -> None:
+    """Non-JSON sequences must be refused before durable proposal effects."""
+    from planning_lifecycle_support import lifecycle
+
+    from studyloop.planning.capabilities import (
+        CapabilityRefusedError,
+        PlanningCapabilityCall,
+        PlanningCapabilityDispatcher,
+        PlanningCapabilityScope,
+    )
+
+    service = lifecycle(tmp_path)
+    dispatcher = PlanningCapabilityDispatcher(
+        service,
+        PlanningRequest("create", "A vague dump", f"request-{case}"),
+        scope=PlanningCapabilityScope(f"conversation-{case}", f"turn-{case}", f"attempt-{case}"),
+    )
+    prepared = dispatcher.execute(PlanningCapabilityCall("prepare", "prepare_plan", {}))
+    run_id = prepared.payload["run_id"]
+    assert isinstance(run_id, str)
+    draft = _draft()
+    array_value = _value_at_path(draft, path)
+    assert isinstance(array_value, list)
+    _set_path(draft, path, tuple(array_value))
+    before = _durable_planning_state(tmp_path)
+
+    with pytest.raises(CapabilityRefusedError):
+        dispatcher.execute(
+            PlanningCapabilityCall(
+                "tuple-array",
                 "submit_plan_proposal",
                 {
                     "run_id": run_id,

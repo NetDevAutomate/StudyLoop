@@ -346,3 +346,60 @@ Targeted Ruff format/check, Pyright, Python compilation, strict MkDocs,
 changed-file detect-secrets, and `git diff --check` were rerun. No Task 7+
 runtime, browser, authentication, or harness-planning behavior was added, and
 the progress ledger was not edited or staged.
+
+## Independent-review fix round 3
+
+The third clean-context review found that the Python boundary still widened a
+JSON array to any `list` or `tuple`. The two array ingress helpers now accept
+only `list`. They convert to immutable tuples only after validating the outer
+array and every item, so native/scripted adapters cannot certify a payload that
+a JSON provider could never send.
+
+A literal 12-path table covers every advertised draft and nested array:
+goals, milestones, topics, concepts, concept relations, evidence dispositions,
+resources, unknowns, mission success/constraints/out-of-scope, and milestone
+concept aliases. Every tuple form creates zero fake-lifecycle calls. Five
+representative required, optional, and nested cases leave the real journal and
+private artifacts byte-for-byte unchanged. A tuple argument root is also
+refused alongside every other non-object root type.
+
+### Fix-round 3 RED evidence
+
+The first capability run produced exactly 17 failures. All 12 array-property
+tuple cases returned `ok` and invoked the fake lifecycle. All five real-
+lifecycle representatives also failed their no-write assertion because the
+tuple was accepted and a durable proposal was created.
+
+### Fix-round 3 verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_doctor_planning.py -q
+# 287 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web_runtime_feedback.py -q
+# 343 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning*.py \
+  packages/studyloop/tests/test_plan_agent_harness.py \
+  packages/studyloop/tests/test_doctor_planning.py \
+  packages/studyloop/tests/e2e/test_plans_api.py -q
+# 594 passed, 12 deselected
+```
+
+Targeted Ruff format/check, Pyright, Python compilation, strict MkDocs,
+changed-file detect-secrets, and `git diff --check` were rerun. No Task 7+
+behavior was added, and the progress ledger was not edited or staged.

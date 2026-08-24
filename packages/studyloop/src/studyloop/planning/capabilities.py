@@ -450,7 +450,7 @@ def _string(value: object, label: str, *, allow_empty: bool = False) -> str:
 def _strings(value: object, label: str) -> tuple[str, ...]:
     if value is _MISSING:
         return ()
-    if not isinstance(value, (list, tuple)):
+    if not isinstance(value, list):
         raise CapabilityRefusedError(f"{label} must be an array of strings")
     return tuple(_string(item, label) for item in value)
 
@@ -458,7 +458,7 @@ def _strings(value: object, label: str) -> tuple[str, ...]:
 def _objects(value: object, label: str) -> tuple[Mapping[str, object], ...]:
     if value is _MISSING:
         return ()
-    if not isinstance(value, (list, tuple)):
+    if not isinstance(value, list):
         raise CapabilityRefusedError(f"{label} must be an array")
     return tuple(_mapping(item, label) for item in value)
 
