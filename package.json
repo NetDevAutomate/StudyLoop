@@ -1,0 +1,9 @@
+{
+  "name": "studyloop-web-tests",
+  "private": true,
+  "type": "module",
+  "description": "Module-type declaration for the browser-side unit tests under packages/studyloop/tests/js. StudyLoop ships no npm package and has no JS build step; this file exists so Node resolves the ESM type here instead of walking up out of the repository.",
+  "scripts": {
+    "test": "node --test packages/studyloop/tests/js/*.test.js"
+  }
+}

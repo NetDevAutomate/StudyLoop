@@ -91,6 +91,21 @@ jobs:
       - run: uv sync --locked --all-packages --group dev
       - run: uv run --group dev pytest --tb=short --cov=packages --cov-report=term-missing
 
+  js:
+    # The browser-side unit tests (87 at time of writing) previously ran in NO
+    # gate: no workflow and no just recipe invoked them, so they only executed if
+    # someone typed `node --test` by hand. A suite nothing runs cannot be evidence
+    # of anything, which is the same blind spot that hid three regressions in the
+    # unrun e2e suites.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "22"
+      - run: node --test packages/studyloop/tests/js/*.test.js
+
   web-profile:
     runs-on: ubuntu-latest
     timeout-minutes: 15

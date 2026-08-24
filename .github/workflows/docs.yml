@@ -35,6 +35,13 @@ jobs:
       - run: uv sync --locked --extra docs
       - run: uv run --extra docs mkdocs build --strict
         env:
+          # mkdocs-material prints an advisory about upstream MkDocs 2.0 on every
+          # build. It is not a defect here: pyproject pins mkdocs<2, so the
+          # incompatibility it warns about cannot arise. NO_MKDOCS_2_WARNING is
+          # the vendor's own documented off-switch (material/plugins/__init__.py).
+          # justfile already sets this; CI must match or the two gates disagree.
+          NO_MKDOCS_2_WARNING: "1"
+        env:
           NO_MKDOCS_2_WARNING: "1"
 
   deploy:
