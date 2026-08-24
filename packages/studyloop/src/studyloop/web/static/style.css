@@ -5178,6 +5178,52 @@ body[data-palette="everforest"] {
   gap: 16px;
 }
 
+/* A live Body Double session is an agent workspace, not a dashboard. Keep the
+   timer and focus disclosure reachable, but compress them into control strips
+   so the terminal owns the visual hierarchy. */
+.body-double-view.session-dashboard.is-live {
+  gap: 8px;
+}
+
+.body-double-view.is-live .body-double-timer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 7px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+}
+
+.body-double-view.is-live .large-timer {
+  flex: none;
+  line-height: 1;
+}
+
+.body-double-view.is-live .large-timer .timer-time {
+  font-size: 1.35rem;
+}
+
+.body-double-view.is-live .body-double-controls {
+  flex: 1 1 520px;
+  min-width: 0;
+  margin-top: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.body-double-view.is-live .bd-pomo-settings {
+  margin: 0;
+}
+
+.body-double-view.is-live #bd-focus {
+  gap: 6px;
+  padding: 8px 12px;
+}
+
 /* --- Card shell ---------------------------------------------------------- */
 
 /* Flex column rather than margins on the children, because Alpine's x-show
@@ -5479,6 +5525,16 @@ body[data-palette="everforest"] {
   border-radius: var(--radius);
 }
 
+.bd-live-session {
+  min-width: 0;
+}
+
+.body-double-view.is-live .bd-live-strip {
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+}
+
 #bd-live-activity {
   margin-right: auto;
   min-width: 0;
@@ -5511,6 +5567,20 @@ body[data-palette="everforest"] {
   /* No overflow:hidden. xterm sizes its screen in px via fit(); clipping the
      container would put part of a live terminal permanently out of reach
      rather than letting it scroll. */
+}
+
+/* Viewport-relative height keeps the agent readable on a laptop while the
+   360px floor preserves a usable terminal on the smallest supported tablet
+   viewport. Overflow belongs to .content-area, so nothing is clipped. */
+.body-double-view.is-live .bd-console-panel {
+  display: flex;
+  min-height: clamp(360px, 58dvh, 720px);
+}
+
+.body-double-view.is-live .bd-console-panel > .session-terminal-area {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
 /* The mount before a session exists. Deliberately given no height: reserving

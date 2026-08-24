@@ -3435,6 +3435,11 @@ function bodyDoubleSession() {
         /* A start that succeeded proves nothing is blocking us any more. */
         this.conflictSession = null;
         this.liveActivity = this.activity;
+        /* Live work changes the visual hierarchy: keep the disclosure itself
+           available, but fold the duplicate focus topic so the agent terminal
+           gets the first screen. Do not persist this automatic fold — ending
+           the session restores the learner's explicit localStorage choice. */
+        this.focusCollapsed = true;
         /* Re-point the note composer at the live activity. refreshFocus() ran at
            init(), before any session existed, so its default fell back to the
            first focus slot - filing notes against the wrong topic for the whole
@@ -3504,10 +3509,42 @@ function bodyDoubleSession() {
         + ' — open it there to carry on, or end it to free the slot.';
     },
 
-    /* Proactive probe at init(). Own-origin sessions are deliberately left
-       alone: load-time adoption belongs to the console (see its KNOWN GAPS
-       note), and claiming sessionActive here without mounting a terminal would
-       show a live strip over a dead console. */
+    /* Put this component into the same live state as a fresh start, using the
+       server's existing Body Double session. The nested console performs its
+       own guarded socket adoption; this method restores the surrounding UI so
+       that successfully reattached terminal is not hidden by x-show. */
+    _adoptOwnSession(conflict) {
+      const topic = conflict.topic || this.activity || '';
+      this.sessionActive = true;
+      this.studySessionId = conflict.studySessionId;
+      this.liveActivity = topic;
+      this.focusCollapsed = true;
+      if (topic) {
+        this.activity = topic;
+        this.noteTopic = topic;
+      }
+      this.conflictSession = null;
+      this.startError = '';
+      this.starting = false;
+      return {
+        topic,
+        origin: 'body-double',
+        energy: this.energy,
+        agent: conflict.agent || this.agent || null,
+        resolvedAgent: conflict.agent || this.agent || null,
+        studySessionId: conflict.studySessionId,
+        transport: conflict.transport || 'pty',
+        wsUrl: conflict.reattachUrl || null,
+        personaText: null,
+        reattached: true,
+      };
+    },
+
+    /* Proactive probe at init(). Parent and console each restore only the part
+       of the session they own: this component restores live chrome/state,
+       while liveAgentConsole independently mounts the PTY. Do NOT dispatch a
+       second start event here — that races the console's own GET and can open,
+       close, then reopen the same WebSocket during a refresh. */
     async _checkLiveSessionConflict() {
       if (this.sessionActive) return;
       const epoch = this._conflictEpoch;
@@ -3520,7 +3557,10 @@ function bodyDoubleSession() {
         if (epoch !== this._conflictEpoch || this.sessionActive) return;
         if (!state.study_session_id || state.mode === 'ended') return;
         const conflict = this._conflictShape(state);
-        if (conflict.origin === 'body-double') return;
+        if (conflict.origin === 'body-double') {
+          this._adoptOwnSession(conflict);
+          return;
+        }
         this._applyConflict(conflict, '');
       } catch { /* offline — Start will surface the 409 instead */ }
     },
@@ -3605,32 +3645,9 @@ function bodyDoubleSession() {
       /* Newer than any probe in flight — that probe would re-raise the banner
          for the very session we just adopted. */
       this._conflictEpoch += 1;
-      const topic = conflict.topic || this.activity || '';
-      this.sessionActive = true;
-      this.studySessionId = conflict.studySessionId;
-      this.liveActivity = topic;
-      if (conflict.topic) {
-        this.activity = conflict.topic;
-        /* Re-point the note composer at what the session is ACTUALLY about —
-           the same misfiling startSession() guards against. */
-        this.noteTopic = conflict.topic;
-      }
-      this.conflictSession = null;
-      this.startError = '';
-      this.starting = false;
+      const detail = this._adoptOwnSession(conflict);
       window.dispatchEvent(new CustomEvent('study-session-start', {
-        detail: {
-          topic,
-          origin: 'body-double',
-          energy: this.energy,
-          agent: conflict.agent || this.agent || null,
-          resolvedAgent: conflict.agent || this.agent || null,
-          studySessionId: conflict.studySessionId,
-          transport: conflict.transport || 'pty',
-          wsUrl: conflict.reattachUrl || null,
-          personaText: null,
-          reattached: true,
-        },
+        detail,
       }));
     },
 
@@ -3653,6 +3670,9 @@ function bodyDoubleSession() {
       this.conflictSession = null;
       this.startError = '';
       this.activity = '';
+      /* Restore the learner's explicit idle-layout preference. The automatic
+         live collapse above intentionally never wrote localStorage. */
+      this.focusCollapsed = localStorage.getItem('bd.focus.collapsed') === 'true';
       this.confirmingEnd = false;
       /* Deliberately NOT clearing the note draft: losing a half-written note
          because the session ended is exactly the kind of loss this view exists

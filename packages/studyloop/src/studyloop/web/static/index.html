@@ -1590,8 +1590,9 @@
              components.js, so the old string still FUNCTIONS in a browser —
              which is exactly why a stale attribute here would look fine and
              still fail the suite. -->
-        <div class="body-double-view session-dashboard" x-data="bodyDoubleSession()" x-init="init()">
-          <header class="body-double-header">
+        <div class="body-double-view session-dashboard" x-data="bodyDoubleSession()" x-init="init()"
+             :class="{ 'is-live': sessionActive }">
+          <header class="body-double-header" x-show="!sessionActive">
             <h2>Body Double</h2>
             <p class="text-muted">A focused workspace with timer and terminal. Just be here.</p>
           </header>
@@ -1626,10 +1627,11 @@
                 <span x-text="focusCollapsed ? '▸' : '▾'"></span> Focus
               </button>
               <span id="bd-focus-count" x-text="slotsUsed + ' of ' + maxActive + ' topics'"></span>
-              <button id="bd-focus-refresh" type="button" class="bulk-btn" @click="refreshFocus()">Refresh</button>
-              <button id="bd-focus-clear" type="button" class="bulk-btn" x-show="focus.is_set"
+              <button id="bd-focus-refresh" type="button" class="bulk-btn" x-show="!sessionActive"
+                      @click="refreshFocus()">Refresh</button>
+              <button id="bd-focus-clear" type="button" class="bulk-btn" x-show="!sessionActive &amp;&amp; focus.is_set"
                       @click="clearFocus()">Clear focus</button>
-              <span id="bd-focus-stale" class="bd-chip warn" x-show="focus.is_stale"
+              <span id="bd-focus-stale" class="bd-chip warn" x-show="!sessionActive &amp;&amp; focus.is_stale"
                     title="This focus was set more than 30 days ago — still current?">stale</span>
             </div>
             <div id="bd-focus-body" x-show="!focusCollapsed">
@@ -1733,7 +1735,7 @@
 
           <!-- LIVE (session active). The strip is sticky so End stays reachable
                without scrolling back up mid-session. -->
-          <section x-show="sessionActive">
+          <section class="bd-live-session" x-show="sessionActive">
             <div class="bd-live-strip">
               <span id="bd-live-activity" x-text="liveActivity"></span>
               <button id="bd-end-session" type="button" class="toggle-btn"

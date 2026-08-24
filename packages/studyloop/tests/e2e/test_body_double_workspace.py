@@ -323,6 +323,148 @@ class TestEndingASessionIsFindableAndComplete:
             )
 
     @needs_fake_agent
+    def test_live_workspace_makes_the_terminal_the_primary_pane(
+        self, bd_page: Page
+    ) -> None:
+        """Live-session chrome must orient the learner, not bury the agent.
+
+        The reported layout devoted more vertical space to the title, timer,
+        focus card and a duplicate activity strip than to the terminal's first
+        screen.  These are product-level proportions rather than pixel-perfect
+        snapshots: each piece of chrome stays compact, while the console gets
+        more height than all three live controls combined.
+        """
+        try:
+            _start_session(bd_page, "How do generators relate to closures?")
+            bd_page.wait_for_selector(
+                ".bd-console-panel .xterm-mount", state="visible", timeout=30_000
+            )
+
+            assert not bd_page.locator(
+                ".body-double-view > .body-double-header"
+            ).is_visible(), (
+                "the explanatory heading still consumes live-session space"
+            )
+            assert not bd_page.locator("#bd-focus-body").is_visible(), (
+                "the focus topic is duplicated above the live activity strip"
+            )
+            assert bd_page.locator("#bd-focus-toggle").get_attribute("aria-expanded") == (
+                "false"
+            )
+
+            boxes = bd_page.evaluate(
+                """() => Object.fromEntries(Object.entries({
+                  timer: '.body-double-timer',
+                  focus: '#bd-focus',
+                  live: '.bd-live-strip',
+                  console: '.bd-console-panel',
+                }).map(([name, selector]) => {
+                  const r = document.querySelector(selector).getBoundingClientRect();
+                  return [name, {x: r.x, y: r.y, width: r.width, height: r.height}];
+                }))"""
+            )
+            for name in ("timer", "focus", "live"):
+                assert boxes[name]["height"] <= 72, (name, boxes)
+            chrome_height = sum(boxes[name]["height"] for name in ("timer", "focus", "live"))
+            assert boxes["console"]["height"] >= 450, boxes
+            assert boxes["console"]["height"] > chrome_height * 2, boxes
+            _watch_for(bd_page).assert_clean("prioritising the live Body Double terminal")
+        except Exception:
+            diag(bd_page, "bd-terminal-priority", _watch_for(bd_page))
+            raise
+
+    @needs_fake_agent
+    def test_live_workspace_reattaches_after_refresh_and_resizes(
+        self, bd_page: Page
+    ) -> None:
+        """Refresh and viewport changes keep one visible, usable PTY session."""
+        try:
+            _start_session(bd_page, "Keep the same terminal through refresh")
+            bd_page.wait_for_selector(
+                ".bd-console-panel .xterm-mount", state="visible", timeout=30_000
+            )
+            bd_page.wait_for_function(
+                """() => {
+                  const console = document.querySelector('.bd-console-panel .agent-console');
+                  return console && window.Alpine.$data(console).connected === true;
+                }""",
+                timeout=30_000,
+            )
+            session_id = bd_page.evaluate(
+                "async () => (await (await fetch('/api/session/state')).json()).study_session_id"
+            )
+            assert session_id
+
+            for viewport in ({"width": 1024, "height": 700}, {"width": 820, "height": 560}):
+                bd_page.set_viewport_size(viewport)
+                bd_page.wait_for_timeout(300)
+                geometry = bd_page.evaluate(
+                    """() => {
+                      const panel = document.querySelector('.bd-console-panel');
+                      const mount = panel && panel.querySelector('.xterm-mount');
+                      const screen = mount && mount.querySelector('.xterm-screen');
+                      const box = panel && panel.getBoundingClientRect();
+                      return {
+                        panelVisible: !!box && box.width > 0 && box.height >= 360,
+                        mountVisible: !!mount && mount.getBoundingClientRect().width > 0,
+                        screenVisible: !!screen && screen.getBoundingClientRect().height > 0,
+                        viewportWidth: innerWidth,
+                        panelRight: box && box.right,
+                      };
+                    }"""
+                )
+                assert geometry["panelVisible"], geometry
+                assert geometry["mountVisible"], geometry
+                assert geometry["screenVisible"], geometry
+                assert geometry["panelRight"] <= geometry["viewportWidth"], geometry
+
+            bd_page.reload()
+            goto_view(bd_page, "body-double")
+            bd_page.wait_for_selector("#bd-end-session", state="visible", timeout=30_000)
+            bd_page.wait_for_selector(
+                ".bd-console-panel .xterm-mount .xterm-screen",
+                state="visible",
+                timeout=30_000,
+            )
+            bd_page.wait_for_function(
+                """() => {
+                  const console = document.querySelector('.bd-console-panel .agent-console');
+                  return console && window.Alpine.$data(console).connected === true;
+                }""",
+                timeout=30_000,
+            )
+            restored = bd_page.evaluate(
+                """async () => {
+                  const server = await (await fetch('/api/session/state')).json();
+                  const root = document.querySelector('[x-data="bodyDoubleSession()"]');
+                  const data = window.Alpine.$data(root);
+                  const box = document.querySelector('.bd-console-panel').getBoundingClientRect();
+                  return {
+                    serverId: server.study_session_id,
+                    componentId: data.studySessionId,
+                    sessionActive: data.sessionActive,
+                    liveActivity: data.liveActivity,
+                    panelHeight: box.height,
+                  };
+                }"""
+            )
+            assert restored["serverId"] == session_id, restored
+            assert restored["componentId"] == session_id, restored
+            assert restored["sessionActive"] is True, restored
+            assert restored["liveActivity"] == "Keep the same terminal through refresh", restored
+            assert restored["panelHeight"] >= 360, restored
+            watch = _watch_for(bd_page)
+            # Reload aborts the page-wide HTMX EventSource. HTMX 2.0.4 logs
+            # that expected unload as the opaque string ``Event`` before the
+            # new document reconnects it; it is unrelated to the PTY socket.
+            unexpected = [error for error in watch.errors if error != "console.error: Event"]
+            assert not unexpected, unexpected
+            assert not watch.failed_requests, watch.failed_requests
+        except Exception:
+            diag(bd_page, "bd-terminal-refresh-resize", _watch_for(bd_page))
+            raise
+
+    @needs_fake_agent
     def test_end_control_is_labelled_and_stays_on_screen_over_the_terminal(
         self, bd_page: Page
     ) -> None:

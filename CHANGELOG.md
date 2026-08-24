@@ -9,6 +9,12 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed
 
+- Body Double now switches to a terminal-first live layout: the explanatory
+  heading disappears, the duplicate focus list folds without overwriting the
+  learner's saved preference, and the timer/focus/session controls become
+  compact strips above a viewport-sized terminal. Its parent workspace now
+  restores the same live session after refresh alongside the terminal's PTY
+  reattachment, including at tablet-sized viewports.
 - The v1 web-session contract is PTY/xterm.js across all supported harnesses.
   ACP remains implemented but is exposed only by `studyloop web --dev`; a
   release-mode direct ACP start is rejected server-side. Kiro's ACP launch now
