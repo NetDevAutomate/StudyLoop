@@ -598,3 +598,9 @@ openspec/
 # scripts/local/.
 scripts/_*
 scripts/local/
+#
+# Internal review reports. Deliberately NOT public: these record candid findings
+# about docs-vs-reality drift, test gaps and half-built surfaces, which is useful
+# working material but reads as a defect list to anyone who finds it in a public
+# repo. Public-facing conclusions belong in docs/ or an ADR instead.
+/reviews/
