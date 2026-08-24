@@ -274,3 +274,75 @@ Targeted Ruff check/format, Pyright, Python compilation, strict MkDocs, wheel
 prompt packaging, changed-file detect-secrets, and `git diff --check` were rerun
 on the fix-round tree. The pre-existing repository-wide secret-scan baseline
 limitation reported above is unchanged.
+
+## Independent-review fix round 2
+
+The second clean-context review found one remaining absent-versus-null mismatch
+in the hand-written wire decoder. It is now closed at the capability boundary:
+
+- A private absent-value sentinel distinguishes an omitted optional property
+  from an explicitly present JSON `null`. Only genuine omission reaches array,
+  integer, or boolean defaults; present `null` is refused as the wrong type.
+- A literal schema-parity matrix covers all 63 draft/nested property and array-
+  item paths with both `null` and another wrong JSON type. Ten more cases cover
+  every outer submit/get property, and four cover non-object argument roots.
+  Required/optional strings, objects, arrays, array items, integers, booleans,
+  and enum-bearing strings all fail before the fake lifecycle is called.
+- Five representative real-lifecycle cases cover required arrays, optional
+  arrays/scalars, and a nested optional array. Each leaves the journal and all
+  private artifacts byte-for-byte unchanged. A positive minimal-wire test
+  proves omitted optional properties still receive only their documented
+  defaults.
+
+### Fix-round 2 RED evidence
+
+The first capability run produced exactly 20 failures. Fifteen explicit-null
+schema paths reached the fake lifecycle: required/optional arrays, the three
+optional integer/boolean properties, required mission success, and nested
+optional arrays. All five representative real-lifecycle null cases also failed
+their no-write assertion because proposal state was created. Wrong non-null
+JSON types plus string/object/enum-bearing paths were already refused, which
+isolated the defect to the absent/null collapse.
+
+### Fix-round 2 verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_doctor_planning.py -q
+# 269 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web_runtime_feedback.py -q
+# 325 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning*.py \
+  packages/studyloop/tests/test_plan_agent_harness.py \
+  packages/studyloop/tests/test_doctor_planning.py \
+  packages/studyloop/tests/e2e/test_plans_api.py -q
+# 576 passed, 12 deselected
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_doctor*.py \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web*.py -q
+# 656 passed, 295 deselected, one pre-existing Starlette/httpx warning
+```
+
+Targeted Ruff format/check, Pyright, Python compilation, strict MkDocs,
+changed-file detect-secrets, and `git diff --check` were rerun. No Task 7+
+runtime, browser, authentication, or harness-planning behavior was added, and
+the progress ledger was not edited or staged.

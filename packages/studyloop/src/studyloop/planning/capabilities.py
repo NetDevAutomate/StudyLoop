@@ -319,6 +319,7 @@ class _LifecyclePort(Protocol):
 
 
 _MODEL_ACTOR = ActorContext("model", "planning-conversation-runtime", "confined-model")
+_MISSING = object()
 
 
 class PlanningCapabilityDispatcher:
@@ -447,7 +448,7 @@ def _string(value: object, label: str, *, allow_empty: bool = False) -> str:
 
 
 def _strings(value: object, label: str) -> tuple[str, ...]:
-    if value is None:
+    if value is _MISSING:
         return ()
     if not isinstance(value, (list, tuple)):
         raise CapabilityRefusedError(f"{label} must be an array of strings")
@@ -455,7 +456,7 @@ def _strings(value: object, label: str) -> tuple[str, ...]:
 
 
 def _objects(value: object, label: str) -> tuple[Mapping[str, object], ...]:
-    if value is None:
+    if value is _MISSING:
         return ()
     if not isinstance(value, (list, tuple)):
         raise CapabilityRefusedError(f"{label} must be an array")
@@ -463,7 +464,7 @@ def _objects(value: object, label: str) -> tuple[Mapping[str, object], ...]:
 
 
 def _integer(value: object, label: str, default: int) -> int:
-    if value is None:
+    if value is _MISSING:
         return default
     if isinstance(value, bool) or not isinstance(value, int):
         raise CapabilityRefusedError(f"{label} must be an integer")
@@ -493,7 +494,7 @@ def _enum_string(value: object, label: str, allowed: frozenset[str]) -> str:
 
 
 def _boolean(value: object, label: str, default: bool = False) -> bool:
-    if value is None:
+    if value is _MISSING:
         return default
     if not isinstance(value, bool):
         raise CapabilityRefusedError(f"{label} must be a boolean")
@@ -537,8 +538,10 @@ def _decode_draft(value: object) -> PlanProposalDraft:
     mission = Mission(
         why=_string(mission_raw.get("why"), "mission.why"),
         success=list(_strings(mission_raw.get("success"), "mission.success")),
-        constraints=list(_strings(mission_raw.get("constraints"), "mission.constraints")),
-        out_of_scope=list(_strings(mission_raw.get("out_of_scope"), "mission.out_of_scope")),
+        constraints=list(_strings(mission_raw.get("constraints", _MISSING), "mission.constraints")),
+        out_of_scope=list(
+            _strings(mission_raw.get("out_of_scope", _MISSING), "mission.out_of_scope")
+        ),
     )
 
     goals: list[GoalProposal] = []
@@ -580,7 +583,10 @@ def _decode_draft(value: object) -> PlanProposalDraft:
                 _string(item.get("goal_alias"), "milestone.goal_alias"),
                 _string(item.get("title"), "milestone.title"),
                 _string(item.get("notes", ""), "milestone.notes", allow_empty=True),
-                _strings(item.get("concept_aliases"), "milestone.concept_aliases"),
+                _strings(
+                    item.get("concept_aliases", _MISSING),
+                    "milestone.concept_aliases",
+                ),
                 _string(
                     item.get("existing_milestone_id", ""),
                     "existing_milestone_id",
@@ -590,7 +596,7 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         )
 
     concepts: list[ConceptProposal] = []
-    for item in _objects(raw.get("concepts"), "concepts"):
+    for item in _objects(raw.get("concepts", _MISSING), "concepts"):
         _exact_keys(
             item,
             required=("alias", "display_label"),
@@ -610,7 +616,7 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         )
 
     relations: list[ConceptRelationProposal] = []
-    for item in _objects(raw.get("concept_relations"), "concept_relations"):
+    for item in _objects(raw.get("concept_relations", _MISSING), "concept_relations"):
         _exact_keys(
             item,
             required=("source_alias", "target_alias", "relation", "reason", "provenance"),
@@ -657,7 +663,7 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         )
 
     resources: list[Resource] = []
-    for item in _objects(raw.get("resources"), "resources"):
+    for item in _objects(raw.get("resources", _MISSING), "resources"):
         _exact_keys(
             item,
             required=("label",),
@@ -675,7 +681,7 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         )
 
     unknowns: list[PlanUnknown] = []
-    for item in _objects(raw.get("unknowns"), "unknowns"):
+    for item in _objects(raw.get("unknowns", _MISSING), "unknowns"):
         _exact_keys(
             item,
             required=("unknown_id", "question", "impact"),
@@ -703,7 +709,7 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         mission=mission,
         goals=tuple(goals),
         milestones=tuple(milestones),
-        topics=_strings(raw.get("topics"), "topics"),
+        topics=_strings(raw.get("topics", _MISSING), "topics"),
         concepts=tuple(concepts),
         concept_relations=tuple(relations),
         evidence_dispositions=tuple(dispositions),
@@ -713,13 +719,21 @@ def _decode_draft(value: object) -> PlanProposalDraft:
         requested_status=requested_status,
         target_date=_string(raw.get("target_date", ""), "target_date", allow_empty=True),
         energy_floor=_bounded_integer(
-            raw.get("energy_floor"), "energy_floor", 3, minimum=1, maximum=10
+            raw.get("energy_floor", _MISSING),
+            "energy_floor",
+            3,
+            minimum=1,
+            maximum=10,
         ),
         review_cadence_days=_bounded_integer(
-            raw.get("review_cadence_days"), "review_cadence_days", 3, minimum=1
+            raw.get("review_cadence_days", _MISSING),
+            "review_cadence_days",
+            3,
+            minimum=1,
         ),
         goal_limit_override_requested=_boolean(
-            raw.get("goal_limit_override_requested"), "goal_limit_override_requested"
+            raw.get("goal_limit_override_requested", _MISSING),
+            "goal_limit_override_requested",
         ),
         goal_limit_override_reason=_string(
             raw.get("goal_limit_override_reason", ""),
