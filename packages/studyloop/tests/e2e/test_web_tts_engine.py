@@ -394,9 +394,7 @@ class TestEngineModule:
     and covered in test_web_tts_routes.py and tests/e2e/test_server_tts.py.
     """
 
-    def test_failed_server_synthesis_retries_with_web_speech(
-        self, web_page: Page
-    ) -> None:
+    def test_failed_server_synthesis_retries_with_web_speech(self, web_page: Page) -> None:
         """A health check is only a snapshot; the server may die before speak()."""
         web_page.route(
             "**/api/tts/health",
@@ -407,9 +405,7 @@ class TestEngineModule:
                 }
             ),
         )
-        web_page.route(
-            "**/api/tts/warm", lambda route: route.fulfill(json={"warmed": True})
-        )
+        web_page.route("**/api/tts/warm", lambda route: route.fulfill(json={"warmed": True}))
         web_page.route(
             "**/api/tts/speak",
             lambda route: route.fulfill(status=503, json={"detail": "all servers stopped"}),

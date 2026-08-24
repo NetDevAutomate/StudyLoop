@@ -224,8 +224,8 @@ class TestAcpStartHappyPath:
         stub_agent = Path(__file__).parent / "_stub_acp_agent.py"
         shim.write_text(
             "#!/bin/sh\n"
-            "if [ \"$1\" != \"acp\" ] || [ \"$2\" != \"--agent\" ] "
-            "|| [ \"$3\" != \"study-mentor\" ]; then\n"
+            'if [ "$1" != "acp" ] || [ "$2" != "--agent" ] '
+            '|| [ "$3" != "study-mentor" ]; then\n'
             "  exit 42\n"
             "fi\n"
             f"exec {shlex.quote(sys.executable)} {shlex.quote(str(stub_agent))}\n"

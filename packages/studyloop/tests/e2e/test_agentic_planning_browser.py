@@ -498,8 +498,10 @@ def test_planning_conversation_survives_full_page_reloads_without_duplicates(
         ]
         assert sum(BRAIN_DUMP in item["content"] for item in messages_before_proposal_reload) == 1
         assert (
-            sum("one useful outcome" in item["content"].casefold()
-                for item in messages_before_proposal_reload)
+            sum(
+                "one useful outcome" in item["content"].casefold()
+                for item in messages_before_proposal_reload
+            )
             == 1
         )
 

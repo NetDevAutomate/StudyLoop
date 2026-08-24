@@ -351,9 +351,7 @@ def openvox_server_configs(cfg: dict | None = None) -> tuple[dict, ...]:
     """
     raw = cfg if cfg is not None else _tts_config()
     primary = _openvox_settings(cfg)
-    fallback_value: object = raw.get(
-        "openvox_fallback_base_urls", [_VOICEMODE_DEFAULT_BASE_URL]
-    )
+    fallback_value: object = raw.get("openvox_fallback_base_urls", [_VOICEMODE_DEFAULT_BASE_URL])
     if cfg is None and _FALLBACK_URLS_ENV in os.environ:
         fallback_value = os.environ.get(_FALLBACK_URLS_ENV, "")
 
@@ -372,10 +370,14 @@ def openvox_server_configs(cfg: dict | None = None) -> tuple[dict, ...]:
         if not normalised or normalised in seen:
             continue
         seen.add(normalised)
-        role = "primary" if index == 0 else (
-            "VoiceMode fallback"
-            if normalised == _VOICEMODE_DEFAULT_BASE_URL
-            else f"fallback {index}"
+        role = (
+            "primary"
+            if index == 0
+            else (
+                "VoiceMode fallback"
+                if normalised == _VOICEMODE_DEFAULT_BASE_URL
+                else f"fallback {index}"
+            )
         )
         candidates.append(
             {
