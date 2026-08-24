@@ -8,6 +8,8 @@ import re
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
+from markdown_it import MarkdownIt
+
 from .contracts import (
     ActorContext,
     AuthorityError,
@@ -104,38 +106,34 @@ def _evidence_matches_milestone(item: EvidenceRef, plan: StudyPlan, milestone: M
     """Require both a completion claim and a subject tied to this milestone."""
     if item.claim_kind not in _VERIFIED_CLAIMS:
         return False
-    subject = item.subject_ref.strip().casefold()
-    milestone_id = milestone.milestone_id.strip().casefold()
+    subject = item.subject_ref.strip()
+    milestone_id = milestone.milestone_id.strip()
     exact_subjects = {
         f"milestone:{milestone_id}",
-        f"plan:{plan.plan_id.casefold()}/milestone:{milestone_id}",
+        f"plan:{plan.plan_id}/milestone:{milestone_id}",
     }
     if subject in exact_subjects:
         return True
     if not subject.startswith("concept:"):
         return False
-    concept = " ".join(subject.removeprefix("concept:").split())
-    if not concept:
+    concept_id = subject.removeprefix("concept:").strip()
+    if not concept_id:
         return False
-    milestone_concepts = {
-        " ".join(value.casefold().split()) for value in milestone.concepts if value.strip()
-    }
+    milestone_concepts = {value for value in milestone.concepts if value.strip()}
     attached_concept_ids = {
-        item.concept_id.strip().casefold()
+        item.concept_id.strip()
         for item in plan.concepts
-        if item.concept_id.strip()
-        and " ".join(item.display_label.casefold().split()) in milestone_concepts
+        if item.concept_id.strip() and item.display_label in milestone_concepts
     }
-    return concept in milestone_concepts or concept in attached_concept_ids
+    return concept_id in attached_concept_ids
 
 
 def _contains_mermaid_fence(markdown: str) -> bool:
-    """Recognise CommonMark backtick/tilde Mermaid fence openers robustly."""
-    opener = re.compile(r"^[ \t]*(?:`{3,}|~{3,})[ \t]*(?P<info>[^ \t\r\n`~]+)")
+    """Reject actual CommonMark Mermaid fence tokens, including containers."""
     return any(
-        (match := opener.match(line)) is not None
-        and match.group("info").strip().casefold() == "mermaid"
-        for line in markdown.splitlines()
+        token.type == "fence" and token.info.strip().split(maxsplit=1)[0].casefold() == "mermaid"
+        for token in MarkdownIt("commonmark").parse(markdown)
+        if token.info.strip()
     )
 
 

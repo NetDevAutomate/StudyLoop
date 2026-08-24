@@ -2959,6 +2959,7 @@ version = "0.1.0"
 source = { editable = "packages/studyloop" }
 dependencies = [
     { name = "click" },
+    { name = "markdown-it-py" },
     { name = "pexpect" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -3027,6 +3028,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115" },
     { name = "httpx", marker = "extra == 'content'", specifier = ">=0.27" },
     { name = "httpx", marker = "extra == 'web'", specifier = ">=0.27" },
+    { name = "markdown-it-py", specifier = ">=4.0" },
     { name = "mcp", extras = ["cli"], marker = "extra == 'mcp'", specifier = ">=1.0.0" },
     { name = "notebooklm-py", marker = "extra == 'notebooklm'", specifier = ">=0.3.4" },
     { name = "pexpect", specifier = ">=4.9" },

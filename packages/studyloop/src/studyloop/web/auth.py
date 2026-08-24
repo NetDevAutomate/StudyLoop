@@ -45,6 +45,7 @@ class BasicAuthMiddleware:
 
         auth_header = Headers(scope=scope).get("authorization", "")
         if self._check_auth(auth_header):
+            scope.setdefault("state", {})["basic_auth_identity"] = self._username
             await self.app(scope, receive, send)
             return
 

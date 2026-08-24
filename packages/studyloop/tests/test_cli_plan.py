@@ -152,7 +152,12 @@ def test_evaluate_record_reports_secondary_database_failure(
 
 def test_milestone_incomplete_is_explicit_and_does_not_toggle(runner: CliRunner) -> None:
     _make(runner)
-    result = runner.invoke(cli, ["plan", "milestone", "glue-etl-basics", "0", "--undone"])
+    with patch("studyloop.cli._plan._interactive_terminal", return_value=True):
+        result = runner.invoke(
+            cli,
+            ["plan", "milestone", "glue-etl-basics", "0", "--undone"],
+            input="y\n",
+        )
     assert result.exit_code == 0
     assert "0/2" in result.output
 
@@ -187,7 +192,8 @@ def test_status_active_is_refused_for_an_incomplete_plan(runner: CliRunner) -> N
         )
     assert created.exit_code == 0, created.output
 
-    result = runner.invoke(cli, ["plan", "status", "vague-plan", "active"])
+    with patch("studyloop.cli._plan._interactive_terminal", return_value=True):
+        result = runner.invoke(cli, ["plan", "status", "vague-plan", "active"], input="y\n")
     assert result.exit_code == 1
     assert "not ready to activate" in result.output
     assert "success criteria" in result.output
@@ -305,7 +311,8 @@ def test_new_enforces_maximum_three_current_plans(runner: CliRunner) -> None:
 
 def test_status_active_succeeds_for_a_complete_plan(runner: CliRunner) -> None:
     _make(runner)
-    result = runner.invoke(cli, ["plan", "status", "glue-etl-basics", "active"])
+    with patch("studyloop.cli._plan._interactive_terminal", return_value=True):
+        result = runner.invoke(cli, ["plan", "status", "glue-etl-basics", "active"], input="y\n")
     assert result.exit_code == 0
     payload = json.loads(runner.invoke(cli, ["plan", "show", "glue-etl-basics", "--json"]).output)
     assert payload["plan"]["status"] == "active"
@@ -390,6 +397,23 @@ def test_cli_evidence_argument_cannot_mint_recorder_authority(runner: CliRunner)
     )
     assert refused.exit_code == 1
     assert "learner attestation" in refused.output.lower()
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["status", "glue-etl-basics", "active"],
+        ["status", "glue-etl-basics", "abandoned"],
+        ["milestone", "glue-etl-basics", "0", "--undone"],
+    ],
+)
+def test_all_cli_learner_mutations_refuse_noninteractive_invocation(
+    runner: CliRunner, args: list[str]
+) -> None:
+    _make(runner)
+    refused = runner.invoke(cli, ["plan", *args])
+    assert refused.exit_code == 1
+    assert "interactive terminal" in refused.output.lower()
 
 
 def test_path_prints_the_plans_directory(runner: CliRunner, isolated_plans_dir) -> None:

@@ -74,6 +74,15 @@ class ProposalPolicy:
         self._unique_aliases("goal", [item.alias for item in draft.goals])
         self._unique_aliases("milestone", [item.alias for item in draft.milestones])
         self._unique_aliases("concept", [item.alias for item in draft.concepts])
+        normalised_concept_labels = [
+            " ".join(item.display_label.casefold().split()) for item in draft.concepts
+        ]
+        if any(not label for label in normalised_concept_labels) or len(
+            set(normalised_concept_labels)
+        ) != len(normalised_concept_labels):
+            raise LifecycleValidationError(
+                "concept display labels must be nonblank and unique after normalisation"
+            )
         goal_aliases = {item.alias for item in draft.goals}
         concept_aliases = {item.alias for item in draft.concepts}
         offered_goals = {item.goal_id for item in target.goals} if target else set()

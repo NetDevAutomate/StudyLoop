@@ -19,6 +19,10 @@ SESSION_COOKIE = "studyloop_learner_session"
 CSRF_COOKIE = "studyloop_csrf"
 CSRF_HEADER = "X-CSRF-Token"
 SESSION_TTL_SECONDS = 8 * 60 * 60
+WEB_AUTH_REQUIRED = {
+    "code": "web_auth_required",
+    "message": "Configure and authenticate with the StudyLoop web password for learner writes",
+}
 
 
 @dataclass(frozen=True)
@@ -34,7 +38,12 @@ def initialise_browser_learner_sessions(app: object) -> None:
 
 
 def mint_browser_learner_session(request: Request, response: Response) -> None:
-    """Mint authority only during a genuine same-site top-level navigation."""
+    """Mint authority only after configured Basic Auth and navigation checks."""
+    if not getattr(request.app.state, "lan_password", ""):
+        return
+    authenticated_identity = getattr(request.state, "basic_auth_identity", "")
+    if not authenticated_identity:
+        return
     if request.headers.get("sec-fetch-mode", "").casefold() != "navigate":
         return
     if request.headers.get("sec-fetch-site", "").casefold() not in {"same-origin", "none"}:
@@ -50,9 +59,7 @@ def mint_browser_learner_session(request: Request, response: Response) -> None:
         sessions.pop(min(sessions, key=lambda key: sessions[key].expires_at), None)
     session_id = secrets.token_urlsafe(32)
     csrf_token = secrets.token_urlsafe(32)
-    username = str(getattr(request.app.state, "lan_username", "local-learner"))
-    password_enabled = bool(getattr(request.app.state, "lan_password", ""))
-    actor_id = f"basic:{username}" if password_enabled else "local-browser-learner"
+    actor_id = f"basic:{authenticated_identity}"
     sessions[session_id] = BrowserLearnerSession(
         actor_id=actor_id,
         csrf_token=csrf_token,
@@ -81,6 +88,10 @@ def mint_browser_learner_session(request: Request, response: Response) -> None:
 
 def require_browser_learner(request: Request) -> ActorContext:
     """Authenticate a same-origin, CSRF-bound server-side browser session."""
+    if not getattr(request.app.state, "lan_password", "") or not getattr(
+        request.state, "basic_auth_identity", ""
+    ):
+        raise HTTPException(status_code=403, detail=WEB_AUTH_REQUIRED)
     origin = request.headers.get("origin", "")
     expected_origin = str(request.base_url).rstrip("/")
     if not origin or not hmac.compare_digest(origin, expected_origin):

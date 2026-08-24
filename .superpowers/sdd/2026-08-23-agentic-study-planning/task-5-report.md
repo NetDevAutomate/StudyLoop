@@ -312,3 +312,75 @@ rtk uv run --group dev pyright <changed round-2 source files>
 
 Ruff check, Ruff formatting, Python compilation, architecture tests, and
 `git diff --check` passed on the final round-2 tree.
+
+## Fix round 3 — authenticated learner authority
+
+The round-2 review demonstrated that proposal compare-and-swap plus browser
+cookies did not authenticate a learner: a local shell client could imitate
+browser navigation and same-origin headers. Round 3 closes that boundary and
+the remaining identity/parser gaps without adding Task 6+ transports.
+
+### Changes
+
+- Browser learner sessions are minted and accepted only when the existing
+  outer BasicAuth password is configured and the request has successfully
+  passed that middleware. Password-empty mode remains usable for proposal
+  preparation and reads, while every learner-authority mutation fails with the
+  stable `web_auth_required` code. Session expiry, same-origin checks, and CSRF
+  remain additional defences after BasicAuth.
+- CLI proposal decisions, status transitions, milestone outcomes, and
+  abandonment now construct learner authority only inside a genuine TTY after
+  redisplaying the exact target/effect and receiving explicit confirmation.
+  Noninteractive, JSON, and flag-only calls cannot mint learner authority.
+- Raw imports use the CommonMark parser's fence tokens. Mermaid fences are
+  rejected inside blockquotes, lists, and nested containers for backticks or
+  tildes, while ordinary four-space-indented literal code is preserved. The
+  already-transitive `markdown-it-py` package is now an explicit production
+  dependency because lifecycle validation imports it directly.
+- Tier-1 milestone completion accepts only an exact milestone ID or an exact
+  stable concept ID explicitly attached to the milestone. Display labels,
+  case-folded aliases, substrings, and an unlinked concept with a colliding
+  label cannot complete the target. Proposal validation also rejects ambiguous
+  case/whitespace-normalised concept labels.
+- Checkpoint compatibility replay reuses the canonical checkpoint timestamp
+  for a supplied idempotency key, preventing a secondary evaluation timestamp
+  from turning an exact retry into a false conflict.
+
+### Regression coverage
+
+Tests now cover password-empty scripted cookie/header forgery, wrong BasicAuth,
+configured-auth success, each CLI learner mutation in non-TTY and interactive
+contexts, blockquote/list/nested Mermaid fences and indented literals, exact
+stable concept identity, unlinked label collisions, alias/case/display-label
+rejection, and checkpoint replay across a wall-clock boundary.
+
+### Round-3 final verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli_plan.py \
+  packages/studyloop/tests/test_web_plans.py \
+  packages/studyloop/tests/test_planning_evaluation.py \
+  packages/studyloop/tests/test_planning_architecture.py \
+  packages/studyloop/tests/test_plan_agent_harness.py -q
+# 136 passed, one pre-existing Starlette/httpx deprecation warning
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning*.py -q
+# 303 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli*.py \
+  packages/studyloop/tests/test_web*.py -q
+# 644 passed, 295 deselected, one pre-existing Starlette/httpx warning
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_e2e_coverage_gate.py \
+  packages/studyloop/tests/test_e2e_coverage_gate_selftest.py -q
+# 27 passed
+
+rtk uv run --group dev pyright <changed round-3 source files>
+# 0 errors, 0 warnings, 0 informations
+```
+
+Ruff check and format-check, Python compilation, and `git diff --check` also
+passed on the final round-3 tree.

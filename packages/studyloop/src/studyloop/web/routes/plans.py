@@ -227,6 +227,17 @@ def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = No
     plan = _load_or_404(plan_id)
     study_id = str(payload.get("study_id", "")).strip()
     evaluation = evaluate_plan(plan, phase, study_id=study_id)
+    if str(payload.get("idempotency_key", "")).strip():
+        prior = next(
+            (
+                item
+                for item in reversed(plan.checkpoints)
+                if item.phase == phase and item.study_id == study_id
+            ),
+            None,
+        )
+        if prior is not None:
+            evaluation.at = prior.at
     command_key = _request_key(payload, "web-checkpoint")
     try:
         outcome = require_outcome(

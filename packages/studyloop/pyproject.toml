@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
     "click>=8.1",
     "rich>=13.0",
+    "markdown-it-py>=4.0",
     "pyyaml>=6.0",
     "pexpect>=4.9",
     "python-dotenv>=1.2.2",

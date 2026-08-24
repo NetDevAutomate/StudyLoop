@@ -5,16 +5,28 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from planning_lifecycle_support import LEARNER, MODEL, RECORDER, evidence_ref, lifecycle
+from planning_lifecycle_support import (
+    LEARNER,
+    MODEL,
+    RECORDER,
+    PrefixIds,
+    evidence_ref,
+    lifecycle,
+    store_plan,
+)
 
 from studyloop.planning import (
     Checkpoint,
     ConceptProposal,
+    ConceptRef,
     DecideProposal,
     EvidenceDisposition,
     EvidenceValidationError,
+    Goal,
     GoalProposal,
     IdempotencyConflictError,
+    LifecycleValidationError,
+    Milestone,
     MilestoneProposal,
     Mission,
     PlanningCommand,
@@ -24,6 +36,7 @@ from studyloop.planning import (
     RecordCheckpoint,
     RecordMilestoneOutcome,
     RecordTrustedEvidence,
+    StudyPlan,
     SubmitProposalDraft,
 )
 
@@ -108,7 +121,12 @@ def test_proposal_cannot_supply_or_reclassify_evidence_tiers(tmp_path: Path) -> 
 
 
 def _accepted_plan(tmp_path: Path, evidence, *, disposition: str = "selected"):
-    service = lifecycle(tmp_path, evidence=evidence)
+    ids = PrefixIds()
+    expected_concept_id = f"concept-{ids.namespace}-0001"
+    for item in evidence:
+        if item.subject_ref == "concept:protocols":
+            item.subject_ref = f"concept:{expected_concept_id}"
+    service = lifecycle(tmp_path, evidence=evidence, ids=ids)
     brief = service.prepare(PlanningRequest("create", "Help", "run"), MODEL)
     dispositions = tuple(
         EvidenceDisposition(item.evidence_id, disposition, "Relevant but not proof")
@@ -230,6 +248,9 @@ def test_verified_completion_and_learner_attestation_are_visibly_distinct(
     verified = evidence_ref("practice-1", source_kind="studyloop_practice", tier=1)
     self_report = evidence_ref("self-1", source_kind="learner_self_report", tier=3)
     service, plan_id, milestone_id = _accepted_plan(tmp_path, (verified, self_report))
+    assert verified.subject_ref == (
+        f"concept:{service.inspect(PlanningRef(plan_id)).plan.concepts[0].concept_id}"
+    )
 
     attested = service.handle(
         PlanningCommand(
@@ -371,6 +392,65 @@ def test_overlapping_or_nested_labels_do_not_match_milestone_titles(
                     "verified_complete",
                     (evidence.evidence_id,),
                     "overlap-complete",
+                ),
+            )
+        )
+
+
+def test_unlinked_case_colliding_concept_id_cannot_verify_milestone(tmp_path: Path) -> None:
+    evidence = evidence_ref(
+        "unlinked-sql",
+        source_kind="studyloop_practice",
+        tier=1,
+        subject_ref="concept:c-unlinked",
+    )
+    plan = StudyPlan(
+        "concept-identity",
+        "Concept identity",
+        mission=Mission(why="Keep identity exact", success=["Demonstrate SQL"]),
+        goals=[Goal("g-1", "SQL", "Needed", "Aligned")],
+        concepts=[ConceptRef("c-linked", "SQL"), ConceptRef("c-unlinked", "sql")],
+        milestones=[Milestone("Practise SQL", concepts=["SQL"], milestone_id="m-1", goal_id="g-1")],
+        evidence=[evidence],
+        evidence_dispositions=[EvidenceDisposition(evidence.evidence_id, "selected", "Candidate")],
+    )
+    store_plan(tmp_path, plan)
+    service = lifecycle(tmp_path, evidence=(evidence,))
+    with pytest.raises(EvidenceValidationError, match="target milestone"):
+        service.handle(
+            PlanningCommand(
+                RECORDER,
+                RecordMilestoneOutcome(
+                    plan.plan_id,
+                    "m-1",
+                    "verified_complete",
+                    (evidence.evidence_id,),
+                    "unlinked-case-collision",
+                ),
+            )
+        )
+
+
+def test_proposal_rejects_case_or_whitespace_colliding_concept_labels(tmp_path: Path) -> None:
+    service = lifecycle(tmp_path)
+    brief = service.prepare(PlanningRequest("create", "Help", "label-collision"), MODEL)
+    draft = PlanProposalDraft(
+        title="Collision",
+        mission=Mission(why="Keep identity", success=["Explain it"]),
+        goals=(GoalProposal("g", "SQL", "Needed", "Aligned"),),
+        concepts=(ConceptProposal("linked", "SQL"), ConceptProposal("unlinked", " sql ")),
+        milestones=(MilestoneProposal("m", "g", "Practise", concept_aliases=("linked",)),),
+        next_action="Practise",
+    )
+    with pytest.raises(LifecycleValidationError, match="unique after normalisation"):
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    brief.run_id,
+                    "label-collision-proposal",
+                    brief.brief_context_digest,
+                    draft,
                 ),
             )
         )

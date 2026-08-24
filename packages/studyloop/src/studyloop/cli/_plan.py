@@ -60,7 +60,6 @@ from studyloop.planning.store import (
     PlanNotFoundError,
 )
 
-_CLI_LEARNER = ActorContext("learner", "local-learner", "cli")
 _CLI_MODEL = ActorContext("model", "compatibility-translator", "cli")
 _CLI_RECORDER = ActorContext("recorder", "studyloop", "cli")
 _ATTESTATION_CONFIRMATION = "I confirm this records my own completed practice"
@@ -80,6 +79,16 @@ def _fail(message: str) -> NoReturn:
 def _interactive_terminal() -> bool:
     """Return true only when learner input and output are attached to a TTY."""
     return bool(sys.stdin.isatty() and sys.stdout.isatty())
+
+
+def _confirmed_cli_learner(effect: str, details: str) -> ActorContext:
+    """Create learner authority only after an exact interactive confirmation."""
+    if not _interactive_terminal():
+        _fail("Learner plan mutations require a genuine interactive terminal.")
+    console.print(f"[bold]{effect}[/bold]\n{details}")
+    if not click.confirm("Confirm this exact learner-authority change?", default=False):
+        _fail("No learner plan mutation was recorded.")
+    return ActorContext("learner", "local-interactive-learner", "cli-tty")
 
 
 def _load(plan_id: str) -> StudyPlan:
@@ -288,7 +297,7 @@ def plan_new(
                 ),
                 f"cli-new:{key}",
             ),
-            _CLI_LEARNER,
+            _CLI_MODEL,
         )
         review = require_proposal(
             service.handle(
@@ -347,10 +356,11 @@ def plan_decide(proposal_id: str, proposal_digest: str) -> None:
             default=False,
         ):
             _fail("No learner decision was recorded.")
+        learner = ActorContext("learner", "local-interactive-learner", "cli-tty")
         outcome = require_outcome(
             service.handle(
                 PlanningCommand(
-                    _CLI_LEARNER,
+                    learner,
                     DecideProposal(
                         proposal_id,
                         proposal_digest,
@@ -488,12 +498,20 @@ def plan_milestone(
         outcome_kind = "learner_attested"
     else:  # pragma: no cover - guarded above
         _fail("--done requires a learner attestation")
+    learner = _confirmed_cli_learner(
+        "Record milestone outcome",
+        (
+            f"Plan: {plan.plan_id}\nMilestone: {milestone.title}\n"
+            f"Outcome: {outcome_kind}\nEvidence: {', '.join(evidence_ids) or 'none'}\n"
+            f"Reason: {attest_reason or 'none'}"
+        ),
+    )
     try:
         service = planning_lifecycle(evidence=plan.evidence)
         outcome = require_outcome(
             service.handle(
                 PlanningCommand(
-                    _CLI_LEARNER,
+                    learner,
                     RecordMilestoneOutcome(
                         plan.plan_id,
                         milestone.milestone_id,
@@ -526,11 +544,15 @@ def plan_status(plan_id: str, status: str) -> None:
     criteria, or milestones — an unevaluable plan must not look active.
     """
     plan = _load(plan_id)
+    learner = _confirmed_cli_learner(
+        "Change plan lifecycle status",
+        f"Plan: {plan.plan_id}\nCurrent: {plan.status}\nRequested: {status}",
+    )
     try:
         outcome = require_outcome(
             planning_lifecycle(evidence=plan.evidence).handle(
                 PlanningCommand(
-                    _CLI_LEARNER,
+                    learner,
                     TransitionPlanStatus(
                         plan.plan_id,
                         status,
