@@ -7,11 +7,12 @@ import os
 import re
 import sqlite3
 import stat
+import threading
 import time
 import uuid
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, field, replace
 from hashlib import sha256
 from ipaddress import ip_address
 from pathlib import Path
@@ -65,6 +66,78 @@ class _IdGenerator(Protocol):
 class _UuidIds:
     def new_id(self, prefix: str) -> str:
         return f"{prefix}-{uuid.uuid4().hex}"
+
+
+@dataclass
+class _DatabaseGuard:
+    lock: threading.RLock = field(default_factory=threading.RLock)
+    connections: dict[int, _GuardedConnection] = field(default_factory=dict)
+
+
+class _GuardedConnection(sqlite3.Connection):
+    """Hold one path guard lease until the SQLite connection is fully closed."""
+
+    _database_guard: _DatabaseGuard | None = None
+    _guard_owner: int | None = None
+    _guard_leases = 0
+    _after_close: Callable[[], None] | None = None
+
+    def bind_guard(
+        self,
+        guard: _DatabaseGuard,
+        owner: int,
+        after_close: Callable[[], None],
+    ) -> None:
+        self._database_guard = guard
+        self._guard_owner = owner
+        self._guard_leases = 1
+        self._after_close = after_close
+
+    def add_guard_lease(self) -> None:
+        if self._guard_owner != threading.get_ident() or self._guard_leases < 1:
+            raise sqlite3.ProgrammingError("conversation connection has no reusable guard lease")
+        self._guard_leases += 1
+
+    def close(self) -> None:
+        guard = self._database_guard
+        if guard is None:
+            super().close()
+            return
+        owner = threading.get_ident()
+        if self._guard_owner != owner:
+            raise sqlite3.ProgrammingError(
+                "conversation connection must be closed by its opening thread"
+            )
+        if self._guard_leases > 1:
+            self._guard_leases -= 1
+            guard.lock.release()
+            return
+        if self._guard_leases == 0:
+            return
+        self._guard_leases = 0
+        after_close = self._after_close
+        self._after_close = None
+        try:
+            super().close()
+        finally:
+            guard.connections.pop(owner, None)
+            try:
+                if after_close is not None:
+                    after_close()
+            finally:
+                self._database_guard = None
+                self._guard_owner = None
+                guard.lock.release()
+
+
+_DATABASE_GUARDS_LOCK = threading.Lock()
+_DATABASE_GUARDS: dict[str, _DatabaseGuard] = {}
+
+
+def _guard_for(database_path: Path) -> _DatabaseGuard:
+    canonical_path = os.path.normcase(os.path.realpath(database_path))
+    with _DATABASE_GUARDS_LOCK:
+        return _DATABASE_GUARDS.setdefault(canonical_path, _DatabaseGuard())
 
 
 def _canonical_json(value: object) -> str:
@@ -157,7 +230,12 @@ class ConversationStore:
         self._migration_crash_injector = migration_crash_injector
         self._validate_database_location()
         self.database_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with self._stable_root_descriptor() as root_descriptor:
+        self._validate_database_location()
+        self._database_guard = _guard_for(self.database_path)
+        with (
+            self._database_guard.lock,
+            self._stable_root_descriptor() as root_descriptor,
+        ):
             os.fchmod(root_descriptor, 0o700)
         self._migrate()
         self.ensure_private_modes()
@@ -234,14 +312,18 @@ class ConversationStore:
                 "conversation SQLite target is a symlink or non-regular file"
             )
         flags = os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
-        if create:
-            flags |= os.O_CREAT
+        if path_stat is None and create:
+            flags |= os.O_CREAT | os.O_EXCL
         elif path_stat is None:
             return None
         try:
             descriptor = os.open(path.name, flags, 0o600, dir_fd=root_descriptor)
         except FileNotFoundError:
             return None
+        except FileExistsError:
+            raise PathContainmentError(
+                "conversation SQLite target changed during secure creation"
+            ) from None
         except OSError:
             raise PathContainmentError(
                 "conversation SQLite target changed or became a symlink"
@@ -283,50 +365,74 @@ class ConversationStore:
             raise PathContainmentError("conversation SQLite target identity changed during open")
 
     def _connect(self) -> sqlite3.Connection:
-        self._validate_database_location()
-        connection: sqlite3.Connection | None = None
-        with self._stable_root_descriptor() as root_descriptor:
-            database_descriptor = self._open_private_target(
-                root_descriptor,
-                self.database_path,
-                create=True,
-            )
-            if database_descriptor is None:  # pragma: no cover - create=True is exhaustive
-                raise PathContainmentError("conversation SQLite database could not be anchored")
-            try:
-                os.fchmod(database_descriptor, 0o600)
-                database_identity = self._identity(os.fstat(database_descriptor))
-            finally:
-                os.close(database_descriptor)
-            try:
-                connection = sqlite3.connect(
-                    self.database_path,
-                    timeout=15,
-                    isolation_level=None,
-                )
-                self._assert_root_descriptor_identity(root_descriptor)
-                self._assert_private_target_identity(
+        guard = self._database_guard
+        guard.lock.acquire()
+        owner = threading.get_ident()
+        existing = guard.connections.get(owner)
+        if existing is not None:
+            existing.add_guard_lease()
+            return existing
+        connection: _GuardedConnection | None = None
+        try:
+            self._validate_database_location()
+            with self._stable_root_descriptor() as root_descriptor:
+                database_descriptor = self._open_private_target(
                     root_descriptor,
                     self.database_path,
-                    database_identity,
+                    create=True,
                 )
-                connection.row_factory = sqlite3.Row
-                connection.execute("PRAGMA foreign_keys=ON")
-                connection.execute("PRAGMA busy_timeout=15000")
-                connection.execute("PRAGMA synchronous=FULL")
-                self._assert_root_descriptor_identity(root_descriptor)
-                self._assert_private_target_identity(
-                    root_descriptor,
-                    self.database_path,
-                    database_identity,
-                )
-            except BaseException:
-                if connection is not None:
-                    connection.close()
-                raise
-        if connection is None:  # pragma: no cover - guarded by the successful path above
-            raise PathContainmentError("conversation SQLite database could not be opened")
-        return connection
+                if database_descriptor is None:
+                    raise PathContainmentError("conversation SQLite database could not be anchored")
+                try:
+                    os.fchmod(database_descriptor, 0o600)
+                    database_identity = self._identity(os.fstat(database_descriptor))
+                finally:
+                    os.close(database_descriptor)
+                try:
+                    connection = sqlite3.connect(
+                        f"{self.database_path.as_uri()}?mode=rw",
+                        timeout=15,
+                        isolation_level=None,
+                        uri=True,
+                        factory=_GuardedConnection,
+                    )
+                    self._assert_root_descriptor_identity(root_descriptor)
+                    self._assert_private_target_identity(
+                        root_descriptor,
+                        self.database_path,
+                        database_identity,
+                    )
+                    connection.row_factory = sqlite3.Row
+                    connection.execute("PRAGMA foreign_keys=ON")
+                    connection.execute("PRAGMA busy_timeout=15000")
+                    connection.execute("PRAGMA synchronous=FULL")
+                    self._assert_root_descriptor_identity(root_descriptor)
+                    self._assert_private_target_identity(
+                        root_descriptor,
+                        self.database_path,
+                        database_identity,
+                    )
+                except BaseException:
+                    if connection is not None:
+                        connection.close()
+                    try:
+                        self._assert_root_descriptor_identity(root_descriptor)
+                        self._assert_private_target_identity(
+                            root_descriptor,
+                            self.database_path,
+                            database_identity,
+                        )
+                    except PathContainmentError:
+                        raise
+                    raise
+            if connection is None:  # pragma: no cover - successful connect assigns it
+                raise PathContainmentError("conversation SQLite database could not be opened")
+            connection.bind_guard(guard, owner, self._enforce_private_modes_after_close)
+            guard.connections[owner] = connection
+            return connection
+        except BaseException:
+            guard.lock.release()
+            raise
 
     @contextmanager
     def _transaction(self) -> Iterator[sqlite3.Connection]:
@@ -580,6 +686,12 @@ class ConversationStore:
             self._migration_crash_injector(point)
 
     def ensure_private_modes(self) -> None:
+        with self._database_guard.lock:
+            if threading.get_ident() in self._database_guard.connections:
+                return
+            self._enforce_private_modes_after_close()
+
+    def _enforce_private_modes_after_close(self) -> None:
         with self._stable_root_descriptor() as root_descriptor:
             self._ensure_private_modes(root_descriptor)
 

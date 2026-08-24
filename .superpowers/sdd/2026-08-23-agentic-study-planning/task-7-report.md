@@ -436,3 +436,84 @@ Targeted Pyright, Ruff, format, Python compilation, diff, and changed-file
 secret scans are rerun immediately before the fix commit. No Task 8 route,
 adapter, CLI, UI, authority, or decision work is included, and the shared
 progress ledger remains untouched and unstaged by Task 7.
+
+## Fix round 3 — existing-only open and process-wide connection guard
+
+The round-2 independent review found that the post-open identity check still
+allowed SQLite to create an absent outside database before refusal, and that a
+second store operation could close a descriptor and release another live
+connection's process-wide POSIX locks. Both were reproduced before production
+changes: the focused RED slice reported `5 failed, 1 passed`.
+
+### Contained creation and configuration
+
+- The main database is created, when absent, with `O_CREAT|O_EXCL` and
+  `O_NOFOLLOW` relative to the verified planning-directory descriptor. Existing
+  files are opened without a create flag. The anchor is mode-enforced and its
+  device/inode identity captured before it is closed.
+- SQLite then opens the pathname with URI `mode=rw`. A deterministic database
+  or parent substitution to an initially absent outside database therefore
+  cannot create the outside file. If open fails after substitution, anchored
+  root/database validation converts the failure to the containment error.
+- Directory and database identities are validated immediately after SQLite
+  open, before row configuration or any PRAGMA, and again after configuration.
+  Existing-outside swap tests retain their byte-for-byte unchanged assertion.
+
+### Shared full-lifetime locking
+
+- A process-local guard registry is keyed by the canonical database path and is
+  shared by every `ConversationStore` instance. Its reentrant lock is held from
+  descriptor anchoring through SQLite open, configuration, use, final close,
+  and descriptor-based private-mode enforcement.
+- Cross-thread operations on the same database serialize for the live
+  connection's complete lifetime. Same-thread nested access leases and reuses
+  that connection, avoiding both deadlock and an independent descriptor close;
+  private-mode enforcement is deferred until its final lease closes.
+- Real WAL-reader regressions prove an external process cannot change journal
+  mode while either `list_turns()` or `ensure_private_modes()` is attempted by a
+  second store. Separate nested-connect and nested-mode tests preserve the same
+  lock, then prove it becomes available after the original reader closes.
+
+The explicit threat boundary is unchanged: these controls cover deterministic
+and accidental substitutions plus ordinary same-process store concurrency.
+They do not claim integrity against a hostile concurrently racing same-user
+process; that stronger boundary still requires a privileged owner or reviewed
+native SQLite VFS.
+
+### Fix-round-3 verification
+
+```text
+rtk uv run pytest \
+  packages/studyloop/tests/test_planning_conversation_store.py \
+  packages/studyloop/tests/test_planning_conversation_runtime.py \
+  packages/studyloop/tests/test_planning_conversation_recovery.py \
+  packages/studyloop/tests/test_planning_openai_compatible.py -q
+# 130 passed in 10.60s
+# 130 passed in 10.41s (independent second run)
+
+rtk uv run pytest \
+  packages/studyloop/tests/test_planning*.py \
+  packages/studyloop/tests/test_plan_agent_harness.py \
+  packages/studyloop/tests/test_doctor_planning.py \
+  packages/studyloop/tests/e2e/test_plans_api.py -q
+# 724 passed, 12 deselected in 16.40s
+
+rtk uv run pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_doctor_planning.py -q
+# 287 passed in 1.46s
+
+rtk uv run pytest \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web_runtime_feedback.py -q
+# 60 passed in 1.50s
+```
+
+Targeted Pyright, Ruff, format, compilation, diff, secret, and orphan-process
+checks are clean immediately before commit. No Task 8+ implementation is
+included, and the separately modified progress ledger remains unstaged.

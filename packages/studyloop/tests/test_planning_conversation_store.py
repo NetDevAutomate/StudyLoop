@@ -4,7 +4,10 @@ import multiprocessing
 import os
 import sqlite3
 import stat
+import threading
+import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -52,6 +55,34 @@ def _migration_crash_worker(database_text: str, point: str) -> None:
         Path(database_text),
         migration_crash_injector=_MigrationProcessCrash(point),
     )
+
+
+def _attempt_delete_journal_mode(database_text: str, results: Any) -> None:
+    try:
+        connection = sqlite3.connect(database_text, timeout=0.1)
+        try:
+            mode = str(connection.execute("PRAGMA journal_mode=DELETE").fetchone()[0])
+        finally:
+            connection.close()
+    except sqlite3.OperationalError as error:
+        results.put(("blocked", str(error)))
+    else:
+        results.put(("changed", mode))
+
+
+def _journal_delete_result(database: Path) -> tuple[str, str]:
+    context = multiprocessing.get_context("spawn")
+    results = context.Queue()
+    worker = context.Process(
+        target=_attempt_delete_journal_mode,
+        args=(str(database), results),
+    )
+    worker.start()
+    worker.join(10)
+    assert worker.exitcode == 0
+    value = results.get(timeout=2)
+    results.close()
+    return value
 
 
 def _store(tmp_path: Path) -> ConversationStore:
@@ -435,7 +466,7 @@ def test_conversation_store_detects_identity_swap_during_sqlite_open(
 
     def racing_connect(path, *args, **kwargs):
         nonlocal swapped
-        if not swapped and Path(path) == database:
+        if not swapped and database.name in os.fspath(path):
             swapped = True
             if swap_target == "database":
                 database.unlink(missing_ok=True)
@@ -454,6 +485,115 @@ def test_conversation_store_detects_identity_swap_during_sqlite_open(
 
     assert swapped
     assert outside_database.read_bytes() == outside_before
+
+
+@pytest.mark.parametrize("swap_target", ["database", "parent"])
+def test_conversation_store_identity_swap_cannot_create_an_absent_outside_database(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    swap_target: str,
+) -> None:
+    root = tmp_path / "planning"
+    root.mkdir()
+    database = root / "planning-conversations.sqlite3"
+    outside_root = tmp_path / "outside"
+    outside_root.mkdir()
+    outside_database = outside_root / database.name
+    real_connect = sqlite3.connect
+    swapped = False
+
+    def racing_connect(path, *args, **kwargs):
+        nonlocal swapped
+        if not swapped and database.name in os.fspath(path):
+            swapped = True
+            if swap_target == "database":
+                database.unlink(missing_ok=True)
+                database.symlink_to(outside_database)
+            else:
+                displaced = tmp_path / "displaced-planning"
+                root.rename(displaced)
+                root.symlink_to(outside_root, target_is_directory=True)
+        return real_connect(path, *args, **kwargs)
+
+    monkeypatch.setattr(conversation_store_module.sqlite3, "connect", racing_connect)
+
+    with pytest.raises(PathContainmentError, match=r"changed|identity|symlink"):
+        ConversationStore(database)
+
+    assert swapped
+    assert not outside_database.exists()
+
+
+@pytest.mark.parametrize("second_operation", ["list", "modes"])
+def test_cross_store_operation_cannot_release_a_live_wal_reader_lock(
+    tmp_path: Path,
+    second_operation: str,
+) -> None:
+    database = tmp_path / "planning-conversations.sqlite3"
+    first = ConversationStore(database)
+    second = ConversationStore(database)
+    _capture(first)
+    reader = first._connect()
+    worker_errors: list[BaseException] = []
+    started = threading.Event()
+
+    def use_second_store() -> None:
+        started.set()
+        try:
+            if second_operation == "list":
+                second.list_turns("conversation-1")
+            else:
+                second.ensure_private_modes()
+        except BaseException as error:
+            worker_errors.append(error)
+
+    worker = threading.Thread(target=use_second_store)
+    try:
+        reader.execute("BEGIN")
+        reader.execute("SELECT COUNT(*) FROM turns").fetchone()
+        assert _journal_delete_result(database)[0] == "blocked"
+
+        worker.start()
+        assert started.wait(2)
+        time.sleep(0.05)
+
+        assert worker.is_alive()
+        assert _journal_delete_result(database)[0] == "blocked"
+    finally:
+        reader.close()
+        worker.join(5)
+
+    assert not worker.is_alive()
+    assert worker_errors == []
+    assert _journal_delete_result(database)[0] == "changed"
+
+
+@pytest.mark.parametrize("nested_operation", ["connect", "modes"])
+def test_same_thread_nested_store_use_preserves_a_live_wal_reader_lock(
+    tmp_path: Path,
+    nested_operation: str,
+) -> None:
+    database = tmp_path / "planning-conversations.sqlite3"
+    first = ConversationStore(database)
+    second = ConversationStore(database)
+    _capture(first)
+    reader = first._connect()
+    try:
+        reader.execute("BEGIN")
+        reader.execute("SELECT COUNT(*) FROM turns").fetchone()
+        assert _journal_delete_result(database)[0] == "blocked"
+
+        if nested_operation == "connect":
+            nested = second._connect()
+            nested.close()
+        else:
+            second.ensure_private_modes()
+
+        assert _journal_delete_result(database)[0] == "blocked"
+    finally:
+        reader.close()
+
+    assert _journal_delete_result(database)[0] == "changed"
 
 
 @pytest.mark.parametrize("target_kind", ["database", "wal", "shm"])
