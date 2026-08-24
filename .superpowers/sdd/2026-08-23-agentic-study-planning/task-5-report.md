@@ -609,3 +609,20 @@ adjacent public no-TLS/weak-password warnings remain mechanical follow-ups in
 Task 6. A separately privileged state owner plus trusted native/user-presence
 confirmation is deferred as disproportionate for this release, but becomes
 necessary if the threat model later expands to hostile same-user processes.
+
+### Persistence/privacy scope clarification
+
+The Task 3/4 persistence facts recorded by this report remain authoritative.
+The append-only lifecycle journal keeps full before/after recovery images and
+typed payloads used by crash classification and idempotent replay;
+`private_runs` keeps brain-dump, brief, and proposal artifacts. Those bodies are
+private-mode local state and may remain after rejection or supersession.
+
+Release one does not retrofit automatic 30-day expiry, physical erasure, or a
+body-free journal into this completed foundation. The Task 7 conversation
+database supplements it rather than replacing it. CLI/browser planning must
+disclose local persistence, bounded transfer to the configured model, and no
+automatic expiry before the first model turn. A future retention/deletion
+project must version and migrate existing journals, private artifacts, open
+runs, and proposals without weakening the recovery/replay properties evidenced
+above.

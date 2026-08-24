@@ -14,16 +14,16 @@
 |---|---|---|
 | 1 | JS interfaces match the files and boot tests it names. | clean |
 | 2 | v2 model fields, codec sections, and learning-map tests align. | clean |
-| 3 | repository API covers lock, body-free audit journal, recovery, and crash tests. | fix round 2; clean |
+| 3 | completed repository API retains full recovery images, private runs, and crash tests. | round 3 scope restored; clean |
 | 4 | lifecycle command union covers every normal mutation named in the spec. | clean |
 | 5 | writer migration and forbidden-import test enforce Task 4's sole seam. | clean |
 | 6 | packaged prompt/provider port/closed catalogue exclude learner decision and ambient tools. | redesigned; clean |
-| 7 | SQLite runtime owns stable turn/attempt CAS, intents/outbox, and exhaustive private-body erasure. | fix round 2; clean |
+| 7 | SQLite runtime owns stable turn/attempt CAS and intents/outbox alongside Task 3/4 stores. | round 3 scope corrected; clean |
 | 8 | HTTP/WS/CLI/auth/context/decision adapters consume Task 7 without inventing a second loop/authority. | fix round 1; clean |
 | 9 | browser/onboarding states consume Task 8 DTOs through an inert no-subresource renderer. | fix round 1; clean |
 | 10 | stewardship uses frozen briefs, trusted evidence, and Task 8's decision adapter. | fix round 1; clean |
-| 11 | replay/runtime gate covers attempt races, intent ordering, sentinel erasure, auth, and egress. | fix round 2; clean |
-| 12 | final review traces attempt cardinality and physical retention as well as all authority contracts. | fix round 2; clean |
+| 11 | replay/runtime gate covers attempt races, intent ordering, privacy disclosure/modes, auth, and egress. | round 3 scope corrected; clean |
+| 12 | final review traces attempt cardinality, persistence coexistence, privacy honesty, and authority contracts. | round 3 scope corrected; clean |
 
 ## Pre-flight overlaps
 
@@ -34,7 +34,7 @@
 | 2, 4 | Task 2 domain types feed Task 4 contracts/policy. | Sequential; lifecycle references stable IDs, not labels. |
 | 2, 9 | Task 2 derives Mermaid; Task 9 renders it. | Browser never authors or regenerates Mermaid. |
 | 3, 4 | Task 3 commit/recovery supports Task 4 commands. | Lifecycle owns policy; repository owns persistence mechanics. |
-| 3, 7 | JSON lifecycle journal and SQLite conversation store share IDs/digests. | Journal keeps canonical recovery/audit scalars only; every expiring body belongs to SQLite. |
+| 3, 7 | JSON lifecycle journal/private runs and SQLite conversation store share IDs/digests. | Task 7 supplements completed recovery/replay stores; it does not replace or migrate their bodies. |
 | 4, 5 | Task 4 publishes the command seam; Task 5 migrates all old writers. | No raw store mutation remains outside repository after Task 5. |
 | 4, 6 | Task 4 model-safe commands feed the closed dispatcher. | Runtime may prepare/submit/inspect only. |
 | 4, 8 | Task 4 DTOs feed planning HTTP routes. | Route maps errors/status; no duplicated policy. |
@@ -78,10 +78,11 @@
   by original tuple/key before any new attempt or outbox projection.
 - One stable learner turn owns monotonic unique attempts; retry CAS follows
   durable interruption and complete capability-intent reconciliation.
-- Every expiring private body is SQLite-owned. Day-30 redaction retains only an
-  exact scalar audit projection/canonical hold, then secure-delete/WAL recovery
-  proves eligible non-held bytes absent; release one creates no durable
-  attachment copy.
+- Full journal recovery images, typed lifecycle payloads, `private_runs`, and
+  conversation SQLite coexist as private-mode local state and may persist after
+  rejection/supersession. Release one claims no automatic expiry/deletion.
+- CLI/browser show the exact local-persistence/configured-model/no-expiry notice
+  before the first model turn. Context remains tier four, not progress.
 
 ## Task progress
 
@@ -289,10 +290,11 @@
   snapshots ordered IDs/digests plus brief digest. Input minimisation tests
   separate StudyLoop metadata/secrets/endpoints from verbatim learner text,
   which may legitimately contain paths/URLs.
-- Fix round 1 gives Task 7 an injected-clock, startup-triggered, idempotent
-  transactional retention API. The gate covers 29/30/31 days, accepted plan
-  provenance holds, rejected/superseded redaction, purge crash/retry, stable
-  digests/audit/outbox, and `0600`/`0700` storage.
+- **Historical, superseded by round 3:** fix round 1 gave Task 7 an injected-
+  clock, startup-triggered, idempotent transactional retention API. Its gate
+  covered 29/30/31 days, accepted plan provenance holds, rejected/superseded
+  redaction, purge crash/retry, stable digests/audit/outbox, and `0600`/`0700`
+  storage.
 - Authority redesign review round 1 blocked commit 36e1501 with two remaining
   Important defects: contradictory one-attempt-versus-retry cardinality and a
   retention contract that omitted several private payloads and could not be
@@ -302,12 +304,29 @@
   uniqueness indexes; first-begin and retry CAS allow one active attempt only.
   Retry requires the latest attempt durably interrupted and every capability
   intent reconciled. Direct, two-process, and crash tests enforce the ordering.
-- Fix round 2 inventories learner/brain-dump, assistant, context/source, brief,
-  provider capture, capability argument/result, proposal preview, raw outbox,
-  and ingestion-temporary payloads. All expiring bytes live in SQLite; Task 3's
-  lifecycle journal is body-free and release one creates no attachment copy.
-- Fix round 2 defines the retained audit projection field-by-field. The purge
-  state is `prepared -> projected -> storage_scrubbed`; `secure_delete=ON`, a
-  truncating WAL checkpoint, blocking startup recovery, and sentinel scans of
-  DB/WAL/SHM/directory make the 29/30/31-day claim executable across subprocess
-  deaths while preserving only explicit canonical-plan provenance holds.
+- **Historical, superseded by round 3:** fix round 2 inventoried learner/brain-
+  dump, assistant, context/source, brief, provider capture, capability argument/
+  result, proposal preview, raw outbox, and ingestion-temporary payloads. It
+  incorrectly assigned all expiring bytes to SQLite and described Task 3's
+  lifecycle journal as body-free.
+- **Historical, superseded by round 3:** fix round 2 defined a field-limited
+  audit projection and `prepared -> projected -> storage_scrubbed` purge with
+  `secure_delete=ON`, WAL checkpoint, startup recovery, and 29/30/31-day
+  sentinel scans. That design is not a release-one interface or gate.
+- Authority redesign review round 2 found one Critical integration defect in
+  commit d877e78: its body-free journal/SQLite-only retention contract
+  contradicted completed Task 3/4 code whose full recovery images, typed journal
+  payloads, and `private_runs` artifacts are required for crash/idempotent replay.
+- Round 3 arbitration rejects a retroactive Task 3/4 persistence migration as
+  disproportionate and destabilising for release one. The round-2 physical-
+  erasure design is superseded, not assigned to an unowned implementation gap.
+- Release-one privacy is now explicit: journal/private-run/conversation state is
+  local and private-mode, may persist after rejection/supersession, is never
+  progress, and has no claimed automatic expiry. CLI/browser disclose this and
+  bounded configured-model transfer before the first model turn.
+- Task 7 coexists with completed lifecycle persistence and creates no extra
+  learner source-attachment copy. Task 11/12 gate permissions, disclosure,
+  replay, and credential/provider/internal-path minimisation—not deletion.
+- Automated retention/deletion, body-free or rekeyed journal format, and
+  migration of existing journals/private runs/open proposals are non-gating
+  post-release privacy-hardening work requiring a separate crash-safe design.
