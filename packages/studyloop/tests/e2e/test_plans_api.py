@@ -9,9 +9,10 @@ real ASGI serving, real config loading, real middleware and a real event loop �
 which is where StudyLoop's session-start bugs have historically lived.
 
 So this module walks the same surface the way a client does, over HTTP, against
-a subprocess server with an isolated config and plans directory: create a plan,
-read it back as structure and as Markdown, evaluate it at all three checkpoints,
-record one, tick a milestone, activate it, then delete it.
+a subprocess server with an isolated config and plans directory: propose and
+approve a plan, read it back as structure and Markdown, evaluate all three
+checkpoints, record one, prove bare completion is refused, activate it, then
+abandon it without erasing its history.
 
 Ordering matters — the tests share one server and one plan, and each phase
 builds on the previous, so they are numbered.
@@ -51,21 +52,57 @@ def api(tmp_path_factory):
     plans_dir.mkdir(parents=True, exist_ok=True)
 
     env = launch_env(root, PORT, plans_dir=plans_dir)
+    session = requests.Session()
+    navigation = session.get(
+        f"{env.base_url}/",
+        headers={"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "same-origin"},
+        timeout=20,
+    )
+    assert navigation.status_code == 200, navigation.text
+    mutation_headers = {
+        "Origin": env.base_url,
+        "Sec-Fetch-Site": "same-origin",
+        "X-CSRF-Token": session.cookies.get("studyloop_csrf", ""),
+    }
 
     class Api:
         base = env.base_url
 
+        def _request(self, method: str, path: str, **kw):
+            supplied_headers = kw.pop("headers", {})
+            headers = {**mutation_headers, **supplied_headers}
+            return session.request(
+                method,
+                f"{self.base}{path}",
+                timeout=20,
+                headers=headers,
+                **kw,
+            )
+
         def get(self, path: str, **kw):
-            return requests.get(f"{self.base}{path}", timeout=20, **kw)
+            return self._request("GET", path, **kw)
 
         def post(self, path: str, **kw):
-            return requests.post(f"{self.base}{path}", timeout=20, **kw)
+            return self._request("POST", path, **kw)
 
         def patch(self, path: str, **kw):
-            return requests.patch(f"{self.base}{path}", timeout=20, **kw)
+            return self._request("PATCH", path, **kw)
 
         def delete(self, path: str, **kw):
-            return requests.delete(f"{self.base}{path}", timeout=20, **kw)
+            return self._request("DELETE", path, **kw)
+
+        def create_approved(self, payload: dict):
+            preview = self.post("/api/plans", json=payload)
+            assert preview.status_code == 202, preview.text
+            proposal = preview.json()["proposal"]
+            return self.post(
+                "/api/plans",
+                json={
+                    "proposal_id": proposal["proposal_id"],
+                    "proposal_digest": proposal["proposal_digest"],
+                    "decision": "approve",
+                },
+            )
 
     try:
         yield Api()
@@ -93,29 +130,50 @@ def test_02_interview_is_served(api) -> None:
 
 
 def test_03_create_a_plan(api) -> None:
-    """POST /api/plans — create from interview answers."""
+    """POST /api/plans — preview first, then approve the exact digest."""
+    payload = {
+        "title": PLAN_TITLE,
+        "status": "draft",
+        "answers": {
+            "why": "Own the nightly customer-events pipeline without pairing.",
+            "success": ["Deploy a Glue job unaided"],
+            "topics": ["data-engineering"],
+            "out_of_scope": ["EMR tuning"],
+            "milestones": [
+                {"title": "Job anatomy", "concepts": ["glue job", "job bookmark"]},
+                {"title": "Write the transform", "concepts": ["dynamicframe"]},
+            ],
+        },
+    }
+    preview = api.post("/api/plans", json=payload)
+    assert preview.status_code == 202, preview.text
+    assert preview.json()["created"] is False
+    assert api.get("/api/plans").json()["plans"] == []
+
+    proposal = preview.json()["proposal"]
     res = api.post(
         "/api/plans",
         json={
-            "title": PLAN_TITLE,
-            "status": "draft",
-            "answers": {
-                "why": "Own the nightly customer-events pipeline without pairing.",
-                "success": ["Deploy a Glue job unaided"],
-                "topics": ["data-engineering"],
-                "out_of_scope": ["EMR tuning"],
-                "milestones": [
-                    {"title": "Job anatomy", "concepts": ["glue job", "job bookmark"]},
-                    {"title": "Write the transform", "concepts": ["dynamicframe"]},
-                ],
-            },
+            "proposal_id": proposal["proposal_id"],
+            "proposal_digest": proposal["proposal_digest"],
+            "decision": "approve",
         },
     )
     assert res.status_code == 201, res.text
     body = res.json()
+    assert body["outcome"]["status"] == "applied"
     assert body["plan"]["plan_id"] == PLAN_ID
     assert body["plan"]["milestone_total"] == 2
     assert body["readiness"]["ready"] is True
+
+
+def _vague_plan_payload() -> dict:
+    return {
+        "title": "Vague Plan",
+        "answers": {
+            "why": "Explore this safely before committing to a direction.",
+        },
+    }
 
 
 def test_04_read_structure_and_markdown(api) -> None:
@@ -165,16 +223,25 @@ def test_06_record_a_checkpoint_and_read_history(api) -> None:
     assert history.json()["checkpoints"], "checkpoint missing from the durable log"
 
 
-def test_07_toggle_a_milestone(api) -> None:
-    """POST /api/plans/{id}/milestones/{index}/toggle — progress moves."""
-    res = api.post(f"/api/plans/{PLAN_ID}/milestones/0/toggle")
+def test_07_milestone_completion_requires_explicit_evidence(api) -> None:
+    """A browser cannot turn a milestone into verified practice with a bare click."""
+    path = f"/api/plans/{PLAN_ID}/milestones/0/toggle"
+    bare = api.post(path)
+    assert bare.status_code == 400
+    assert "outcome is required" in bare.text.lower()
+
+    res = api.post(path, json={"outcome": "incomplete"})
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["done"] is True
-    assert body["plan"]["milestone_done"] == 1
-    assert body["plan"]["progress_pct"] == 50
+    assert body["outcome"]["status"] == "incomplete"
+    assert body["plan"]["milestone_done"] == 0
+    assert body["plan"]["progress_pct"] == 0
 
-    assert api.post(f"/api/plans/{PLAN_ID}/milestones/99/toggle").status_code == 404
+    missing = api.post(
+        f"/api/plans/{PLAN_ID}/milestones/99/toggle",
+        json={"outcome": "incomplete"},
+    )
+    assert missing.status_code == 404
 
 
 def test_08_patch_activates_only_a_ready_plan(api) -> None:
@@ -183,15 +250,13 @@ def test_08_patch_activates_only_a_ready_plan(api) -> None:
     assert ok.status_code == 200, ok.text
     assert ok.json()["plan"]["status"] == "active"
 
-    vague = api.post("/api/plans", json={"title": "Vague Plan", "answers": {}})
+    vague = api.create_approved(_vague_plan_payload())
     assert vague.status_code == 201
     vague_id = vague.json()["plan"]["plan_id"]
 
     refused = api.patch(f"/api/plans/{vague_id}", json={"status": "active"})
-    assert refused.status_code == 422, refused.text
-    detail = refused.json()["detail"]
-    assert detail["ready"] is False
-    assert any("ission" in b for b in detail["blockers"])
+    assert refused.status_code == 400, refused.text
+    assert "not ready to activate" in refused.text.lower()
     assert api.get(f"/api/plans/{vague_id}").json()["plan"]["status"] == "draft"
 
 
@@ -209,8 +274,14 @@ def test_09_status_filter_and_missing_plan(api) -> None:
         assert api.get(path).status_code == 404, path
 
 
-def test_10_delete_removes_the_plan(api) -> None:
-    """DELETE /api/plans/{id} — gone, and idempotent thereafter."""
-    assert api.delete(f"/api/plans/{PLAN_ID}").status_code == 200
-    assert api.get(f"/api/plans/{PLAN_ID}").status_code == 404
-    assert api.delete(f"/api/plans/{PLAN_ID}").status_code == 404
+def test_10_delete_abandons_without_erasing_the_plan(api) -> None:
+    """DELETE /api/plans/{id} — recoverable abandonment retains history."""
+    abandoned = api.delete(f"/api/plans/{PLAN_ID}")
+    assert abandoned.status_code == 200, abandoned.text
+    assert abandoned.json()["abandoned"] is True
+
+    retained = api.get(f"/api/plans/{PLAN_ID}")
+    assert retained.status_code == 200
+    assert retained.json()["plan"]["status"] == "abandoned"
+    assert retained.json()["checkpoints"], "abandonment erased checkpoint history"
+    assert api.delete(f"/api/plans/{PLAN_ID}").status_code == 409

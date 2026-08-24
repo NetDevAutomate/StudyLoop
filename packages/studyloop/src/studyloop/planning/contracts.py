@@ -319,6 +319,7 @@ class PlanOutcome:
         "recorded",
         "verified_complete",
         "learner_attested",
+        "incomplete",
         "transitioned",
         "imported",
     ]

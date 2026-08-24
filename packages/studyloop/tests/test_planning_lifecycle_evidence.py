@@ -254,6 +254,23 @@ def test_checkpoint_command_replays_after_restart_and_changed_payload_conflicts(
         )
 
 
+def test_incomplete_milestone_outcome_replays_after_restart(tmp_path: Path) -> None:
+    service, plan_id, milestone_id = _accepted_plan(tmp_path, ())
+    command = RecordMilestoneOutcome(
+        plan_id,
+        milestone_id,
+        "incomplete",
+        (),
+        "incomplete-replay",
+        reason="More practice is needed",
+    )
+
+    first = service.handle(PlanningCommand(LEARNER, command))
+    replay = lifecycle(tmp_path).handle(PlanningCommand(LEARNER, command))
+
+    assert replay == first
+
+
 def test_verified_completion_and_learner_attestation_are_visibly_distinct(
     tmp_path: Path,
 ) -> None:

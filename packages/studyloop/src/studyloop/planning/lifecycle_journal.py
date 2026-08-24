@@ -43,6 +43,7 @@ _OUTCOME_STATUSES = frozenset(
         "recorded",
         "verified_complete",
         "learner_attested",
+        "incomplete",
         "transitioned",
         "imported",
     }
