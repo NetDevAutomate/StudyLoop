@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .conversation_runtime import PlanningConversationRuntime
+from .conversation_store import ConversationStore
 from .evidence import EvidenceCatalogue
 from .lifecycle import PlanningLifecycle
 from .repository import PlanningPaths, PlanningRepository
@@ -14,6 +16,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from .contracts import IdGenerator
+    from .conversation_contracts import PlanningConversationBounds
+    from .model_port import PlanningModelPort
     from .models import EvidenceRef
 
 
@@ -52,4 +56,30 @@ def planning_lifecycle(
         planning_repository(document_dir),
         evidence=EvidenceCatalogue(evidence),
         ids=ids,
+    )
+
+
+def planning_conversation_store(document_dir: Path | None = None) -> ConversationStore:
+    """Construct the dedicated private conversation database under the planning root."""
+    paths = planning_paths(document_dir)
+    return ConversationStore(paths.root / "planning-conversations.sqlite3")
+
+
+def planning_conversation_runtime(
+    model: PlanningModelPort,
+    *,
+    document_dir: Path | None = None,
+    evidence: Iterable[EvidenceRef] = (),
+    ids: IdGenerator | None = None,
+    bounds: PlanningConversationBounds | None = None,
+    configured_secret_values: Iterable[str] = (),
+) -> PlanningConversationRuntime:
+    """Bind one confined model to the canonical lifecycle and conversation root."""
+    lifecycle = planning_lifecycle(document_dir=document_dir, evidence=evidence, ids=ids)
+    return PlanningConversationRuntime(
+        planning_conversation_store(document_dir),
+        model,
+        lifecycle,
+        bounds=bounds,
+        configured_secret_values=configured_secret_values,
     )

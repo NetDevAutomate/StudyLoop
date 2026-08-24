@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import asdict, dataclass, is_dataclass, replace
 from enum import StrEnum
 from types import MappingProxyType
 from typing import Any, Protocol
@@ -269,6 +269,59 @@ class PlanningCapabilityCall:
     call_id: str
     name: str
     arguments: Mapping[str, object]
+    lifecycle_idempotency_key: str = ""
+
+
+def normalize_planning_capability_call(
+    call: PlanningCapabilityCall,
+    *,
+    expected_run_id: str = "",
+) -> PlanningCapabilityCall:
+    """Validate and detach one provider call before any durable side effect.
+
+    This deliberately exercises the same hand-written decoder as dispatch.  A
+    caller can therefore commit the normalized JSON intent before allowing the
+    lifecycle to observe it, while unknown tools and authority-shaped extras
+    still leave no durable capability record.
+    """
+    if not call.call_id.strip():
+        raise CapabilityRefusedError("capability call ID is required")
+    try:
+        name = PlanningCapabilityName(call.name)
+    except ValueError as exc:
+        raise CapabilityRefusedError(f"unsupported planning capability {call.name!r}") from exc
+    arguments = _mapping(call.arguments, "capability arguments")
+    if name is PlanningCapabilityName.PREPARE_PLAN:
+        if expected_run_id:
+            raise CapabilityRefusedError("planning run is already prepared for this turn")
+        _exact_keys(arguments, required=(), optional=(), label=name.value)
+    elif name is PlanningCapabilityName.SUBMIT_PLAN_PROPOSAL:
+        _exact_keys(
+            arguments,
+            required=("run_id", "brief_context_digest", "draft"),
+            optional=(),
+            label=name.value,
+        )
+        run_id = _string(arguments.get("run_id"), "run_id")
+        if expected_run_id and run_id != expected_run_id:
+            raise CapabilityRefusedError("capability run ID does not match the bound planning run")
+        _string(arguments.get("brief_context_digest"), "brief_context_digest")
+        _decode_draft(arguments.get("draft"))
+    elif name is PlanningCapabilityName.GET_PLAN_PROPOSAL:
+        _exact_keys(
+            arguments,
+            required=("run_id", "proposal_id"),
+            optional=(),
+            label=name.value,
+        )
+        run_id = _string(arguments.get("run_id"), "run_id")
+        if expected_run_id and run_id != expected_run_id:
+            raise CapabilityRefusedError("capability run ID does not match the bound planning run")
+        _string(arguments.get("proposal_id"), "proposal_id")
+    normalized = _thaw(_freeze(dict(arguments)))
+    if not isinstance(normalized, dict):  # pragma: no cover - arguments are a mapping
+        raise TypeError("normalized capability arguments are not an object")
+    return PlanningCapabilityCall(call.call_id, name.value, normalized)
 
 
 @dataclass(frozen=True, slots=True)
@@ -349,7 +402,11 @@ class PlanningCapabilityDispatcher:
 
         if name is PlanningCapabilityName.PREPARE_PLAN:
             _exact_keys(arguments, required=(), optional=(), label=name.value)
-            result = self._lifecycle.prepare(self._request, _MODEL_ACTOR)
+            lifecycle_key = self._bound_lifecycle_key(call, run_id="")
+            result = self._lifecycle.prepare(
+                replace(self._request, idempotency_key=lifecycle_key),
+                _MODEL_ACTOR,
+            )
             run_id = str(getattr(result, "run_id", ""))
             if not run_id or (self._run_id and self._run_id != run_id):
                 raise CapabilityRefusedError("prepared run does not match the bound planning run")
@@ -369,10 +426,7 @@ class PlanningCapabilityDispatcher:
             )
             command = SubmitProposalDraft(
                 run_id=run_id,
-                idempotency_key=self._scope.lifecycle_idempotency_key(
-                    run_id=run_id,
-                    tool_call_id=call.call_id,
-                ),
+                idempotency_key=self._bound_lifecycle_key(call, run_id=run_id),
                 brief_context_digest=_string(
                     arguments.get("brief_context_digest"), "brief_context_digest"
                 ),
@@ -391,6 +445,7 @@ class PlanningCapabilityDispatcher:
                 optional=(),
                 label=name.value,
             )
+            self._bound_lifecycle_key(call, run_id=run_id)
             result = self._lifecycle.inspect(
                 ProposalRef(_string(arguments.get("proposal_id"), "proposal_id"))
             )
@@ -399,6 +454,17 @@ class PlanningCapabilityDispatcher:
             return _result(call, name, result)
 
         raise CapabilityRefusedError(f"unsupported planning capability {name.value!r}")
+
+    def _bound_lifecycle_key(self, call: PlanningCapabilityCall, *, run_id: str) -> str:
+        expected = self._scope.lifecycle_idempotency_key(
+            run_id=run_id,
+            tool_call_id=call.call_id,
+        )
+        if call.lifecycle_idempotency_key and call.lifecycle_idempotency_key != expected:
+            raise CapabilityRefusedError(
+                "persisted capability idempotency key does not match its original scope"
+            )
+        return expected
 
 
 def _result(

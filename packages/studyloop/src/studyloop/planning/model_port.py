@@ -65,6 +65,7 @@ class ModelRequest:
     turn_id: str
     attempt_id: str
     messages: tuple[dict[str, object], ...]
+    max_output_tokens: int = 4096
 
     def __post_init__(self) -> None:
         if self.schema_version != MODEL_WIRE_VERSION:
@@ -72,6 +73,8 @@ class ModelRequest:
         identities = (self.conversation_id, self.turn_id, self.attempt_id)
         if not all(value.strip() for value in identities):
             raise ValueError("conversation, turn, and attempt IDs are required")
+        if isinstance(self.max_output_tokens, bool) or not 1 <= self.max_output_tokens <= 32_768:
+            raise ValueError("planning model output token bound must be between 1 and 32768")
 
 
 @dataclass(frozen=True, slots=True)
