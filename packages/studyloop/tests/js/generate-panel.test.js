@@ -1,8 +1,8 @@
 /**
  * Unit tests for the generatePanel component factory.
  *
- * Uses `node --test` — built into Node, zero dependencies, no package.json and
- * no build step (same rationale as chunk-text.test.js).
+ * Uses `node --test` — built into Node, zero dependencies and no npm install
+ * (same rationale as chunk-text.test.js).
  *
  * Run with the quoted-glob form noted on the next line (a bare directory
  * argument fails on Node 26 with MODULE_NOT_FOUND; the glob cannot be

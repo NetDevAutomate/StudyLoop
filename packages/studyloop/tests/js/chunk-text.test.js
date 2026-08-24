@@ -1,8 +1,8 @@
 /**
  * First frontend unit tests.
  *
- * Uses `node --test` — built into Node, zero dependencies, no package.json and no
- * build step, which keeps the project's "no build step" property intact.
+ * Uses `node --test` — built into Node, zero dependencies and no npm install.
+ * The package metadata declares ESM only, preserving the project's no-build step.
  *
  * Run with:  node --test packages/studyloop/tests/js/*.test.js
  *

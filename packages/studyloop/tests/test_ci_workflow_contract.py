@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs.yml"
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
+JUSTFILE = REPO_ROOT / "Justfile"
 PINNED_ACTION = re.compile(r"^[^@]+@[0-9a-f]{40}$")
 
 
@@ -46,6 +47,7 @@ def test_all_jobs_have_timeout_minutes() -> None:
 def test_setup_just_is_pinned_to_commit_sha() -> None:
     jobs = _workflow()["jobs"]
     for job_name in [
+        "frontend-unit",
         "web-profile",
         "browser-smoke",
         "content-profile",
@@ -121,6 +123,20 @@ def test_ci_typecheck_matches_just_typecheck() -> None:
         if isinstance(step, dict)
     ]
     assert "just typecheck" in commands
+
+
+def test_frontend_unit_tests_are_local_and_ci_release_gates() -> None:
+    justfile = JUSTFILE.read_text(encoding="utf-8")
+    assert "test-js:" in justfile
+    assert "node --test 'packages/studyloop/tests/js/**/*.test.js'" in justfile
+    assert re.search(r"^test:\s+test-js$", justfile, re.MULTILINE)
+
+    jobs = _workflow()["jobs"]
+    assert "frontend-unit" in jobs
+    commands = [
+        step.get("run") for step in jobs["frontend-unit"]["steps"] if isinstance(step, dict)
+    ]
+    assert "just test-js" in commands
 
 
 def test_docs_workflow_builds_on_pull_request_without_write_permission() -> None:

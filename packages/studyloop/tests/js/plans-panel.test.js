@@ -1,8 +1,8 @@
 /**
  * Unit tests for the study-plan panel's logic half.
  *
- * Uses `node --test` — built into Node, zero dependencies, no package.json and
- * no build step (same rationale as chunk-text.test.js and generate-panel.test.js).
+ * Uses `node --test` — built into Node, zero dependencies and no npm install
+ * (same rationale as chunk-text.test.js and generate-panel.test.js).
  *
  * WHY THIS IS POSSIBLE WITHOUT A BROWSER: `plansStore` is a plain object and
  * `plansPanel()` returns one, so nothing touches the DOM or Alpine at

@@ -18,7 +18,10 @@ sync-content:
 sync-semantic:
     uv sync --all-packages --group dev --extra semantic
 
-test:
+test-js:
+    node --test 'packages/studyloop/tests/js/**/*.test.js'
+
+test: test-js
     uv run --group dev pytest
 
 test-web:
