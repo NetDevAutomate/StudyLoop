@@ -49,6 +49,21 @@ def test_world_paths_are_under_its_temporary_root(tmp_path: Path) -> None:
     assert world.base_url == "http://127.0.0.1:18700"
 
 
+def test_world_canonicalises_a_root_with_a_symlinked_ancestor(tmp_path: Path) -> None:
+    """macOS exposes its temporary directory through the /var -> /private/var alias."""
+    real_parent = tmp_path / "real"
+    real_parent.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(real_parent, target_is_directory=True)
+    requested_root = alias / "world"
+
+    world = build_test_world(requested_root, port=18704)
+
+    assert world.root == requested_root.resolve()
+    assert world.plans == world.root / "study-plans"
+    assert world.env["STUDYLOOP_PLANS_DIR"] == str(world.plans)
+
+
 def test_world_is_frozen_and_environment_is_read_only(tmp_path: Path) -> None:
     world = build_test_world(tmp_path / "world", port=18701)
 

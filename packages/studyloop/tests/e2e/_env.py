@@ -229,6 +229,10 @@ def build_test_world(
     deliberately separate from process startup so tests can inspect and
     poison the parent environment before proving the world remains stable.
     """
+    # macOS exposes its temporary directory through /var -> /private/var.
+    # Canonicalise once before deriving any guarded planning paths so every
+    # subsystem observes the same stable root identity.
+    root = root.expanduser().resolve(strict=False)
     root.mkdir(parents=True, exist_ok=True)
     home = root / "home"
     tmp_dir = root / "tmp"
