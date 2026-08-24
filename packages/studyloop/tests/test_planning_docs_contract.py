@@ -54,6 +54,14 @@ def test_first_week_does_not_recommend_phone_use() -> None:
     assert "If a tablet or laptop cannot connect" in troubleshooting
 
 
+def test_readme_distinguishes_local_web_from_authenticated_lan_mode() -> None:
+    readme = " ".join(_read("README.md").casefold().split())
+
+    assert "launch with `studyloop web`. reachable from any" not in readme
+    assert "launch locally with `studyloop web`" in readme
+    assert "authenticated lan mode with `studyloop web --lan`" in readme
+
+
 def test_release_notes_distinguish_supported_harnesses_from_other_integrations() -> None:
     release_notes = _read("releases/v0.1.0.md")
     normalized = " ".join(release_notes.casefold().split())

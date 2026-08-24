@@ -69,6 +69,17 @@ def test_format_lan_credentials_shows_generated_password_only() -> None:
     assert "configured; not shown" in "\n".join(configured)
 
 
+def test_web_help_distinguishes_local_default_from_lan_mode() -> None:
+    result = CliRunner().invoke(cli, ["web", "--help"])
+    output = " ".join(result.output.casefold().split())
+
+    assert result.exit_code == 0
+    assert "on this computer by default" in output
+    assert "pass --lan" in output
+    assert "tablet or laptop on the same network" in output
+    assert "accessible from any device on the network" not in output
+
+
 def test_web_lan_output_uses_client_urls_without_echoing_configured_passwords(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,

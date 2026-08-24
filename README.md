@@ -225,7 +225,9 @@ matrix.
 
 ## Web PWA
 
-Launch with `studyloop web`. Reachable from any tablet or laptop on the network.
+Launch locally with `studyloop web`. To use a tablet or laptop on the same
+network, start the authenticated LAN mode with `studyloop web --lan` and open
+one of the LAN addresses it prints.
 
 > **Not designed for phone screens.** The layout collapses to a single column
 > and the sidebar becomes a bottom bar below 600px wide, but the study panels

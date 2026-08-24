@@ -86,9 +86,10 @@ def web(
 ) -> None:
     """Launch the study PWA in your browser.
 
-    Serves flashcard and quiz review as a web app accessible from any
-    device on the network. Installable as a PWA (add to home screen).
-    Includes OpenDyslexic font toggle for accessibility.
+    Serves flashcard and quiz review on this computer by default. Pass --lan
+    to make the authenticated app reachable from a tablet or laptop on the
+    same network. Installable as a PWA (add to home screen). Includes an
+    OpenDyslexic font toggle for accessibility.
 
     Requires: uv pip install 'studyloop[web]'
     """
