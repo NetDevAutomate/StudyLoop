@@ -337,7 +337,7 @@ graph LR
 
 **Agent Console** — where you talk to the agent. `liveAgentConsole()` renders one of two surfaces, chosen by the session's transport:
 
-- **`pty`** → **xterm.js**, fed by StudyLoop's own FastAPI WebSocket. This is the default terminal path and it survives a page refresh: the console reads `GET /api/session/state` on init and re-adopts a live session it owns, so the same agent process answers a freshly typed line with no action from you.
+- **`pty`** → **xterm.js**, fed by StudyLoop's own FastAPI WebSocket. This is the default terminal path. The *session* survives a page refresh — the server holds a disconnected session in a short grace window (90 s by default) so a reload does not kill the agent — and the console attempts to re-adopt a live session it owns by reading `GET /api/session/state` on init. Automatic reattachment of the terminal is not yet reliable, though; if the pane comes back empty after a reload, see [The Terminal Is Empty After A Page Refresh](troubleshooting.md#the-terminal-is-empty-after-a-page-refresh).
 - **`acp`** → the [ACP chat surface](#acp-chat-mode-kiro-gemini). Structured markdown rather than a terminal, and the preferred experience where the agent supports it.
 
 Anything else renders an explicit **unavailable** state naming what happened and what to do. There is no iframe fallback — see [Browser terminal surfaces](#browser-terminal-surfaces).
@@ -436,7 +436,7 @@ The dashboard has **two** browser surfaces for talking to the agent, plus an hon
 Earlier versions embedded [ttyd](https://github.com/tsl0922/ttyd) in an iframe at `/terminal/` as a third surface. **That surface is gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)), for two reasons worth knowing as a user:
 
 - ttyd is an external binary most machines do not have. Without it the iframe rendered an **empty frame**, which is indistinguishable from a hang — so the "fallback" failed more confusingly than the thing it was covering for.
-- The reason for keeping it was that the primary xterm.js path could not survive a page refresh. It now can, so the fallback had nothing left to cover.
+- The reason for keeping it was that a page refresh used to destroy a live session on the primary xterm.js path. The server side of that is fixed — a session now survives a reload inside a detach grace window — so the fallback had nothing left to cover. Automatic terminal reattach after the reload is a separate, still-open problem, and one the ttyd iframe never solved either.
 
 What this means in practice:
 
