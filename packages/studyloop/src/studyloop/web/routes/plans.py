@@ -19,7 +19,7 @@ import logging
 import uuid
 from typing import Annotated, Literal, NoReturn
 
-from fastapi import APIRouter, Body, HTTPException, Query, Response
+from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 from fastapi.responses import PlainTextResponse
 
 from studyloop.planning import (
@@ -66,12 +66,12 @@ from studyloop.planning.store import (
     InvalidPlanIdError,
     PlanNotFoundError,
 )
+from studyloop.web.learner_auth import require_browser_learner
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_WEB_LEARNER = ActorContext("learner", "local-learner", "web")
 _WEB_MODEL = ActorContext("model", "compatibility-translator", "web")
 _WEB_RECORDER = ActorContext("recorder", "studyloop", "web")
 
@@ -263,13 +263,14 @@ def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = No
 
 
 @router.post("/plans", status_code=201)
-def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
+def post_plan(request: Request, payload: Annotated[dict, Body()], response: Response) -> dict:
     """Compatibility create/import adapter backed only by the lifecycle."""
     if {"actor", "actor_kind", "role"} & set(payload):
         raise HTTPException(status_code=400, detail="request payload cannot choose actor authority")
     if payload.get("overwrite"):
         raise HTTPException(status_code=400, detail="overwrite is not supported")
     if payload.get("proposal_id"):
+        learner = require_browser_learner(request)
         try:
             service = planning_lifecycle()
             review = require_proposal(service.inspect(ProposalRef(str(payload["proposal_id"]))))
@@ -281,7 +282,7 @@ def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
             outcome = require_outcome(
                 service.handle(
                     PlanningCommand(
-                        _WEB_LEARNER,
+                        learner,
                         DecideProposal(
                             review.proposal_id,
                             str(payload.get("proposal_digest", "")),
@@ -300,11 +301,12 @@ def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
 
     raw_markdown = payload.get("markdown")
     if raw_markdown:
+        learner = require_browser_learner(request)
         try:
             outcome = require_outcome(
                 planning_lifecycle().handle(
                     PlanningCommand(
-                        _WEB_LEARNER,
+                        learner,
                         ImportPlanDraft(
                             str(raw_markdown),
                             _request_key(payload, "web-import"),
@@ -347,7 +349,7 @@ def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
                 json.dumps(payload, ensure_ascii=False, sort_keys=True),
                 f"{key}:prepare",
             ),
-            _WEB_LEARNER,
+            _WEB_MODEL,
         )
         review = require_proposal(
             service.handle(
@@ -372,11 +374,14 @@ def post_plan(payload: Annotated[dict, Body()], response: Response) -> dict:
 
 
 @router.patch("/plans/{plan_id}")
-def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Response) -> dict:
+def patch_plan(
+    plan_id: str, request: Request, payload: Annotated[dict, Body()], response: Response
+) -> dict:
     """Transition status or create/decide an exact structural revision proposal."""
     plan = _load_or_404(plan_id)
 
     if payload.get("proposal_id"):
+        learner = require_browser_learner(request)
         allowed = {
             "proposal_id",
             "proposal_digest",
@@ -409,7 +414,7 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Respons
             outcome = require_outcome(
                 service.handle(
                     PlanningCommand(
-                        _WEB_LEARNER,
+                        learner,
                         DecideProposal(
                             str(payload["proposal_id"]),
                             str(payload.get("proposal_digest", "")),
@@ -453,6 +458,7 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Respons
             detail="mixed structural and status changes are not allowed",
         )
     if "status" in mutation_fields:
+        learner = require_browser_learner(request)
         status = str(payload["status"]).strip().lower()
         if status not in PLAN_STATUSES:
             raise HTTPException(status_code=400, detail=f"status must be one of {PLAN_STATUSES}")
@@ -460,7 +466,7 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Respons
             outcome = require_outcome(
                 planning_lifecycle(evidence=plan.evidence).handle(
                     PlanningCommand(
-                        _WEB_LEARNER,
+                        learner,
                         TransitionPlanStatus(
                             plan.plan_id,
                             status,
@@ -571,7 +577,7 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Respons
                 plan_id=plan.plan_id,
                 evidence_ids=tuple(item.evidence_id for item in plan.evidence),
             ),
-            _WEB_LEARNER,
+            _WEB_MODEL,
         )
         review = require_proposal(
             service.handle(
@@ -596,6 +602,7 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()], response: Respons
 def toggle_milestone(
     plan_id: str,
     index: int,
+    request: Request,
     payload: Annotated[dict | None, Body()] = None,
 ) -> dict:
     """Compatibility path for an explicit evidence-backed milestone outcome."""
@@ -620,12 +627,13 @@ def toggle_milestone(
     if "done" in payload:
         raise HTTPException(status_code=400, detail="done toggles are forbidden; use outcome")
     evidence_ids = tuple(str(item) for item in payload.get("evidence_ids", ()))
+    learner = require_browser_learner(request)
     try:
         service = planning_lifecycle(evidence=plan.evidence)
         outcome = require_outcome(
             service.handle(
                 PlanningCommand(
-                    _WEB_LEARNER,
+                    learner,
                     RecordMilestoneOutcome(
                         plan.plan_id,
                         plan.milestones[index].milestone_id,
@@ -644,14 +652,15 @@ def toggle_milestone(
 
 
 @router.delete("/plans/{plan_id}")
-def remove_plan(plan_id: str) -> dict:
+def remove_plan(plan_id: str, request: Request) -> dict:
     """Abandon a plan while retaining Markdown and audit history."""
     plan = _load_or_404(plan_id)
+    learner = require_browser_learner(request)
     try:
         outcome = require_outcome(
             planning_lifecycle(evidence=plan.evidence).handle(
                 PlanningCommand(
-                    _WEB_LEARNER,
+                    learner,
                     TransitionPlanStatus(
                         plan.plan_id,
                         "abandoned",

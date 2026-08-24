@@ -9,6 +9,7 @@ from planning_lifecycle_support import LEARNER, MODEL, RECORDER, evidence_ref, l
 
 from studyloop.planning import (
     Checkpoint,
+    ConceptProposal,
     DecideProposal,
     EvidenceDisposition,
     EvidenceValidationError,
@@ -35,7 +36,10 @@ def _draft(dispositions: tuple[EvidenceDisposition, ...]) -> PlanProposalDraft:
         title="Evidence plan",
         mission=Mission(why="Practise deliberately", success=["Demonstrate protocols"]),
         goals=(GoalProposal("g", "Protocols", "Needed", "Aligned"),),
-        milestones=(MilestoneProposal("m", "g", "Trace protocols"),),
+        milestones=(
+            MilestoneProposal("m", "g", "Trace protocols", concept_aliases=("protocols",)),
+        ),
+        concepts=(ConceptProposal("protocols", "protocols"),),
         evidence_dispositions=dispositions,
         next_action="Trace one exchange",
     )
@@ -309,6 +313,64 @@ def test_tier_one_evidence_must_carry_a_completion_claim(tmp_path: Path) -> None
                     "verified_complete",
                     (wrong_claim.evidence_id,),
                     "wrong-claim",
+                ),
+            )
+        )
+
+
+@pytest.mark.parametrize("subject", ["concept:sql", "concept:no"])
+def test_overlapping_or_nested_labels_do_not_match_milestone_titles(
+    tmp_path: Path, subject: str
+) -> None:
+    evidence = evidence_ref(
+        f"overlap-{subject.removeprefix('concept:')}",
+        source_kind="studyloop_practice",
+        tier=1,
+        subject_ref=subject,
+    )
+    service = lifecycle(tmp_path, evidence=(evidence,))
+    brief = service.prepare(PlanningRequest("create", "Help", "overlap-run"), MODEL)
+    draft = PlanProposalDraft(
+        title="NoSQL plan",
+        mission=Mission(why="Learn storage", success=["Explain it"]),
+        goals=(GoalProposal("g", "Storage", "Needed", "Aligned"),),
+        milestones=(MilestoneProposal("m", "g", "Learn NoSQL storage"),),
+        evidence_dispositions=(EvidenceDisposition(evidence.evidence_id, "selected", "Candidate"),),
+        next_action="Trace storage",
+    )
+    review = service.handle(
+        PlanningCommand(
+            MODEL,
+            SubmitProposalDraft(
+                brief.run_id,
+                "overlap-proposal",
+                brief.brief_context_digest,
+                draft,
+            ),
+        )
+    )
+    applied = service.handle(
+        PlanningCommand(
+            LEARNER,
+            DecideProposal(
+                review.proposal_id,
+                review.proposal_digest,
+                "approve",
+                "overlap-decision",
+            ),
+        )
+    )
+    milestone_id = service.inspect(PlanningRef(applied.plan_id)).plan.milestones[0].milestone_id
+    with pytest.raises(EvidenceValidationError, match="target milestone"):
+        service.handle(
+            PlanningCommand(
+                RECORDER,
+                RecordMilestoneOutcome(
+                    applied.plan_id,
+                    milestone_id,
+                    "verified_complete",
+                    (evidence.evidence_id,),
+                    "overlap-complete",
                 ),
             )
         )

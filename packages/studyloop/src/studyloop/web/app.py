@@ -118,6 +118,9 @@ def create_app(
     app.state.explorer_tree_fingerprint = None
     app.state.session_options_targets_cache = None
     app.state.session_options_targets_fingerprint = None
+    from studyloop.web.learner_auth import initialise_browser_learner_sessions
+
+    initialise_browser_learner_sessions(app)
 
     # Optional password protection (LAN mode)
     if password:
@@ -205,10 +208,16 @@ def create_app(
     # In dev_mode=True the HTML is read and renderer-specific tags are injected
     # so the client-side JS swaps Terminal at runtime.
     @app.get("/", response_model=None)
-    async def index() -> Response:
+    async def index(request: Request) -> Response:
+        from studyloop.web.learner_auth import mint_browser_learner_session
+
+        def browser_response(response: Response) -> Response:
+            mint_browser_learner_session(request, response)
+            return response
+
         no_cache = {"Cache-Control": "no-cache, no-store, must-revalidate"}
         if not dev_mode:
-            return FileResponse(STATIC_DIR / "index.html", headers=no_cache)
+            return browser_response(FileResponse(STATIC_DIR / "index.html", headers=no_cache))
         html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
         # `dev_renderer` is the deprecated legacy path: only taken when a
         # caller explicitly passes it, preserving its exact historical
@@ -220,8 +229,10 @@ def create_app(
         else:
             from studyloop.web.dev_engines import inject_dev_engine
 
-            return HTMLResponse(
-                content=inject_dev_engine(html, app.state.dev_engine), headers=no_cache
+            return browser_response(
+                HTMLResponse(
+                    content=inject_dev_engine(html, app.state.dev_engine), headers=no_cache
+                )
             )
         if renderer == "ghostty":
             dev_injection = '\n  <meta name="studyloop-dev-mode" content="ghostty-web">'
@@ -236,7 +247,7 @@ def create_app(
                 '\n  <script defer src="/vendor/js/ghostty-web-bootstrap-0.4.0.js"></script>'
             )
             html = html.replace("</head>", ghostty_scripts + "\n</head>", 1)
-        return HTMLResponse(content=html, headers=no_cache)
+        return browser_response(HTMLResponse(content=html, headers=no_cache))
 
     # Redirect /session to hash-routed study-session tab
     @app.get("/session")

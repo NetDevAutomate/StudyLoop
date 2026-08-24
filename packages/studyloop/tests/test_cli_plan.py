@@ -7,6 +7,7 @@ part of the contract, not incidental.
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -57,16 +58,12 @@ def _make(
         proposal = json.loads(preview.output)
     except json.JSONDecodeError:
         return preview
-    result = runner.invoke(
-        cli,
-        [
-            "plan",
-            "decide",
-            proposal["proposal_id"],
-            proposal["proposal_digest"],
-            "--approve",
-        ],
-    )
+    with patch("studyloop.cli._plan._interactive_terminal", return_value=True):
+        result = runner.invoke(
+            cli,
+            ["plan", "decide", proposal["proposal_id"], proposal["proposal_digest"]],
+            input="approve\ny\n",
+        )
     if expect_success:
         assert result.exit_code == 0, result.output
     return result
@@ -182,10 +179,12 @@ def test_status_active_is_refused_for_an_incomplete_plan(runner: CliRunner) -> N
         ],
     )
     proposal = json.loads(preview.output)
-    created = runner.invoke(
-        cli,
-        ["plan", "decide", proposal["proposal_id"], proposal["proposal_digest"], "--approve"],
-    )
+    with patch("studyloop.cli._plan._interactive_terminal", return_value=True):
+        created = runner.invoke(
+            cli,
+            ["plan", "decide", proposal["proposal_id"], proposal["proposal_digest"]],
+            input="approve\ny\n",
+        )
     assert created.exit_code == 0, created.output
 
     result = runner.invoke(cli, ["plan", "status", "vague-plan", "active"])
@@ -225,6 +224,7 @@ def test_new_requires_explicit_confirmation_and_writes_no_canonical_plan(
     )
     assert result.exit_code == 1
     assert "plan decide" in result.output
+    assert "--approve" not in result.output
     assert json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output) == []
 
 
@@ -246,6 +246,25 @@ def test_new_confirm_flag_cannot_approve_an_unreviewed_proposal(runner: CliRunne
     assert json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output) == []
 
 
+def test_decide_refuses_noninteractive_and_agent_facing_invocation(runner: CliRunner) -> None:
+    preview = runner.invoke(
+        cli,
+        ["plan", "new", "--title", "Human only", "--why", "Protect approval", "--json"],
+    )
+    proposal = json.loads(preview.output)
+    refused = runner.invoke(
+        cli,
+        ["plan", "decide", proposal["proposal_id"], proposal["proposal_digest"]],
+    )
+    assert refused.exit_code == 1
+    assert "interactive terminal" in refused.output.lower()
+    json_attempt = runner.invoke(
+        cli,
+        ["plan", "decide", proposal["proposal_id"], proposal["proposal_digest"], "--json"],
+    )
+    assert json_attempt.exit_code == 2
+
+
 def test_decide_requires_the_exact_displayed_digest(runner: CliRunner) -> None:
     preview = runner.invoke(
         cli,
@@ -264,10 +283,12 @@ def test_decide_requires_the_exact_displayed_digest(runner: CliRunner) -> None:
         ],
     )
     proposal = json.loads(preview.output)
-    refused = runner.invoke(
-        cli,
-        ["plan", "decide", proposal["proposal_id"], "wrong-digest", "--approve"],
-    )
+    with patch("studyloop.cli._plan._interactive_terminal", return_value=True):
+        refused = runner.invoke(
+            cli,
+            ["plan", "decide", proposal["proposal_id"], "wrong-digest"],
+            input="approve\ny\n",
+        )
     assert refused.exit_code == 1
     assert json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output) == []
 

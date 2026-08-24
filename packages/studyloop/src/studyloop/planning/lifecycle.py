@@ -90,10 +90,7 @@ _EXECUTABLE_MARKDOWN = re.compile(
     r"<\s*(?:script|iframe|object|embed)\b|javascript\s*:|\bon\w+\s*=",
     re.IGNORECASE,
 )
-_UNTRUSTED_IMPORT_MARKUP = re.compile(
-    r"```+\s*mermaid\b|<!--|<\s*/?\s*[a-z][^>]*>",
-    re.IGNORECASE,
-)
+_UNTRUSTED_IMPORT_MARKUP = re.compile(r"<!--|<\s*/?\s*[a-z][^>]*>", re.IGNORECASE)
 _VERIFIED_CLAIMS = frozenset(
     {"demonstrated_skill", "verified_completion", "milestone_completion", "completed_practice"}
 )
@@ -117,18 +114,29 @@ def _evidence_matches_milestone(item: EvidenceRef, plan: StudyPlan, milestone: M
         return True
     if not subject.startswith("concept:"):
         return False
-    concept = " ".join(subject.removeprefix("concept:").replace("-", " ").split())
+    concept = " ".join(subject.removeprefix("concept:").split())
     if not concept:
         return False
     milestone_concepts = {
-        " ".join(value.casefold().replace("-", " ").split())
-        for value in milestone.concepts
-        if value.strip()
+        " ".join(value.casefold().split()) for value in milestone.concepts if value.strip()
     }
-    if concept in milestone_concepts:
-        return True
-    milestone_title = " ".join(milestone.title.casefold().replace("-", " ").split())
-    return concept in milestone_title
+    attached_concept_ids = {
+        item.concept_id.strip().casefold()
+        for item in plan.concepts
+        if item.concept_id.strip()
+        and " ".join(item.display_label.casefold().split()) in milestone_concepts
+    }
+    return concept in milestone_concepts or concept in attached_concept_ids
+
+
+def _contains_mermaid_fence(markdown: str) -> bool:
+    """Recognise CommonMark backtick/tilde Mermaid fence openers robustly."""
+    opener = re.compile(r"^[ \t]*(?:`{3,}|~{3,})[ \t]*(?P<info>[^ \t\r\n`~]+)")
+    return any(
+        (match := opener.match(line)) is not None
+        and match.group("info").strip().casefold() == "mermaid"
+        for line in markdown.splitlines()
+    )
 
 
 def _request_digest(request: PlanningRequest) -> str:
@@ -251,6 +259,15 @@ class PlanningLifecycle:
         if target is not None and target.plan.status in {"complete", "abandoned"}:
             raise LifecycleValidationError(
                 f"terminal plan {request.plan_id!r} cannot be structurally revised"
+            )
+        if target is not None and (
+            any(not item.goal_id.strip() for item in target.plan.goals)
+            or any(not item.concept_id.strip() for item in target.plan.concepts)
+            or any(not item.milestone_id.strip() for item in target.plan.milestones)
+        ):
+            raise LifecycleValidationError(
+                "legacy plan lacks stable entity identities; repair identities losslessly "
+                "before structural revision"
             )
 
         offered = self.evidence.offered(request.evidence_ids)
@@ -879,7 +896,9 @@ class PlanningLifecycle:
             raise LifecycleValidationError("imported Markdown cannot be empty")
         if _EXECUTABLE_MARKDOWN.search(command.markdown):
             raise LifecycleValidationError("imported Markdown contains executable content")
-        if _UNTRUSTED_IMPORT_MARKUP.search(command.markdown):
+        if _UNTRUSTED_IMPORT_MARKUP.search(command.markdown) or _contains_mermaid_fence(
+            command.markdown
+        ):
             raise LifecycleValidationError(
                 "imported Markdown contains untrusted markup; "
                 "foreign Mermaid, raw HTML, and concealed instructions are not accepted"

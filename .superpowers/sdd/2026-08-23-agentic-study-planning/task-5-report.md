@@ -17,9 +17,9 @@ the runtime never silently writes to `<configured-dir>/plans`.
 
 - Deprecated `studyloop plan new` creates a typed draft proposal but cannot
   approve it in the same invocation. `--confirm` is refused; a separate
-  `plan decide <proposal-id> <proposal-digest> --approve|--reject` action binds
-  learner authority to the exact displayed proposal. It cannot activate or
-  bypass three-plan capacity.
+  interactive-only `plan decide <proposal-id> <proposal-digest>` action
+  redisplays the proposal and prompts for the decision and confirmation. It
+  cannot activate or bypass three-plan capacity.
 - Structured `POST /api/plans` returns an exact proposal preview with HTTP 202
   for every structured creation request. A later request can approve/reject
   only that persisted proposal ID and displayed digest; same-request approval
@@ -136,7 +136,8 @@ and `git diff --check` also pass.
 ## Compatibility changes
 
 - `plan new` never approves in the same command; deprecated `--confirm` and
-  `--activate` are refused. `plan decide` is the separate exact-digest action.
+  `--activate` are refused. `plan decide` is interactive-only with no JSON or
+  flag-based approval surface.
 - New structured REST plans default to draft, cannot overwrite, and require an
   explicit learner decision. Unconfirmed requests return 202 proposal previews.
 - Structural PATCH is asynchronous proposal creation (202), not an immediate
@@ -160,8 +161,9 @@ and `git diff --check` also pass.
 - Top-level free-form notes cannot be represented by the current typed proposal
   contract. Direct notes PATCH is refused, and raw import generic notes are
   stripped rather than silently trusted or lost during approval.
-- CLI compatibility approval is deliberately a second digest-bound command.
-  Interactive agent conversation and onboarding installation belong to Task 6.
+- CLI compatibility approval is deliberately a TTY-only, prompted,
+  digest-bound command. Agent conversation and onboarding installation belong
+  to Task 6.
 - Planning workspace/ACP transport, new planning HTTP/WebSocket routes, browser
   Markdown/Mermaid rendering, stewardship, and aggregate release gates remain
   Tasks 7-12.
@@ -238,3 +240,75 @@ rtk uv run --group dev pyright <changed Task 5 source and harness files>
 
 Ruff check, Ruff formatting, Python compilation, the expanded AST architecture
 gate, and `git diff --check` also passed on the final formatted tree.
+
+## Independent-review fix round 2
+
+The second adversarial review correctly identified that exact proposal IDs and
+digests are CAS values, not learner authentication. It also found a remaining
+legacy progress-loss case plus two identity/parser edge cases. All four are now
+closed:
+
+- CLI proposal decisions are unavailable to non-TTY and JSON/flag invocation.
+  The command redisplays the exact proposal, prompts for approve/reject, and
+  requires a second explicit confirmation. `plan new` shows the review values
+  but never prints an immediately executable approval command.
+- The web app now mints an expiring, bounded, application-local learner session
+  only during same-site browser navigation. Authority-bearing plan writes
+  require the HttpOnly session cookie, exact same Origin, `Sec-Fetch-Site:
+  same-origin`, and a double-submit CSRF token tied to server-side session
+  state. Configured HTTP Basic authentication remains the outer identity
+  boundary; no learner session is minted until it succeeds.
+- Proposal decisions, raw imports, status transitions, milestone outcomes, and
+  abandonment all construct learner `ActorContext` only from that trusted
+  browser boundary. Default/direct HTTP clients receive 403. Proposal
+  preparation remains model-authorised and does not mint learner authority.
+- Structural revision of a tolerated legacy plan with blank stable entity IDs
+  is refused before any proposal or canonical write. Completed milestones and
+  active/non-default plan state therefore remain intact until an explicit
+  lossless identity repair exists.
+- Import scans CommonMark backtick and tilde Mermaid fence openers across valid
+  fence lengths, spacing, indentation, and case. Only renderer-generated
+  canonical Mermaid is accepted.
+- Tier-1 relevance contains no title/substring heuristic. Evidence must name
+  the exact milestone ID or an exact canonical concept label/stable concept ID
+  explicitly attached to that milestone; SQL/NoSQL and nested-label cases are
+  rejected.
+
+### Round-2 RED evidence
+
+Before implementation, noninteractive CLI decisions succeeded, direct REST
+approval returned 201, browser navigation minted no trusted session, tilde
+Mermaid imports returned 201, the legacy completed-milestone PATCH returned
+202, and SQL/NoSQL evidence completed the wrong milestone. Each regression now
+fails closed at its public boundary.
+
+### Round-2 final verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli_plan.py \
+  packages/studyloop/tests/test_web_plans.py \
+  packages/studyloop/tests/test_planning_evaluation.py \
+  packages/studyloop/tests/test_planning_architecture.py \
+  packages/studyloop/tests/test_plan_agent_harness.py -q
+# 129 passed, one pre-existing Starlette/httpx deprecation warning
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning*.py -q
+# 301 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli*.py \
+  packages/studyloop/tests/test_web*.py -q
+# 637 passed, 295 deselected, one pre-existing Starlette/httpx warning
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_e2e_coverage_gate.py \
+  packages/studyloop/tests/test_e2e_coverage_gate_selftest.py -q
+# 27 passed
+
+rtk uv run --group dev pyright <changed round-2 source files>
+# 0 errors, 0 warnings, 0 informations
+```
+
+Ruff check, Ruff formatting, Python compilation, architecture tests, and
+`git diff --check` passed on the final round-2 tree.

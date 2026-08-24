@@ -1,8 +1,8 @@
 """Study plan command group.
 
-The agent-facing surface for study plans. Every command has a ``--json``
-form because a Socratic mentor agent drives these programmatically, while the
-default human output stays readable in a terminal sidebar.
+The agent-facing read/proposal surface has ``--json`` forms, while the
+authority-bearing proposal decision is intentionally interactive-only. Default
+human output stays readable in a terminal sidebar.
 
 ``plan evaluate`` prints the Markdown block by default: that is what an agent
 pastes into the conversation at each of the three session checkpoints.
@@ -11,9 +11,9 @@ pastes into the conversation at each of the three session checkpoints.
 from __future__ import annotations
 
 import json
+import sys
 import uuid
-from dataclasses import asdict
-from typing import Literal, NoReturn
+from typing import NoReturn
 
 import click
 from rich.table import Table
@@ -75,6 +75,11 @@ def _fail(message: str) -> NoReturn:
     """
     console.print(f"[red]{message}[/red]")
     raise SystemExit(1)
+
+
+def _interactive_terminal() -> bool:
+    """Return true only when learner input and output are attached to a TTY."""
+    return bool(sys.stdin.isatty() and sys.stdout.isatty())
 
 
 def _load(plan_id: str) -> StudyPlan:
@@ -314,36 +319,34 @@ def plan_new(
             )
         )
         raise click.exceptions.Exit(1)
+    console.print(review.markdown_preview)
+    console.print(f"Proposal ID: {review.proposal_id}")
+    console.print(f"Proposal digest: {review.proposal_digest}")
     _fail(
-        "No plan was created. Review the proposal, then run: "
-        f"studyloop plan decide {review.proposal_id} {review.proposal_digest} --approve"
+        "No plan was created. After reviewing this proposal, use plan decide from an "
+        "interactive terminal and enter an explicit decision when prompted."
     )
 
 
 @plan_group.command("decide")
 @click.argument("proposal_id")
 @click.argument("proposal_digest")
-@click.option("--approve", "decision", flag_value="approve", default=None)
-@click.option("--reject", "decision", flag_value="reject")
-@click.option("--reason", default="", help="Visible reason for the learner decision.")
-@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
-def plan_decide(
-    proposal_id: str,
-    proposal_digest: str,
-    decision: str | None,
-    reason: str,
-    as_json: bool,
-) -> None:
+def plan_decide(proposal_id: str, proposal_digest: str) -> None:
     """Apply a separately reviewed proposal by exact ID and digest."""
-    if decision == "approve":
-        typed_decision: Literal["approve", "reject"] = "approve"
-    elif decision == "reject":
-        typed_decision = "reject"
-    else:
-        _fail("Choose exactly one of --approve or --reject.")
+    if not _interactive_terminal():
+        _fail("Plan decisions require a genuine interactive terminal; agent/JSON use is refused.")
     try:
         service = planning_lifecycle()
         review = require_proposal(service.inspect(ProposalRef(proposal_id)))
+        console.print(review.markdown_preview)
+        console.print(f"Proposal ID: {review.proposal_id}")
+        console.print(f"Proposal digest: {review.proposal_digest}")
+        typed_decision = click.prompt("Learner decision", type=click.Choice(["approve", "reject"]))
+        if not click.confirm(
+            f"Confirm {typed_decision} for exactly {proposal_id} / {proposal_digest}?",
+            default=False,
+        ):
+            _fail("No learner decision was recorded.")
         outcome = require_outcome(
             service.handle(
                 PlanningCommand(
@@ -353,7 +356,6 @@ def plan_decide(
                         proposal_digest,
                         typed_decision,
                         f"cli-decision:{uuid.uuid4().hex}",
-                        reason=reason,
                     ),
                 )
             )
@@ -365,17 +367,6 @@ def plan_decide(
         )
     except (InvalidPlanIdError, LifecycleError, PlanningRepositoryError) as exc:
         _fail(str(exc))
-    if as_json:
-        click.echo(
-            json.dumps(
-                {
-                    "outcome": asdict(outcome),
-                    "plan": view.plan.summary() if view else review.plan_preview.summary(),
-                },
-                indent=2,
-            )
-        )
-        return
     if outcome.status == "applied" and view is not None:
         console.print(f"[green]Applied reviewed proposal[/green] {proposal_id}")
         _print_readiness(readiness(view.plan))
