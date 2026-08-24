@@ -2329,6 +2329,12 @@ function masteryPanel() {
         return;
       }
       try {
+        /* Alpine's nextTick flushes x-show's DOM update, but layout is not
+           guaranteed until a paint frame. Mermaid measures the canvas, so two
+           frames prevent an intermittent hidden-container 16x16 viewBox. */
+        await new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
         const id = 'mastery-graph-' + Date.now();
         el.innerHTML = await _renderMermaidScoped(id, this.mermaidSource, el);
       } catch (err) {
