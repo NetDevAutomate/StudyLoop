@@ -25,7 +25,7 @@ def test_public_docs_name_one_agentic_planning_entry_path() -> None:
     assert "not the browser" not in guide
 
 
-def test_public_docs_do_not_claim_an_unshipped_terminal_architect() -> None:
+def test_public_docs_match_browser_only_architect_and_reload_recovery() -> None:
     release_notes = _read("releases/v0.1.0.md")
     design = _read("docs/designs/agentic-study-planning.md")
     guide = _read("docs/study-plans.md")
@@ -35,8 +35,10 @@ def test_public_docs_do_not_claim_an_unshipped_terminal_architect() -> None:
     assert "AP-CLI-01" not in design
     normalized_release = " ".join(release_notes.casefold().split())
     normalized_guide = " ".join(guide.casefold().split())
-    assert "full browser reload cannot yet reattach" in normalized_release
-    assert "full browser reload does not yet offer a reattach control" in normalized_guide
+    assert "full browser reload cannot yet reattach" not in normalized_release
+    assert "same browser tab restores the conversation" in normalized_release
+    assert "same browser tab, studyloop automatically restores" in normalized_guide
+    assert "a separate tab does not silently adopt" in normalized_guide
 
 
 def test_first_week_does_not_recommend_phone_use() -> None:

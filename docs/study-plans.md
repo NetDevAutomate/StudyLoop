@@ -432,9 +432,13 @@ enough is known, it shows:
 Nothing is applied at proposal time. **Approve digest-bound proposal** creates
 the canonical plan, **Revise** returns to the same conversation, and **Reject**
 changes no plan. Approval opens the finished Markdown immediately. The server
-retains conversation artifacts for recovery, but a full browser reload does
-not yet offer a reattach control; that remains a release gate rather than a
-claimed capability.
+retains conversation artifacts for recovery. If you refresh the page in the
+same browser tab, StudyLoop automatically restores the conversation from its
+last acknowledged event. It does not ask the Architect to repeat work or add
+duplicate messages, and a durable proposal—including its Mermaid map—reappears
+with the same approve, revise, and reject controls. **Leave conversation** clears
+that tab's recovery pointer. A separate tab does not silently adopt the private
+conversation.
 
 To adapt an existing plan, open it and choose **Review with Architect**. The
 proposal includes a before/after structural diff and is subject to the same

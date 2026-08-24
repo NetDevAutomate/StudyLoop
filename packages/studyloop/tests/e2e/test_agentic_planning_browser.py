@@ -451,6 +451,85 @@ def test_fresh_onboarding_create_approve_and_revise_in_real_browser(
         context.close()
 
 
+def test_planning_conversation_survives_full_page_reloads_without_duplicates(
+    browser, running_server, gateway: _GatewayState
+) -> None:
+    context = browser.new_context(viewport={"width": 1280, "height": 800})
+    page = context.new_page()
+    try:
+        _open_plans(page, running_server.base_url)
+        page.locator('[data-testid="plan-new"]').click()
+        page.locator('[data-testid="architect-brain-dump"]').fill(BRAIN_DUMP)
+        page.locator('[data-testid="architect-start"]').click()
+        conversation = page.locator('[data-testid="architect-conversation"]')
+        conversation.wait_for(state="visible", timeout=10_000)
+        page.wait_for_function(
+            "() => document.querySelector('[data-testid=architect-conversation]')"
+            "?.textContent.includes('one useful outcome')",
+            timeout=15_000,
+        )
+
+        requests_after_clarification = len(gateway.requests)
+        page.reload(wait_until="domcontentloaded")
+        conversation.wait_for(state="visible", timeout=10_000)
+        assert conversation.locator(".architect-message-learner").count() == 1
+        assert conversation.locator(".architect-message-assistant").count() == 1
+        assert "one useful outcome" in conversation.inner_text().casefold()
+        assert len(gateway.requests) == requests_after_clarification
+
+        page.locator('[data-testid="architect-turn"]').fill(
+            "I want to design and test one small HTTP service without copying a tutorial."
+        )
+        with page.expect_response("**/api/planning/conversations/*/turns") as turn_info:
+            page.locator('[data-testid="architect-send"]').click()
+        assert turn_info.value.ok
+        page.reload(wait_until="domcontentloaded")
+        _wait_proposal(page)
+        root = page.locator('[x-data="planArchitectPanel()"]')
+        messages_before_proposal_reload = root.evaluate(
+            "el => el._x_dataStack[0].messages.map(({role, content, sequence}) => "
+            "({role, content, sequence}))"
+        )
+        assert [item["role"] for item in messages_before_proposal_reload] == [
+            "learner",
+            "assistant",
+            "learner",
+            "assistant",
+        ]
+        assert sum(BRAIN_DUMP in item["content"] for item in messages_before_proposal_reload) == 1
+        assert (
+            sum("one useful outcome" in item["content"].casefold()
+                for item in messages_before_proposal_reload)
+            == 1
+        )
+
+        requests_after_proposal = len(gateway.requests)
+        page.reload(wait_until="domcontentloaded")
+        _wait_proposal(page)
+        messages_after_proposal_reload = root.evaluate(
+            "el => el._x_dataStack[0].messages.map(({role, content, sequence}) => "
+            "({role, content, sequence}))"
+        )
+        assert messages_after_proposal_reload == messages_before_proposal_reload
+        assert len(gateway.requests) == requests_after_proposal
+        proposal_doc = page.locator('[data-testid="architect-proposal-markdown"]')
+        proposal_doc.locator("svg").wait_for(state="visible", timeout=10_000)
+        assert page.locator('[data-testid="architect-approve"]').is_enabled()
+        assert page.locator('[data-testid="architect-reject"]').is_enabled()
+
+        page.locator('[data-testid="architect-reject"]').click()
+        page.get_by_text("Proposal rejected", exact=True).wait_for(state="visible")
+        page.reload(wait_until="domcontentloaded")
+        page.wait_for_function("() => !!window.Alpine && !!window.Alpine.store('nav')")
+        state = root.evaluate(
+            "el => ({phase: el._x_dataStack?.[0]?.phase, "
+            "conversationId: el._x_dataStack?.[0]?.conversationId})"
+        )
+        assert state == {"phase": "idle", "conversationId": ""}
+    finally:
+        context.close()
+
+
 @pytest.mark.parametrize("viewport", [(834, 1112), (1024, 768)])
 def test_planning_capture_is_readable_at_supported_tablet_sizes(
     browser, running_server, viewport

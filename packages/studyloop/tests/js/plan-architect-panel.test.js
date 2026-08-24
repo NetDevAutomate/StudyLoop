@@ -61,6 +61,22 @@ const snapshot = (over = {}) => ({
   ...over,
 });
 
+function memoryStorage() {
+  const values = new Map();
+  return {
+    getItem(key) {
+      return values.has(key) ? values.get(key) : null;
+    },
+    setItem(key, value) {
+      values.set(key, String(value));
+    },
+    removeItem(key) {
+      values.delete(key);
+    },
+    values,
+  };
+}
+
 beforeEach(() => {
   globalThis.document = { cookie: 'studyloop_csrf=cookie-token' };
 });
@@ -249,6 +265,76 @@ test('brain dump is the only required input and a clarification remains conversa
   assert.match(panel.messages[1].content, /which real service/i);
 });
 
+test('a recreated panel resumes the active tab conversation from its acknowledged sequence', async () => {
+  const storage = memoryStorage();
+  const connections = [];
+  const callbacks = [];
+  const proposal = {
+    proposal_id: 'proposal-1',
+    proposal_digest: 'sha256:proposal',
+    mode: 'create',
+    title: 'Design one service',
+    markdown: '# Design one service',
+    plan: { title: 'Design one service' },
+    base: { document_digest: '', structure_digest: '' },
+  };
+  const api = {
+    async readCapacity() {
+      return capacity();
+    },
+    async create() {
+      return created();
+    },
+    async submitTurn() {
+      return { turn_id: 'turn-1', status: 'scheduled', turn_version: 1 };
+    },
+    async get(conversationId) {
+      assert.equal(conversationId, 'conversation-1');
+      return snapshot({
+        phase: 'proposal',
+        messages: [
+          { role: 'learner', content: 'I need a practical path.', sequence: 6 },
+          { role: 'assistant', content: 'Here is the proposal.', sequence: 7 },
+          { role: 'assistant', content: 'Here is the proposal.', sequence: 7 },
+        ],
+        latest_turn: { turn_id: 'turn-1', status: 'completed', turn_version: 2 },
+        proposal,
+      });
+    },
+    connect(conversationId, afterSequence, onEvent) {
+      connections.push({ conversationId, afterSequence });
+      callbacks.push(onEvent);
+      return () => {};
+    },
+  };
+
+  const firstPage = createPlanArchitectPanel({ api, storage });
+  await firstPage.beginCreate();
+  firstPage.brainDump = 'I need a practical path.';
+  await firstPage.startConversation();
+  await callbacks[0]({ sequence: 7, type: 'proposal_ready', data: {} });
+
+  const reloadedPage = createPlanArchitectPanel({ api, storage });
+  await reloadedPage.init();
+
+  assert.equal(reloadedPage.phase, ARCHITECT_PHASES.PROPOSAL);
+  assert.equal(reloadedPage.conversationId, 'conversation-1');
+  assert.equal(reloadedPage.lastSequence, 7);
+  assert.deepEqual(
+    reloadedPage.messages.map((message) => `${message.role}:${message.content}`),
+    ['learner:I need a practical path.', 'assistant:Here is the proposal.']
+  );
+  assert.deepEqual(connections[1], {
+    conversationId: 'conversation-1',
+    afterSequence: 7,
+  });
+  assert.equal(
+    [...storage.values.values()].some((value) => value.includes('Here is the proposal.')),
+    false,
+    'tab recovery storage must contain only an opaque pointer and cursor'
+  );
+});
+
 test('a lost turn response reuses one operation key until the server confirms it', async () => {
   const submitted = [];
   let issued = 0;
@@ -397,6 +483,56 @@ test('a lost approval response keeps one decision key and survives a null refres
   );
   assert.equal(issued, 1);
   assert.equal(panel.phase, ARCHITECT_PHASES.DETAIL);
+});
+
+test('a lost approval response keeps the same decision key across a full page recreation', async () => {
+  const storage = memoryStorage();
+  const decisions = [];
+  let issued = 0;
+  const proposal = {
+    proposal_id: 'proposal-1',
+    proposal_digest: 'sha256:proposal',
+    mode: 'create',
+    title: 'Design one service',
+    markdown: '# Design one service',
+    plan: { title: 'Design one service' },
+    base: { document_digest: '', structure_digest: '' },
+  };
+  const api = {
+    createIdempotencyKey() {
+      issued += 1;
+      return `decision-operation-${issued}`;
+    },
+    async get() {
+      return snapshot({ phase: 'proposal', proposal });
+    },
+    connect() {
+      return () => {};
+    },
+    async decide(exactProposal, outcome, idempotencyKey) {
+      decisions.push({ exactProposal, outcome, idempotencyKey });
+      if (decisions.length === 1) throw new Error('approval response lost after commit');
+      return { intent_id: 'intent-1', status: 'applied', outcome, plan_id: 'plan-1' };
+    },
+  };
+
+  const firstPage = createPlanArchitectPanel({ api, storage });
+  firstPage.conversationId = 'conversation-1';
+  firstPage.applySnapshot(snapshot({ phase: 'proposal', proposal }));
+  await firstPage.decide('approve');
+  assert.match(firstPage.error, /response lost/i);
+
+  const reloadedPage = createPlanArchitectPanel({ api, storage });
+  await reloadedPage.init();
+  assert.equal(reloadedPage.phase, ARCHITECT_PHASES.PROPOSAL);
+  await reloadedPage.decide('approve');
+
+  assert.deepEqual(
+    decisions.map((item) => item.idempotencyKey),
+    ['decision-operation-1', 'decision-operation-1']
+  );
+  assert.equal(issued, 1);
+  assert.equal(reloadedPage.phase, ARCHITECT_PHASES.DETAIL);
 });
 
 test('revision retires the old proposal immediately and stale refresh cannot resurrect it', () => {

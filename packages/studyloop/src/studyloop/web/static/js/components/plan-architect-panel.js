@@ -5,6 +5,8 @@ import {
   createPlanningConversation,
 } from './planning-conversation.js';
 
+const RECOVERY_KEY = 'studyloop.plan-architect.active.v1';
+
 export const ARCHITECT_PHASES = Object.freeze({
   IDLE: 'idle',
   CAPTURE: 'capture',
@@ -50,8 +52,13 @@ export async function waitForVisibleLayout(element, options = {}) {
 }
 
 export function createPlanArchitectPanel(options = {}) {
+  const storage = Object.hasOwn(options, 'storage')
+    ? options.storage
+    : globalThis.sessionStorage;
   return {
     api: options.api || createPlanningConversation(),
+    _storage: storage,
+    _recoveryKey: options.recoveryKey || RECOVERY_KEY,
     phase: ARCHITECT_PHASES.IDLE,
     mode: 'create',
     planId: null,
@@ -96,6 +103,95 @@ export function createPlanArchitectPanel(options = {}) {
       return this.phase === ARCHITECT_PHASES.PROPOSAL;
     },
 
+    _readRecovery() {
+      try {
+        const raw = this._storage?.getItem?.(this._recoveryKey);
+        if (!raw) return null;
+        const value = JSON.parse(raw);
+        const conversationId = String(value?.conversation_id || '');
+        if (!conversationId || conversationId.length > 200) return null;
+        const pending = value?.pending_decision;
+        const pendingDecision =
+          pending &&
+          ['approve', 'reject'].includes(pending.outcome) &&
+          typeof pending.identity === 'string' &&
+          pending.identity &&
+          typeof pending.idempotency_key === 'string' &&
+          pending.idempotency_key
+            ? {
+                identity: pending.identity,
+                outcome: pending.outcome,
+                idempotencyKey: pending.idempotency_key,
+              }
+            : null;
+        return {
+          conversationId,
+          lastSequence: Math.max(0, Number(value?.last_sequence) || 0),
+          pendingDecision,
+        };
+      } catch {
+        return null;
+      }
+    },
+
+    _persistRecovery() {
+      if (!this.conversationId || this.decisionFinal) return;
+      try {
+        this._storage?.setItem?.(
+          this._recoveryKey,
+          JSON.stringify({
+            version: 1,
+            conversation_id: this.conversationId,
+            last_sequence: this.lastSequence,
+            pending_decision: this.pendingDecision
+              ? {
+                  identity: this.pendingDecision.identity,
+                  outcome: this.pendingDecision.outcome,
+                  idempotency_key: this.pendingDecision.idempotencyKey,
+                }
+              : null,
+          })
+        );
+      } catch {
+        // Private browsing or an exhausted quota must not break planning.
+      }
+    },
+
+    _clearRecovery() {
+      try {
+        this._storage?.removeItem?.(this._recoveryKey);
+      } catch {
+        // Storage is an optional recovery aid, never the source of truth.
+      }
+    },
+
+    async init() {
+      const recovery = this._readRecovery();
+      if (!recovery) return;
+      this.conversationId = recovery.conversationId;
+      this.lastSequence = recovery.lastSequence;
+      this.pendingDecision = recovery.pendingDecision;
+      this.busy = true;
+      try {
+        await this.refresh();
+        this.connect();
+      } catch (error) {
+        this.phase = ARCHITECT_PHASES.IDLE;
+        this.error =
+          'The previous planning conversation could not be reopened. ' +
+          'Reload to retry, or start a new conversation.';
+      } finally {
+        this.busy = false;
+        if (
+          this.pendingDecision &&
+          this.proposal &&
+          this.phase === ARCHITECT_PHASES.APPLYING
+        ) {
+          this.phase = ARCHITECT_PHASES.PROPOSAL;
+        }
+      }
+    },
+
     async beginCreate() {
       this.reset();
       this.mode = 'create';
@@ -134,6 +230,7 @@ export function createPlanArchitectPanel(options = {}) {
         }
         this.conversationId = run.conversation_id;
         this.capacity = run.capacity || this.capacity;
+        this._persistRecovery();
         if (this.contextFile) {
           this.attachedContext = await this.api.attachTextFile(
             this.conversationId,
@@ -163,7 +260,12 @@ export function createPlanArchitectPanel(options = {}) {
         this.lastSequence,
         async (event) => {
           this.lastSequence = Math.max(this.lastSequence, Number(event.sequence) || 0);
+          this._persistRecovery();
           await this.refresh();
+        },
+        (cursor) => {
+          this.lastSequence = Math.max(this.lastSequence, Number(cursor) || 0);
+          this._persistRecovery();
         }
       );
     },
@@ -187,9 +289,20 @@ export function createPlanArchitectPanel(options = {}) {
         ...this.messages.map((message) => Number(message.sequence) || 0)
       );
       if (this.pendingDecision) {
-        this.phase = this.busy ? ARCHITECT_PHASES.APPLYING : ARCHITECT_PHASES.PROPOSAL;
-        return;
+        const pendingProposal = value.proposal || this.proposal;
+        const expectedIdentity = pendingProposal
+          ? `${pendingProposal.proposal_id}:${pendingProposal.proposal_digest}:${this.pendingDecision.outcome}`
+          : '';
+        if (expectedIdentity === this.pendingDecision.identity) {
+          this.proposal = pendingProposal;
+          this.phase = this.busy ? ARCHITECT_PHASES.APPLYING : ARCHITECT_PHASES.PROPOSAL;
+          this._persistRecovery();
+          Promise.resolve(this._onProposal(pendingProposal)).catch(() => {});
+          return;
+        }
+        this.pendingDecision = null;
       }
+      this._persistRecovery();
       if (
         value.proposal &&
         value.proposal.proposal_digest !== this.retiredProposalDigest
@@ -290,6 +403,7 @@ export function createPlanArchitectPanel(options = {}) {
           outcome,
           idempotencyKey: this.api.createIdempotencyKey?.() || '',
         };
+        this._persistRecovery();
       }
       this.busy = true;
       this.phase = ARCHITECT_PHASES.APPLYING;
@@ -303,6 +417,7 @@ export function createPlanArchitectPanel(options = {}) {
         );
         this.pendingDecision = null;
         this.decisionFinal = true;
+        this._clearRecovery();
         this._disconnect?.();
         this._disconnect = null;
         this.decisionStatus = result.status || outcome;
@@ -349,6 +464,7 @@ export function createPlanArchitectPanel(options = {}) {
     },
 
     reset() {
+      this._clearRecovery();
       this._disconnect?.();
       this._disconnect = null;
       this.phase = ARCHITECT_PHASES.IDLE;

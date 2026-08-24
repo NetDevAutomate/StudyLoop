@@ -2628,7 +2628,7 @@
       <!-- ============================================================ -->
       <!-- STUDY PLANS VIEW — Architect conversation + existing reader. -->
       <div x-show="$store.nav.is('study-plans')" x-cloak
-           x-data="planArchitectPanel()">
+           x-data="planArchitectPanel()" x-init="init()">
         <div class="plans-panel">
           <header class="body-double-header">
             <h2>Study Plans</h2>
