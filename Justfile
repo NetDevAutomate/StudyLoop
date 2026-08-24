@@ -38,8 +38,11 @@ test-browser-smoke:
 
 # Pre-release proof against the five supported coding-agent TUIs. Unlike a
 # permissive local smoke run, missing binaries and authentication fail closed.
+# Gemini is pinned and provisioned for this proof so the gate does not mutate
+# the developer's global npm installation or drift with npm's latest tag.
 test-live-harnesses:
-    STUDYLOOP_STRICT_LIVE_HARNESSES=1 uv run --group dev pytest \
+    npx --yes --package @google/gemini-cli@0.56.0 env \
+        STUDYLOOP_STRICT_LIVE_HARNESSES=1 uv run --group dev pytest \
         packages/studyloop/tests/test_web_live_harness_rendering.py \
         -m live_harness -q -rs -o timeout=240
 
