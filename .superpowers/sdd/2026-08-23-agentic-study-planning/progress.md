@@ -18,12 +18,12 @@
 | 4 | lifecycle command union covers every normal mutation named in the spec. | clean |
 | 5 | writer migration and forbidden-import test enforce Task 4's sole seam. | clean |
 | 6 | packaged prompt/provider port/closed catalogue exclude learner decision and ambient tools. | redesigned; clean |
-| 7 | SQLite conversation/outbox runtime owns bounded provider/tool execution; AgentWorkspace is deferred. | redesigned; clean |
-| 8 | HTTP/WS/context/decision routes consume Tasks 4 and 7 without inventing authority. | redesigned; clean |
-| 9 | browser/onboarding states consume Task 8 DTOs and Task 2 renderer contract. | redesigned; clean |
-| 10 | stewardship uses trusted evidence and the Task 4 proposal boundary. | clean |
-| 11 | replay/runtime gate consumes all earlier seams, captures tools/egress, and fixes nondeterminism. | redesigned; clean |
-| 12 | final verification adds no architecture and cannot publish/merge. | clean |
+| 7 | SQLite runtime owns frozen turns, pre-dispatch capability intents, outbox, recovery, and retention. | fix round 1; clean |
+| 8 | HTTP/WS/CLI/auth/context/decision adapters consume Task 7 without inventing a second loop/authority. | fix round 1; clean |
+| 9 | browser/onboarding states consume Task 8 DTOs through an inert no-subresource renderer. | fix round 1; clean |
+| 10 | stewardship uses frozen briefs, trusted evidence, and Task 8's decision adapter. | fix round 1; clean |
+| 11 | replay/runtime gate covers intent ordering, auth, context races, retention, and server/browser egress. | fix round 1; clean |
+| 12 | final verification rechecks every authority contract and cannot publish/merge. | fix round 1; clean |
 
 ## Pre-flight overlaps
 
@@ -41,11 +41,11 @@
 | 5, 10 | Both touch evaluation. | Task 5 first moves checkpoint writes; Task 10 adds adaptation only through lifecycle. |
 | 6, 7 | Packaged prompt/provider/catalogue feed the conversation runtime. | No MCP/harness discovery; server fixes config. |
 | 6, 8 | Server-owned model profile feeds conversation routes. | Browser supplies content, never endpoint/tools/credentials. |
-| 7, 8 | Runtime/outbox API is consumed by planning routes. | Distinct planning routes; no `/api/session/start` branch. |
-| 7, 9 | Sequenced outbox DTOs feed plan panel. | Browser never adopts ACP/PTY or study-session state. |
-| 8, 9 | API DTOs drive UI state. | JS tests pin the DTO boundary before E2E. |
-| 8, 10 | Revision-run endpoint receives Steward briefs. | Same route/state machine for create and revise. |
-| 9, 11 | Browser tests become release-gate evidence. | No warning-only/skipped Mermaid or tablet checks. |
+| 7, 8 | Frozen-context/runtime/outbox APIs feed HTTP/WS/CLI and decisions. | Route/CLI adapters share one runtime; decision intent bridges journal/SQLite. |
+| 7, 9 | Sequenced outbox DTOs feed plan panel. | Browser never adopts ACP/PTY/study state and never auto-fetches model output. |
+| 8, 9 | API DTOs/auth/citations drive UI state. | JS/Playwright pin exact decisions and zero subresource egress. |
+| 8, 10 | Revision conversations receive frozen Steward briefs. | Same decision state machine for create and revise. |
+| 9, 11 | Browser tests become release-gate evidence. | Mermaid/tablet and no-subresource checks cannot skip/warn. |
 | 6, 11 | Runtime manifest verifies prompt/profile/catalogue versions. | Scripted and live endpoint evidence both block release. |
 | 2-11, 12 | Final docs consume verified behavior. | No capability promotion before aggregate gate. |
 
@@ -69,6 +69,14 @@
   HTTP and weak-password verifier guessing.
 - Release-one context is pasted or explicitly selected local text, tier four.
   Static public URL retrieval is a separate SSRF/rebinding-reviewed slice.
+- `Resource.url` is inert citation data; tool schemas may carry it but never a
+  fetch/destination/header field. Rich text cannot trigger subresource loads.
+- Context freezes ordered IDs/digests and brief digest before attempt schedule;
+  learner text may contain URLs/paths, while StudyLoop source metadata may not.
+- Capability and decision intents commit before lifecycle dispatch and recover
+  by original tuple/key before any new attempt or outbox projection.
+- Private input has an injected-clock 29/30/31-day transactional purge with
+  explicit accepted-plan provenance holds and owner-only modes.
 
 ## Task progress
 
@@ -233,7 +241,9 @@
 - Authority redesign arbitration accepted: deterministic/live gates must
   capture the exact outbound tool catalogue and gateway destination, attempt
   every forbidden authority/ambient tool, prove zero side effects/non-gateway
-  egress, exclude secrets/internal URLs/paths from model input, and pass vague
+  egress, exclude StudyLoop-injected secrets, internal endpoints, and source
+  path metadata from model input while preserving verbatim learner URLs/paths,
+  and pass vague
   no-notes, crash/replay, Mac/tablet, Mermaid-geometry, capacity, and
   no-progress journeys.
 - Authority redesign rejected for release one: privileged daemon/native
@@ -246,3 +256,34 @@
 - Tasks 6-9 and Task 11 were rewritten in the binding plan. Task 5's writer
   migration evidence remains, while its broad human-provenance interpretation
   is explicitly superseded; no product code was changed by this arbitration.
+- Authority redesign independent review blocked commit 5fe4907 with seven
+  Important contract gaps: localhost learner-session ownership, missing CLI
+  conversation delivery, no pre-dispatch capability intent, no write-ahead
+  decision reconciliation, citation/browser egress ambiguity, unfrozen context
+  plus overbroad input redaction, and non-executable private-input retention.
+- Authority redesign docs fix round 1 assigns localhost/LAN session behavior and
+  direct tests to Task 8. Loopback navigation may mint an expiring app-local
+  session without Basic; LAN must verify Basic first. Both require exact origin,
+  CSRF, and proposal binding; FD/model/wrong-auth/cross-origin paths cannot mint
+  `ActorContext`.
+- Fix round 1 retains `studyloop plan start` and assigns `_plan.py` plus CLI
+  conversation tests to Task 8. CLI and web share store/runtime/dispatcher/
+  decision adapter for turn, context, retry, stop, preview, and exact decision;
+  no second loop or harness fallback is allowed.
+- Fix round 1 gives Task 7 durable normalized capability intent with original
+  tuple, payload digest, and lifecycle key committed before dispatch. Recovery
+  reconciles that original journal operation before a new attempt. Task 8 uses
+  the same write-ahead/reconcile/project pattern for learner decisions.
+- Fix round 1 defines `Resource.url` as inert citation data and requires Task 9
+  to neutralize all auto-fetching Markdown/HTML/SVG/CSS/media constructs.
+  Playwright must observe zero automatic internet/private/link-local/loopback
+  subresource requests; gateway detection is literal-loopback-only with proxies
+  and redirects disabled before pinning.
+- Fix round 1 makes context freeze transactional with the learner turn and
+  snapshots ordered IDs/digests plus brief digest. Input minimisation tests
+  separate StudyLoop metadata/secrets/endpoints from verbatim learner text,
+  which may legitimately contain paths/URLs.
+- Fix round 1 gives Task 7 an injected-clock, startup-triggered, idempotent
+  transactional retention API. The gate covers 29/30/31 days, accepted plan
+  provenance holds, rejected/superseded redaction, purge crash/retry, stable
+  digests/audit/outbox, and `0600`/`0700` storage.
