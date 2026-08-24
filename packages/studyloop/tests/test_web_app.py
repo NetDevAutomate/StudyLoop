@@ -139,6 +139,48 @@ class TestWebCommandConfig:
         assert result.exit_code == 0, result.output
         assert captured["study_dirs"] == [str(course_dir)]
 
+    def test_web_reads_background_credentials_once_from_inherited_fd(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        import json
+        import os
+
+        import uvicorn
+        from click.testing import CliRunner
+
+        learner_secret = "human-only-child-value"  # pragma: allowlist secret
+        read_fd, write_fd = os.pipe()
+        with os.fdopen(write_fd, "wb", closefd=True) as credential_pipe:
+            credential_pipe.write(
+                json.dumps({"username": "learner", "password": learner_secret}).encode("utf-8")
+            )
+        captured: dict[str, object] = {}
+        closed_fds: list[int] = []
+        real_close = os.close
+
+        def recording_close(fd: int) -> None:
+            closed_fds.append(fd)
+            real_close(fd)
+
+        def fake_create_app(**kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr("studyloop.web.app.create_app", fake_create_app)
+        monkeypatch.setattr("studyloop.cli._web.os.close", recording_close)
+        monkeypatch.setattr(uvicorn.Server, "run", lambda *args, **kwargs: None)
+
+        result = CliRunner().invoke(
+            cli,
+            ["web", "--lan", "--credential-fd", str(read_fd)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert captured["username"] == "learner"
+        assert captured["password"] == learner_secret
+        assert learner_secret not in result.output
+        assert read_fd in closed_fds
+
     def test_wrong(self, client: TestClient) -> None:
         resp = client.get("/api/wrong/test-course")
         assert resp.status_code == 200

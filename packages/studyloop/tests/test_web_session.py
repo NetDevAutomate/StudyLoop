@@ -116,6 +116,28 @@ class TestSessionStateAPI:
             assert data["topics"][0]["status"] == "win"
             assert data["topics"][1]["status"] == "struggling"
 
+    def test_state_dto_redacts_legacy_credential_fields(self, client: TestClient) -> None:
+        leaked_value = "legacy-human-only-value"  # pragma: allowlist secret
+        with (
+            patch(
+                "studyloop.web.routes.session.read_session_state",
+                return_value={
+                    "study_session_id": "abc123",
+                    "lan_password": leaked_value,
+                    "nested": {"credentials": leaked_value},
+                },
+            ),
+            patch("studyloop.web.routes.session.parse_topics_file", return_value=[]),
+            patch("studyloop.web.routes.session.parse_parking_file", return_value=[]),
+        ):
+            response = client.get("/api/session/state")
+
+        assert response.status_code == 200
+        encoded = response.text
+        assert "lan_password" not in encoded
+        assert "credentials" not in encoded
+        assert leaked_value not in encoded
+
 
 class TestSessionSSE:
     """SSE format tests.

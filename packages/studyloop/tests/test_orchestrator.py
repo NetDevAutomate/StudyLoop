@@ -2,7 +2,57 @@
 
 from __future__ import annotations
 
+import json
+import os
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+
+class TestStartWebBackground:
+    def test_hands_credentials_to_web_server_through_one_shot_pipe(self):
+        from studyloop.session.orchestrator import start_web_background
+
+        learner_secret = "human-only-pipe-value"  # pragma: allowlist secret
+        captured: dict[str, object] = {}
+
+        def fake_popen(command, **kwargs):
+            captured["command"] = command
+            captured["kwargs"] = kwargs
+            fds = kwargs.get("pass_fds", ())
+            captured["fds"] = fds
+            if fds:
+                captured["payload"] = os.read(fds[0], 4096)
+            return SimpleNamespace(pid=12345)
+
+        with (
+            patch("studyloop.session.orchestrator.subprocess.Popen", side_effect=fake_popen),
+            patch("studyloop.session.orchestrator.shutil.which", return_value="/usr/bin/studyloop"),
+            patch("studyloop.session.orchestrator._kill_port_occupant"),
+            patch("studyloop.session.orchestrator._open_browser"),
+            patch("studyloop.session_state.write_session_state") as write_state,
+        ):
+            start_web_background(
+                "study-python-abc123",
+                lan=True,
+                username="learner",
+                password=learner_secret,
+            )
+
+        command = captured["command"]
+        kwargs = captured["kwargs"]
+        assert learner_secret not in " ".join(command)
+        assert "--password" not in command
+        assert learner_secret not in json.dumps(kwargs.get("env", {}))
+        assert json.loads(captured["payload"]) == {
+            "username": "learner",
+            "password": learner_secret,
+        }
+        inherited_fd = captured["fds"][0]
+        with pytest.raises(OSError):
+            os.fstat(inherited_fd)
+        write_state.assert_called_once_with({"web_pid": 12345, "web_port": 8567})
 
 
 class TestStartTtydBackground:
@@ -35,12 +85,13 @@ class TestStartTtydBackground:
         # PID stored
         mock_state.assert_called_once_with({"ttyd_pid": 12345, "ttyd_port": 7681})
 
-    def test_lan_mode_binds_all_interfaces(self):
-        """With lan=True, ttyd binds to 0.0.0.0."""
+    def test_lan_mode_keeps_ttyd_on_loopback_without_password_argv(self):
+        """LAN terminal access is authenticated by the StudyLoop proxy."""
         from studyloop.session.orchestrator import start_ttyd_background
 
         mock_popen = MagicMock()
         mock_popen.return_value.pid = 12345
+        learner_secret = "human-only-ttyd-value"  # pragma: allowlist secret
 
         with (
             patch("studyloop.session.orchestrator.subprocess.Popen", mock_popen),
@@ -49,11 +100,18 @@ class TestStartTtydBackground:
             ),
             patch("studyloop.session_state.write_session_state"),
         ):
-            start_ttyd_background("study-python-abc123", lan=True)
+            start_ttyd_background(
+                "study-python-abc123",
+                lan=True,
+                username="learner",
+                password=learner_secret,
+            )
 
         args = mock_popen.call_args[0][0]
         idx = args.index("-i")
-        assert args[idx + 1] == "0.0.0.0"
+        assert args[idx + 1] == "127.0.0.1"
+        assert "-c" not in args
+        assert learner_secret not in " ".join(args)
 
     def test_skips_when_ttyd_not_installed(self):
         """No error when ttyd is not installed — just skip."""

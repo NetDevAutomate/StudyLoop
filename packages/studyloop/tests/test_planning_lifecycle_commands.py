@@ -789,6 +789,37 @@ Learn it
         )
 
 
+def test_import_rejects_duplicate_concept_labels_that_make_links_ambiguous(
+    tmp_path: Path,
+) -> None:
+    imported = """---
+schema_version: 2
+id: foreign
+---
+# Ambiguous concepts
+## Goals
+| ID | Title | Status | Reason | Alignment rationale |
+| --- | --- | --- | --- | --- |
+| goal-1 | SQL | active | Practise | Aligned |
+## Milestones
+| ID | Goal ID | Done | Title | Notes | Concepts |
+| --- | --- | --- | --- | --- | --- |
+| milestone-1 | goal-1 | false | Practise SQL | | SQL |
+## Concept Mappings
+### Concepts
+| ID | Display label |
+| --- | --- |
+| linked | SQL |
+| unlinked | SQL |
+"""
+
+    service = lifecycle(tmp_path)
+    with pytest.raises(LifecycleValidationError, match="ambiguous concept label"):
+        service.handle(PlanningCommand(LEARNER, ImportPlanDraft(imported, "ambiguous-import")))
+
+    assert not list((tmp_path / "plans").glob("*.md"))
+
+
 def test_import_rejects_executable_markdown_without_canonical_mutation(tmp_path: Path) -> None:
     service = lifecycle(tmp_path)
     with pytest.raises(LifecycleValidationError, match="executable content"):

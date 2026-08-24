@@ -107,12 +107,11 @@ def create_app(
     # `--dev-renderer` behaviour it complements. Resolved (and validated) up
     # front so a bad --dev-engine fails at startup, not on first page load.
     app.state.dev_engine = resolve_dev_engine(dev_engine) if dev_mode else None
-    # Single source of truth for LAN Basic-Auth credentials. The ttyd start
-    # path reads these instead of independently re-loading config.yaml, so the
-    # app's auth and ttyd's auth can never silently diverge (a CLI --password
-    # that was never written to config used to leave ttyd unauthenticated).
+    # Routes need to know whether outer authentication exists, but must not be
+    # able to recover its reusable credential from general application state.
+    # Only BasicAuthMiddleware retains the password itself.
     app.state.lan_username = username
-    app.state.lan_password = password
+    app.state.lan_auth_configured = bool(password)
     app.state.agent_session_manager = AgentSessionManager()
     app.state.explorer_tree_cache = None
     app.state.explorer_tree_fingerprint = None

@@ -102,6 +102,23 @@ def _canonical_digest(domain: str, payload: object) -> str:
     return canonical_lifecycle_digest(domain, payload)
 
 
+def _milestone_concept_ids(plan: StudyPlan, milestone: Milestone) -> set[str]:
+    """Resolve legacy display-label links only when they identify one stable ID."""
+    attached: set[str] = set()
+    for label in {value for value in milestone.concepts if value.strip()}:
+        matches = {
+            concept.concept_id.strip()
+            for concept in plan.concepts
+            if concept.concept_id.strip() and concept.display_label == label
+        }
+        if len(matches) != 1:
+            raise EvidenceValidationError(
+                f"milestone has ambiguous concept label {label!r}; expected exactly one stable ID"
+            )
+        attached.update(matches)
+    return attached
+
+
 def _evidence_matches_milestone(item: EvidenceRef, plan: StudyPlan, milestone: Milestone) -> bool:
     """Require both a completion claim and a subject tied to this milestone."""
     if item.claim_kind not in _VERIFIED_CLAIMS:
@@ -119,13 +136,7 @@ def _evidence_matches_milestone(item: EvidenceRef, plan: StudyPlan, milestone: M
     concept_id = subject.removeprefix("concept:").strip()
     if not concept_id:
         return False
-    milestone_concepts = {value for value in milestone.concepts if value.strip()}
-    attached_concept_ids = {
-        item.concept_id.strip()
-        for item in plan.concepts
-        if item.concept_id.strip() and item.display_label in milestone_concepts
-    }
-    return concept_id in attached_concept_ids
+    return concept_id in _milestone_concept_ids(plan, milestone)
 
 
 def _contains_mermaid_fence(markdown: str) -> bool:
@@ -801,6 +812,10 @@ class PlanningLifecycle:
         if milestone is None:
             raise LifecycleValidationError(f"unknown milestone {command.milestone_id!r}")
         if command.outcome == "verified_complete":
+            # Legacy milestones still store display labels. Even evidence that
+            # names the milestone directly must not commit completion while
+            # any of those labels has a missing or ambiguous stable identity.
+            _milestone_concept_ids(plan, milestone)
             irrelevant = [
                 item.evidence_id
                 for item in evidence
@@ -914,8 +929,25 @@ class PlanningLifecycle:
         if not goals and parsed.milestones:
             fresh = self.ids.new_id("goal")
             goals.append(Goal(fresh, "Imported learning goal", "Imported context", "Review needed"))
+        concepts = [
+            ConceptRef(self.ids.new_id("concept"), item.display_label) for item in parsed.concepts
+        ]
+        concepts_by_label: dict[str, list[ConceptRef]] = {}
+        for concept in concepts:
+            concepts_by_label.setdefault(concept.display_label, []).append(concept)
+
         milestones: list[Milestone] = []
         for item in parsed.milestones:
+            for label in {value for value in item.concepts if value.strip()}:
+                matches = concepts_by_label.get(label, [])
+                if len(matches) > 1:
+                    raise LifecycleValidationError(
+                        f"imported milestone has ambiguous concept label {label!r}"
+                    )
+                if not matches:
+                    generated = ConceptRef(self.ids.new_id("concept"), label)
+                    concepts.append(generated)
+                    concepts_by_label[label] = [generated]
             goal_id = goal_mapping.get(item.goal_id, goals[0].goal_id if goals else "")
             milestones.append(
                 Milestone(
@@ -927,9 +959,6 @@ class PlanningLifecycle:
                     goal_id=goal_id,
                 )
             )
-        concepts = [
-            ConceptRef(self.ids.new_id("concept"), item.display_label) for item in parsed.concepts
-        ]
         unknowns = [
             PlanUnknown(self.ids.new_id("unknown"), item.question, item.impact, "open")
             for item in parsed.unknowns

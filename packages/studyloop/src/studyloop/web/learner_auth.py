@@ -39,7 +39,7 @@ def initialise_browser_learner_sessions(app: object) -> None:
 
 def mint_browser_learner_session(request: Request, response: Response) -> None:
     """Mint authority only after configured Basic Auth and navigation checks."""
-    if not getattr(request.app.state, "lan_password", ""):
+    if not getattr(request.app.state, "lan_auth_configured", False):
         return
     authenticated_identity = getattr(request.state, "basic_auth_identity", "")
     if not authenticated_identity:
@@ -88,7 +88,7 @@ def mint_browser_learner_session(request: Request, response: Response) -> None:
 
 def require_browser_learner(request: Request) -> ActorContext:
     """Authenticate a same-origin, CSRF-bound server-side browser session."""
-    if not getattr(request.app.state, "lan_password", "") or not getattr(
+    if not getattr(request.app.state, "lan_auth_configured", False) or not getattr(
         request.state, "basic_auth_identity", ""
     ):
         raise HTTPException(status_code=403, detail=WEB_AUTH_REQUIRED)

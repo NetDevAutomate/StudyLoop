@@ -6,7 +6,7 @@ import hashlib
 import logging
 from datetime import UTC, datetime
 
-from fastapi import HTTPException, Request
+from fastapi import Request  # noqa: TC002 - FastAPI inspects this annotation at runtime.
 from fastapi.responses import JSONResponse
 
 from studyloop.session_state import (
@@ -122,29 +122,6 @@ async def _resolve_origin(request: Request) -> str:
     if origin not in _ALLOWED_ORIGINS:
         raise ValueError(origin)
     return origin
-
-
-def _ttyd_credentials(request: Request | None) -> tuple[str, str]:
-    """Resolve ttyd Basic-Auth creds from the app's single source of truth.
-
-    Reads ``(lan_username, lan_password)`` off ``request.app.state`` — the same
-    values ``create_app`` used to install ``BasicAuthMiddleware``. Fails closed:
-    if app.state is unreadable (no request wired through), refuse rather than
-    guess, because a wrong guess spawns an unauthenticated PTY on the LAN.
-    """
-    state = getattr(getattr(request, "app", None), "state", None)
-    if state is None:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Cannot start ttyd: LAN credentials unavailable from app state "
-                "(auth divergence guard)."
-            ),
-        )
-    return (
-        getattr(state, "lan_username", "") or "",
-        getattr(state, "lan_password", "") or "",
-    )
 
 
 @router.post("/session/start")
@@ -792,13 +769,10 @@ def _start_ttyd_session(
         state_update["topic_config_name"] = topic_config.name
     write_session_state(state_update)
 
-    # Credentials come from app.state (the single source of truth the app's
-    # BasicAuthMiddleware was built from), NOT a fresh config.yaml read — the
-    # two used to diverge, leaving ttyd unauthenticated when --password was
-    # passed on the CLI but not persisted. Fails closed if app.state is
-    # unreadable (see _ttyd_credentials).
-    ttyd_username, ttyd_password = _ttyd_credentials(request)
-    start_ttyd_background(session_name, username=ttyd_username, password=ttyd_password)
+    # ttyd is deliberately loopback-only. LAN clients reach it through this
+    # app's already-authenticated terminal proxy, so no reusable credential is
+    # copied into ttyd process state.
+    start_ttyd_background(session_name)
 
     return JSONResponse(
         {

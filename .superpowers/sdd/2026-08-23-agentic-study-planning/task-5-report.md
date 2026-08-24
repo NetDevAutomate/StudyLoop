@@ -384,3 +384,94 @@ rtk uv run --group dev pyright <changed round-3 source files>
 
 Ruff check and format-check, Python compilation, and `git diff --check` also
 passed on the final round-3 tree.
+
+## Fix round 4 — secret handoff and exact concept identity
+
+Round 3 correctly required configured Basic Auth for browser learner
+authority, but the same reusable credential then crossed agent-readable
+session IPC, the background web-server command line, ttyd argv, and the
+session-state response. It also left one exact-duplicate-label route from an
+unlinked stable concept ID to verified milestone completion.
+
+### Changes
+
+- Background session launch now sends the resolved username/password to the
+  web child through a bounded, one-shot anonymous pipe. Only the read
+  descriptor number appears in argv; the child consumes and closes it before
+  application construction, and the parent closes its copy immediately after
+  spawn. No credential is added to an environment variable.
+- Session-state reads, writes, and dashboard IPC defensively strip
+  credential-bearing keys recursively. `start_session` no longer asks the IPC
+  writer to persist `lan_password`, and the real `/api/session/state` response
+  cannot return a legacy credential field.
+- General FastAPI `app.state` retains only the non-secret username and a
+  boolean `lan_auth_configured` marker. The reusable password is held only by
+  `BasicAuthMiddleware`; learner-session policy reads the boolean marker after
+  successful middleware authentication.
+- ttyd is always loopback-only and receives no password in argv. LAN terminal
+  access continues through StudyLoop's authenticated same-origin HTTP/WebSocket
+  proxy, so this removes a credential copy without weakening the outer auth
+  boundary.
+- Raw import rejects a milestone label that matches multiple concept IDs. A
+  unique missing import label receives one fresh stable concept ID so simple
+  legacy imports remain lossless. Tolerated existing documents fail closed at
+  verified-completion time when any milestone label resolves to zero or
+  multiple stable IDs, including when evidence names the milestone directly.
+
+### Round-4 RED evidence
+
+The first evidence probes both reported `DID NOT RAISE`: a raw import accepted
+two `SQL` concept IDs and an unlinked duplicate ID completed the milestone.
+The credential probes showed the legacy password in `read_session_state()`,
+the state response DTO, and the direct `lan_password` update emitted by the
+actual `start_session` orchestration. The original web child accepted no
+credential FD, and LAN ttyd still bound `0.0.0.0` with `-c user:password`.
+
+### Round-4 final verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli_plan.py \
+  packages/studyloop/tests/test_web_plans.py \
+  packages/studyloop/tests/test_planning_evaluation.py \
+  packages/studyloop/tests/test_planning_architecture.py \
+  packages/studyloop/tests/test_plan_agent_harness.py \
+  packages/studyloop/tests/test_session_start.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_orchestrator.py \
+  packages/studyloop/tests/test_web_session.py \
+  packages/studyloop/tests/test_web_app.py \
+  packages/studyloop/tests/test_lan_auth.py \
+  packages/studyloop/tests/test_web_session_start_pty.py \
+  packages/studyloop/tests/test_web_session_start_acp.py \
+  packages/studyloop/tests/test_web_session_start_service.py -q
+# 281 passed, one pre-existing Starlette/httpx deprecation warning
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning*.py -q
+# 306 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli*.py \
+  packages/studyloop/tests/test_web*.py -q
+# 646 passed, 295 deselected, one pre-existing Starlette/httpx warning
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_terminal_proxy.py \
+  packages/studyloop/tests/test_orchestrator.py \
+  packages/studyloop/tests/test_session_start.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web_session.py \
+  packages/studyloop/tests/test_lan_auth.py -q
+# 106 passed, one pre-existing Starlette/httpx deprecation warning
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_e2e_coverage_gate.py \
+  packages/studyloop/tests/test_e2e_coverage_gate_selftest.py -q
+# 27 passed
+
+rtk uv run --group dev pyright <changed round-4 source files>
+# 0 errors, 0 warnings, 0 informations
+```
+
+Targeted Ruff check and format-check, Python compilation, the Task 5
+architecture gate, and `git diff --check` also pass.

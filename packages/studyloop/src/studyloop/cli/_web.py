@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import contextlib
+import json
+import os
 import socket
 from typing import TYPE_CHECKING
 
@@ -20,6 +22,28 @@ if TYPE_CHECKING:
     from types import FrameType as _FrameType
 
 
+def _read_inherited_credentials(fd: int) -> tuple[str, str]:
+    """Consume the background launch credential pipe exactly once."""
+    try:
+        payload = os.read(fd, 4097)
+    except OSError as exc:
+        raise click.ClickException("Could not read inherited web credentials") from exc
+    finally:
+        with contextlib.suppress(OSError):
+            os.close(fd)
+    if len(payload) > 4096:
+        raise click.ClickException("Inherited web credential payload is too large")
+    try:
+        decoded = json.loads(payload.decode("utf-8"))
+        username = decoded["username"]
+        password = decoded["password"]
+    except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise click.ClickException("Inherited web credential payload is invalid") from exc
+    if not isinstance(username, str) or not isinstance(password, str) or not password:
+        raise click.ClickException("Inherited web credential payload is invalid")
+    return username, password
+
+
 def _candidate_lan_hosts() -> tuple[str, ...]:
     """Best-effort LAN address discovery for runtime feedback."""
     hosts: list[str] = []
@@ -35,6 +59,7 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
 @click.option("--port", "-p", default=8567, help="Port for web server")
 @click.option("--lan", is_flag=True, help="Expose to LAN (default: localhost only)")
 @click.option("--password", default="", help="Password for HTTP Basic Auth (LAN protection)")
+@click.option("--credential-fd", type=int, default=None, hidden=True)
 @click.option("--ttyd-port", default=0, help="Port where ttyd is running (0 = read from config)")
 @click.option(
     "--dev",
@@ -52,6 +77,7 @@ def web(
     port: int,
     lan: bool,
     password: str,
+    credential_fd: int | None,
     ttyd_port: int,
     dev: bool,
     dev_renderer: str | None,
@@ -82,15 +108,23 @@ def web(
         # the review panels discover decks the generator just wrote.
         study_dirs = resolve_study_dirs()
 
-    # Resolve credentials: always read username from config; password from CLI > config > auto
+    # Background session launch hands credentials over an inherited anonymous
+    # pipe. Reading and closing it before app construction prevents the later
+    # agent process from inheriting a readable descriptor.
     username = "study"
+    inherited_credentials = credential_fd is not None
+    if credential_fd is not None:
+        username, password = _read_inherited_credentials(credential_fd)
+
+    # Resolve credentials: inherited pipe > CLI > config > auto-generated.
     password_generated = False
     try:
         from studyloop.settings import load_settings
 
         _settings = load_settings()
-        username = _settings.lan_username or "study"
-        if not password:
+        if not inherited_credentials:
+            username = _settings.lan_username or "study"
+        if not inherited_credentials and not password:
             password = _settings.lan_password
     except Exception:
         pass

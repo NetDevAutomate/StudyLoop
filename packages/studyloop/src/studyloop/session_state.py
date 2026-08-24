@@ -13,11 +13,23 @@ import threading
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 SESSION_DIR = Path(os.environ.get("STUDYLOOP_SESSION_DIR", Path.home() / ".config" / "studyloop"))
 STATE_FILE = SESSION_DIR / "session-state.json"
 TOPICS_FILE = SESSION_DIR / "session-topics.md"
 PARKING_FILE = SESSION_DIR / "session-parking.md"
+_SENSITIVE_STATE_KEYS = frozenset(
+    {
+        "password",
+        "lan_password",
+        "web_password",
+        "ttyd_password",
+        "basic_auth_password",
+        "credential",
+        "credentials",
+    }
+)
 
 
 @dataclass
@@ -39,6 +51,23 @@ class ParkingEntry:
     context: str | None = None
 
 
+def redact_session_credentials(state: dict) -> dict:
+    """Return session data with credential-bearing fields removed recursively."""
+
+    def redact(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: redact(item)
+                for key, item in value.items()
+                if str(key).casefold() not in _SENSITIVE_STATE_KEYS
+            }
+        if isinstance(value, list):
+            return [redact(item) for item in value]
+        return value
+
+    return redact(state)
+
+
 def read_session_state() -> dict:
     """Read session state JSON. Returns {} if no active session or file missing.
 
@@ -50,6 +79,9 @@ def read_session_state() -> dict:
         state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
     except (json.JSONDecodeError, OSError):
         return {}
+    if not isinstance(state, dict):
+        return {}
+    state = redact_session_credentials(state)
 
     # Key migration: prefer mux_* keys, fall back to tmux_* keys
     if "mux_session" not in state and "tmux_session" in state:
@@ -117,20 +149,21 @@ def write_session_state(updates: dict) -> None:
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             current = read_session_state()
+            safe_updates = redact_session_credentials(updates)
             # Don't resurrect a deleted state file just to record that a
             # session ended. An id-less ``{"mode": "ended"}`` marker is litter —
             # no id, no topic, nothing the dashboard summary needs — that
             # outlives the session and confuses the next desync diagnosis. An
             # end-marker for a session whose file already exists (or any update
             # carrying real session state) still writes normally.
-            merged = {**current, **updates}
+            merged = {**current, **safe_updates}
             if (
                 not STATE_FILE.exists()
                 and merged.get("mode") == "ended"
                 and not merged.get("study_session_id")
             ):
                 return
-            current.update(updates)
+            current.update(safe_updates)
             _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
         finally:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)

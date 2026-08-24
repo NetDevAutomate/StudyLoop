@@ -224,8 +224,17 @@ def attach_if_needed(session_name: str, already_in_tmux: bool) -> None:
         mux.attach(session_name)
 
 
-def start_web_background(session_name: str, *, lan: bool = False, password: str = "") -> None:
-    """Start the web dashboard as a background process and open browser."""
+def start_web_background(
+    session_name: str,
+    *,
+    lan: bool = False,
+    username: str = "study",
+    password: str = "",
+) -> None:
+    """Start the dashboard without exposing credentials in process metadata."""
+    import json
+    from contextlib import suppress
+
     from studyloop.output import console
 
     port = _get_web_port()
@@ -241,13 +250,33 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
     )
     if lan:
         cmd.append("--lan")
+    credential_fd: int | None = None
+    pass_fds: tuple[int, ...] = ()
     if password:
-        cmd.extend(["--password", password])
+        credential_fd, write_fd = os.pipe()
+        try:
+            payload = json.dumps(
+                {"username": username, "password": password},
+                separators=(",", ":"),
+            ).encode("utf-8")
+            if len(payload) > 4096:
+                raise ValueError("web credential payload is too large")
+            with os.fdopen(write_fd, "wb", closefd=True) as credential_pipe:
+                credential_pipe.write(payload)
+        except Exception:
+            with suppress(OSError):
+                os.close(write_fd)
+            with suppress(OSError):
+                os.close(credential_fd)
+            raise
+        cmd.extend(["--credential-fd", str(credential_fd)])
+        pass_fds = (credential_fd,)
     try:
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            pass_fds=pass_fds,
         )
         from studyloop.session_state import write_session_state
 
@@ -255,6 +284,9 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
         _open_browser(f"http://127.0.0.1:{port}/session")
     except Exception:
         console.print("[yellow]Could not start web dashboard.[/yellow]")
+    finally:
+        if credential_fd is not None:
+            os.close(credential_fd)
 
 
 def _kill_port_occupant(port: int, expected_cmd: str = "") -> None:
@@ -385,9 +417,10 @@ def start_ttyd_background(
 ) -> None:
     """Start ttyd to expose the tmux session over HTTP.
 
-    Attaches a writable ttyd client to the study tmux session.
-    When credentials are provided, passes ``-c username:password``
-    so ttyd enforces HTTP Basic Auth on direct connections.
+    Attaches a writable ttyd client to the study tmux session. ttyd is always
+    loopback-only; LAN clients use StudyLoop's authenticated terminal proxy.
+    The credential parameters remain for call compatibility but are never
+    copied into ttyd argv.
     Skips silently if ttyd is not installed.
     """
     from studyloop.session_state import write_session_state
@@ -396,7 +429,7 @@ def start_ttyd_background(
     if not ttyd_bin:
         return
 
-    host = "0.0.0.0" if lan else "127.0.0.1"
+    host = "127.0.0.1"
     port = _get_ttyd_port()
 
     # Kill any stale ttyd left over from a previous session
@@ -410,10 +443,6 @@ def start_ttyd_background(
         "-p",
         str(port),
     ]
-
-    # Enforce auth on ttyd when credentials are available
-    if username and password:
-        cmd.extend(["-c", f"{username}:{password}"])
 
     cmd.extend(
         [

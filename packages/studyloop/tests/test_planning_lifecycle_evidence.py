@@ -431,6 +431,46 @@ def test_unlinked_case_colliding_concept_id_cannot_verify_milestone(tmp_path: Pa
         )
 
 
+@pytest.mark.parametrize("subject_ref", ["concept:c-unlinked", "milestone:m-1"])
+def test_ambiguous_duplicate_concepts_block_all_verified_completion(
+    tmp_path: Path, subject_ref: str
+) -> None:
+    evidence = evidence_ref(
+        f"ambiguous-{subject_ref.replace(':', '-')}",
+        source_kind="studyloop_practice",
+        tier=1,
+        subject_ref=subject_ref,
+    )
+    plan = StudyPlan(
+        "duplicate-concept-identity",
+        "Duplicate concept identity",
+        mission=Mission(why="Keep identity exact", success=["Demonstrate SQL"]),
+        goals=[Goal("g-1", "SQL", "Needed", "Aligned")],
+        concepts=[ConceptRef("c-linked", "SQL"), ConceptRef("c-unlinked", "SQL")],
+        milestones=[Milestone("Practise SQL", concepts=["SQL"], milestone_id="m-1", goal_id="g-1")],
+        evidence=[evidence],
+        evidence_dispositions=[EvidenceDisposition(evidence.evidence_id, "selected", "Candidate")],
+    )
+    store_plan(tmp_path, plan)
+    service = lifecycle(tmp_path, evidence=(evidence,))
+
+    with pytest.raises(EvidenceValidationError, match="ambiguous concept label"):
+        service.handle(
+            PlanningCommand(
+                RECORDER,
+                RecordMilestoneOutcome(
+                    plan.plan_id,
+                    "m-1",
+                    "verified_complete",
+                    (evidence.evidence_id,),
+                    "ambiguous-duplicate",
+                ),
+            )
+        )
+
+    assert service.inspect(PlanningRef(plan.plan_id)).plan.milestones[0].done is False
+
+
 def test_proposal_rejects_case_or_whitespace_colliding_concept_labels(tmp_path: Path) -> None:
     service = lifecycle(tmp_path)
     brief = service.prepare(PlanningRequest("create", "Help", "label-collision"), MODEL)

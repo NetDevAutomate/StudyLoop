@@ -231,6 +231,141 @@ class TestStartSessionHappyPath:
 
         assert "study-old-session-abcd1234" in created_names
 
+    def test_lan_password_never_crosses_agent_readable_startup_surfaces(self, tmp_path, caplog):
+        import base64
+        import contextlib
+        import json
+        import os
+        from types import SimpleNamespace
+
+        from fastapi.testclient import TestClient
+
+        import studyloop.session_state as session_state
+        from studyloop.web.app import create_app
+
+        learner_secret = "human-only-session-value"  # pragma: allowlist secret
+        adapter = MagicMock()
+        adapter.setup.return_value = tmp_path / "persona.md"
+        adapter.mcp_setup = None
+        adapter.launch_cmd.return_value = "claude --resume"
+        spawned: list[tuple[list[str], dict]] = []
+        pipe_payloads: list[dict[str, str]] = []
+        state_writes: list[dict] = []
+        real_write_state = session_state.write_session_state
+
+        def recording_write_state(updates: dict) -> None:
+            state_writes.append(dict(updates))
+            real_write_state(updates)
+
+        def fake_popen(command, **kwargs):
+            command = list(command)
+            spawned.append((command, kwargs))
+            for fd in kwargs.get("pass_fds", ()):
+                pipe_payloads.append(json.loads(os.read(fd, 4096)))
+            return SimpleNamespace(pid=1000 + len(spawned))
+
+        tmux_result = {
+            "tmux_main_pane": "%0",
+            "tmux_sidebar_pane": "%1",
+            "mux_main_pane": "%0",
+            "mux_sidebar_pane": "%1",
+            "already_in_tmux": True,
+        }
+        settings = SimpleNamespace(lan_username="learner", lan_password="")
+
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch("studyloop.tmux.is_tmux_available", return_value=True))
+            stack.enter_context(patch("studyloop.tmux.session_exists", return_value=False))
+            stack.enter_context(patch("studyloop.session.cleanup.auto_clean_zombies"))
+            stack.enter_context(
+                patch("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+            )
+            stack.enter_context(patch("studyloop.session_state.SESSION_DIR", tmp_path))
+            stack.enter_context(
+                patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md")
+            )
+            stack.enter_context(
+                patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md")
+            )
+            stack.enter_context(
+                patch("studyloop.history.start_study_session", return_value="study-session-1")
+            )
+            stack.enter_context(
+                patch("studyloop.history.sessions.update_persona_hash", return_value=True)
+            )
+            stack.enter_context(patch("studyloop.agent_launcher.AGENTS", {"claude": adapter}))
+            stack.enter_context(
+                patch("studyloop.agent_launcher.build_canonical_persona", return_value="persona")
+            )
+            create_tmux = stack.enter_context(
+                patch(
+                    "studyloop.session.orchestrator.create_tmux_environment",
+                    return_value=tmux_result,
+                )
+            )
+            stack.enter_context(
+                patch("studyloop.session.orchestrator.subprocess.Popen", side_effect=fake_popen)
+            )
+            stack.enter_context(
+                patch(
+                    "studyloop.session.orchestrator.shutil.which",
+                    side_effect=lambda name: f"/usr/bin/{name}",
+                )
+            )
+            stack.enter_context(patch("studyloop.session.orchestrator._kill_port_occupant"))
+            stack.enter_context(patch("studyloop.session.orchestrator._open_browser"))
+            stack.enter_context(patch("studyloop.settings.load_settings", return_value=settings))
+            stack.enter_context(
+                patch(
+                    "studyloop.session_state.write_session_state",
+                    side_effect=recording_write_state,
+                )
+            )
+            console_print = stack.enter_context(patch("studyloop.session.start.console.print"))
+            stack.enter_context(
+                patch(
+                    "studyloop.web.routes.session._ipc._is_tmux_session_alive",
+                    return_value=True,
+                )
+            )
+            stack.enter_context(patch.dict("os.environ", {"TMUX": "/tmp/tmux"}))
+            start_session(
+                "Python",
+                "claude",
+                "study",
+                "elapsed",
+                5,
+                True,
+                lan=True,
+                password=learner_secret,
+            )
+
+            assert learner_secret not in repr(state_writes)
+            assert learner_secret not in (tmp_path / "session-state.json").read_text()
+            assert learner_secret not in repr(create_tmux.call_args)
+            assert learner_secret not in repr(console_print.call_args_list)
+            assert learner_secret not in caplog.text
+            for command, kwargs in spawned:
+                assert learner_secret not in " ".join(command)
+                assert learner_secret not in json.dumps(kwargs.get("env", {}))
+            assert pipe_payloads == [{"username": "learner", "password": learner_secret}]
+
+            app = create_app(username="learner", password=learner_secret)
+            assert app.state.lan_auth_configured is True
+            assert not hasattr(app.state, "lan_password")
+            credentials = base64.b64encode(f"learner:{learner_secret}".encode()).decode()
+            client = TestClient(app)
+            try:
+                response = client.get(
+                    "/api/session/state",
+                    headers={"Authorization": f"Basic {credentials}"},
+                )
+            finally:
+                client.close()
+            assert response.status_code == 200
+            assert learner_secret not in response.text
+            assert "lan_password" not in response.json()
+
 
 class TestStartSessionRollback:
     def _mock_adapter(self, tmp_path):

@@ -60,6 +60,37 @@ def test_write_session_state_creates_and_merges(
     assert data["topic"] == "sql"  # preserved from first write
 
 
+def test_session_state_never_persists_or_returns_learner_credentials(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Agent-readable IPC must not become a credential transport."""
+    state_file = tmp_path / "session-state.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "study_session_id": "study-1",
+                "lan_password": "human-only-value",  # pragma: allowlist secret
+            }
+        )
+    )
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", state_file)
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    from studyloop.session_state import read_session_state, write_session_state
+
+    assert "lan_password" not in read_session_state()
+
+    write_session_state(
+        {
+            "mode": "focus",
+            "lan_password": "replacement-human-only-value",  # pragma: allowlist secret
+        }
+    )
+    persisted = state_file.read_text()
+    assert "lan_password" not in persisted
+    assert "human-only-value" not in persisted
+    assert "replacement-human-only-value" not in persisted
+
+
 def test_parse_topics_file_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Returns [] when topics file doesn't exist."""
     monkeypatch.setattr("studyloop.session_state.TOPICS_FILE", tmp_path / "missing.md")

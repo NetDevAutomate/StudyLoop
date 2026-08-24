@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import logging
 
-from studyloop.session_state import PARKING_FILE, STATE_FILE, TOPICS_FILE
+from studyloop.session_state import (
+    PARKING_FILE,
+    STATE_FILE,
+    TOPICS_FILE,
+    redact_session_credentials,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +54,7 @@ def _get_full_state() -> dict:
     # Resolve via the package so tests can patch ``studyloop.web.routes.session.*``.
     from studyloop.web.routes import session as session_pkg
 
-    state = session_pkg.read_session_state()
+    state = redact_session_credentials(session_pkg.read_session_state())
 
     # Zombie detection: state says active but multiplexer session is dead
     mux_session = state.get("mux_session") or state.get("tmux_session")

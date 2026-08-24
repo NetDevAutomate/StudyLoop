@@ -485,12 +485,19 @@ def start_session(
                 console.print(line)
 
         if web:
-            start_web_background(session_name, lan=lan, password=lan_password)
+            start_web_background(
+                session_name,
+                lan=lan,
+                username=lan_username,
+                password=lan_password,
+            )
 
         # Start ttyd if installed (allows iPad/LAN terminal access)
         start_ttyd_background(session_name, lan=lan, username=lan_username, password=lan_password)
 
-        # Persist LAN info to session state so it's visible after os.execvp
+        # Persist non-secret LAN discovery data for resume/dashboard views.
+        # The password is deliberately confined to the human-facing startup
+        # moment and the web server's one-shot anonymous-pipe handoff.
         if lan:
             import socket
 
@@ -513,14 +520,12 @@ def start_session(
             write_session_state(
                 {
                     "lan_ip": lan_ip,
-                    "lan_password": lan_password,
                     "lan_url": lan_url,
                 }
             )
 
             # Print LAN info — this shows briefly before tmux takes over,
-            # but is also saved in session state (visible via web dashboard
-            # and `studyloop study --resume` output).
+            # while non-secret connection data remains available on resume.
             console.print("\n[bold]LAN access:[/bold]")
             console.print(f"  Dashboard: {lan_url}")
             console.print(f"  Username:  {lan_username}")
