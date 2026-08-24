@@ -1,5 +1,11 @@
 # Task 5 report — lifecycle-only product writers
 
+> **Authority status (2026-08-24):** the writer migration reported here remains
+> valid, but the final review blocked its broad same-user human-provenance
+> interpretation. That interpretation is superseded by the confined-runtime
+> redesign recorded at the end of this report; Task 5 alone does not satisfy the
+> agentic-planning release gate.
+
 ## Outcome
 
 Migrated every normal CLI and existing REST plan mutation through
@@ -577,3 +583,29 @@ unrelated type debt.
 - A verifier migrated from an existing weak password remains guessable offline.
   New generated passwords are high entropy, but password-quality policy and
   transport hardening remain release-security decisions outside Task 5.
+
+## Authority interpretation superseded (2026-08-24)
+
+The five implementation rounds and their verification evidence above are
+preserved as an accurate record of lifecycle-writer migration and LAN secret
+hygiene. The final independent review nevertheless disproved the broader
+interpretation that same-user browser/CLI credential mechanics can prove human
+learner provenance to a shell-capable planning harness. A same-user caller can
+mint or replace verifier state, reproduce local browser requests, or modify the
+learner-owned process/state directly.
+
+The accepted release-one design therefore narrows the claim instead of adding a
+sixth credential patch. Agentic planning moves to a StudyLoop-owned
+`PlanningConversationRuntime` with exactly three pre-bound proposal tools and
+no shell, filesystem, browser, arbitrary network, learner-decision, or trusted
+evidence capability. Under that confinement, browser session + CSRF + exact
+proposal binding establishes learner intent relative to the certified runtime;
+it does not resist arbitrary hostile same-user software.
+
+Round-five Basic Auth/scrypt work is LAN access control and useful secret
+minimisation, not an authority root. `--credential-fd` is transport plumbing
+only. Invalid credential-bearing JSON shapes, the plaintext feedback DTO, and
+adjacent public no-TLS/weak-password warnings remain mechanical follow-ups in
+Task 6. A separately privileged state owner plus trusted native/user-presence
+confirmation is deferred as disproportionate for this release, but becomes
+necessary if the threat model later expands to hostile same-user processes.
