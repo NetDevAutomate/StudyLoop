@@ -97,7 +97,7 @@ class TestFtsDriftIsDetected:
         results = check_sessions_db()
         fts = [r for r in results if r.name == "sessions_fts"]
         assert fts, f"no sessions_fts result among {[r.name for r in results]}"
-        assert fts[0].status in ("warn", "fail"), f"drift not flagged: {fts[0].details}"
+        assert fts[0].status in ("warn", "fail"), f"drift not flagged: {fts[0].message}"
         assert fts[0].fix_auto is True, "drift is repairable in-process but marked manual-only"
 
 

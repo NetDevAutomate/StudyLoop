@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 from planning_lifecycle_support import (
@@ -21,6 +21,7 @@ from studyloop.planning import (
     ConceptRef,
     DecideProposal,
     EvidenceDisposition,
+    EvidenceRef,
     EvidenceValidationError,
     Goal,
     GoalProposal,
@@ -30,6 +31,7 @@ from studyloop.planning import (
     MilestoneProposal,
     Mission,
     PlanningCommand,
+    PlanningLifecycle,
     PlanningRef,
     PlanningRequest,
     PlanProposalDraft,
@@ -39,6 +41,7 @@ from studyloop.planning import (
     StudyPlan,
     SubmitProposalDraft,
 )
+from studyloop.planning.compat import require_outcome, require_proposal, require_view
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -120,7 +123,12 @@ def test_proposal_cannot_supply_or_reclassify_evidence_tiers(tmp_path: Path) -> 
         lifecycle(tmp_path, evidence=(forged,))
 
 
-def _accepted_plan(tmp_path: Path, evidence, *, disposition: str = "selected"):
+def _accepted_plan(
+    tmp_path: Path,
+    evidence: tuple[EvidenceRef, ...],
+    *,
+    disposition: Literal["selected", "rejected", "unresolved"] = "selected",
+) -> tuple[PlanningLifecycle, str, str]:
     ids = PrefixIds()
     expected_concept_id = f"concept-{ids.namespace}-0001"
     for item in evidence:
@@ -132,21 +140,25 @@ def _accepted_plan(tmp_path: Path, evidence, *, disposition: str = "selected"):
         EvidenceDisposition(item.evidence_id, disposition, "Relevant but not proof")
         for item in evidence
     )
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(
-                brief.run_id,
-                "proposal",
-                brief.brief_context_digest,
-                _draft(dispositions),
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    brief.run_id,
+                    "proposal",
+                    brief.brief_context_digest,
+                    _draft(dispositions),
+                ),
             ),
         )
     )
-    outcome = service.handle(
-        PlanningCommand(
-            LEARNER,
-            DecideProposal(review.proposal_id, review.proposal_digest, "approve", "decision"),
+    outcome = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(review.proposal_id, review.proposal_digest, "approve", "decision"),
+            )
         )
     )
     return service, outcome.plan_id, review.plan_preview.milestones[0].milestone_id
@@ -154,7 +166,7 @@ def _accepted_plan(tmp_path: Path, evidence, *, disposition: str = "selected"):
 
 @pytest.mark.parametrize("disposition", ["rejected", "unresolved"])
 def test_rejected_or_unresolved_evidence_cannot_prove_completion(
-    tmp_path: Path, disposition: str
+    tmp_path: Path, disposition: Literal["rejected", "unresolved"]
 ) -> None:
     verified = evidence_ref("practice-1", source_kind="studyloop_practice", tier=1)
     service, plan_id, milestone_id = _accepted_plan(tmp_path, (verified,), disposition=disposition)
@@ -208,7 +220,7 @@ def test_tier_four_context_and_checkpoint_never_mark_completion(tmp_path: Path) 
             )
         )
 
-    assert service.inspect(PlanningRef(plan_id)).plan.milestones[0].done is False
+    assert require_view(service.inspect(PlanningRef(plan_id))).plan.milestones[0].done is False
 
 
 def test_checkpoint_command_replays_after_restart_and_changed_payload_conflicts(
@@ -249,41 +261,45 @@ def test_verified_completion_and_learner_attestation_are_visibly_distinct(
     self_report = evidence_ref("self-1", source_kind="learner_self_report", tier=3)
     service, plan_id, milestone_id = _accepted_plan(tmp_path, (verified, self_report))
     assert verified.subject_ref == (
-        f"concept:{service.inspect(PlanningRef(plan_id)).plan.concepts[0].concept_id}"
+        f"concept:{require_view(service.inspect(PlanningRef(plan_id))).plan.concepts[0].concept_id}"
     )
 
-    attested = service.handle(
-        PlanningCommand(
-            LEARNER,
-            RecordMilestoneOutcome(
-                plan_id,
-                milestone_id,
-                "learner_attested",
-                (self_report.evidence_id,),
-                "attest",
-                reason="I traced it myself without following an answer",
-                confirmation="I confirm this records my own completed practice",
+    attested = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                RecordMilestoneOutcome(
+                    plan_id,
+                    milestone_id,
+                    "learner_attested",
+                    (self_report.evidence_id,),
+                    "attest",
+                    reason="I traced it myself without following an answer",
+                    confirmation="I confirm this records my own completed practice",
+                ),
             ),
         )
     )
-    attested_view = service.inspect(PlanningRef(plan_id))
+    attested_view = require_view(service.inspect(PlanningRef(plan_id)))
     assert attested.status == "learner_attested"
     assert attested_view.plan.milestones[0].done is False
     assert "learner-attested" in attested_view.plan.learning_records[-1].title.lower()
 
-    verified_outcome = service.handle(
-        PlanningCommand(
-            RECORDER,
-            RecordMilestoneOutcome(
-                plan_id,
-                milestone_id,
-                "verified_complete",
-                (verified.evidence_id,),
-                "verify",
+    verified_outcome = require_outcome(
+        service.handle(
+            PlanningCommand(
+                RECORDER,
+                RecordMilestoneOutcome(
+                    plan_id,
+                    milestone_id,
+                    "verified_complete",
+                    (verified.evidence_id,),
+                    "verify",
+                ),
             ),
         )
     )
-    verified_view = service.inspect(PlanningRef(plan_id))
+    verified_view = require_view(service.inspect(PlanningRef(plan_id)))
     assert verified_outcome.status == "verified_complete"
     assert verified_view.plan.milestones[0].done is True
     assert "verified" in verified_view.plan.learning_records[-1].title.lower()
@@ -311,7 +327,7 @@ def test_tier_one_evidence_must_match_the_target_milestone(tmp_path: Path) -> No
                 ),
             )
         )
-    assert service.inspect(PlanningRef(plan_id)).plan.milestones[0].done is False
+    assert require_view(service.inspect(PlanningRef(plan_id))).plan.milestones[0].done is False
 
 
 def test_tier_one_evidence_must_carry_a_completion_claim(tmp_path: Path) -> None:
@@ -359,29 +375,35 @@ def test_overlapping_or_nested_labels_do_not_match_milestone_titles(
         evidence_dispositions=(EvidenceDisposition(evidence.evidence_id, "selected", "Candidate"),),
         next_action="Trace storage",
     )
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(
-                brief.run_id,
-                "overlap-proposal",
-                brief.brief_context_digest,
-                draft,
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    brief.run_id,
+                    "overlap-proposal",
+                    brief.brief_context_digest,
+                    draft,
+                ),
             ),
         )
     )
-    applied = service.handle(
-        PlanningCommand(
-            LEARNER,
-            DecideProposal(
-                review.proposal_id,
-                review.proposal_digest,
-                "approve",
-                "overlap-decision",
+    applied = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(
+                    review.proposal_id,
+                    review.proposal_digest,
+                    "approve",
+                    "overlap-decision",
+                ),
             ),
         )
     )
-    milestone_id = service.inspect(PlanningRef(applied.plan_id)).plan.milestones[0].milestone_id
+    milestone_id = (
+        require_view(service.inspect(PlanningRef(applied.plan_id))).plan.milestones[0].milestone_id
+    )
     with pytest.raises(EvidenceValidationError, match="target milestone"):
         service.handle(
             PlanningCommand(
@@ -468,7 +490,7 @@ def test_ambiguous_duplicate_concepts_block_all_verified_completion(
             )
         )
 
-    assert service.inspect(PlanningRef(plan.plan_id)).plan.milestones[0].done is False
+    assert require_view(service.inspect(PlanningRef(plan.plan_id))).plan.milestones[0].done is False
 
 
 def test_proposal_rejects_case_or_whitespace_colliding_concept_labels(tmp_path: Path) -> None:

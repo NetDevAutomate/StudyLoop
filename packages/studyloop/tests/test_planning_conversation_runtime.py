@@ -409,18 +409,21 @@ async def test_normal_clarification_persists_turn_message_and_disclosure(tmp_pat
     assert result.privacy_notice == PRIVACY_NOTICE
     assert store.list_messages("conversation-1")[0].content == "What outcome matters?"
     request = model.requests[0]
-    assert request.messages[-1]["content"] == "I have lots of notes but no clear target"
-    assert PRIVACY_NOTICE not in request.messages[-1]["content"]
+    learner_content = request.messages[-1]["content"]
+    assert isinstance(learner_content, str)
+    assert learner_content == "I have lots of notes but no clear target"
+    assert PRIVACY_NOTICE not in learner_content
 
 
 @pytest.mark.asyncio
 async def test_unknown_tool_and_authority_injection_have_zero_capability_effects(
     tmp_path: Path,
 ) -> None:
-    for name, arguments in (
+    cases: tuple[tuple[str, dict[str, object]], ...] = (
         ("delete_plan", {}),
         ("prepare_plan", {"actor_kind": "learner"}),
-    ):
+    )
+    for name, arguments in cases:
         model = ScriptedPlanningModel(
             (
                 ScriptedResponse(

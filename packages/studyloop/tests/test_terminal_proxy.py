@@ -183,13 +183,16 @@ class TestTerminalProxyWebSocket:
     def test_real_upstream_receives_no_browser_authority_headers(self) -> None:
         """Forwarding browser Basic Auth to loopback ttyd WS must fail this test."""
         from websockets.sync.server import ServerConnection, serve
+        from websockets.typing import Subprotocol
 
         from studyloop.learner_credentials import hash_password
 
         received: Queue[dict[str, str]] = Queue()
 
         def handler(connection: ServerConnection) -> None:
-            received.put(dict(connection.request.headers.raw_items()))
+            request = connection.request
+            assert request is not None
+            received.put(dict(request.headers.raw_items()))
             try:
                 message = connection.recv(timeout=2)
                 connection.send(message)
@@ -201,7 +204,7 @@ class TestTerminalProxyWebSocket:
             listener.bind(("127.0.0.1", 0))
             listener.listen()
             port = listener.getsockname()[1]
-            with serve(handler, sock=listener, subprotocols=["tty"]) as server:
+            with serve(handler, sock=listener, subprotocols=[Subprotocol("tty")]) as server:
                 thread = threading.Thread(target=server.serve_forever, daemon=True)
                 thread.start()
 

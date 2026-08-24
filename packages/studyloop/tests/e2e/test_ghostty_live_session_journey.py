@@ -43,6 +43,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -56,6 +57,9 @@ if _tests_dir not in sys.path:  # pragma: no cover - import plumbing
 
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 pytestmark = [pytest.mark.e2e]
 
@@ -88,7 +92,7 @@ def _free_port() -> int:
 
 
 @pytest.fixture(scope="module")
-def live_env(tmp_path_factory: pytest.TempPathFactory) -> RunningServer:
+def live_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
     """Dev-mode server with the fake agent inside a disposable test world."""
     root = tmp_path_factory.mktemp("ghostty-live")
     world = build_test_world(root, _free_port(), fake_agent=True)

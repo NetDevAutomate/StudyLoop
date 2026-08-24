@@ -6,6 +6,7 @@ pytest = __import__("pytest")
 pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
+from starlette.routing import Route  # noqa: E402
 
 from studyloop.settings import MAX_ACTIVE_TOPICS  # noqa: E402
 from studyloop.web.app import create_app  # noqa: E402
@@ -259,7 +260,7 @@ def test_dismiss_route_registered() -> None:
 
     app = create_app(study_dirs=[])
     routes = {
-        (r.path, ",".join(r.methods)) for r in app.routes if hasattr(r, "methods") and r.methods
+        (r.path, ",".join(r.methods)) for r in app.routes if isinstance(r, Route) and r.methods
     }
     assert ("/api/backlog/dismiss", "POST") in routes
 
@@ -270,7 +271,7 @@ def test_resolve_route_registered() -> None:
 
     app = create_app(study_dirs=[])
     routes = {
-        (r.path, ",".join(r.methods)) for r in app.routes if hasattr(r, "methods") and r.methods
+        (r.path, ",".join(r.methods)) for r in app.routes if isinstance(r, Route) and r.methods
     }
     assert ("/api/backlog/resolve", "POST") in routes
 

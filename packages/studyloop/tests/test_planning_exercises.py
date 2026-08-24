@@ -479,6 +479,10 @@ def test_review_submission_rejects_a_missing_format() -> None:
 def test_markdown_round_trip_preserves_all_three_formats() -> None:
     original = make_set()
     reparsed = parse_exercise_set(render_exercise_set(original), set_id=original.set_id)
+    original_blank_slate = original.blank_slate
+    original_completion = original.completion
+    reparsed_blank_slate = reparsed.blank_slate
+    reparsed_completion = reparsed.completion
 
     assert reparsed.set_id == original.set_id
     assert reparsed.topic == original.topic
@@ -486,18 +490,20 @@ def test_markdown_round_trip_preserves_all_three_formats() -> None:
     assert reparsed.concepts == original.concepts
     assert reparsed.created == original.created
 
-    assert reparsed.blank_slate is not None
-    assert reparsed.blank_slate.kind == "blank_slate"
-    assert reparsed.blank_slate.requirements == original.blank_slate.requirements
-    assert reparsed.blank_slate.reference_solution == original.blank_slate.reference_solution
-    assert reparsed.blank_slate.starter_code == ""
+    assert original_blank_slate is not None
+    assert original_completion is not None
+    assert reparsed_blank_slate is not None
+    assert reparsed_blank_slate.kind == "blank_slate"
+    assert reparsed_blank_slate.requirements == original_blank_slate.requirements
+    assert reparsed_blank_slate.reference_solution == original_blank_slate.reference_solution
+    assert reparsed_blank_slate.starter_code == ""
 
-    assert reparsed.completion is not None
-    assert reparsed.completion.kind == "completion"
-    assert reparsed.completion.starter_code == original.completion.starter_code
+    assert reparsed_completion is not None
+    assert reparsed_completion.kind == "completion"
+    assert reparsed_completion.starter_code == original_completion.starter_code
 
     for parsed_c, original_c in zip(
-        reparsed.blank_slate.rubric, original.blank_slate.rubric, strict=True
+        reparsed_blank_slate.rubric, original_blank_slate.rubric, strict=True
     ):
         assert parsed_c.title == original_c.title
         assert parsed_c.weight == original_c.weight
@@ -643,9 +649,11 @@ def test_drafted_rubric_without_checks_is_not_ready() -> None:
 
 def test_from_milestone_seeds_requirements_from_concepts() -> None:
     drafted = from_milestone("python", "Closures", ["closures", "cell variables"])
+    blank_slate = drafted.blank_slate
     assert drafted.plan_id == "python"
     assert drafted.concepts == ["closures", "cell variables"]
-    assert any("cell variables" in r for r in drafted.blank_slate.requirements)
+    assert blank_slate is not None
+    assert any("cell variables" in r for r in blank_slate.requirements)
 
 
 def test_readiness_is_clean_for_a_complete_set() -> None:
@@ -662,16 +670,22 @@ def test_readiness_is_clean_for_a_complete_set() -> None:
 def test_redacted_copy_strips_every_answer_channel() -> None:
     """Redaction by construction: anything not copied is provably absent."""
     redacted = redacted_copy(make_set())
+    redacted_blank_slate = redacted.blank_slate
+    redacted_completion = redacted.completion
+    original_blank_slate = make_set().blank_slate
 
-    assert redacted.blank_slate.reference_solution == ""
-    assert redacted.completion.reference_solution == ""
+    assert redacted_blank_slate is not None
+    assert redacted_completion is not None
+    assert original_blank_slate is not None
+    assert redacted_blank_slate.reference_solution == ""
+    assert redacted_completion.reference_solution == ""
     # A `check` regex recognises a correct solution, so it is a partial answer.
-    assert all(not c.check and not c.forbid for c in redacted.blank_slate.rubric)
+    assert all(not c.check and not c.forbid for c in redacted_blank_slate.rubric)
     # …but the brief survives: titles and weights are what the learner is told.
-    assert [c.title for c in redacted.blank_slate.rubric] == [
-        c.title for c in make_set().blank_slate.rubric
+    assert [c.title for c in redacted_blank_slate.rubric] == [
+        c.title for c in original_blank_slate.rubric
     ]
-    assert [c.weight for c in redacted.blank_slate.rubric] == [1, 3, 2]
+    assert [c.weight for c in redacted_blank_slate.rubric] == [1, 3, 2]
 
     question = redacted.multiple_choice[0]
     assert question.correct_indexes == []
@@ -686,9 +700,11 @@ def test_redacted_copy_strips_every_answer_channel() -> None:
 def test_redacted_copy_keeps_the_completion_scaffold() -> None:
     """The scaffold is the exercise, not the answer — it must survive redaction."""
     redacted = redacted_copy(make_set())
-    assert "TODO" in redacted.completion.starter_code
-    assert "def make_counter" in redacted.completion.starter_code
-    assert "nonlocal count" not in redacted.completion.starter_code
+    completion = redacted.completion
+    assert completion is not None
+    assert "TODO" in completion.starter_code
+    assert "def make_counter" in completion.starter_code
+    assert "nonlocal count" not in completion.starter_code
 
 
 def test_learner_render_contains_no_reference_solution() -> None:
@@ -699,8 +715,10 @@ def test_learner_render_contains_no_reference_solution() -> None:
     being asked to do.
     """
     original = make_set()
+    completion = original.completion
+    assert completion is not None
     document = render_for_learner(original)
-    supplied = set(substantive_lines(original.completion.starter_code))
+    supplied = set(substantive_lines(completion.starter_code))
     hidden = [
         line for line in substantive_lines(REFERENCE) if len(line) >= 14 and line not in supplied
     ]
@@ -728,7 +746,9 @@ def test_learner_render_still_carries_the_brief() -> None:
 
 def test_redaction_does_not_mutate_the_original() -> None:
     original = make_set()
+    blank_slate = original.blank_slate
+    assert blank_slate is not None
     redacted_copy(original)
-    assert original.blank_slate.reference_solution == REFERENCE.strip("\n")
+    assert blank_slate.reference_solution == REFERENCE.strip("\n")
     assert original.multiple_choice[0].correct_indexes == [1]
-    assert original.blank_slate.rubric[1].check == r"nonlocal\s+\w+"
+    assert blank_slate.rubric[1].check == r"nonlocal\s+\w+"

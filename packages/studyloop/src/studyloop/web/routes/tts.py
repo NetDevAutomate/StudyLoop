@@ -99,6 +99,7 @@ def tts_health() -> dict:
             "voices": [],
         }
 
+    assert selected is not None
     voices = openvox_voices(selected)
     english = sorted(v for v in voices if openvox_is_english_voice(v))
     return {

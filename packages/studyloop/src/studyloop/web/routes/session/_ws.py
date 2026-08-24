@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from typing import Any, cast
+from typing import Any, Protocol, cast, runtime_checkable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -30,6 +30,13 @@ class _SupersededError(Exception):
     Collapses the group so the ``except*`` arm can send the displaced client
     its ``attach_superseded`` frame and close. Never escapes the route.
     """
+
+
+@runtime_checkable
+class _ClosableAsyncIterator(Protocol):
+    """Async iterator extension implemented by closeable event streams."""
+
+    async def aclose(self) -> None: ...
 
 
 @router.websocket("/session/ws")
@@ -163,8 +170,9 @@ async def live_session_socket(websocket: WebSocket) -> None:
         finally:
             if not nxt.done():
                 nxt.cancel()
-            with contextlib.suppress(BaseException):
-                await events.aclose()
+            if isinstance(events, _ClosableAsyncIterator):
+                with contextlib.suppress(BaseException):
+                    await events.aclose()
 
     async def ws_to_pty() -> None:
         """Read WS control frames and forward to transport."""

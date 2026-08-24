@@ -24,12 +24,14 @@ from studyloop.planning import (
     PlanningRunRef,
     PlanProposalDraft,
     ProposalRef,
+    ProposalReview,
     SubmitProposalDraft,
 )
 from studyloop.planning.journal import JournalCorruptionError
 from studyloop.planning.models import Goal, Milestone, Mission, StudyPlan
 from studyloop.planning.repository import (
     MutationIntent,
+    MutationOperation,
     PlanningPaths,
     PlanningRef,
     PlanningRepository,
@@ -105,16 +107,16 @@ def _semantic_plan_intent() -> MutationIntent:
     )
 
 
-def _operation_lineage_intent(paths: PlanningPaths, operation: str) -> MutationIntent:
-    common = {
-        "intent_id": f"intent-lineage-{operation}",
-        "caller": "semantic-lineage-adapter",
-        "idempotency_key": "semantic-lineage-key",
-        "idempotency_digest": "sha256:v1:" + "9" * 64,
-        "operation": operation,
-    }
+def _operation_lineage_intent(paths: PlanningPaths, operation: MutationOperation) -> MutationIntent:
     if operation == "create":
-        return replace(_intent(), **common)
+        return replace(
+            _intent(),
+            intent_id=f"intent-lineage-{operation}",
+            caller="semantic-lineage-adapter",
+            idempotency_key="semantic-lineage-key",
+            idempotency_digest="sha256:v1:" + "9" * 64,
+            operation=operation,
+        )
     if operation == "update":
         repository = PlanningRepository(paths, index_refresher=None)
         repository.commit(_intent())
@@ -122,17 +124,25 @@ def _operation_lineage_intent(paths: PlanningPaths, operation: str) -> MutationI
         updated = deepcopy(before.plan)
         updated.title = "Updated only after a valid retry"
         return MutationIntent(
+            intent_id=f"intent-lineage-{operation}",
+            caller="semantic-lineage-adapter",
+            idempotency_key="semantic-lineage-key",
+            idempotency_digest="sha256:v1:" + "9" * 64,
+            operation=operation,
             plan=updated,
             expected_document_digest=before.document_digest,
             expected_structure_digest=before.structure_digest,
             expected_document_revision=before.plan.document_revision,
             expected_structure_revision=before.plan.structure_revision,
-            **common,
         )
     return MutationIntent(
+        intent_id=f"intent-lineage-{operation}",
+        caller="semantic-lineage-adapter",
+        idempotency_key="semantic-lineage-key",
+        idempotency_digest="sha256:v1:" + "9" * 64,
+        operation=operation,
         ref=PlanningRef("lineage-run"),
         private_artifacts=(PrivateRunArtifact("lineage-run", "lineage.txt", "sensitive lineage"),),
-        **common,
     )
 
 
@@ -319,8 +329,8 @@ def test_recovery_removes_uncommitted_transactional_private_artifact(
 )
 def test_commit_rejects_operation_incompatible_recovered_before_retry_without_mutation(
     tmp_path: Path,
-    lineage_operation: str,
-    retry_operation: str,
+    lineage_operation: MutationOperation,
+    retry_operation: MutationOperation,
 ) -> None:
     paths = _paths(tmp_path)
     intent = _operation_lineage_intent(paths, lineage_operation)
@@ -515,6 +525,7 @@ def test_proposal_retries_a_recovered_before_semantic_lineage_with_only_winner_a
     retrying = _lifecycle(tmp_path, clock="2026-08-23T13:00:00+00:00")
     winner = retrying.handle(PlanningCommand(MODEL, command))
 
+    assert isinstance(winner, ProposalReview)
     assert winner.proposal_id != failed_proposal_id
     assert winner.created_at == "2026-08-23T13:00:00+00:00"
     assert (

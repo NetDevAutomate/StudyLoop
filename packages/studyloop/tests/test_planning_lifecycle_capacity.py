@@ -33,10 +33,12 @@ from studyloop.planning import (
     PlanningRef,
     PlanningRequest,
     PlanProposalDraft,
+    ProposalReview,
     RecordCheckpoint,
     SubmitProposalDraft,
     TransitionPlanStatus,
 )
+from studyloop.planning.compat import require_outcome, require_proposal, require_view
 from studyloop.planning.repository import PlanningRepository
 
 
@@ -97,14 +99,16 @@ def _submit_retry_worker(
     service = _race_service(root, barrier, "proposal:race-submit", clock_value)
 
     def call():
-        review = service.handle(
-            PlanningCommand(
-                MODEL,
-                SubmitProposalDraft(
-                    run_id,
-                    "race-submit",
-                    brief_digest,
-                    _active_draft("race-submit-goal"),
+        review = require_proposal(
+            service.handle(
+                PlanningCommand(
+                    MODEL,
+                    SubmitProposalDraft(
+                        run_id,
+                        "race-submit",
+                        brief_digest,
+                        _active_draft("race-submit-goal"),
+                    ),
                 ),
             )
         )
@@ -130,14 +134,16 @@ def _approval_retry_worker(
     service = _race_service(root, barrier, "decision:race-approval", clock_value)
 
     def call():
-        outcome = service.handle(
-            PlanningCommand(
-                LEARNER,
-                DecideProposal(
-                    proposal_id,
-                    proposal_digest,
-                    "approve",
-                    "race-approval",
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    LEARNER,
+                    DecideProposal(
+                        proposal_id,
+                        proposal_digest,
+                        "approve",
+                        "race-approval",
+                    ),
                 ),
             )
         )
@@ -158,10 +164,12 @@ def _import_retry_worker(root: str, barrier, results, clock_value: str) -> None:
     service = _race_service(root, barrier, "import:race-import", clock_value)
 
     def call():
-        outcome = service.handle(
-            PlanningCommand(
-                LEARNER,
-                ImportPlanDraft("# Imported retry\n\nSame content.", "race-import"),
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    LEARNER,
+                    ImportPlanDraft("# Imported retry\n\nSame content.", "race-import"),
+                )
             )
         )
         return (
@@ -180,13 +188,15 @@ def _checkpoint_retry_worker(root: str, barrier, results, clock_value: str) -> N
     service = _race_service(root, barrier, "checkpoint_recorded:race-checkpoint", clock_value)
 
     def call():
-        outcome = service.handle(
-            PlanningCommand(
-                RECORDER,
-                RecordCheckpoint(
-                    "checkpoint-target",
-                    Checkpoint("mid", "on-track", "2026-08-23T15:00:00+00:00", "Same"),
-                    "race-checkpoint",
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    RECORDER,
+                    RecordCheckpoint(
+                        "checkpoint-target",
+                        Checkpoint("mid", "on-track", "2026-08-23T15:00:00+00:00", "Same"),
+                        "race-checkpoint",
+                    ),
                 ),
             )
         )
@@ -242,10 +252,12 @@ def _activate_worker(root: str, plan_id: str, barrier, results) -> None:
     service = lifecycle(Path(root))
     barrier.wait()
     try:
-        outcome = service.handle(
-            PlanningCommand(
-                LEARNER,
-                TransitionPlanStatus(plan_id, "active", f"activate-{plan_id}"),
+        outcome = require_outcome(
+            service.handle(
+                PlanningCommand(
+                    LEARNER,
+                    TransitionPlanStatus(plan_id, "active", f"activate-{plan_id}"),
+                )
             )
         )
     except Exception as error:  # explicit cross-process result envelope
@@ -267,16 +279,20 @@ def _active_draft(goal_alias: str, *, override: bool = False) -> PlanProposalDra
     )
 
 
-def _submit(service, key: str, goal_alias: str, *, override: bool = False):
+def _submit(
+    service: PlanningLifecycle, key: str, goal_alias: str, *, override: bool = False
+) -> ProposalReview:
     brief = service.prepare(PlanningRequest("create", goal_alias, f"run-{key}"), MODEL)
-    return service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(
-                brief.run_id,
-                f"proposal-{key}",
-                brief.brief_context_digest,
-                _active_draft(goal_alias, override=override),
+    return require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    brief.run_id,
+                    f"proposal-{key}",
+                    brief.brief_context_digest,
+                    _active_draft(goal_alias, override=override),
+                ),
             ),
         )
     )
@@ -326,7 +342,7 @@ def test_concurrent_identical_approval_replays_one_canonical_decision(
     assert {item[1] for item in observed} == {"ok"}
     assert observed[0][2] == observed[1][2]
     assert _committed_lifecycle_count(tmp_path, "proposal_decided") == 1
-    view = lifecycle(tmp_path).inspect(PlanningRef(observed[0][2][1]))
+    view = require_view(lifecycle(tmp_path).inspect(PlanningRef(observed[0][2][1])))
     assert view.plan.document_revision == 1
     assert len(view.plan.decisions) == 1
 
@@ -350,7 +366,7 @@ def test_concurrent_identical_checkpoint_replays_one_canonical_append(
     assert {item[1] for item in observed} == {"ok"}
     assert observed[0][2] == observed[1][2]
     assert _committed_lifecycle_count(tmp_path, "checkpoint_recorded") == 1
-    view = lifecycle(tmp_path).inspect(PlanningRef("checkpoint-target"))
+    view = require_view(lifecycle(tmp_path).inspect(PlanningRef("checkpoint-target")))
     assert view.plan.document_revision == 2
     assert len(view.plan.checkpoints) == 1
 
@@ -361,10 +377,14 @@ def test_rule_of_three_counts_stable_ids_across_active_plans_only(tmp_path: Path
     store_plan(tmp_path, existing)
     service = lifecycle(tmp_path)
     review = _submit(service, "third", "g-3")
-    outcome = service.handle(
-        PlanningCommand(
-            LEARNER,
-            DecideProposal(review.proposal_id, review.proposal_digest, "approve", "approve-third"),
+    outcome = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(
+                    review.proposal_id, review.proposal_digest, "approve", "approve-third"
+                ),
+            )
         )
     )
     assert outcome.status == "applied"
@@ -400,20 +420,24 @@ def test_override_requires_learner_reason_and_is_bound_to_exact_goal_set(tmp_pat
             )
         )
 
-    applied = service.handle(
-        PlanningCommand(
-            LEARNER,
-            DecideProposal(
-                review.proposal_id,
-                review.proposal_digest,
-                "approve",
-                "with-reason",
-                reason="All four are required for the same certification exercise",
+    applied = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(
+                    review.proposal_id,
+                    review.proposal_digest,
+                    "approve",
+                    "with-reason",
+                    reason="All four are required for the same certification exercise",
+                ),
             ),
         )
     )
     assert applied.goal_limit_override_digest
-    decision_reason = service.inspect(PlanningRef(applied.plan_id)).plan.decisions[-1].reason
+    decision_reason = (
+        require_view(service.inspect(PlanningRef(applied.plan_id))).plan.decisions[-1].reason
+    )
     assert "Rule of Three" in decision_reason
 
     assert service.is_goal_override_valid(applied.goal_limit_override_digest)

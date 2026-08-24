@@ -6,7 +6,12 @@ import pytest
 
 from studyloop.planning.capabilities import PLANNING_CAPABILITY_SCHEMAS
 from studyloop.planning.model_config import PlanningModelProfile
-from studyloop.planning.model_port import MODEL_WIRE_VERSION, ModelRequest, ModelToolCall
+from studyloop.planning.model_port import (
+    MODEL_WIRE_VERSION,
+    ModelRequest,
+    ModelToolCall,
+    ModelTurnCompleted,
+)
 from studyloop.planning.openai_compatible import (
     GatewayRequest,
     HttpxGatewayTransport,
@@ -76,8 +81,14 @@ async def test_adapter_uses_fixed_gateway_and_exact_three_schemas() -> None:
     assert sent.body["model"] == "premier"
     assert sent.body["max_tokens"] == 4096
     assert sent.body["tools"] == [schema.to_wire() for schema in PLANNING_CAPABILITY_SCHEMAS]
-    assert sent.body["messages"][-1]["content"] == _request().messages[-1]["content"]
-    assert events[-1].finish_reason == "stop"  # type: ignore[union-attr]
+    messages = sent.body["messages"]
+    assert isinstance(messages, list)
+    final_message = messages[-1]
+    assert isinstance(final_message, dict)
+    assert final_message["content"] == _request().messages[-1]["content"]
+    completed = events[-1]
+    assert isinstance(completed, ModelTurnCompleted)
+    assert completed.finish_reason == "stop"
 
 
 @pytest.mark.asyncio
@@ -188,7 +199,7 @@ async def test_model_supplied_transport_or_schema_controls_are_refused(
 
 @pytest.mark.asyncio
 async def test_duplicate_tool_call_ids_across_indices_are_refused() -> None:
-    chunks = (
+    chunks: tuple[dict[str, object], ...] = (
         {
             "choices": [
                 {

@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Literal, TypeVar
+from typing import Literal, TypedDict, TypeVar
 
 from .digests import compute_document_digest, compute_structure_digest
 from .journal import (
@@ -48,7 +48,29 @@ CrashInjector = Callable[[str], None]
 IndexRefresher = Callable[[StudyPlan], None]
 TransactionGuard = Callable[["PlanSnapshot", tuple[JournalEvent, ...], "MutationIntent"], None]
 ProjectionT = TypeVar("ProjectionT")
-_DEFAULT_INDEX_REFRESHER = object()
+
+
+class _DefaultIndexRefresher:
+    """Typed sentinel selecting the repository's built-in index refresher."""
+
+
+_DEFAULT_INDEX_REFRESHER = _DefaultIndexRefresher()
+
+
+class _JournalEventFields(TypedDict):
+    """Shared, typed fields copied to both events in one transaction."""
+
+    intent_id: str
+    caller: str
+    idempotency_key: str
+    idempotency_digest: str
+    payload_digest: str
+    operation: MutationOperation
+    plan_id: str
+    before_document_digest: str | None
+    after_document_digest: str | None
+    before_structure_digest: str | None
+    after_structure_digest: str | None
 
 
 class PlanningRepositoryError(RuntimeError):
@@ -222,7 +244,11 @@ def _optional_str(value: object) -> str | None:
 
 
 def _optional_int(value: object) -> int | None:
-    return None if value is None else int(value)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError("journal result revisions must be integers or null")
+    return value
 
 
 def _utc_now() -> str:
@@ -279,12 +305,16 @@ class PlanningRepository:
         paths: PlanningPaths,
         *,
         crash_injector: CrashInjector | None = None,
-        index_refresher: IndexRefresher | None | object = _DEFAULT_INDEX_REFRESHER,
+        index_refresher: IndexRefresher | None | _DefaultIndexRefresher = (
+            _DEFAULT_INDEX_REFRESHER
+        ),
     ) -> None:
         self.paths = paths
         self._crash_injector = crash_injector
-        self._index_refresher = (
-            self._refresh_index if index_refresher is _DEFAULT_INDEX_REFRESHER else index_refresher
+        self._index_refresher: IndexRefresher | None = (
+            self._refresh_index
+            if isinstance(index_refresher, _DefaultIndexRefresher)
+            else index_refresher
         )
         self._validate_configured_paths()
         self._ensure_layout()
@@ -771,7 +801,7 @@ class PlanningRepository:
         idempotency_digest: str,
         before: PlanningView | None,
         after: StudyPlan | None,
-    ) -> dict[str, object]:
+    ) -> _JournalEventFields:
         return {
             "intent_id": intent.intent_id,
             "caller": intent.caller,

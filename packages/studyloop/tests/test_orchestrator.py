@@ -5,9 +5,21 @@ from __future__ import annotations
 import json
 import os
 from types import SimpleNamespace
+from typing import TypedDict, TypeGuard
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+class _CapturedWebSpawn(TypedDict):
+    command: list[str]
+    kwargs: dict[str, object]
+    fds: tuple[int, ...]
+    payload: bytes
+
+
+def _is_int_tuple(value: object) -> TypeGuard[tuple[int, ...]]:
+    return isinstance(value, tuple) and all(isinstance(item, int) for item in value)
 
 
 class TestStartWebBackground:
@@ -17,12 +29,13 @@ class TestStartWebBackground:
 
         learner_secret = "human-only-pipe-value"  # pragma: allowlist secret
         verifier = hash_password(learner_secret)
-        captured: dict[str, object] = {}
+        captured = _CapturedWebSpawn(command=[], kwargs={}, fds=(), payload=b"")
 
-        def fake_popen(command, **kwargs):
+        def fake_popen(command: list[str], **kwargs: object) -> SimpleNamespace:
             captured["command"] = command
             captured["kwargs"] = kwargs
             fds = kwargs.get("pass_fds", ())
+            assert _is_int_tuple(fds)
             captured["fds"] = fds
             if fds:
                 child_fd = os.dup(fds[0])

@@ -39,6 +39,7 @@ import json
 import socket
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -51,6 +52,9 @@ if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 pytestmark = [pytest.mark.e2e]
 
@@ -84,7 +88,7 @@ def _clear_ipc(session_dir: Path) -> None:
 
 
 @pytest.fixture(scope="module")
-def dev_server(tmp_path_factory: pytest.TempPathFactory) -> RunningServer:
+def dev_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
     """One hermetic ``--dev`` server shared by the module."""
     root = tmp_path_factory.mktemp("ghostty-dev-world")
     world = build_test_world(root, _free_port())
@@ -114,7 +118,7 @@ def dev_page(dev_server: RunningServer, browser):
 
 
 @pytest.fixture()
-def default_server(tmp_path_factory: pytest.TempPathFactory) -> RunningServer:
+def default_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
     """Default xterm server for the renderer regression guard."""
     root = tmp_path_factory.mktemp("ghostty-default-world")
     world = build_test_world(root, _free_port())

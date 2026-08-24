@@ -47,7 +47,7 @@ if _tests_dir not in sys.path:
 from e2e._env import ConsoleWatch, diag, goto_view, launch_env, shutdown  # noqa: E402
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Browser, Page
+    from playwright.sync_api import Browser, Page, ViewportSize
 
 pytestmark = [pytest.mark.e2e]
 
@@ -323,9 +323,7 @@ class TestEndingASessionIsFindableAndComplete:
             )
 
     @needs_fake_agent
-    def test_live_workspace_makes_the_terminal_the_primary_pane(
-        self, bd_page: Page
-    ) -> None:
+    def test_live_workspace_makes_the_terminal_the_primary_pane(self, bd_page: Page) -> None:
         """Live-session chrome must orient the learner, not bury the agent.
 
         The reported layout devoted more vertical space to the title, timer,
@@ -340,17 +338,13 @@ class TestEndingASessionIsFindableAndComplete:
                 ".bd-console-panel .xterm-mount", state="visible", timeout=30_000
             )
 
-            assert not bd_page.locator(
-                ".body-double-view > .body-double-header"
-            ).is_visible(), (
+            assert not bd_page.locator(".body-double-view > .body-double-header").is_visible(), (
                 "the explanatory heading still consumes live-session space"
             )
             assert not bd_page.locator("#bd-focus-body").is_visible(), (
                 "the focus topic is duplicated above the live activity strip"
             )
-            assert bd_page.locator("#bd-focus-toggle").get_attribute("aria-expanded") == (
-                "false"
-            )
+            assert bd_page.locator("#bd-focus-toggle").get_attribute("aria-expanded") == ("false")
 
             boxes = bd_page.evaluate(
                 """() => Object.fromEntries(Object.entries({
@@ -374,9 +368,7 @@ class TestEndingASessionIsFindableAndComplete:
             raise
 
     @needs_fake_agent
-    def test_live_workspace_reattaches_after_refresh_and_resizes(
-        self, bd_page: Page
-    ) -> None:
+    def test_live_workspace_reattaches_after_refresh_and_resizes(self, bd_page: Page) -> None:
         """Refresh and viewport changes keep one visible, usable PTY session."""
         try:
             _start_session(bd_page, "Keep the same terminal through refresh")
@@ -395,7 +387,11 @@ class TestEndingASessionIsFindableAndComplete:
             )
             assert session_id
 
-            for viewport in ({"width": 1024, "height": 700}, {"width": 820, "height": 560}):
+            viewports: tuple[ViewportSize, ...] = (
+                {"width": 1024, "height": 700},
+                {"width": 820, "height": 560},
+            )
+            for viewport in viewports:
                 bd_page.set_viewport_size(viewport)
                 bd_page.wait_for_timeout(300)
                 geometry = bd_page.evaluate(

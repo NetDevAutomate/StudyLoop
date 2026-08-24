@@ -17,6 +17,7 @@ from studyloop.planning.models import Goal, Milestone, Mission, StudyPlan
 from studyloop.planning.repository import (
     IdempotencyConflictError,
     MutationIntent,
+    MutationOperation,
     PathContainmentError,
     PlanCapacityError,
     PlanConflictError,
@@ -61,7 +62,7 @@ def _intent(
     plan: StudyPlan,
     *,
     key: str | None = None,
-    operation: str = "create",
+    operation: MutationOperation = "create",
 ) -> MutationIntent:
     return MutationIntent(
         intent_id=f"intent-{plan.plan_id}",
@@ -95,7 +96,7 @@ def _cas_update(
     plan: StudyPlan,
     *,
     intent_id: str,
-    operation: str = "update",
+    operation: MutationOperation = "update",
 ) -> MutationIntent:
     return MutationIntent(
         intent_id=intent_id,
@@ -274,7 +275,7 @@ def test_default_operation_is_create_and_same_slug_never_clobbers(tmp_path: Path
 
 @pytest.mark.parametrize("operation", ["update", "upsert"])
 def test_existing_plan_update_requires_complete_compare_and_swap(
-    tmp_path: Path, operation: str
+    tmp_path: Path, operation: MutationOperation
 ) -> None:
     repository = PlanningRepository(_paths(tmp_path), index_refresher=None)
     repository.commit(_intent(_plan("cas-required")))
@@ -415,7 +416,7 @@ def test_journal_rejects_forged_committed_result_revisions(
 
 @pytest.mark.parametrize("operation", ["record", "journal"])
 def test_absent_plan_journal_result_revisions_must_remain_null(
-    tmp_path: Path, operation: str
+    tmp_path: Path, operation: MutationOperation
 ) -> None:
     paths = _paths(tmp_path)
     repository = PlanningRepository(paths, index_refresher=None)

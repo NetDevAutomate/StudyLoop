@@ -32,6 +32,8 @@ from typing import TYPE_CHECKING, cast
 import pexpect
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from studyloop.multiplexer import Multiplexer
 
 # IPC file locations (mirrors studyloop.session_state)
@@ -180,7 +182,7 @@ class MultiplexerHarness:
 
     @staticmethod
     def wait_for(
-        predicate: callable,
+        predicate: Callable[[], object],
         *,
         timeout: float = 15,
         interval: float = 0.5,

@@ -35,18 +35,23 @@ from studyloop.planning import (
     Mission,
     PlanCapacityError,
     PlanConflictError,
+    PlanningBrief,
     PlanningCommand,
+    PlanningLifecycle,
     PlanningRef,
     PlanningRequest,
     PlanProposalDraft,
     ProposalConflictError,
     ProposalRef,
+    ProposalReview,
     RecordCheckpoint,
     RecordTrustedEvidence,
     Resource,
+    StudyPlan,
     SubmitProposalDraft,
     TransitionPlanStatus,
 )
+from studyloop.planning.compat import require_outcome, require_proposal, require_view
 from studyloop.planning.lifecycle_proposals import ProposalPolicy
 
 if TYPE_CHECKING:
@@ -90,28 +95,32 @@ def _draft(*, status: str = "draft") -> PlanProposalDraft:
     )
 
 
-def _proposal(service, *, key: str = "proposal-1"):
+def _proposal(
+    service: PlanningLifecycle, *, key: str = "proposal-1"
+) -> tuple[PlanningBrief, ProposalReview]:
     brief = service.prepare(PlanningRequest("create", "Protocols are confusing", "run-1"), MODEL)
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(
-                run_id=brief.run_id,
-                idempotency_key=key,
-                brief_context_digest=brief.brief_context_digest,
-                draft=_draft(),
-            ),
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    run_id=brief.run_id,
+                    idempotency_key=key,
+                    brief_context_digest=brief.brief_context_digest,
+                    draft=_draft(),
+                ),
+            )
         )
     )
     return brief, review
 
 
 def _revision_proposal(
-    service,
-    target,
+    service: PlanningLifecycle,
+    target: StudyPlan,
     *,
     evidence_dispositions: tuple[EvidenceDisposition, ...] = (),
-):
+) -> tuple[PlanningBrief, ProposalReview]:
     brief = service.prepare(
         PlanningRequest("revise", "Keep this focused", "revision-run", plan_id=target.plan_id),
         MODEL,
@@ -139,21 +148,23 @@ def _revision_proposal(
         evidence_dispositions=evidence_dispositions,
         next_action="Continue the same practice",
     )
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(
-                brief.run_id,
-                "revision-proposal",
-                brief.brief_context_digest,
-                draft,
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    brief.run_id,
+                    "revision-proposal",
+                    brief.brief_context_digest,
+                    draft,
+                ),
             ),
         )
     )
     return brief, review
 
 
-def _revision_rejection(brief, review, key: str) -> DecideProposal:
+def _revision_rejection(brief: PlanningBrief, review: ProposalReview, key: str) -> DecideProposal:
     return DecideProposal(
         review.proposal_id,
         review.proposal_digest,
@@ -226,10 +237,12 @@ def test_similar_concept_labels_remain_distinct_without_explicit_relation(
     service = lifecycle(tmp_path)
     brief = service.prepare(PlanningRequest("create", "ABC and protocols", "run"), MODEL)
     draft = PlanProposalDraft(**{**_draft().__dict__, "concept_relations": ()})
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+            )
         )
     )
 
@@ -286,14 +299,16 @@ def test_new_proposal_supersedes_older_open_proposal(tmp_path: Path) -> None:
     service = lifecycle(tmp_path)
     brief, older = _proposal(service)
     newer_draft = PlanProposalDraft(**{**_draft().__dict__, "title": "Better scoped"})
-    newer = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(
-                brief.run_id,
-                "proposal-2",
-                brief.brief_context_digest,
-                newer_draft,
+    newer = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    brief.run_id,
+                    "proposal-2",
+                    brief.brief_context_digest,
+                    newer_draft,
+                ),
             ),
         )
     )
@@ -318,12 +333,12 @@ def test_exact_learner_approval_applies_and_fold_survives_restart(tmp_path: Path
         idempotency_key="decision-1",
     )
 
-    applied = service.handle(PlanningCommand(LEARNER, decision))
-    replay = lifecycle(tmp_path).handle(PlanningCommand(LEARNER, decision))
+    applied = require_outcome(service.handle(PlanningCommand(LEARNER, decision)))
+    replay = require_outcome(lifecycle(tmp_path).handle(PlanningCommand(LEARNER, decision)))
 
     assert applied.status == "applied"
     assert replay == applied
-    view = lifecycle(tmp_path).inspect(PlanningRef(applied.plan_id))
+    view = require_view(lifecycle(tmp_path).inspect(PlanningRef(applied.plan_id)))
     assert view.plan.status == "draft"
     assert view.plan.decisions[-1].proposal_id == review.proposal_id
     assert view.plan.concept_relations[0].relation == "distinct"
@@ -393,28 +408,34 @@ def test_revise_preserves_explicit_existing_ids_and_allocates_only_new_aliases(
         ),
         next_action="Trace the existing step",
     )
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(brief.run_id, "revise-proposal", brief.brief_context_digest, draft),
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(
+                    brief.run_id, "revise-proposal", brief.brief_context_digest, draft
+                ),
+            )
         )
     )
-    outcome = service.handle(
-        PlanningCommand(
-            LEARNER,
-            DecideProposal(
-                review.proposal_id,
-                review.proposal_digest,
-                "approve",
-                "revise-decision",
-                expected_document_digest=brief.target_document_digest,
-                expected_structure_digest=brief.target_structure_digest,
-                expected_document_revision=brief.target_document_revision,
-                expected_structure_revision=brief.target_structure_revision,
+    outcome = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(
+                    review.proposal_id,
+                    review.proposal_digest,
+                    "approve",
+                    "revise-decision",
+                    expected_document_digest=brief.target_document_digest,
+                    expected_structure_digest=brief.target_structure_digest,
+                    expected_document_revision=brief.target_document_revision,
+                    expected_structure_revision=brief.target_structure_revision,
+                ),
             ),
         )
     )
-    plan = service.inspect(PlanningRef(outcome.plan_id)).plan
+    plan = require_view(service.inspect(PlanningRef(outcome.plan_id))).plan
 
     assert next(goal.goal_id for goal in plan.goals) == "goal-existing"
     assert plan.goals[1].goal_id not in {"new-goal", "goal-existing"}
@@ -428,15 +449,17 @@ def test_rejection_is_journal_only_and_conflicting_second_decision_refuses(
 ) -> None:
     service = lifecycle(tmp_path)
     _, review = _proposal(service)
-    rejected = service.handle(
-        PlanningCommand(
-            LEARNER,
-            DecideProposal(
-                review.proposal_id,
-                review.proposal_digest,
-                "reject",
-                "decision-reject",
-                reason="This is not my intent",
+    rejected = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(
+                    review.proposal_id,
+                    review.proposal_digest,
+                    "reject",
+                    "decision-reject",
+                    reason="This is not my intent",
+                ),
             ),
         )
     )
@@ -477,18 +500,18 @@ def test_fresh_revision_rejection_is_journal_only_and_idempotent(tmp_path: Path)
     store_plan(tmp_path, target)
     service = lifecycle(tmp_path)
     brief, review = _revision_proposal(service, target)
-    before = service.inspect(PlanningRef("target"))
+    before = require_view(service.inspect(PlanningRef("target")))
     command = PlanningCommand(
         LEARNER,
         _revision_rejection(brief, review, "fresh-revision-rejection"),
     )
 
-    rejected = service.handle(command)
-    replayed = lifecycle(tmp_path).handle(command)
+    rejected = require_outcome(service.handle(command))
+    replayed = require_outcome(lifecycle(tmp_path).handle(command))
 
     assert rejected.status == "rejected"
     assert replayed == rejected
-    current = service.inspect(PlanningRef("target"))
+    current = require_view(service.inspect(PlanningRef("target")))
     assert current.canonical_text == before.canonical_text
     assert current.plan.document_revision == 1
     assert _terminal_decision_count(tmp_path, review.proposal_id) == 1
@@ -511,7 +534,7 @@ def test_checkpoint_makes_revision_rejection_stale_without_terminal_decision(
             ),
         )
     )
-    intervening = service.inspect(PlanningRef("target"))
+    intervening = require_view(service.inspect(PlanningRef("target")))
 
     with pytest.raises(ProposalConflictError, match="stale"):
         service.handle(
@@ -521,7 +544,7 @@ def test_checkpoint_makes_revision_rejection_stale_without_terminal_decision(
             )
         )
 
-    current = service.inspect(PlanningRef("target"))
+    current = require_view(service.inspect(PlanningRef("target")))
     assert current.canonical_text == intervening.canonical_text
     assert current.plan.document_revision == 2
     assert _terminal_decision_count(tmp_path, review.proposal_id) == 0
@@ -545,7 +568,7 @@ def test_trusted_evidence_makes_revision_rejection_stale_without_terminal_decisi
             RecordTrustedEvidence("target", (item.evidence_id,), "evidence-before-reject"),
         )
     )
-    intervening = service.inspect(PlanningRef("target"))
+    intervening = require_view(service.inspect(PlanningRef("target")))
 
     with pytest.raises(ProposalConflictError, match="stale"):
         service.handle(
@@ -555,7 +578,7 @@ def test_trusted_evidence_makes_revision_rejection_stale_without_terminal_decisi
             )
         )
 
-    current = service.inspect(PlanningRef("target"))
+    current = require_view(service.inspect(PlanningRef("target")))
     assert current.canonical_text == intervening.canonical_text
     assert current.plan.document_revision == 2
     assert _terminal_decision_count(tmp_path, review.proposal_id) == 0
@@ -574,7 +597,7 @@ def test_canonical_transition_makes_revision_rejection_stale_without_terminal_de
             TransitionPlanStatus("target", "complete", "complete-before-reject"),
         )
     )
-    intervening = service.inspect(PlanningRef("target"))
+    intervening = require_view(service.inspect(PlanningRef("target")))
 
     with pytest.raises(ProposalConflictError, match="stale"):
         service.handle(
@@ -584,7 +607,7 @@ def test_canonical_transition_makes_revision_rejection_stale_without_terminal_de
             )
         )
 
-    current = service.inspect(PlanningRef("target"))
+    current = require_view(service.inspect(PlanningRef("target")))
     assert current.canonical_text == intervening.canonical_text
     assert current.plan.document_revision == 2
     assert current.plan.status == "complete"
@@ -616,10 +639,12 @@ def test_checkpoint_after_submission_makes_revision_approval_stale(tmp_path: Pat
         ),
         next_action="Continue",
     )
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+            )
         )
     )
     service.handle(
@@ -676,10 +701,12 @@ def test_trusted_evidence_after_submission_makes_revision_approval_stale(
         evidence_dispositions=(EvidenceDisposition(item.evidence_id, "selected", "Relevant"),),
         next_action="Continue",
     )
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+            )
         )
     )
     service.handle(
@@ -718,10 +745,12 @@ def test_requested_activation_refuses_incomplete_readiness(tmp_path: Path) -> No
         next_action="Try",
         requested_status="active",
     )
-    review = service.handle(
-        PlanningCommand(
-            MODEL,
-            SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+    review = require_proposal(
+        service.handle(
+            PlanningCommand(
+                MODEL,
+                SubmitProposalDraft(brief.run_id, "proposal", brief.brief_context_digest, draft),
+            )
         )
     )
     with pytest.raises(LifecycleValidationError, match="not ready to activate"):
@@ -762,13 +791,15 @@ Learn it
 | foreign-evidence | notes | n | 1 | now | now | 1 | completed | milestone | fake |
 """
     service = lifecycle(tmp_path)
-    outcome = service.handle(
-        PlanningCommand(
-            LEARNER,
-            ImportPlanDraft(imported, "import-1"),
+    outcome = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                ImportPlanDraft(imported, "import-1"),
+            )
         )
     )
-    view = service.inspect(PlanningRef(outcome.plan_id))
+    view = require_view(service.inspect(PlanningRef(outcome.plan_id)))
 
     assert view.plan.status == "draft"
     assert view.plan.plan_id != "../../foreign"
@@ -779,8 +810,8 @@ Learn it
     assert all(item.evidence_id != "foreign-evidence" for item in view.plan.evidence)
     assert "flowchart TD" in view.canonical_text
 
-    replay = lifecycle(tmp_path).handle(
-        PlanningCommand(LEARNER, ImportPlanDraft(imported, "import-1"))
+    replay = require_outcome(
+        lifecycle(tmp_path).handle(PlanningCommand(LEARNER, ImportPlanDraft(imported, "import-1")))
     )
     assert replay == outcome
     with pytest.raises(IdempotencyConflictError, match="different lifecycle command"):
@@ -866,16 +897,21 @@ def test_import_rejects_fresh_id_collision_without_overwriting(tmp_path: Path) -
             PlanningCommand(LEARNER, ImportPlanDraft("# Attacker replacement", "collision-import"))
         )
 
-    assert lifecycle(tmp_path).inspect(PlanningRef("collision")).plan.title == original.title
+    assert (
+        require_view(lifecycle(tmp_path).inspect(PlanningRef("collision"))).plan.title
+        == original.title
+    )
 
 
 def test_invalid_status_transition_is_deterministic(tmp_path: Path) -> None:
     service = lifecycle(tmp_path)
     _, review = _proposal(service)
-    applied = service.handle(
-        PlanningCommand(
-            LEARNER,
-            DecideProposal(review.proposal_id, review.proposal_digest, "approve", "approve"),
+    applied = require_outcome(
+        service.handle(
+            PlanningCommand(
+                LEARNER,
+                DecideProposal(review.proposal_id, review.proposal_digest, "approve", "approve"),
+            )
         )
     )
     service.handle(

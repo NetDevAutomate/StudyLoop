@@ -7,7 +7,7 @@ import stat
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import pytest
 
@@ -39,6 +39,14 @@ class _Ids:
     def new_id(self, prefix: str) -> str:
         self.value += 1
         return f"{prefix}-{self.value}"
+
+
+class _Barrier(Protocol):
+    def wait(self) -> int: ...
+
+
+class _Queue(Protocol):
+    def put(self, item: object) -> None: ...
 
 
 class _MigrationProcessCrash:
@@ -1064,9 +1072,7 @@ def test_database_and_live_sidecars_are_private(tmp_path: Path) -> None:
             assert stat.S_IMODE(sidecar.stat().st_mode) == 0o600
 
 
-def _begin_worker(
-    path: str, barrier: multiprocessing.Barrier, queue: multiprocessing.Queue
-) -> None:
+def _begin_worker(path: str, barrier: _Barrier, queue: _Queue) -> None:
     store = ConversationStore(Path(path))
     receipt = store.get_turn("conversation-1", "turn-1")
     barrier.wait()
@@ -1083,8 +1089,8 @@ def _retry_worker(
     path: str,
     turn_version: int,
     retry_of_attempt_id: str,
-    barrier: multiprocessing.Barrier,
-    queue: multiprocessing.Queue,
+    barrier: _Barrier,
+    queue: _Queue,
 ) -> None:
     store = ConversationStore(Path(path))
     barrier.wait()
@@ -1102,9 +1108,7 @@ def _retry_worker(
         queue.put(("conflict", 0))
 
 
-def _attach_race_worker(
-    path: str, barrier: multiprocessing.Barrier, queue: multiprocessing.Queue
-) -> None:
+def _attach_race_worker(path: str, barrier: _Barrier, queue: _Queue) -> None:
     store = ConversationStore(Path(path))
     barrier.wait()
     try:
@@ -1116,9 +1120,7 @@ def _attach_race_worker(
         queue.put(("frozen", ""))
 
 
-def _capture_race_worker(
-    path: str, barrier: multiprocessing.Barrier, queue: multiprocessing.Queue
-) -> None:
+def _capture_race_worker(path: str, barrier: _Barrier, queue: _Queue) -> None:
     store = ConversationStore(Path(path))
     barrier.wait()
     receipt = _capture(store)

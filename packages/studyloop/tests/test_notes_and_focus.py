@@ -77,7 +77,9 @@ def test_body_is_normalised_to_clean_markdown(notes_env):
         body="## Heading\r\n\r\n\r\n- item   \n\n```python\nx = 1\n",
         topic="Python Decorators",
     )
+    assert note_id is not None
     stored = notes.get_note(note_id)
+    assert stored is not None
     body = stored["body"]
     assert "\r" not in body
     assert "   \n" not in body
@@ -89,7 +91,10 @@ def test_unknown_kind_falls_back_on_write_and_raises_on_update(notes_env):
     from studyloop import notes
 
     note_id = notes.add_note("Kind check", kind="not-a-kind")
-    assert notes.get_note(note_id)["kind"] == "note"
+    assert note_id is not None
+    stored = notes.get_note(note_id)
+    assert stored is not None
+    assert stored["kind"] == "note"
     with pytest.raises(ValueError, match="Unknown note kind"):
         notes.update_note(note_id, kind="also-bogus")
 
@@ -105,6 +110,8 @@ def test_clear_is_soft_and_restorable(notes_env):
 
     keep = notes.add_note("Keep me")
     drop = notes.add_note("Drop me")
+    assert keep is not None
+    assert drop is not None
     assert notes.clear_notes([drop]) == 1
     active_ids = {n["id"] for n in notes.list_notes()}
     assert active_ids == {keep}
@@ -118,6 +125,7 @@ def test_hard_clear_actually_deletes(notes_env):
     from studyloop import notes
 
     note_id = notes.add_note("Gone for good")
+    assert note_id is not None
     assert notes.clear_notes([note_id], hard=True) == 1
     assert notes.list_notes(status="all") == []
     assert notes.restore_note(note_id) is False
