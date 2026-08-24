@@ -179,8 +179,13 @@ def test_session_start_contract_is_structured(running_server: str) -> None:
         assert body.get("error") or body.get("install_hint") or body.get("repair")
 
 
-def test_acp_transport_rejected_for_pty_only_agent(running_server: str) -> None:
-    """Phase 3b — the server-side ACP guard rejects a PTY-only agent (400)."""
+def test_release_mode_rejects_acp_before_agent_capability_checks(running_server: str) -> None:
+    """Phase 3b — public mode keeps the experimental ACP path behind ``--dev``.
+
+    Whether Claude supports ACP is deliberately irrelevant here: the release
+    gate runs before agent capability validation. Dev-mode unit coverage proves
+    the later PTY-only-agent guard separately for Claude and Codex.
+    """
     import requests
 
     resp = requests.post(
@@ -188,10 +193,10 @@ def test_acp_transport_rejected_for_pty_only_agent(running_server: str) -> None:
         json={"topic": "X", "energy": 5, "agent": "claude", "transport": "acp"},
         timeout=15,
     )
-    assert resp.status_code == 400, resp.text
+    assert resp.status_code == 403, resp.text
     body = resp.json()
-    assert "claude" in body["error"]
-    assert "ACP" in body["error"]
+    assert body["error"] == "ACP transport is experimental and disabled in release mode."
+    assert body["repair"] == "Restart StudyLoop with 'studyloop web --dev' to enable ACP."
 
 
 def test_backlog_surface_reachable(running_server: str) -> None:
