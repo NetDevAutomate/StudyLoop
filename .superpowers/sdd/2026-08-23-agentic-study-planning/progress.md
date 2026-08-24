@@ -231,6 +231,29 @@
   arbitrary network access, expose only safe proposal tools, keep learner
   decisions outside that tool surface, and make harness support claims depend
   on enforceable confinement rather than persona instructions.
+- Authority redesign documentation: complete after three review rounds; final
+  independent review clean at commit 9e3d9c1.
+- Task 6: implementation commit 5c5a480 adds the packaged Architect prompt,
+  fixed planning model profile/port, exact closed three-tool dispatcher,
+  scripted model, setup/doctor readiness, and LAN/privacy hygiene. Independent
+  review is required before Task 7 starts.
+- Task 6: initial review failed (0 Critical, 4 Important): catalogue scalar
+  constraints were not enforced before lifecycle dispatch, provider call IDs
+  could collide across conversations, evidence dispositions were optional and
+  absent from the prompt, and non-finite/unbounded timeouts escaped policy.
+- Task 6: entered fix round 1/5 for authoritative wire validation, scope-bound
+  server idempotency, mandatory evidence coverage, and finite bounded profiles.
+- Task 6: fix round 1/5 closed the four original findings; re-review left one
+  Important null/omission decoder gap that could persist schema-invalid values.
+- Task 6: entered fix round 2/5 for strict present-null/wrong-type rejection at
+  every required and optional nested wire path before lifecycle dispatch.
+- Task 6: fix round 2/5 closed null/omission handling; re-review left one
+  Important native-adapter drift where Python tuples were accepted as JSON
+  arrays and could reach durable proposal creation.
+- Task 6: entered fix round 3/5 for list-only wire-array validation at every
+  outer and nested path, retaining tuple conversion only after validation.
+- Task 6: fix round 3/5 addressed all remaining array-boundary findings in
+  commit 8d09b95; independent review clean. Task 6 complete.
 - Authority redesign arbitration accepted (2026-08-24): release one uses
   `PlanningConversationRuntime` over a fixed server-configured
   OpenAI-compatible endpoint, initially an auto-detected local LiteLLM gateway.
