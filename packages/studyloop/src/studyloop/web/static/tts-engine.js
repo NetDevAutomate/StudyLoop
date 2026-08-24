@@ -278,18 +278,21 @@ class TTSEngine {
         } catch (_) { /* non-JSON error body */ }
         console.warn('[tts-engine] server speech failed, falling back:', detail);
         this._serverVoices = [];
-        this._tier = null;
-        await this.init();
+        this._initWebSpeech('server-synthesis-failed', detail);
         if (gen !== this._generation) return;
         if (this._tier === 'web-speech') {
-          this._setState('speaking');
           this._speakWSA(text);
         }
         return;
       }
       blob = await response.blob();
     } catch (err) {
-      console.warn('[tts-engine] server speech unreachable:', err && err.message);
+      const detail = (err && err.message) || 'server speech unreachable';
+      console.warn('[tts-engine] server speech unreachable:', detail);
+      this._serverVoices = [];
+      this._initWebSpeech('server-synthesis-unreachable', detail);
+      if (gen !== this._generation) return;
+      if (this._tier === 'web-speech') this._speakWSA(text);
       return;
     }
 

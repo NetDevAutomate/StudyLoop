@@ -226,6 +226,33 @@ class TestEnvOverride:
         monkeypatch.setenv("STUDYLOOP_TTS_BASE_URL", "   ")
         assert learning_voice._openvox_settings()["base_url"] == "http://127.0.0.1:8000/v1"
 
+    def test_server_candidates_default_to_primary_then_voicemode(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            learning_voice,
+            "_tts_config",
+            lambda: {"openvox_base_url": "http://127.0.0.1:8000/v1"},
+        )
+
+        candidates = learning_voice.openvox_server_configs()
+
+        assert [(item["role"], item["base_url"]) for item in candidates] == [
+            ("primary", "http://127.0.0.1:8000/v1"),
+            ("VoiceMode fallback", "http://127.0.0.1:8880/v1"),
+        ]
+
+    def test_primary_voicemode_url_is_not_retried_as_its_own_fallback(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            learning_voice,
+            "_tts_config",
+            lambda: {"openvox_base_url": "http://127.0.0.1:8880/v1"},
+        )
+
+        assert len(learning_voice.openvox_server_configs()) == 1
+
 
 class TestVoiceCatalogue:
     def test_falls_back_to_the_models_own_voices(self, monkeypatch: pytest.MonkeyPatch) -> None:

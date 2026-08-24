@@ -39,6 +39,7 @@ from pydantic import BaseModel, Field
 from studyloop.learning.voice import (
     openvox_health,
     openvox_is_english_voice,
+    openvox_server_configs,
     openvox_voices,
     openvox_warm,
     synthesise_openvox_bytes,
@@ -74,14 +75,38 @@ def tts_health() -> dict:
     so it must distinguish "not reachable" from "reachable but wrong model" --
     a client that only sees a boolean cannot tell the learner what to fix.
     """
-    health = openvox_health()
-    voices = openvox_voices() if health.reachable else {}
+    selected = None
+    health = None
+    failures: list[str] = []
+    for candidate in openvox_server_configs():
+        candidate_health = openvox_health(candidate)
+        if candidate_health.reachable:
+            selected = candidate
+            health = candidate_health
+            break
+        if candidate_health.detail:
+            failures.append(candidate_health.detail)
+    if health is None:
+        candidates = openvox_server_configs()
+        model = str(candidates[0].get("openvox_model", "kokoro")) if candidates else "kokoro"
+        detail = "; ".join(dict.fromkeys(failures)) or "no Kokoro server is configured"
+        return {
+            "available": False,
+            "model": model,
+            "voice_count": 0,
+            "detail": detail,
+            "server": None,
+            "voices": [],
+        }
+
+    voices = openvox_voices(selected)
     english = sorted(v for v in voices if openvox_is_english_voice(v))
     return {
         "available": health.reachable,
         "model": health.model,
         "voice_count": health.voice_count,
         "detail": health.detail,
+        "server": selected.get("role"),
         # Only English voices are offered. The catalogue also holds Mandarin,
         # Japanese, Spanish, French, Hindi and Italian voices for this same
         # model, and they are valid requests that speak those languages.
@@ -100,7 +125,7 @@ def tts_warm() -> dict:
     learner shows any intent to use voice: the first utterance otherwise costs
     51 seconds, which reads as broken rather than slow.
     """
-    return {"warmed": openvox_warm()}
+    return {"warmed": any(openvox_warm(candidate) for candidate in openvox_server_configs())}
 
 
 @router.post("/tts/speak")
@@ -115,8 +140,21 @@ def tts_speak(request: SpeakRequest) -> Response:
     if fmt not in _MEDIA_TYPES:
         raise HTTPException(status_code=400, detail=f"unsupported audio format {fmt!r}")
 
-    audio, detail = synthesise_openvox_bytes(request.text, voice=request.voice, response_format=fmt)
+    audio = None
+    failures: list[str] = []
+    for candidate in openvox_server_configs():
+        audio, detail = synthesise_openvox_bytes(
+            request.text,
+            voice=request.voice,
+            response_format=fmt,
+            cfg=candidate,
+        )
+        if audio is not None:
+            break
+        if detail:
+            failures.append(detail)
     if audio is None:
+        detail = "; ".join(dict.fromkeys(failures))
         raise HTTPException(status_code=503, detail=detail or "speech unavailable")
 
     return Response(

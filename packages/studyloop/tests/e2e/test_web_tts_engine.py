@@ -394,6 +394,65 @@ class TestEngineModule:
     and covered in test_web_tts_routes.py and tests/e2e/test_server_tts.py.
     """
 
+    def test_failed_server_synthesis_retries_with_web_speech(
+        self, web_page: Page
+    ) -> None:
+        """A health check is only a snapshot; the server may die before speak()."""
+        web_page.route(
+            "**/api/tts/health",
+            lambda route: route.fulfill(
+                json={
+                    "available": True,
+                    "voices": [{"id": "bf_emma", "british": True}],
+                }
+            ),
+        )
+        web_page.route(
+            "**/api/tts/warm", lambda route: route.fulfill(json={"warmed": True})
+        )
+        web_page.route(
+            "**/api/tts/speak",
+            lambda route: route.fulfill(status=503, json={"detail": "all servers stopped"}),
+        )
+        web_page.add_init_script(
+            """(() => {
+                window.__spokenFallback = [];
+                window.SpeechSynthesisUtterance = class {
+                    constructor(text) { this.text = text; }
+                };
+                Object.defineProperty(window, 'speechSynthesis', {
+                    configurable: true,
+                    value: {
+                        getVoices: () => [],
+                        cancel: () => {},
+                        speak: (utterance) => window.__spokenFallback.push(utterance.text),
+                    },
+                });
+            })()"""
+        )
+        _goto(web_page)
+
+        result = web_page.evaluate(
+            """async () => {
+                const { TTSEngine } = await import('/tts-engine.js');
+                const engine = new TTSEngine();
+                await engine.init();
+                const before = engine.tier;
+                await engine.speak('Continue with a system voice.');
+                return {
+                    before,
+                    after: engine.tier,
+                    spoken: window.__spokenFallback,
+                };
+            }"""
+        )
+
+        assert result == {
+            "before": "server-openvox",
+            "after": "web-speech",
+            "spoken": ["Continue with a system voice."],
+        }
+
     def test_set_tier_broadcasts_the_reason_not_just_the_tier(self, web_page: Page) -> None:
         _goto(web_page)
         detail = web_page.evaluate(

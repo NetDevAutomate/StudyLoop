@@ -473,7 +473,7 @@ studyloop web --lan              # LAN access; prompts securely before startup
 
 There is **no browser terminal fallback**: the ttyd iframe surface was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md). Installing ttyd no longer enables anything user-visible in the dashboard. The `ttyd` **server** transport still exists for maintainers (`STUDYLOOP_TRANSPORT=ttyd`, plus the `/terminal/` proxy), but a session started that way has no browser renderer and reports an explicit `unavailable` state.
 
-**Voice:** Server-side Kokoro. The browser posts to StudyLoop's own authenticated `/api/tts/speak`, which proxies to the Kokoro server named by `tts.openvox_base_url`; with none reachable it falls back to the OS's Web Speech voices, then to silence. Off until enabled in the header.
+**Voice:** Server-side Kokoro. The browser posts to StudyLoop's own authenticated `/api/tts/speak`, which tries `tts.openvox_base_url` and then `tts.openvox_fallback_base_urls` (VoiceMode on port 8880 by default); with none reachable it falls back to the OS's Web Speech voices, then to silence. Off until enabled in the header.
 - **Read once** — speaker icon on card or `T` key
 - **Announcements** — header speaker toggle (Pomodoro transitions and confirmations). It does not read cards automatically; `V` is unbound
 - **Stop** — header stop button interrupts playback mid-utterance

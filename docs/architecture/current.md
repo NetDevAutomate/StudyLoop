@@ -64,8 +64,8 @@ are (a) the agent CLI's own model calls (the agent owns those creds and policy),
 (b) optional content generation via OpenAI, OpenRouter, Gemini, Anthropic, AWS
 Bedrock, or Ollama on a configured local/remote endpoint, and (c) speech
 synthesis, which StudyLoop proxies from its own authenticated `/api/tts/speak`
-to whatever `tts.openvox_base_url` names — normally a Kokoro server on loopback,
-so review text does not leave the host. StudyLoop does not phone home.
+to the configured primary and fallback Kokoro servers. Both defaults use
+loopback, so review text does not leave the host. StudyLoop does not phone home.
 
 One caveat worth stating where an operator will see it: if the configured server
 is VoiceMode's Kokoro, that server itself listens on `0.0.0.0` with no

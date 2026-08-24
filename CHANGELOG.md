@@ -127,6 +127,11 @@ and its list of known limitations.
   extras can't drift out of it.
 
 ### Fixed
+
+- Web voice now falls back from the configured OpenVox-compatible endpoint to
+  VoiceMode's local Kokoro endpoint, then to Web Speech if every server fails.
+  A server that passed health-check and subsequently returns 503 no longer
+  leaves the browser silent with a cached stale tier.
 - **Live console came back empty after a page refresh:** `init()` only ever
   reacted to a `study-session-start` event, and for an already-running session
   that event had been dispatched before the page existed — so a reload mounted

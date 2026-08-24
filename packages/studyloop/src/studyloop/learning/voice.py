@@ -21,6 +21,7 @@ _OPENVOX_DEFAULT_VOICE = "af_bella"
 _OPENVOX_DEFAULT_LANGUAGE = "en"
 _OPENVOX_DEFAULT_RESPONSE_FORMAT = "wav"
 _OPENVOX_DEFAULT_TIMEOUT = 30.0
+_VOICEMODE_DEFAULT_BASE_URL = "http://127.0.0.1:8880/v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,6 +312,7 @@ _ENV_OVERRIDES = {
     "openvox_model": "STUDYLOOP_TTS_MODEL",
     "openvox_voice": "STUDYLOOP_TTS_VOICE",
 }
+_FALLBACK_URLS_ENV = "STUDYLOOP_TTS_FALLBACK_BASE_URLS"
 
 
 def _openvox_settings(cfg: dict | None = None) -> dict:
@@ -337,6 +339,59 @@ def _openvox_settings(cfg: dict | None = None) -> dict:
         ),
         "timeout": _coerce_timeout(resolved.get("openvox_timeout")),
     }
+
+
+def openvox_server_configs(cfg: dict | None = None) -> tuple[dict, ...]:
+    """Return the primary Kokoro server followed by explicit fallbacks.
+
+    VoiceMode's local Kokoro endpoint is the default fallback. A configured
+    ``openvox_fallback_base_urls: []`` (or an explicitly blank fallback env
+    value) disables it; repeated URLs are removed so pointing the primary at
+    VoiceMode never causes the same request to run twice.
+    """
+    raw = cfg if cfg is not None else _tts_config()
+    primary = _openvox_settings(cfg)
+    fallback_value: object = raw.get(
+        "openvox_fallback_base_urls", [_VOICEMODE_DEFAULT_BASE_URL]
+    )
+    if cfg is None and _FALLBACK_URLS_ENV in os.environ:
+        fallback_value = os.environ.get(_FALLBACK_URLS_ENV, "")
+
+    if isinstance(fallback_value, str):
+        fallback_urls = [part.strip() for part in fallback_value.split(",") if part.strip()]
+    elif isinstance(fallback_value, (list, tuple)):
+        fallback_urls = [str(part).strip() for part in fallback_value if str(part).strip()]
+    else:
+        fallback_urls = []
+
+    urls = [primary["base_url"], *fallback_urls]
+    candidates: list[dict] = []
+    seen: set[str] = set()
+    for index, url in enumerate(urls):
+        normalised = str(url).rstrip("/")
+        if not normalised or normalised in seen:
+            continue
+        seen.add(normalised)
+        role = "primary" if index == 0 else (
+            "VoiceMode fallback"
+            if normalised == _VOICEMODE_DEFAULT_BASE_URL
+            else f"fallback {index}"
+        )
+        candidates.append(
+            {
+                "base_url": normalised,
+                "role": role,
+                "openvox_base_url": normalised,
+                "openvox_model": primary["model"],
+                "openvox_voice": primary["voice"],
+                "openvox_response_format": primary["response_format"],
+                "openvox_timeout": primary["timeout"],
+                # A candidate is already a resolved endpoint. Do not recursively
+                # add the default fallback when it is passed to a client helper.
+                "openvox_fallback_base_urls": [],
+            }
+        )
+    return tuple(candidates)
 
 
 def _openvox_get_json(base_url: str, path: str, timeout: float) -> dict | None:

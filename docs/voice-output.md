@@ -94,6 +94,8 @@ Kokoro server profile — used by the CLI **and** by the web app:
 tts:
   backend: openvox
   openvox_base_url: http://127.0.0.1:8000/v1   # or :8880/v1 for VoiceMode / the container
+  openvox_fallback_base_urls:                   # tried in order if the primary fails
+    - http://127.0.0.1:8880/v1                  # VoiceMode default; [] disables fallback
   openvox_model: kokoro
   openvox_voice: bf_emma
   openvox_language: en
@@ -114,7 +116,8 @@ tts:
 
 ### Overriding the server for a single command
 
-`STUDYLOOP_TTS_BASE_URL`, `STUDYLOOP_TTS_VOICE` and `STUDYLOOP_TTS_MODEL` override
+`STUDYLOOP_TTS_BASE_URL`, `STUDYLOOP_TTS_FALLBACK_BASE_URLS`,
+`STUDYLOOP_TTS_VOICE` and `STUDYLOOP_TTS_MODEL` override
 the config file without editing it — the quickest way to compare two servers back
 to back:
 
@@ -131,8 +134,8 @@ shell.
 
 ### Kokoro Server Backends
 
-StudyLoop does not depend on a particular provider. It POSTs to whatever
-`openvox_base_url` names, so anything exposing an OpenAI-compatible
+StudyLoop does not depend on a particular provider. It POSTs to the configured
+primary and then each fallback URL, so anything exposing an OpenAI-compatible
 `/v1/audio/speech` will do. Three are known to work with a byte-identical request
 and the same voice ids:
 
@@ -237,7 +240,7 @@ Replace the path with your actual clone location. The `scripts/install-agents.sh
 
 ## Web App Voice (server-side Kokoro)
 
-The study web app (`studyloop web`) speaks through a **server-side** Kokoro. The browser POSTs the text to StudyLoop's own authenticated route `/api/tts/speak`, which proxies the request to whatever `tts.openvox_base_url` names and returns the audio. The device only has to play a response, which is why this works on a tablet where in-browser synthesis could not.
+The study web app (`studyloop web`) speaks through a **server-side** Kokoro. The browser POSTs the text to StudyLoop's own authenticated route `/api/tts/speak`, which first tries `tts.openvox_base_url`, then each `tts.openvox_fallback_base_urls` entry, and returns the first successful audio. VoiceMode on `127.0.0.1:8880/v1` is the default fallback. If every server fails, the browser visibly degrades to its operating-system voice. The device only has to play a response, which is why this works on a tablet where in-browser synthesis could not.
 
 Set it up in the [Kokoro Server Backends](#kokoro-server-backends) section above — the web app needs no separate configuration.
 
