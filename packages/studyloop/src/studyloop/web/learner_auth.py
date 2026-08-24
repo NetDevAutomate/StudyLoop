@@ -8,12 +8,14 @@ import time
 from dataclasses import dataclass
 from ipaddress import ip_address
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request
 
 from studyloop.planning import ActorContext
 
 if TYPE_CHECKING:
+    from fastapi import WebSocket
     from starlette.responses import Response
 
 SESSION_COOKIE = "studyloop_learner_session"
@@ -130,6 +132,50 @@ def browser_csrf_token(request: Request) -> str:
     return session.csrf_token if session is not None else ""
 
 
+def websocket_origin_matches(origin: str, *, websocket_scheme: str, host: str) -> bool:
+    """Require the exact browser origin represented by this WebSocket request."""
+    parsed = urlsplit(origin.strip())
+    expected_scheme = {"ws": "http", "wss": "https"}.get(websocket_scheme.casefold())
+    return bool(
+        expected_scheme
+        and parsed.scheme.casefold() == expected_scheme
+        and parsed.netloc
+        and hmac.compare_digest(parsed.netloc.casefold(), host.strip().casefold())
+        and parsed.path in {"", "/"}
+        and not parsed.query
+        and not parsed.fragment
+    )
+
+
+def websocket_browser_learner_valid(websocket: WebSocket) -> bool:
+    """Validate exact origin plus the server-minted session and double-submit token."""
+    if not websocket_origin_matches(
+        websocket.headers.get("origin", ""),
+        websocket_scheme=websocket.url.scheme,
+        host=websocket.headers.get("host", ""),
+    ):
+        return False
+    session_id = websocket.cookies.get(SESSION_COOKIE, "")
+    csrf_cookie = websocket.cookies.get(CSRF_COOKIE, "")
+    csrf_token = websocket.query_params.get("csrf_token", "")
+    sessions: dict[str, BrowserLearnerSession] = websocket.app.state.browser_learner_sessions
+    session = sessions.get(session_id)
+    if session is None or session.expires_at <= time.monotonic():
+        if session_id:
+            sessions.pop(session_id, None)
+        return False
+    if session.actor_id.startswith("basic:") and not getattr(
+        websocket.state, "basic_auth_identity", ""
+    ):
+        return False
+    return bool(
+        csrf_cookie
+        and csrf_token
+        and hmac.compare_digest(csrf_cookie, session.csrf_token)
+        and hmac.compare_digest(csrf_token, session.csrf_token)
+    )
+
+
 __all__ = [
     "CSRF_COOKIE",
     "CSRF_HEADER",
@@ -138,4 +184,6 @@ __all__ = [
     "initialise_browser_learner_sessions",
     "mint_browser_learner_session",
     "require_browser_learner",
+    "websocket_browser_learner_valid",
+    "websocket_origin_matches",
 ]

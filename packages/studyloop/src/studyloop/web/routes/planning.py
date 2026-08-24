@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import asdict
 from typing import TYPE_CHECKING, Annotated, Literal, NoReturn, cast
 
 from fastapi import APIRouter, Body, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from studyloop.planning.compat import require_proposal
-from studyloop.planning.contracts import PlanningRequest, PlanningRunRef, ProposalRef
+from studyloop.planning.contracts import PlanningBrief, PlanningRequest, PlanningRunRef, ProposalRef
 from studyloop.planning.conversation_contracts import (
     PRIVACY_NOTICE,
     ConversationConflictError,
@@ -217,26 +218,47 @@ async def submit_turn(
 
 
 def _latest_proposal(services: PlanningServices, conversation_id: str) -> dict[str, object] | None:
+    turns = services.store.list_turns(conversation_id)
+    if not turns or turns[-1].status != "completed":
+        return None
+    source_turn = turns[-1]
     proposal_id = ""
-    for event in services.store.replay_outbox(conversation_id, 0):
-        if event.event_type != "capability_result":
-            continue
-        if event.payload.get("name") != "submit_plan_proposal":
-            continue
-        result = event.payload.get("result")
-        if isinstance(result, dict) and isinstance(result.get("proposal_id"), str):
-            proposal_id = result["proposal_id"]
+    for intent, result in services.store.list_capability_history(source_turn.turn_id):
+        if intent.name == "submit_plan_proposal" and isinstance(
+            result.payload.get("proposal_id"), str
+        ):
+            proposal_id = str(result.payload["proposal_id"])
     if not proposal_id:
         return None
     review = require_proposal(services.lifecycle.inspect(ProposalRef(proposal_id)))
     brief = services.lifecycle.inspect(PlanningRunRef(review.run_id))
+    if not isinstance(brief, PlanningBrief) or review.run_id != source_turn.planning_run_id:
+        return None
+    before = asdict(brief.target_plan) if brief.target_plan is not None else None
+    after = asdict(review.plan_preview)
+    changes = [
+        {
+            "path": f"/{field}",
+            "before": before.get(field) if before is not None else None,
+            "after": after.get(field),
+        }
+        for field in sorted(after)
+        if before is None or before.get(field) != after.get(field)
+    ]
     return {
         "proposal_id": review.proposal_id,
         "proposal_digest": review.proposal_digest,
         "mode": review.mode,
         "title": review.plan_preview.title,
         "markdown": review.markdown_preview,
-        "plan": review.plan_preview.summary(),
+        "plan": after,
+        "summary": review.plan_preview.summary(),
+        "structural_diff": {
+            "mode": review.mode,
+            "before": before,
+            "after": after,
+            "changes": changes,
+        },
         "unknowns": [
             {"unknown_id": item.unknown_id, "question": item.question, "impact": item.impact}
             for item in review.plan_preview.unknowns

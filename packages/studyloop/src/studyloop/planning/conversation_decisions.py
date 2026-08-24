@@ -36,6 +36,16 @@ class ConversationDecisionAdapter:
             from .conversation_contracts import ConversationConflictError
 
             raise ConversationConflictError("proposal is outside this conversation")
+        turns = self.store.list_turns(command.conversation_id)
+        latest = turns[-1] if turns else None
+        if (
+            latest is None
+            or latest.status != "completed"
+            or latest.planning_run_id != review.run_id
+        ):
+            from .conversation_contracts import ConversationConflictError
+
+            raise ConversationConflictError("proposal was retired by a newer learner turn")
         return self.store.prepare_decision_intent(command)
 
     def decide(self, intent_id: str, actor: ActorContext) -> DecisionProjection:

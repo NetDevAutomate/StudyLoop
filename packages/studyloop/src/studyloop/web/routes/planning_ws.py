@@ -7,18 +7,15 @@ import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from studyloop.planning.conversation_contracts import ConversationConflictError
+from studyloop.web.learner_auth import websocket_browser_learner_valid
 from studyloop.web.routes.planning import safe_event
-from studyloop.web.ws_origin import origin_allowed
 
 router = APIRouter()
 
 
 @router.websocket("/planning/conversations/{conversation_id}/events")
 async def planning_events(websocket: WebSocket, conversation_id: str) -> None:
-    if not origin_allowed(
-        websocket.headers.get("origin", ""),
-        host=websocket.headers.get("host", ""),
-    ):
+    if not websocket_browser_learner_valid(websocket):
         await websocket.close(code=1008)
         return
     services = websocket.app.state.planning_services

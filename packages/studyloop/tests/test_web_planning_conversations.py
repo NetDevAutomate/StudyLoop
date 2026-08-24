@@ -9,6 +9,7 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from studyloop.planning import Goal, Milestone, Mission, MutationIntent, PlanningRef, StudyPlan
 from studyloop.planning.model_port import (
@@ -20,6 +21,7 @@ from studyloop.planning.model_port import (
 from studyloop.planning.runtime import planning_repository
 from studyloop.planning.store import PLANS_DIR_ENV
 from studyloop.web.app import create_app
+from studyloop.web.learner_auth import websocket_origin_matches
 from studyloop.web.planning_services import create_planning_services
 
 
@@ -118,6 +120,24 @@ class _HangingModel:
         yield request  # pragma: no cover
 
 
+class _ClarificationModel:
+    async def stream(self, request):
+        yield ModelTextDelta(
+            MODEL_WIRE_VERSION,
+            request.turn_id,
+            request.attempt_id,
+            1,
+            "Which practical project matters most to you?",
+        )
+        yield ModelTurnCompleted(
+            MODEL_WIRE_VERSION,
+            request.turn_id,
+            request.attempt_id,
+            2,
+            "stop",
+        )
+
+
 @pytest.fixture
 def planning_browser(tmp_path, monkeypatch):
     monkeypatch.setenv(PLANS_DIR_ENV, str(tmp_path / "plans"))
@@ -206,6 +226,10 @@ def test_create_context_turn_proposal_and_exact_approval(planning_browser) -> No
     proposal = conversation["proposal"]
     assert proposal["title"] == "Understand async Python"
     assert "```mermaid" in proposal["markdown"]
+    assert proposal["plan"]["goals"][0]["goal_id"]
+    assert proposal["plan"] == proposal["structural_diff"]["after"]
+    assert proposal["structural_diff"]["before"] is None
+    assert proposal["summary"]["title"] == proposal["title"]
     assert conversation["messages"][-1]["role"] == "assistant"
     assert len(model.requests) == 3
     replayed_turn = browser.post(
@@ -283,6 +307,13 @@ def test_revise_conversation_rejection_preserves_canonical_plan(planning_browser
     assert accepted.status_code == 202, accepted.text
     proposal = _wait_for_proposal(browser, conversation_id)["proposal"]
     assert proposal["mode"] == "revise"
+    assert proposal["structural_diff"]["before"]["plan_id"] == "existing-plan"
+    assert proposal["structural_diff"]["after"] == proposal["plan"]
+    assert {item["path"] for item in proposal["structural_diff"]["changes"]} >= {
+        "/goals",
+        "/milestones",
+        "/title",
+    }
     rejected = browser.post(
         f"/api/planning/proposals/{proposal['proposal_id']}/decision",
         json={
@@ -352,16 +383,131 @@ def test_safe_websocket_replay_does_not_expose_raw_capability_payload(
         json={"text": "Help me understand async Python", "idempotency_key": "ws"},
     )
     _wait_for_proposal(browser, conversation_id)
+    cookie = (
+        f"studyloop_learner_session={browser.cookies.get('studyloop_learner_session')}; "
+        f"studyloop_csrf={browser.cookies.get('studyloop_csrf')}"
+    )
 
     with browser.websocket_connect(
-        f"/api/planning/conversations/{conversation_id}/events?after_seq=0",
-        headers={"Origin": "http://127.0.0.1:8765"},
+        f"/api/planning/conversations/{conversation_id}/events?after_seq=0"
+        f"&csrf_token={created['csrf_token']}",
+        headers={
+            "Origin": "http://127.0.0.1:8765",
+            "Host": "127.0.0.1:8765",
+            "Cookie": cookie,
+        },
     ) as websocket:
         events = [websocket.receive_json() for _ in range(3)]
     proposal_event = next(item for item in events if item["type"] == "proposal_ready")
     assert set(proposal_event) == {"sequence", "type", "data"}
     assert set(proposal_event["data"]) <= {"name", "status", "proposal_id"}
     assert "result" not in json.dumps(proposal_event)
+
+
+def test_planning_websocket_requires_exact_origin_session_and_csrf(planning_browser) -> None:
+    browser, _services, _model = planning_browser
+    created = browser.post("/api/planning/conversations", json={"mode": "create"}).json()
+    path = (
+        f"/api/planning/conversations/{created['conversation_id']}/events?after_seq=0"
+        f"&csrf_token={created['csrf_token']}"
+    )
+    cookie = (
+        f"studyloop_learner_session={browser.cookies.get('studyloop_learner_session')}; "
+        f"studyloop_csrf={browser.cookies.get('studyloop_csrf')}"
+    )
+    with (
+        pytest.raises(WebSocketDisconnect) as wrong_port,
+        browser.websocket_connect(
+            path,
+            headers={
+                "Origin": "http://127.0.0.1:9999",
+                "Host": "127.0.0.1:8765",
+                "Cookie": cookie,
+            },
+        ),
+    ):
+        pass
+    assert wrong_port.value.code == 1008
+
+    stranger = TestClient(browser.app, base_url="http://127.0.0.1:8765")
+    with (
+        pytest.raises(WebSocketDisconnect) as sessionless,
+        stranger.websocket_connect(
+            path,
+            headers={"Origin": "http://127.0.0.1:8765", "Host": "127.0.0.1:8765"},
+        ),
+    ):
+        pass
+    assert sessionless.value.code == 1008
+
+
+@pytest.mark.parametrize(
+    ("origin", "scheme", "host", "expected"),
+    [
+        ("http://127.0.0.1:8765", "ws", "127.0.0.1:8765", True),
+        ("http://127.0.0.1:9999", "ws", "127.0.0.1:8765", False),
+        ("https://127.0.0.1:8765", "ws", "127.0.0.1:8765", False),
+        ("https://study.local", "wss", "study.local", True),
+    ],
+)
+def test_websocket_origin_predicate_is_exact(
+    origin: str, scheme: str, host: str, expected: bool
+) -> None:
+    assert websocket_origin_matches(origin, websocket_scheme=scheme, host=host) is expected
+
+
+def test_newer_learner_turn_retires_old_proposal_and_blocks_decision(
+    planning_browser,
+) -> None:
+    browser, services, _model = planning_browser
+    created = browser.post("/api/planning/conversations", json={"mode": "create"}).json()
+    conversation_id = created["conversation_id"]
+    browser.post(
+        f"/api/planning/conversations/{conversation_id}/turns",
+        json={"text": "Help me learn async Python", "idempotency_key": "initial"},
+    )
+    old = _wait_for_proposal(browser, conversation_id)["proposal"]
+    assert services.runtime is not None
+    services.runtime.model = _HangingModel()
+    replacement = browser.post(
+        f"/api/planning/conversations/{conversation_id}/turns",
+        json={"text": "Make the milestones more practical", "idempotency_key": "revision"},
+    )
+    assert replacement.status_code == 202
+    snapshot = browser.get(f"/api/planning/conversations/{conversation_id}").json()
+    assert snapshot["proposal"] is None
+    assert snapshot["phase"] == "thinking"
+    stale = browser.post(
+        f"/api/planning/proposals/{old['proposal_id']}/decision",
+        json={
+            "conversation_id": conversation_id,
+            "proposal_digest": old["proposal_digest"],
+            "outcome": "approve",
+            "idempotency_key": "stale-approval",
+            "base": old["base"],
+        },
+    )
+    assert stale.status_code == 409
+    assert "retired" in stale.text
+    browser.post(f"/api/planning/conversations/{conversation_id}/stop", json={})
+    interrupted = browser.get(f"/api/planning/conversations/{conversation_id}").json()
+    services.runtime.model = _ClarificationModel()
+    retried = browser.post(
+        f"/api/planning/conversations/{conversation_id}/retry",
+        json={
+            "turn_id": interrupted["latest_turn"]["turn_id"],
+            "expected_turn_version": interrupted["latest_turn"]["turn_version"],
+        },
+    )
+    assert retried.status_code == 202
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        clarified = browser.get(f"/api/planning/conversations/{conversation_id}").json()
+        if clarified["latest_turn"]["status"] == "completed":
+            break
+        time.sleep(0.02)
+    assert clarified["phase"] == "conversation"
+    assert clarified["proposal"] is None
 
 
 def test_stop_cancels_app_owned_task_and_retry_reaches_proposal(planning_browser) -> None:
