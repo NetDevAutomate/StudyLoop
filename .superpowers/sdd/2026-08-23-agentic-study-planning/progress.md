@@ -14,16 +14,16 @@
 |---|---|---|
 | 1 | JS interfaces match the files and boot tests it names. | clean |
 | 2 | v2 model fields, codec sections, and learning-map tests align. | clean |
-| 3 | repository API covers lock, journal, recovery, and crash tests. | clean |
+| 3 | repository API covers lock, body-free audit journal, recovery, and crash tests. | fix round 2; clean |
 | 4 | lifecycle command union covers every normal mutation named in the spec. | clean |
 | 5 | writer migration and forbidden-import test enforce Task 4's sole seam. | clean |
 | 6 | packaged prompt/provider port/closed catalogue exclude learner decision and ambient tools. | redesigned; clean |
-| 7 | SQLite runtime owns frozen turns, pre-dispatch capability intents, outbox, recovery, and retention. | fix round 1; clean |
+| 7 | SQLite runtime owns stable turn/attempt CAS, intents/outbox, and exhaustive private-body erasure. | fix round 2; clean |
 | 8 | HTTP/WS/CLI/auth/context/decision adapters consume Task 7 without inventing a second loop/authority. | fix round 1; clean |
 | 9 | browser/onboarding states consume Task 8 DTOs through an inert no-subresource renderer. | fix round 1; clean |
 | 10 | stewardship uses frozen briefs, trusted evidence, and Task 8's decision adapter. | fix round 1; clean |
-| 11 | replay/runtime gate covers intent ordering, auth, context races, retention, and server/browser egress. | fix round 1; clean |
-| 12 | final verification rechecks every authority contract and cannot publish/merge. | fix round 1; clean |
+| 11 | replay/runtime gate covers attempt races, intent ordering, sentinel erasure, auth, and egress. | fix round 2; clean |
+| 12 | final review traces attempt cardinality and physical retention as well as all authority contracts. | fix round 2; clean |
 
 ## Pre-flight overlaps
 
@@ -34,6 +34,7 @@
 | 2, 4 | Task 2 domain types feed Task 4 contracts/policy. | Sequential; lifecycle references stable IDs, not labels. |
 | 2, 9 | Task 2 derives Mermaid; Task 9 renders it. | Browser never authors or regenerates Mermaid. |
 | 3, 4 | Task 3 commit/recovery supports Task 4 commands. | Lifecycle owns policy; repository owns persistence mechanics. |
+| 3, 7 | JSON lifecycle journal and SQLite conversation store share IDs/digests. | Journal keeps canonical recovery/audit scalars only; every expiring body belongs to SQLite. |
 | 4, 5 | Task 4 publishes the command seam; Task 5 migrates all old writers. | No raw store mutation remains outside repository after Task 5. |
 | 4, 6 | Task 4 model-safe commands feed the closed dispatcher. | Runtime may prepare/submit/inspect only. |
 | 4, 8 | Task 4 DTOs feed planning HTTP routes. | Route maps errors/status; no duplicated policy. |
@@ -41,7 +42,7 @@
 | 5, 10 | Both touch evaluation. | Task 5 first moves checkpoint writes; Task 10 adds adaptation only through lifecycle. |
 | 6, 7 | Packaged prompt/provider/catalogue feed the conversation runtime. | No MCP/harness discovery; server fixes config. |
 | 6, 8 | Server-owned model profile feeds conversation routes. | Browser supplies content, never endpoint/tools/credentials. |
-| 7, 8 | Frozen-context/runtime/outbox APIs feed HTTP/WS/CLI and decisions. | Route/CLI adapters share one runtime; decision intent bridges journal/SQLite. |
+| 7, 8 | Frozen-context/attempt/runtime/outbox APIs feed HTTP/WS/CLI and decisions. | Route/CLI adapters share one attempt CAS/runtime; decision intent bridges journal/SQLite. |
 | 7, 9 | Sequenced outbox DTOs feed plan panel. | Browser never adopts ACP/PTY/study state and never auto-fetches model output. |
 | 8, 9 | API DTOs/auth/citations drive UI state. | JS/Playwright pin exact decisions and zero subresource egress. |
 | 8, 10 | Revision conversations receive frozen Steward briefs. | Same decision state machine for create and revise. |
@@ -75,8 +76,12 @@
   learner text may contain URLs/paths, while StudyLoop source metadata may not.
 - Capability and decision intents commit before lifecycle dispatch and recover
   by original tuple/key before any new attempt or outbox projection.
-- Private input has an injected-clock 29/30/31-day transactional purge with
-  explicit accepted-plan provenance holds and owner-only modes.
+- One stable learner turn owns monotonic unique attempts; retry CAS follows
+  durable interruption and complete capability-intent reconciliation.
+- Every expiring private body is SQLite-owned. Day-30 redaction retains only an
+  exact scalar audit projection/canonical hold, then secure-delete/WAL recovery
+  proves eligible non-held bytes absent; release one creates no durable
+  attachment copy.
 
 ## Task progress
 
@@ -232,8 +237,9 @@
   remain supported for study and unsupported for agentic planning.
 - Authority redesign arbitration accepted: durable SQLite conversations,
   attempts, capability calls/results, and transactional outbox replace the
-  proposed planning `AgentWorkspace`. Recovery restarts an interrupted logical
-  turn and never pretends to resume provider tokens.
+  proposed planning `AgentWorkspace`. Recovery retains the captured turn ID and
+  starts a new ordered attempt after interruption; it never pretends to resume
+  provider tokens.
 - Authority redesign arbitration accepted: course/note ingestion is learner/
   server-owned tier-four context. First slice is pasted/selected local text;
   public static URL retrieval is deferred behind a separate SSRF,
@@ -287,3 +293,21 @@
   transactional retention API. The gate covers 29/30/31 days, accepted plan
   provenance holds, rejected/superseded redaction, purge crash/retry, stable
   digests/audit/outbox, and `0600`/`0700` storage.
+- Authority redesign review round 1 blocked commit 36e1501 with two remaining
+  Important defects: contradictory one-attempt-versus-retry cardinality and a
+  retention contract that omitted several private payloads and could not be
+  atomic across SQLite plus attachment files.
+- Fix round 2 keeps one original learner turn ID across an ordered one-to-many
+  attempt history. Task 7 owns monotonic sequence/unique identity and partial
+  uniqueness indexes; first-begin and retry CAS allow one active attempt only.
+  Retry requires the latest attempt durably interrupted and every capability
+  intent reconciled. Direct, two-process, and crash tests enforce the ordering.
+- Fix round 2 inventories learner/brain-dump, assistant, context/source, brief,
+  provider capture, capability argument/result, proposal preview, raw outbox,
+  and ingestion-temporary payloads. All expiring bytes live in SQLite; Task 3's
+  lifecycle journal is body-free and release one creates no attachment copy.
+- Fix round 2 defines the retained audit projection field-by-field. The purge
+  state is `prepared -> projected -> storage_scrubbed`; `secure_delete=ON`, a
+  truncating WAL checkpoint, blocking startup recovery, and sentinel scans of
+  DB/WAL/SHM/directory make the 29/30/31-day claim executable across subprocess
+  deaths while preserving only explicit canonical-plan provenance holds.
