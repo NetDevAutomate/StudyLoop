@@ -326,6 +326,9 @@ class TestPlanningSetup:
         assert planning["readiness"] == "scripted_only"
         assert "Planning protocol preflight passed" in result.output
         assert "No live planning model detected" in result.output
+        normalized = " ".join(result.output.split())
+        assert "The browser Architect needs a live planning model" in normalized
+        assert "studyloop setup --planning-base-url URL --planning-model MODEL" in normalized
 
     def test_local_litellm_detection_records_server_owned_profile_without_a_question(
         self,
@@ -351,6 +354,10 @@ class TestPlanningSetup:
         assert planning["readiness"] == "live_configured"
         assert result.output.count("Notes folder") == 1
         assert "planning model" not in result.output.casefold().split("notes folder", 1)[0]
+        normalized = " ".join(result.output.split())
+        assert "Study Plans" in normalized
+        assert "Create with Architect" in normalized
+        assert "Type or dictate one brain dump" in normalized
 
     def test_explicit_profile_uses_options_and_adds_no_curriculum_questions(
         self, runner: CliRunner, _patch_config_dir: Path, _no_harness: None

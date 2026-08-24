@@ -68,8 +68,9 @@ studyloop clean --dry-run                 # Preview orphan tmux/session cleanup
 studyloop extract-struggles --incremental # Session DB → study_progress (stub or --llm)
 
 # Study plans
-studyloop plan interview                  # Interview questions + evidence-based seed suggestions
-studyloop plan new --title TITLE [--why WHY] [--topic T] [--success S] [--milestone M]
+studyloop web                             # Agentic path: Study Plans → Create with Architect
+studyloop plan interview                  # Legacy question/seed output; no live conversation
+studyloop plan new --title TITLE [--why WHY] [--topic T] [--success S] [--milestone M]  # Manual structured adapter
 studyloop plan new --title TITLE --activate  # Activate on create (refused if incomplete)
 studyloop plan list [--status draft|active|paused|complete|abandoned] [--json]
 studyloop plan show PLAN_ID [--markdown] [--json]
@@ -366,6 +367,18 @@ Mid-session parking uses `studyloop park` (writes to the same backlog with sourc
 
 Structured, evaluable plans: a mission, topics, success criteria, and milestones. Plans live as Markdown documents (`studyloop plan path`) with a derived index in the sessions DB, so a plan is readable and editable outside the tool.
 
+The supported agentic intake is in the browser: run `studyloop web`, open
+**Study Plans → Create with Architect**, then type or dictate one brain dump.
+The server-owned Architect asks focused follow-up questions and shows the exact
+Markdown proposal before the learner approves, revises, or rejects it. A live
+planning model must be configured by `studyloop setup`; installed coding
+harnesses do not provide this runtime.
+
+The commands below are structured document-management adapters. In particular,
+`plan new` does not decompose free text and `plan interview` only prints legacy
+questions and evidence-based seeds; neither is equivalent to the browser
+conversation.
+
 ```bash
 studyloop plan interview                  # What to ask, plus evidence-based seed suggestions
 studyloop plan new --title "SQL window functions" \
@@ -383,7 +396,8 @@ studyloop plan reindex                    # Rebuild the DB index from the docume
 
 Omitted answers are left **explicitly blank** in the document rather than invented, and `readiness` reports what is still missing. Activation (`--activate`, or `plan status … active`) is **refused** while a plan lacks a mission, success criteria, or milestones — an unevaluable plan must not look active.
 
-`studyloop plan interview` exists so an agent can learn what to ask before proposing a plan.
+Use these commands for inspection, manual recovery, or deliberate structured
+automation—not as the first-run route.
 
 ### Topic exercises
 

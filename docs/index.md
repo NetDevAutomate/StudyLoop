@@ -1,6 +1,6 @@
 # StudyLoop
 
-**TL;DR:** A local-first, AuDHD-aware study toolkit for live Socratic mentoring, body-doubling, cross-assistant session memory, and supporting spaced repetition.
+**TL;DR:** A local-first, AuDHD-aware study toolkit that turns a messy learning goal into a focused plan, then supports it with live Socratic mentoring, body-doubling, cross-assistant session memory, and spaced repetition.
 
 ---
 
@@ -14,7 +14,11 @@ cd studyloop
 studyloop setup
 studyloop doctor --fix
 
-# 2. Start an interactive study session
+# 2. Create the first plan
+studyloop web
+# Open Study Plans → Create with Architect, then type or dictate one brain dump
+
+# 3. Start an interactive study session
 studyloop study
 # or specify a topic directly
 studyloop study "Python" --mode co-study
@@ -23,7 +27,7 @@ studyloop study "Python" --mode co-study
 # claude      # then /agent socratic-mentor
 # codex       # in the project root with AGENTS.md present
 
-# 3. Ask for one active next step, then optionally generate review artefacts
+# 4. Ask for one active next step, then optionally generate review artefacts
 studyloop now --energy medium --time 20
 studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode recall
 studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
@@ -85,7 +89,7 @@ graph LR
 
 | Tool | Purpose |
 |------|---------|
-| **studyloop** | Interactive study sessions, local content generation, spaced repetition, struggle detection, win tracking |
+| **studyloop** | Agentic study planning, interactive study sessions, local content generation, spaced repetition, struggle detection, win tracking |
 | **agent-session-tools** | Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, pi, omp, and more |
 | **AI Agents** | Socratic mentors that adapt to your energy, emotional state, and sensory environment |
 
@@ -96,7 +100,8 @@ graph LR
 
 ## Key Sections
 
-- **[Your First Week](first-week.md)** — day-by-day path: live study first, then review and export
+- **[Your First Week](first-week.md)** — day-by-day path: one focused plan, then live study, review, and export
+- **[Study Plans](study-plans.md)** — browser Architect, Markdown plan format, explicit revision, and current limitations
 - **[Content Pipeline](content-pipeline.md)** — local review artefact generation from study sources
 - **[Architecture](architecture.md)** — current and target architecture docs
 - **[Target Architecture](architecture/target.md)** — plugin architecture, ACP/PTY live sessions, macOS/iOS direction

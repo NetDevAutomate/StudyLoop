@@ -103,6 +103,12 @@ def _gateway_handler(state: _GatewayState):
             state.requests.append(body)
             messages = body.get("messages", [])
             tools = [m for m in messages if m.get("role") == "tool"]
+            called_tools = [
+                call.get("function", {}).get("name", "")
+                for message in messages
+                if message.get("role") == "assistant"
+                for call in message.get("tool_calls", [])
+            ]
             prior_clarification = any(
                 m.get("role") == "assistant"
                 and "one useful outcome" in str(m.get("content", "")).casefold()
@@ -117,7 +123,7 @@ def _gateway_handler(state: _GatewayState):
                 chunks = [_tool_chunk("prepare-browser", "prepare_plan", {})]
             else:
                 result = json.loads(tools[-1]["content"])["payload"]
-                if "brief_context_digest" in result:
+                if called_tools[-1] == "prepare_plan":
                     draft = {
                         "title": "Design one small Python service",
                         "mission": {
@@ -180,6 +186,17 @@ def _gateway_handler(state: _GatewayState):
                                 "run_id": result["run_id"],
                                 "brief_context_digest": result["brief_context_digest"],
                                 "draft": draft,
+                            },
+                        )
+                    ]
+                elif called_tools[-1] == "submit_plan_proposal":
+                    chunks = [
+                        _tool_chunk(
+                            "inspect-browser",
+                            "get_plan_proposal",
+                            {
+                                "run_id": result["run_id"],
+                                "proposal_id": result["proposal_id"],
                             },
                         )
                     ]
@@ -254,6 +271,8 @@ def configured_world(tmp_path_factory: pytest.TempPathFactory, gateway: _Gateway
     assert "No notes folder set" in setup.stdout
     assert "No AI assistant found" in setup.stdout
     assert "Planning model ready" in setup.stdout
+    assert "Create with Architect" in setup.stdout
+    assert "Type or dictate one brain dump" in setup.stdout
     assert config.exists()
     return world
 
@@ -275,7 +294,35 @@ def _open_plans(page, base_url: str) -> None:
 
 
 def _wait_proposal(page) -> None:
-    page.locator('[data-testid="architect-proposal"]').wait_for(state="visible", timeout=20_000)
+    try:
+        page.locator('[data-testid="architect-proposal"]').wait_for(state="visible", timeout=20_000)
+    except Exception as exc:
+        diagnostic = page.evaluate(
+            """async () => {
+              const root = document.querySelector('[x-data="planArchitectPanel()"]');
+              const data = root && window.Alpine.$data(root);
+              let server = null;
+              if (data?.conversationId) {
+                const response = await fetch(
+                  `/api/planning/conversations/${encodeURIComponent(data.conversationId)}`
+                );
+                server = {status: response.status, body: await response.json()};
+              }
+              return {
+                client: data && {
+                  phase: data.phase,
+                  conversationId: data.conversationId,
+                  lastSequence: data.lastSequence,
+                  latestTurn: data.latestTurn,
+                  error: data.error,
+                  messageCount: data.messages.length,
+                  hasProposal: !!data.proposal,
+                },
+                server,
+              };
+            }"""
+        )
+        raise AssertionError(f"proposal never became visible: {diagnostic!r}") from exc
 
 
 def test_fresh_onboarding_create_approve_and_revise_in_real_browser(

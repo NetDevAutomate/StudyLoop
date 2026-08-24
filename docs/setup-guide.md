@@ -95,6 +95,13 @@ the packaged prompt and exact three-capability schema, deterministic scripted
 preflight, configured model, and live reachability separately. An installed
 coding harness does not by itself mean agentic planning is supported.
 
+When setup reports **Planning model ready**, launch `studyloop web`, open
+**Study Plans**, and choose **Create with Architect**. Type or dictate one
+brain dump; the Architect asks focused follow-up questions and shows the exact
+Markdown proposal before anything is created. If setup reports only scripted
+readiness, the browser Architect is not live—configure a reachable planning
+model with the options above first.
+
 `studyloop self-test` is the fastest post-install confidence check. It verifies
 that the CLI imports, config is readable if present, the sessions database path
 is usable, and the web module imports. A warning exit (`1`) is acceptable before

@@ -75,6 +75,7 @@ nav:
     - Target Architecture: architecture/target.md
     - pi / omp Harness Integration: architecture/pi-omp-harness-integration.md
   - Learning:
+    - Study Plans: study-plans.md
     - Content Pipeline: content-pipeline.md
     - AuDHD Philosophy: audhd-learning-philosophy.md
     - Learning Loop Implementation: audhd-learning-loop-implementation.md

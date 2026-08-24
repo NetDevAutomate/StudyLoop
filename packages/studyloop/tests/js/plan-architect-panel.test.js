@@ -80,6 +80,17 @@ test('privacy notice is the exact release-one disclosure and promises no expiry'
   );
 });
 
+test('conversation adapter exposes one operation-key factory for retryable writes', () => {
+  let issued = 0;
+  const api = createPlanningConversation({
+    idFactory: () => `operation-${++issued}`,
+  });
+
+  assert.equal(api.createIdempotencyKey(), 'operation-1');
+  assert.equal(api.createIdempotencyKey(), 'operation-2');
+  assert.equal(issued, 2);
+});
+
 test('conversation adapter sends the closed create, context, turn and CSRF contract', async () => {
   const calls = [];
   globalThis.fetch = async (url, options = {}) => {
@@ -238,6 +249,42 @@ test('brain dump is the only required input and a clarification remains conversa
   assert.match(panel.messages[1].content, /which real service/i);
 });
 
+test('a lost turn response reuses one operation key until the server confirms it', async () => {
+  const submitted = [];
+  let issued = 0;
+  const panel = createPlanArchitectPanel({
+    api: {
+      createIdempotencyKey() {
+        issued += 1;
+        return `turn-operation-${issued}`;
+      },
+      async submitTurn(conversationId, text, idempotencyKey) {
+        submitted.push({ conversationId, text, idempotencyKey });
+        if (submitted.length === 1) throw new Error('response lost after commit');
+        return { turn_id: 'turn-1', status: 'attempt_active', turn_version: 1 };
+      },
+    },
+  });
+  panel.conversationId = 'conversation-1';
+  panel.phase = ARCHITECT_PHASES.CONVERSATION;
+  panel.turnText = 'Make the first exercise a request trace.';
+
+  await panel.sendTurn();
+  assert.match(panel.error, /response lost/i);
+  assert.equal(panel.turnText, 'Make the first exercise a request trace.');
+
+  await panel.sendTurn();
+  assert.deepEqual(
+    submitted.map((item) => item.idempotencyKey),
+    ['turn-operation-1', 'turn-operation-1']
+  );
+  assert.equal(issued, 1);
+
+  panel.turnText = 'Now add the smallest failing test.';
+  await panel.sendTurn();
+  assert.equal(submitted[2].idempotencyKey, 'turn-operation-2');
+});
+
 test('context file preflight matches the server 100,000-byte UTF-8 boundary', () => {
   const panel = createPlanArchitectPanel({ api: {} });
   panel.readContextFile({
@@ -249,7 +296,7 @@ test('context file preflight matches the server 100,000-byte UTF-8 boundary', ()
   assert.match(panel.error, /100 KB/i);
 });
 
-test('proposal requires exact digest and base binding; revise returns to the composer', async () => {
+test('approval preserves the proposal digest and base binding through plan apply', async () => {
   const decisions = [];
   let refreshedPlan = '';
   const panel = createPlanArchitectPanel({
@@ -287,11 +334,6 @@ test('proposal requires exact digest and base binding; revise returns to the com
   );
   assert.equal(panel.phase, ARCHITECT_PHASES.PROPOSAL);
 
-  panel.reviseProposal();
-  assert.equal(panel.phase, ARCHITECT_PHASES.CONVERSATION);
-  assert.match(panel.turnText, /change/i);
-
-  panel.applySnapshot(snapshot({ phase: 'proposal', proposal: panel.proposal }));
   await panel.decide('approve');
   assert.equal(decisions[0].outcome, 'approve');
   assert.equal(decisions[0].proposal.proposal_id, 'proposal-1');
@@ -306,6 +348,99 @@ test('proposal requires exact digest and base binding; revise returns to the com
   assert.equal(panel.phase, ARCHITECT_PHASES.DETAIL);
   panel.applySnapshot(snapshot({ phase: 'proposal', proposal: panel.proposal }));
   assert.equal(panel.phase, ARCHITECT_PHASES.DETAIL, 'late WS replay must not reopen applied proposal');
+});
+
+test('a lost approval response keeps one decision key and survives a null refresh', async () => {
+  const decisions = [];
+  let issued = 0;
+  const panel = createPlanArchitectPanel({
+    api: {
+      createIdempotencyKey() {
+        issued += 1;
+        return `decision-operation-${issued}`;
+      },
+      async decide(proposal, outcome, idempotencyKey) {
+        decisions.push({ proposal, outcome, idempotencyKey });
+        if (decisions.length === 1) throw new Error('approval response lost after commit');
+        return { intent_id: 'intent-1', status: 'applied', outcome, plan_id: 'plan-1' };
+      },
+    },
+  });
+  panel.conversationId = 'conversation-1';
+  panel.applySnapshot(
+    snapshot({
+      phase: 'proposal',
+      proposal: {
+        proposal_id: 'proposal-1',
+        proposal_digest: 'sha256:proposal',
+        mode: 'create',
+        title: 'Design one service',
+        markdown: '# Design one service',
+        plan: { title: 'Design one service' },
+        base: { document_digest: '', structure_digest: '' },
+      },
+    })
+  );
+
+  await panel.decide('approve');
+  assert.match(panel.error, /response lost/i);
+  assert.equal(panel.phase, ARCHITECT_PHASES.PROPOSAL);
+
+  panel.applySnapshot(snapshot({ phase: 'conversation', proposal: null }));
+  assert.equal(panel.phase, ARCHITECT_PHASES.PROPOSAL, 'refresh must retain the recoverable decision');
+  assert.equal(panel.proposal.proposal_id, 'proposal-1');
+
+  await panel.decide('approve');
+  assert.deepEqual(
+    decisions.map((item) => item.idempotencyKey),
+    ['decision-operation-1', 'decision-operation-1']
+  );
+  assert.equal(issued, 1);
+  assert.equal(panel.phase, ARCHITECT_PHASES.DETAIL);
+});
+
+test('revision retires the old proposal immediately and stale refresh cannot resurrect it', () => {
+  const oldProposal = {
+    proposal_id: 'proposal-old',
+    proposal_digest: 'sha256:old',
+    mode: 'revise',
+    title: 'Original proposal',
+    markdown: '# Original proposal',
+    plan: { title: 'Original proposal' },
+    base: { document_digest: 'sha256:doc', structure_digest: 'sha256:structure' },
+  };
+  const newProposal = {
+    ...oldProposal,
+    proposal_id: 'proposal-new',
+    proposal_digest: 'sha256:new',
+    title: 'Replacement proposal',
+    markdown: '# Replacement proposal',
+    plan: { title: 'Replacement proposal' },
+  };
+  const panel = createPlanArchitectPanel({ api: {} });
+  panel.applySnapshot(snapshot({ phase: 'proposal', proposal: oldProposal }));
+
+  panel.reviseProposal();
+  assert.equal(panel.phase, ARCHITECT_PHASES.CONVERSATION);
+  assert.equal(panel.proposal, null);
+
+  panel.applySnapshot(snapshot({ phase: 'proposal', proposal: oldProposal }));
+  assert.equal(panel.phase, ARCHITECT_PHASES.CONVERSATION);
+  assert.equal(panel.proposal, null);
+
+  panel.applySnapshot(
+    snapshot({
+      phase: 'conversation',
+      proposal: null,
+      messages: [{ role: 'assistant', content: 'Which request should be smaller?', sequence: 9 }],
+    })
+  );
+  assert.equal(panel.phase, ARCHITECT_PHASES.CONVERSATION);
+  assert.match(panel.messages[0].content, /which request/i);
+
+  panel.applySnapshot(snapshot({ phase: 'proposal', proposal: newProposal }));
+  assert.equal(panel.phase, ARCHITECT_PHASES.PROPOSAL);
+  assert.equal(panel.proposal.proposal_id, 'proposal-new');
 });
 
 test('Mermaid scheduling waits for a visible nonzero panel layout', async () => {
@@ -347,7 +482,7 @@ test('websocket resume cursor is monotonic and does not duplicate transcript eve
   });
   const seen = [];
   api.connect('conversation-1', 7, (event) => seen.push(event));
-  assert.match(sockets[0].url, /events\?after_seq=7$/);
+  assert.match(sockets[0].url, /events\?after_seq=7&csrf_token=cookie-token$/);
 
   sockets[0].onmessage({ data: JSON.stringify({ sequence: 8, type: 'message', data: {} }) });
   sockets[0].onmessage({ data: JSON.stringify({ sequence: 8, type: 'message', data: {} }) });
@@ -382,6 +517,28 @@ test('plan markup exposes capture, conversation and exact proposal decisions wit
       panel.indexOf('data-testid="architect-start"'),
     'privacy disclosure must precede the first request control in document order'
   );
+});
+
+test('proposal markup shows the complete structure and a genuine revise diff without false exactness', () => {
+  const source = readFileSync(
+    new URL('../../src/studyloop/web/static/index.html', import.meta.url),
+    'utf8'
+  );
+  const panel = source.slice(
+    source.indexOf('<!-- STUDY PLANS VIEW'),
+    source.indexOf('<!-- SETTINGS VIEW')
+  );
+
+  assert.equal(panel.includes('Exact proposed structure'), false);
+  assert.equal(panel.includes('Approve this exact proposal'), false);
+  assert.match(panel, /data-testid="architect-proposal-structure"/);
+  assert.match(panel, /proposal\?\.plan/);
+  assert.match(panel, /data-testid="architect-revise-diff"/);
+  assert.match(panel, /proposal\?\.structural_diff\?\.before/);
+  assert.match(panel, /proposal\?\.structural_diff\?\.after/);
+  assert.match(panel, /proposal\?\.structural_diff\?\.changes/);
+  assert.match(panel, /bound to this proposal digest/i);
+  assert.match(panel, /proposal\?\.base/);
 });
 
 test('architect CSS declares tablet flow, sticky decisions and explicit phone exclusion', () => {

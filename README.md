@@ -4,7 +4,7 @@
 
 # StudyLoop
 
-> An AuDHD-aware study toolkit for live Socratic mentoring, body-doubling, local study artefacts, and cross-assistant session memory.
+> An AuDHD-aware study toolkit for turning a messy learning goal into a focused plan, then studying it through Socratic mentoring, body-doubling, and evidence from real sessions.
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
@@ -12,13 +12,14 @@
 
 ## What Does It Do?
 
-Five things:
+Six things:
 
-1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
-2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes, flashcards, and hands-on practice tasks locally, without requiring external notebook services.
-3. **Active learning decisions** — `studyloop now` chooses one useful next action from due reviews, weak concepts, practice tasks, energy, modality, and time available.
-4. **Flashcard review** — Spaced repetition (SM-2) in the browser app. Works on tablet and laptop.
-5. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
+1. **Agentic study planning** — Type or dictate one unstructured brain dump in the browser. StudyLoop's Architect asks focused questions and proposes a Markdown plan with a rendered learning map. You approve, revise, or reject the exact proposal; at most three plans stay current.
+2. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
+3. **Content pipeline** — Chunk eBooks and optional Markdown/plain-text notes → generate quizzes, flashcards, and hands-on practice tasks locally, without requiring external notebook services.
+4. **Active learning decisions** — `studyloop now` chooses one useful next action from due reviews, weak concepts, practice tasks, energy, modality, and time available.
+5. **Flashcard review** — Spaced repetition (SM-2) in the browser app. Works on tablet and laptop.
+6. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
 
 Built by a neurodivergent learner transitioning from networking to data engineering. If you're self-teaching and AuDHD, this might help.
 
@@ -32,8 +33,12 @@ cd studyloop
 
 # Configure
 studyloop self-test        # Lightweight post-install check
-studyloop setup              # Interactive setup wizard (incl. optional Obsidian export)
+studyloop setup              # Notes-optional setup; auto-detects a local planning gateway
 studyloop doctor --fix       # Verify and apply safe fixes
+
+# Create the first plan before asking StudyLoop what to do next
+studyloop web                # Study Plans → Create with Architect
+# Type or dictate one brain dump, answer focused follow-ups, then approve/revise/reject
 
 # Core workflow — live Socratic study (tmux + agent, or web Study Session tab)
 studyloop study "Python decorators" --energy 6
@@ -207,6 +212,13 @@ Launch with `studyloop web`. Reachable from any tablet or laptop on the network.
 > themselves — flashcards, quizzes, plans, Mastery — have no phone treatment and
 > are unusable at phone width. Tablet and laptop are the supported sizes.
 
+**Study Plans:**
+- Open **Study Plans → Create with Architect**, then type or dictate what is in your head; there is no structured intake form
+- Optionally paste a course outline or attach a Markdown/plain-text file as context; possession of notes is never counted as progress
+- Review the exact Markdown proposal and rendered Mermaid learning map before choosing **Approve**, **Revise**, or **Reject**
+- Open an existing plan and choose **Review with Architect** to propose a change; plan changes are not applied silently
+- Requires a live planning model configured by `studyloop setup`; coding harnesses such as Kiro and Codex remain separate study-session integrations
+
 **Flashcard review:**
 - SM-2 spaced repetition with source/chapter filter
 - Session history with 90-day study heatmap
@@ -255,6 +267,7 @@ studyloop install tools
 - [Architecture](docs/architecture.md) — current and target architecture
 - [Session-DB Tiering](docs/session-db-tiering.md) — hot/full DB tiers, sync, prune, snapshots, restore procedures
 - [Content Pipeline](docs/content-pipeline.md) — local generation of review artefacts
+- [Study Plans](docs/study-plans.md) — browser Architect, Markdown plan format, review, and current limitations
 - [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
 - [Web UI Guide](docs/web-ui-guide.md) — live sessions, live terminal, flashcards, quizzes
 - [Agent Installation](docs/agent-install.md) — per-platform agent setup

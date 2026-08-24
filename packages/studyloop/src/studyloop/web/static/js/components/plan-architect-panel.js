@@ -66,12 +66,15 @@ export function createPlanArchitectPanel(options = {}) {
     capacity: freshCapacity(),
     messages: [],
     proposal: null,
+    retiredProposalDigest: '',
     latestTurn: null,
+    pendingTurn: null,
     lastSequence: 0,
     busy: false,
     error: '',
     decisionStatus: '',
     decisionFinal: false,
+    pendingDecision: null,
     _disconnect: null,
     _onPlanApplied: options.onPlanApplied || (async () => {}),
     _onProposal: options.onProposal || (async () => {}),
@@ -183,11 +186,21 @@ export function createPlanArchitectPanel(options = {}) {
         this.lastSequence,
         ...this.messages.map((message) => Number(message.sequence) || 0)
       );
-      if (value.proposal) {
+      if (this.pendingDecision) {
+        this.phase = this.busy ? ARCHITECT_PHASES.APPLYING : ARCHITECT_PHASES.PROPOSAL;
+        return;
+      }
+      if (
+        value.proposal &&
+        value.proposal.proposal_digest !== this.retiredProposalDigest
+      ) {
+        this.retiredProposalDigest = '';
         this.proposal = value.proposal;
         this.phase = ARCHITECT_PHASES.PROPOSAL;
         Promise.resolve(this._onProposal(value.proposal)).catch(() => {});
-      } else if (['interrupted', 'conversation', 'running', 'ready'].includes(value.phase)) {
+      } else if (
+        !value.proposal || value.proposal.proposal_digest === this.retiredProposalDigest
+      ) {
         this.phase = ARCHITECT_PHASES.CONVERSATION;
       }
     },
@@ -202,8 +215,19 @@ export function createPlanArchitectPanel(options = {}) {
       this.turnText = '';
       this.busy = true;
       this.error = '';
+      if (!this.pendingTurn || this.pendingTurn.text !== text) {
+        this.pendingTurn = {
+          text,
+          idempotencyKey: this.api.createIdempotencyKey?.() || '',
+        };
+      }
       try {
-        this.latestTurn = await this.api.submitTurn(this.conversationId, text);
+        this.latestTurn = await this.api.submitTurn(
+          this.conversationId,
+          text,
+          this.pendingTurn.idempotencyKey
+        );
+        this.pendingTurn = null;
       } catch (error) {
         this.turnText = text;
         this.error = error?.message || String(error);
@@ -247,18 +271,37 @@ export function createPlanArchitectPanel(options = {}) {
 
     reviseProposal() {
       this.decisionFinal = false;
+      this.retiredProposalDigest = String(this.proposal?.proposal_digest || '');
+      this.proposal = null;
       this.phase = ARCHITECT_PHASES.CONVERSATION;
       this.turnText = 'I want to change this proposal: ';
     },
 
     async decide(outcome) {
       if (!this.proposal || !['approve', 'reject'].includes(outcome) || this.busy) return;
+      const decisionIdentity = `${this.proposal.proposal_id}:${this.proposal.proposal_digest}:${outcome}`;
+      if (this.pendingDecision && this.pendingDecision.identity !== decisionIdentity) {
+        this.error = `Retry the pending ${this.pendingDecision.outcome} decision before choosing another outcome.`;
+        return;
+      }
+      if (!this.pendingDecision) {
+        this.pendingDecision = {
+          identity: decisionIdentity,
+          outcome,
+          idempotencyKey: this.api.createIdempotencyKey?.() || '',
+        };
+      }
       this.busy = true;
       this.phase = ARCHITECT_PHASES.APPLYING;
       this.error = '';
       try {
         const exact = { ...this.proposal, conversation_id: this.conversationId };
-        const result = await this.api.decide(exact, outcome);
+        const result = await this.api.decide(
+          exact,
+          outcome,
+          this.pendingDecision.idempotencyKey
+        );
+        this.pendingDecision = null;
         this.decisionFinal = true;
         this._disconnect?.();
         this._disconnect = null;
@@ -319,11 +362,14 @@ export function createPlanArchitectPanel(options = {}) {
       this.attachedContext = null;
       this.messages = [];
       this.proposal = null;
+      this.retiredProposalDigest = '';
       this.latestTurn = null;
+      this.pendingTurn = null;
       this.lastSequence = 0;
       this.error = '';
       this.decisionStatus = '';
       this.decisionFinal = false;
+      this.pendingDecision = null;
       this.busy = false;
     },
   };

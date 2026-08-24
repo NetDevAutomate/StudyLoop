@@ -25,7 +25,29 @@ across launches. StudyLoop stores only its salted one-way verifier.
 Open your browser to `http://localhost:8567`. The PWA is installable; add it to your home screen on a tablet for review and session visibility. Phone screens are not supported — the study panels have no phone layout.
 
 !!! note "Core workflow"
-    The core workflow is interactive study with an agent. Flashcards and quizzes are useful support tools, but the web UI should increasingly serve the live mentor/body-doubling experience.
+    Start with one focused plan, then use interactive study with an agent. Flashcards and quizzes support that loop rather than replacing it.
+
+---
+
+## Study Plans — the agentic starting point
+
+The release path for agentic planning is **Study Plans → Create with
+Architect**. Type or dictate one brain dump in your own words. The only optional
+intake is a pasted course outline or UTF-8 Markdown/plain-text file; it is
+context, not evidence that any study happened.
+
+The server-owned Architect asks focused follow-up questions and then renders the
+exact Markdown proposal, its Mermaid learning map, a text version of diagrams,
+unresolved unknowns, and the full proposed structure. Choose **Approve
+digest-bound proposal**, **Revise**, or **Reject**. The model cannot approve its
+own work. Open an existing plan and choose **Review with Architect** to propose
+a learner-approved change.
+
+This workflow requires a live planning model configured by `studyloop setup`.
+The deterministic scripted preflight proves the protocol only; installed Kiro,
+Codex, Claude, or other study-session harnesses do not provide planning. See the
+[Study Plans guide](study-plans.md) for the three-plan limit, evidence rules,
+document format, and current `studyloop now` limitation.
 
 ---
 

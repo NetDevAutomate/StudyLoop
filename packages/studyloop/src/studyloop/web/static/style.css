@@ -4933,6 +4933,31 @@ body[data-palette="everforest"] {
   padding-left: 22px;
 }
 
+.architect-diff-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.architect-diff-columns > div {
+  min-width: 0;
+}
+
+.architect-diff-columns pre {
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.architect-diff-changes {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.architect-diff-changes li {
+  overflow-wrap: anywhere;
+}
+
 .architect-decision-bar {
   position: sticky;
   bottom: 0;
@@ -4971,6 +4996,10 @@ body[data-palette="everforest"] {
 
   .architect-message {
     max-width: 94%;
+  }
+
+  .architect-diff-columns {
+    grid-template-columns: 1fr;
   }
 
   .architect-decision-bar {

@@ -5,8 +5,17 @@ learning something, **what** counts as done, and **which** checkable steps get
 you there. StudyLoop then evaluates it against what you actually did — at the
 start of a session, mid-session, and once the session ends.
 
-The `study-plan-architect` agent builds plans with you through an interview. The
-Socratic mentor reads them during sessions. Both go through `studyloop plan`.
+The supported creation and revision path is StudyLoop's server-owned browser
+Architect: run `studyloop web`, open **Study Plans**, and choose **Create with
+Architect**. Type or dictate one brain dump; the Architect asks focused
+follow-up questions and offers an exact Markdown proposal that you approve,
+revise, or reject. It is not an agent that you start inside Kiro, Codex, or
+another coding harness.
+
+StudyLoop keeps at most three current plans. Optional course outlines and
+Markdown/plain-text notes can shape a proposal, but access to material is not
+evidence that the learner studied it. Recorded StudyLoop sessions and progress
+remain the stronger evidence.
 
 ## File-first, index-second
 
@@ -267,6 +276,11 @@ that fallback is also not implemented.
 
 ## CLI
 
+The CLI commands below manage already-structured plan documents. They are
+useful for inspection, automation, and manual recovery, but they are **not** the
+agentic intake: `plan new` does not decompose a brain dump or interview the
+learner. Use **Study Plans → Create with Architect** for that workflow.
+
 ```bash
 studyloop plan list [--status active] [--json]
 studyloop plan show ID [--markdown] [--json]
@@ -287,6 +301,24 @@ print the blockers when the plan has no mission, no success criteria, or no
 milestones.
 
 ## REST API
+
+The browser Architect uses a separate conversation API. Conversation and
+decision writes require browser learner authority; model output cannot approve
+its own proposal.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/planning/conversations` | Start a create or revise conversation; enforces the three-plan capacity before model work |
+| `POST` | `/api/planning/conversations/{id}/context` | Attach bounded pasted text or one UTF-8 plain-text file as context, never progress |
+| `POST` | `/api/planning/conversations/{id}/turns` | Persist and schedule one learner turn against the configured planning model |
+| `GET` | `/api/planning/conversations/{id}` | Recover transcript, turn state, and any exact proposal |
+| `WS` | `/api/planning/conversations/{id}/events` | Resume durable conversation events after refresh |
+| `POST` | `/api/planning/conversations/{id}/retry` | Retry the exact interrupted turn version |
+| `POST` | `/api/planning/conversations/{id}/stop` | Stop current provider work without losing the conversation |
+| `POST` | `/api/planning/proposals/{id}/decision` | Learner-only approve or reject bound to proposal and base digests |
+
+The older document-management API remains available for structured plan
+inspection and maintenance:
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -319,15 +351,19 @@ Exercises, by contrast, *do* have MCP tools — see [Topic Exercises § MCP tool
 
 ## Web UI
 
-The study-plan panel shipped on 2026-08-22. Everything in this section is in the
-browser today; the plan → Today integration described [above](#how-a-plan-drives-today-not-implemented) is not.
+The supported study-plan panel is the browser workflow described below. The
+plan → Today integration described [above](#how-a-plan-drives-today-not-implemented)
+is not implemented.
 
 ```mermaid
 flowchart LR
     Nav["Study Plans<br/>sidebar button"]
     List["Plan list<br/>(left pane)"]
     Empty["Empty state<br/>'No plans yet'"]
-    New["New plan<br/>brain dump first"]
+    Capture["Create with Architect<br/>brain dump first"]
+    Talk["Focused<br/>conversation"]
+    Proposal["Exact Markdown proposal<br/>and learning map"]
+    Decide{"Learner decision"}
     Reader["Plan reader<br/>(content column)"]
     Eval["Checkpoint<br/>start / mid / end"]
     Record["Record checkpoint"]
@@ -335,9 +371,11 @@ flowchart LR
 
     Nav --> List
     List -->|"no plans"| Empty
-    Empty --> New
+    Empty --> Capture --> Talk --> Proposal --> Decide
+    Decide -->|"approve"| Reader
+    Decide -->|"revise"| Talk
+    Decide -->|"reject"| List
     List -->|"click a plan"| Reader
-    New --> Reader
     Reader --> Eval --> Record
     Reader --> Miles
     Miles -->|"progress 1/3 · 33%"| List
@@ -350,10 +388,9 @@ heading *Existing plans*. Each entry shows the plan title, its status chip
 (`draft` / `active` / `paused` / `complete` / `abandoned`), a `done/total`
 milestone count, and a progress bar. Clicking one opens it in the content column.
 
-With no plans, the list renders an explicit empty state — **"No plans yet"**, and
-a hint naming the next action ("Open **New plan** and describe where you are and
-where you want to get to, in your own words. The structure comes after."). A
-brand-new user's first screen is never a silent blank list.
+With no plans, the list renders an explicit empty state — **"No study plans
+yet"** — and explains that the Architect can turn a messy description into a
+coherent path. A brand-new user's first screen is never a silent blank list.
 
 The list and the reader live in disjoint DOM subtrees, so they share
 `Alpine.store('plans')` rather than an `x-data` — which is why ticking a
@@ -370,27 +407,39 @@ and a progress bar).
 
 ### Creating a plan: the brain dump comes first
 
-**New plan** opens a form headed *Start from where you actually are*. The primary
-field is a large free-text box — *"Where are you now, and where do you want to get
-to?"* — that takes typing or macOS dictation with no structure required: what you
-are aiming for, what you have already tried, where you get stuck.
+Choose **Create with Architect**. The first screen is headed *Start from where
+you actually are* and contains one required field: **Tell the Architect what is
+in your head**. Type or dictate freely; you do not need to know the right goal,
+course order, milestones, or terminology.
 
-Below it, under *The plan itself*, are the five structured fields the API
-consumes: **Title**, **Why**, **Success looks like**, **Topics**, and
-**Milestones** (the last three one item per line; a milestone line's trailing
-`(concepts: a, b)` is parsed into a concept list). They are labelled as the
-editable *result*, not the input of first resort — "Nothing here has to be right
-first time — edit whatever comes back."
+Before the first model turn, the browser says that planning text and proposals
+are retained locally for recovery, that bounded planning context is sent to the
+configured model, and that this release provides no automatic expiry. Optional
+pasted text or a Markdown/plain-text file can be attached as tier-four context.
+The browser never treats that material as completion, confidence, or progress.
 
-The reason is not cosmetic. A blank five-field form asks a learner to supply the
-decomposition they do not yet have — the exact paralysis this tool exists to
-prevent. Recognising and correcting a draft is dramatically cheaper than
-recalling and synthesising one. The brain dump is carried through on create as
-the plan's `notes`, so the reasoning survives the plan's creation, and the
-[`study-plan-architect` agent](#agents) is what turns a dump into structured
-fields — not the browser.
+The Architect receives the saved brain dump, current plan capacity, relevant
+tiered evidence, and optional context. It asks the highest-value follow-up
+question—normally one at a time—rather than presenting a curriculum form. When
+enough is known, it shows:
 
-On create the new plan is loaded and shown immediately.
+- the complete proposed Markdown plan;
+- a rendered Mermaid learning map with a reachable text version;
+- unresolved unknowns rather than invented certainty;
+- how supplied material was used;
+- the complete canonical structure and the proposal/base digests.
+
+Nothing is applied at proposal time. **Approve digest-bound proposal** creates
+the canonical plan, **Revise** returns to the same conversation, and **Reject**
+changes no plan. Approval opens the finished Markdown immediately. The server
+retains conversation artifacts for recovery, but a full browser reload does
+not yet offer a reattach control; that remains a release gate rather than a
+claimed capability.
+
+To adapt an existing plan, open it and choose **Review with Architect**. The
+proposal includes a before/after structural diff and is subject to the same
+explicit learner decision. Adaptation is currently learner-initiated; StudyLoop
+does not silently rewrite a plan in the background.
 
 ### Evaluation and checkpoints
 
@@ -430,28 +479,28 @@ milestones) rather than swallowing the failure. That is the same refusal
     `studyloop plan evaluate ID --phase start --json`, or fetch
     `GET /api/plans/{id}/evaluate?phase=start`.
 
-## Agents
+## Architect runtime
 
-| Harness | Agent | Start with |
-|---|---|---|
-| Claude Code | `study-plan-architect` | `/agent study-plan-architect` |
-| Kiro CLI | `study-plan-architect` | `kiro-cli chat --agent study-plan-architect` |
-| Gemini CLI | `study-plan-architect` | auto-detected |
-| OpenCode | `study-plan-architect` | Tab to switch agent |
-| Codex / pi / omp | not yet available | see below |
+The release workflow is owned by the StudyLoop server. `studyloop setup`
+configures an OpenAI-compatible planning model, and the browser drives the
+packaged prompt through a closed planning-capability catalogue. The model can
+prepare and inspect a proposal; only the authenticated learner browser can
+approve or reject it.
 
-> **Not yet installable.** `studyloop install agents` does **not** currently
-> place `study-plan-architect` — its link table ships `study-mentor` only. The
-> agent definition exists in the repo for the four harnesses above, so it has to
-> be copied into that harness's agent directory by hand until the installer is
-> fixed. Codex, pi and omp read `AGENTS.md`, which does not yet reference the
-> plan protocol at all, so the architect is unavailable on those three.
->
-> The agent itself is validated working — it was driven end to end on Kiro CLI,
-> authoring a plan from a free-text brain dump with no API key. The gap is
-> distribution, not capability.
+Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and other coding harnesses
+remain supported for **study sessions**. Their presence is not planning-model
+configuration, and users should not install or start a separate
+`study-plan-architect` harness agent for this workflow.
 
-The shared methodology lives in `agents/shared/study-plan-protocol.md`.
+If setup reports **No live planning model detected**, the scripted preflight
+has only proved the protocol. Configure a reachable model, then rerun setup:
+
+```bash
+studyloop setup --planning-base-url URL --planning-model MODEL
+```
+
+After setup reports **Planning model ready**, run `studyloop web` and choose
+**Study Plans → Create with Architect**.
 
 ## Lineage
 
@@ -469,6 +518,8 @@ diffable in git, and can be evaluated as a unit against the databases.
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| **Create with Architect** is missing and a Title/Why form appears | The server is running an older StudyLoop checkout or install | Stop that server, reinstall from the intended checkout, then start `studyloop web` again |
+| Architect reports `planning model is not configured` | Scripted protocol readiness is not a live model | Run `studyloop setup --planning-base-url URL --planning-model MODEL`, then restart the web server |
 | A plan does not appear | Wrong plans directory | `studyloop plan path` — check `STUDYLOOP_PLANS_DIR` |
 | Web UI list is stale | Derived index out of date | `studyloop plan reindex` |
 | `... unavailable — evaluation is partial` | Study tables missing on a fresh install | Run a session and record progress; the warning clears once evidence exists |

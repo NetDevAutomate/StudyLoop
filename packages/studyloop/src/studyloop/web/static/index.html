@@ -2796,15 +2796,58 @@
                 </ul>
               </section>
 
-              <details class="architect-structure-diff">
-                <summary>Exact proposed structure</summary>
+              <details class="architect-structure-diff"
+                       data-testid="architect-proposal-structure">
+                <summary>Complete proposed structure</summary>
+                <p class="plan-field-hint">
+                  This is the server's complete canonical plan structure, not the
+                  compact plan-list summary.
+                </p>
                 <pre x-text="JSON.stringify(proposal?.plan || {}, null, 2)"></pre>
+              </details>
+
+              <section class="architect-structure-diff"
+                       data-testid="architect-revise-diff"
+                       x-show="proposal?.mode === 'revise' &amp;&amp; proposal?.structural_diff">
+                <h4>Before and after revision</h4>
+                <div class="architect-diff-columns">
+                  <div>
+                    <h5>Before</h5>
+                    <pre x-text="JSON.stringify(proposal?.structural_diff?.before || {}, null, 2)"></pre>
+                  </div>
+                  <div>
+                    <h5>After</h5>
+                    <pre x-text="JSON.stringify(proposal?.structural_diff?.after || {}, null, 2)"></pre>
+                  </div>
+                </div>
+                <h5>Changed fields</h5>
+                <ul class="architect-diff-changes">
+                  <template x-for="change in (proposal?.structural_diff?.changes || [])"
+                            :key="change.path">
+                    <li>
+                      <code x-text="change.path"></code>
+                      <span x-text="JSON.stringify(change.before)"></span>
+                      <span aria-hidden="true"> → </span>
+                      <span x-text="JSON.stringify(change.after)"></span>
+                    </li>
+                  </template>
+                </ul>
+              </section>
+
+              <details class="architect-structure-diff">
+                <summary>Digest and base binding</summary>
+                <p class="plan-field-hint">
+                  Approval is bound to this proposal digest and these base
+                  document and structure revisions.
+                </p>
+                <pre data-testid="architect-proposal-base"
+                     x-text="JSON.stringify(proposal?.base || {}, null, 2)"></pre>
               </details>
 
               <div class="architect-decision-bar" role="group" aria-label="Proposal decision">
                 <button class="toggle-btn architect-approve" type="button"
                         data-testid="architect-approve" :disabled="busy"
-                        @click="decide('approve')">Approve this exact proposal</button>
+                        @click="decide('approve')">Approve digest-bound proposal</button>
                 <button class="link-btn" type="button" data-testid="architect-revise"
                         :disabled="busy" @click="reviseProposal()">Revise</button>
                 <button class="link-btn danger-btn" type="button" data-testid="architect-reject"

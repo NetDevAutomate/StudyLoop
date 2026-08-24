@@ -1,12 +1,13 @@
 # Your First Week with StudyLoop
 
-A minimal, repeatable path for getting value from StudyLoop without configuring every agent or LLM provider on day one. The core workflow is **live Socratic study**; flashcards, quizzes, and session export support that loop.
+A minimal, repeatable path for getting value from StudyLoop without configuring every agent or LLM provider on day one. The core workflow is **one focused plan followed by live Socratic study**; flashcards, quizzes, and session export support that loop.
 
 ## What you need
 
 - Python 3.12+, [uv](https://docs.astral.sh/uv/), and **tmux 3.1+** (for `studyloop study`)
+- One reachable OpenAI-compatible planning model. `studyloop setup` auto-detects supported local LiteLLM addresses, or accepts an explicit gateway URL and model name.
 - One AI coding agent on your PATH (Kiro, Claude Code, Codex, or Gemini are common choices)
-- Optional: Obsidian vault for study notes; optional: Ollama or AWS Bedrock for local/cloud card generation
+- Optional: a Markdown/plain-text notes folder (including an Obsidian vault); optional: Ollama or AWS Bedrock for local/cloud card generation
 
 Install from source (see [Setup Guide](setup-guide.md)):
 
@@ -18,32 +19,55 @@ studyloop setup
 studyloop doctor --fix
 ```
 
-## Day 1 — Install and one live session
+## Day 1 — Turn the brain dump into one plan
 
 1. Run `studyloop doctor --fix` until core checks pass.
-2. Start a short study session (pick one topic you care about):
+2. Check the planning result printed by `studyloop setup`. If it reported no live
+   planning model, configure the gateway you intend to use:
 
    ```bash
-   studyloop study "Python decorators" --energy 6
+   studyloop setup --planning-base-url URL --planning-model MODEL
    ```
 
-   Or use the web picker:
+   The scripted preflight checks StudyLoop's protocol, but it is not a substitute
+   for the live model required by the browser Architect.
+
+3. Launch the browser:
 
    ```bash
    studyloop web
    ```
 
-   Open the **Study Session** tab, choose a topic and agent, and start.
+   Open **Study Plans → Create with Architect**. Type or dictate one brain dump:
+   where you are, what you want to be able to do, and anything that is getting in
+   the way. Answer the focused follow-up questions, inspect the Markdown proposal
+   and learning-map diagram, then **Approve**, **Revise**, or **Reject** it.
 
-3. At the end of the session, run `studyloop study --end` or end from the web UI.
+   A course outline or Markdown/plain-text note is optional context. It can shape
+   the plan, but it does not count as study completed. StudyLoop keeps at most
+   three current plans so the first week does not become a new backlog.
 
-4. Check context for next time:
+4. Start a short study session from the approved plan (or pick its first topic):
+
+   ```bash
+   studyloop study "Python decorators" --energy 6
+   ```
+
+   Or stay in the browser: open **Study Session**, choose a topic and agent, and start.
+
+5. At the end of the session, run `studyloop study --end` or end from the web UI.
+
+6. Check context for next time:
 
    ```bash
    studyloop resume
    ```
 
 ## Day 2 — Let StudyLoop choose one next action
+
+`studyloop now` currently ranks recorded learning evidence; it does not yet
+prioritise the new plan's milestones. Use the plan's visible next action when
+the two disagree. This limitation is tracked in the [Study Plans guide](study-plans.md#how-a-plan-drives-today-not-implemented).
 
 1. Ask for one useful next action instead of picking from the whole vault:
 
@@ -136,7 +160,7 @@ The graph is Mermaid by default, so it can be pasted into Obsidian.
 
 - Run `studyloop clean --dry-run` if tmux study sessions ever feel “stuck”.
 - Set `studyloop backup` before big config experiments.
-- Skim [Web UI Guide](web-ui-guide.md) for LAN mode (`studyloop web --lan`) if you review from a phone on the same network.
+- Skim [Web UI Guide](web-ui-guide.md) for LAN mode (`studyloop web --lan`) if you use a tablet or computer on the same network. Phone-sized screens are out of scope for this release.
 
 ## What to defer
 

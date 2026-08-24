@@ -46,3 +46,14 @@ def test_install_script_help_documents_supported_flags() -> None:
     assert "--agents-only" in result.stdout
     assert "--non-interactive" in result.stdout
     assert "--no-smoke" in result.stdout
+
+
+def test_install_script_points_at_the_server_owned_browser_architect() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    script_text = (repo_root / "scripts" / "install.sh").read_text()
+
+    assert "Create with Architect" in script_text
+    assert "Type or dictate one brain dump" in script_text
+    assert "studyloop setup --planning-base-url URL --planning-model MODEL" in script_text
+    assert "start the 'study-plan-architect' agent" not in script_text
+    assert "studyloop plan new --title" not in script_text

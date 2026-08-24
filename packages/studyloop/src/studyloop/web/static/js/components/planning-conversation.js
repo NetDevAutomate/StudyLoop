@@ -52,11 +52,12 @@ function normalizeCapacity(raw) {
   };
 }
 
-function websocketUrl(origin, conversationId, afterSeq) {
+function websocketUrl(origin, conversationId, afterSeq, csrfToken) {
   const base = String(origin || globalThis.location?.origin || 'http://127.0.0.1');
   const wsOrigin = base.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
   const id = encodeURIComponent(conversationId);
-  return `${wsOrigin}${PLANNING_API}/conversations/${id}/events?after_seq=${afterSeq}`;
+  const token = encodeURIComponent(String(csrfToken || ''));
+  return `${wsOrigin}${PLANNING_API}/conversations/${id}/events?after_seq=${afterSeq}&csrf_token=${token}`;
 }
 
 export function createPlanningConversation(options = {}) {
@@ -84,6 +85,10 @@ export function createPlanningConversation(options = {}) {
   };
 
   return {
+    createIdempotencyKey() {
+      return idFactory();
+    },
+
     async readCapacity() {
       const body = await requestJson('/api/plans', { headers: headers(false) }, 'Could not load plans');
       return normalizeCapacity(body);
@@ -145,14 +150,15 @@ export function createPlanningConversation(options = {}) {
       );
     },
 
-    async submitTurn(conversationId, text) {
+    async submitTurn(conversationId, text, idempotencyKey = '') {
       const id = encodeURIComponent(conversationId);
+      const operationKey = String(idempotencyKey || idFactory());
       return requestJson(
         `${PLANNING_API}/conversations/${id}/turns`,
         {
           method: 'POST',
           headers: headers(),
-          body: JSON.stringify({ text: String(text), idempotency_key: idFactory() }),
+          body: JSON.stringify({ text: String(text), idempotency_key: operationKey }),
         },
         'Could not send the planning turn'
       );
@@ -183,8 +189,9 @@ export function createPlanningConversation(options = {}) {
       );
     },
 
-    async decide(proposal, outcome) {
+    async decide(proposal, outcome, idempotencyKey = '') {
       const proposalId = encodeURIComponent(proposal.proposal_id);
+      const operationKey = String(idempotencyKey || idFactory());
       return requestJson(
         `${PLANNING_API}/proposals/${proposalId}/decision`,
         {
@@ -194,7 +201,7 @@ export function createPlanningConversation(options = {}) {
             conversation_id: proposal.conversation_id,
             proposal_digest: proposal.proposal_digest,
             outcome,
-            idempotency_key: idFactory(),
+            idempotency_key: operationKey,
             base: proposal.base,
           }),
         },
@@ -204,7 +211,7 @@ export function createPlanningConversation(options = {}) {
 
     connect(conversationId, afterSeq, onEvent, onDisconnect) {
       let cursor = Math.max(0, Number(afterSeq) || 0);
-      const socket = socketFactory(websocketUrl(origin, conversationId, cursor));
+      const socket = socketFactory(websocketUrl(origin, conversationId, cursor, csrfToken));
       socket.onmessage = (message) => {
         let event;
         try {

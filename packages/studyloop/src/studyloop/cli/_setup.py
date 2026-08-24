@@ -433,15 +433,31 @@ def setup(
             else "configured model"
         )
         console.print(f"[green]Planning model ready: {model_name}[/green]\n")
+        console.print(
+            "[green]Create your first plan in the browser: Study Plans → "
+            "Create with Architect.[/green]"
+        )
+        console.print(
+            "  [dim]Type or dictate one brain dump; the Architect will ask focused "
+            "follow-up questions before you approve a plan.[/dim]\n"
+        )
     elif planning_status == "configured_unreachable":
         console.print(
             "[yellow]Planning model saved but currently unreachable; "
-            "scripted readiness passed.[/yellow]\n"
+            "scripted readiness passed.[/yellow]"
+        )
+        console.print(
+            "  [yellow]The browser Architect will remain unavailable until that "
+            "model endpoint is reachable.[/yellow]\n"
         )
     else:
         console.print(
             "[yellow]No live planning model detected; scripted readiness passed. "
-            "Use setup options to configure one.[/yellow]\n"
+            "The browser Architect needs a live planning model.[/yellow]"
+        )
+        console.print(
+            "  [dim]Configure one with: studyloop setup --planning-base-url URL "
+            "--planning-model MODEL[/dim]\n"
         )
 
     # ------------------------------------------------------------------
@@ -457,4 +473,7 @@ def setup(
     console.print("  studyloop doctor --fix   — verify the install")
     if not notes_raw:
         console.print('  studyloop study "topic"  — start a session; this becomes your material')
-    console.print("  studyloop web            — plans, flashcards, live sessions")
+    if planning_status == "live_configured":
+        console.print("  studyloop web            — Study Plans → Create with Architect")
+    else:
+        console.print("  studyloop web            — plans, flashcards, live sessions")
