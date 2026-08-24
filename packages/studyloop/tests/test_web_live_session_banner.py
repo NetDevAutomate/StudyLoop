@@ -287,6 +287,17 @@ class TestLiveSessionBannerClearedOnStop:
 
         # Step 3: Stop the session (user clicks Stop button).
         page.evaluate("() => window.dispatchEvent(new CustomEvent('study-session-stop'))")
+        page.wait_for_function(
+            """() => {
+              const el = [...document.querySelectorAll('.content-area [x-data]')]
+                .find((node) => {
+                  const data = window.Alpine && window.Alpine.$data(node);
+                  return data && data.mode === 'flashcards';
+                });
+              return !!el && window.Alpine.$data(el).liveSession === null;
+            }""",
+            timeout=5000,
+        )
 
         # Step 4: Navigate back to Flashcards.
         page.evaluate("() => window.Alpine.store('nav').go('flashcards')")
