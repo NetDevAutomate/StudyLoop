@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 # Add tests/ to sys.path for harness imports
 _tests_dir = str(Path(__file__).parent)
@@ -27,7 +28,8 @@ if _tests_dir not in sys.path:
 
 import pytest  # noqa: E402
 from harness.agents import long_running_agent  # noqa: E402
-from harness.terminal import TerminalSession  # noqa: E402
+from harness.paths import PARKING_FILE, STATE_FILE, TOPICS_FILE  # noqa: E402
+from harness.terminal import TerminalSession, terminal_pty_env  # noqa: E402
 
 pytestmark = [
     pytest.mark.skipif(not shutil.which("tmux"), reason="tmux not installed"),
@@ -71,7 +73,7 @@ class TestQuitViaTerminal:
         terminal.spawn_study("UAT State Test", energy=5, agent_cmd=agent_cmd)
         terminal.attach_and_send_q(timeout=15)
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = STATE_FILE
         if state_file.exists():
             state = json.loads(state_file.read_text())
             assert state.get("mode") == "ended", f"Expected mode='ended', got {state.get('mode')!r}"
@@ -121,16 +123,24 @@ class TestNestedTmux:
         # Create host tmux session
         subprocess.run(
             ["tmux", "new-session", "-d", "-s", host_name],
+            env=terminal_pty_env(),
             capture_output=True,
         )
 
         # Attach a real tmux client (pexpect) — required for switch_client
         child = pexpect.spawn(
             f"tmux attach-session -t {host_name}",
+            env=cast("os._Environ[str]", terminal_pty_env()),
             timeout=20,
             encoding="utf-8",
         )
         time.sleep(1)  # let shell prompt render
+        if not child.isalive():
+            child.close()
+            raise RuntimeError(
+                f"nested tmux client exited before input: "
+                f"exit={child.exitstatus}, output={child.before!r}"
+            )
 
         # Send the study command inside the attached session
         agent_script = long_running_agent(tmp_path)
@@ -139,10 +149,35 @@ class TestNestedTmux:
             f"{sys.executable} -m studyloop.cli study 'Nested Test' "
             f"--energy 5 --agent claude"
         )
-        child.sendline(study_cmd)
+        shell_deadline = time.monotonic() + 10
+        shell_rendered = False
+        while time.monotonic() < shell_deadline:
+            rendered = subprocess.run(
+                ["tmux", "capture-pane", "-t", host_name, "-p", "-S", "-5"],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=5,
+            )
+            if rendered.returncode == 0 and rendered.stdout.strip():
+                shell_rendered = True
+                break
+            time.sleep(0.1)
+        if not shell_rendered:
+            raise RuntimeError("nested tmux shell did not render before input")
+
+        try:
+            child.send(study_cmd)
+            child.expect(r"studyloop\.cli", timeout=10)
+            child.send("\r")
+        except (pexpect.EOF, pexpect.TIMEOUT) as exc:
+            raise RuntimeError(
+                f"nested tmux client was not input-ready: "
+                f"alive={child.isalive()}, output={child.before!r}"
+            ) from exc
 
         # Wait for study session to appear in state file
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = STATE_FILE
         deadline = time.monotonic() + 20
         session_name = None
         sidebar_pane = None
@@ -157,6 +192,20 @@ class TestNestedTmux:
                 except (json.JSONDecodeError, OSError):
                     pass
             time.sleep(0.5)
+
+        if session_name is None:
+            host_output = subprocess.run(
+                ["tmux", "capture-pane", "-t", host_name, "-p", "-S", "-100"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            raise TimeoutError(
+                f"nested StudyLoop session state was not created; "
+                f"host pane: {host_output.stdout[-1500:]!r}; "
+                f"tmux stderr: {host_output.stderr[-500:]!r}; "
+                f"client alive: {child.isalive()}"
+            )
 
         return child, session_name, sidebar_pane
 
@@ -290,7 +339,7 @@ class TestEndFromOutside:
 
         time.sleep(2)  # let cleanup complete
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = STATE_FILE
         if state_file.exists():
             state = json.loads(state_file.read_text())
             assert state.get("mode") == "ended", f"Expected mode='ended', got {state.get('mode')!r}"
@@ -311,13 +360,9 @@ class TestEndFromOutside:
 
         time.sleep(2)
 
-        config_dir = Path.home() / ".config" / "studyloop"
-        topics_file = config_dir / "session-topics.md"
-        parking_file = config_dir / "session-parking.md"
-
         # Topics and parking files should be gone (state may remain with mode=ended)
-        assert not topics_file.exists(), "session-topics.md should be cleaned up"
-        assert not parking_file.exists(), "session-parking.md should be cleaned up"
+        assert not TOPICS_FILE.exists(), "session-topics.md should be cleaned up"
+        assert not PARKING_FILE.exists(), "session-parking.md should be cleaned up"
 
 
 class TestCleanTmuxExit:
@@ -401,6 +446,7 @@ class TestCleanTmuxExit:
             # Attach via pexpect — this is the real tmux client
             child = pexpect.spawn(
                 f"tmux attach-session -t {session_name}",
+                env=cast("os._Environ[str]", terminal_pty_env()),
                 timeout=20,
                 encoding="utf-8",
             )
@@ -408,9 +454,8 @@ class TestCleanTmuxExit:
 
             # Read sidebar pane and send Q
             import json
-            from pathlib import Path
 
-            state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+            state_file = STATE_FILE
             state = json.loads(state_file.read_text())
             sidebar_pane = state.get("tmux_sidebar_pane")
 

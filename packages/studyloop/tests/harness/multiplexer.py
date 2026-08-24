@@ -26,22 +26,16 @@ import re
 import subprocess
 import sys
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pexpect
+
+from .paths import ONELINE_FILE, PARKING_FILE, STATE_FILE, TOPICS_FILE
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from studyloop.multiplexer import Multiplexer
-
-# IPC file locations (mirrors studyloop.session_state)
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
-ONELINE_FILE = CONFIG_DIR / "session-oneline.txt"
 
 
 class MultiplexerHarness:
@@ -206,12 +200,16 @@ class MultiplexerHarness:
         """Poll pane content until regex pattern matches. Returns content."""
         compiled = re.compile(pattern)
         deadline = time.monotonic() + timeout
+        content = ""
         while time.monotonic() < deadline:
             content = self.capture_pane(pane_id)
             if compiled.search(content):
                 return content
             time.sleep(0.5)
-        raise TimeoutError(f"Pattern {pattern!r} not found in pane {pane_id} after {timeout}s")
+        raise TimeoutError(
+            f"Pattern {pattern!r} not found in pane {pane_id} after {timeout}s; "
+            f"last content: {content[-500:]!r}"
+        )
 
     def wait_for_session(self, name: str, *, timeout: float = 15) -> None:
         """Wait until a session exists."""
@@ -374,6 +372,8 @@ class MultiplexerHarness:
         env: dict[str, str] = dict(os.environ)
         env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
         env["STUDYLOOP_MULTIPLEXER"] = "herdr"
+        env["TERM"] = "xterm-256color"
+        env["COLORTERM"] = "truecolor"
         # Strip multiplexer env vars so the CLI goes through the real attach path
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)

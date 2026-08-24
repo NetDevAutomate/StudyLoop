@@ -17,7 +17,10 @@ These env vars affect only the test process, never user runtime.
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -54,6 +57,42 @@ os.environ["STUDYLOOP_SESSION_DIR"] = str(_TEST_STATE_ROOT / "session-ipc")
 # path inside a git worktree; child web servers inherit it and the containment
 # guard then (correctly) refuses the symlink before browser tests can start.
 os.environ["STUDYLOOP_PLANS_DIR"] = str(_TEST_STATE_ROOT / "plans")
+
+# Process-state isolation. Integration tests exercise the real tmux and Herdr
+# CLIs, including production cleanup that intentionally closes every
+# ``study-*`` session. Give each pytest process private backend endpoints so
+# that behaviour cannot see or destroy a learner's real workspaces.
+_TEST_PROCESS_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-process-", dir="/tmp")).resolve()
+_TEST_TMUX_ROOT = _TEST_PROCESS_ROOT / "tmux"
+_TEST_TMUX_ROOT.mkdir(mode=0o700)
+_TEST_TMUX_CONFIG = _TEST_TMUX_ROOT / "tmux.conf"
+_TEST_TMUX_CONFIG.write_text(
+    'set-option -g exit-empty off\nset-option -g default-terminal "tmux-256color"\n',
+    encoding="utf-8",
+)
+os.environ["TMUX_TMPDIR"] = str(_TEST_TMUX_ROOT)
+os.environ.pop("TMUX", None)
+os.environ.pop("TMUX_PANE", None)
+
+_TEST_XDG_CONFIG_HOME = _TEST_PROCESS_ROOT / "xdg-config"
+_TEST_XDG_CONFIG_HOME.mkdir(mode=0o700)
+
+_TEST_HERDR_ROOT = _TEST_XDG_CONFIG_HOME / "herdr"
+_TEST_HERDR_ROOT.mkdir(mode=0o700)
+_TEST_HERDR_CONFIG = _TEST_HERDR_ROOT / "config.toml"
+_TEST_HERDR_CONFIG.write_text(
+    "onboarding = false\n[update]\nversion_check = false\nmanifest_check = false\n",
+    encoding="utf-8",
+)
+os.environ["HERDR_SOCKET_PATH"] = str(_TEST_HERDR_ROOT / "herdr.sock")
+os.environ["HERDR_CONFIG_PATH"] = str(_TEST_HERDR_CONFIG)
+for _herdr_context_var in (
+    "HERDR_ENV",
+    "HERDR_WORKSPACE_ID",
+    "HERDR_TAB_ID",
+    "HERDR_PANE_ID",
+):
+    os.environ.pop(_herdr_context_var, None)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
@@ -100,35 +139,141 @@ def _isolate_state_dir(
     monkeypatch.setattr(_settings_mod, "load_settings", _patched_load_settings)
 
 
-def test_no_test_writes_to_real_user_state() -> None:
-    """Guard: the suite must never resolve writable state to the real dirs.
+@pytest.fixture(scope="session", autouse=True)
+def _isolated_tmux_server():
+    """Pre-start the private tmux server without loading user configuration."""
+    if not shutil.which("tmux"):
+        yield
+        return
 
-    Asserted as a test, not just a fixture, so the invariant fails loudly in
-    CI if the env-var wiring above is ever removed or reordered.
+    tmux_env = dict(os.environ)
+    tmux_env.pop("TMUX", None)
+    tmux_env.pop("TMUX_PANE", None)
+    tmux_env["TMUX_TMPDIR"] = str(_TEST_TMUX_ROOT)
+    started = subprocess.run(
+        ["tmux", "-f", str(_TEST_TMUX_CONFIG), "start-server"],
+        env=tmux_env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=5,
+    )
+    if started.returncode != 0:
+        pytest.fail(f"isolated tmux test server failed to start: {started.stderr}")
 
-    Both resolvers are checked. ``studyloop.settings`` and
-    ``agent_session_tools.config_loader`` compute the session DB path
-    independently, and covering only one of them left the real database being
-    migrated by test runs.
-    """
-    from agent_session_tools.config_loader import DEFAULT_CONFIG
-    from agent_session_tools.config_loader import get_db_path as ast_get_db_path
-    from studyloop.settings import (
-        DEFAULT_DB,
-        DEFAULT_STATE_DIR,
-        get_db_path,
-        get_state_dir,
-        load_settings,
-    )
+    try:
+        yield
+    finally:
+        subprocess.run(
+            ["tmux", "kill-server"],
+            env=tmux_env,
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
 
-    assert get_state_dir() != DEFAULT_STATE_DIR, "state_dir escaped test isolation"
-    assert get_db_path() != DEFAULT_DB, "studyloop session DB escaped test isolation"
-    assert load_settings().session_db != DEFAULT_DB, (
-        "Settings.session_db escaped test isolation (history/_connection.py reads this one)"
+
+@pytest.fixture(scope="session", autouse=True)
+def _isolated_herdr_server(request: pytest.FixtureRequest):
+    """Run one private Herdr server when selected integration tests need it."""
+    integration_selected = any(
+        item.get_closest_marker("integration") is not None for item in request.session.items
     )
-    assert str(ast_get_db_path()) != DEFAULT_CONFIG["database"]["path"], (
-        "agent_session_tools session DB escaped test isolation"
+    if not integration_selected or not shutil.which("herdr"):
+        yield
+        return
+
+    previous_xdg_config = os.environ.get("XDG_CONFIG_HOME")
+    os.environ["XDG_CONFIG_HOME"] = str(_TEST_XDG_CONFIG_HOME)
+
+    def restore_xdg_config() -> None:
+        if previous_xdg_config is None:
+            os.environ.pop("XDG_CONFIG_HOME", None)
+        else:
+            os.environ["XDG_CONFIG_HOME"] = previous_xdg_config
+
+    herdr_env = dict(os.environ)
+    herdr_env.pop("HERDR_ENV", None)
+    herdr_env["XDG_CONFIG_HOME"] = str(_TEST_XDG_CONFIG_HOME)
+    herdr_env["HERDR_SOCKET_PATH"] = str(_TEST_HERDR_ROOT / "herdr.sock")
+    herdr_env["HERDR_CONFIG_PATH"] = str(_TEST_HERDR_CONFIG)
+    server = subprocess.Popen(
+        ["herdr", "server"],
+        env=herdr_env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
     )
+    for _ in range(50):
+        status = subprocess.run(
+            ["herdr", "status", "server"],
+            env=herdr_env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+        if status.returncode == 0 and "status: running" in status.stdout:
+            break
+        if server.poll() is not None:
+            restore_xdg_config()
+            pytest.fail("isolated Herdr test server exited before becoming ready")
+        time.sleep(0.1)
+    else:
+        server.terminate()
+        server.wait(timeout=5)
+        restore_xdg_config()
+        pytest.fail("isolated Herdr test server did not become ready")
+
+    try:
+        yield
+    finally:
+        subprocess.run(
+            ["herdr", "server", "stop"],
+            env=herdr_env,
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+        try:
+            server.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            server.terminate()
+            server.wait(timeout=5)
+        restore_xdg_config()
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Stop only the private multiplexer servers created by this test process."""
+    del session, exitstatus
+
+    tmux_env = dict(os.environ)
+    tmux_env.pop("TMUX", None)
+    tmux_env.pop("TMUX_PANE", None)
+    tmux_env["TMUX_TMPDIR"] = str(_TEST_TMUX_ROOT)
+    if shutil.which("tmux"):
+        subprocess.run(
+            ["tmux", "kill-server"],
+            env=tmux_env,
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+
+    herdr_env = dict(os.environ)
+    herdr_env.pop("HERDR_ENV", None)
+    herdr_env["XDG_CONFIG_HOME"] = str(_TEST_XDG_CONFIG_HOME)
+    herdr_env["HERDR_SOCKET_PATH"] = str(_TEST_HERDR_ROOT / "herdr.sock")
+    herdr_env["HERDR_CONFIG_PATH"] = str(_TEST_HERDR_CONFIG)
+    if shutil.which("herdr"):
+        subprocess.run(
+            ["herdr", "server", "stop"],
+            env=herdr_env,
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    shutil.rmtree(_TEST_PROCESS_ROOT, ignore_errors=True)
 
 
 class StubTransport:

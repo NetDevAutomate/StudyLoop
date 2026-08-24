@@ -29,18 +29,12 @@ import shutil
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import pytest
 from harness.agents import long_running_agent
 from harness.multiplexer import MultiplexerHarness
 
 pytestmark = [pytest.mark.integration]
-
-# IPC files
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-
 
 # ---------------------------------------------------------------------------
 # Skip helpers

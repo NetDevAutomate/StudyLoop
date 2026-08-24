@@ -220,19 +220,25 @@ class TestSessionLifecycle:
         assert "TOPIC=python" in env_values
 
     def test_create_session_with_command(self, mock_subprocess, backend):
-        """command= should use pane run after workspace create."""
-        mock_subprocess.return_value = _json_result(
-            {
-                "workspace_id": "w8",
-                "tab_id": "w8:t1",
-                "pane_id": "w8:p1",
-            }
-        )
+        """command= waits for the shell's first render before pane run."""
+        mock_subprocess.side_effect = [
+            _json_result(
+                {
+                    "workspace_id": "w8",
+                    "tab_id": "w8:t1",
+                    "pane_id": "w8:p1",
+                }
+            ),
+            _make_result(stdout="shell prompt"),
+            _make_result(),
+        ]
         backend.create_session("study-cmd", command="kiro-cli chat")
 
-        # First call: workspace create. Second call: pane run.
-        assert mock_subprocess.call_count == 2
-        run_args = mock_subprocess.call_args_list[1][0][0]
+        assert mock_subprocess.call_count == 3
+        ready_args = mock_subprocess.call_args_list[1][0][0]
+        assert ready_args[0:3] == ["herdr", "pane", "read"]
+        assert "w8:p1" in ready_args
+        run_args = mock_subprocess.call_args_list[2][0][0]
         assert run_args[0] == "herdr"
         assert run_args[1] == "pane"
         assert run_args[2] == "run"
@@ -383,17 +389,22 @@ class TestPaneManagement:
         assert result == "w5:p3"
 
     def test_split_pane_with_command(self, mock_subprocess, backend):
-        """command= triggers a pane run after the split."""
+        """command= waits for the new pane to render before pane run."""
         mock_subprocess.side_effect = [
             # split response
             _json_result({"pane_id": "w5:p4", "workspace_id": "w5", "tab_id": "w5:t1"}),
+            # first shell render
+            _make_result(stdout="shell prompt"),
             # pane run response
             _make_result(),
         ]
         result = backend.split_pane("w5:p1", command="studyloop-sidebar")
 
-        assert mock_subprocess.call_count == 2
-        run_args = mock_subprocess.call_args_list[1][0][0]
+        assert mock_subprocess.call_count == 3
+        ready_args = mock_subprocess.call_args_list[1][0][0]
+        assert ready_args[0:3] == ["herdr", "pane", "read"]
+        assert "w5:p4" in ready_args
+        run_args = mock_subprocess.call_args_list[2][0][0]
         assert run_args[0:3] == ["herdr", "pane", "run"]
         assert "w5:p4" in run_args
         assert "studyloop-sidebar" in run_args

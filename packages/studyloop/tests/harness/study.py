@@ -19,17 +19,14 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .agents import long_running_agent
+from .paths import ONELINE_FILE, PARKING_FILE, STATE_FILE, TOPICS_FILE
 from .tmux import TmuxHarness
 
-# IPC file locations (mirrors studyloop.session_state)
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
-ONELINE_FILE = CONFIG_DIR / "session-oneline.txt"
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class StudySession:

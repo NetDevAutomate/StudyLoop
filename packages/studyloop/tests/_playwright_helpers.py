@@ -17,17 +17,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from harness.paths import PARKING_FILE, SESSION_DIR, STATE_FILE, TOPICS_FILE
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
 
     from playwright.sync_api import Browser, BrowserContext, Page
-
-
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
 
 
 def start_web_server(
@@ -112,7 +107,7 @@ def clean_ipc() -> None:
     """Wipe test IPC files without ever resolving a stale user-home constant."""
     import os
 
-    session_dir = Path(os.environ.get("STUDYLOOP_SESSION_DIR", CONFIG_DIR))
+    session_dir = Path(os.environ.get("STUDYLOOP_SESSION_DIR", SESSION_DIR))
     for f in (
         session_dir / STATE_FILE.name,
         session_dir / TOPICS_FILE.name,

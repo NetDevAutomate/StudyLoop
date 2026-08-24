@@ -60,6 +60,8 @@ _SPECIAL_KEYS = frozenset(
 
 # Timeout for herdr subprocess calls (seconds)
 _CMD_TIMEOUT = 30
+_PANE_READY_TIMEOUT = 5.0
+_PANE_READY_POLL = 0.05
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +195,36 @@ class HerdrBackend:
             return self._herdr(*args, json_output=json_output, timeout=timeout)
         except (MultiplexerError, Exception):
             return None
+
+    def _wait_for_pane_ready(self, pane_id: str, *, timeout: float = _PANE_READY_TIMEOUT) -> None:
+        """Wait until a new interactive pane has produced its first render.
+
+        Herdr can accept text immediately after ``workspace create`` or
+        ``pane split``, before the shell's line editor is ready. In that
+        window the text is buffered but the Enter key is lost, leaving the
+        launch command visibly stranded at the prompt.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            rendered = self._herdr_nofail(
+                "pane",
+                "read",
+                pane_id,
+                "--source",
+                "visible",
+                "--lines",
+                "1",
+                "--format",
+                "text",
+                json_output=False,
+                timeout=1,
+            )
+            if isinstance(rendered, str) and rendered.strip():
+                return
+            time.sleep(_PANE_READY_POLL)
+        raise MultiplexerError(
+            f"herdr pane {pane_id} did not render before command launch (timeout {timeout:.1f}s)"
+        )
 
     def _find_workspace_id(self, label: str) -> str | None:
         """Find workspace_id by label. Returns None if not found."""
@@ -359,6 +391,7 @@ class HerdrBackend:
 
         # If a command was requested, run it in the initial pane
         if command and pane_id:
+            self._wait_for_pane_ready(pane_id)
             self._herdr("pane", "run", pane_id, command, json_output=False)
 
         # Protocol contract: return the initial pane_id (like tmux does).
@@ -518,6 +551,7 @@ class HerdrBackend:
 
         # Run command in the new pane if requested
         if command:
+            self._wait_for_pane_ready(pane_id)
             self._herdr("pane", "run", pane_id, command, json_output=False)
 
         return pane_id

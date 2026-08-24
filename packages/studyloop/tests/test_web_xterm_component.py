@@ -23,9 +23,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 import pytest
+from harness.paths import PARKING_FILE, STATE_FILE, TOPICS_FILE
 
 pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
@@ -33,11 +33,6 @@ pytest.importorskip("uvicorn")
 
 pytestmark = [pytest.mark.e2e]
 
-
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
 
 WEB_PORT = 18568
 

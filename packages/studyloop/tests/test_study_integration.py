@@ -15,7 +15,6 @@ Run with:
 
 from __future__ import annotations
 
-import contextlib
 import json
 import os
 import shutil
@@ -25,6 +24,13 @@ import time
 from pathlib import Path
 
 import pytest
+from harness.paths import (
+    ONELINE_FILE,
+    PARKING_FILE,
+    SESSIONS_DIR,
+    STATE_FILE,
+    TOPICS_FILE,
+)
 
 # Skip entire module if tmux is not installed, and mark as integration
 # so CI can exclude with -m "not integration" (headless runners time out).
@@ -33,13 +39,6 @@ pytestmark = [
     pytest.mark.integration,
 ]
 
-# Paths
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
-ONELINE_FILE = CONFIG_DIR / "session-oneline.txt"
-SESSIONS_DIR = CONFIG_DIR / "sessions"
 PROJECT_DIR = Path(__file__).parent.parent.parent.parent
 
 # Timing
@@ -103,27 +102,8 @@ def _read_state() -> dict:
     return {}
 
 
-def _kill_orphaned_processes():
-    """Kill orphaned sidebar and mock-agent processes from failed tests."""
-    import signal
-
-    for pattern in ("studyloop.tui.sidebar", "mock-agent"):
-        try:
-            result = subprocess.run(
-                ["pgrep", "-f", pattern],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            for pid_str in result.stdout.strip().splitlines():
-                with contextlib.suppress(OSError):
-                    os.kill(int(pid_str), signal.SIGTERM)
-        except Exception:
-            pass
-
-
 def _cleanup_all():
-    """Remove all IPC files, kill study tmux sessions, kill orphans, remove test dirs."""
+    """Remove isolated IPC files, study tmux sessions, and test directories."""
     for f in [STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE]:
         f.unlink(missing_ok=True)
     result = _tmux("list-sessions", "-F", "#{session_name}")
@@ -131,8 +111,6 @@ def _cleanup_all():
         for name in result.stdout.strip().splitlines():
             if name.startswith("study-"):
                 _tmux("kill-session", "-t", name)
-    # Kill orphaned child processes that escaped the tmux session tree
-    _kill_orphaned_processes()
     # Remove test session directories
     if SESSIONS_DIR.exists():
         for d in SESSIONS_DIR.iterdir():
@@ -851,9 +829,15 @@ class TestMultiAgentSessionLaunch:
             env.update(extra_env)
 
         args = ["study", "Integration Test", "--energy", "5", "--agent", agent_name]
-        _studyloop(*args, env_overrides=env)
+        result = _studyloop(*args, env_overrides=env)
 
-        _wait_for(STATE_FILE.exists, desc="session-state.json created")
+        try:
+            _wait_for(STATE_FILE.exists, desc="session-state.json created")
+        except TimeoutError as exc:
+            raise TimeoutError(
+                f"{agent_name}: session state missing; exit={result.returncode}; "
+                f"stdout={result.stdout[-500:]!r}; stderr={result.stderr[-500:]!r}"
+            ) from exc
         state = _read_state()
         session_name = state.get("tmux_session", "")
         _wait_for(lambda: _session_exists(session_name), desc=f"tmux session {session_name}")
@@ -974,7 +958,7 @@ class TestMultiAgentSessionLaunch:
 
     def test_all_agents_support_topic_logging(self, tmp_path):
         """All agents can log topics via the studyloop wrapper in the session dir."""
-        for agent_name in ("claude", "codex", "gemini", "grok", "opencode"):
+        for agent_name in ("claude", "codex", "gemini", "kiro", "opencode"):
             _cleanup_all()
             extra_env = {}
             if agent_name == "kiro":

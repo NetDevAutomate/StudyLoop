@@ -14,6 +14,16 @@ from typing import cast
 
 import pexpect
 
+from .paths import SESSION_DIR, STATE_FILE
+
+
+def terminal_pty_env() -> dict[str, str]:
+    """Return an environment with capabilities suitable for a real PTY client."""
+    env = dict(os.environ)
+    env["TERM"] = "xterm-256color"
+    env["COLORTERM"] = "truecolor"
+    return env
+
 
 class TerminalSession:
     """Drive a real terminal session for UAT testing.
@@ -46,6 +56,7 @@ class TerminalSession:
         cmd = f"{sys.executable} -m studyloop.cli study '{topic}' --energy {energy} --agent claude"
 
         env: dict[str, str] = dict(os.environ)
+        env.update(terminal_pty_env())
         if agent_cmd:
             env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
         # Remove TMUX so studyloop uses attach mode (which fails gracefully
@@ -64,9 +75,8 @@ class TerminalSession:
 
         # Read session name from state file
         import json
-        from pathlib import Path
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = STATE_FILE
         for _ in range(20):
             if state_file.exists():
                 try:
@@ -102,13 +112,13 @@ class TerminalSession:
         """
         import json
         import time
-        from pathlib import Path
 
         assert self._session_name, "No session — call spawn_study first"
 
         # Attach to tmux session — this simulates a real user
         child = pexpect.spawn(
             f"tmux attach-session -t {self._session_name}",
+            env=cast("os._Environ[str]", terminal_pty_env()),
             timeout=timeout,
             encoding="utf-8",
         )
@@ -117,7 +127,7 @@ class TerminalSession:
         time.sleep(2)
 
         # Read sidebar pane ID from state file
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = STATE_FILE
         state = json.loads(state_file.read_text())
         sidebar_pane = state.get("tmux_sidebar_pane")
 
@@ -185,9 +195,8 @@ class TerminalSession:
 
         # Check state file
         import json
-        from pathlib import Path
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = STATE_FILE
         if state_file.exists():
             state = json.loads(state_file.read_text())
             print(f"\nState mode: {state.get('mode')}", file=sys.stderr)
@@ -221,9 +230,7 @@ class TerminalSession:
                 capture_output=True,
             )
         # Clean IPC files
-        from pathlib import Path
-
-        config_dir = Path.home() / ".config" / "studyloop"
+        config_dir = SESSION_DIR
         for name in (
             "session-state.json",
             "session-topics.md",
