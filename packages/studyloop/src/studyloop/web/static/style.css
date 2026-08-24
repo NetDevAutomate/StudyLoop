@@ -4089,12 +4089,24 @@ body[data-palette="everforest"] {
   margin-bottom: 12px;
 }
 .park-first-list { list-style: none; margin: 0 0 12px; padding: 0; }
-.park-first-item { margin-bottom: 6px; }
-.park-first-item button {
-  width: 100%; text-align: left; background: var(--bg);
+.park-first-item {
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  background: var(--bg);
   border: 1px solid var(--border); border-radius: 8px;
-  padding: 8px 12px; cursor: pointer; color: inherit;
 }
+.park-first-topic { display: block; margin-bottom: 6px; }
+.park-first-item-actions,
+.park-first-recovery-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.park-first-item button,
+.park-first-recovery-actions button {
+  text-align: left; background: var(--bg-hover);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 9px; cursor: pointer; color: inherit;
+}
+.park-first-delete { color: var(--red) !important; }
+.park-first-recovery-actions { margin: 0 0 12px; }
+.park-first-proceed { color: var(--accent) !important; }
 .quick-park-btn {
   position: fixed;
   bottom: 20px;

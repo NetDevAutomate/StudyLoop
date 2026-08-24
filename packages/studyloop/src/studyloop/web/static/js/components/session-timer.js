@@ -77,6 +77,7 @@ export function sessionTimer() {
       // Park-first friction modal (3-topic rule)
       confirmingParkFirst: false,
       parkFirstTopics: [],
+      parkFirstUndo: null,
       _parkFirstChecked: false,
       paused: false,
       pausedAt: 0,
@@ -211,6 +212,7 @@ export function sessionTimer() {
                 (t) => (t.question || '').toLowerCase() === topic.toLowerCase());
               if (!isActive) {
                 this.parkFirstTopics = bl.active;
+                this.parkFirstUndo = null;
                 this.confirmingParkFirst = true;
                 return;
               }
@@ -362,9 +364,54 @@ export function sessionTimer() {
         await this.startSession();
       },
 
+      async deleteParkFirstTopic(topicRow) {
+        try {
+          const res = await fetch('/api/backlog/dismiss', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: topicRow.id }),
+          });
+          if (!res.ok) {
+            Alpine.store('toast').show('Could not remove topic — try again');
+            return;
+          }
+        } catch {
+          Alpine.store('toast').show('Could not remove topic — offline?');
+          return;
+        }
+        this.parkFirstTopics = this.parkFirstTopics.filter((t) => t.id !== topicRow.id);
+        this.parkFirstUndo = topicRow;
+      },
+
+      async undoParkFirstDelete() {
+        if (!this.parkFirstUndo) return;
+        const topicRow = this.parkFirstUndo;
+        try {
+          const res = await fetch('/api/parking/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: [topicRow.id] }),
+          });
+          if (!res.ok) throw new Error('restore failed');
+          const backlog = await fetch('/api/backlog').then((r) => r.ok ? r.json() : null);
+          this.parkFirstTopics = backlog?.active || [...this.parkFirstTopics, topicRow];
+          this.parkFirstUndo = null;
+        } catch {
+          Alpine.store('toast').show('Could not undo — try again');
+        }
+      },
+
+      async proceedAfterParkFirstDelete() {
+        if (this.parkFirstTopics.length >= 3) return;
+        this.confirmingParkFirst = false;
+        this._parkFirstChecked = true;
+        await this.startSession();
+      },
+
       cancelParkFirst() {
         this.confirmingParkFirst = false;
         this.parkFirstTopics = [];
+        this.parkFirstUndo = null;
       },
 
       async confirmEndSession() {

@@ -2181,10 +2181,21 @@
             <ul class="park-first-list">
               <template x-for="t in parkFirstTopics" :key="t.id">
                 <li class="park-first-item">
-                  <button @click="parkAndProceed(t)" x-text="'Park: ' + t.question"></button>
+                  <span class="park-first-topic" x-text="t.question"></span>
+                  <div class="park-first-item-actions">
+                    <button class="park-first-park" @click="parkAndProceed(t)">Park and start</button>
+                    <button class="park-first-delete" @click="deleteParkFirstTopic(t)"
+                            :aria-label="'Remove ' + t.question + ' from live topics'">Remove</button>
+                  </div>
                 </li>
               </template>
             </ul>
+            <div class="park-first-recovery-actions">
+              <button class="park-first-undo-btn" x-show="parkFirstUndo" x-cloak
+                      @click="undoParkFirstDelete()">Undo remove</button>
+              <button class="park-first-proceed" x-show="parkFirstTopics.length < 3" x-cloak
+                      @click="proceedAfterParkFirstDelete()">Start with the new topic</button>
+            </div>
             <div class="end-confirm-actions">
               <button class="end-confirm-btn end-confirm-cancel"
                       @click="cancelParkFirst()">Keep all — don't start</button>
