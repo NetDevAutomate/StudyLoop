@@ -165,6 +165,31 @@ class TestHealthIsHonest:
         assert not health.reachable
         assert "does not serve" in health.detail
 
+    def test_health_probe_is_short_and_does_not_enumerate_voices(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A listening-but-hung primary must not hide a healthy fallback.
+
+        Model reachability and voice discovery are separate operations.  The
+        web route discovers voices only after selecting a reachable candidate,
+        so doing it here as well doubles the browser's startup latency.
+        """
+        calls: list[tuple[str, float]] = []
+
+        def _urlopen(request: object, *, timeout: float):
+            calls.append((getattr(request, "full_url", ""), timeout))
+            return _FakeResponse(b'{"data":[{"id":"kokoro"}]}')
+
+        monkeypatch.setattr(learning_voice.urllib.request, "urlopen", _urlopen)
+
+        health = learning_voice.openvox_health()
+
+        assert health.reachable is True
+        assert health.voice_count == 0, "the reachability probe must not fetch the catalogue"
+        assert len(calls) == 1
+        assert calls[0][0].endswith("/models")
+        assert calls[0][1] <= 3.0, "health must fall through before the 30s synthesis timeout"
+
     def test_warm_failure_is_not_fatal(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _down(*_a: object, **_k: object) -> None:
             raise urllib.error.URLError("nope")

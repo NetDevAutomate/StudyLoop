@@ -79,6 +79,7 @@ class TestHealth:
         assert body["available"] is True
         ids = [v["id"] for v in body["voices"]]
         assert ids == ["af_heart", "bf_emma"]
+        assert body["voice_count"] == 2
         assert "zf_xiaobei" not in ids
         assert "jf_alpha" not in ids
 
@@ -220,6 +221,14 @@ class TestHealth:
 
 
 class TestSpeak:
+    @pytest.fixture(autouse=True)
+    def _healthy_candidates(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_health",
+            lambda _cfg: OpenVoxHealth(reachable=True, model="kokoro", voice_count=0),
+        )
+
     def test_retries_with_voicemode_when_primary_cannot_synthesise(
         self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
@@ -243,6 +252,72 @@ class TestSpeak:
         assert response.status_code == 200
         assert response.content == b"RIFFvoicemode-audio"
         assert calls == ["primary", "VoiceMode fallback"]
+
+    def test_skips_a_hung_primary_before_synthesis(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        candidates = (
+            {"base_url": "http://127.0.0.1:8000/v1", "role": "primary"},
+            {"base_url": "http://127.0.0.1:8880/v1", "role": "VoiceMode fallback"},
+        )
+        calls: list[str] = []
+        monkeypatch.setattr(tts_route, "openvox_server_configs", lambda: candidates)
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_health",
+            lambda cfg: OpenVoxHealth(
+                reachable=cfg["role"] == "VoiceMode fallback",
+                model="kokoro",
+                voice_count=0,
+                detail="primary health probe timed out",
+            ),
+        )
+
+        def _synthesise(*_args, cfg: dict, **_kwargs):
+            calls.append(cfg["role"])
+            return b"RIFFvoicemode-audio", ""
+
+        monkeypatch.setattr(tts_route, "synthesise_openvox_bytes", _synthesise)
+
+        response = client.post("/api/tts/speak", json={"text": "hello", "voice": "bf_emma"})
+
+        assert response.status_code == 200
+        assert calls == ["VoiceMode fallback"]
+
+    def test_reuses_the_server_just_selected_by_health(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        """A single-worker TTS server may be busy when speak follows health."""
+        candidates = (
+            {"base_url": "http://127.0.0.1:8000/v1", "role": "primary"},
+            {"base_url": "http://127.0.0.1:8880/v1", "role": "VoiceMode fallback"},
+        )
+        health_is_still_probeable = True
+        synthesised: list[str] = []
+        monkeypatch.setattr(tts_route, "openvox_server_configs", lambda: candidates)
+        monkeypatch.setattr(tts_route, "openvox_voices", lambda _cfg: {"bf_emma": "British"})
+
+        def _health(cfg: dict) -> OpenVoxHealth:
+            return OpenVoxHealth(
+                reachable=health_is_still_probeable and cfg["role"] == "VoiceMode fallback",
+                model="kokoro",
+                voice_count=0,
+                detail="server is temporarily busy",
+            )
+
+        monkeypatch.setattr(tts_route, "openvox_health", _health)
+        monkeypatch.setattr(
+            tts_route,
+            "synthesise_openvox_bytes",
+            lambda *_a, cfg, **_k: synthesised.append(cfg["role"]) or (b"RIFFvoicemode-audio", ""),
+        )
+
+        assert client.get("/api/tts/health").json()["server"] == "VoiceMode fallback"
+        health_is_still_probeable = False
+        response = client.post("/api/tts/speak", json={"text": "hello", "voice": "bf_emma"})
+
+        assert response.status_code == 200
+        assert synthesised == ["VoiceMode fallback"]
 
     def test_returns_audio_bytes_with_an_audio_mime_type(
         self, client: TestClient, monkeypatch: MonkeyPatch
@@ -272,14 +347,26 @@ class TestSpeak:
     def test_a_refused_voice_is_reported_not_spoken(
         self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
+        network_calls: list[str] = []
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_health",
+            lambda _cfg: (
+                network_calls.append("health")
+                or (_ for _ in ()).throw(
+                    AssertionError("a refused voice reached backend selection")
+                )
+            ),
+        )
         monkeypatch.setattr(
             tts_route,
             "synthesise_openvox_bytes",
-            lambda *a, **k: (None, "refusing non-English voice 'zf_xiaobei'"),
+            lambda *a, **k: network_calls.append("synthesis") or (None, "unexpected"),
         )
         response = client.post("/api/tts/speak", json={"text": "hi", "voice": "zf_xiaobei"})
         assert response.status_code == 503
         assert "zf_xiaobei" in response.json()["detail"]
+        assert network_calls == []
 
     def test_unsupported_format_is_a_client_error(self, client: TestClient) -> None:
         response = client.post("/api/tts/speak", json={"text": "hi", "response_format": "aiff"})
@@ -294,6 +381,14 @@ class TestSpeak:
 
 
 class TestWarm:
+    @pytest.fixture(autouse=True)
+    def _healthy_candidates(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_health",
+            lambda _cfg: OpenVoxHealth(reachable=True, model="kokoro", voice_count=0),
+        )
+
     def test_warm_is_reported(self, client: TestClient, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(tts_route, "openvox_warm", lambda _cfg: True)
         assert client.post("/api/tts/warm").json() == {"warmed": True}
@@ -306,3 +401,62 @@ class TestWarm:
         response = client.post("/api/tts/warm")
         assert response.status_code == 200
         assert response.json() == {"warmed": False}
+
+    def test_warm_skips_an_unhealthy_primary(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        candidates = (
+            {"base_url": "http://127.0.0.1:8000/v1", "role": "primary"},
+            {"base_url": "http://127.0.0.1:8880/v1", "role": "VoiceMode fallback"},
+        )
+        calls: list[str] = []
+        monkeypatch.setattr(tts_route, "openvox_server_configs", lambda: candidates)
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_health",
+            lambda cfg: OpenVoxHealth(
+                reachable=cfg["role"] == "VoiceMode fallback",
+                model="kokoro",
+                voice_count=0,
+            ),
+        )
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_warm",
+            lambda cfg: calls.append(cfg["role"]) or True,
+        )
+
+        assert client.post("/api/tts/warm").json() == {"warmed": True}
+        assert calls == ["VoiceMode fallback"]
+
+    def test_warm_reuses_the_server_just_selected_by_health(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        candidates = (
+            {"base_url": "http://127.0.0.1:8000/v1", "role": "primary"},
+            {"base_url": "http://127.0.0.1:8880/v1", "role": "VoiceMode fallback"},
+        )
+        probeable = True
+        warmed: list[str] = []
+        monkeypatch.setattr(tts_route, "openvox_server_configs", lambda: candidates)
+        monkeypatch.setattr(tts_route, "openvox_voices", lambda _cfg: {"bf_emma": "British"})
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_health",
+            lambda cfg: OpenVoxHealth(
+                reachable=probeable and cfg["role"] == "VoiceMode fallback",
+                model="kokoro",
+                voice_count=0,
+            ),
+        )
+        monkeypatch.setattr(
+            tts_route,
+            "openvox_warm",
+            lambda cfg: warmed.append(cfg["role"]) or True,
+        )
+
+        assert client.get("/api/tts/health").json()["available"] is True
+        probeable = False
+
+        assert client.post("/api/tts/warm").json() == {"warmed": True}
+        assert warmed == ["VoiceMode fallback"]

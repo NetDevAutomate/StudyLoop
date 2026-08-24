@@ -32,7 +32,9 @@ and warm-up solves that -- 51s to 2.5s.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from time import monotonic
+
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -58,6 +60,13 @@ _MEDIA_TYPES = {
 #: Bound so a runaway caller cannot ask the host to synthesise a novel.
 _MAX_CHARS = 4000
 
+# Reuse a successful routing decision across the health -> warm -> speak burst.
+# Kokoro servers commonly serialize model work, so an immediate second health
+# probe can say "unavailable" solely because the first request just started a
+# warm-up. App state keeps the cache scoped to one StudyLoop server/test app.
+_SELECTION_CACHE_ATTR = "_studyloop_tts_selection"
+_SELECTION_TTL_SECONDS = 30.0
+
 
 class SpeakRequest(BaseModel):
     """A request to speak some text."""
@@ -67,18 +76,69 @@ class SpeakRequest(BaseModel):
     response_format: str | None = None
 
 
+def _candidate_key(candidate: dict) -> str:
+    return str(candidate.get("base_url") or candidate.get("openvox_base_url") or "").rstrip("/")
+
+
+def _cached_selection(request: Request, candidates: list[dict]) -> tuple[dict | None, dict | None]:
+    cached = getattr(request.app.state, _SELECTION_CACHE_ATTR, None)
+    if not isinstance(cached, dict) or monotonic() - cached.get("at", 0.0) > _SELECTION_TTL_SECONDS:
+        return None, None
+    selected = next(
+        (candidate for candidate in candidates if _candidate_key(candidate) == cached.get("key")),
+        None,
+    )
+    if selected is None:
+        return None, None
+    body = cached.get("body")
+    return selected, dict(body) if isinstance(body, dict) else None
+
+
+def _remember_selection(request: Request, candidate: dict, body: dict | None = None) -> None:
+    key = _candidate_key(candidate)
+    existing = getattr(request.app.state, _SELECTION_CACHE_ATTR, None)
+    if (
+        body is None
+        and isinstance(existing, dict)
+        and existing.get("key") == key
+        and isinstance(existing.get("body"), dict)
+    ):
+        body = existing["body"]
+    setattr(
+        request.app.state,
+        _SELECTION_CACHE_ATTR,
+        {"at": monotonic(), "key": key, "body": body},
+    )
+
+
+def _forget_selection(request: Request) -> None:
+    setattr(request.app.state, _SELECTION_CACHE_ATTR, None)
+
+
+def _candidate_order(request: Request, candidates: list[dict]) -> tuple[list[dict], dict | None]:
+    selected, _ = _cached_selection(request, candidates)
+    if selected is None:
+        return candidates, None
+    return [selected, *(item for item in candidates if item is not selected)], selected
+
+
 @router.get("/tts/health")
-def tts_health() -> dict:
+def tts_health(request: Request) -> dict:
     """Report whether server-side speech is usable, and why not if it isn't.
 
     The browser uses this to decide whether to route speech here or fall back,
     so it must distinguish "not reachable" from "reachable but wrong model" --
     a client that only sees a boolean cannot tell the learner what to fix.
     """
+    candidates = list(openvox_server_configs())
+    cached_candidate, cached_body = _cached_selection(request, candidates)
+    if cached_candidate is not None and cached_body is not None:
+        return cached_body
+
     selected = None
     health = None
     failures: list[str] = []
-    for candidate in openvox_server_configs():
+    for candidate in candidates:
         candidate_health = openvox_health(candidate)
         if candidate_health.reachable:
             selected = candidate
@@ -87,7 +147,7 @@ def tts_health() -> dict:
         if candidate_health.detail:
             failures.append(candidate_health.detail)
     if health is None:
-        candidates = openvox_server_configs()
+        _forget_selection(request)
         model = str(candidates[0].get("openvox_model", "kokoro")) if candidates else "kokoro"
         detail = "; ".join(dict.fromkeys(failures)) or "no Kokoro server is configured"
         return {
@@ -102,10 +162,12 @@ def tts_health() -> dict:
     assert selected is not None
     voices = openvox_voices(selected)
     english = sorted(v for v in voices if openvox_is_english_voice(v))
-    return {
+    body = {
         "available": health.reachable,
         "model": health.model,
-        "voice_count": health.voice_count,
+        # Count what this route actually offers, not the backend's multilingual
+        # catalogue. These values must not contradict each other in the picker.
+        "voice_count": len(english),
         "detail": health.detail,
         "server": selected.get("role"),
         # Only English voices are offered. The catalogue also holds Mandarin,
@@ -116,44 +178,75 @@ def tts_health() -> dict:
             for v in english
         ],
     }
+    _remember_selection(request, selected, body)
+    return body
 
 
 @router.post("/tts/warm")
-def tts_warm() -> dict:
+def tts_warm(request: Request) -> dict:
     """Load the model so the next utterance is not a cold start.
 
     Cheap and idempotent (0.6s when already warm), and worth calling as soon as a
     learner shows any intent to use voice: the first utterance otherwise costs
-    51 seconds, which reads as broken rather than slow.
+    51 seconds, which reads as broken rather than slow. A compatible server may
+    not expose an explicit load endpoint (VoiceMode returns 404); in that case
+    this returns ``warmed: false`` without marking otherwise-working speech as
+    unavailable.
     """
-    return {"warmed": any(openvox_warm(candidate) for candidate in openvox_server_configs())}
+    candidates, cached = _candidate_order(request, list(openvox_server_configs()))
+    for candidate in candidates:
+        # Do not spend the synthesis timeout warming a process that accepts a
+        # connection but no longer answers. A short model probe is what lets the
+        # VoiceMode fallback run promptly in that failure mode.
+        if candidate is not cached and not openvox_health(candidate).reachable:
+            continue
+        if openvox_warm(candidate):
+            _remember_selection(request, candidate)
+            return {"warmed": True}
+        if candidate is cached:
+            _forget_selection(request)
+    return {"warmed": False}
 
 
 @router.post("/tts/speak")
-def tts_speak(request: SpeakRequest) -> Response:
+def tts_speak(payload: SpeakRequest, request: Request) -> Response:
     """Synthesise ``text`` and return playable audio bytes.
 
     Returns 503 rather than 500 when OpenVox is unreachable or busy: the client's
     correct response is to fall back to a local voice, and 503 says "try
     elsewhere" where 500 says "this is broken".
     """
-    fmt = (request.response_format or "wav").lower()
+    fmt = (payload.response_format or "wav").lower()
     if fmt not in _MEDIA_TYPES:
         raise HTTPException(status_code=400, detail=f"unsupported audio format {fmt!r}")
+    if payload.voice is not None and not openvox_is_english_voice(payload.voice):
+        raise HTTPException(
+            status_code=503,
+            detail=f"refusing non-English voice {payload.voice!r}",
+        )
 
     audio = None
     failures: list[str] = []
-    for candidate in openvox_server_configs():
+    candidates, cached = _candidate_order(request, list(openvox_server_configs()))
+    for candidate in candidates:
+        health = None if candidate is cached else openvox_health(candidate)
+        if health is not None and not health.reachable:
+            if health.detail:
+                failures.append(health.detail)
+            continue
         audio, detail = synthesise_openvox_bytes(
-            request.text,
-            voice=request.voice,
+            payload.text,
+            voice=payload.voice,
             response_format=fmt,
             cfg=candidate,
         )
         if audio is not None:
+            _remember_selection(request, candidate)
             break
         if detail:
             failures.append(detail)
+        if candidate is cached:
+            _forget_selection(request)
     if audio is None:
         detail = "; ".join(dict.fromkeys(failures))
         raise HTTPException(status_code=503, detail=detail or "speech unavailable")

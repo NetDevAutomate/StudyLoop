@@ -21,6 +21,10 @@ _OPENVOX_DEFAULT_VOICE = "af_bella"
 _OPENVOX_DEFAULT_LANGUAGE = "en"
 _OPENVOX_DEFAULT_RESPONSE_FORMAT = "wav"
 _OPENVOX_DEFAULT_TIMEOUT = 30.0
+# Health is a routing decision, not synthesis. A server can accept a TCP
+# connection and then hang; waiting the full cold-synthesis timeout here would
+# prevent the next candidate (normally VoiceMode) from ever becoming useful.
+_OPENVOX_HEALTH_TIMEOUT = 3.0
 _VOICEMODE_DEFAULT_BASE_URL = "http://127.0.0.1:8880/v1"
 
 
@@ -530,10 +534,17 @@ def openvox_is_english_voice(voice_id: object) -> bool:
 
 
 def openvox_health(cfg: dict | None = None) -> OpenVoxHealth:
-    """Probe OpenVox: reachable, serving the configured model, offering voices."""
+    """Probe whether a server is reachable and serves the configured model.
+
+    Voice discovery is deliberately left to the caller after it selects a
+    reachable candidate.  Enumerating here as well made the web health route do
+    the same catalogue requests twice and turn a healthy server into a browser
+    timeout.
+    """
     settings = _openvox_settings(cfg)
     model = settings["model"]
-    payload = _openvox_get_json(settings["base_url"], "/models", settings["timeout"])
+    health_timeout = min(settings["timeout"], _OPENVOX_HEALTH_TIMEOUT)
+    payload = _openvox_get_json(settings["base_url"], "/models", health_timeout)
     if not isinstance(payload, dict):
         return OpenVoxHealth(
             reachable=False,
@@ -552,7 +563,7 @@ def openvox_health(cfg: dict | None = None) -> OpenVoxHealth:
             voice_count=0,
             detail=f"OpenVox is running but does not serve the model {model!r}",
         )
-    return OpenVoxHealth(reachable=True, model=model, voice_count=len(openvox_voices(cfg)))
+    return OpenVoxHealth(reachable=True, model=model, voice_count=0)
 
 
 def openvox_warm(cfg: dict | None = None) -> bool:

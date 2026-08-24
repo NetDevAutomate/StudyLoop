@@ -52,7 +52,11 @@ const SERVER_TTS_HEALTH = '/api/tts/health';
 const SERVER_TTS_SPEAK = '/api/tts/speak';
 const SERVER_TTS_WARM = '/api/tts/warm';
 // A host that is not answering must not hold the voice system in 'warming'.
-const SERVER_PROBE_TIMEOUT_MS = 2500;
+// This still has to exceed a healthy cold catalogue probe: the server verifies
+// the model and discovers its voices before answering, which has measured just
+// over four seconds locally. The old 2.5s bound therefore cached web-speech for
+// the whole page even while /api/tts/health truthfully reported OpenVox ready.
+const SERVER_PROBE_TIMEOUT_MS = 10000;
 /* The voice used until the learner picks one, and until the host's catalogue is
  * known.
  *

@@ -6,9 +6,9 @@ exists specifically so a device that CANNOT run the browser engine still gets a
 voice, and the only honest way to show that is to prove the browser reaches the
 tier and plays audio without ever touching WebGPU.
 
-These tests are tolerant of a host with no OpenVox. That is a completely normal
-configuration -- most people running StudyLoop will not have it -- so an absent
-OpenVox must skip, never fail. What is asserted unconditionally is the CONTRACT:
+These tests are tolerant of a host with no server-side Kokoro. That is a
+completely normal configuration, so an absent OpenVox/VoiceMode server must
+skip, never fail. What is asserted unconditionally is the CONTRACT:
 health answers honestly, speak refuses a non-English voice, and an unavailable
 engine returns 503 (meaning "fall back") rather than 500 ("this app is broken").
 
@@ -88,7 +88,7 @@ def test_only_english_voices_are_ever_offered(env) -> None:
     """
     body = _health(env)
     if not body["available"]:
-        pytest.skip("no OpenVox on this host")
+        pytest.skip("no server-side Kokoro on this host")
     for entry in body["voices"]:
         assert entry["id"].startswith(("af_", "am_", "bf_", "bm_")), entry["id"]
 
@@ -117,7 +117,7 @@ def test_an_unsupported_format_is_a_client_error(env) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Synthesis — needs OpenVox, so skips without it
+# Synthesis — needs a server-side Kokoro, so skips without one
 # ---------------------------------------------------------------------------
 
 
@@ -131,7 +131,7 @@ def test_speak_returns_playable_audio(env) -> None:
 
     body = _health(env)
     if not body["available"]:
-        pytest.skip("no OpenVox on this host")
+        pytest.skip("no server-side Kokoro on this host")
 
     requests.post(f"{env.base_url}/api/tts/warm", timeout=120)
     response = requests.post(
@@ -147,15 +147,24 @@ def test_speak_returns_playable_audio(env) -> None:
 
 
 def test_warm_is_idempotent(env) -> None:
-    """Warming twice must not error -- it is called opportunistically."""
+    """Warming twice must return a stable boolean and never error.
+
+    OpenVox implements the explicit model-load endpoint; VoiceMode's compatible
+    Kokoro server does not (it returns 404) but still synthesises valid audio.
+    ``warmed: false`` therefore means "no explicit warm-up", not "speech is
+    unavailable".
+    """
     import requests
 
     if not _health(env)["available"]:
-        pytest.skip("no OpenVox on this host")
+        pytest.skip("no server-side Kokoro on this host")
+    outcomes: list[bool] = []
     for _ in range(2):
         response = requests.post(f"{env.base_url}/api/tts/warm", timeout=120)
         assert response.status_code == 200, response.text
-        assert response.json()["warmed"] is True
+        assert isinstance(response.json()["warmed"], bool)
+        outcomes.append(response.json()["warmed"])
+    assert len(set(outcomes)) == 1, f"warm-up result changed across identical calls: {outcomes}"
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +183,7 @@ def test_browser_uses_the_server_tier_without_touching_webgpu(browser: Browser, 
     fails, the tablet has silently lost its voice.
     """
     if not _health(env)["available"]:
-        pytest.skip("no OpenVox on this host")
+        pytest.skip("no server-side Kokoro on this host")
 
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     page = ctx.new_page()
@@ -212,7 +221,7 @@ def test_the_voice_picker_never_offers_a_foreign_language_voice(browser: Browser
     id -- and a bogus id on this model is a working request in another language.
     """
     if not _health(env)["available"]:
-        pytest.skip("no OpenVox on this host")
+        pytest.skip("no server-side Kokoro on this host")
 
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     page = ctx.new_page()
