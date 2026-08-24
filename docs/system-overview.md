@@ -208,9 +208,14 @@ Target:
 - herdr as the default multiplexer once its journey suite is green
 - macOS/iOS apps use the same local API later
 
-The ttyd browser surface is **already gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)):
-it was removed *because* the PTY refresh path went green, so the console
-reattaches after a page reload with no user action. The ttyd **server** transport
+The ttyd browser surface is **already gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)).
+It was removed as part of the PTY refresh work: a page reload no longer kills a
+live session — the server holds a disconnected session in a detach grace window
+(90 s by default) — and the console attempts to re-adopt that session on load.
+Automatic reattachment of the terminal is not yet reliable, though; if a reload
+leaves an empty pane, see
+[the troubleshooting entry](troubleshooting.md#the-terminal-is-empty-after-a-page-refresh).
+The ttyd **server** transport
 (`STUDYLOOP_TRANSPORT=ttyd`, the `/terminal/` proxy) is retained for maintainers,
 but a session started that way has no browser renderer and reports `unavailable`.
 

@@ -110,21 +110,37 @@ session clears this; the message says so rather than leaving a blank pane.
 
 ## The Terminal Is Empty After A Page Refresh
 
-It should not be. `liveAgentConsole.init()` reads `GET /api/session/state` on
-load and adopts a live session it owns, so a refresh reattaches to the running
-agent with no user action and the same process answers the next line typed.
+This is a known limitation. What holds today:
+
+- **The session survives the refresh.** A disconnect starts a detach grace
+  window on the server (90 s by default; `STUDYLOOP_WS_GRACE_SECONDS`
+  overrides it), so the agent process keeps running and
+  `GET /api/session/state` still reports the session after the reload.
+- **The reattach is not automatic yet.** `liveAgentConsole.init()` reads
+  `GET /api/session/state` on load and *attempts* to re-adopt a live session
+  it owns, but that path is not yet reliable (the end-to-end test that proves
+  it is currently red) — an empty terminal after a refresh can happen even
+  when nothing on your machine is misconfigured.
 
 If a refresh leaves an empty terminal:
 
-1. Confirm a session is actually live: `GET /api/session/state` should report it.
+1. Confirm a session is actually live: `GET /api/session/state` should report
+   it. If the grace window has already expired, the state response says why
+   the last session went away.
 2. Check the browser console for a JS error during `init()` — a thrown
-   initialiser is the usual reason the adopt step never runs.
+   initialiser stops the adopt step from even being attempted.
 3. Confirm the static assets being served are current. `studyloop web` serves the
    **installed** package's assets, so a stale editable install serves stale JS:
 
    ```bash
    uv run studyloop install tools --skip-sync
    ```
+
+To get back to work, end the session from the UI and start a new one — the
+pane says what happened rather than staying blank. Sessions started from the
+CLI in tmux (not through the web UI) have their own recovery path:
+`studyloop study --resume` reattaches to the running agent, or rebuilds the
+conversation from history if the tmux session is gone.
 
 ## Provider Credentials
 
