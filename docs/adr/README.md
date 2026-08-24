@@ -35,3 +35,4 @@ the code and ask "why on earth is it done this way?" — it gets an ADR, and
 | [0003](0003-body-double-exempt-from-park-first-friction.md) | Body Double is exempt from park-first friction | Proposed | `body-double-own-agent-picker` |
 | [0004](0004-retire-terminal-panel-from-body-double.md) | Unmount `terminalPanel()` without deleting it | Proposed | `body-double-own-agent-picker` |
 | [0005](0005-retire-ttyd-browser-surface.md) | Retire the ttyd browser surface, keep the server transport | Accepted | `live-agent-console.js`, `index.html` |
+| [0006](0006-bridge-aware-deferred-topics.md) | Bridge-aware deferred topics, behind a testable 0.1.0 boundary | Proposed | `reviews/0.1.0-SCOPE-DECISION.md` |
