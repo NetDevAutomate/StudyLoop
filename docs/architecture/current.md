@@ -898,4 +898,4 @@ flowchart TB
 - **The Pomodoro overlay**, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline. (Voice output is now documented in its own C4 L3 component section above.)
 - **The Generate panel implementation details beyond the C4 slice above** — provider-specific prompt tuning and deck-quality judging are documented in [Content Pipeline](../content-pipeline.md).
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
-- **Legacy tmux + ttyd** — kept as fallback; documented in [Web UI Guide § Terminal Fallback (ttyd)](../web-ui-guide.md#terminal-fallback-ttyd). Will be retired once ACP + PTY web sessions cover all agents.
+- **Legacy tmux + ttyd** — the ttyd browser surface is **retired** ([ADR-0005](../adr/0005-retire-ttyd-browser-surface.md)); the web session surfaces are xterm.js over a PTY WebSocket and the ACP chat surface. Background in [Web UI Guide § The retired ttyd iframe](../web-ui-guide.md#the-retired-ttyd-iframe). `tmux` itself remains the terminal session host for `studyloop study`.
