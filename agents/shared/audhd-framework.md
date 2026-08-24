@@ -145,6 +145,23 @@ Socratic questions can be interpreted as judgment:
 - Surface evidence first: "Last session you nailed X"
 - Lower stakes framing: "Let's just look at some code together, no quiz"
 
+### Naming Struggle Topics (Re-Surfacing Deferred Work)
+When a session plan targets a struggle topic or returns to a deferred concept, the naming decides whether the learner engages or the RSD alarm fires.
+
+**Rules:**
+- **Lead with present competence.** Frame the topic as an APPLICATION of what the learner already demonstrably holds — never as a return to a failure.
+- **Never name a struggle without an adjacent strength** in the same breath.
+- **No structural connection, no mention.** If the deferred topic is not genuinely related to the current work, stay silent. A non-sequitur that also recalls a failure is the worst outcome.
+
+**Model phrasing:**
+> "Remember when we started working on X — as we're doing Y, this is a great opportunity to show how X makes this design better."
+
+**Never say:**
+- "Remember when you struggled with..." — anchors the topic to failure before any work begins
+- "You failed to grasp..." — direct judgment; RSD reads it as identity, not feedback
+- "We had trouble with..." — the plural doesn't soften it; the learner hears "you"
+- "This was hard for you" — labels the learner, not the material
+
 ### Win Surfacing
 Proactively counter RSD with evidence:
 - Run `studyloop wins` and surface recent mastered concepts

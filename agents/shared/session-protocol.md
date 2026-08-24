@@ -79,7 +79,7 @@ If `studyloop streaks` shows a current streak, mention it: "Day [N] of your stud
 Based on state check + what's due, propose a session plan:
 
 - If spaced repetition items are due → review session (max 3 topics per session, interleave related topics; if more due, prioritise longest-overdue)
-- If struggle topics detected → targeted practice with extra scaffolding
+- If struggle topics detected → targeted practice with extra scaffolding. When naming the topic to the learner, follow "Naming Struggle Topics" in `audhd-framework.md` — lead with present competence, never frame it as a return to a failure
 - If nothing due + high energy → new material
 - If low energy or flat → body doubling or light review
 - If overwhelmed/shutdown → no session (see state table above)
