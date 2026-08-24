@@ -2621,144 +2621,211 @@
       </div>
 
       <!-- ============================================================ -->
-      <!-- STUDY PLANS VIEW — plan reader, interview form, checkpoints  -->
-      <!--                                                              -->
-      <!-- Every binding below is read-only over state plansPanel()      -->
-      <!-- (js/components/plans-panel.js) forwards into this scope:      -->
-      <!--   getters  progressText milestones blockers recommendations   -->
-      <!--            verdict headline hasPlans isEmpty                  -->
-      <!--   fields   markdownHtml creating form evaluation evalPhase    -->
-      <!--            saving evaluating recording error loading          -->
-      <!--   selected is FLATTENED: title status milestone_done          -->
-      <!--            milestone_total progress_pct readiness …           -->
-      <!--   methods  startCreate cancelCreate submitPlan evaluate       -->
-      <!--            recordCheckpoint toggleMilestone(i) activate       -->
-      <!--            select(idOrObj) isSelected(idOrObj)                -->
-      <!--                                                              -->
-      <!-- The sidebar list reads the same names off $store.plans,       -->
-      <!-- because it lives in nav.sidebar and cannot join this scope.    -->
-      <!--                                                              -->
-      <!-- markdownHtml is ALREADY rendered and DOMPurify-sanitised, and -->
-      <!-- an after-render hook drives the mermaid pass off it — so the   -->
-      <!-- template must not call renderMarkdown() itself.               -->
-      <!-- init() is auto-invoked by Alpine from x-data, so there is      -->
-      <!-- deliberately no x-init here.                                   -->
-      <!-- ============================================================ -->
+      <!-- STUDY PLANS VIEW — Architect conversation + existing reader. -->
       <div x-show="$store.nav.is('study-plans')" x-cloak
-           x-data="plansPanel()">
+           x-data="planArchitectPanel()">
         <div class="plans-panel">
           <header class="body-double-header">
             <h2>Study Plans</h2>
             <p class="text-muted">
-              One plan at a time, in Markdown you can read and edit. Each plan is
-              checked against your real study history at the start of a session,
-              mid-session, and once it ends.
+              Start with your own words. The Architect will ask only what helps,
+              then offer a plan you can approve, change, or reject.
             </p>
           </header>
 
           <div class="plan-error form-error" data-testid="plan-error"
                role="alert" aria-live="assertive"
-               x-show="error" x-text="error"></div>
+               x-show="error || $store.plans.error"
+               x-text="error || $store.plans.error"></div>
 
-          <!-- ---------------- Create ---------------- -->
           <div class="plans-toolbar">
             <button class="toggle-btn" type="button" data-testid="plan-new"
-                    @click="startCreate()">New plan</button>
-            <button class="link-btn" type="button" x-show="creating"
-                    @click="cancelCreate()">Cancel</button>
-            <span class="mastery-copy-status" x-show="loading">Loading…</span>
+                    :disabled="busy" @click="beginCreate()">Create with Architect</button>
+            <button class="link-btn" type="button"
+                    x-show="$store.plans.selected &amp;&amp; phase === 'idle'"
+                    @click="beginRevise($store.plans.selected.plan_id)">Review with Architect</button>
+            <button class="link-btn" type="button"
+                    x-show="!['idle', 'detail'].includes(phase)"
+                    @click="reset()">Leave conversation</button>
+            <span class="mastery-copy-status" x-show="busy">Working…</span>
           </div>
 
-          <section class="plan-create" data-testid="plan-create-form" x-show="creating">
-            <h3 class="plan-create-heading">Start from where you actually are</h3>
+          <p class="planning-phone-unsupported" role="note">
+            Planning conversations are not supported on phone-sized screens yet.
+            Please use a tablet or computer so the proposal remains readable.
+          </p>
 
-            <!-- PRIMARY field.  A blank five-field form asks the learner for a
-                 decomposition they do not have yet — the exact paralysis this
-                 tool exists to prevent.  Recognising and correcting a draft is
-                 far cheaper than recalling and synthesising one, so the dump
-                 comes first and the structured fields are the editable RESULT.
-                 A plain textarea is all macOS dictation needs. -->
-            <label class="plan-field plan-field-primary">
-              <span class="plan-field-label">Where are you now, and where do you want to get to?</span>
-              <span class="plan-field-hint">
-                Type it or dictate it — no structure needed. What you are aiming
-                for, what you have already tried, and where you get stuck. It is
-                kept with the plan, and the study-plan agent can turn it into the
-                fields below for you to edit.
-              </span>
-              <textarea class="plan-braindump" rows="7"
-                        data-testid="plan-field-braindump"
-                        x-model="form.braindump"
-                        placeholder="I can read a Glue job someone else wrote, but I have never built one. I want to own the nightly pipeline. I got lost in job bookmarks and gave up."></textarea>
-            </label>
+          <div class="planning-supported-layout">
+            <!-- Capacity is checked before the browser creates a conversation. -->
+            <section class="architect-capacity" data-testid="architect-capacity"
+                     x-show="phase === 'capacity'" role="status">
+              <h3><span x-text="capacity.current"></span> of <span x-text="capacity.max"></span> current plans</h3>
+              <p>Complete, abandon, or pause one plan before creating another. You can still open an existing plan and review it with the Architect.</p>
+            </section>
 
-            <div class="plan-structured">
-              <p class="plan-structured-title">The plan itself</p>
-              <p class="plan-structured-note text-muted">
-                These five fields build the plan document. Nothing here has to be
-                right first time — edit whatever comes back.
+            <!-- Capture: only the brain dump is required. OS dictation works in
+                 the textarea; context is an optional disclosure, not another form. -->
+            <section class="plan-create architect-capture" data-testid="architect-capture"
+                     x-show="phase === 'capture'">
+              <h3 class="plan-create-heading"
+                  x-text="mode === 'revise' ? 'What needs to change?' : 'Start from where you actually are'"></h3>
+
+              <aside class="architect-privacy" data-testid="architect-privacy-notice"
+                     role="note" aria-label="Planning privacy and persistence">
+                <strong>Before you start</strong>
+                <p x-text="privacyNotice"></p>
+              </aside>
+
+              <label class="plan-field plan-field-primary">
+                <span class="plan-field-label">Tell the Architect what is in your head</span>
+                <span class="plan-field-hint">
+                  Type or dictate freely. You do not need to know the right goal,
+                  course order, milestones, or terminology yet.
+                </span>
+                <textarea class="plan-braindump" rows="8"
+                          data-testid="architect-brain-dump"
+                          x-model="brainDump"
+                          placeholder="I know bits of Python, but I cannot yet design a service confidently. I own a few courses and do not know what should come first…"></textarea>
+              </label>
+
+              <details class="architect-context">
+                <summary>Optional course outline or study text</summary>
+                <p class="plan-field-hint">
+                  This is tier-four context only. It helps shape a plan; it never
+                  counts as study completed or progress made.
+                </p>
+                <label class="plan-field">
+                  <span class="plan-field-label">Label</span>
+                  <input type="text" x-model="contextLabel"
+                         data-testid="architect-context-label"
+                         placeholder="Course outline">
+                </label>
+                <label class="plan-field">
+                  <span class="plan-field-label">Paste text</span>
+                  <textarea rows="5" x-model="contextText"
+                            data-testid="architect-context-text"></textarea>
+                </label>
+                <label class="architect-file-label">
+                  Or choose a plain-text file
+                  <input type="file" accept="text/plain,.txt,.md,.markdown"
+                         data-testid="architect-context-file"
+                         @change="readContextFile($event)">
+                  <span class="plan-field-hint" x-show="contextFile"
+                        x-text="contextFile ? contextFile.name : ''"></span>
+                </label>
+              </details>
+
+              <button class="toggle-btn architect-primary" type="button"
+                      data-testid="architect-start"
+                      :disabled="!canStart()" @click="startConversation()"
+                      x-text="busy ? 'Starting…' : 'Talk it through'">Talk it through</button>
+            </section>
+
+            <!-- Conversation: learner messages stay plain text; only assistant
+                 messages enter the shared no-egress Markdown renderer. -->
+            <section class="architect-conversation" data-testid="architect-conversation"
+                     x-show="phase === 'conversation'" aria-label="Architect conversation">
+              <div class="architect-transcript" role="log" aria-live="polite">
+                <template x-for="(message, index) in messages"
+                          :key="message.role + '-' + message.sequence + '-' + index">
+                  <article class="architect-message" :class="'architect-message-' + message.role">
+                    <span class="architect-message-role"
+                          x-text="message.role === 'learner' ? 'You' : 'Architect'"></span>
+                    <pre x-show="message.role === 'learner'" x-text="message.content"></pre>
+                    <div class="acp-message-final" x-show="message.role === 'assistant'"
+                         x-html="renderMessage(message)"></div>
+                  </article>
+                </template>
+              </div>
+              <form class="architect-composer" @submit.prevent="sendTurn()">
+                <label class="plan-field">
+                  <span class="plan-field-label">Your reply</span>
+                  <textarea rows="4" x-model="turnText"
+                            data-testid="architect-turn"
+                            placeholder="Answer in your own words, or say what feels wrong about the direction."></textarea>
+                </label>
+                <div class="architect-composer-actions">
+                  <button class="toggle-btn" type="submit" :disabled="!canSendTurn()"
+                          data-testid="architect-send">Send</button>
+                  <button class="link-btn" type="button" x-show="latestTurn?.status === 'interrupted'"
+                          @click="retryTurn()">Retry interrupted turn</button>
+                  <button class="link-btn" type="button" x-show="['scheduled', 'active', 'attempt_active'].includes(latestTurn?.status)"
+                          @click="stopTurn()">Stop</button>
+                </div>
+              </form>
+            </section>
+
+            <!-- Proposal: exact preview and exact learner-only decisions. -->
+            <section class="architect-proposal" data-testid="architect-proposal"
+                     x-show="phase === 'proposal' || phase === 'applying'"
+                     aria-live="assertive">
+              <h3 tabindex="-1" x-ref="proposalHeading"
+                  x-text="proposal?.title || 'Architect proposal'"></h3>
+              <p class="architect-proposal-digest">
+                Proposal <code x-text="proposal?.proposal_digest || ''"></code>
               </p>
 
-              <label class="plan-field">
-                <span class="plan-field-label">Title</span>
-                <input type="text" data-testid="plan-field-title" x-model="form.title"
-                       autocomplete="off" spellcheck="false"
-                       placeholder="Ship a Glue ETL job">
-              </label>
+              <article class="plan-document acp-message-final architect-proposal-document"
+                       data-testid="architect-proposal-markdown"
+                       x-ref="proposalDocument" x-html="renderProposal()"></article>
 
-              <label class="plan-field">
-                <span class="plan-field-label">Why — what changes once you can do this?</span>
-                <textarea rows="2" data-testid="plan-field-why" x-model="form.why"
-                          placeholder="Own the nightly customer-events pipeline without pairing."></textarea>
-              </label>
+              <details class="architect-diagram-text" data-testid="architect-mermaid-text"
+                       x-show="diagramSources().length">
+                <summary>Text version of diagrams</summary>
+                <template x-for="(source, index) in diagramSources()" :key="index">
+                  <pre x-text="source"></pre>
+                </template>
+              </details>
 
-              <label class="plan-field">
-                <span class="plan-field-label">Success looks like <small>(one per line)</small></span>
-                <textarea rows="3" data-testid="plan-field-success" x-model="form.success"
-                          placeholder="Deploy a Glue job unaided&#10;Explain the job bookmark to a colleague"></textarea>
-              </label>
+              <section class="architect-review-list" x-show="(proposal?.unknowns || []).length">
+                <h4>Still uncertain</h4>
+                <ul><template x-for="item in (proposal?.unknowns || [])"><li x-text="item.question || item"></li></template></ul>
+              </section>
 
-              <label class="plan-field">
-                <span class="plan-field-label">Topics <small>(one per line)</small></span>
-                <textarea rows="2" data-testid="plan-field-topics" x-model="form.topics"
-                          placeholder="data-engineering&#10;python"></textarea>
-              </label>
+              <section class="architect-review-list" x-show="(proposal?.evidence_dispositions || []).length">
+                <h4>How supplied material was used</h4>
+                <ul>
+                  <template x-for="(item, index) in (proposal?.evidence_dispositions || [])" :key="index">
+                    <li><code x-text="item.source || item.evidence_id || 'context'"></code> — <span x-text="item.disposition || 'unresolved'"></span></li>
+                  </template>
+                </ul>
+              </section>
 
-              <label class="plan-field">
-                <span class="plan-field-label">
-                  Milestones
-                  <small>(one per line — add <code>(concepts: a, b)</code> to link evidence)</small>
-                </span>
-                <textarea rows="4" data-testid="plan-field-milestones" x-model="form.milestones"
-                          placeholder="Understand Glue job anatomy (concepts: glue job, job bookmark)"></textarea>
-              </label>
+              <details class="architect-structure-diff">
+                <summary>Exact proposed structure</summary>
+                <pre x-text="JSON.stringify(proposal?.plan || {}, null, 2)"></pre>
+              </details>
+
+              <div class="architect-decision-bar" role="group" aria-label="Proposal decision">
+                <button class="toggle-btn architect-approve" type="button"
+                        data-testid="architect-approve" :disabled="busy"
+                        @click="decide('approve')">Approve this exact proposal</button>
+                <button class="link-btn" type="button" data-testid="architect-revise"
+                        :disabled="busy" @click="reviseProposal()">Revise</button>
+                <button class="link-btn danger-btn" type="button" data-testid="architect-reject"
+                        :disabled="busy" @click="decide('reject')">Reject</button>
+              </div>
+            </section>
+
+            <section class="architect-rejected" x-show="phase === 'rejected'" role="status">
+              <h3>Proposal rejected</h3>
+              <p>No plan was changed. The conversation remains in local recovery state.</p>
+              <button class="link-btn" type="button" @click="reset()">Back to plans</button>
+            </section>
+
+            <div class="plans-empty-state"
+                 x-show="$store.plans.isEmpty &amp;&amp; phase === 'idle' &amp;&amp; !$store.plans.selected">
+              <p class="plans-empty-state-title">No study plans yet</p>
+              <p class="plans-empty-state-body">
+                Describe the messy situation in your own words. The Architect will
+                help find a coherent path without asking you to design the plan first.
+              </p>
             </div>
-
-            <div class="plans-toolbar">
-              <button class="toggle-btn" type="button" data-testid="plan-create-submit"
-                      :disabled="saving" @click="submitPlan()"
-                      x-text="saving ? 'Creating…' : 'Create plan'">Create plan</button>
-            </div>
-          </section>
-
-          <!-- The content column's own first-run state. The sidebar carries the
-               required sidebar-plans-empty; this stops the main column being a
-               blank rectangle on the very first screen a new learner sees. No
-               testid: the spec's list is closed. -->
-          <div class="plans-empty-state" x-show="isEmpty && !creating && !selected">
-            <p class="plans-empty-state-title">No study plans yet</p>
-            <p class="plans-empty-state-body">
-              A plan is one thing you are trying to become able to do, broken into
-              milestones you can tick off. Start with <strong>New plan</strong> and
-              describe the situation in your own words — you do not have to know the
-              steps yet, that is what the plan is for.
-            </p>
-          </div>
 
           <!-- ---------------- Reader ---------------- -->
-          <!-- startCreate() clears `selected`, so this cannot show a stale plan
-               behind the open create form. -->
-          <section class="plan-detail" data-testid="plan-detail" x-show="selected">
+          <div x-data="plansPanel()">
+          <section class="plan-detail" data-testid="plan-detail"
+                   x-show="selected &amp;&amp; ['idle', 'detail'].includes(phase)">
             <header class="plan-detail-header">
               <h3 class="plan-detail-title" data-testid="plan-detail-title"
                   x-text="selected?.title || ''"></h3>
@@ -2779,6 +2846,8 @@
             </header>
 
             <div class="plans-toolbar">
+              <button class="link-btn" type="button" data-testid="architect-review-plan"
+                      @click="beginRevise(selected?.plan_id)">Review with Architect</button>
               <span class="plan-toolbar-label">Checkpoint</span>
               <button class="toggle-btn" type="button" data-testid="plan-eval-start"
                       @click="evaluate('start')">Start</button>
@@ -2857,6 +2926,8 @@
             <article class="plan-document acp-message-final" data-testid="plan-markdown"
                      x-html="markdownHtml"></article>
           </section>
+          </div>
+          </div>
         </div>
       </div>
 

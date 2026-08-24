@@ -1153,6 +1153,15 @@ export function plansPanel() {
         await this.$nextTick();
         await this.$nextTick();
       }
+      if (typeof _renderMermaidPlaceholders !== 'function') return;
+      const root = this.$root || (typeof document !== 'undefined' ? document : null);
+      if (!root) return;
+      const reader = root.querySelector?.('[data-testid="plan-markdown"]');
+      const visible = reader?.getClientRects?.().length > 0;
+      const bounds = visible ? reader.getBoundingClientRect?.() : null;
+      /* Do not consume data-src while x-show still hides the reader. The
+         Architect approval path schedules a fresh pass after phase=detail. */
+      if (!visible || Number(bounds?.width) <= 0 || Number(bounds?.height) <= 0) return;
       if (typeof _mermaidInitForPalette === 'function') {
         try {
           _mermaidInitForPalette();
@@ -1160,11 +1169,8 @@ export function plansPanel() {
           /* palette init is cosmetic; a failure must not stop the render */
         }
       }
-      if (typeof _renderMermaidPlaceholders !== 'function') return;
-      const root = this.$root || (typeof document !== 'undefined' ? document : null);
-      if (!root) return;
       try {
-        await _renderMermaidPlaceholders(root);
+        await _renderMermaidPlaceholders(reader);
       } catch (err) {
         console.warn('[plansPanel] mermaid pass failed:', err);
       }

@@ -28,6 +28,7 @@ import {
   splitLines,
   stripFrontmatter,
 } from '../../src/studyloop/web/static/js/components/plans-panel.js';
+import { readFileSync } from 'node:fs';
 
 /* ---------------------------------------------------------------- *
  * The exact strings the e2e journey types into the wizard. Pinning
@@ -248,6 +249,20 @@ test('formatProgress: missing or junk counts degrade to 0/0 · 0%', () => {
  * ================================================================ */
 
 const realFetch = globalThis.fetch;
+
+test('Mermaid pass leaves placeholders untouched until the reader has visible geometry', () => {
+  const source = readFileSync(
+    new URL('../../src/studyloop/web/static/js/components/plans-panel.js', import.meta.url),
+    'utf8'
+  );
+  const method = source.slice(source.indexOf('async renderDiagrams()'), source.indexOf('\n    },', source.indexOf('async renderDiagrams()')));
+  assert.match(method, /plan-markdown/);
+  assert.match(method, /getClientRects/);
+  assert.match(method, /getBoundingClientRect/);
+  assert.ok(
+    method.indexOf('getClientRects') < method.indexOf('await _renderMermaidPlaceholders(reader)')
+  );
+});
 
 const json = (status, body) =>
   new Response(JSON.stringify(body), {

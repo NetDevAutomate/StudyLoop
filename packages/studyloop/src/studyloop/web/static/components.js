@@ -51,25 +51,16 @@ function renderMarkdown(text) {
   }
 
   /* DOMPurify — defence-in-depth on top of marked's own escaping. */
-  const sanitised = window.DOMPurify.sanitize(html, {
-    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
-    ALLOW_DATA_ATTR: false,
-  });
+  const policy = window.StudyLoopRichTextPolicy;
+  if (!policy) return _escapeHtml(text);
+  const sanitised = window.DOMPurify.sanitize(
+    html,
+    window.StudyLoopRichTextPolicy.domPurifyOptions
+  );
 
   const tmp = document.createElement('div');
   tmp.innerHTML = sanitised;
-
-  /* Harden anchors: new tab + strip javascript: hrefs. */
-  tmp.querySelectorAll('a').forEach((a) => {
-    const href = a.getAttribute('href') || '';
-    if (/^javascript:/i.test(href)) {
-      a.removeAttribute('href');
-    } else if (href) {
-      a.setAttribute('target', '_blank');
-      a.setAttribute('rel', 'noopener noreferrer');
-    }
-  });
+  window.StudyLoopRichTextPolicy.hardenRichTextTree(tmp);
 
   /* Intercept mermaid blocks BEFORE hljs so hljs doesn't corrupt the source.
      marked emits: <pre><code class="language-mermaid">…RAW DIAGRAM…</code></pre>
@@ -93,6 +84,22 @@ function renderMarkdown(text) {
   }
 
   return tmp.innerHTML;
+}
+
+/** Sanitize generated Mermaid SVG through the same no-egress policy. */
+function _sanitizeMermaidSvg(svg) {
+  const policy = window.StudyLoopRichTextPolicy;
+  if (!policy) throw new Error('rich-text policy is unavailable');
+  const sanitised = window.DOMPurify.sanitize(
+    svg,
+    window.StudyLoopRichTextPolicy.mermaidDomPurifyOptions
+  );
+  const tmp = document.createElement('div');
+  tmp.innerHTML = sanitised;
+  window.StudyLoopRichTextPolicy.hardenRichTextTree(tmp, { allowSvgStyle: true });
+  const output = tmp.innerHTML;
+  if (!output.includes('<svg')) throw new Error('Mermaid produced no safe SVG');
+  return output;
 }
 
 /**
@@ -214,7 +221,7 @@ async function _renderMermaidPlaceholders(rootEl) {
     delete el.dataset.src;
     const id = 'mermaid-render-' + Date.now() + '-' + (counter++);
     try {
-      el.innerHTML = await _renderMermaidScoped(id, src, el);
+      el.innerHTML = _sanitizeMermaidSvg(await _renderMermaidScoped(id, src, el));
     } catch (err) {
       console.warn('[CourseExplorer] mermaid.render failed:', err);
       /* Fallback: show the raw diagram source in a <pre> block. */
