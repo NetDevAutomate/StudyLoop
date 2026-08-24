@@ -321,7 +321,7 @@ graph LR
         META["Topic + Energy + Timer"]
         FEED["Live Activity Feed<br/>(SSE streaming)"]
         COUNTERS["WINS / PARKED / REVIEW"]
-        TERM["Agent Console<br/>(xterm.js over WebSocket,<br/>or ACP chat)"]
+        TERM["Agent Console<br/>(xterm.js over WebSocket;<br/>ACP only with --dev)"]
     end
 
     subgraph "Data Sources"
@@ -344,10 +344,15 @@ graph LR
 
 **Counter Bar** — WINS, PARKED, and REVIEW counts updated live.
 
-**Agent Console** — where you talk to the agent. `liveAgentConsole()` renders one of two surfaces, chosen by the session's transport:
+**Agent Console** — where you talk to the agent. In normal release mode,
+`liveAgentConsole()` renders one learner-facing surface:
 
 - **`pty`** → **xterm.js**, fed by StudyLoop's own FastAPI WebSocket. This is the default terminal path and it survives a page refresh: the console reads `GET /api/session/state` on init and re-adopts a live session it owns, so the same agent process answers a freshly typed line with no action from you.
-- **`acp`** → the [ACP chat surface](#acp-chat-mode-kiro-gemini). Structured markdown rather than a terminal, and the preferred experience where the agent supports it.
+
+Starting `studyloop web --dev` additionally enables the experimental
+**`acp`** transport and [ACP chat surface](#experimental-acp-chat-mode-kiro-gemini).
+Release-mode API requests for ACP are rejected; hiding the picker is not the
+security or product boundary.
 
 Anything else renders an explicit **unavailable** state naming what happened and what to do. There is no iframe fallback — see [Browser terminal surfaces](#browser-terminal-surfaces).
 
@@ -419,24 +424,28 @@ Example target event:
 
 | Transport | Role | Use when |
 |---|---|---|
-| ACP | Preferred structured session transport | Agent supports Agent Client Protocol |
-| PTY | Default terminal transport | Agent only has an interactive terminal UI |
+| PTY | Public v1 terminal transport | Any supported interactive code harness |
+| ACP | Experimental structured transport | `studyloop web --dev` and the agent supports Agent Client Protocol |
 | Headless CLI | Background jobs only | One-shot summaries, generation, checks |
 | ttyd | Server transport only — **no browser renderer** | Maintainer opt-in via `STUDYLOOP_TRANSPORT=ttyd`; not offered in the UI |
 
-The learner-facing transport picker offers **`pty`** and **`acp`** only. That is deliberately narrower than the API, which still accepts `ttyd` — see [ADR-0005](adr/0005-retire-ttyd-browser-surface.md).
+The current release picker offers **`pty` only**. `studyloop web --dev` adds
+experimental **`acp`** for capable agents. The API still accepts maintainer-only
+`ttyd`, but rejects ACP in release mode — see
+[ADR-0006](adr/0006-gate-acp-behind-dev-mode.md).
 
 ---
 
 ## Browser terminal surfaces
 
-The dashboard has **two** browser surfaces for talking to the agent, plus an honest error state. There is no iframe and no third fallback.
+The dashboard ships **one release surface** for talking to the agent, plus a
+dev-only ACP surface and an honest error state. There is no iframe fallback.
 
-| Surface | Transport | How it renders |
-|---|---|---|
-| **xterm.js** | `pty` | The agent's PTY streamed over StudyLoop's own FastAPI WebSocket |
-| **ACP chat** | `acp` | Structured ACP events as markdown — see [ACP Chat Mode](#acp-chat-mode-kiro-gemini) |
-| **unavailable** | anything else | An explicit message naming what happened and what to do |
+| Surface | Availability | Transport | How it renders |
+|---|---|---|---|
+| **xterm.js** | Release | `pty` | The agent's PTY streamed over StudyLoop's own FastAPI WebSocket |
+| **ACP chat** | `studyloop web --dev` only | `acp` | Structured ACP events as markdown |
+| **unavailable** | Release | anything else | An explicit message naming what happened and what to do |
 
 `terminalMode` is `'xterm' | 'acp-chat' | 'unavailable' | null`.
 
@@ -470,9 +479,12 @@ guessable if copied.
 
 ---
 
-## ACP Chat Mode (Kiro / Gemini)
+## Experimental ACP Chat Mode (Kiro / Gemini)
 
-When you start a session with **ACP** as the transport (Kiro or Gemini today), the dashboard renders a structured chat surface instead of a terminal. This is the preferred experience — markdown, syntax-highlighted code, proper headings, and no escape-sequence quirks.
+ACP is retained for development and dogfood; it is **not part of the v1 public
+contract**. Start `studyloop web --dev`, then choose ACP for a capable agent.
+The dashboard renders structured markdown instead of a terminal. Normal
+`studyloop web` neither shows the option nor accepts a direct ACP start request.
 
 ```mermaid
 sequenceDiagram
@@ -510,7 +522,7 @@ If the agent needs to do something that requires permission (e.g. write outside 
 
 ### Live regression test
 
-A real-browser test (`packages/studyloop/tests/test_web_acp_dogfood_kiro.py`, marked `@pytest.mark.live_kiro`) drives a real `kiro-cli acp` session via Playwright, asks "When should I use a SUM function in a SQL statement?", and asserts:
+A real-browser test (`packages/studyloop/tests/test_web_acp_dogfood_kiro.py`, marked `@pytest.mark.live_kiro`) drives a real `kiro-cli acp --agent study-mentor` session through `studyloop web --dev`, asks "When should I use a SUM function in a SQL statement?", and asserts:
 
 - The response is rendered as proper markdown HTML (no raw `##` or `**`).
 - The persona text was actually transmitted on the wire.
@@ -711,19 +723,24 @@ The web UI is a Progressive Web App. To install:
 
 ## Developer Experiment Flags
 
-### `--dev` — ghostty-web terminal renderer
+### `--dev` — experimental web features
 
 ```bash
 studyloop web --dev
 ```
 
-Swaps the xterm.js terminal renderer (used in all study-session and ACP terminal panels) for [ghostty-web](https://github.com/coder/ghostty-web) — Ghostty's VT100 parser compiled to WASM, wrapped in a canvas renderer (MIT, maintained by Coder).
+Enables the experimental ACP picker/API path and swaps the xterm.js PTY
+renderer for [ghostty-web](https://github.com/coder/ghostty-web) — Ghostty's
+VT100 parser compiled to WASM, wrapped in a canvas renderer (MIT, maintained by
+Coder). These are separate transport and renderer concerns behind one explicit
+maintainer flag.
 
 !!! note "wterm is gone"
     A previous version of this flag loaded [wterm](https://github.com/vercel-labs/wterm) (`wterm-0.3.0.js` + a `WTermAdapter` shim). **wterm has been removed** — no `wterm*` file remains in the tree, and `--dev-renderer` now accepts only `ghostty`. The evaluation that led to the swap is at `docs/explorations/ghostty-web-evaluation.md`; the original wterm write-up is kept at `docs/explorations/wterm-evaluation.md` for history.
 
 **What changes in dev mode:**
 
+- ACP appears for capable agents and the server accepts `transport: "acp"`.
 - The server injects `<meta name="studyloop-dev-mode" content="ghostty">` into the HTML. Every vendored adapter checks this marker before patching `window.Terminal` and stays dormant when it does not match, which is why several adapters can ship side by side.
 - The engine's assets are appended inside `<head>`: `ghostty-0.4.0.css`, `ghostty-web-0.4.0.js`, `ghostty-adapter-0.4.0.js`.
 - The adapter patches `window.Terminal` — the rest of the JavaScript is unchanged.
@@ -761,7 +778,7 @@ studyloop web
 # Start a study session with web dashboard
 studyloop study "topic" --web
 
-# LAN access (tablet/phone)
+# LAN access (tablet or laptop; phones are not supported)
 studyloop study "topic" --web --lan
 
 # Check what's due for review

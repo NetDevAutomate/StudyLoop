@@ -37,7 +37,7 @@ studyloop doctor --fix       # Verify and apply safe fixes
 
 # Core workflow — live Socratic study (tmux + agent, or web Study Session tab)
 studyloop study "Python decorators" --energy 6
-# studyloop web              # Alternative: browser picker + ACP chat
+# studyloop web              # Alternative: browser picker + PTY/xterm.js terminal
 
 # Supporting workflows
 studyloop now                # One recommended study action for your energy/time
@@ -229,7 +229,7 @@ Launch with `studyloop web`. Reachable from any tablet or laptop on the network.
 - Timer with energy-adaptive colour phases (green/amber/red)
 - Topic counters (wins, parked, review)
 - Session summary on completion
-- **Terminal panel** — the live agent renders as xterm.js driving a PTY over a WebSocket (transport `pty`), or as an ACP chat surface (transport `acp`). Those are the only two transports the UI offers; no external terminal binary is involved. See [ADR-0005](docs/adr/0005-retire-ttyd-browser-surface.md).
+- **Terminal panel** — the release path renders every supported agent in xterm.js, driving a PTY over a WebSocket (`transport: "pty"`). Experimental ACP chat is available only when the maintainer starts `studyloop web --dev`; release-mode API requests for ACP are rejected. No external terminal binary is involved. See [ADR-0006](docs/adr/0006-gate-acp-behind-dev-mode.md).
 - HTMX + Alpine.js — no build step
 
 > **Practice tasks and topic exercises are CLI-only for now.** Feature 2 above

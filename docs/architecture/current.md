@@ -1,8 +1,8 @@
 # Current Architecture
 
-> Last updated: 2026-08-23. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, server-side Kokoro TTS (replacing the removed in-browser neural engine), Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, and the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving).
+> Last updated: 2026-08-24. Release mode exposes PTY/xterm.js only; the implemented ACP chat path is experimental and requires `studyloop web --dev`.
 
-This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
+This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom. ACP components are documented because they exist, but they are not part of the v1 public contract.
 
 For the planned direction, see [Target Architecture](target.md).
 
@@ -23,8 +23,8 @@ flowchart TB
     end
 
     subgraph "AI agent CLIs (separate processes)"
-      Kiro["Kiro CLI<br/>(supports ACP)"]
-      Gemini["Gemini CLI<br/>(supports ACP)"]
+      Kiro["Kiro CLI<br/>(PTY; experimental ACP)"]
+      Gemini["Gemini CLI<br/>(PTY; experimental ACP)"]
       Claude["Claude Code<br/>(PTY only)"]
       Codex["Codex CLI<br/>(PTY only)"]
       OpenCode["OpenCode<br/>(PTY only)"]
@@ -44,8 +44,8 @@ flowchart TB
     end
 
     Learner -->|"studyloop study<br/>or browser"| StudyLoop
-    StudyLoop -->|"ACP / JSON-RPC<br/>over stdio"| Kiro
-    StudyLoop -->|"ACP / JSON-RPC<br/>over stdio"| Gemini
+    StudyLoop -.->|"--dev only:<br/>ACP / JSON-RPC"| Kiro
+    StudyLoop -.->|"--dev only:<br/>ACP / JSON-RPC"| Gemini
     StudyLoop -->|"PTY / raw bytes"| Claude
     StudyLoop -->|"PTY / raw bytes"| Codex
     StudyLoop -->|"PTY / raw bytes"| OpenCode
@@ -85,7 +85,7 @@ flowchart TB
     Learner["Learner"]
 
     subgraph "Browser"
-      PWA["PWA<br/>(Alpine + HTMX)<br/>──────────<br/>Picker, dashboard,<br/>chat surface,<br/>flashcard / quiz review."]
+      PWA["PWA<br/>(Alpine + HTMX)<br/>──────────<br/>PTY picker + dashboard;<br/>dev-only ACP chat;<br/>flashcard / quiz review."]
     end
 
     subgraph "studyloop web (Python / FastAPI / uvicorn)"
@@ -94,7 +94,7 @@ flowchart TB
       Runtime["SessionRuntime<br/>──────────<br/>Active-session singleton.<br/>Owns the transport.<br/>Forwards events to WS."]
       ACP["ACPTransport<br/>──────────<br/>JSON-RPC over stdio.<br/>session/new,<br/>session/prompt,<br/>session/update,<br/>session/request_permission."]
       PTY["PTYTransport<br/>──────────<br/>Raw bytes,<br/>WINSZ ioctl,<br/>SIGCHLD-driven exit."]
-      Agent["Agent subprocess<br/>──────────<br/>kiro-cli acp /<br/>gemini --acp /<br/>claude / codex / opencode"]
+      Agent["Agent subprocess<br/>──────────<br/>kiro-cli acp --agent study-mentor /<br/>gemini --acp /<br/>claude / codex / opencode"]
     end
 
     subgraph "Local stores"
@@ -146,7 +146,7 @@ flowchart TB
 **Key invariants today**:
 
 - **One active session at a time.** `SessionRuntime` is a singleton acquired under `asyncio.Lock`. `/api/session/start` returns 409 if a session is already live.
-- **Transport selection is explicit per session.** Body field `transport: "pty" | "ttyd" | "acp"`. The env var `STUDYLOOP_TRANSPORT` can force `pty`/`ttyd` as an operator kill-switch (ACP is body-only).
+- **The v1 browser transport is PTY.** The normal picker exposes only `pty`, and release-mode `POST /api/session/start` rejects `acp` with HTTP 403. `studyloop web --dev` enables the experimental ACP picker/API path. `ttyd` remains an operator-only server transport.
 - **Persona text never reaches the wire on the PTY path** — it's written to a temp file, the agent's launch command embeds the path, and the agent reads it at startup.
 - **Persona text DOES travel on the wire on the ACP path** — added 2026-05-28 in commit `bfe9210`. `/api/session/start` returns `persona_text` inline in the JSON body; the browser ships it as the first invisible `session/prompt` after WS open. Hidden client-side: not pushed to `acpMessages`.
 - **The PWA owns chat-surface state.** The server never sends server-rendered HTML for chat bubbles — only raw ACP events. Markdown rendering, sanitisation, syntax highlighting, theme palette: all in the browser.
@@ -302,7 +302,7 @@ flowchart LR
 
 ---
 
-## C4 Level 3 — Component (zoomed into the ACP chat surface)
+## C4 Level 3 — Component (experimental ACP chat surface)
 
 This is the part of the system that the dogfood hotfix touched. It has two halves — the server-side dispatcher and the browser-side Alpine component — connected by the WebSocket frame contract.
 
@@ -324,7 +324,7 @@ flowchart TB
       Route["/api/session/ws<br/>──────────<br/>Origin gate, study_session_id<br/>match, then bidirectional<br/>asyncio.TaskGroup pump."]
       Transport["ACPTransport<br/>(packages/.../session/transports/acp.py)"]
       DispatchFrame["_dispatch_frame<br/>──────────<br/>Translates JSON-RPC frames<br/>from agent stdout into<br/>AgentMessage events."]
-      AgentProc["kiro-cli acp / gemini --acp<br/>(subprocess, JSON-RPC over stdio)"]
+      AgentProc["kiro-cli acp --agent study-mentor / gemini --acp<br/>(subprocess, JSON-RPC over stdio)"]
     end
 
     Picker --> Mount --> OpenWS
@@ -350,9 +350,9 @@ sequenceDiagram
     participant API as FastAPI
     participant Runtime as SessionRuntime
     participant ACP as ACPTransport
-    participant Agent as kiro-cli acp
+    participant Agent as kiro-cli acp --agent study-mentor
 
-    User->>PWA: pick topic + agent + ACP transport
+    User->>PWA: start studyloop web --dev<br/>pick topic + agent + ACP transport
     PWA->>API: POST /api/session/start
     API->>API: build_canonical_persona(topic, energy)
     API-->>PWA: 201 {ws_url, persona_text, persona_hash, …}

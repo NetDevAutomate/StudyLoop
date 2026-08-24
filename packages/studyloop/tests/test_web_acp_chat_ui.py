@@ -115,7 +115,15 @@ def _start_web_server_with_stub(
     if prompt_updates is not None:
         env["STUB_ACP_PROMPT_UPDATES"] = json.dumps(prompt_updates)
 
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
+    cmd = [
+        sys.executable,
+        "-m",
+        "studyloop.cli",
+        "web",
+        "--port",
+        str(WEB_PORT),
+        "--dev",
+    ]
     proc = subprocess.Popen(
         cmd,
         env=env,
@@ -1934,7 +1942,15 @@ def _start_web_server_with_permission_stub() -> subprocess.Popen:
         "STUB_ACP_PROMPT_STOP_REASON": "end_turn",
         "STUB_ACP_EMIT_PERMISSION_REQUEST": "1",
     }
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
+    cmd = [
+        sys.executable,
+        "-m",
+        "studyloop.cli",
+        "web",
+        "--port",
+        str(WEB_PORT),
+        "--dev",
+    ]
     proc = subprocess.Popen(
         cmd,
         env=env,

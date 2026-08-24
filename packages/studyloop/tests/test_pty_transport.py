@@ -102,7 +102,12 @@ async def transport(resolve_cat, build_cat_cmd):
 class TestBuildChildEnv:
     def test_passes_through_plain_keys(self) -> None:
         clean = _build_child_env({"PATH": "/usr/bin", "HOME": "/Users/x"})
-        assert clean == {"PATH": "/usr/bin", "HOME": "/Users/x"}
+        assert clean == {
+            "PATH": "/usr/bin",
+            "HOME": "/Users/x",
+            "TERM": "xterm-256color",
+            "COLORTERM": "truecolor",
+        }
 
     def test_strips_password_keys_case_insensitively(self) -> None:
         clean = _build_child_env(
@@ -135,6 +140,28 @@ class TestBuildChildEnv:
         fuzz-injection entrypoint for the test harness. Plan blocker B3."""
         clean = _build_child_env({"STUDYLOOP_TEST_AGENT_CMD": "/tmp/evil.sh", "PATH": "/usr/bin"})
         assert "STUDYLOOP_TEST_AGENT_CMD" not in clean
+
+    def test_strips_parent_codex_control_plane(self) -> None:
+        """A nested Codex TUI must not inherit the hosting Codex task identity."""
+        clean = _build_child_env(
+            {
+                "CODEX_SESSION_ID": "parent-session",
+                "CODEX_THREAD_ID": "parent-thread",
+                "CODEX_PERMISSION_PROFILE": "disabled",
+                "CODEX_CI": "1",
+                "PATH": "/usr/bin",
+            }
+        )
+        assert clean == {
+            "PATH": "/usr/bin",
+            "TERM": "xterm-256color",
+            "COLORTERM": "truecolor",
+        }
+
+    def test_advertises_the_browser_terminal_not_the_parent_terminal(self) -> None:
+        clean = _build_child_env({"TERM": "dumb", "COLORTERM": ""})
+        assert clean["TERM"] == "xterm-256color"
+        assert clean["COLORTERM"] == "truecolor"
 
     def test_deny_list_membership_stable(self) -> None:
         """If someone adds a new env var to STUDYLOOP_*, the allowlist should

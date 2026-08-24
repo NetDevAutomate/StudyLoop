@@ -34,4 +34,5 @@ the code and ask "why on earth is it done this way?" — it gets an ADR, and
 | [0002](0002-origin-scoped-live-agent-console.md) | Origin-scoped addressing for `liveAgentConsole()` | Proposed | `body-double-own-agent-picker` |
 | [0003](0003-body-double-exempt-from-park-first-friction.md) | Body Double is exempt from park-first friction | Proposed | `body-double-own-agent-picker` |
 | [0004](0004-retire-terminal-panel-from-body-double.md) | Unmount `terminalPanel()` without deleting it | Proposed | `body-double-own-agent-picker` |
-| [0005](0005-retire-ttyd-browser-surface.md) | Retire the ttyd browser surface, keep the server transport | Accepted | `live-agent-console.js`, `index.html` |
+| [0005](0005-retire-ttyd-browser-surface.md) | Retire the ttyd browser surface, keep the server transport | Superseded by ADR-0006 | `live-agent-console.js`, `index.html` |
+| [0006](0006-gate-acp-behind-dev-mode.md) | Make PTY the v1 browser transport; gate ACP behind `--dev` | Accepted | `session` routes, web picker, release gates |

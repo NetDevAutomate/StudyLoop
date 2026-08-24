@@ -1,6 +1,6 @@
 # ADR-0005 — Retire the ttyd browser surface, keep the server transport
 
-Status: **Accepted** (2026-08-22)
+Status: **Superseded by ADR-0006** (2026-08-24)
 
 Supersedes the part of [ADR-0004](./0004-retire-terminal-panel-from-body-double.md)
 that names `_mountLegacyIframe()` as the single surviving ttyd code path.

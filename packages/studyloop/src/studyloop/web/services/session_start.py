@@ -12,7 +12,8 @@ TransportName = Literal["pty", "acp", "ttyd"]
 
 # Agents that speak the Agent Client Protocol. Single source of truth shared by
 # the session-start ACP guard and the options endpoint (_options.py). Claude
-# Code and Codex are PTY-only; only these three have an ACP transport.
+# Code and Codex are PTY-only; only these three have an experimental ACP
+# transport, exposed by the web server only under --dev.
 ACP_CAPABLE_AGENTS: frozenset[str] = frozenset({"kiro", "gemini", "grok"})
 
 

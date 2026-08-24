@@ -441,7 +441,9 @@ class TestTransportPickerNamesTheRealRenderer:
         """``#bd-transport-select`` was actuated by no test anywhere. The values
         are what POST /api/session/start reads, so they are pinned."""
         values = bd_page.eval_on_selector_all(
-            "#bd-transport-select option", "(opts) => opts.map((o) => o.value)"
+            "#bd-transport-select option",
+            "(opts) => opts.filter((o) => getComputedStyle(o).display !== 'none')"
+            ".map((o) => o.value)",
         )
         # The UI surface is now deliberately NARROWER than the API surface: the
         # server still honours transport="ttyd" (STUDYLOOP_TRANSPORT=ttyd, one
@@ -449,17 +451,8 @@ class TestTransportPickerNamesTheRealRenderer:
         # ttyd iframe needs a separately-installed binary and renders an empty
         # frame without it - indistinguishable from a hang. Offering a option
         # that usually looks broken is worse than not offering it.
-        assert values == ["pty", "acp"], values
+        assert values == ["pty"], values
         assert bd_page.eval_on_selector("#bd-transport-select", "(el) => el.value") == "pty"
-
-    def test_selecting_a_transport_swaps_the_hint(self, bd_page: Page) -> None:
-        # Drives acp rather than the retired ttyd option; what is under test is
-        # that CHANGING transport swaps the hint, not which value does it.
-        bd_page.select_option("#bd-transport-select", value="acp")
-        bd_page.wait_for_selector("#bd-transport-hint-pty", state="hidden", timeout=5_000)
-        assert bd_page.eval_on_selector("#bd-transport-select", "(el) => el.value") == "acp"
-        bd_page.select_option("#bd-transport-select", value="pty")
-        bd_page.wait_for_selector("#bd-transport-hint-pty", state="visible", timeout=5_000)
 
     def test_stock_build_names_xterm_and_shows_no_experiment_badge(self, bd_page: Page) -> None:
         label = bd_page.eval_on_selector(
@@ -528,9 +521,9 @@ class TestDevEngineIsVisible:
 
     So under ``--dev`` the ``pty`` transport renders through libghostty while
     the option read "Browser terminal (xterm.js)" and nothing anywhere said an
-    experimental engine was live. ``--dev`` and ``--lan`` do not change the
-    transport list, and should not: the list is how the agent PROCESS is driven,
-    which is a different axis entirely.
+    experimental engine was live. The renderer and transport remain separate
+    axes, but ``--dev`` is also the explicit product gate that adds experimental
+    ACP to the otherwise PTY-only picker.
     """
 
     @pytest.fixture()
@@ -571,10 +564,12 @@ class TestDevEngineIsVisible:
         assert "libghostty" in hint
         assert "experimental" in hint.lower()
 
-    def test_the_transport_values_are_unchanged_by_dev_mode(self, dev_page: Page) -> None:
-        """--dev swaps the RENDERER. It must not touch the transport contract."""
+    def test_dev_mode_exposes_the_experimental_acp_transport(self, dev_page: Page) -> None:
+        """The public picker is PTY-only; --dev deliberately adds ACP."""
         values = dev_page.eval_on_selector_all(
-            "#bd-transport-select option", "(opts) => opts.map((o) => o.value)"
+            "#bd-transport-select option",
+            "(opts) => opts.filter((o) => getComputedStyle(o).display !== 'none')"
+            ".map((o) => o.value)",
         )
         # The UI surface is now deliberately NARROWER than the API surface: the
         # server still honours transport="ttyd" (STUDYLOOP_TRANSPORT=ttyd, one
@@ -583,6 +578,13 @@ class TestDevEngineIsVisible:
         # frame without it - indistinguishable from a hang. Offering a option
         # that usually looks broken is worse than not offering it.
         assert values == ["pty", "acp"], values
+
+    def test_dev_mode_can_select_acp_and_swap_the_hint(self, dev_page: Page) -> None:
+        dev_page.select_option("#bd-transport-select", value="acp")
+        dev_page.wait_for_selector("#bd-transport-hint-pty", state="hidden", timeout=5_000)
+        assert dev_page.eval_on_selector("#bd-transport-select", "(el) => el.value") == "acp"
+        dev_page.select_option("#bd-transport-select", value="pty")
+        dev_page.wait_for_selector("#bd-transport-hint-pty", state="visible", timeout=5_000)
 
     def test_a_badge_announces_the_experiment_and_lists_its_gaps(self, dev_page: Page) -> None:
         badge = dev_page.locator("#dev-engine-badge")

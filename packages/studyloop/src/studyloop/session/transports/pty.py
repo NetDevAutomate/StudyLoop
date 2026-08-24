@@ -65,7 +65,18 @@ _QUEUE_MAX = 256
 # Child env keys we never pass through. Covers the test escape hatch
 # (STUDYLOOP_TEST_AGENT_CMD) + studyloop config loader env + anything
 # matching a secret-ish pattern. See plan Blocker B3.
-_CHILD_ENV_DENY = {"STUDYLOOP_TEST_AGENT_CMD", "STUDYLOOP_CONFIG"}
+_CHILD_ENV_DENY = {
+    "STUDYLOOP_TEST_AGENT_CMD",
+    "STUDYLOOP_CONFIG",
+    # Hosting-harness control plane, not child CLI configuration. Passing
+    # these through when StudyLoop is launched from a Codex task can make a
+    # nested `codex` process inherit the parent's task/permission identity and
+    # sit on an otherwise connected PTY without ever painting its own TUI.
+    "CODEX_SESSION_ID",
+    "CODEX_THREAD_ID",
+    "CODEX_PERMISSION_PROFILE",
+    "CODEX_CI",
+}
 _CHILD_ENV_DENY_PAT = re.compile(r"(?i)(password|secret|token)$")
 
 # Grace window between SIGTERM and SIGKILL on cancel().
@@ -136,7 +147,7 @@ def _deregister_pid(pid: int) -> None:
 
 
 def _build_child_env(caller_env: dict[str, str]) -> dict[str, str]:
-    """Return a clean env dict for the child, with secrets stripped."""
+    """Return a clean env dict describing the browser-backed child PTY."""
     clean: dict[str, str] = {}
     for k, v in caller_env.items():
         if k in _CHILD_ENV_DENY:
@@ -144,6 +155,12 @@ def _build_child_env(caller_env: dict[str, str]) -> dict[str, str]:
         if _CHILD_ENV_DENY_PAT.search(k):
             continue
         clean[k] = v
+    # This PTY terminates in xterm.js, regardless of whether StudyLoop itself
+    # was launched from a shell, pytest (TERM=dumb), launchd, or another agent.
+    # Interactive CLIs such as Codex suppress their TUI when they inherit a
+    # non-capable parent TERM, leaving the browser connected to a blank pane.
+    clean["TERM"] = "xterm-256color"
+    clean["COLORTERM"] = "truecolor"
     return clean
 
 

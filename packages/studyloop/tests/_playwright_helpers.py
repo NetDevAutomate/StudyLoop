@@ -109,8 +109,15 @@ def effective_credentials() -> tuple[str, str]:
 
 
 def clean_ipc() -> None:
-    """Wipe session-state IPC files (a no-op if they don't exist)."""
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
+    """Wipe test IPC files without ever resolving a stale user-home constant."""
+    import os
+
+    session_dir = Path(os.environ.get("STUDYLOOP_SESSION_DIR", CONFIG_DIR))
+    for f in (
+        session_dir / STATE_FILE.name,
+        session_dir / TOPICS_FILE.name,
+        session_dir / PARKING_FILE.name,
+    ):
         f.unlink(missing_ok=True)
 
 

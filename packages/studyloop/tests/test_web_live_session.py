@@ -58,6 +58,35 @@ def test_session_options_returns_course_hierarchy(
     assert all(agent["acp_ready"] is False for agent in body["agents"])
 
 
+def test_session_options_hides_acp_capability_without_dev_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The release server must advertise PTY only, even for ACP-capable agents."""
+    monkeypatch.setenv("STUDYLOOP_PLANS_DIR", str(tmp_path / "plans"))
+    client = TestClient(create_app())
+
+    response = client.get("/api/session/options")
+
+    assert response.status_code == 200
+    assert all(agent["supports_acp"] is False for agent in response.json()["agents"])
+
+
+def test_session_options_exposes_acp_capability_in_dev_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``studyloop web --dev`` restores the experimental ACP capability matrix."""
+    monkeypatch.setenv("STUDYLOOP_PLANS_DIR", str(tmp_path / "plans"))
+    client = TestClient(create_app(dev_mode=True))
+
+    response = client.get("/api/session/options")
+
+    assert response.status_code == 200
+    supported = {
+        agent["value"] for agent in response.json()["agents"] if agent["supports_acp"]
+    }
+    assert supported == {"gemini", "grok", "kiro"}
+
+
 def test_session_options_caps_topic_choices_to_three(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -80,7 +80,7 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
     Mirrors ``_build_pty_transport`` but builds ACP argv instead of a
     shell command:
 
-    - Kiro: ``["kiro-cli", "acp"]``
+    - Kiro: ``["kiro-cli", "acp", "--agent", "study-mentor"]``
     - Gemini: ``["gemini", "--acp"]``
     - Grok: ``["grok", "agent", "stdio"]``
 
@@ -123,7 +123,9 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
         if test_cmd:
             return shlex.split(test_cmd)
         if _config.agent == "kiro":
-            return ["kiro-cli", "acp"]
+            from studyloop.adapters.kiro import KIRO_AGENT_NAME
+
+            return ["kiro-cli", "acp", "--agent", KIRO_AGENT_NAME]
         if _config.agent == "gemini":
             return ["gemini", "--acp"]
         if _config.agent == "grok":

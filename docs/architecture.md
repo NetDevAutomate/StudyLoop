@@ -4,7 +4,7 @@ This is the entry point for architecture documentation.
 
 ## Read These First
 
-- [Current Architecture](architecture/current.md) describes the system as it works today, with C4 Level 1 / 2 / 3 diagrams and a sequence diagram of the ACP persona-injection flow.
+- [Current Architecture](architecture/current.md) describes the release PTY path and the dev-only ACP implementation, with C4 Level 1 / 2 / 3 diagrams.
 - [Target Architecture](architecture/target.md) describes the plugin-based, web-first, native-client-ready direction.
 - [System Overview](system-overview.md) is the lighter-touch user-and-operator big picture.
 - [Standards](standards/repo-standards.md) defines naming, structure, and documentation conventions.
@@ -18,14 +18,17 @@ The core workflow is not flashcards or quizzes. The core workflow is live intera
 
 ```mermaid
 flowchart LR
-    Current["Current<br/>CLI + tmux + web<br/>+ xterm.js over WS (PTY)<br/>+ ACP chat (Kiro/Gemini)<br/>+ active learning loop"]
-    Hybrid["Near-term<br/>ACP-first web sessions<br/>PTY fallback over WS<br/>+ herdr multiplexer default"]
+    Current["Current release<br/>CLI + tmux + web<br/>+ xterm.js over WS (PTY)<br/>+ active learning loop<br/>(ACP behind --dev)"]
+    Hybrid["Near-term<br/>prove structured web sessions<br/>against strict gates<br/>+ keep PTY dependable"]
     Target["Target<br/>plugin architecture<br/>macOS/iOS ready"]
 
     Current --> Hybrid --> Target
 ```
 
-The browser terminal is **xterm.js over a WebSocket**, or ACP chat. There is no ttyd browser surface — it was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md) once the PTY path survived a page refresh. The ttyd **server** transport is retained for maintainers only.
+The v1 browser transport is **PTY rendered by xterm.js over a WebSocket**.
+Experimental ACP chat remains available only with `studyloop web --dev` (see
+[ADR-0006](adr/0006-gate-acp-behind-dev-mode.md)). There is no ttyd browser
+surface; the ttyd **server** transport is retained for maintainers only.
 
 ## Frontend Structure
 

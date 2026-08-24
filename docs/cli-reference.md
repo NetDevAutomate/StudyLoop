@@ -120,7 +120,7 @@ studyloop restore BACKUP --confirm        # Restore from backup (safety backup f
 # Web
 studyloop web [--port PORT] [--lan]             # Launch study web app (PWA)
 studyloop web --ttyd-port 7681            # ttyd server transport port (0 = read from config)
-studyloop web --dev                       # Dev mode: swap xterm.js for an alternative renderer
+studyloop web --dev                       # Experimental ACP picker + alternative terminal renderer
 studyloop web --dev-renderer ghostty      # Select the dev renderer (only choice; implies --dev)
 ```
 
@@ -469,7 +469,7 @@ studyloop web --lan              # LAN access; prompts securely before startup
 
 **Features:** Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, 90-day study heatmap, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.
 
-**Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** showing the live session. The panel renders one of two surfaces: **xterm.js** driven by a PTY streamed over a WebSocket (`transport: "pty"`), or **ACP chat** for structured-event agents (`transport: "acp"`). It is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads `GET /api/session/state` on init and adopts a live session it owns.
+**Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** showing the live session. Release mode uses **xterm.js** driven by a PTY streamed over a WebSocket (`transport: "pty"`). `studyloop web --dev` additionally exposes the experimental ACP chat surface (`transport: "acp"`). The panel is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads `GET /api/session/state` on init and adopts a live session it owns.
 
 There is **no browser terminal fallback**: the ttyd iframe surface was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md). Installing ttyd no longer enables anything user-visible in the dashboard. The `ttyd` **server** transport still exists for maintainers (`STUDYLOOP_TRANSPORT=ttyd`, plus the `/terminal/` proxy), but a session started that way has no browser renderer and reports an explicit `unavailable` state.
 

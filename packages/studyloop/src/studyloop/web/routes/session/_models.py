@@ -15,7 +15,8 @@ class StartSessionRequest(BaseModel):
         default=None,
         description=(
             "Session transport: 'pty' (default), 'ttyd' (legacy fallback), or "
-            "'acp' (Agent Client Protocol, Kiro, Gemini, and Grok — §2.2). "
+            "'acp' (experimental Agent Client Protocol; accepted only when "
+            "the web app was started with --dev). "
             "STUDYLOOP_TRANSPORT env var forces 'pty' or 'ttyd' regardless of "
             "this field; 'acp' is body-only to keep the kill-switch semantics "
             "focused on the safe paths."

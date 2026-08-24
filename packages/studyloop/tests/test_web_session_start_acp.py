@@ -11,6 +11,8 @@ Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §2.2
 
 from __future__ import annotations
 
+import os
+import shlex
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -56,6 +58,7 @@ def _isolate_session_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(_start, "SESSION_DIR", tmp_path)
     monkeypatch.setattr(_start, "TOPICS_FILE", tmp_path / "session-topics.md")
     monkeypatch.setattr(_start, "PARKING_FILE", tmp_path / "session-parking.md")
+    monkeypatch.setenv("STUDYLOOP_PLANS_DIR", str(tmp_path / "plans"))
 
 
 def _assert_no_runtime_session_state() -> None:
@@ -66,7 +69,7 @@ def _assert_no_runtime_session_state() -> None:
 
 @pytest.fixture()
 def client() -> TestClient:
-    app = create_app(study_dirs=[])
+    app = create_app(study_dirs=[], dev_mode=True)
     return TestClient(app)
 
 
@@ -149,6 +152,31 @@ def _stub_db(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+def test_acp_start_requires_dev_mode() -> None:
+    """A hidden picker is insufficient: the normal release API must refuse ACP."""
+    client = TestClient(create_app(study_dirs=[]), raise_server_exceptions=False)
+
+    with (
+        patch(
+            "studyloop.history.start_study_session",
+            side_effect=AssertionError("the production ACP gate must run before DB creation"),
+        ),
+        patch(
+            "studyloop.session.active.acquire",
+            side_effect=AssertionError("the production ACP gate must run before agent spawn"),
+        ),
+    ):
+        response = client.post(
+            "/api/session/start",
+            json={"topic": "Python", "energy": 5, "agent": "kiro", "transport": "acp"},
+        )
+
+    assert response.status_code == 403
+    body = response.json()
+    assert body["error"] == "ACP transport is experimental and disabled in release mode."
+    assert body["repair"] == "Restart StudyLoop with 'studyloop web --dev' to enable ACP."
+
+
 class TestAcpStartHappyPath:
     def test_acp_start_returns_ws_url_and_no_tmux(
         self,
@@ -181,6 +209,37 @@ class TestAcpStartHappyPath:
         assert body["ws_url"] == "/api/session/ws?study_session_id=study-acp-1"
         # active.acquire should have run against the ACP factory.
         assert run_async(active.current()) is not None
+
+    def test_kiro_acp_launches_the_explicit_study_mentor_agent(
+        self,
+        client: TestClient,
+        _stub_db,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The real process boundary must not fall through to Kiro's default agent."""
+        shim_dir = tmp_path / "bin"
+        shim_dir.mkdir()
+        shim = shim_dir / "kiro-cli"
+        stub_agent = Path(__file__).parent / "_stub_acp_agent.py"
+        shim.write_text(
+            "#!/bin/sh\n"
+            "if [ \"$1\" != \"acp\" ] || [ \"$2\" != \"--agent\" ] "
+            "|| [ \"$3\" != \"study-mentor\" ]; then\n"
+            "  exit 42\n"
+            "fi\n"
+            f"exec {shlex.quote(sys.executable)} {shlex.quote(str(stub_agent))}\n"
+        )
+        shim.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+        response = client.post(
+            "/api/session/start",
+            json={"topic": "Python", "energy": 5, "agent": "kiro", "transport": "acp"},
+        )
+
+        assert response.status_code == 201, response.text
+        assert response.json()["transport"] == "acp"
 
 
 # ---------------------------------------------------------------------------
@@ -379,7 +438,7 @@ class TestAcpStartAcquireFailureRollback:
         _mock_kiro_available,
         _stub_db,
     ) -> None:
-        app = create_app(study_dirs=[])
+        app = create_app(study_dirs=[], dev_mode=True)
         client = TestClient(app, raise_server_exceptions=False)
 
         with (

@@ -46,9 +46,14 @@ os.environ["TERM"] = "dumb"
 #
 # Individual tests may still point these at their own tmp_path; the default
 # below only guarantees that *nothing* lands in the real user directories.
-_TEST_STATE_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-state-"))
+_TEST_STATE_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-state-")).resolve()
 os.environ.setdefault("STUDYLOOP_STATE_DIR", str(_TEST_STATE_ROOT / "state"))
 os.environ.setdefault("STUDYLOOP_DB", str(_TEST_STATE_ROOT / "sessions.db"))
+os.environ["STUDYLOOP_SESSION_DIR"] = str(_TEST_STATE_ROOT / "session-ipc")
+# Hard-assign like NO_COLOR/TERM above. A developer shell may export a plans
+# path inside a git worktree; child web servers inherit it and the containment
+# guard then (correctly) refuses the symlink before browser tests can start.
+os.environ["STUDYLOOP_PLANS_DIR"] = str(_TEST_STATE_ROOT / "plans")
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence

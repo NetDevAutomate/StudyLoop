@@ -220,6 +220,14 @@ class TestPickerHydration:
 def _acp_options_payload() -> dict:
     """Agents list that exposes a single ACP-capable agent (Kiro)."""
     base = _default_options_payload()
+    base["terminal_engine"] = {
+        "dev_mode": True,
+        "engine": "ghostty",
+        "renderer": "libghostty",
+        "label": "libghostty (experimental)",
+        "experimental": True,
+        "caveats": [],
+    }
     base["agents"] = [
         {
             "label": "Claude",
@@ -242,9 +250,10 @@ def _acp_options_payload() -> dict:
 
 
 class TestTransportAcpOption:
-    """The transport <select> must expose ``acp`` only when the chosen
-    agent supports it — tying the frontend-visible option to the
-    /session/options ``supports_acp`` flag.
+    """The dev transport picker exposes ``acp`` only for a supporting agent.
+
+    ``_acp_options_payload`` declares dev mode explicitly; the stock endpoint
+    advertises no ACP capability at all.
     """
 
     def test_acp_option_hidden_when_agent_does_not_support_it(self, web_page: Page) -> None:

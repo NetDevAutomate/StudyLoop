@@ -1,6 +1,7 @@
 """Live Kiro dogfood test for the ACP chat surface.
 
-Spawns a real ``kiro-cli acp`` child (no stub) via ``studyloop web``, drives
+Spawns a real ``kiro-cli acp --agent study-mentor`` child (no stub) via
+``studyloop web --dev``, drives
 the page with Playwright, asks one mentor-flavoured question, and asserts:
 
 1. The response renders as proper markdown HTML (no raw ``##``/``**`` source,
@@ -123,20 +124,29 @@ pytestmark.append(pytest.mark.skipif(not _KIRO_OK, reason=f"Live Kiro unavailabl
 
 
 # ---------------------------------------------------------------------------
-# Server lifecycle — REAL kiro-cli acp, not the stub.
+# Server lifecycle — REAL kiro-cli ACP with the StudyLoop agent, not the stub.
 # ---------------------------------------------------------------------------
 
 
 def _start_web_server_real_kiro() -> subprocess.Popen:
     """Spawn ``studyloop web`` with NO STUDYLOOP_TEST_ACP_CMD override.
 
-    The route's ``_build_acp_transport`` factory will use ``["kiro-cli", "acp"]``
+    The route's factory uses
+    ``["kiro-cli", "acp", "--agent", "study-mentor"]``
     — i.e. a real Kiro subprocess.
     """
     env = {**os.environ}
     env.pop("STUDYLOOP_TEST_ACP_CMD", None)  # belt-and-braces
 
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
+    cmd = [
+        sys.executable,
+        "-m",
+        "studyloop.cli",
+        "web",
+        "--port",
+        str(WEB_PORT),
+        "--dev",
+    ]
     proc = subprocess.Popen(
         cmd,
         env=env,

@@ -7,14 +7,25 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-08-22
+### Changed
 
-First public release. Versioned `0.1.0` deliberately: under semantic versioning
+- The v1 web-session contract is PTY/xterm.js across all supported harnesses.
+  ACP remains implemented but is exposed only by `studyloop web --dev`; a
+  release-mode direct ACP start is rejected server-side. Kiro's ACP launch now
+  names the `study-mentor` agent explicitly.
+- Added deterministic all-harness Playwright coverage for terminal paint,
+  shrink/grow resize, refresh, session reattachment, and post-refresh input,
+  plus an opt-in credentialled real-TUI lane. The live lane uncovered and fixed
+  `TERM=dumb` leaking into browser PTYs, which prevented Codex from painting.
+
+## [0.1.0] - Unreleased
+
+Planned first public release. Versioned `0.1.0` deliberately: under semantic versioning
 `0.y.z` signals that the public API is not yet stable, which is accurate. Internal
 versions up to `2.5.0` existed during development but were never published — no
 tag, no PyPI release, no installable artefact — so the first version anyone can
-install is this one. Everything below was developed under those internal versions
-and ships here for the first time. See `releases/v0.1.0.md` for the release note
+install will be this one. Everything below was developed under those internal versions
+and is targeted for the first release. See `releases/v0.1.0.md` for the draft release note
 and its list of known limitations.
 
 ### Added
@@ -74,9 +85,11 @@ and its list of known limitations.
   into `active` (first `MAX_ACTIVE_TOPICS`) and `parking_lot` (the rest).
 - Representative end-to-end user-journey harness (`tests/e2e/`) driving the
   real web UI via Playwright, marked `e2e` (deselected by default).
-- Server-side ACP capability guard: a PTY-only agent (Claude Code, Codex)
-  requesting `transport=acp` now fails fast with a 400 (cause + repair) before
-  any spawn attempt. `ACP_CAPABLE_AGENTS` is the single source of truth.
+- Server-side ACP capability guard: release mode rejects every
+  `transport=acp` request with a 403 and an explicit `studyloop web --dev`
+  repair. In dev mode, a PTY-only agent (Claude Code, Codex) requesting ACP
+  fails fast with a 400 before any spawn attempt. `ACP_CAPABLE_AGENTS` remains
+  the single source of truth for that experimental path.
 - Five MCP review-loop/lifecycle parity tools (`get_due_cards`,
   `log_review_outcome`, `get_next_action`, `get_active_topics`,
   `log_struggle`) — the desktop MCP server now exposes 18 tools; Claude

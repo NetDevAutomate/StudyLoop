@@ -152,6 +152,14 @@ async def start_session(body: StartSessionRequest, request: Request) -> JSONResp
         )
 
     transport = _resolve_transport(body.transport)
+    if transport == "acp" and not bool(getattr(request.app.state, "dev_mode", False)):
+        return JSONResponse(
+            {
+                "error": "ACP transport is experimental and disabled in release mode.",
+                "repair": "Restart StudyLoop with 'studyloop web --dev' to enable ACP.",
+            },
+            status_code=403,
+        )
     if transport == "pty":
         return await _start_pty_session(body, origin)
     if transport == "acp":

@@ -33,9 +33,10 @@ _AGENT_FALLBACK_BINARIES = {
 def get_session_options(request: Request, refresh: bool = False) -> dict[str, Any]:
     """Return local study choices for the web session picker."""
     targets = _get_indexed_target_options(request.app.state, force=refresh)
+    dev_mode = bool(getattr(request.app.state, "dev_mode", False))
     return {
         **targets,
-        "agents": _agent_options(),
+        "agents": _agent_options(dev_mode=dev_mode),
         "terminal_engine": _terminal_engine_option(request.app.state),
     }
 
@@ -459,7 +460,8 @@ def _existing_unique_dirs(paths: list[Path]) -> list[Path]:
     return roots
 
 
-def _agent_options() -> list[dict[str, object]]:
+def _agent_options(*, dev_mode: bool = False) -> list[dict[str, object]]:
+    """Describe installed agents, exposing experimental ACP only in dev mode."""
     names = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
     if os.environ.get("STUDYLOOP_TEST_AGENT") == "1":
         # Harness-only: surface the deterministic fake agent in the picker so
@@ -474,7 +476,7 @@ def _agent_options() -> list[dict[str, object]]:
                 "label": _agent_label(name),
                 "value": name,
                 "available": name in detected,
-                "supports_acp": name in ACP_CAPABLE_AGENTS,
+                "supports_acp": dev_mode and name in ACP_CAPABLE_AGENTS,
                 "acp_ready": False,
                 "binary": adapter.binary,
             }
@@ -487,7 +489,7 @@ def _agent_options() -> list[dict[str, object]]:
                 "label": _agent_label(name),
                 "value": name,
                 "available": False,
-                "supports_acp": name in ACP_CAPABLE_AGENTS,
+                "supports_acp": dev_mode and name in ACP_CAPABLE_AGENTS,
                 "acp_ready": False,
                 "binary": _AGENT_FALLBACK_BINARIES.get(name, name),
             }

@@ -67,7 +67,7 @@ artifacts = ["src/studyloop/planning/prompts/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short -m 'not integration and not e2e and not live_kiro and not live_provider'"
+addopts = "--tb=short -m 'not integration and not e2e and not live_kiro and not live_provider and not live_harness'"
 # MUST be duplicated from the workspace-root pyproject.toml. pytest resolves
 # rootdir from its arguments, so `pytest packages/studyloop/tests/foo.py` makes
 # THIS file the configfile and the root one is never read -- the root setting
@@ -85,6 +85,7 @@ markers = [
     "e2e: end-to-end browser tests requiring Playwright + web server",
     "live_kiro: dogfood tests that spawn a real kiro-cli acp child (requires Kiro auth + network; opt in with -m live_kiro)",
     "live_provider: tests that call a real LLM provider (OpenAI/OpenRouter/Gemini/MiniMax/Anthropic). Burns API quota; opt in with -m live_provider",
+    "live_harness: browser rendering tests that spawn installed coding-agent TUIs (may use provider quota; opt in with -m live_harness)",
 ]
 
 [tool.pyright]

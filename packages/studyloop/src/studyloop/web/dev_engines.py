@@ -1,4 +1,4 @@
-"""Dev-mode terminal engine registry for ``studyloop web --dev``.
+"""Experimental web-feature registry for ``studyloop web --dev``.
 
 Deliberately dependency-free (stdlib only). The CLI needs the engine names at
 *decorator* evaluation time to build ``--dev-engine``'s ``click.Choice``, but
@@ -9,8 +9,10 @@ both sides share one source of truth without dragging FastAPI into CLI import.
 Design contract
 ---------------
 The default (non-dev) path serves ``index.html`` untouched, so xterm.js remains
-the production renderer. A dev engine is opted into per-run and works purely by
-HTML injection:
+the production renderer and PTY remains the only learner-facing transport.
+``--dev`` also permits the experimental ACP transport; that server/UI gate is
+implemented in the session routes rather than this dependency-free renderer
+registry. A dev engine is opted into per-run and works by HTML injection:
 
 1. ``<meta name="studyloop-dev-mode" content="ENGINE">`` marks which engine is
    live. Every vendored adapter checks this marker before patching
@@ -91,11 +93,9 @@ def resolve_dev_engine(engine: str | None) -> str:
 def describe_terminal_engine(dev_mode: bool, engine: str | None) -> dict[str, Any]:
     """Describe the renderer that will actually paint the terminal.
 
-    This is the *renderer* axis, not the *transport* axis. ``--dev`` swaps
-    ``window.Terminal``; the session transport picker (``pty`` / ``acp`` /
-    ``ttyd``) chooses how the agent process is driven. Conflating the two is
-    exactly the confusion that made ``--dev`` look like it "still showed
-    xterm.js, ACP and Legacy (ttyd)" — it does, because those are transports.
+    This describes the *renderer* axis. The same ``--dev`` operator flag also
+    unlocks ACP on the separate transport axis, but renderer selection and
+    agent transport remain independent implementation concerns.
 
     Args:
         dev_mode: Whether the app was created with ``--dev``.

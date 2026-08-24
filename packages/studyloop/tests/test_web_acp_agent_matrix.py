@@ -105,7 +105,15 @@ def _start_web_server_with_stub_acp() -> subprocess.Popen:
         "STUB_ACP_PROMPT_UPDATES": json.dumps(_STUB_PROMPT_UPDATES),
         "STUB_ACP_PROMPT_STOP_REASON": "end_turn",
     }
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
+    cmd = [
+        sys.executable,
+        "-m",
+        "studyloop.cli",
+        "web",
+        "--port",
+        str(WEB_PORT),
+        "--dev",
+    ]
     proc = subprocess.Popen(
         cmd,
         env=env,
