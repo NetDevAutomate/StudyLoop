@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import asyncio
 import json
+import logging
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -78,6 +80,62 @@ class _HangingModel:
     async def stream(self, request):
         await asyncio.sleep(1)
         yield request  # pragma: no cover
+
+
+class _BoundedInfiniteModel:
+    def __init__(self) -> None:
+        self.emitted = 0
+        self.closed = False
+
+    async def stream(self, request):
+        try:
+            while True:
+                self.emitted += 1
+                yield ModelTextDelta(
+                    MODEL_WIRE_VERSION,
+                    request.turn_id,
+                    request.attempt_id,
+                    self.emitted,
+                    "x",
+                )
+                await asyncio.sleep(0)
+        finally:
+            self.closed = True
+
+
+class _InfiniteToolModel:
+    def __init__(self) -> None:
+        self.emitted = 0
+        self.closed = False
+
+    async def stream(self, request):
+        try:
+            while True:
+                self.emitted += 1
+                yield ModelToolCall(
+                    MODEL_WIRE_VERSION,
+                    request.turn_id,
+                    request.attempt_id,
+                    self.emitted,
+                    f"tool-{self.emitted}",
+                    "prepare_plan",
+                    {},
+                )
+                await asyncio.sleep(0)
+        finally:
+            self.closed = True
+
+
+class _BoundaryFailure:
+    def __init__(self, point: str, error_type: type[BaseException]) -> None:
+        self.point = point
+        self.error_type = error_type
+        self.triggered = False
+
+    def __call__(self, point: str) -> None:
+        if point == self.point and not self.triggered:
+            self.triggered = True
+            raise self.error_type(f"failure at {point}")
 
 
 class _TextModel:
@@ -498,7 +556,7 @@ async def test_provider_diagnostic_metadata_is_not_persisted_in_interruption_rea
         _CapturingLifecycle(),  # type: ignore[arg-type]
         configured_secret_values=("provider-secret-value",),
     )
-    with pytest.raises(PlanningConversationError):
+    with pytest.raises(PlanningConversationError) as captured:
         await runtime.accept_turn(
             "conversation-1",
             LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
@@ -506,6 +564,28 @@ async def test_provider_diagnostic_metadata_is_not_persisted_in_interruption_rea
     attempt = store.list_attempts("turn-1")[0]
 
     assert store.private_interruption_reason(attempt.attempt_id) == "RuntimeError"
+    public_error = captured.value
+    record = logging.LogRecord(
+        "planning-test",
+        logging.ERROR,
+        __file__,
+        1,
+        "planning failed",
+        (),
+        (type(public_error), public_error, public_error.__traceback__),
+    )
+    rendered = "\n".join(
+        (
+            repr(public_error),
+            "".join(traceback.format_exception(public_error)),
+            logging.Formatter().format(record),
+        )
+    )
+    assert public_error.__cause__ is None
+    assert public_error.__context__ is None
+    assert "127.0.0.1" not in rendered
+    assert "/Users/private" not in rendered
+    assert "provider-secret-value" not in rendered
 
 
 @pytest.mark.asyncio
@@ -524,6 +604,205 @@ async def test_wall_clock_bound_interrupts_a_hanging_provider(tmp_path: Path) ->
             LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
         )
     assert store.list_attempts("turn-1")[0].status == "interrupted"
+
+
+@pytest.mark.asyncio
+async def test_cancelling_a_live_provider_durably_interrupts_its_owned_attempt(
+    tmp_path: Path,
+) -> None:
+    store = ConversationStore(tmp_path / "conversations.sqlite3", ids=_Ids())
+    runtime = PlanningConversationRuntime(
+        store,
+        _HangingModel(),  # type: ignore[arg-type]
+        _CapturingLifecycle(),  # type: ignore[arg-type]
+    )
+    task = asyncio.create_task(
+        runtime.accept_turn(
+            "conversation-1",
+            LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
+        )
+    )
+    for _ in range(100):
+        await asyncio.sleep(0.001)
+        if store.list_attempts("turn-1"):
+            break
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert store.get_turn("conversation-1", "turn-1").status == "retryable"
+    assert store.list_attempts("turn-1")[0].status == "interrupted"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error_type", [RuntimeError, asyncio.CancelledError])
+@pytest.mark.parametrize(
+    ("boundary", "expected_turn_status", "expected_attempt_status", "expected_messages"),
+    [
+        ("before_finalized_message_commit", "retryable", "interrupted", 0),
+        ("after_finalized_message_commit", "completed", "completed", 1),
+        ("before_attempt_complete", "completed", "completed", 1),
+        ("after_attempt_complete", "completed", "completed", 1),
+    ],
+)
+async def test_exception_at_finalization_boundary_uses_durable_terminal_truth(
+    tmp_path: Path,
+    error_type: type[BaseException],
+    boundary: str,
+    expected_turn_status: str,
+    expected_attempt_status: str,
+    expected_messages: int,
+) -> None:
+    store = ConversationStore(tmp_path / boundary / error_type.__name__ / "conversations.sqlite3")
+    runtime = PlanningConversationRuntime(
+        store,
+        _TextModel("Final answer"),
+        _CapturingLifecycle(),  # type: ignore[arg-type]
+        crash_injector=_BoundaryFailure(boundary, error_type),
+    )
+
+    with pytest.raises(error_type):
+        await runtime.accept_turn(
+            "conversation-1",
+            LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
+        )
+
+    assert store.get_turn("conversation-1", "turn-1").status == expected_turn_status
+    assert [item.status for item in store.list_attempts("turn-1")] == [expected_attempt_status]
+    assert len(store.list_messages("conversation-1")) == expected_messages
+
+
+@pytest.mark.asyncio
+async def test_infinite_model_stream_is_closed_as_soon_as_output_bound_is_crossed(
+    tmp_path: Path,
+) -> None:
+    model = _BoundedInfiniteModel()
+    store = ConversationStore(tmp_path / "conversations.sqlite3", ids=_Ids())
+    runtime = PlanningConversationRuntime(
+        store,
+        model,  # type: ignore[arg-type]
+        _CapturingLifecycle(),  # type: ignore[arg-type]
+        bounds=PlanningConversationBounds(
+            max_output_characters=4,
+            turn_timeout_seconds=1,
+        ),
+    )
+
+    with pytest.raises(PlanningConversationError, match="output bound"):
+        await asyncio.wait_for(
+            runtime.accept_turn(
+                "conversation-1",
+                LearnerTurn(
+                    "turn-1",
+                    "A dump",
+                    PlanningRequest("create", "A dump", "request-1"),
+                ),
+            ),
+            timeout=0.2,
+        )
+
+    assert model.closed is True
+    assert model.emitted == 5
+    assert store.list_attempts("turn-1")[0].status == "interrupted"
+
+
+@pytest.mark.asyncio
+async def test_infinite_tool_stream_is_closed_at_tool_bound_before_buffering_more_calls(
+    tmp_path: Path,
+) -> None:
+    model = _InfiniteToolModel()
+    store = ConversationStore(tmp_path / "conversations.sqlite3", ids=_Ids())
+    runtime = PlanningConversationRuntime(
+        store,
+        model,  # type: ignore[arg-type]
+        _CapturingLifecycle(),  # type: ignore[arg-type]
+        bounds=PlanningConversationBounds(max_tool_calls=2),
+    )
+
+    with pytest.raises(PlanningConversationError, match="tool bound"):
+        await runtime.accept_turn(
+            "conversation-1",
+            LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
+        )
+
+    assert model.closed is True
+    assert model.emitted == 3
+    assert store.list_capability_intents("turn-1") == []
+
+
+def test_input_bound_counts_serialized_tool_call_arguments(tmp_path: Path) -> None:
+    runtime = PlanningConversationRuntime(
+        ConversationStore(tmp_path / "conversations.sqlite3"),
+        ScriptedPlanningModel(()),
+        _CapturingLifecycle(),  # type: ignore[arg-type]
+        bounds=PlanningConversationBounds(max_input_characters=80),
+    )
+    message = {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+            {
+                "id": "tool-1",
+                "type": "function",
+                "function": {
+                    "name": "submit_plan_proposal",
+                    "arguments": "x" * 200,
+                },
+            }
+        ],
+    }
+
+    with pytest.raises(PlanningConversationError, match="input bound"):
+        runtime._check_input_bound([message])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("name", "arguments", "expected"),
+    [
+        ("x" * 1_000, {}, "name bound"),
+        ("prepare_plan", {"extra": "x" * 100_000}, "argument bound"),
+    ],
+)
+async def test_oversized_typed_tool_fields_stop_before_capability_intent(
+    tmp_path: Path,
+    name: str,
+    arguments: dict[str, object],
+    expected: str,
+) -> None:
+    model = ScriptedPlanningModel(
+        (
+            ScriptedResponse(
+                "turn-1",
+                (
+                    ModelToolCall(
+                        MODEL_WIRE_VERSION,
+                        "turn-1",
+                        "attempt-1",
+                        1,
+                        "tool-1",
+                        name,
+                        arguments,
+                    ),
+                    ModelTurnCompleted(MODEL_WIRE_VERSION, "turn-1", "attempt-1", 2, "tool_calls"),
+                ),
+            ),
+        )
+    )
+    store = ConversationStore(tmp_path / expected / "conversations.sqlite3", ids=_Ids())
+
+    with pytest.raises(PlanningConversationError, match=expected):
+        await PlanningConversationRuntime(
+            store,
+            model,
+            _CapturingLifecycle(),  # type: ignore[arg-type]
+        ).accept_turn(
+            "conversation-1",
+            LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
+        )
+
+    assert store.list_capability_intents("turn-1") == []
 
 
 @pytest.mark.asyncio
@@ -806,6 +1085,52 @@ async def test_channel_aware_capture_redacts_secrets_and_metadata_not_learner_pa
     assert "127.0.0.1:4000" not in captured
     assert store.get_turn("conversation-1", "turn-1").learner_text == learner
     assert store.load_context("turn-1")[0].label == "selected text context"
+
+
+@pytest.mark.asyncio
+async def test_embedded_studyloop_metadata_locations_are_redacted_but_learner_text_is_verbatim(
+    tmp_path: Path,
+) -> None:
+    learner = "I typed /Users/learner/course.md and http://127.0.0.1:9999/my-example myself"
+    model = _TextModel("What would useful progress look like?")
+    store = ConversationStore(tmp_path / "conversations.sqlite3", ids=_Ids())
+    labels = (
+        "Course from /Users/server/private/course.md (selected)",
+        r"Imported from C:\\StudyLoop\\private\\course.txt today",
+        "Loaded from file:///srv/studyloop/private/course.txt, selected",
+        "Source http://127.0.0.1:4000/internal/course (local)",
+        "Gateway 192.168.50.2:8080; selected",
+        "Gateway [::1]:4000; selected",
+    )
+    for index, label in enumerate(labels, start=1):
+        store.attach_context(
+            AttachContext(
+                "conversation-1",
+                f"context-{index}",
+                label,
+                f"selected body {index}",
+            )
+        )
+
+    await PlanningConversationRuntime(
+        store,
+        model,
+        _CapturingLifecycle(),  # type: ignore[arg-type]
+    ).accept_turn(
+        "conversation-1",
+        LearnerTurn("turn-1", learner, PlanningRequest("create", learner, "request-1")),
+    )
+
+    captured = json.dumps(model.requests[0].messages, ensure_ascii=False)
+    assert all(item.label == "selected text context" for item in store.load_context("turn-1"))
+    assert "/Users/server" not in captured
+    assert "C:\\\\StudyLoop" not in captured
+    assert "file:///srv/studyloop" not in captured
+    assert "127.0.0.1:4000" not in captured
+    assert "192.168.50.2:8080" not in captured
+    assert "/Users/learner/course.md" in captured
+    assert "127.0.0.1:9999/my-example" in captured
+    assert store.get_turn("conversation-1", "turn-1").learner_text == learner
 
 
 @pytest.mark.asyncio

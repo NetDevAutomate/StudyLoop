@@ -194,3 +194,124 @@ changed-file detect-secrets pre-commit hook pass.
 - Rejected and superseded local recovery bodies may remain, consistent with the
   exact privacy notice.
 - The existing SDD progress ledger was not edited or staged by Task 7.
+
+## Fix round 1 — recovery, bounds, privacy, and containment hardening
+
+The independent review of `87e6186` found seven Important issues. All seven
+were reproduced before implementation and fixed within the Task 7 boundary.
+
+### RED evidence
+
+- The first store adversarial slice produced 12 failures: empty/shorter inbound
+  source-reference prefixes replayed as identical, embedded paths/endpoints were
+  persisted, database symlinks escaped, sidecar symlinks reached SQLite, and a
+  symlinked planning parent was followed.
+- The first runtime adversarial slice produced 13 failures: a leaky provider
+  remained in `ModelAttemptError.__cause__`, cancellation left an active
+  attempt, ordinary/cancelled post-finalization failures misclassified durable
+  state, an infinite output stream reached the outer timeout, serialized tool
+  arguments bypassed the input bound, oversized typed tool fields reached schema
+  handling, and embedded metadata reached egress.
+- The adapter slice produced five failures because stream/chunk, partial-name,
+  partial-argument, and raw SSE line/aggregate bounds did not exist.
+- The spawned live-provider race failed because recovery interrupted the live
+  attempt, retry then reported only a stale version, and the original provider
+  could no longer finalize.
+- Follow-up mutation cases independently failed for unowned terminal writes,
+  unowned message/capability writes, adapter output overflow, embedded IPv6
+  loopback/private host:port metadata, and an infinite same-round tool stream.
+
+### Ownership and terminal truth
+
+- Attempts now persist an opaque runtime owner and wall-clock lease. The owner
+  heartbeats while the provider task is alive. Recovery can only claim an
+  expired attempt using a second durable CAS; a renewed/live attempt is read but
+  not mutated.
+- The real spawned race uses a `0.08` second lease and keeps the provider alive
+  for `0.2` seconds. A second process performs both recovery and retry while the
+  heartbeat renews: no interruption/outbox/version change occurs, retry is a
+  read-only conflict, and the original provider completes once released.
+- Retry no longer invokes recovery. It checks the caller's exact version and an
+  already-durable interrupted latest attempt before its allocation CAS.
+- Complete, interrupt, finalized-message, new capability-intent, active
+  dispatch, and active projection writes require the current durable owner.
+  Tests also expire and recovery-claim an attempt, then prove the former owner
+  cannot write a response or capability intent.
+- Cancellation is caught separately and terminalized synchronously. Ordinary
+  exceptions and cancellation at all four final-message/attempt-complete
+  boundaries classify from SQLite truth: a durable finalized message completes
+  the attempt; absence interrupts it. A completed attempt is left unchanged.
+
+The default lease is 30 seconds. This intentionally means a genuinely crashed
+attempt is not guessed dead immediately; recovery becomes eligible only after
+lease expiry. Subprocess crash tests use a short injected lease and wait for its
+expiry before recovery.
+
+### Incremental bounds and safe failures
+
+- Runtime events are validated directly from the async iterator. Event, output,
+  same-round/aggregate tool, tool-name, tool-ID, and serialized argument bounds
+  stop and close the provider iterator at the first excess item.
+- The input bound counts the complete canonical serialized messages, including
+  assistant `tool_calls`, rather than only `content` strings.
+- The OpenAI adapter separately bounds chunks, aggregate normalized bytes,
+  emitted output/events, partial tool count/name/ID/arguments, and raw SSE
+  line/aggregate bytes. Raw HTTP parsing uses bounded byte buffering instead of
+  `aiter_lines()`.
+- Generic provider errors are converted outside the provider exception handler,
+  so the public exception has neither `__cause__` nor `__context__`. Repr,
+  formatted traceback, and a formatted log record contain no provider secret,
+  internal endpoint, or server path.
+
+### Exact input, metadata, and filesystem containment
+
+- Each turn stores the exact original inbound request JSON, domain-separated
+  digest, and original reference count separately from the lifecycle request
+  augmented with frozen StudyLoop attachments. Empty, shorter, longer,
+  reordered, or changed references conflict; exact attachment-backed replay
+  remains idempotent.
+- StudyLoop metadata scanning covers embedded POSIX paths, Windows/UNC paths,
+  `file:` forms, internal URLs, IPv4/IPv6 loopback/private host:port forms, and
+  prose/punctuation. The metadata field is replaced before persistence and
+  egress. Learner-authored URLs and paths remain verbatim in the learner channel.
+- Before any SQLite open, the store rejects a symlinked database, WAL, SHM,
+  planning parent, or resolved escape. Outside targets remain absent, while the
+  root/database/live-sidecar `0700`/`0600` modes remain enforced.
+
+### Fix-round verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_conversation_store.py \
+  packages/studyloop/tests/test_planning_conversation_runtime.py \
+  packages/studyloop/tests/test_planning_conversation_recovery.py \
+  packages/studyloop/tests/test_planning_openai_compatible.py -q
+# 98 passed in 4.42s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning*.py \
+  packages/studyloop/tests/test_plan_agent_harness.py \
+  packages/studyloop/tests/test_doctor_planning.py \
+  packages/studyloop/tests/e2e/test_plans_api.py -q
+# 692 passed, 12 deselected in 9.39s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_doctor_planning.py -q
+# 287 passed in 1.26s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web_runtime_feedback.py -q
+# 60 passed in 1.29s
+```
+
+Targeted Pyright again reports `0 errors, 0 warnings, 0 informations`. Targeted
+Ruff, format, Python compilation, changed-file secret scan, and diff checks are
+rerun before the fix commit. No Task 8+ code is included. The separately
+modified progress ledger is intentionally left unstaged.

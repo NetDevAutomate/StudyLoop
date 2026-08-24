@@ -66,6 +66,11 @@ class ModelRequest:
     attempt_id: str
     messages: tuple[dict[str, object], ...]
     max_output_tokens: int = 4096
+    max_output_characters: int = 32_000
+    max_events: int = 512
+    max_tool_calls: int = 8
+    max_tool_name_characters: int = 128
+    max_tool_argument_characters: int = 64_000
 
     def __post_init__(self) -> None:
         if self.schema_version != MODEL_WIRE_VERSION:
@@ -75,6 +80,15 @@ class ModelRequest:
             raise ValueError("conversation, turn, and attempt IDs are required")
         if isinstance(self.max_output_tokens, bool) or not 1 <= self.max_output_tokens <= 32_768:
             raise ValueError("planning model output token bound must be between 1 and 32768")
+        bounded_values = (
+            self.max_output_characters,
+            self.max_events,
+            self.max_tool_calls,
+            self.max_tool_name_characters,
+            self.max_tool_argument_characters,
+        )
+        if any(isinstance(value, bool) or value <= 0 for value in bounded_values):
+            raise ValueError("planning model stream bounds must be positive integers")
 
 
 @dataclass(frozen=True, slots=True)

@@ -33,18 +33,24 @@ class ConversationRefusedError(PlanningConversationError):
 class PlanningConversationBounds:
     max_model_rounds: int = 8
     max_tool_calls: int = 8
+    max_model_events: int = 512
     max_output_tokens: int = 4096
     max_output_characters: int = 32_000
     max_input_characters: int = 120_000
+    max_tool_name_characters: int = 128
+    max_tool_argument_characters: int = 64_000
     turn_timeout_seconds: float = 120.0
 
     def __post_init__(self) -> None:
         values = (
             self.max_model_rounds,
             self.max_tool_calls,
+            self.max_model_events,
             self.max_output_tokens,
             self.max_output_characters,
             self.max_input_characters,
+            self.max_tool_name_characters,
+            self.max_tool_argument_characters,
         )
         if any(isinstance(value, bool) or value <= 0 for value in values):
             raise ValueError("planning conversation bounds must be positive integers")
@@ -112,6 +118,7 @@ class BeginModelAttempt:
     turn_id: str
     expected_turn_version: int
     retry_of_attempt_id: str | None
+    owner_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +130,8 @@ class AttemptRecord:
     status: Literal["active", "completed", "interrupted"]
     turn_version: int
     retry_of_attempt_id: str | None = None
+    owner_id: str = ""
+    lease_expires_at: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +140,7 @@ class CompleteModelAttempt:
     turn_id: str
     attempt_id: str
     expected_turn_version: int
+    expected_owner_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +150,8 @@ class MarkAttemptInterrupted:
     attempt_id: str
     expected_turn_version: int
     private_reason: str
+    expected_owner_id: str = ""
+    require_expired_lease: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +160,7 @@ class FinalizeAssistantMessage:
     turn_id: str
     attempt_id: str
     content: str
+    expected_owner_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +184,7 @@ class PrepareCapabilityCall:
     arguments: Mapping[str, object]
     run_id: str
     lifecycle_idempotency_key: str
+    expected_owner_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,6 +207,7 @@ class ProjectCapabilityResult:
     intent_id: str
     status: Literal["projected", "refused"]
     payload: Mapping[str, object]
+    expected_owner_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)

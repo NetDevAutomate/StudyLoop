@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
+import time
 import uuid
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import asdict, replace
 from hashlib import sha256
@@ -40,9 +42,18 @@ from .conversation_contracts import (
     TurnReceipt,
     TurnRecord,
 )
+from .repository import PathContainmentError
 
 _MAX_CONTEXT_CHARS = 100_000
 _MAX_TURN_CHARS = 40_000
+_POSIX_PATH = re.compile(r"(?<![\w:])/(?:[^/\s,;!?()]+/)+[^/\s,;!?()]+")
+_WINDOWS_PATH = re.compile(r"(?i)(?:[a-z]:[\\/]|\\\\)[^\s,;!?()]+")
+_FILE_URI = re.compile(r"(?i)\bfile:(?://)?[^\s,;!?()]+")
+_URL = re.compile(r"(?i)\bhttps?://[^\s,;!?()]+")
+_HOST_PORT = re.compile(
+    r"(?i)(?<![\w.-])(?P<host>\[[0-9a-f:]+\]|localhost(?:\.localdomain)?|"
+    r"\d{1,3}(?:\.\d{1,3}){3}|[a-z0-9.-]+\.(?:local|internal)):(?P<port>\d{1,5})\b"
+)
 
 
 class _IdGenerator(Protocol):
@@ -84,18 +95,28 @@ def _request_payload(request: PlanningRequest) -> dict[str, object]:
     }
 
 
+def _is_internal_host(host: str) -> bool:
+    normalized = host.strip("[]").lower()
+    if normalized in {"localhost", "localhost.localdomain"}:
+        return True
+    if normalized.endswith((".local", ".internal")):
+        return True
+    try:
+        address = ip_address(normalized)
+    except ValueError:
+        return False
+    return address.is_private or address.is_loopback or address.is_link_local
+
+
 def _safe_context_label(value: str) -> str:
     label = value.strip()
-    if label.startswith(("/", "~", "file://")) or "\\" in label:
+    if _POSIX_PATH.search(label) or _WINDOWS_PATH.search(label) or _FILE_URI.search(label):
         return "selected text context"
-    if label.startswith(("http://", "https://")):
-        host = urlsplit(label).hostname or ""
-        try:
-            internal = ip_address(host).is_private or ip_address(host).is_loopback
-        except ValueError:
-            internal = host.lower() in {"localhost", "localhost.localdomain"}
-        if internal:
+    for match in _URL.finditer(label):
+        if _is_internal_host(urlsplit(match.group(0)).hostname or ""):
             return "selected text context"
+    if any(_is_internal_host(match.group("host")) for match in _HOST_PORT.finditer(label)):
+        return "selected text context"
     return label
 
 
@@ -116,15 +137,48 @@ def _request_from_payload(payload: Mapping[str, object]) -> PlanningRequest:
 class ConversationStore:
     """Own SQLite migrations, CAS transitions, and transactional outbox writes."""
 
-    def __init__(self, database_path: Path, *, ids: _IdGenerator | None = None) -> None:
-        self.database_path = database_path
+    def __init__(
+        self,
+        database_path: Path,
+        *,
+        ids: _IdGenerator | None = None,
+        attempt_lease_seconds: float = 30.0,
+        clock: Callable[[], float] = time.time,
+    ) -> None:
+        if not 0.01 <= attempt_lease_seconds <= 600:
+            raise ValueError("attempt lease must be between 0.01 and 600 seconds")
+        self.database_path = database_path.expanduser().absolute()
         self._ids = ids or _UuidIds()
+        self.attempt_lease_seconds = attempt_lease_seconds
+        self._clock = clock
+        self._validate_database_location()
         self.database_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(self.database_path.parent, 0o700)
         self._migrate()
         self.ensure_private_modes()
 
+    def _validate_database_location(self) -> None:
+        parent = self.database_path.parent
+        resolved_parent = parent.resolve(strict=False)
+        if parent.is_symlink() or resolved_parent != parent:
+            raise PathContainmentError("conversation planning root cannot be a symlink")
+        if parent.exists() and not parent.is_dir():
+            raise PathContainmentError("conversation planning root is not a directory")
+        for path in self._database_files():
+            if path.is_symlink():
+                raise PathContainmentError("conversation SQLite target cannot be a symlink")
+            if path.resolve(strict=False).parent != resolved_parent:
+                raise PathContainmentError("conversation SQLite target escapes planning root")
+
+    def _database_files(self) -> tuple[Path, Path, Path]:
+        return (
+            self.database_path,
+            Path(f"{self.database_path}-wal"),
+            Path(f"{self.database_path}-shm"),
+        )
+
     def _connect(self) -> sqlite3.Connection:
+        self._validate_database_location()
         connection = sqlite3.connect(self.database_path, timeout=15, isolation_level=None)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys=ON")
@@ -178,6 +232,9 @@ class ConversationStore:
                     conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
                     turn_ordinal INTEGER NOT NULL,
                     learner_text TEXT NOT NULL,
+                    inbound_request_json TEXT NOT NULL,
+                    inbound_request_digest TEXT NOT NULL,
+                    inbound_source_reference_count INTEGER NOT NULL,
                     planning_request_json TEXT NOT NULL,
                     context_generation INTEGER NOT NULL,
                     brief_context_digest TEXT NOT NULL,
@@ -204,6 +261,8 @@ class ConversationStore:
                     status TEXT NOT NULL CHECK(status IN ('active','completed','interrupted')),
                     retry_of_attempt_id TEXT,
                     private_reason TEXT NOT NULL DEFAULT '',
+                    owner_id TEXT NOT NULL,
+                    lease_expires_at REAL NOT NULL,
                     UNIQUE(turn_id, attempt_seq)
                 );
                 CREATE TABLE IF NOT EXISTS capability_intents (
@@ -278,15 +337,65 @@ class ConversationStore:
                 ON attempts(turn_id, attempt_seq);
                 """
             )
+            self._migrate_hardening_columns(connection)
         finally:
             connection.close()
 
+    @staticmethod
+    def _column_names(connection: sqlite3.Connection, table: str) -> set[str]:
+        return {str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")}
+
+    def _migrate_hardening_columns(self, connection: sqlite3.Connection) -> None:
+        turn_columns = self._column_names(connection, "turns")
+        if "inbound_request_json" not in turn_columns:
+            connection.execute(
+                "ALTER TABLE turns ADD COLUMN inbound_request_json TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execute(
+                "ALTER TABLE turns ADD COLUMN inbound_request_digest TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execute(
+                "ALTER TABLE turns ADD COLUMN inbound_source_reference_count "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        attempt_columns = self._column_names(connection, "attempts")
+        if "owner_id" not in attempt_columns:
+            connection.execute(
+                "ALTER TABLE attempts ADD COLUMN owner_id TEXT NOT NULL DEFAULT 'legacy-orphan'"
+            )
+            connection.execute(
+                "ALTER TABLE attempts ADD COLUMN lease_expires_at REAL NOT NULL DEFAULT 0"
+            )
+        rows = connection.execute(
+            "SELECT turn_id,planning_request_json FROM turns WHERE inbound_request_json=''"
+        ).fetchall()
+        for row in rows:
+            request = _request_from_payload(json.loads(row["planning_request_json"]))
+            snapshot_ids = {
+                str(item[0])
+                for item in connection.execute(
+                    "SELECT context_id FROM turn_context_snapshots WHERE turn_id=?",
+                    (row["turn_id"],),
+                )
+            }
+            inbound_sources = tuple(
+                item for item in request.source_references if item.reference_id not in snapshot_ids
+            )
+            inbound = replace(request, source_references=inbound_sources)
+            inbound_json = _canonical_json(_request_payload(inbound))
+            connection.execute(
+                "UPDATE turns SET inbound_request_json=?,inbound_request_digest=?,"
+                "inbound_source_reference_count=? WHERE turn_id=?",
+                (
+                    inbound_json,
+                    _digest("studyloop.planning-inbound-request", json.loads(inbound_json)),
+                    len(inbound_sources),
+                    row["turn_id"],
+                ),
+            )
+
     def ensure_private_modes(self) -> None:
-        for path in (
-            self.database_path,
-            Path(f"{self.database_path}-wal"),
-            Path(f"{self.database_path}-shm"),
-        ):
+        for path in self._database_files():
             if path.exists():
                 os.chmod(path, 0o600)
 
@@ -389,24 +498,24 @@ class ConversationStore:
             raise ConversationRefusedError(
                 "planning request brain dump must be the exact learner turn text"
             )
+        inbound_request_json = _canonical_json(_request_payload(turn.planning_request))
+        inbound_request_digest = _digest(
+            "studyloop.planning-inbound-request",
+            json.loads(inbound_request_json),
+        )
         with self._transaction() as connection:
             self._ensure_conversation(connection, command.conversation_id)
             prior = connection.execute(
                 "SELECT * FROM turns WHERE turn_id=?", (turn.turn_id,)
             ).fetchone()
             if prior is not None:
-                stored_request = _request_from_payload(json.loads(prior["planning_request_json"]))
                 if (
                     prior["conversation_id"] != command.conversation_id
                     or prior["learner_text"] != turn.text
-                    or stored_request.mode != turn.planning_request.mode
-                    or stored_request.idempotency_key != turn.planning_request.idempotency_key
-                    or stored_request.plan_id != turn.planning_request.plan_id
-                    or stored_request.evidence_ids != turn.planning_request.evidence_ids
-                    or stored_request.source_references[
-                        : len(turn.planning_request.source_references)
-                    ]
-                    != turn.planning_request.source_references
+                    or prior["inbound_request_digest"] != inbound_request_digest
+                    or prior["inbound_request_json"] != inbound_request_json
+                    or int(prior["inbound_source_reference_count"])
+                    != len(turn.planning_request.source_references)
                 ):
                     raise ConversationConflictError("turn ID was reused with different input")
                 return self._receipt(connection, prior)
@@ -465,12 +574,20 @@ class ConversationStore:
             )
             try:
                 connection.execute(
-                    "INSERT INTO turns VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO turns("
+                    "turn_id,conversation_id,turn_ordinal,learner_text,"
+                    "inbound_request_json,inbound_request_digest,"
+                    "inbound_source_reference_count,planning_request_json,"
+                    "context_generation,brief_context_digest,status,version,planning_run_id"
+                    ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         turn.turn_id,
                         command.conversation_id,
                         ordinal,
                         turn.text,
+                        inbound_request_json,
+                        inbound_request_digest,
+                        len(turn.planning_request.source_references),
                         request_json,
                         generation,
                         context_digest,
@@ -549,10 +666,13 @@ class ConversationStore:
                     )
             sequence = int(prior[-1]["attempt_seq"] + 1) if prior else 1
             attempt_id = self._ids.new_id("attempt")
+            owner_id = command.owner_id.strip() or self._ids.new_id("owner")
+            lease_expires_at = self._clock() + self.attempt_lease_seconds
             try:
                 connection.execute(
                     "INSERT INTO attempts(attempt_id,conversation_id,turn_id,attempt_seq,status,"
-                    "retry_of_attempt_id) VALUES (?,?,?,?,?,?)",
+                    "retry_of_attempt_id,private_reason,owner_id,lease_expires_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
                     (
                         attempt_id,
                         command.conversation_id,
@@ -560,6 +680,9 @@ class ConversationStore:
                         sequence,
                         "active",
                         command.retry_of_attempt_id,
+                        "",
+                        owner_id,
+                        lease_expires_at,
                     ),
                 )
                 changed = connection.execute(
@@ -583,6 +706,63 @@ class ConversationStore:
                 "active",
                 command.expected_turn_version + 1,
                 command.retry_of_attempt_id,
+                owner_id,
+                lease_expires_at,
+            )
+
+    def renew_attempt_lease(self, attempt: AttemptRecord, owner_id: str) -> AttemptRecord:
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT attempts.*,turns.version AS turn_version FROM attempts "
+                "JOIN turns USING(turn_id) WHERE attempt_id=?",
+                (attempt.attempt_id,),
+            ).fetchone()
+            if (
+                row is None
+                or row["status"] != "active"
+                or row["owner_id"] != owner_id
+                or int(row["turn_version"]) != attempt.turn_version
+            ):
+                raise ConversationConflictError("model attempt lease ownership was lost")
+            deadline = self._clock() + self.attempt_lease_seconds
+            connection.execute(
+                "UPDATE attempts SET lease_expires_at=? WHERE attempt_id=? AND owner_id=?",
+                (deadline, attempt.attempt_id, owner_id),
+            )
+            return self._attempt_from_row(row, "active", attempt.turn_version, deadline)
+
+    def claim_expired_attempt(
+        self,
+        attempt: AttemptRecord,
+        recovery_owner_id: str,
+    ) -> AttemptRecord | None:
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT attempts.*,turns.version AS turn_version FROM attempts "
+                "JOIN turns USING(turn_id) WHERE attempt_id=?",
+                (attempt.attempt_id,),
+            ).fetchone()
+            now = self._clock()
+            if (
+                row is None
+                or row["status"] != "active"
+                or int(row["turn_version"]) != attempt.turn_version
+                or str(row["owner_id"]) != attempt.owner_id
+                or float(row["lease_expires_at"]) != attempt.lease_expires_at
+                or float(row["lease_expires_at"]) > now
+            ):
+                return None
+            deadline = now + self.attempt_lease_seconds
+            connection.execute(
+                "UPDATE attempts SET owner_id=?,lease_expires_at=? WHERE attempt_id=?",
+                (recovery_owner_id, deadline, attempt.attempt_id),
+            )
+            return self._attempt_from_row(
+                row,
+                "active",
+                attempt.turn_version,
+                deadline,
+                owner_id=recovery_owner_id,
             )
 
     def complete_attempt(self, command: CompleteModelAttempt) -> AttemptRecord:
@@ -649,8 +829,8 @@ class ConversationStore:
             )
             return self._attempt_from_row(row, "interrupted", command.expected_turn_version + 1)
 
-    @staticmethod
     def _active_attempt(
+        self,
         connection: sqlite3.Connection,
         command: CompleteModelAttempt | MarkAttemptInterrupted,
     ) -> sqlite3.Row:
@@ -663,10 +843,25 @@ class ConversationStore:
         ).fetchone()
         if row is None or row["status"] != "active" or turn["status"] != "attempt_active":
             raise ConversationConflictError("attempt is not the active model attempt")
+        if not command.expected_owner_id or row["owner_id"] != command.expected_owner_id:
+            raise ConversationConflictError("model attempt lease ownership was lost")
+        if (
+            isinstance(command, MarkAttemptInterrupted)
+            and command.require_expired_lease
+            and float(row["lease_expires_at"]) > self._clock()
+        ):
+            raise ConversationConflictError("live model attempt lease has not expired")
         return row
 
     @staticmethod
-    def _attempt_from_row(row: sqlite3.Row, status: str, turn_version: int) -> AttemptRecord:
+    def _attempt_from_row(
+        row: sqlite3.Row,
+        status: str,
+        turn_version: int,
+        lease_expires_at: float | None = None,
+        *,
+        owner_id: str | None = None,
+    ) -> AttemptRecord:
         return AttemptRecord(
             str(row["attempt_id"]),
             str(row["conversation_id"]),
@@ -675,6 +870,8 @@ class ConversationStore:
             cast("Any", status),
             turn_version,
             cast("str | None", row["retry_of_attempt_id"]),
+            owner_id if owner_id is not None else str(row["owner_id"]),
+            lease_expires_at if lease_expires_at is not None else float(row["lease_expires_at"]),
         )
 
     def prepare_capability_call(self, command: PrepareCapabilityCall) -> CapabilityIntent:
@@ -692,7 +889,7 @@ class ConversationStore:
         arguments_json = _canonical_json(payload["arguments"])
         with self._transaction() as connection:
             attempt = connection.execute(
-                "SELECT status FROM attempts WHERE attempt_id=? AND conversation_id=? "
+                "SELECT status,owner_id FROM attempts WHERE attempt_id=? AND conversation_id=? "
                 "AND turn_id=?",
                 (command.attempt_id, command.conversation_id, command.turn_id),
             ).fetchone()
@@ -714,6 +911,8 @@ class ConversationStore:
                 return self._intent_from_row(prior)
             if attempt is None or attempt["status"] != "active":
                 raise ConversationConflictError("new capability intent requires an active attempt")
+            if not command.expected_owner_id or attempt["owner_id"] != command.expected_owner_id:
+                raise ConversationConflictError("model attempt lease ownership was lost")
             intent_id = self._ids.new_id("capability")
             connection.execute(
                 "INSERT INTO capability_intents VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -736,7 +935,11 @@ class ConversationStore:
             ).fetchone()
             return self._intent_from_row(row)
 
-    def mark_capability_dispatching(self, intent_id: str) -> CapabilityIntent:
+    def mark_capability_dispatching(
+        self,
+        intent_id: str,
+        expected_owner_id: str,
+    ) -> CapabilityIntent:
         with self._transaction() as connection:
             row = connection.execute(
                 "SELECT * FROM capability_intents WHERE intent_id=?", (intent_id,)
@@ -745,6 +948,16 @@ class ConversationStore:
                 raise ConversationConflictError("capability intent does not exist")
             if row["status"] in {"projected", "refused"}:
                 return self._intent_from_row(row)
+            attempt = connection.execute(
+                "SELECT status,owner_id FROM attempts WHERE attempt_id=?",
+                (row["attempt_id"],),
+            ).fetchone()
+            if attempt is None or attempt["status"] == "completed":
+                raise ConversationConflictError("capability attempt is no longer recoverable")
+            if attempt["status"] == "active" and (
+                not expected_owner_id or attempt["owner_id"] != expected_owner_id
+            ):
+                raise ConversationConflictError("model attempt lease ownership was lost")
             connection.execute(
                 "UPDATE capability_intents SET status='dispatching' WHERE intent_id=?",
                 (intent_id,),
@@ -769,6 +982,16 @@ class ConversationStore:
                 if prior["status"] != command.status or prior["payload_json"] != payload_json:
                     raise ConversationConflictError("capability result replay used different input")
                 return self._stored_result_from_row(prior)
+            attempt = connection.execute(
+                "SELECT status,owner_id FROM attempts WHERE attempt_id=?",
+                (intent["attempt_id"],),
+            ).fetchone()
+            if attempt is None or attempt["status"] == "completed":
+                raise ConversationConflictError("capability attempt is no longer recoverable")
+            if attempt["status"] == "active" and (
+                not command.expected_owner_id or attempt["owner_id"] != command.expected_owner_id
+            ):
+                raise ConversationConflictError("model attempt lease ownership was lost")
             sequence = self._next_outbox(connection, str(intent["conversation_id"]))
             connection.execute(
                 "INSERT INTO capability_results VALUES (?,?,?,?)",
@@ -835,12 +1058,14 @@ class ConversationStore:
             raise ConversationRefusedError("final assistant message cannot be empty")
         with self._transaction() as connection:
             attempt = connection.execute(
-                "SELECT status FROM attempts WHERE attempt_id=? AND conversation_id=? "
+                "SELECT status,owner_id FROM attempts WHERE attempt_id=? AND conversation_id=? "
                 "AND turn_id=?",
                 (command.attempt_id, command.conversation_id, command.turn_id),
             ).fetchone()
             if attempt is None or attempt["status"] != "active":
                 raise ConversationConflictError("assistant message requires an active attempt")
+            if not command.expected_owner_id or attempt["owner_id"] != command.expected_owner_id:
+                raise ConversationConflictError("model attempt lease ownership was lost")
             prior = connection.execute(
                 "SELECT * FROM finalized_messages WHERE attempt_id=? AND role='assistant'",
                 (command.attempt_id,),
@@ -1189,6 +1414,20 @@ class ConversationStore:
                 "JOIN turns USING(turn_id) "
                 "WHERE attempts.conversation_id=? AND attempts.status='active'",
                 (conversation_id,),
+            ).fetchall()
+            return [self._attempt_from_row(row, "active", int(row["turn_version"])) for row in rows]
+        finally:
+            connection.close()
+
+    def recoverable_attempts(self, conversation_id: str) -> list[AttemptRecord]:
+        """Return expired candidates; callers must still claim each candidate by CAS."""
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                "SELECT attempts.*,turns.version AS turn_version FROM attempts "
+                "JOIN turns USING(turn_id) WHERE attempts.conversation_id=? "
+                "AND attempts.status='active' AND attempts.lease_expires_at<=?",
+                (conversation_id, self._clock()),
             ).fetchall()
             return [self._attempt_from_row(row, "active", int(row["turn_version"])) for row in rows]
         finally:

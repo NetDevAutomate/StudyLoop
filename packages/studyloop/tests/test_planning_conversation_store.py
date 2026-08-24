@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from studyloop.planning.contracts import PlanningRequest
+from studyloop.planning.contracts import PlanningRequest, SourceReference
 from studyloop.planning.conversation_contracts import (
     AttachContext,
     BeginModelAttempt,
@@ -23,6 +23,7 @@ from studyloop.planning.conversation_contracts import (
     ProjectDecisionResult,
 )
 from studyloop.planning.conversation_store import ConversationStore
+from studyloop.planning.repository import PathContainmentError
 
 
 class _Ids:
@@ -92,6 +93,141 @@ def test_turn_refuses_a_planning_request_for_different_learner_text(tmp_path: Pa
         )
 
 
+@pytest.mark.parametrize(
+    "variant",
+    ["empty", "shorter", "longer", "reordered", "changed"],
+)
+def test_same_turn_replay_requires_the_exact_original_source_references(
+    tmp_path: Path,
+    variant: str,
+) -> None:
+    store = _store(tmp_path)
+    store.attach_context(
+        AttachContext("conversation-1", "attached-1", "Selected notes", "notes body")
+    )
+    first = SourceReference("source-1", "digest-1", "supplied_material", "Course one")
+    second = SourceReference("source-2", "digest-2", "supplied_material", "Course two")
+    original = (first, second)
+    learner = "I want to understand protocols"
+    initial = store.capture_turn_and_freeze_context(
+        CaptureLearnerTurn(
+            "conversation-1",
+            LearnerTurn(
+                "turn-1",
+                learner,
+                PlanningRequest("create", learner, "request-1", source_references=original),
+            ),
+        )
+    )
+    replay = store.capture_turn_and_freeze_context(
+        CaptureLearnerTurn(
+            "conversation-1",
+            LearnerTurn(
+                "turn-1",
+                learner,
+                PlanningRequest("create", learner, "request-1", source_references=original),
+            ),
+        )
+    )
+    assert replay == initial
+    assert [item.reference_id for item in store.load_request("turn-1").source_references] == [
+        "source-1",
+        "source-2",
+        "attached-1",
+    ]
+
+    changed = {
+        "empty": (),
+        "shorter": (first,),
+        "longer": (
+            first,
+            second,
+            SourceReference("source-3", "digest-3", "supplied_material", "Course three"),
+        ),
+        "reordered": (second, first),
+        "changed": (
+            first,
+            SourceReference("source-2", "different", "supplied_material", "Course two"),
+        ),
+    }[variant]
+    with pytest.raises(ConversationConflictError, match="different input"):
+        store.capture_turn_and_freeze_context(
+            CaptureLearnerTurn(
+                "conversation-1",
+                LearnerTurn(
+                    "turn-1",
+                    learner,
+                    PlanningRequest(
+                        "create",
+                        learner,
+                        "request-1",
+                        source_references=changed,
+                    ),
+                ),
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Course from /Users/alice/private/course.md (selected)",
+        r"Imported from C:\\Users\\alice\\course.txt today",
+        "Loaded (file:///srv/studyloop/course.txt), selected",
+        "Fetched via http://127.0.0.1:4000/internal/source.",
+        "Fetched via https://192.168.1.9:8443/course, selected",
+        "Gateway localhost:4000 (local)",
+        "Gateway 10.1.2.3:8080; local",
+        "Gateway [::1]:4000; local",
+        "Gateway [fd00::1234]:8080 (private)",
+    ],
+)
+def test_context_metadata_redacts_embedded_server_locations_before_persistence(
+    tmp_path: Path,
+    label: str,
+) -> None:
+    store = _store(tmp_path)
+
+    attached = store.attach_context(
+        AttachContext("conversation-1", "context-1", label, "learner-selected body")
+    )
+
+    assert attached.label == "selected text context"
+    _capture(store)
+    assert store.load_context("turn-1")[0].label == "selected text context"
+
+
+@pytest.mark.parametrize("target_kind", ["database", "wal", "shm"])
+def test_conversation_store_rejects_symlinked_sqlite_targets_before_open(
+    tmp_path: Path,
+    target_kind: str,
+) -> None:
+    root = tmp_path / "planning"
+    root.mkdir()
+    database = root / "planning-conversations.sqlite3"
+    suffix = {"database": "", "wal": "-wal", "shm": "-shm"}[target_kind]
+    outside = tmp_path / f"outside-{target_kind}.sqlite3"
+    Path(f"{database}{suffix}").symlink_to(outside)
+
+    with pytest.raises(PathContainmentError, match="symlink"):
+        ConversationStore(database)
+
+    assert not outside.exists()
+
+
+def test_conversation_store_rejects_a_symlinked_planning_parent(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    linked_root = tmp_path / "linked-planning"
+    linked_root.symlink_to(outside, target_is_directory=True)
+    database = linked_root / "planning-conversations.sqlite3"
+
+    with pytest.raises(PathContainmentError, match="planning root"):
+        ConversationStore(database)
+
+    assert list(outside.iterdir()) == []
+
+
 def test_first_attempt_and_interrupted_retry_keep_turn_and_accumulate_history(
     tmp_path: Path,
 ) -> None:
@@ -107,6 +243,7 @@ def test_first_attempt_and_interrupted_retry_keep_turn_and_accumulate_history(
             first.attempt_id,
             first.turn_version,
             "provider disconnected",
+            first.owner_id,
         )
     )
     second = store.begin_attempt(
@@ -143,11 +280,17 @@ def test_unresolved_capability_blocks_retry_without_allocating_attempt(tmp_path:
             {},
             "",
             "capability:key-1",
+            first.owner_id,
         )
     )
     interrupted = store.mark_attempt_interrupted(
         MarkAttemptInterrupted(
-            "conversation-1", "turn-1", first.attempt_id, first.turn_version, "crash"
+            "conversation-1",
+            "turn-1",
+            first.attempt_id,
+            first.turn_version,
+            "crash",
+            first.owner_id,
         )
     )
 
@@ -172,7 +315,11 @@ def test_final_message_and_outbox_are_atomic_and_monotonic(tmp_path: Path) -> No
 
     message = store.finalize_assistant_message(
         FinalizeAssistantMessage(
-            "conversation-1", "turn-1", attempt.attempt_id, "What matters most?"
+            "conversation-1",
+            "turn-1",
+            attempt.attempt_id,
+            "What matters most?",
+            attempt.owner_id,
         )
     )
     completed = store.complete_attempt(
@@ -181,6 +328,7 @@ def test_final_message_and_outbox_are_atomic_and_monotonic(tmp_path: Path) -> No
             "turn-1",
             attempt.attempt_id,
             attempt.turn_version,
+            attempt.owner_id,
         )
     )
 
@@ -209,11 +357,143 @@ def test_attempt_cannot_complete_before_a_finalized_message(tmp_path: Path) -> N
                 "turn-1",
                 attempt.attempt_id,
                 attempt.turn_version,
+                attempt.owner_id,
             )
         )
 
     assert store.get_turn("conversation-1", "turn-1").status == "attempt_active"
     assert store.list_attempts("turn-1")[0].status == "active"
+
+
+def test_terminal_attempt_transitions_require_the_durable_owner(tmp_path: Path) -> None:
+    interrupted_store = ConversationStore(
+        tmp_path / "interrupted" / "conversations.sqlite3",
+        ids=_Ids(),
+    )
+    receipt = _capture(interrupted_store)
+    attempt = interrupted_store.begin_attempt(
+        BeginModelAttempt("conversation-1", "turn-1", receipt.turn_version, None)
+    )
+    with pytest.raises(ConversationConflictError, match="ownership"):
+        interrupted_store.mark_attempt_interrupted(
+            MarkAttemptInterrupted(
+                "conversation-1",
+                "turn-1",
+                attempt.attempt_id,
+                attempt.turn_version,
+                "unowned interruption",
+            )
+        )
+    assert interrupted_store.list_attempts("turn-1")[0].status == "active"
+
+    completed_store = ConversationStore(
+        tmp_path / "completed" / "conversations.sqlite3",
+        ids=_Ids(),
+    )
+    receipt = _capture(completed_store)
+    attempt = completed_store.begin_attempt(
+        BeginModelAttempt("conversation-1", "turn-1", receipt.turn_version, None)
+    )
+    completed_store.finalize_assistant_message(
+        FinalizeAssistantMessage(
+            "conversation-1",
+            "turn-1",
+            attempt.attempt_id,
+            "Final response",
+            attempt.owner_id,
+        )
+    )
+    with pytest.raises(ConversationConflictError, match="ownership"):
+        completed_store.complete_attempt(
+            CompleteModelAttempt(
+                "conversation-1",
+                "turn-1",
+                attempt.attempt_id,
+                attempt.turn_version,
+            )
+        )
+    assert completed_store.list_attempts("turn-1")[0].status == "active"
+
+
+def test_active_attempt_messages_and_capability_intents_require_the_durable_owner(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    receipt = _capture(store)
+    attempt = store.begin_attempt(
+        BeginModelAttempt("conversation-1", "turn-1", receipt.turn_version, None)
+    )
+
+    with pytest.raises(ConversationConflictError, match="ownership"):
+        store.finalize_assistant_message(
+            FinalizeAssistantMessage(
+                "conversation-1",
+                "turn-1",
+                attempt.attempt_id,
+                "Unowned final response",
+            )
+        )
+    with pytest.raises(ConversationConflictError, match="ownership"):
+        store.prepare_capability_call(
+            PrepareCapabilityCall(
+                "conversation-1",
+                "turn-1",
+                attempt.attempt_id,
+                "tool-1",
+                "prepare_plan",
+                {},
+                "",
+                "capability:key-1",
+            )
+        )
+
+    assert store.list_messages("conversation-1") == []
+    assert store.list_capability_intents("turn-1") == []
+
+
+def test_expired_owner_cannot_write_after_recovery_claims_the_attempt(tmp_path: Path) -> None:
+    current_time = [100.0]
+    store = ConversationStore(
+        tmp_path / "conversations.sqlite3",
+        ids=_Ids(),
+        attempt_lease_seconds=1,
+        clock=lambda: current_time[0],
+    )
+    receipt = _capture(store)
+    attempt = store.begin_attempt(
+        BeginModelAttempt("conversation-1", "turn-1", receipt.turn_version, None)
+    )
+    current_time[0] = 102.0
+    claimed = store.claim_expired_attempt(attempt, "recovery-owner")
+    assert claimed is not None
+
+    with pytest.raises(ConversationConflictError, match="ownership"):
+        store.finalize_assistant_message(
+            FinalizeAssistantMessage(
+                "conversation-1",
+                "turn-1",
+                attempt.attempt_id,
+                "Stale owner response",
+                attempt.owner_id,
+            )
+        )
+    with pytest.raises(ConversationConflictError, match="ownership"):
+        store.prepare_capability_call(
+            PrepareCapabilityCall(
+                "conversation-1",
+                "turn-1",
+                attempt.attempt_id,
+                "tool-1",
+                "prepare_plan",
+                {},
+                "",
+                "capability:key-1",
+                attempt.owner_id,
+            )
+        )
+
+    assert store.list_messages("conversation-1") == []
+    assert store.list_capability_intents("turn-1") == []
 
 
 def test_capability_projection_is_atomic_idempotent_and_changed_replay_conflicts(
@@ -233,14 +513,25 @@ def test_capability_projection_is_atomic_idempotent_and_changed_replay_conflicts
         {},
         "",
         "capability:key-1",
+        attempt.owner_id,
     )
     intent = store.prepare_capability_call(command)
     assert intent.status == "prepared"
     projected = store.project_capability_result(
-        ProjectCapabilityResult(intent.intent_id, "projected", {"run_id": "run-1"})
+        ProjectCapabilityResult(
+            intent.intent_id,
+            "projected",
+            {"run_id": "run-1"},
+            attempt.owner_id,
+        )
     )
     replay = store.project_capability_result(
-        ProjectCapabilityResult(intent.intent_id, "projected", {"run_id": "run-1"})
+        ProjectCapabilityResult(
+            intent.intent_id,
+            "projected",
+            {"run_id": "run-1"},
+            attempt.owner_id,
+        )
     )
 
     assert replay == projected
@@ -256,6 +547,7 @@ def test_capability_projection_is_atomic_idempotent_and_changed_replay_conflicts
                 {"authority": "learner"},
                 "",
                 "capability:key-1",
+                attempt.owner_id,
             )
         )
 
@@ -403,7 +695,12 @@ def test_two_process_retry_has_one_cas_winner_and_monotonic_sequence(tmp_path: P
     )
     interrupted = store.mark_attempt_interrupted(
         MarkAttemptInterrupted(
-            "conversation-1", "turn-1", first.attempt_id, first.turn_version, "crash"
+            "conversation-1",
+            "turn-1",
+            first.attempt_id,
+            first.turn_version,
+            "crash",
+            first.owner_id,
         )
     )
     context = multiprocessing.get_context("spawn")
