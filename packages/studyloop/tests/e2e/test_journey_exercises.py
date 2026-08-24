@@ -51,7 +51,15 @@ from e2e._env import launch_env, shutdown  # noqa: E402
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
-pytestmark = [pytest.mark.e2e]
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skip(
+        reason=(
+            "The browser exercises panel is intentionally outside the v0.1 release scope; "
+            "CLI and MCP exercise workflows remain supported"
+        )
+    ),
+]
 
 WEB_PORT = 18613
 
