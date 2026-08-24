@@ -56,7 +56,6 @@ graph LR
         CX[Codex CLI]
         GA[Gemini CLI]
         OA[OpenCode]
-        AA[Amp]
         PI[pi]
         OMP[omp]
     end
@@ -74,7 +73,6 @@ graph LR
     CX -->|Socratic sessions| DB
     GA -->|Socratic sessions| DB
     OA -->|Socratic sessions| DB
-    AA -->|Socratic sessions| DB
     PI -->|Socratic sessions| DB
     OMP -->|Socratic sessions| DB
 ```
