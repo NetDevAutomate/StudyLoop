@@ -299,7 +299,9 @@ Nightly drift detection, pre-release gate, backup/restore.
 
 ## Next: v2.2.0 — Remote Study + Local LLMs
 
-Study from any device (iPad, laptop, phone) via the web dashboard, with optional local LLMs.
+Remote study through the web dashboard is implemented for tablets and laptops,
+with optional local LLMs. Phone-sized screens are deferred: the study panels do
+not yet have a usable phone layout.
 
 ### ttyd Integration + Embedded Web Pane
 

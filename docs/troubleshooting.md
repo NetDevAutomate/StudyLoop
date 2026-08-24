@@ -67,8 +67,9 @@ studyloop web --lan
 ```
 
 Configured LAN passwords are not printed. Generated one-time passwords are
-printed once. If a phone or tablet cannot connect, check that the shown LAN URL
+printed once. If a tablet or laptop cannot connect, check that the shown LAN URL
 uses the host's real LAN address and that the device is on the same network.
+Phone-sized screens are not supported in this release.
 
 ## The Browser Terminal Shows "No Terminal Available"
 

@@ -43,9 +43,15 @@ def test_public_docs_match_browser_only_architect_and_reload_recovery() -> None:
 
 def test_first_week_does_not_recommend_phone_use() -> None:
     first_week = _read("docs/first-week.md")
+    roadmap = _read("docs/roadmap.md")
+    troubleshooting = _read("docs/troubleshooting.md")
 
     assert "review from a phone" not in first_week
     assert "tablet or computer" in first_week
+    assert "Study from any device (iPad, laptop, phone)" not in roadmap
+    assert "Phone-sized screens are deferred" in roadmap
+    assert "If a phone or tablet cannot connect" not in troubleshooting
+    assert "If a tablet or laptop cannot connect" in troubleshooting
 
 
 def test_release_notes_distinguish_supported_harnesses_from_other_integrations() -> None:
