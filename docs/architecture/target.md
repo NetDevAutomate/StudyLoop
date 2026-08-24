@@ -6,7 +6,13 @@
 
 ## Direction in one paragraph
 
-StudyLoop is moving from a tmux + assistant-CLI core to a **local-first, web-first, plugin-based** study platform. The web/PWA replaces tmux as the primary learner UI. ACP becomes the preferred transport (currently Kiro + Gemini). PTY remains the fallback for agents that don't speak ACP. ttyd is retired once ACP + PTY web sessions cover every agent. Native macOS / iOS clients use the same local HTTP + WebSocket API later.
+StudyLoop is moving from a tmux + assistant-CLI core to a **local-first,
+web-first, plugin-based** study platform. The web/PWA becomes the primary
+learner UI. PTY/xterm.js is the released v0.1 browser transport; ACP remains
+dev-only while it is evaluated as a possible future structured transport. The
+ttyd browser surface is already retired, while its operator-only server path
+remains for later cleanup. Native macOS / iOS clients may use the same local
+HTTP + WebSocket API later.
 
 ---
 
@@ -103,10 +109,10 @@ flowchart TB
 
 ## Migration runway
 
-| Now (2026-05) | Near-term | Target |
+| Historical baseline | Current / near-term | Target |
 |---|---|---|
-| tmux is the primary live-session UI | PWA chat surface for ACP agents (shipped); ttyd still used for Claude/Codex/OpenCode | PWA covers every agent; tmux + ttyd retired |
-| PTY transport works in the browser via ttyd iframe | PTY transport adapted to stream raw bytes over WebSocket (xterm.js mount, no ttyd) | All agents drive a chat surface with a uniform contract |
+| tmux is the primary live-session UI | PWA terminal uses direct PTY/xterm.js for five release-gated agents; ACP is dev-only; tmux remains the CLI default | PWA covers every released agent; tmux and the ttyd server path can be retired deliberately |
+| PTY transport works in the browser via a ttyd iframe | PTY streams raw bytes over a same-origin WebSocket into xterm.js; the ttyd browser surface is retired | All agents drive a presentation with a uniform lifecycle contract |
 | Plugins are sub-commands in the CLI | Plugin host process boundary defined; first plugin (NotebookLM) extracted | Plugins are isolated subprocesses with declared capabilities; opt-in install |
 | `/api/session/*` is internal | Same routes, same shape, but documented as a stable contract | Native clients consume it directly (same auth model: localhost or LAN with HTTP Basic) |
 | Persona delivery is transport-specific (file for PTY, prompt for ACP) | Same | Persona becomes a first-class capability of the transport — adapter declares which delivery mode it supports, runtime decides |
@@ -156,7 +162,7 @@ loops feel native inside the web session surface.
 - **Plugin protocol**: subprocess + JSON-RPC over stdio (mirrors ACP) vs. embedded Python (faster, less isolation). Leaning toward subprocess parity with ACP for consistency.
 - **Native client auth**: localhost-only by default (no auth) vs. token-based even on localhost (defence in depth). The LAN path already enforces HTTP Basic.
 - **Multi-session support**: today is strictly single-session. Multi-session would require redesigning the singleton in `session/active.py` and the WS routing key.
-- **Resume on the ACP path**: the PTY path passes `previous_notes` into `build_canonical_persona`. The ACP path doesn't yet — a resumed ACP session gets a bare persona. Need a decision on whether to pull recent struggles/wins from `sessions.db` and embed them in the persona text.
+- **Resume on the dev-only ACP path**: the PTY path passes `previous_notes` into `build_canonical_persona`. The ACP path doesn't yet — a resumed ACP session gets a bare persona. Need a decision on whether to pull recent struggles/wins from `sessions.db` and embed them in the persona text before ACP can seek a release gate.
 - **Theme persistence across devices**: today the palette selector is `localStorage`-only. If the PWA is installed on multiple devices the user re-picks every time. Sync would require a server-side preferences store.
 - **Mid-session deck generation (v2 of the Generate panel)**: today the Generate panel's `topic_struggles` scope queries `study_progress.confidence='struggling'` over a date window. v2 would let the agent mark *specific concepts* mid-session via an MCP tool call ("the user is stuck on outer joins -- queue a deck"), bypassing the date-window query for an immediately-targeted deck. Needs a new agent-side tool surface; tracked separately, not blocking v1.
 

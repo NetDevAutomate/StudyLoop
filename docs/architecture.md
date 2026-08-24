@@ -49,9 +49,14 @@ Factories are assigned to `window` deliberately: Alpine evaluates `x-data="sessi
 |---|---|
 | unset (default) | `TmuxBackend` |
 | `tmux` | `TmuxBackend` |
-| `herdr` | `HerdrBackend` — raises `MultiplexerError` if the `herdr` binary is absent |
+| `herdr` | `HerdrBackend` — opt-in; requires the binary and a running Herdr server |
 
-**tmux is still the default.** `HerdrBackend` is implemented, but herdr stays opt-in until its journey suite is green; it has **not** replaced tmux. Call sites import from `multiplexer.py` rather than `tmux.py` directly.
+**tmux is still the default.** The Herdr journey suite is green, but that test
+result does not change the default or make a release-policy decision.
+`STUDYLOOP_MULTIPLEXER=herdr` remains an explicit opt-in for v0.1. The Herdr
+server must already be running (start `herdr` interactively or `herdr server`
+headlessly); StudyLoop manages workspaces, not the server lifecycle. Call sites
+import from `multiplexer.py` rather than `tmux.py` directly.
 
 ## Active Architecture Docs
 

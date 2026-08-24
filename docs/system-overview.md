@@ -31,7 +31,7 @@ flowchart TB
         Tmux["Multiplexer<br/>tmux (default) | herdr (opt-in)<br/>+ Textual sidebar"]
         Web["Web/PWA<br/>dashboard + review"]
         Explorer["Course Explorer<br/>(browse + read + search<br/>study material)"]
-        Term["Terminal panel<br/>xterm.js over WebSocket (PTY)<br/>or ACP chat"]
+        Term["Terminal panel<br/>xterm.js over WebSocket (PTY)<br/>ACP only behind --dev"]
     end
 
     subgraph "Review Support"
@@ -197,15 +197,17 @@ Current:
   `STUDYLOOP_MULTIPLEXER=herdr`)
 - Textual sidebar for timer/activity
 - Web dashboard for session state
-- Browser terminal via **xterm.js over a WebSocket** (PTY), or **ACP chat** for
-  structured-event agents
+- Browser terminal via **xterm.js over a WebSocket** (PTY). ACP chat only with
+  `studyloop web --dev` for experimental structured-event agents
 
 Target:
 
 - Web/PWA live session panel as primary learner UI
-- ACP transport where available
+- evaluate ACP as a preferred transport only after its live behavior earns a
+  separate release gate; it is dev-only today
 - PTY transport fallback where ACP is not available
-- herdr as the default multiplexer once its journey suite is green
+- evaluate Herdr as the default multiplexer in a separate product decision;
+  its green journey suite does not change the v0.1 tmux default
 - macOS/iOS apps use the same local API later
 
 The ttyd browser surface is **already gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)):
@@ -235,7 +237,14 @@ flowchart TD
     API -->|"stream events"| Web
 ```
 
-**Persona delivery — different per transport.** On the PTY path the persona is written to a temp file and embedded in the agent's launch command. On the ACP path (added 2026-05-28) the persona text is returned inline in the `/api/session/start` response and the browser ships it as the first invisible `session/prompt` after the WebSocket opens — ACP agents have no argv/env hook for system context, the prompt channel is the only injection point. The browser hides it from the chat (no user bubble, no assistant ack scrolls past) and shows a brief "Setting up your mentor…" banner instead.
+**Persona delivery — different per transport.** On the released PTY path the
+persona is written to a temp file and embedded in the agent's launch command.
+On the dev-only ACP path the persona text is returned inline in the
+`/api/session/start` response and the browser ships it as the first invisible
+`session/prompt` after the WebSocket opens — ACP agents have no argv/env hook
+for system context, so the prompt channel is the injection point. The browser
+hides it from the chat (no user bubble, no assistant acknowledgement scrolling
+past) and shows a brief "Setting up your mentor…" banner instead.
 
 ## Data Stores
 

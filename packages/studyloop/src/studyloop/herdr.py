@@ -102,7 +102,8 @@ class HerdrBackend:
 
     Uses the default herdr session with workspace isolation (D2).
     Each study session creates a workspace; cleanup closes the workspace.
-    No server lifecycle management needed — herdr auto-starts on first command.
+    StudyLoop does not own the Herdr server lifecycle. The server must already
+    be running before this backend sends workspace commands.
     """
 
     # Cache: label → workspace_id mapping (invalidated on kill/create)

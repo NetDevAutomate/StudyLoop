@@ -3,10 +3,10 @@
 Every study session — across all agents and platforms — follows this protocol. It's designed to support AuDHD brains through context-switching, energy management, and structured closure.
 
 !!! tip "This is the shared protocol"
-    All agents (Kiro, Claude Code, Gemini, OpenCode) use the same session flow. The source of truth lives in `agents/shared/session-protocol.md`.
+    All five released web harnesses (Claude Code, Codex, Gemini, Kiro, and OpenCode) use the same session flow. The source of truth lives in `agents/shared/session-protocol.md`.
 
 !!! note "Transport-agnostic"
-    The protocol is identical whether the session runs over PTY (terminal-style, all agents) or ACP (structured JSON-RPC, Kiro + Gemini today). Only the *delivery mechanism* for the persona text differs:
+    The protocol is identical whether the session runs over PTY (the v0.1 browser path) or ACP (structured JSON-RPC for Kiro + Gemini). ACP is experimental and available only with `studyloop web --dev`. Only the *delivery mechanism* for the persona text differs:
 
     - **PTY**: persona is written to a temp file and embedded in the agent's launch command. The agent reads it at startup.
     - **ACP**: persona is shipped inline in the `/api/session/start` response and the browser sends it as the first invisible `session/prompt` after the WebSocket opens. The user never sees it scroll past — a "Setting up your mentor…" banner appears briefly while the agent ingests it.
@@ -15,13 +15,17 @@ Every study session — across all agents and platforms — follows this protoco
 
 ## tmux Session Environment
 
-Sessions run inside a tmux split-pane layout created by `studyloop study`:
+By default, CLI sessions run inside a tmux split-pane layout created by
+`studyloop study`:
 
 - **Left pane**: AI agent (Claude Code or other) running the session protocol
 - **Right pane**: Textual sidebar showing timer, activity feed, and counters
 - **Key bindings**: `p` pause/resume timer, `r` reset timer, `Q` end session
 - **`Q` quit**: Ends the DB session, kills all `study-*` tmux sessions, returns to the original shell
 - **`--resume`**: Detects live or zombie sessions and reconnects or rebuilds
+
+Herdr is an explicit CLI opt-in via `STUDYLOOP_MULTIPLEXER=herdr`; it requires
+an already-running Herdr server and does not change the browser PTY path.
 
 ---
 
