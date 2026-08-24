@@ -1,6 +1,6 @@
-"""Autoresearch-style E2E test matrix for all agent adapters.
+"""Autoresearch-style E2E test matrix for supported CLI agent adapters.
 
-Parametrized over all 8 agents. Each test uses a mock agent script
+Parametrized over the five release agents. Each test uses a mock agent script
 injected via ``STUDYLOOP_TEST_AGENT_CMD``.
 
 Run::
@@ -34,18 +34,21 @@ from harness.agents import matrix_agent
 # Constants
 # ---------------------------------------------------------------------------
 
-AGENTS = ["claude", "codex", "gemini", "grok", "kiro", "opencode", "ollama", "lmstudio"]
+AGENTS = ["claude", "codex", "gemini", "kiro", "opencode"]
 
 TOPIC = "Harness Matrix"
 ENERGY = 5
 POLL_TIMEOUT = 20
 POLL_INTERVAL = 0.5
 
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
-ONELINE_FILE = CONFIG_DIR / "session-oneline.txt"
+# The root conftest sets this before test modules import. Reading HOME here
+# bypassed that isolation, so this matrix waited on and deleted the learner's
+# real IPC files while its subprocess wrote to the test directory.
+SESSION_DIR = Path(os.environ["STUDYLOOP_SESSION_DIR"]).expanduser().resolve()
+STATE_FILE = SESSION_DIR / "session-state.json"
+TOPICS_FILE = SESSION_DIR / "session-topics.md"
+PARKING_FILE = SESSION_DIR / "session-parking.md"
+ONELINE_FILE = SESSION_DIR / "session-oneline.txt"
 
 pytestmark = [
     pytest.mark.skipif(not shutil.which("tmux"), reason="tmux not installed"),
@@ -138,12 +141,13 @@ def _build_env(
 
 
 def _cleanup_all() -> None:
-    """Kill stale sessions, processes, and IPC files."""
+    """Remove only this matrix's sessions and isolated IPC files."""
     for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE):
         with contextlib.suppress(OSError):
             f.unlink(missing_ok=True)
 
-    # Kill any study-* tmux sessions
+    # Never kill an ordinary learner session. This matrix owns only sessions
+    # whose topic slug is ``harness-matrix``.
     result = subprocess.run(
         ["tmux", "list-sessions", "-F", "#{session_name}"],
         capture_output=True,
@@ -152,16 +156,12 @@ def _cleanup_all() -> None:
     )
     if result.returncode == 0:
         for name in result.stdout.strip().splitlines():
-            if name.startswith("study-"):
+            if name.startswith("study-harness-matrix-"):
                 subprocess.run(
                     ["tmux", "kill-session", "-t", name],
                     capture_output=True,
                     check=False,
                 )
-
-    # Kill orphaned mock agents and sidebar processes
-    for pattern in ("mock-agent-matrix", "studyloop.tui.sidebar"):
-        subprocess.run(["pkill", "-f", pattern], capture_output=True, check=False)
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +221,7 @@ def matrix_session(request, tmp_path_factory):
     _cleanup_all()
 
     # Start the session
-    subprocess.run(
+    result = subprocess.run(
         [
             sys.executable,
             "-m",
@@ -240,7 +240,14 @@ def matrix_session(request, tmp_path_factory):
     )
 
     # Wait for state file
-    _wait_for(STATE_FILE.exists, desc="session-state.json created")
+    try:
+        _wait_for(STATE_FILE.exists, desc="session-state.json created")
+    except TimeoutError as exc:
+        pytest.fail(
+            f"{exc}\nCLI return code: {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+            pytrace=False,
+        )
     state = _read_state()
     session_name = state.get("tmux_session", "")
 

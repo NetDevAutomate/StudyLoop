@@ -98,8 +98,8 @@ def parking_agent(tmp_path: Path) -> str:
 trap 'exit 0' TERM INT
 echo "Mock agent started"
 sleep 2
-# Write to IPC file directly (sidebar polls this)
-PARKING_FILE="$HOME/.config/studyloop/session-parking.md"
+# Write to the configured IPC file directly (sidebar polls this).
+PARKING_FILE="${STUDYLOOP_SESSION_DIR:-$HOME/.config/studyloop}/session-parking.md"
 echo "- What about metaclasses?" >> "$PARKING_FILE"
 # Stay alive
 while true; do sleep 1; done
@@ -147,8 +147,8 @@ studyloop topic "First-Class Functions" --status learning \
     --note "exploring the concept of first-class functions"
 sleep 1
 
-# Park a question via IPC file (more reliable in tests than CLI)
-PARKING_FILE="$HOME/.config/studyloop/session-parking.md"
+# Park a question via the isolated IPC file (more reliable in tests than CLI)
+PARKING_FILE="${STUDYLOOP_SESSION_DIR:-$HOME/.config/studyloop}/session-parking.md"
 echo "- How do decorators interact with class methods?" >> "$PARKING_FILE"
 
 # Stay alive until killed
