@@ -46,3 +46,16 @@ def test_first_week_does_not_recommend_phone_use() -> None:
 
     assert "review from a phone" not in first_week
     assert "tablet or computer" in first_week
+
+
+def test_release_notes_distinguish_supported_harnesses_from_other_integrations() -> None:
+    release_notes = _read("releases/v0.1.0.md")
+    normalized = " ".join(release_notes.casefold().split())
+
+    assert "claude code, codex, gemini cli, kiro cli, and opencode" in normalized
+    assert "five release-gated live browser harnesses" in normalized
+    assert "nine agent platforms are supported" not in normalized
+    assert "pyright` reports 47 pre-existing errors" not in normalized
+    assert "12 failed, 8 errors" not in normalized
+    assert "does not pass, because the surface" not in normalized
+    assert "no packaged distribution" not in normalized
