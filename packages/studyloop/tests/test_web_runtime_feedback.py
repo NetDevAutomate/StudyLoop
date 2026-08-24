@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 from typing import TYPE_CHECKING
 
 import pytest
@@ -54,12 +53,16 @@ def test_format_lan_credentials_shows_generated_password_only() -> None:
     generated = format_lan_credential_lines(
         LanCredentialFeedback(
             username="study",
-            password="generated-secret",
+            password="generated-secret",  # pragma: allowlist secret
             password_generated=True,
         )
     )
     configured = format_lan_credential_lines(
-        LanCredentialFeedback(username="study", password="stored-secret", password_generated=False)
+        LanCredentialFeedback(
+            username="study",
+            password="stored-secret",  # pragma: allowlist secret
+            password_generated=False,
+        )
     )
 
     assert "generated-secret" in "\n".join(generated)
@@ -67,34 +70,35 @@ def test_format_lan_credentials_shows_generated_password_only() -> None:
     assert "configured; not shown" in "\n".join(configured)
 
 
-@pytest.mark.parametrize(
-    ("args", "secret", "expected_password_text"),
-    [
-        (["web", "--lan", "--password", "stored-secret"], "stored-secret", "configured; not shown"),
-        (["web", "--lan"], "generated-secret", "generated-secret"),
-    ],
-)
 def test_web_lan_output_uses_client_urls_without_echoing_configured_passwords(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
-    args: list[str],
-    secret: str,
-    expected_password_text: str,
 ) -> None:
     uvicorn = pytest.importorskip("uvicorn")
+    from studyloop.learner_credentials import verify_password
 
-    monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "config.yaml"))
+    config = tmp_path / "config.yaml"
+    config.write_text("lan_username: study\nlan_password: stored-secret\n")
+    app_kwargs: dict[str, object] = {}
+
+    def capture_app(**kwargs):
+        app_kwargs.update(kwargs)
+        return object()
+
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
     monkeypatch.setattr("studyloop.cli._web._candidate_lan_hosts", lambda: ("192.168.1.44",))
-    monkeypatch.setattr(secrets, "token_urlsafe", lambda _: "generated-secret")
-    monkeypatch.setattr("studyloop.web.app.create_app", lambda **_: object())
+    monkeypatch.setattr("studyloop.web.app.create_app", capture_app)
     monkeypatch.setattr(uvicorn.Server, "run", lambda *_, **__: None)
 
-    result = CliRunner().invoke(cli, args)
+    result = CliRunner().invoke(cli, ["web", "--lan"])
 
     assert result.exit_code == 0, result.output
     assert "Local: http://127.0.0.1:8567" in result.output
     assert "LAN:   http://192.168.1.44:8567" in result.output
     assert "Study PWA at http://0.0.0.0:8567" not in result.output
-    assert expected_password_text in result.output
-    if secret == "stored-secret":
-        assert secret not in result.output
+    assert "configured; not shown" in result.output
+    assert "stored-secret" not in result.output
+    assert "stored-secret" not in config.read_text()
+    assert "lan_password:" not in config.read_text()
+    assert verify_password("stored-secret", str(app_kwargs["password_verifier"]))
+    assert "password" not in app_kwargs

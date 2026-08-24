@@ -9,6 +9,13 @@ from studyloop.cli._shared import console, offer_agent_install
 from studyloop.shared import init_interactive_config
 
 
+def _stdin_is_interactive() -> bool:
+    """Return whether a human terminal, rather than a pipe/agent, owns input."""
+    import sys
+
+    return sys.stdin.isatty()
+
+
 @click.group(name="config")
 def config_group() -> None:
     """Manage studyloop configuration."""
@@ -126,3 +133,36 @@ def config_show() -> None:
         console.print(topics_table)
     else:
         console.print("\n[dim]No topics configured. Add topics to config.yaml.[/dim]")
+
+
+@config_group.command(name="lan-password")
+def config_lan_password() -> None:
+    """Set persistent LAN authentication without storing plaintext."""
+    if not _stdin_is_interactive():
+        raise click.ClickException(
+            "LAN password setup requires an interactive terminal; piped or agent input is refused."
+        )
+
+    import getpass
+    import hmac
+
+    from studyloop.learner_credentials import hash_password
+    from studyloop.settings import load_raw_config, write_raw_config
+
+    try:
+        password = getpass.getpass("New LAN password: ")
+        if not password:
+            raise click.ClickException("LAN password must not be empty")
+        confirmation = getpass.getpass("Confirm LAN password: ")
+    except (EOFError, KeyboardInterrupt) as exc:
+        raise click.ClickException("LAN password setup cancelled; config was not changed") from exc
+    if not hmac.compare_digest(password, confirmation):
+        raise click.ClickException("LAN passwords did not match; config was not changed")
+
+    raw = load_raw_config()
+    raw.pop("lan_password", None)
+    raw["lan_password_verifier"] = hash_password(password)
+    password = ""
+    confirmation = ""
+    path = write_raw_config(raw)
+    console.print(f"[green]LAN password verifier saved securely to {path}[/green]")

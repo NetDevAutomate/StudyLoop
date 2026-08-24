@@ -148,11 +148,14 @@ class TestWebCommandConfig:
         import uvicorn
         from click.testing import CliRunner
 
+        from studyloop.learner_credentials import hash_password, verify_password
+
         learner_secret = "human-only-child-value"  # pragma: allowlist secret
+        verifier = hash_password(learner_secret)
         read_fd, write_fd = os.pipe()
         with os.fdopen(write_fd, "wb", closefd=True) as credential_pipe:
             credential_pipe.write(
-                json.dumps({"username": "learner", "password": learner_secret}).encode("utf-8")
+                json.dumps({"username": "learner", "password_verifier": verifier}).encode("utf-8")
             )
         captured: dict[str, object] = {}
         closed_fds: list[int] = []
@@ -177,7 +180,8 @@ class TestWebCommandConfig:
 
         assert result.exit_code == 0, result.output
         assert captured["username"] == "learner"
-        assert captured["password"] == learner_secret
+        assert verify_password(learner_secret, str(captured["password_verifier"]))
+        assert "password" not in captured
         assert learner_secret not in result.output
         assert read_fd in closed_fds
 

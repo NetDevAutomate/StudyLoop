@@ -93,8 +93,8 @@ def format_lan_credential_lines(feedback: LanCredentialFeedback) -> list[str]:
     if feedback.password_generated:
         lines.append(f"  Password: [green]{feedback.password}[/green]")
         lines.append(
-            "  [dim]Set lan_username and lan_password in config.yaml "
-            "to avoid auto-generated passwords.[/dim]"
+            "  [dim]Generated for this launch; it is not stored in agent-readable "
+            "config or session state.[/dim]"
         )
     else:
         lines.append("  Password: [dim]configured; not shown[/dim]")

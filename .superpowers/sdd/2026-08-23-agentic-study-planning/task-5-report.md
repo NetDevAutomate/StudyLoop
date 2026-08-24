@@ -475,3 +475,105 @@ rtk uv run --group dev pyright <changed round-4 source files>
 
 Targeted Ruff check and format-check, Python compilation, the Task 5
 architecture gate, and `git diff --check` also pass.
+
+## Fix round 5 — sealed learner credential boundary
+
+The final independent review showed that round 4 had moved the password rather
+than removed it: public argv and plaintext config were still readable by the
+same unsandboxed agent, Starlette retained another repr-visible copy, ttyd
+received browser authority headers, and the browser-helper fork inherited the
+credential read descriptor. Round 5 closes those sources without beginning the
+Task 6 onboarding/agent-install work.
+
+### Changes
+
+- Public `studyloop web/study --password` no longer exists and is explicitly
+  rejected by Click. LAN launch obtains a password only through a real human
+  terminal before any agent detection/setup/launch; non-interactive fallback is
+  refused. `studyloop config lan-password` provides a separate interactive way
+  to persist LAN auth without putting the password in argv.
+- Settings and config retain only a versioned, randomly salted scrypt verifier
+  with fixed bounded work parameters. A legacy `lan_password` is hashed and
+  removed by an owner-only, fsynced atomic config replacement. Invalid verifier
+  data and failed migration stop startup rather than disabling auth. `Settings`
+  has no plaintext password field.
+- Valid and recognisably credential-bearing malformed legacy session-state
+  files are scrubbed atomically during the read itself. An unwriteable state
+  refuses session startup before agent detection with an actionable error.
+- The session parent hands only the non-replayable verifier to the web child
+  through the bounded pipe. Its read descriptor closes immediately after a
+  successful `Popen`, before state writes or `_open_browser()` can fork, and it
+  closes on every spawn failure path. ttyd receives no credential parameters.
+- `create_app()` accepts only a verifier. Basic Auth checks the presented human
+  password with scrypt; a bound middleware factory keeps password/verifier
+  material out of `app.user_middleware`, generic app state, DTOs, logs, and
+  exception values.
+- The terminal proxy terminates StudyLoop authority. HTTP requests strip Basic
+  Auth, proxy auth, cookies, Set-Cookie, CSRF/XSRF, and session-token headers;
+  responses also strip authority/challenge headers. The WebSocket connection
+  forwards no browser headers beyond the selected terminal subprotocol.
+- User-facing CLI/setup/web docs now describe interactive auth, atomic legacy
+  migration, the safe persistent-password command, and verifier-only config.
+
+### Round-5 RED evidence
+
+The new regressions first failed because the credential module did not exist,
+legacy plaintext remained in raw config and session files, the public help
+still advertised `--password`, `create_app` accepted no verifier, Starlette's
+middleware kwargs exposed the credential, and the parent FD remained open at
+the browser fork. Real loopback servers then captured `Authorization` over both
+HTTP and WebSocket, while a fake ttyd response returned `Set-Cookie` and CSRF
+headers to the browser. An unwriteable legacy state raised raw `OSError` only
+after agent detection. Each test now observes the secure external behaviour,
+not a mocked header builder or source-text assertion.
+
+### Round-5 final verification
+
+```text
+rtk uv run --group dev pytest <Task 5 planning + session/auth/proxy/launch slice> -q
+# 314 passed, one pre-existing Starlette/httpx deprecation warning
+
+rtk uv run --group dev pytest packages/studyloop/tests/test_planning*.py -q
+# 306 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_cli*.py \
+  packages/studyloop/tests/test_web*.py -q
+# 645 passed, 295 deselected, one pre-existing Starlette/httpx warning
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_e2e_coverage_gate.py \
+  packages/studyloop/tests/test_e2e_coverage_gate_selftest.py -q
+# 27 passed
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_lifecycle_commands.py \
+  packages/studyloop/tests/test_planning_lifecycle_evidence.py -q
+# 37 passed (including the duplicate-label evidence regressions)
+
+rtk uv run --group dev pyright <changed round-5 production modules>
+# 0 errors, 0 warnings, 0 informations
+```
+
+Targeted Ruff check and format-check, Python compilation, `mkdocs build
+--strict`, and `git diff --check` also pass. A real subprocess regression starts
+the public LAN web command, observes HTTP 401 readiness, inspects its live `ps`
+argv, and verifies the legacy config bytes were replaced without exposing the
+password.
+
+The full staged `rtk pre-commit run` passed every applicable hook except the
+repo-wide `pyright (studyloop)` hook. It reports 30 existing errors confined to
+unchanged `planning/repository.py` and `web/routes/session/_ws.py`; neither file
+appears in this round's staged diff. The targeted Pyright command above covers
+all changed round-5 production modules with zero errors. The scoped commit
+therefore skips only `pyright-studyloop` rather than expanding Task 5 into that
+unrelated type debt.
+
+### Honest limitations
+
+- HTTP Basic Auth on an ordinary LAN is still cleartext transport unless the
+  deployment adds TLS or a trusted encrypted tunnel. This round prevents the
+  local agent and ttyd from receiving reusable authority; it does not add HTTPS.
+- A verifier migrated from an existing weak password remains guessable offline.
+  New generated passwords are high entropy, but password-quality policy and
+  transport hardening remain release-security decisions outside Task 5.

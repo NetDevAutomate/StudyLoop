@@ -98,12 +98,12 @@ def start_web_server(
 
 
 def effective_credentials() -> tuple[str, str]:
-    """Return (username, password) the CLI will use from config."""
+    """Return credentials for the localhost-only test server (auth disabled)."""
     try:
         from studyloop.settings import load_settings
 
         settings = load_settings()
-        return (settings.lan_username or "study", settings.lan_password or "")
+        return (settings.lan_username or "study", "")
     except Exception:
         return ("study", "")
 

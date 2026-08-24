@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -354,7 +355,9 @@ class Settings:
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
     pomodoro: PomodoroConfig = field(default_factory=PomodoroConfig)
     lan_username: str = "study"  # username for HTTP Basic Auth when using --lan
-    lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = auto-generate)
+    # A salted one-way verifier is safe to keep beside agent-readable config;
+    # the reusable human password itself is never represented in Settings.
+    lan_password_verifier: str = ""
     obsidian: ObsidianConfig = field(default_factory=ObsidianConfig)
 
 
@@ -437,6 +440,7 @@ def load_raw_config() -> dict[str, Any]:
         raise ConfigError(
             f"Invalid config in {config_path}: expected a YAML mapping at the top level."
         )
+    loaded = _migrate_lan_credentials(loaded, config_path)
     return _expand_dotted_keys(loaded)
 
 
@@ -469,11 +473,72 @@ def resolve_study_dirs() -> list[str]:
     return [str(Path(base_path).expanduser())]
 
 
-def write_raw_config(data: dict[str, Any]) -> Path:
-    """Write raw YAML config to the active config path and return the path."""
-    config_path = get_config_path()
+def _write_config_secure(config_path: Path, data: dict[str, Any]) -> None:
+    """Atomically replace config with owner-only permissions and durable bytes."""
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=config_path.parent,
+        prefix=f".{config_path.name}.",
+        delete=False,
+    ) as tmp:
+        tmp_path = Path(tmp.name)
+        try:
+            os.fchmod(tmp.fileno(), 0o600)
+            yaml.safe_dump(data, tmp, default_flow_style=False, sort_keys=False)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
+    try:
+        os.replace(tmp_path, config_path)
+        directory_fd = os.open(config_path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def _migrate_lan_credentials(raw: dict[str, Any], config_path: Path) -> dict[str, Any]:
+    """Replace a legacy plaintext LAN password with a one-way verifier."""
+    from studyloop.learner_credentials import hash_password, is_password_verifier
+
+    migrated = dict(raw)
+    legacy_present = "lan_password" in migrated
+    legacy = migrated.pop("lan_password", None)
+    configured = migrated.get("lan_password_verifier", "")
+
+    if configured and not is_password_verifier(str(configured)):
+        if legacy:
+            configured = hash_password(str(legacy))
+            migrated["lan_password_verifier"] = configured
+        else:
+            raise ConfigError(
+                "Invalid LAN password verifier in config. Remove "
+                "'lan_password_verifier' and run a LAN command interactively."
+            )
+    elif legacy and not configured:
+        migrated["lan_password_verifier"] = hash_password(str(legacy))
+
+    if legacy_present:
+        try:
+            _write_config_secure(config_path, migrated)
+        except OSError as exc:
+            raise ConfigError(
+                f"Could not securely migrate the legacy LAN password in {config_path}. "
+                "No agent or web server was started; fix the file permissions and retry."
+            ) from exc
+    return migrated
+
+
+def write_raw_config(data: dict[str, Any]) -> Path:
+    """Write raw YAML config atomically and return the active path."""
+    config_path = get_config_path()
+    _write_config_secure(config_path, data)
     return config_path
 
 
@@ -490,7 +555,7 @@ _SCALAR_FIELDS: list[tuple[str, object]] = [
     ("web_port", int),
     ("browser", str),
     ("lan_username", str),
-    ("lan_password", str),
+    ("lan_password_verifier", str),
 ]
 
 
@@ -860,10 +925,10 @@ topics:
 #   cycles: 4            # Number of focus blocks before a long break
 
 # LAN access credentials (for --lan mode)
-# Set these to avoid auto-generated passwords each session.
-# If lan_password is empty and --lan is used, a random password is generated.
+# The human password is entered interactively and never stored in this file.
+# Existing lan_password values are migrated atomically to a one-way verifier.
 # lan_username: study
-# lan_password: your-password-here
+# lan_password_verifier: ""  # opaque value; never replace with plaintext
 
 # Content pipeline (studyloop content commands)
 # content:

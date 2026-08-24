@@ -106,6 +106,7 @@ studyloop install tools                   # Install global CLI entrypoints from 
 studyloop install agents                  # Install agent definitions for detected tools
 studyloop config init                     # Advanced/legacy config initializer
 studyloop config show                     # Display current configuration
+studyloop config lan-password             # Secure persistent LAN auth (interactive)
 studyloop self-test                       # Lightweight post-install smoke check
 studyloop doctor                          # Full health check
 studyloop update                          # Check for available updates
@@ -117,7 +118,7 @@ studyloop restore                         # List available backups
 studyloop restore BACKUP --confirm        # Restore from backup (safety backup first)
 
 # Web
-studyloop web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
+studyloop web [--port PORT] [--lan]             # Launch study web app (PWA)
 studyloop web --ttyd-port 7681            # ttyd server transport port (0 = read from config)
 studyloop web --dev                       # Dev mode: swap xterm.js for an alternative renderer
 studyloop web --dev-renderer ghostty      # Select the dev renderer (only choice; implies --dev)
@@ -134,7 +135,6 @@ studyloop study "topic" --timer pomodoro                # Override default timer
 studyloop study "topic" --agent claude --web            # Explicit agent + web dashboard
 studyloop study "topic" --agent codex                  # Explicit Codex CLI session
 studyloop study "topic" --lan                           # LAN access with password auth (implies --web)
-studyloop study "topic" --lan --password SECRET         # Explicit password for LAN auth
 studyloop study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
 studyloop study "topic" --agent lmstudio                # Local LLM via LM Studio
 studyloop study --resume                                # Resume conversation (-r)
@@ -152,8 +152,11 @@ Run `studyloop study` without a topic to open the textual picker for body double
 - IPC files for dashboard viewports
 - Optional web dashboard at `/session` via `--web`
 - `--web` auto-opens a browser to the dashboard on startup
-- `--lan` exposes the dashboard on your LAN with HTTP Basic Auth, prints usable local/LAN URLs, username, and password (implies `--web`). Password is auto-generated if not set via `--password` or `lan_password` in config
-- `--password SECRET` sets the LAN authentication password (used with `--lan`)
+- `--lan` exposes the dashboard on your LAN with HTTP Basic Auth (implies
+  `--web`). Authentication is established interactively before an agent starts;
+  leave the prompt blank to generate a password. Passwords are never accepted
+  in argv or stored in agent-readable config/session state. Legacy plaintext
+  config is atomically migrated to a one-way verifier.
 
 **Session lifecycle:**
 - **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar
@@ -437,8 +440,7 @@ Also runs automatically before `studyloop study` when zombies are detected.
 ```bash
 studyloop web                    # Serve on 127.0.0.1:8567
 studyloop web --port 9000        # Custom port
-studyloop web --lan              # LAN access with auth
-studyloop web --lan --password SECRET
+studyloop web --lan              # LAN access; prompts securely before startup
 ```
 
 | Key | Action | When |
@@ -470,7 +472,8 @@ There is **no browser terminal fallback**: the ttyd iframe surface was retired i
 web_port: 8567       # web dashboard port (default 8567)
 ttyd_port: 7681      # ttyd server transport port (default 7681) — maintainer-only; no browser surface
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
-lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
+lan_username: study
+lan_password_verifier: ""  # opaque one-way value; never replace with plaintext
 ```
 
 **Agent priority config** (`~/.config/studyloop/config.yaml`):

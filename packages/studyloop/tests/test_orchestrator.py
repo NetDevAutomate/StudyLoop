@@ -11,10 +11,12 @@ import pytest
 
 
 class TestStartWebBackground:
-    def test_hands_credentials_to_web_server_through_one_shot_pipe(self):
+    def test_hands_only_verifier_to_web_server_and_closes_parent_fd_before_browser(self):
+        from studyloop.learner_credentials import hash_password
         from studyloop.session.orchestrator import start_web_background
 
         learner_secret = "human-only-pipe-value"  # pragma: allowlist secret
+        verifier = hash_password(learner_secret)
         captured: dict[str, object] = {}
 
         def fake_popen(command, **kwargs):
@@ -23,21 +25,32 @@ class TestStartWebBackground:
             fds = kwargs.get("pass_fds", ())
             captured["fds"] = fds
             if fds:
-                captured["payload"] = os.read(fds[0], 4096)
+                child_fd = os.dup(fds[0])
+                try:
+                    captured["payload"] = os.read(child_fd, 4096)
+                finally:
+                    os.close(child_fd)
             return SimpleNamespace(pid=12345)
+
+        def assert_parent_fd_closed_before_browser(_url: str) -> None:
+            with pytest.raises(OSError):
+                os.fstat(captured["fds"][0])
 
         with (
             patch("studyloop.session.orchestrator.subprocess.Popen", side_effect=fake_popen),
             patch("studyloop.session.orchestrator.shutil.which", return_value="/usr/bin/studyloop"),
             patch("studyloop.session.orchestrator._kill_port_occupant"),
-            patch("studyloop.session.orchestrator._open_browser"),
+            patch(
+                "studyloop.session.orchestrator._open_browser",
+                side_effect=assert_parent_fd_closed_before_browser,
+            ),
             patch("studyloop.session_state.write_session_state") as write_state,
         ):
             start_web_background(
                 "study-python-abc123",
                 lan=True,
                 username="learner",
-                password=learner_secret,
+                password_verifier=verifier,
             )
 
         command = captured["command"]
@@ -47,12 +60,39 @@ class TestStartWebBackground:
         assert learner_secret not in json.dumps(kwargs.get("env", {}))
         assert json.loads(captured["payload"]) == {
             "username": "learner",
-            "password": learner_secret,
+            "password_verifier": verifier,
         }
+        assert learner_secret not in captured["payload"].decode()
         inherited_fd = captured["fds"][0]
         with pytest.raises(OSError):
             os.fstat(inherited_fd)
         write_state.assert_called_once_with({"web_pid": 12345, "web_port": 8567})
+
+    def test_failed_web_spawn_closes_parent_credential_fd(self):
+        from studyloop.learner_credentials import hash_password
+        from studyloop.session.orchestrator import start_web_background
+
+        captured_fd: list[int] = []
+
+        def fail_popen(_command, **kwargs):
+            captured_fd.extend(kwargs.get("pass_fds", ()))
+            raise OSError("spawn failed")
+
+        with (
+            patch("studyloop.session.orchestrator.subprocess.Popen", side_effect=fail_popen),
+            patch("studyloop.session.orchestrator.shutil.which", return_value="/usr/bin/studyloop"),
+            patch("studyloop.session.orchestrator._kill_port_occupant"),
+        ):
+            start_web_background(
+                "study-python-abc123",
+                lan=True,
+                username="learner",
+                password_verifier=hash_password("failure-path-password"),
+            )
+
+        assert captured_fd
+        with pytest.raises(OSError):
+            os.fstat(captured_fd[0])
 
 
 class TestStartTtydBackground:
@@ -91,7 +131,6 @@ class TestStartTtydBackground:
 
         mock_popen = MagicMock()
         mock_popen.return_value.pid = 12345
-        learner_secret = "human-only-ttyd-value"  # pragma: allowlist secret
 
         with (
             patch("studyloop.session.orchestrator.subprocess.Popen", mock_popen),
@@ -100,18 +139,12 @@ class TestStartTtydBackground:
             ),
             patch("studyloop.session_state.write_session_state"),
         ):
-            start_ttyd_background(
-                "study-python-abc123",
-                lan=True,
-                username="learner",
-                password=learner_secret,
-            )
+            start_ttyd_background("study-python-abc123", lan=True)
 
         args = mock_popen.call_args[0][0]
         idx = args.index("-i")
         assert args[idx + 1] == "127.0.0.1"
         assert "-c" not in args
-        assert learner_secret not in " ".join(args)
 
     def test_skips_when_ttyd_not_installed(self):
         """No error when ttyd is not installed — just skip."""

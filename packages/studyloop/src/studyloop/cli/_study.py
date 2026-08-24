@@ -210,11 +210,6 @@ def _agent_names() -> list[str]:
 )
 @click.option("--web", is_flag=True, help="Also start the web dashboard.")
 @click.option("--lan", is_flag=True, help="Expose web dashboard + terminal to LAN (implies --web).")
-@click.option(
-    "--password",
-    default="",
-    help="Password for HTTP Basic Auth when using --lan (auto-generated if not set).",
-)
 @click.option("--resume", is_flag=True, help="Resume an existing session.")
 @click.option("--end", "end_session", is_flag=True, help="End the current session.")
 @click.option(
@@ -239,7 +234,6 @@ def study(
     energy: int,
     web: bool,
     lan: bool,
-    password: str,
     resume: bool,
     end_session: bool,
     transport: str,
@@ -306,7 +300,6 @@ def study(
         energy,
         web,
         lan=lan,
-        password=password,
         topic_config=topic_config,
     )
 
@@ -321,7 +314,6 @@ def _handle_start(
     web: bool,
     *,
     lan: bool = False,
-    password: str = "",
     topic_config: TopicConfig | None = None,
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
@@ -333,6 +325,39 @@ def _handle_start(
     """
     from studyloop.session.start import SessionStartError, start_session
 
+    lan_username: str | None = None
+    password_verifier = ""
+    if lan:
+        from studyloop.learner_credentials import LearnerCredentialError, prepare_lan_auth
+        from studyloop.settings import load_settings
+        from studyloop.web.runtime_feedback import (
+            LanCredentialFeedback,
+            format_lan_credential_lines,
+        )
+
+        try:
+            settings = load_settings()
+
+            def display(user: str, password: str, generated: bool) -> None:
+                for line in format_lan_credential_lines(
+                    LanCredentialFeedback(
+                        username=user,
+                        password=password,
+                        password_generated=generated,
+                    )
+                ):
+                    console.print(line)
+
+            lan_username, password_verifier = prepare_lan_auth(
+                username=settings.lan_username or "study",
+                configured_verifier=settings.lan_password_verifier,
+                display=display,
+            )
+        except (LearnerCredentialError, click.ClickException) as exc:
+            console.print(f"[red]{exc}[/red]")
+            ctx.exit(1)
+            return
+
     try:
         start_session(
             topic,
@@ -342,7 +367,8 @@ def _handle_start(
             energy,
             web,
             lan=lan,
-            password=password,
+            lan_username=lan_username,
+            password_verifier=password_verifier,
             topic_config=topic_config,
             resume_session_name=resume_session_name,
             resume_session_dir=resume_session_dir,

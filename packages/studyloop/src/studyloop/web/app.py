@@ -60,7 +60,7 @@ def create_app(
     study_dirs: list[str] | None = None,
     ttyd_port: int = 7681,
     username: str = "study",
-    password: str = "",
+    password_verifier: str = "",
     dev_mode: bool = False,
     dev_renderer: str | None = None,
     dev_engine: str | None = None,
@@ -71,8 +71,8 @@ def create_app(
         study_dirs: List of directory paths containing flashcard/quiz content.
         ttyd_port: Port where the local ttyd process is listening.
         username: Username for HTTP Basic Auth (LAN protection). Default: "study".
-        password: Optional password for HTTP Basic Auth (LAN protection).
-                  If empty, no authentication is applied.
+        password_verifier: Optional one-way verifier for HTTP Basic Auth.
+                           If empty, no authentication is applied.
         dev_mode: When True, the UI loads an alternative renderer instead of
                   xterm.js. Default (False) preserves existing behaviour exactly.
         dev_renderer: Deprecated legacy alias for ``dev_engine``. When set
@@ -109,9 +109,9 @@ def create_app(
     app.state.dev_engine = resolve_dev_engine(dev_engine) if dev_mode else None
     # Routes need to know whether outer authentication exists, but must not be
     # able to recover its reusable credential from general application state.
-    # Only BasicAuthMiddleware retains the password itself.
+    # Only the active BasicAuthMiddleware retains the verifier itself.
     app.state.lan_username = username
-    app.state.lan_auth_configured = bool(password)
+    app.state.lan_auth_configured = bool(password_verifier)
     app.state.agent_session_manager = AgentSessionManager()
     app.state.explorer_tree_cache = None
     app.state.explorer_tree_fingerprint = None
@@ -122,10 +122,10 @@ def create_app(
     initialise_browser_learner_sessions(app)
 
     # Optional password protection (LAN mode)
-    if password:
-        from studyloop.web.auth import BasicAuthMiddleware
+    if password_verifier:
+        from studyloop.web.auth import configured_basic_auth_middleware
 
-        app.add_middleware(BasicAuthMiddleware, username=username, password=password)
+        app.add_middleware(configured_basic_auth_middleware(username, password_verifier))
 
     # Security headers
     app.add_middleware(SecurityHeadersMiddleware)

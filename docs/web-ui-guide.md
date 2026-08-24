@@ -8,10 +8,12 @@
 
 ```bash
 studyloop web                        # localhost:8567
-studyloop web --lan                  # LAN-accessible with auto-generated password
-studyloop web --lan --password SECRET  # LAN with explicit password
+studyloop web --lan                  # LAN auth prompt; blank generates a password
 studyloop web -p 9000                # custom port
 ```
+
+Use `studyloop config lan-password` from a human terminal to reuse a password
+across launches. StudyLoop stores only its salted one-way verifier.
 
 Open your browser to `http://localhost:8567`. The PWA is installable; add it to your home screen on a tablet for review and session visibility. Phone screens are not supported — the study panels have no phone layout.
 
@@ -448,10 +450,13 @@ What this means in practice:
 With `--lan`, the dashboard and its terminal surface are reachable from other devices on your network:
 
 ```bash
-studyloop study "topic" --web --lan --password mypassword
+studyloop study "topic" --web --lan
 ```
 
-Access from a tablet or phone at `http://<host-ip>:8567/session`. HTTP Basic Auth protects the connection, and the WebSocket rides the same authenticated origin — no extra port to open.
+Access from a tablet or laptop at `http://<host-ip>:8567/session`. Phone screens
+are not supported. HTTP Basic Auth protects the connection, and the WebSocket
+rides the same authenticated origin — no extra port to open. The password is
+entered or generated on the human terminal before the agent process starts.
 
 ---
 

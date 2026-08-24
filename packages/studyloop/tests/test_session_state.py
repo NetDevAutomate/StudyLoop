@@ -41,6 +41,22 @@ def test_read_session_state_corrupt_json(tmp_path: Path, monkeypatch: pytest.Mon
     assert read_session_state() == {}
 
 
+def test_read_corrupt_legacy_state_scrubs_recognisable_credential_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A malformed JSON wrapper must not preserve an otherwise readable secret."""
+    state_file = tmp_path / "session-state.json"
+    corrupt_state = '{"lan_password":"corrupt-secret", broken'  # pragma: allowlist secret
+    state_file.write_text(corrupt_state)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", state_file)
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    from studyloop.session_state import read_session_state
+
+    assert read_session_state() == {}
+    assert "corrupt-secret" not in state_file.read_text()
+    assert "lan_password" not in state_file.read_text()
+
+
 def test_write_session_state_creates_and_merges(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -78,6 +94,11 @@ def test_session_state_never_persists_or_returns_learner_credentials(
     from studyloop.session_state import read_session_state, write_session_state
 
     assert "lan_password" not in read_session_state()
+    # The read itself is the migration boundary: an agent may launch next, so
+    # waiting for an unrelated later write leaves the reusable secret exposed.
+    scrubbed_after_read = state_file.read_text()
+    assert "lan_password" not in scrubbed_after_read
+    assert "human-only-value" not in scrubbed_after_read
 
     write_session_state(
         {

@@ -27,9 +27,35 @@ _WS_CLOSE_POLICY = 1008
 _HOP_BY_HOP = frozenset(
     {"connection", "keep-alive", "transfer-encoding", "te", "trailers", "upgrade"}
 )
+_AUTHORITY_HEADERS = frozenset(
+    {
+        "authorization",
+        "proxy-authorization",
+        "cookie",
+        "set-cookie",
+        "csrf-token",
+        "x-csrf",
+        "x-csrf-token",
+        "x-xsrf-token",
+        "x-session-id",
+        "x-session-token",
+    }
+)
 # Additional headers to strip from upstream responses:
 # content-encoding: httpx decompresses for us; content-length may no longer be accurate.
-_STRIP_FROM_RESPONSE = _HOP_BY_HOP | frozenset({"content-encoding", "content-length"})
+_STRIP_FROM_REQUEST = _HOP_BY_HOP | _AUTHORITY_HEADERS | frozenset({"host"})
+_STRIP_FROM_RESPONSE = (
+    _HOP_BY_HOP
+    | _AUTHORITY_HEADERS
+    | frozenset(
+        {
+            "content-encoding",
+            "content-length",
+            "www-authenticate",
+            "proxy-authenticate",
+        }
+    )
+)
 
 
 def _ttyd_base(request: Request) -> str:
@@ -76,11 +102,7 @@ async def proxy_terminal_http(path: str, request: Request) -> Response:
     body = await request.body()
 
     # Strip hop-by-hop headers before forwarding
-    headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() not in _HOP_BY_HOP and k.lower() != "host"
-    }
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in _STRIP_FROM_REQUEST}
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -153,14 +175,11 @@ async def proxy_terminal_ws(ws: WebSocket) -> None:
         qs = "&".join(f"{k}={v}" for k, v in ws.query_params.items())
         upstream_ws_url = f"{upstream_ws_url}?{qs}"
 
-    # Connect to upstream with the same subprotocol.
-    # Forward the Authorization header so ttyd's -c auth is satisfied.
+    # Connect to the unauthenticated loopback ttyd with only protocol metadata.
+    # Browser auth, cookies, and CSRF authority terminate at StudyLoop.
     upstream_kwargs: dict = {}
     if subprotocol:
         upstream_kwargs["subprotocols"] = [subprotocol]
-    auth_header = ws.headers.get("authorization")
-    if auth_header:
-        upstream_kwargs["additional_headers"] = {"Authorization": auth_header}
 
     try:
         async with websockets.connect(upstream_ws_url, **upstream_kwargs) as upstream:

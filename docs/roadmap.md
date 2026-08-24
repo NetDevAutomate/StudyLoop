@@ -322,8 +322,8 @@ Study from any device (iPad, laptop, phone) via the web dashboard, with optional
 - [x] `window-size largest` tmux option for multi-client compatibility
 - [x] Same-origin reverse proxy — ttyd proxied through FastAPI at `/terminal/` (HTTP + WebSocket)
 - [x] Pop-out/return persistence — iframe stays in DOM (visibility CSS), pop-out auto-closes on return
-- [x] LAN password protection — HTTP Basic Auth middleware, auto-generated or explicit `--password`
-- [x] `lan_password` config option for persistent password
+- [x] LAN password protection — HTTP Basic Auth with an interactive human-owned password
+- [x] One-way `lan_password_verifier` config with atomic plaintext migration
 
 ### Local LLMs via Ollama / LM Studio
 

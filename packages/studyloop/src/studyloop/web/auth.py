@@ -1,7 +1,8 @@
 """HTTP Basic Auth middleware for LAN-exposed web server.
 
 When credentials are configured, all requests require HTTP Basic Auth.
-Both username and password are checked (timing-safe comparison).
+The username is timing-safe compared and the password is checked against a
+salted one-way verifier.
 This protects the study dashboard and terminal from unauthorised LAN access.
 """
 
@@ -23,23 +24,20 @@ class BasicAuthMiddleware:
 
     Usage::
 
-        app.add_middleware(
-            BasicAuthMiddleware,
-            username="study",
-            password="secret",  # pragma: allowlist secret
-        )
+        app.add_middleware(configured_basic_auth_middleware("study", verifier))
 
-    If password is empty, the middleware is a no-op (pass-through).
+    The public app factory installs a bound subclass so Starlette's generic
+    middleware specification contains no repr-visible verifier kwargs.
     """
 
-    def __init__(self, app: ASGIApp, *, username: str = "study", password: str) -> None:
+    def __init__(self, app: ASGIApp, *, username: str, password_verifier: str) -> None:
         self.app = app
         self._username = username
-        self._password = password
+        self._password_verifier = password_verifier
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         scope_type = scope["type"]
-        if not self._password or scope_type not in {"http", "websocket"}:
+        if scope_type not in {"http", "websocket"}:
             await self.app(scope, receive, send)
             return
 
@@ -80,5 +78,27 @@ class BasicAuthMiddleware:
 
         username, password = parts
         user_ok = hmac.compare_digest(username, self._username)
-        pass_ok = hmac.compare_digest(password, self._password)
+        from studyloop.learner_credentials import verify_password
+
+        pass_ok = verify_password(password, self._password_verifier)
         return user_ok and pass_ok
+
+
+def configured_basic_auth_middleware(username: str, password_verifier: str) -> type:
+    """Bind auth material privately, outside Starlette's repr-visible kwargs."""
+    from studyloop.learner_credentials import is_password_verifier
+
+    if not is_password_verifier(password_verifier):
+        raise ValueError("A valid LAN password verifier is required")
+
+    class _ConfiguredBasicAuthMiddleware(BasicAuthMiddleware):
+        def __init__(self, app: ASGIApp) -> None:
+            super().__init__(
+                app,
+                username=username,
+                password_verifier=password_verifier,
+            )
+
+    _ConfiguredBasicAuthMiddleware.__name__ = "ConfiguredBasicAuthMiddleware"
+    _ConfiguredBasicAuthMiddleware.__qualname__ = "ConfiguredBasicAuthMiddleware"
+    return _ConfiguredBasicAuthMiddleware

@@ -78,7 +78,7 @@ def _get_effective_credentials() -> tuple[str, str]:
         from studyloop.settings import load_settings
 
         settings = load_settings()
-        return (settings.lan_username or "study", settings.lan_password or "")
+        return (settings.lan_username or "study", "")
     except Exception:
         return ("study", "")
 

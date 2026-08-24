@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 def _read_inherited_credentials(fd: int) -> tuple[str, str]:
-    """Consume the background launch credential pipe exactly once."""
+    """Consume the background launch verifier pipe exactly once."""
     try:
         payload = os.read(fd, 4097)
     except OSError as exc:
@@ -36,12 +36,18 @@ def _read_inherited_credentials(fd: int) -> tuple[str, str]:
     try:
         decoded = json.loads(payload.decode("utf-8"))
         username = decoded["username"]
-        password = decoded["password"]
+        password_verifier = decoded["password_verifier"]
     except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise click.ClickException("Inherited web credential payload is invalid") from exc
-    if not isinstance(username, str) or not isinstance(password, str) or not password:
+    from studyloop.learner_credentials import is_password_verifier
+
+    if (
+        not isinstance(username, str)
+        or not isinstance(password_verifier, str)
+        or not is_password_verifier(password_verifier)
+    ):
         raise click.ClickException("Inherited web credential payload is invalid")
-    return username, password
+    return username, password_verifier
 
 
 def _candidate_lan_hosts() -> tuple[str, ...]:
@@ -58,7 +64,6 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
 @click.command()
 @click.option("--port", "-p", default=8567, help="Port for web server")
 @click.option("--lan", is_flag=True, help="Expose to LAN (default: localhost only)")
-@click.option("--password", default="", help="Password for HTTP Basic Auth (LAN protection)")
 @click.option("--credential-fd", type=int, default=None, hidden=True)
 @click.option("--ttyd-port", default=0, help="Port where ttyd is running (0 = read from config)")
 @click.option(
@@ -76,7 +81,6 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
 def web(
     port: int,
     lan: bool,
-    password: str,
     credential_fd: int | None,
     ttyd_port: int,
     dev: bool,
@@ -98,9 +102,12 @@ def web(
         )
         return
 
-    import secrets
+    from studyloop.settings import load_settings, resolve_study_dirs
 
-    from studyloop.settings import resolve_study_dirs
+    # Loading settings is a security preflight, not an optional convenience:
+    # it atomically migrates any legacy plaintext password before this process
+    # can host an agent workspace.
+    settings = load_settings()
 
     study_dirs: list[str] = []
     with contextlib.suppress(Exception):
@@ -108,48 +115,37 @@ def web(
         # the review panels discover decks the generator just wrote.
         study_dirs = resolve_study_dirs()
 
-    # Background session launch hands credentials over an inherited anonymous
+    # Background session launch hands a one-way verifier over an inherited anonymous
     # pipe. Reading and closing it before app construction prevents the later
     # agent process from inheriting a readable descriptor.
-    username = "study"
-    inherited_credentials = credential_fd is not None
+    username = settings.lan_username or "study"
+    password_verifier = ""
     if credential_fd is not None:
-        username, password = _read_inherited_credentials(credential_fd)
+        username, password_verifier = _read_inherited_credentials(credential_fd)
+    elif lan:
+        from studyloop.learner_credentials import LearnerCredentialError, prepare_lan_auth
 
-    # Resolve credentials: inherited pipe > CLI > config > auto-generated.
-    password_generated = False
-    try:
-        from studyloop.settings import load_settings
-
-        _settings = load_settings()
-        if not inherited_credentials:
-            username = _settings.lan_username or "study"
-        if not inherited_credentials and not password:
-            password = _settings.lan_password
-    except Exception:
-        pass
-
-    if lan and not password:
-        password = secrets.token_urlsafe(16)
-        password_generated = True
-
-    if lan and password:
-        for line in format_lan_credential_lines(
-            LanCredentialFeedback(
-                username=username,
-                password=password,
-                password_generated=password_generated,
-            )
-        ):
-            console.print(line)
-
-    if not ttyd_port:
-        from studyloop.settings import load_settings as _ls
+        def display(user: str, password: str, generated: bool) -> None:
+            for line in format_lan_credential_lines(
+                LanCredentialFeedback(
+                    username=user,
+                    password=password,
+                    password_generated=generated,
+                )
+            ):
+                console.print(line)
 
         try:
-            ttyd_port = _ls().ttyd_port
-        except Exception:
-            ttyd_port = 7681
+            username, password_verifier = prepare_lan_auth(
+                username=username,
+                configured_verifier=settings.lan_password_verifier,
+                display=display,
+            )
+        except LearnerCredentialError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    if not ttyd_port:
+        ttyd_port = settings.ttyd_port
 
     from studyloop.web.app import create_app
 
@@ -182,7 +178,7 @@ def web(
         study_dirs=study_dirs,
         ttyd_port=ttyd_port,
         username=username,
-        password=password,
+        password_verifier=password_verifier,
         dev_mode=dev,
         dev_renderer=dev_renderer,
         dev_engine=dev_engine,

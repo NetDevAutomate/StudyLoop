@@ -114,8 +114,7 @@ graph LR
 # Study sessions (tmux + AI agent + sidebar)
 studyloop study "topic" --energy 7      # Full tmux environment in one command
 studyloop study "topic" --web           # Also start web dashboard + auto-open browser
-studyloop study "topic" --lan           # LAN access with password auth (implies --web)
-studyloop study "topic" --lan --password SECRET  # Explicit LAN password
+studyloop study "topic" --lan           # LAN auth prompts before the agent starts (implies --web)
 studyloop study --resume                # Resume conversation from history
 studyloop study --end                   # End session (quit Claude also works)
 studyloop park "question"               # Park tangential topic

@@ -229,9 +229,9 @@ def start_web_background(
     *,
     lan: bool = False,
     username: str = "study",
-    password: str = "",
+    password_verifier: str = "",
 ) -> None:
-    """Start the dashboard without exposing credentials in process metadata."""
+    """Start the dashboard with a non-replayable verifier handoff."""
     import json
     from contextlib import suppress
 
@@ -252,11 +252,11 @@ def start_web_background(
         cmd.append("--lan")
     credential_fd: int | None = None
     pass_fds: tuple[int, ...] = ()
-    if password:
+    if password_verifier:
         credential_fd, write_fd = os.pipe()
         try:
             payload = json.dumps(
-                {"username": username, "password": password},
+                {"username": username, "password_verifier": password_verifier},
                 separators=(",", ":"),
             ).encode("utf-8")
             if len(payload) > 4096:
@@ -278,6 +278,11 @@ def start_web_background(
             stderr=subprocess.DEVNULL,
             pass_fds=pass_fds,
         )
+        # Popen has duplicated this descriptor into the web child. The parent
+        # copy must close before _open_browser forks or any later child starts.
+        if credential_fd is not None:
+            os.close(credential_fd)
+            credential_fd = None
         from studyloop.session_state import write_session_state
 
         write_session_state({"web_pid": proc.pid, "web_port": port})
@@ -286,7 +291,8 @@ def start_web_background(
         console.print("[yellow]Could not start web dashboard.[/yellow]")
     finally:
         if credential_fd is not None:
-            os.close(credential_fd)
+            with suppress(OSError):
+                os.close(credential_fd)
 
 
 def _kill_port_occupant(port: int, expected_cmd: str = "") -> None:
@@ -412,15 +418,11 @@ def start_ttyd_background(
     session_name: str,
     *,
     lan: bool = False,
-    username: str = "",
-    password: str = "",
 ) -> None:
     """Start ttyd to expose the tmux session over HTTP.
 
     Attaches a writable ttyd client to the study tmux session. ttyd is always
     loopback-only; LAN clients use StudyLoop's authenticated terminal proxy.
-    The credential parameters remain for call compatibility but are never
-    copied into ttyd argv.
     Skips silently if ttyd is not installed.
     """
     from studyloop.session_state import write_session_state

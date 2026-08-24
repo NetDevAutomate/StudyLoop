@@ -17,12 +17,14 @@ import socket
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from queue import Queue
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from typing import ClassVar
 
 pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
@@ -40,11 +42,17 @@ from studyloop.web.app import create_app
 class _TtydHTTPHandler(BaseHTTPRequestHandler):
     """Minimal HTTP handler that returns a known HTML page like ttyd."""
 
+    received_headers: ClassVar[dict[str, str]] = {}
+
     def do_GET(self) -> None:
+        type(self).received_headers = dict(self.headers.items())
         body = b"<html><body><div class='xterm'>ttyd terminal</div></body></html>"
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Set-Cookie", "ttyd-session=must-not-reach-browser")
+        self.send_header("Authorization", "Bearer must-not-reach-browser")
+        self.send_header("X-CSRF-Token", "must-not-reach-browser")
         self.end_headers()
         self.wfile.write(body)
 
@@ -58,6 +66,7 @@ def fake_ttyd_port(tmp_path) -> Generator[int, None, None]:
 
     Yields the port it's listening on.
     """
+    _TtydHTTPHandler.received_headers = {}
     server = HTTPServer(("127.0.0.1", 0), _TtydHTTPHandler)
     port = server.server_address[1]
 
@@ -132,6 +141,102 @@ class TestTerminalProxyHTTP:
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/terminal/")
         assert resp.status_code == 502
+
+    def test_real_upstream_receives_no_browser_authority_headers(self, fake_ttyd_port: int) -> None:
+        """Forwarding auth, cookies, or CSRF data to loopback ttyd must fail this test."""
+        from studyloop.learner_credentials import hash_password
+
+        password = "terminal-boundary-password"  # pragma: allowlist secret
+        app = create_app(
+            ttyd_port=fake_ttyd_port,
+            password_verifier=hash_password(password),
+        )
+        client = TestClient(app)
+        token = __import__("base64").b64encode(f"study:{password}".encode()).decode()
+        try:
+            response = client.get(
+                "/terminal/",
+                headers={
+                    "Authorization": f"Basic {token}",
+                    "Cookie": "studyloop_learner=browser-session; studyloop_csrf=csrf-cookie",
+                    "X-CSRF-Token": "csrf-header",
+                    "X-XSRF-Token": "xsrf-header",
+                },
+            )
+        finally:
+            client.close()
+
+        received = {
+            key.casefold(): value for key, value in _TtydHTTPHandler.received_headers.items()
+        }
+        assert response.status_code == 200
+        assert "authorization" not in received
+        assert "cookie" not in received
+        assert "x-csrf-token" not in received
+        assert "x-xsrf-token" not in received
+        assert "set-cookie" not in {key.casefold() for key in response.headers}
+        assert "authorization" not in {key.casefold() for key in response.headers}
+        assert "x-csrf-token" not in {key.casefold() for key in response.headers}
+
+
+class TestTerminalProxyWebSocket:
+    def test_real_upstream_receives_no_browser_authority_headers(self) -> None:
+        """Forwarding browser Basic Auth to loopback ttyd WS must fail this test."""
+        from websockets.sync.server import ServerConnection, serve
+
+        from studyloop.learner_credentials import hash_password
+
+        received: Queue[dict[str, str]] = Queue()
+
+        def handler(connection: ServerConnection) -> None:
+            received.put(dict(connection.request.headers.raw_items()))
+            try:
+                message = connection.recv(timeout=2)
+                connection.send(message)
+            except Exception:
+                pass
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            port = listener.getsockname()[1]
+            with serve(handler, sock=listener, subprotocols=["tty"]) as server:
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+
+                password = "websocket-boundary-password"  # pragma: allowlist secret
+                app = create_app(
+                    ttyd_port=port,
+                    password_verifier=hash_password(password),
+                )
+                token = __import__("base64").b64encode(f"study:{password}".encode()).decode()
+                client = TestClient(app)
+                try:
+                    with client.websocket_connect(
+                        "/terminal/ws",
+                        headers={
+                            "Authorization": f"Basic {token}",
+                            "Cookie": (
+                                "studyloop_learner=browser-session; studyloop_csrf=csrf-cookie"
+                            ),
+                            "X-CSRF-Token": "csrf-header",
+                            "Host": "127.0.0.1:8567",
+                            "Origin": "http://127.0.0.1:8567",
+                            "Sec-WebSocket-Protocol": "tty",
+                        },
+                    ) as websocket:
+                        websocket.send_text("boundary-check")
+                        assert websocket.receive_text() == "boundary-check"
+                finally:
+                    client.close()
+                    server.shutdown()
+                    thread.join(timeout=2)
+
+        upstream = {key.casefold(): value for key, value in received.get(timeout=2).items()}
+        assert "authorization" not in upstream
+        assert "cookie" not in upstream
+        assert "x-csrf-token" not in upstream
 
 
 # ---------------------------------------------------------------------------

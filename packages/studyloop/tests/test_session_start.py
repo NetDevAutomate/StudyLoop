@@ -89,6 +89,68 @@ def _tmux_side_effect(args, **kwargs):
 
 
 class TestStartSessionPreflightFailures:
+    def test_legacy_config_is_scrubbed_before_agent_detection_or_launch(
+        self, tmp_path, monkeypatch
+    ):
+        legacy_secret = "legacy-before-agent"  # pragma: allowlist secret
+        config = tmp_path / "config.yaml"
+        config.write_text(f"lan_password: {legacy_secret}\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+
+        def assert_scrubbed_before_detection():
+            raw = config.read_text()
+            assert legacy_secret not in raw
+            assert "lan_password:" not in raw
+            assert "lan_password_verifier:" in raw
+            return []
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch(
+                "studyloop.agent_launcher.detect_agents",
+                side_effect=assert_scrubbed_before_detection,
+            ),
+            pytest.raises(SessionStartError, match="No AI agent"),
+        ):
+            start_session("Python", None, "study", "elapsed", 5, False)
+
+    def test_lan_start_without_verifier_refuses_before_agent_detection(self, tmp_path, monkeypatch):
+        config = tmp_path / "config.yaml"
+        config.write_text("lan_username: learner\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch("studyloop.agent_launcher.detect_agents") as detect_agents,
+            pytest.raises(SessionStartError, match="interactive StudyLoop CLI"),
+        ):
+            start_session("Python", None, "study", "elapsed", 5, True, lan=True)
+
+        detect_agents.assert_not_called()
+
+    def test_unscrubbable_legacy_state_refuses_before_agent_detection(self, tmp_path, monkeypatch):
+        state_file = tmp_path / "session-state.json"
+        legacy_state = '{"lan_password":"legacy-state-secret"}'  # pragma: allowlist secret
+        state_file.write_text(legacy_state)
+        monkeypatch.setattr("studyloop.session_state.STATE_FILE", state_file)
+        monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch(
+                "studyloop.session_state._write_file_secure",
+                side_effect=OSError("read-only state"),
+            ),
+            patch("studyloop.agent_launcher.detect_agents") as detect_agents,
+            pytest.raises(SessionStartError, match="scrub legacy session state"),
+        ):
+            start_session("Python", None, "study", "elapsed", 5, False)
+
+        detect_agents.assert_not_called()
+
     def test_raises_when_tmux_unavailable(self):
         with (
             patch("studyloop.tmux.shutil.which", return_value=None),
@@ -241,9 +303,11 @@ class TestStartSessionHappyPath:
         from fastapi.testclient import TestClient
 
         import studyloop.session_state as session_state
+        from studyloop.learner_credentials import hash_password
         from studyloop.web.app import create_app
 
         learner_secret = "human-only-session-value"  # pragma: allowlist secret
+        verifier = hash_password(learner_secret)
         adapter = MagicMock()
         adapter.setup.return_value = tmp_path / "persona.md"
         adapter.mcp_setup = None
@@ -271,7 +335,10 @@ class TestStartSessionHappyPath:
             "mux_sidebar_pane": "%1",
             "already_in_tmux": True,
         }
-        settings = SimpleNamespace(lan_username="learner", lan_password="")
+        settings = SimpleNamespace(
+            lan_username="learner",
+            lan_password_verifier=verifier,
+        )
 
         with contextlib.ExitStack() as stack:
             stack.enter_context(patch("studyloop.tmux.is_tmux_available", return_value=True))
@@ -337,7 +404,6 @@ class TestStartSessionHappyPath:
                 5,
                 True,
                 lan=True,
-                password=learner_secret,
             )
 
             assert learner_secret not in repr(state_writes)
@@ -348,9 +414,10 @@ class TestStartSessionHappyPath:
             for command, kwargs in spawned:
                 assert learner_secret not in " ".join(command)
                 assert learner_secret not in json.dumps(kwargs.get("env", {}))
-            assert pipe_payloads == [{"username": "learner", "password": learner_secret}]
+            assert pipe_payloads == [{"username": "learner", "password_verifier": verifier}]
+            assert learner_secret not in repr(pipe_payloads)
 
-            app = create_app(username="learner", password=learner_secret)
+            app = create_app(username="learner", password_verifier=verifier)
             assert app.state.lan_auth_configured is True
             assert not hasattr(app.state, "lan_password")
             credentials = base64.b64encode(f"learner:{learner_secret}".encode()).decode()

@@ -196,6 +196,8 @@ def test_scalar_int_fields(tmp_path):
 
 
 def test_scalar_str_fields(tmp_path):
+    from studyloop.learner_credentials import verify_password
+
     config_path = _write_config(
         tmp_path,
         {
@@ -212,7 +214,8 @@ def test_scalar_str_fields(tmp_path):
     assert s.sync_user == "alice"
     assert s.browser == "firefox"
     assert s.lan_username == "learner"
-    assert s.lan_password == "s3cr3t"
+    assert not hasattr(s, "lan_password")
+    assert verify_password("s3cr3t", s.lan_password_verifier)
 
 
 def test_absent_scalar_fields_keep_defaults(tmp_path):

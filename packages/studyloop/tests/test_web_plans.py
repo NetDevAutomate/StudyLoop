@@ -11,6 +11,7 @@ pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient
 
+from studyloop.learner_credentials import hash_password
 from studyloop.planning import (
     EvidenceDisposition,
     EvidenceRef,
@@ -35,7 +36,7 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 
 @pytest.fixture
 def client() -> TestClient:
-    browser = TestClient(create_app(password="test-secret"))
+    browser = TestClient(create_app(password_verifier=hash_password("test-secret")))
     encoded = base64.b64encode(b"study:test-secret").decode("ascii")
     browser.headers["Authorization"] = f"Basic {encoded}"
     browser.get(
@@ -186,7 +187,7 @@ def test_direct_http_cannot_decide_a_proposal_without_browser_learner_session(
 def test_browser_learner_boundary_rejects_missing_or_wrong_origin_session_and_csrf(
     failure: str,
 ) -> None:
-    candidate = TestClient(create_app(password="secret"))
+    candidate = TestClient(create_app(password_verifier=hash_password("secret")))
     encoded = base64.b64encode(b"study:secret").decode("ascii")
     candidate.headers["Authorization"] = f"Basic {encoded}"
     candidate.get(
@@ -293,7 +294,7 @@ def test_scripted_navigation_headers_cannot_mint_authority_without_web_password(
 
 
 def test_browser_learner_session_is_minted_only_after_configured_basic_auth() -> None:
-    secured = TestClient(create_app(password="secret"))
+    secured = TestClient(create_app(password_verifier=hash_password("secret")))
     navigation_headers = {
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "same-origin",

@@ -68,20 +68,27 @@ def redact_session_credentials(state: dict) -> dict:
     return redact(state)
 
 
-def read_session_state() -> dict:
-    """Read session state JSON. Returns {} if no active session or file missing.
-
-    Performs key migration: reads ``mux_session`` first, falls back to legacy
-    ``tmux_session``. Same for ``mux_main_pane``/``mux_sidebar_pane``.
-    This allows both old and new writers to coexist during migration.
-    """
+def _read_session_state_locked() -> dict:
+    """Read and scrub state while the caller owns both process locks."""
     try:
-        state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
-    except (json.JSONDecodeError, OSError):
+        raw_text = STATE_FILE.read_text() if STATE_FILE.exists() else ""
+    except OSError:
+        return {}
+    try:
+        state = json.loads(raw_text) if raw_text else {}
+    except json.JSONDecodeError:
+        lowered = raw_text.casefold()
+        if any(f'"{key}"' in lowered for key in _SENSITIVE_STATE_KEYS):
+            _write_file_secure(STATE_FILE, "{}")
         return {}
     if not isinstance(state, dict):
         return {}
-    state = redact_session_credentials(state)
+    safe_state = redact_session_credentials(state)
+    if safe_state != state:
+        # This read may be immediately followed by an unsandboxed agent launch.
+        # Atomically remove legacy authority bytes now, not on a later update.
+        _write_file_secure(STATE_FILE, json.dumps(safe_state, indent=2, default=str))
+    state = safe_state
 
     # Key migration: prefer mux_* keys, fall back to tmux_* keys
     if "mux_session" not in state and "tmux_session" in state:
@@ -104,6 +111,25 @@ def read_session_state() -> dict:
     return state
 
 
+def read_session_state() -> dict:
+    """Read state and atomically scrub any legacy credential fields.
+
+    Performs key migration: reads ``mux_session`` first, falls back to legacy
+    ``tmux_session``. Same for ``mux_main_pane``/``mux_sidebar_pane``.
+    This allows both old and new writers to coexist during migration.
+    """
+    if not STATE_FILE.exists():
+        return {}
+    with _state_lock:
+        lock_fd = os.open(str(_lock_file()), os.O_WRONLY | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            return _read_session_state_locked()
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
+
+
 def _ensure_session_dir() -> None:
     """Ensure SESSION_DIR exists with 0700 permissions (owner-only access)."""
     created = not SESSION_DIR.exists()
@@ -114,8 +140,8 @@ def _ensure_session_dir() -> None:
 
 
 def _lock_file() -> Path:
-    """Return the current lock file path derived from SESSION_DIR."""
-    return SESSION_DIR / ".session-state.lock"
+    """Return the lock beside the active state file (including test overrides)."""
+    return STATE_FILE.parent / ".session-state.lock"
 
 
 def _write_file_secure(path: Path, content: str) -> None:
@@ -148,7 +174,7 @@ def write_session_state(updates: dict) -> None:
         lock_fd = os.open(str(_lock_file()), os.O_WRONLY | os.O_CREAT, 0o600)
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
-            current = read_session_state()
+            current = _read_session_state_locked()
             safe_updates = redact_session_credentials(updates)
             # Don't resurrect a deleted state file just to record that a
             # session ended. An id-less ``{"mode": "ended"}`` marker is litter —

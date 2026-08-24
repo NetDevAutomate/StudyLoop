@@ -16,9 +16,7 @@ from typing import TYPE_CHECKING
 
 from studyloop.output import console
 from studyloop.web.runtime_feedback import (
-    LanCredentialFeedback,
     build_web_access_info,
-    format_lan_credential_lines,
 )
 
 if TYPE_CHECKING:
@@ -239,7 +237,8 @@ def start_session(
     web: bool,
     *,
     lan: bool = False,
-    password: str = "",
+    lan_username: str | None = None,
+    password_verifier: str = "",
     topic_config: TopicConfig | None = None,
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
@@ -301,6 +300,46 @@ def start_session(
 
     auto_clean_zombies()
 
+    # Security preflight: config loading atomically migrates legacy plaintext
+    # credentials before detect/setup/launch can start an unsandboxed agent.
+    try:
+        from studyloop.settings import load_settings
+
+        startup_settings = load_settings()
+    except Exception as exc:
+        raise SessionStartError(
+            "[red]Could not securely load StudyLoop configuration.[/red]\n"
+            f"  {exc}\n  No agent was started."
+        ) from exc
+
+    if lan:
+        from studyloop.learner_credentials import is_password_verifier
+
+        lan_username = lan_username or startup_settings.lan_username or "study"
+        password_verifier = password_verifier or startup_settings.lan_password_verifier
+        if not is_password_verifier(password_verifier):
+            raise SessionStartError(
+                "[red]LAN authentication has no safe learner password verifier.[/red]\n"
+                "  Start this session from an interactive StudyLoop CLI so the human "
+                "password can be established before the agent launches."
+            )
+
+    try:
+        session_active = is_session_active()
+    except OSError as exc:
+        raise SessionStartError(
+            "[red]Could not securely scrub legacy session state.[/red]\n"
+            "  No agent was started. Fix permissions on the StudyLoop session-state "
+            "file and retry."
+        ) from exc
+
+    if session_active:
+        raise SessionStartError(
+            "[yellow]A session is already active.[/yellow]\n"
+            "  Resume: [bold]studyloop study --resume[/bold]\n"
+            "  End:    [bold]studyloop study --end[/bold]"
+        )
+
     if agent is None:
         available = detect_agents()
         if not available:
@@ -310,13 +349,6 @@ def start_session(
                 "  e.g. [bold]npm install -g @anthropic-ai/claude-code[/bold]"
             )
         agent = available[0]
-
-    if is_session_active():
-        raise SessionStartError(
-            "[yellow]A session is already active.[/yellow]\n"
-            "  Resume: [bold]studyloop study --resume[/bold]\n"
-            "  End:    [bold]studyloop study --end[/bold]"
-        )
 
     # --- Create DB session ---
 
@@ -453,47 +485,16 @@ def start_session(
             state_update["topic_config_name"] = topic_config.name
         write_session_state(state_update)
 
-        # Resolve LAN credentials: CLI flag > config > auto-generate
-        lan_username = "study"
-        lan_password = password
-        lan_password_generated = False
-        if lan:
-            try:
-                from studyloop.settings import load_settings as _ls_inner
-
-                _settings = _ls_inner()
-                lan_username = _settings.lan_username or "study"
-                if not lan_password:
-                    lan_password = _settings.lan_password
-            except Exception:
-                pass
-        if lan and not lan_password:
-            import secrets
-
-            lan_password = secrets.token_urlsafe(16)
-            lan_password_generated = True
-
-        if lan and lan_password:
-            console.print()
-            for line in format_lan_credential_lines(
-                LanCredentialFeedback(
-                    username=lan_username,
-                    password=lan_password,
-                    password_generated=lan_password_generated,
-                )
-            ):
-                console.print(line)
-
         if web:
             start_web_background(
                 session_name,
                 lan=lan,
-                username=lan_username,
-                password=lan_password,
+                username=lan_username or "study",
+                password_verifier=password_verifier,
             )
 
         # Start ttyd if installed (allows iPad/LAN terminal access)
-        start_ttyd_background(session_name, lan=lan, username=lan_username, password=lan_password)
+        start_ttyd_background(session_name, lan=lan)
 
         # Persist non-secret LAN discovery data for resume/dashboard views.
         # The password is deliberately confined to the human-facing startup
@@ -529,10 +530,7 @@ def start_session(
             console.print("\n[bold]LAN access:[/bold]")
             console.print(f"  Dashboard: {lan_url}")
             console.print(f"  Username:  {lan_username}")
-            if lan_password_generated:
-                console.print(f"  Password:  {lan_password}")
-            elif lan_password:
-                console.print("  Password:  configured; not shown")
+            console.print("  Password:  established before agent launch; not retained")
 
         attach_if_needed(session_name, result["already_in_tmux"])
     except Exception as exc:
