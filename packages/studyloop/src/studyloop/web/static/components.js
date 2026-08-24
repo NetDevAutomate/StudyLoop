@@ -166,25 +166,45 @@ function _mdToPlainText(md) {
  *
  *  1. `parse()` first. It validates without injecting DOM, so a source that is
  *     not a diagram is rejected before anything can be appended.
- *  2. The three-argument `render(id, src, containerEl)` form, so mermaid
- *     measures inside the caller's container instead of document.body.
- *  3. A `finally` that removes anything still keyed on the id — `#<id>` and
- *     `#d<id>`, the prefix mermaid uses for its measurement wrapper. Absence is
- *     the normal case, hence the optional chaining.
+ *  2. A dedicated off-screen host that always has layout, passed as the
+ *     three-argument `render(id, src, containerEl)` container. Mermaid measures
+ *     flowchart labels with getBoundingClientRect(); under a `display:none`
+ *     ancestor every label measures 0x0, mermaid wraps its 8px flowchart
+ *     padding around a zero-size graph, and the result is a diagram that
+ *     renders perfectly and then reports `viewBox="-8 -8 16 16"` with an inline
+ *     `max-width: 16px`. Both call sites used to pass their TARGET element,
+ *     which is exactly such an ancestor: the lesson reader's prose div is
+ *     `x-show`n on `readerHtml` (index.html) and the Mastery graph lives in a
+ *     view that has not been shown yet. `visibility:hidden` KEEPS layout where
+ *     `display:none` destroys it, so measuring in our own host makes rendering
+ *     independent of whether the target is visible — the property every current
+ *     and future caller needs.
+ *  3. A `finally` that removes the host and anything still keyed on the id —
+ *     `#<id>` and `#d<id>`, the prefix mermaid uses for its measurement
+ *     wrapper. Absence is the normal case, hence the optional chaining.
+ *
+ * The host must be an element WE created: mermaid clears its container's
+ * innerHTML, so handing it a live element (document.body above all) would wipe
+ * that subtree.
  *
  * Rejects on invalid source so callers keep their own fallback behaviour.
  *
  * @param {string} id — unique element id for this render
  * @param {string} src — mermaid diagram source
- * @param {Element} containerEl — element mermaid may measure inside
  * @returns {Promise<string>} the rendered SVG markup
  */
-async function _renderMermaidScoped(id, src, containerEl) {
+async function _renderMermaidScoped(id, src) {
+  const host = document.createElement('div');
+  host.style.cssText =
+    'position:absolute;left:-99999px;top:0;width:1280px;' +
+    'visibility:hidden;pointer-events:none;';
+  document.body.appendChild(host);
   try {
     await window.mermaid.parse(src);
-    const { svg } = await window.mermaid.render(id, src, containerEl);
+    const { svg } = await window.mermaid.render(id, src, host);
     return svg;
   } finally {
+    host.remove();
     document.getElementById(id)?.remove();
     document.getElementById('d' + id)?.remove();
   }
@@ -214,7 +234,7 @@ async function _renderMermaidPlaceholders(rootEl) {
     delete el.dataset.src;
     const id = 'mermaid-render-' + Date.now() + '-' + (counter++);
     try {
-      el.innerHTML = await _renderMermaidScoped(id, src, el);
+      el.innerHTML = await _renderMermaidScoped(id, src);
     } catch (err) {
       console.warn('[CourseExplorer] mermaid.render failed:', err);
       /* Fallback: show the raw diagram source in a <pre> block. */
@@ -2319,7 +2339,7 @@ function masteryPanel() {
       }
       try {
         const id = 'mastery-graph-' + Date.now();
-        el.innerHTML = await _renderMermaidScoped(id, this.mermaidSource, el);
+        el.innerHTML = await _renderMermaidScoped(id, this.mermaidSource);
       } catch (err) {
         console.warn('[Mastery] mermaid.render failed:', err);
         el.textContent = this.mermaidSource;
