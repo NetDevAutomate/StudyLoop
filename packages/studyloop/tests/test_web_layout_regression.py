@@ -292,6 +292,10 @@ class TestQuizzesConfigNavLayout:
                 return d && d.view === 'config'; }}""",
             timeout=5000,
         )
+        # Alpine state changes before x-show's display style is guaranteed to
+        # have reached layout. Geometry assertions need the painted config nav,
+        # not merely the state value that will eventually reveal it.
+        page.locator(f"{root} .nav-bar .nav-course").first.wait_for(state="visible", timeout=5000)
 
     def test_config_nav_title_is_centered(self, web_page: Page) -> None:
         # The real symptom: the title was ~18px off-centre because the third
