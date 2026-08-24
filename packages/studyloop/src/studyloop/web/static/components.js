@@ -1889,6 +1889,10 @@ function courseExplorer() {
           const stripped = _stripFrontmatter(raw);
           this.readerText = stripped;   // raw source for TTS (Phase 6)
           this.readerHtml = renderMarkdown(stripped);
+          /* The prose is x-show hidden while readerLoading is true. Mermaid
+             measures its container, so rendering before revealing it freezes
+             the diagram at a meaningless 16x16 viewBox. */
+          this.readerLoading = false;
 
           /* Two-pass mermaid: Alpine's x-html directive schedules its DOM
              write as a reactive effect.  The first $nextTick exhausts the
