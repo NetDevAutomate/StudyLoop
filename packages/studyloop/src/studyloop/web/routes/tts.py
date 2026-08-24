@@ -32,6 +32,7 @@ and warm-up solves that -- 51s to 2.5s.
 
 from __future__ import annotations
 
+from threading import Lock
 from time import monotonic
 
 from fastapi import APIRouter, HTTPException, Request
@@ -66,6 +67,8 @@ _MAX_CHARS = 4000
 # warm-up. App state keeps the cache scoped to one StudyLoop server/test app.
 _SELECTION_CACHE_ATTR = "_studyloop_tts_selection"
 _SELECTION_TTL_SECONDS = 30.0
+_BACKEND_LOCK_ATTR = "_studyloop_tts_backend_lock"
+_BACKEND_LOCK_INIT = Lock()
 
 
 class SpeakRequest(BaseModel):
@@ -78,6 +81,21 @@ class SpeakRequest(BaseModel):
 
 def _candidate_key(candidate: dict) -> str:
     return str(candidate.get("base_url") or candidate.get("openvox_base_url") or "").rstrip("/")
+
+
+def _backend_lock(request: Request) -> Lock:
+    lock = getattr(request.app.state, _BACKEND_LOCK_ATTR, None)
+    if lock is not None:
+        return lock
+    # Warm and speak can be the first two requests and arrive concurrently, so
+    # lazy creation itself must be serialised or each worker could get its own
+    # lock and the protection would be imaginary.
+    with _BACKEND_LOCK_INIT:
+        lock = getattr(request.app.state, _BACKEND_LOCK_ATTR, None)
+        if lock is None:
+            lock = Lock()
+            setattr(request.app.state, _BACKEND_LOCK_ATTR, lock)
+    return lock
 
 
 def _cached_selection(request: Request, candidates: list[dict]) -> tuple[dict | None, dict | None]:
@@ -193,18 +211,19 @@ def tts_warm(request: Request) -> dict:
     this returns ``warmed: false`` without marking otherwise-working speech as
     unavailable.
     """
-    candidates, cached = _candidate_order(request, list(openvox_server_configs()))
-    for candidate in candidates:
-        # Do not spend the synthesis timeout warming a process that accepts a
-        # connection but no longer answers. A short model probe is what lets the
-        # VoiceMode fallback run promptly in that failure mode.
-        if candidate is not cached and not openvox_health(candidate).reachable:
-            continue
-        if openvox_warm(candidate):
-            _remember_selection(request, candidate)
-            return {"warmed": True}
-        if candidate is cached:
-            _forget_selection(request)
+    with _backend_lock(request):
+        candidates, cached = _candidate_order(request, list(openvox_server_configs()))
+        for candidate in candidates:
+            # Do not spend the synthesis timeout warming a process that accepts a
+            # connection but no longer answers. A short model probe is what lets the
+            # VoiceMode fallback run promptly in that failure mode.
+            if candidate is not cached and not openvox_health(candidate).reachable:
+                continue
+            if openvox_warm(candidate):
+                _remember_selection(request, candidate)
+                return {"warmed": True}
+            if candidate is cached:
+                _forget_selection(request)
     return {"warmed": False}
 
 
@@ -225,31 +244,32 @@ def tts_speak(payload: SpeakRequest, request: Request) -> Response:
             detail=f"refusing non-English voice {payload.voice!r}",
         )
 
-    audio = None
-    failures: list[str] = []
-    candidates, cached = _candidate_order(request, list(openvox_server_configs()))
-    for candidate in candidates:
-        health = None if candidate is cached else openvox_health(candidate)
-        if health is not None and not health.reachable:
-            if health.detail:
-                failures.append(health.detail)
-            continue
-        audio, detail = synthesise_openvox_bytes(
-            payload.text,
-            voice=payload.voice,
-            response_format=fmt,
-            cfg=candidate,
-        )
-        if audio is not None:
-            _remember_selection(request, candidate)
-            break
-        if detail:
-            failures.append(detail)
-        if candidate is cached:
-            _forget_selection(request)
-    if audio is None:
-        detail = "; ".join(dict.fromkeys(failures))
-        raise HTTPException(status_code=503, detail=detail or "speech unavailable")
+    with _backend_lock(request):
+        audio = None
+        failures: list[str] = []
+        candidates, cached = _candidate_order(request, list(openvox_server_configs()))
+        for candidate in candidates:
+            health = None if candidate is cached else openvox_health(candidate)
+            if health is not None and not health.reachable:
+                if health.detail:
+                    failures.append(health.detail)
+                continue
+            audio, detail = synthesise_openvox_bytes(
+                payload.text,
+                voice=payload.voice,
+                response_format=fmt,
+                cfg=candidate,
+            )
+            if audio is not None:
+                _remember_selection(request, candidate)
+                break
+            if detail:
+                failures.append(detail)
+            if candidate is cached:
+                _forget_selection(request)
+        if audio is None:
+            detail = "; ".join(dict.fromkeys(failures))
+            raise HTTPException(status_code=503, detail=detail or "speech unavailable")
 
     return Response(
         content=audio,

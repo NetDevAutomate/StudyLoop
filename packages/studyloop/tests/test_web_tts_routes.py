@@ -8,6 +8,8 @@ than treat the app as broken.
 
 from __future__ import annotations
 
+import time
+from threading import Event, Thread
 from typing import TYPE_CHECKING
 
 pytest = __import__("pytest")
@@ -460,3 +462,47 @@ class TestWarm:
 
         assert client.post("/api/tts/warm").json() == {"warmed": True}
         assert warmed == ["VoiceMode fallback"]
+
+    def test_immediate_speech_waits_for_the_in_flight_warmup(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        """StudyLoop must not race its own warm and synthesis requests."""
+        candidate = {"base_url": "http://127.0.0.1:8880/v1", "role": "VoiceMode fallback"}
+        warm_started = Event()
+        allow_warm_to_finish = Event()
+        warm_active = Event()
+        synthesis_overlapped_warm: list[bool] = []
+        monkeypatch.setattr(tts_route, "openvox_server_configs", lambda: (candidate,))
+        monkeypatch.setattr(tts_route, "openvox_voices", lambda _cfg: {"bf_emma": "British"})
+
+        def _warm(_cfg: dict) -> bool:
+            warm_active.set()
+            warm_started.set()
+            assert allow_warm_to_finish.wait(timeout=2)
+            warm_active.clear()
+            return True
+
+        def _synthesise(*_args, **_kwargs):
+            synthesis_overlapped_warm.append(warm_active.is_set())
+            return b"RIFFvoice", ""
+
+        monkeypatch.setattr(tts_route, "openvox_warm", _warm)
+        monkeypatch.setattr(tts_route, "synthesise_openvox_bytes", _synthesise)
+        assert client.get("/api/tts/health").json()["available"] is True
+
+        warm_thread = Thread(target=lambda: client.post("/api/tts/warm"), daemon=True)
+        warm_thread.start()
+        assert warm_started.wait(timeout=1)
+
+        def _release_after_speech_has_had_time_to_race() -> None:
+            time.sleep(0.2)
+            allow_warm_to_finish.set()
+
+        release_thread = Thread(target=_release_after_speech_has_had_time_to_race, daemon=True)
+        release_thread.start()
+        response = client.post("/api/tts/speak", json={"text": "hello", "voice": "bf_emma"})
+        warm_thread.join(timeout=1)
+        release_thread.join(timeout=1)
+
+        assert response.status_code == 200
+        assert synthesis_overlapped_warm == [False]
