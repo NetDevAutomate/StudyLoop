@@ -254,6 +254,44 @@
   outer and nested path, retaining tuple conversion only after validation.
 - Task 6: fix round 3/5 addressed all remaining array-boundary findings in
   commit 8d09b95; independent review clean. Task 6 complete.
+- Task 7: implementation commit 87e6186 adds the durable conversation store,
+  bounded confined runtime, write-ahead capability intents/recovery, fixed
+  OpenAI-compatible adapter, and crash/concurrency tests. Independent review is
+  required before Task 8 starts.
+- Task 7: initial review failed (0 Critical, 7 Important): recovery could
+  interrupt live work; cancellation/post-finalization states were wrong;
+  provider bounds buffered too late; exception causes leaked diagnostics;
+  replay accepted shorter source sets; embedded metadata paths escaped
+  redaction; and SQLite could follow symlinks outside the planning root.
+- Task 7: entered fix round 1/5 for attempt ownership/liveness, terminal truth
+  classification, streaming bounds, sanitized exception boundaries, exact
+  inbound replay, full-field metadata scrubbing, and symlink-safe storage.
+- Task 7: fix round 1/5 closed the original seven findings; adversarial
+  re-review left four Important gaps: synchronous lifecycle dispatch could
+  starve the lease heartbeat, grouped schema migration was not crash-resumable
+  and guessed ambiguous legacy provenance, root-level paths escaped metadata
+  redaction, and the SQLite pathname checks still implied a stronger TOCTOU
+  guarantee than the documented non-hostile-same-user threat model can enforce.
+- Task 7: entered fix round 2/5 for independent lifecycle liveness, exact and
+  resumable legacy migration, complete metadata-channel redaction, and an
+  enforceable SQLite containment claim with adversarial regression coverage.
+- Task 7: fix round 2/5 closed liveness, migration, and metadata findings;
+  re-review left two Important SQLite containment gaps: detected database or
+  parent substitution could still create an empty outside database before
+  refusal, and independent descriptor anchoring/mode enforcement could release
+  another live same-process SQLite connection's process-wide record locks.
+- Task 7: entered fix round 3/5 for create-safe URI/open handling and a
+  process-local path-keyed connection lifetime guard shared by store instances.
+- Task 7: fix round 3/5 closed both remaining containment findings in commit
+  70a62b4. Secure parent-relative precreation plus SQLite `mode=rw` prevents
+  absent outside-target creation; a canonical path-keyed reentrant guard spans
+  every same-process connection lifetime. Focused tests passed twice (130), all
+  planning tests passed (724 with 12 deselected), and Task 6/compat/static/
+  privacy gates passed. Task 7 complete.
+- Delivery reset accepted after the 14-hour substrate phase: Tasks 8-9 proceed
+  as one onboarding-to-browser vertical slice. Only Critical/Important defects
+  demonstrably inside the documented local release-one boundary block that
+  slice; broader hardening is deferred rather than reopening settled design.
 - Authority redesign arbitration accepted (2026-08-24): release one uses
   `PlanningConversationRuntime` over a fixed server-configured
   OpenAI-compatible endpoint, initially an auto-detected local LiteLLM gateway.
