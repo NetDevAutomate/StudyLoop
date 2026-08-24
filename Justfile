@@ -36,6 +36,12 @@ test-web:
 test-browser-smoke:
     uv run --group dev pytest packages/studyloop/tests/test_web_smoke_browser.py -m e2e -q
 
+# Browser-side unit tests. Pass the GLOB, not the directory — `node --test <dir>`
+# discovers nothing here. The repo-local package.json declares the ESM type so
+# Node does not walk up out of the repository looking for one.
+test-js:
+    node --test packages/studyloop/tests/js/*.test.js
+
 test-content:
     uv run --group dev pytest \
         packages/studyloop/tests/test_content_cli.py \
@@ -105,6 +111,6 @@ release-consistency:
 prepare-release version:
     uv run python scripts/prepare-release.py {{version}}
 
-preflight: lint typecheck test docs release-consistency spec-check
+preflight: lint typecheck test test-js docs release-consistency spec-check
 
-release-check: test lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed
+release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed
