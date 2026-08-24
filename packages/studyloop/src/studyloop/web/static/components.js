@@ -2711,6 +2711,9 @@ function parkingPanel() {
         if (this.selectMode) this.toggleSelect(item.id);
         else this.openEditor(item);
       } else if (ev.key === 'Escape') {
+        /* The panel also listens for Escape on window. Without stopping this
+           event, one keypress closes the editor and then the whole panel. */
+        ev.stopPropagation();
         this.closeEditor();
       }
     },
