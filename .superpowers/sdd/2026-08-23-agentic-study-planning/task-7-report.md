@@ -274,9 +274,10 @@ expiry before recovery.
   `file:` forms, internal URLs, IPv4/IPv6 loopback/private host:port forms, and
   prose/punctuation. The metadata field is replaced before persistence and
   egress. Learner-authored URLs and paths remain verbatim in the learner channel.
-- Before any SQLite open, the store rejects a symlinked database, WAL, SHM,
-  planning parent, or resolved escape. Outside targets remain absent, while the
-  root/database/live-sidecar `0700`/`0600` modes remain enforced.
+- Before SQLite open, the store rejects a pre-existing symlinked database, WAL,
+  SHM, planning parent, or resolved escape. Outside targets remain absent in
+  those cases, while the root/database/live-sidecar `0700`/`0600` modes remain
+  enforced. Fix round 2 narrows and strengthens the check/open claim below.
 
 ### Fix-round verification
 
@@ -315,3 +316,123 @@ Targeted Pyright again reports `0 errors, 0 warnings, 0 informations`. Targeted
 Ruff, format, Python compilation, changed-file secret scan, and diff checks are
 rerun before the fix commit. No Task 8+ code is included. The separately
 modified progress ledger is intentionally left unstaged.
+
+## Fix round 2 — independent liveness, resumable migration, and honest containment
+
+The independent review of `4f00a47` found four further Important issues. All
+four were reproduced with adversarial tests before their production fixes.
+
+### RED evidence
+
+- A real second process held the repository's root lock beyond the `0.08`
+  second attempt lease. Synchronous lifecycle dispatch starved the asyncio
+  heartbeat; competing recovery stole and interrupted the live attempt, and the
+  original owner then failed to finalize.
+- Five independently missing hardening columns produced duplicate-column or
+  missing-column SQLite failures. An attachment/source-reference ID collision
+  was guessed to be an injected attachment, so reopening fabricated a different
+  inbound projection and rejected the real replay as merely different input.
+- StudyLoop-owned labels containing `/secret` or `~/secret` survived
+  persistence/model egress, and a typed runtime diagnostic exposed both in its
+  public error representation and traceback.
+- Deterministic swaps between validation and SQLite open followed a database or
+  planning-parent symlink. Deterministic swaps between existence check and
+  `chmod` followed database/WAL/SHM targets, changing the outside file's mode.
+
+### Lifecycle liveness and one logical outcome
+
+- Potentially blocking lifecycle dispatch/reconciliation now runs through
+  `asyncio.to_thread`, leaving the event loop available for durable lease
+  renewal. Provider streaming remains on the bounded async path.
+- Recovery starts a heartbeat for every expired attempt it successfully claims
+  and keeps those heartbeats alive through journal reconciliation, result
+  projection, and terminal classification.
+- Two spawned-process tests hold the real `PlanningRepository` root lock longer
+  than the lease. One covers an original live attempt; the other covers an
+  expired attempt claimed by recovery. A competing recovery has zero effect in
+  both cases, while the original/claiming owner records exactly one lifecycle
+  result and one terminal outcome.
+
+### Transactional, provenance-honest migration
+
+- Every turn/attempt hardening column is checked and added independently inside
+  one explicit `BEGIN IMMEDIATE` transaction. Schema and legacy-classification
+  changes roll back together after process death and restart idempotently.
+- Spawned crash tests terminate after each of six column additions and after
+  legacy replay classification. Reopening restores a complete usable schema in
+  every case. Separate partial-schema tests cover all five original grouped
+  columns.
+- New turns store `inbound_replay_state='exact'`. Existing/partial rows whose
+  original inbound projection is not provable are classified `unavailable`;
+  their augmented frozen request remains readable, but any replay fails closed
+  with the explicit `exact replay unavailable for legacy learner turn`
+  classification. Migration no longer subtracts snapshot IDs or guesses source
+  provenance, including the attachment-ID collision case.
+- A complete current schema returns from the hardening preflight without
+  opening a write transaction or replay-classification hook, so constructing a
+  second runtime does not needlessly contend with live lease renewal.
+
+### Metadata and filesystem boundary
+
+- Metadata-only path scanning now covers root-level absolute and home-relative
+  paths as well as the existing multi-component, Windows, file-URI, and private
+  endpoint forms. Persistence, captured model requests, interruption reasons,
+  public exception repr/traceback, and separate learner-verbatim channels are
+  exercised.
+- The planning root and main database are opened with no-follow descriptors.
+  Device/inode identity is checked before SQLite configuration and again after
+  open; private modes use `fchmod` on verified descriptors. Deterministic
+  database/parent open swaps and database/WAL/SHM mode-enforcement swaps fail
+  closed without changing the outside target.
+- The main-database anchor is closed before `sqlite3.connect`, and automatic
+  mode enforcement runs only while this store has no live SQLite connection.
+  This avoids POSIX's process-wide record-lock hazard where closing a second
+  descriptor for the same SQLite file can release locks owned by the active
+  connection. A benign WAL/SHM replacement or disappearance is tolerated while
+  a no-follow symlink swap still fails closed. Repeated combined subprocess
+  suites exercise this boundary.
+- The binding design and implementation plan now state the precise limit
+  prominently: this is protection for pre-existing and detected accidental
+  substitutions, not integrity against hostile concurrent same-user pathname
+  mutation. Python's standard `sqlite3` API exposes neither
+  `SQLITE_OPEN_NOFOLLOW` nor a caller-controlled VFS for every SQLite-created
+  database/WAL/SHM file. A privileged state owner or reviewed native VFS is a
+  separate design if that threat model changes.
+
+### Fix-round-2 verification
+
+```text
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_conversation_store.py \
+  packages/studyloop/tests/test_planning_conversation_runtime.py \
+  packages/studyloop/tests/test_planning_conversation_recovery.py \
+  packages/studyloop/tests/test_planning_openai_compatible.py -q
+# 124 passed in 6.85s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning*.py \
+  packages/studyloop/tests/test_plan_agent_harness.py \
+  packages/studyloop/tests/test_doctor_planning.py \
+  packages/studyloop/tests/e2e/test_plans_api.py -q
+# 718 passed, 12 deselected in 11.99s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_planning_model_config.py \
+  packages/studyloop/tests/test_planning_capabilities.py \
+  packages/studyloop/tests/test_planning_prompt_package.py \
+  packages/studyloop/tests/test_planning_scripted_model.py \
+  packages/studyloop/tests/test_doctor_planning.py -q
+# 287 passed in 1.27s
+
+rtk uv run --group dev pytest \
+  packages/studyloop/tests/test_setup_wizard.py \
+  packages/studyloop/tests/test_learner_credentials.py \
+  packages/studyloop/tests/test_session_state.py \
+  packages/studyloop/tests/test_web_runtime_feedback.py -q
+# 60 passed in 1.21s
+```
+
+Targeted Pyright, Ruff, format, Python compilation, diff, and changed-file
+secret scans are rerun immediately before the fix commit. No Task 8 route,
+adapter, CLI, UI, authority, or decision work is included, and the shared
+progress ledger remains untouched and unstaged by Task 7.

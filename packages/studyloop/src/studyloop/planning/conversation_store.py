@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sqlite3
+import stat
 import time
 import uuid
 from collections.abc import Callable, Iterator, Mapping
@@ -46,7 +47,7 @@ from .repository import PathContainmentError
 
 _MAX_CONTEXT_CHARS = 100_000
 _MAX_TURN_CHARS = 40_000
-_POSIX_PATH = re.compile(r"(?<![\w:])/(?:[^/\s,;!?()]+/)+[^/\s,;!?()]+")
+_POSIX_PATH = re.compile(r"(?<![/\w:])(?:~)?/(?!/)[^/\s,;!?()]+(?:/[^/\s,;!?()]+)*")
 _WINDOWS_PATH = re.compile(r"(?i)(?:[a-z]:[\\/]|\\\\)[^\s,;!?()]+")
 _FILE_URI = re.compile(r"(?i)\bfile:(?://)?[^\s,;!?()]+")
 _URL = re.compile(r"(?i)\bhttps?://[^\s,;!?()]+")
@@ -54,6 +55,7 @@ _HOST_PORT = re.compile(
     r"(?i)(?<![\w.-])(?P<host>\[[0-9a-f:]+\]|localhost(?:\.localdomain)?|"
     r"\d{1,3}(?:\.\d{1,3}){3}|[a-z0-9.-]+\.(?:local|internal)):(?P<port>\d{1,5})\b"
 )
+MigrationCrashInjector = Callable[[str], None]
 
 
 class _IdGenerator(Protocol):
@@ -144,6 +146,7 @@ class ConversationStore:
         ids: _IdGenerator | None = None,
         attempt_lease_seconds: float = 30.0,
         clock: Callable[[], float] = time.time,
+        migration_crash_injector: MigrationCrashInjector | None = None,
     ) -> None:
         if not 0.01 <= attempt_lease_seconds <= 600:
             raise ValueError("attempt lease must be between 0.01 and 600 seconds")
@@ -151,9 +154,11 @@ class ConversationStore:
         self._ids = ids or _UuidIds()
         self.attempt_lease_seconds = attempt_lease_seconds
         self._clock = clock
+        self._migration_crash_injector = migration_crash_injector
         self._validate_database_location()
         self.database_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(self.database_path.parent, 0o700)
+        with self._stable_root_descriptor() as root_descriptor:
+            os.fchmod(root_descriptor, 0o700)
         self._migrate()
         self.ensure_private_modes()
 
@@ -177,15 +182,150 @@ class ConversationStore:
             Path(f"{self.database_path}-shm"),
         )
 
+    @staticmethod
+    def _identity(value: os.stat_result) -> tuple[int, int]:
+        return (value.st_dev, value.st_ino)
+
+    @contextmanager
+    def _stable_root_descriptor(self) -> Iterator[int]:
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(self.database_path.parent, flags)
+        except OSError:
+            raise PathContainmentError(
+                "conversation planning root changed or became a symlink"
+            ) from None
+        try:
+            self._assert_root_descriptor_identity(descriptor)
+            yield descriptor
+            self._assert_root_descriptor_identity(descriptor)
+        finally:
+            os.close(descriptor)
+
+    def _assert_root_descriptor_identity(self, descriptor: int) -> None:
+        descriptor_stat = os.fstat(descriptor)
+        try:
+            path_stat = os.stat(self.database_path.parent, follow_symlinks=False)
+        except OSError:
+            raise PathContainmentError("conversation planning root changed during access") from None
+        if (
+            not stat.S_ISDIR(descriptor_stat.st_mode)
+            or stat.S_ISLNK(path_stat.st_mode)
+            or self._identity(descriptor_stat) != self._identity(path_stat)
+        ):
+            raise PathContainmentError("conversation planning root identity changed during access")
+
+    def _open_private_target(
+        self,
+        root_descriptor: int,
+        path: Path,
+        *,
+        create: bool,
+        require_stable_identity: bool = True,
+    ) -> int | None:
+        try:
+            path_stat = os.stat(path.name, dir_fd=root_descriptor, follow_symlinks=False)
+        except FileNotFoundError:
+            path_stat = None
+        except OSError:
+            raise PathContainmentError("conversation SQLite target changed during access") from None
+        if path_stat is not None and not stat.S_ISREG(path_stat.st_mode):
+            raise PathContainmentError(
+                "conversation SQLite target is a symlink or non-regular file"
+            )
+        flags = os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+        if create:
+            flags |= os.O_CREAT
+        elif path_stat is None:
+            return None
+        try:
+            descriptor = os.open(path.name, flags, 0o600, dir_fd=root_descriptor)
+        except FileNotFoundError:
+            return None
+        except OSError:
+            raise PathContainmentError(
+                "conversation SQLite target changed or became a symlink"
+            ) from None
+        descriptor_stat = os.fstat(descriptor)
+        try:
+            final_stat = os.stat(path.name, dir_fd=root_descriptor, follow_symlinks=False)
+        except FileNotFoundError:
+            if not require_stable_identity:
+                return descriptor
+            os.close(descriptor)
+            raise PathContainmentError("conversation SQLite target changed during access") from None
+        except OSError:
+            os.close(descriptor)
+            raise PathContainmentError("conversation SQLite target changed during access") from None
+        if (
+            not stat.S_ISREG(descriptor_stat.st_mode)
+            or not stat.S_ISREG(final_stat.st_mode)
+            or (
+                require_stable_identity
+                and self._identity(descriptor_stat) != self._identity(final_stat)
+            )
+        ):
+            os.close(descriptor)
+            raise PathContainmentError("conversation SQLite target identity changed during access")
+        return descriptor
+
+    def _assert_private_target_identity(
+        self,
+        root_descriptor: int,
+        path: Path,
+        expected_identity: tuple[int, int],
+    ) -> None:
+        try:
+            path_stat = os.stat(path.name, dir_fd=root_descriptor, follow_symlinks=False)
+        except OSError:
+            raise PathContainmentError("conversation SQLite target changed during open") from None
+        if not stat.S_ISREG(path_stat.st_mode) or self._identity(path_stat) != expected_identity:
+            raise PathContainmentError("conversation SQLite target identity changed during open")
+
     def _connect(self) -> sqlite3.Connection:
         self._validate_database_location()
-        connection = sqlite3.connect(self.database_path, timeout=15, isolation_level=None)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA busy_timeout=15000")
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("PRAGMA synchronous=FULL")
-        self.ensure_private_modes()
+        connection: sqlite3.Connection | None = None
+        with self._stable_root_descriptor() as root_descriptor:
+            database_descriptor = self._open_private_target(
+                root_descriptor,
+                self.database_path,
+                create=True,
+            )
+            if database_descriptor is None:  # pragma: no cover - create=True is exhaustive
+                raise PathContainmentError("conversation SQLite database could not be anchored")
+            try:
+                os.fchmod(database_descriptor, 0o600)
+                database_identity = self._identity(os.fstat(database_descriptor))
+            finally:
+                os.close(database_descriptor)
+            try:
+                connection = sqlite3.connect(
+                    self.database_path,
+                    timeout=15,
+                    isolation_level=None,
+                )
+                self._assert_root_descriptor_identity(root_descriptor)
+                self._assert_private_target_identity(
+                    root_descriptor,
+                    self.database_path,
+                    database_identity,
+                )
+                connection.row_factory = sqlite3.Row
+                connection.execute("PRAGMA foreign_keys=ON")
+                connection.execute("PRAGMA busy_timeout=15000")
+                connection.execute("PRAGMA synchronous=FULL")
+                self._assert_root_descriptor_identity(root_descriptor)
+                self._assert_private_target_identity(
+                    root_descriptor,
+                    self.database_path,
+                    database_identity,
+                )
+            except BaseException:
+                if connection is not None:
+                    connection.close()
+                raise
+        if connection is None:  # pragma: no cover - guarded by the successful path above
+            raise PathContainmentError("conversation SQLite database could not be opened")
         return connection
 
     @contextmanager
@@ -201,11 +341,19 @@ class ConversationStore:
             raise
         finally:
             connection.close()
-            self.ensure_private_modes()
 
     def _migrate(self) -> None:
         connection = self._connect()
         try:
+            journal_mode = str(connection.execute("PRAGMA journal_mode").fetchone()[0]).lower()
+            if journal_mode != "wal":
+                configured_mode = str(
+                    connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]
+                ).lower()
+                if configured_mode != "wal":
+                    raise ConversationConflictError(
+                        "conversation database could not enable WAL mode"
+                    )
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS conversations (
@@ -235,6 +383,8 @@ class ConversationStore:
                     inbound_request_json TEXT NOT NULL,
                     inbound_request_digest TEXT NOT NULL,
                     inbound_source_reference_count INTEGER NOT NULL,
+                    inbound_replay_state TEXT NOT NULL DEFAULT 'exact'
+                        CHECK(inbound_replay_state IN ('exact','unavailable')),
                     planning_request_json TEXT NOT NULL,
                     context_generation INTEGER NOT NULL,
                     brief_context_digest TEXT NOT NULL,
@@ -346,58 +496,115 @@ class ConversationStore:
         return {str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")}
 
     def _migrate_hardening_columns(self, connection: sqlite3.Connection) -> None:
-        turn_columns = self._column_names(connection, "turns")
-        if "inbound_request_json" not in turn_columns:
-            connection.execute(
-                "ALTER TABLE turns ADD COLUMN inbound_request_json TEXT NOT NULL DEFAULT ''"
+        required_turn_columns = {
+            "inbound_request_json",
+            "inbound_request_digest",
+            "inbound_source_reference_count",
+            "inbound_replay_state",
+        }
+        required_attempt_columns = {"owner_id", "lease_expires_at"}
+        existing_turn_columns = self._column_names(connection, "turns")
+        existing_attempt_columns = self._column_names(connection, "attempts")
+        invalid_replay = False
+        if required_turn_columns <= existing_turn_columns:
+            invalid_replay = (
+                connection.execute(
+                    "SELECT 1 FROM turns WHERE inbound_request_json='' "
+                    "OR inbound_request_digest='' "
+                    "OR inbound_replay_state NOT IN ('exact','unavailable') LIMIT 1"
+                ).fetchone()
+                is not None
             )
-            connection.execute(
-                "ALTER TABLE turns ADD COLUMN inbound_request_digest TEXT NOT NULL DEFAULT ''"
-            )
-            connection.execute(
-                "ALTER TABLE turns ADD COLUMN inbound_source_reference_count "
-                "INTEGER NOT NULL DEFAULT 0"
-            )
-        attempt_columns = self._column_names(connection, "attempts")
-        if "owner_id" not in attempt_columns:
-            connection.execute(
-                "ALTER TABLE attempts ADD COLUMN owner_id TEXT NOT NULL DEFAULT 'legacy-orphan'"
-            )
-            connection.execute(
-                "ALTER TABLE attempts ADD COLUMN lease_expires_at REAL NOT NULL DEFAULT 0"
-            )
-        rows = connection.execute(
-            "SELECT turn_id,planning_request_json FROM turns WHERE inbound_request_json=''"
-        ).fetchall()
-        for row in rows:
-            request = _request_from_payload(json.loads(row["planning_request_json"]))
-            snapshot_ids = {
-                str(item[0])
-                for item in connection.execute(
-                    "SELECT context_id FROM turn_context_snapshots WHERE turn_id=?",
-                    (row["turn_id"],),
-                )
-            }
-            inbound_sources = tuple(
-                item for item in request.source_references if item.reference_id not in snapshot_ids
-            )
-            inbound = replace(request, source_references=inbound_sources)
-            inbound_json = _canonical_json(_request_payload(inbound))
-            connection.execute(
-                "UPDATE turns SET inbound_request_json=?,inbound_request_digest=?,"
-                "inbound_source_reference_count=? WHERE turn_id=?",
+        if (
+            required_turn_columns <= existing_turn_columns
+            and required_attempt_columns <= existing_attempt_columns
+            and not invalid_replay
+        ):
+            return
+        connection.execute("BEGIN IMMEDIATE")
+        try:
+            turn_columns = self._column_names(connection, "turns")
+            inbound_schema_was_incomplete = False
+            turn_additions = (
                 (
-                    inbound_json,
-                    _digest("studyloop.planning-inbound-request", json.loads(inbound_json)),
-                    len(inbound_sources),
-                    row["turn_id"],
+                    "inbound_request_json",
+                    "TEXT NOT NULL DEFAULT ''",
+                ),
+                (
+                    "inbound_request_digest",
+                    "TEXT NOT NULL DEFAULT ''",
+                ),
+                (
+                    "inbound_source_reference_count",
+                    "INTEGER NOT NULL DEFAULT 0",
+                ),
+                (
+                    "inbound_replay_state",
+                    "TEXT NOT NULL DEFAULT 'unavailable'",
                 ),
             )
+            for column, declaration in turn_additions:
+                if column in turn_columns:
+                    continue
+                inbound_schema_was_incomplete = True
+                connection.execute(f"ALTER TABLE turns ADD COLUMN {column} {declaration}")
+                self._inject_migration(f"after_add_turns_{column}")
+
+            attempt_columns = self._column_names(connection, "attempts")
+            attempt_additions = (
+                ("owner_id", "TEXT NOT NULL DEFAULT 'legacy-orphan'"),
+                ("lease_expires_at", "REAL NOT NULL DEFAULT 0"),
+            )
+            for column, declaration in attempt_additions:
+                if column in attempt_columns:
+                    continue
+                connection.execute(f"ALTER TABLE attempts ADD COLUMN {column} {declaration}")
+                self._inject_migration(f"after_add_attempts_{column}")
+
+            if inbound_schema_was_incomplete:
+                connection.execute("UPDATE turns SET inbound_replay_state='unavailable'")
+            connection.execute(
+                "UPDATE turns SET inbound_replay_state='unavailable' "
+                "WHERE inbound_request_json='' OR inbound_request_digest='' "
+                "OR inbound_replay_state NOT IN ('exact','unavailable')"
+            )
+            self._inject_migration("after_legacy_replay_classification")
+            connection.execute("COMMIT")
+        except BaseException:
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
+            raise
+
+    def _inject_migration(self, point: str) -> None:
+        if self._migration_crash_injector is not None:
+            self._migration_crash_injector(point)
 
     def ensure_private_modes(self) -> None:
+        with self._stable_root_descriptor() as root_descriptor:
+            self._ensure_private_modes(root_descriptor)
+
+    def _ensure_private_modes(self, root_descriptor: int) -> None:
+        os.fchmod(root_descriptor, 0o700)
         for path in self._database_files():
-            if path.exists():
-                os.chmod(path, 0o600)
+            is_main_database = path == self.database_path
+            descriptor = self._open_private_target(
+                root_descriptor,
+                path,
+                create=False,
+                require_stable_identity=is_main_database,
+            )
+            if descriptor is None:
+                continue
+            try:
+                os.fchmod(descriptor, 0o600)
+                if is_main_database:
+                    self._assert_private_target_identity(
+                        root_descriptor,
+                        path,
+                        self._identity(os.fstat(descriptor)),
+                    )
+            finally:
+                os.close(descriptor)
 
     @staticmethod
     def _ensure_conversation(connection: sqlite3.Connection, conversation_id: str) -> None:
@@ -512,7 +719,14 @@ class ConversationStore:
                 if (
                     prior["conversation_id"] != command.conversation_id
                     or prior["learner_text"] != turn.text
-                    or prior["inbound_request_digest"] != inbound_request_digest
+                ):
+                    raise ConversationConflictError("turn ID was reused with different input")
+                if prior["inbound_replay_state"] != "exact":
+                    raise ConversationConflictError(
+                        "exact replay unavailable for legacy learner turn"
+                    )
+                if (
+                    prior["inbound_request_digest"] != inbound_request_digest
                     or prior["inbound_request_json"] != inbound_request_json
                     or int(prior["inbound_source_reference_count"])
                     != len(turn.planning_request.source_references)
@@ -577,9 +791,9 @@ class ConversationStore:
                     "INSERT INTO turns("
                     "turn_id,conversation_id,turn_ordinal,learner_text,"
                     "inbound_request_json,inbound_request_digest,"
-                    "inbound_source_reference_count,planning_request_json,"
+                    "inbound_source_reference_count,inbound_replay_state,planning_request_json,"
                     "context_generation,brief_context_digest,status,version,planning_run_id"
-                    ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         turn.turn_id,
                         command.conversation_id,
@@ -588,6 +802,7 @@ class ConversationStore:
                         inbound_request_json,
                         inbound_request_digest,
                         len(turn.planning_request.source_references),
+                        "exact",
                         request_json,
                         generation,
                         context_digest,

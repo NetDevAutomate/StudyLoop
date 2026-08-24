@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from studyloop.planning.capabilities import PlanningCapabilityScope
 from studyloop.planning.contracts import PlanningRequest
 from studyloop.planning.conversation_contracts import (
     BeginModelAttempt,
@@ -15,6 +16,7 @@ from studyloop.planning.conversation_contracts import (
     ConversationConflictError,
     LearnerTurn,
     MarkAttemptInterrupted,
+    PrepareCapabilityCall,
 )
 from studyloop.planning.conversation_runtime import PlanningConversationRuntime
 from studyloop.planning.conversation_store import ConversationStore
@@ -62,6 +64,16 @@ class _ProcessCrash:
             os._exit(79)
 
 
+class _SignalPoint:
+    def __init__(self, point: str, event) -> None:
+        self.point = point
+        self.event = event
+
+    def __call__(self, point: str) -> None:
+        if point == self.point:
+            self.event.set()
+
+
 class _ProviderErrorModel:
     async def stream(self, request):
         raise RuntimeError("provider connection ended")
@@ -103,6 +115,96 @@ class _LiveProcessModel:
             2,
             "stop",
         )
+
+
+def _root_lock_holder(root_text: str, held, release) -> None:
+    repository = PlanningRepository(
+        PlanningPaths.in_root(Path(root_text)),
+        index_refresher=None,
+    )
+    with repository._root_lock():
+        held.set()
+        release.wait(10)
+
+
+def _root_lock_blocked_attempt_worker(root_text: str, dispatch_started) -> None:
+    root = Path(root_text)
+    model = ScriptedPlanningModel(
+        (
+            ScriptedResponse(
+                "turn-1",
+                (
+                    ModelToolCall(
+                        MODEL_WIRE_VERSION,
+                        "turn-1",
+                        "attempt-1",
+                        1,
+                        "tool-1",
+                        "prepare_plan",
+                        {},
+                    ),
+                    ModelTurnCompleted(
+                        MODEL_WIRE_VERSION,
+                        "turn-1",
+                        "attempt-1",
+                        2,
+                        "tool_calls",
+                    ),
+                ),
+            ),
+            ScriptedResponse(
+                "turn-1",
+                (
+                    ModelTextDelta(
+                        MODEL_WIRE_VERSION,
+                        "turn-1",
+                        "attempt-1",
+                        1,
+                        "Root-lock wait completed",
+                    ),
+                    ModelTurnCompleted(
+                        MODEL_WIRE_VERSION,
+                        "turn-1",
+                        "attempt-1",
+                        2,
+                        "stop",
+                    ),
+                ),
+            ),
+        )
+    )
+    runtime = PlanningConversationRuntime(
+        ConversationStore(
+            root / "conversations.sqlite3",
+            ids=_Ids(),
+            attempt_lease_seconds=0.08,
+        ),
+        model,
+        PlanningLifecycle(PlanningRepository(PlanningPaths.in_root(root), index_refresher=None)),
+        lease_heartbeat_seconds=0.01,
+        crash_injector=_SignalPoint("before_lifecycle_dispatch", dispatch_started),
+    )
+    asyncio.run(
+        runtime.accept_turn(
+            "conversation-1",
+            LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
+        )
+    )
+
+
+def _root_lock_blocked_recovery_worker(root_text: str) -> None:
+    root = Path(root_text)
+    runtime = PlanningConversationRuntime(
+        ConversationStore(
+            root / "conversations.sqlite3",
+            attempt_lease_seconds=0.08,
+        ),
+        ScriptedPlanningModel(()),
+        PlanningLifecycle(PlanningRepository(PlanningPaths.in_root(root), index_refresher=None)),
+        owner_id="recovery-owner",
+        lease_heartbeat_seconds=0.01,
+    )
+    asyncio.run(runtime.recover("conversation-1"))
 
 
 def _live_attempt_worker(root_text: str, started, release) -> None:
@@ -312,6 +414,159 @@ def test_second_process_recovery_and_retry_cannot_interrupt_a_live_provider(
     assert [item.content for item in store.list_messages("conversation-1")] == [
         "Live provider completed"
     ]
+
+
+def test_root_lock_wait_longer_than_lease_keeps_live_dispatch_owned_once(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "root-lock-race"
+    context = multiprocessing.get_context("spawn")
+    lock_held = context.Event()
+    release_lock = context.Event()
+    holder = context.Process(
+        target=_root_lock_holder,
+        args=(str(root), lock_held, release_lock),
+    )
+    holder.start()
+    assert lock_held.wait(10)
+
+    dispatch_started = context.Event()
+    worker = context.Process(
+        target=_root_lock_blocked_attempt_worker,
+        args=(str(root), dispatch_started),
+    )
+    worker.start()
+    assert dispatch_started.wait(10)
+    store = ConversationStore(
+        root / "conversations.sqlite3",
+        attempt_lease_seconds=0.08,
+    )
+    assert [item.status for item in store.list_capability_intents("turn-1")] == ["dispatching"]
+
+    time.sleep(0.2)
+    recovered = asyncio.run(
+        PlanningConversationRuntime(
+            store,
+            ScriptedPlanningModel(()),
+            PlanningLifecycle(
+                PlanningRepository(PlanningPaths.in_root(root), index_refresher=None)
+            ),
+        ).recover("conversation-1")
+    )
+    during_wait = store.get_turn("conversation-1", "turn-1")
+    release_lock.set()
+    holder.join(10)
+    worker.join(15)
+
+    assert recovered.interrupted_attempt_ids == ()
+    assert during_wait.status == "attempt_active"
+    assert holder.exitcode == 0
+    assert worker.exitcode == 0
+    assert [item.status for item in store.list_attempts("turn-1")] == ["completed"]
+    assert [item.status for item in store.list_capability_intents("turn-1")] == ["projected"]
+    event_types = [event.event_type for event in store.replay_outbox("conversation-1", 0)]
+    assert event_types.count("capability_result") == 1
+    assert event_types.count("assistant_message") == 1
+
+
+def test_recovery_renews_claim_while_real_root_lock_blocks_lifecycle(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "recovery-root-lock-race"
+    store = ConversationStore(
+        root / "conversations.sqlite3",
+        ids=_Ids(),
+        attempt_lease_seconds=0.08,
+    )
+    receipt = store.capture_turn_and_freeze_context(
+        CaptureLearnerTurn(
+            "conversation-1",
+            LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
+        )
+    )
+    attempt = store.begin_attempt(
+        BeginModelAttempt(
+            "conversation-1",
+            "turn-1",
+            receipt.turn_version,
+            None,
+            "dead-owner",
+        )
+    )
+    scope_key = PlanningCapabilityScope(
+        "conversation-1", "turn-1", attempt.attempt_id
+    ).lifecycle_idempotency_key(
+        run_id="",
+        tool_call_id="tool-1",
+    )
+    store.prepare_capability_call(
+        PrepareCapabilityCall(
+            "conversation-1",
+            "turn-1",
+            attempt.attempt_id,
+            "tool-1",
+            "prepare_plan",
+            {},
+            "",
+            scope_key,
+            attempt.owner_id,
+        )
+    )
+    time.sleep(0.1)
+    context = multiprocessing.get_context("spawn")
+    lock_held = context.Event()
+    release_lock = context.Event()
+    holder = context.Process(
+        target=_root_lock_holder,
+        args=(str(root), lock_held, release_lock),
+    )
+    holder.start()
+    assert lock_held.wait(10)
+    recovery = context.Process(
+        target=_root_lock_blocked_recovery_worker,
+        args=(str(root),),
+    )
+    recovery.start()
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        current = store.active_attempts("conversation-1")
+        intents = store.list_capability_intents("turn-1")
+        if (
+            current
+            and current[0].owner_id == "recovery-owner"
+            and intents
+            and intents[0].status == "dispatching"
+        ):
+            break
+        time.sleep(0.01)
+    else:
+        release_lock.set()
+        holder.join(10)
+        recovery.join(10)
+        pytest.fail("recovery did not claim and reach lifecycle dispatch")
+
+    time.sleep(0.2)
+    competing = asyncio.run(
+        PlanningConversationRuntime(
+            ConversationStore(root / "conversations.sqlite3"),
+            ScriptedPlanningModel(()),
+            PlanningLifecycle(
+                PlanningRepository(PlanningPaths.in_root(root), index_refresher=None)
+            ),
+        ).recover("conversation-1")
+    )
+    release_lock.set()
+    holder.join(10)
+    recovery.join(15)
+
+    assert competing.interrupted_attempt_ids == ()
+    assert holder.exitcode == 0
+    assert recovery.exitcode == 0
+    assert [item.status for item in store.list_attempts("turn-1")] == ["interrupted"]
+    assert [item.status for item in store.list_capability_intents("turn-1")] == ["projected"]
+    event_types = [event.event_type for event in store.replay_outbox("conversation-1", 0)]
+    assert event_types.count("capability_result") == 1
+    assert event_types.count("attempt_interrupted") == 1
 
 
 @pytest.mark.parametrize(

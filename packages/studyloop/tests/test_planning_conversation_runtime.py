@@ -14,6 +14,7 @@ from studyloop.planning.contracts import PlanningRequest
 from studyloop.planning.conversation_contracts import (
     PRIVACY_NOTICE,
     AttachContext,
+    ConversationConflictError,
     LearnerTurn,
     PlanningConversationBounds,
     PlanningConversationError,
@@ -73,6 +74,12 @@ class _LeakyFailingModel:
             "failed at http://127.0.0.1:4000/internal from /Users/private/config "
             "with provider-secret-value"
         )
+        yield request  # pragma: no cover
+
+
+class _RootPathDiagnosticModel:
+    async def stream(self, request):
+        raise ConversationConflictError("provider metadata from /secret and ~/secret")
         yield request  # pragma: no cover
 
 
@@ -589,6 +596,32 @@ async def test_provider_diagnostic_metadata_is_not_persisted_in_interruption_rea
 
 
 @pytest.mark.asyncio
+async def test_root_level_metadata_paths_are_removed_from_public_error_chain(
+    tmp_path: Path,
+) -> None:
+    store = ConversationStore(tmp_path / "conversations.sqlite3", ids=_Ids())
+    runtime = PlanningConversationRuntime(
+        store,
+        _RootPathDiagnosticModel(),  # type: ignore[arg-type]
+        _CapturingLifecycle(),  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(ConversationConflictError) as captured:
+        await runtime.accept_turn(
+            "conversation-1",
+            LearnerTurn("turn-1", "A dump", PlanningRequest("create", "A dump", "request-1")),
+        )
+
+    public_error = captured.value
+    rendered = "\n".join((repr(public_error), "".join(traceback.format_exception(public_error))))
+    assert public_error.__cause__ is None
+    assert public_error.__context__ is None
+    assert "/secret" not in rendered
+    assert "~/secret" not in rendered
+    assert store.private_interruption_reason("attempt-1") == "planning runtime detail redacted"
+
+
+@pytest.mark.asyncio
 async def test_wall_clock_bound_interrupts_a_hanging_provider(tmp_path: Path) -> None:
     store = ConversationStore(tmp_path / "conversations.sqlite3", ids=_Ids())
     runtime = PlanningConversationRuntime(
@@ -1091,10 +1124,15 @@ async def test_channel_aware_capture_redacts_secrets_and_metadata_not_learner_pa
 async def test_embedded_studyloop_metadata_locations_are_redacted_but_learner_text_is_verbatim(
     tmp_path: Path,
 ) -> None:
-    learner = "I typed /Users/learner/course.md and http://127.0.0.1:9999/my-example myself"
+    learner = (
+        "I typed /secret, ~/secret, /Users/learner/course.md and "
+        "http://127.0.0.1:9999/my-example myself"
+    )
     model = _TextModel("What would useful progress look like?")
     store = ConversationStore(tmp_path / "conversations.sqlite3", ids=_Ids())
     labels = (
+        "Course from /secret (selected)",
+        "Course from ~/secret (selected)",
         "Course from /Users/server/private/course.md (selected)",
         r"Imported from C:\\StudyLoop\\private\\course.txt today",
         "Loaded from file:///srv/studyloop/private/course.txt, selected",
@@ -1128,6 +1166,8 @@ async def test_embedded_studyloop_metadata_locations_are_redacted_but_learner_te
     assert "file:///srv/studyloop" not in captured
     assert "127.0.0.1:4000" not in captured
     assert "192.168.50.2:8080" not in captured
+    assert "/secret" in captured
+    assert "~/secret" in captured
     assert "/Users/learner/course.md" in captured
     assert "127.0.0.1:9999/my-example" in captured
     assert store.get_turn("conversation-1", "turn-1").learner_text == learner

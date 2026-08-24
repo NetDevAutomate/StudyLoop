@@ -227,43 +227,58 @@ class PlanningConversationRuntime:
             recovered = self.store.claim_expired_attempt(candidate, self._owner_id)
             if recovered is not None:
                 claimed.append(recovered)
-        active_ids = {attempt.attempt_id for attempt in self.store.active_attempts(conversation_id)}
-        claimed_ids = {attempt.attempt_id for attempt in claimed}
-        for intent in self.store.list_unreconciled_capability_intents(conversation_id):
-            if intent.attempt_id in active_ids and intent.attempt_id not in claimed_ids:
-                continue
-            result = self.store.get_capability_result(intent.intent_id)
-            if result is None:
-                result = self._dispatch_original_intent(intent)
-            if result.status == "projected":
-                projected.append(intent.intent_id)
-            else:
-                refused.append(intent.intent_id)
-        for attempt in claimed:
-            if self.store.finalized_message_for_attempt(attempt.attempt_id) is not None:
-                self.store.complete_attempt(
-                    CompleteModelAttempt(
+        owner_task = asyncio.current_task()
+        if owner_task is None:  # pragma: no cover - async entry always owns a task
+            raise ModelAttemptError("planning recovery has no task owner")
+        heartbeats = [
+            asyncio.create_task(self._heartbeat_attempt(attempt, owner_task)) for attempt in claimed
+        ]
+        try:
+            active_ids = {
+                attempt.attempt_id for attempt in self.store.active_attempts(conversation_id)
+            }
+            claimed_ids = {attempt.attempt_id for attempt in claimed}
+            for intent in self.store.list_unreconciled_capability_intents(conversation_id):
+                if intent.attempt_id in active_ids and intent.attempt_id not in claimed_ids:
+                    continue
+                result = self.store.get_capability_result(intent.intent_id)
+                if result is None:
+                    result = await asyncio.to_thread(self._dispatch_original_intent, intent)
+                if result.status == "projected":
+                    projected.append(intent.intent_id)
+                else:
+                    refused.append(intent.intent_id)
+            for attempt in claimed:
+                if self.store.finalized_message_for_attempt(attempt.attempt_id) is not None:
+                    self.store.complete_attempt(
+                        CompleteModelAttempt(
+                            conversation_id,
+                            attempt.turn_id,
+                            attempt.attempt_id,
+                            attempt.turn_version,
+                            self._owner_id,
+                        )
+                    )
+                    completed.append(attempt.attempt_id)
+                    continue
+                self._inject("before_durable_interruption")
+                self.store.mark_attempt_interrupted(
+                    MarkAttemptInterrupted(
                         conversation_id,
                         attempt.turn_id,
                         attempt.attempt_id,
                         attempt.turn_version,
+                        "process recovery found an unfinished provider attempt",
                         self._owner_id,
                     )
                 )
-                completed.append(attempt.attempt_id)
-                continue
-            self._inject("before_durable_interruption")
-            self.store.mark_attempt_interrupted(
-                MarkAttemptInterrupted(
-                    conversation_id,
-                    attempt.turn_id,
-                    attempt.attempt_id,
-                    attempt.turn_version,
-                    "process recovery found an unfinished provider attempt",
-                    self._owner_id,
-                )
-            )
-            interrupted.append(attempt.attempt_id)
+                interrupted.append(attempt.attempt_id)
+        finally:
+            for heartbeat in heartbeats:
+                heartbeat.cancel()
+            for heartbeat in heartbeats:
+                with suppress(asyncio.CancelledError):
+                    await heartbeat
         return RecoveryResult(
             conversation_id,
             tuple(interrupted),
@@ -361,7 +376,11 @@ class PlanningConversationRuntime:
                     self._inject("after_capability_intent_commit")
                     result = self.store.get_capability_result(intent.intent_id)
                     if result is None:
-                        result = self._dispatch_intent(intent, dispatcher)
+                        result = await asyncio.to_thread(
+                            self._dispatch_intent,
+                            intent,
+                            dispatcher,
+                        )
                     result_run_id = result.payload.get("run_id")
                     if isinstance(result_run_id, str) and result_run_id:
                         expected_run_id = result_run_id

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import multiprocessing
+import os
+import sqlite3
 import stat
 from pathlib import Path
 
 import pytest
 
+from studyloop.planning import conversation_store as conversation_store_module
 from studyloop.planning.contracts import PlanningRequest, SourceReference
 from studyloop.planning.conversation_contracts import (
     AttachContext,
@@ -33,6 +36,22 @@ class _Ids:
     def new_id(self, prefix: str) -> str:
         self.value += 1
         return f"{prefix}-{self.value}"
+
+
+class _MigrationProcessCrash:
+    def __init__(self, point: str) -> None:
+        self.point = point
+
+    def __call__(self, point: str) -> None:
+        if point == self.point:
+            os._exit(79)
+
+
+def _migration_crash_worker(database_text: str, point: str) -> None:
+    ConversationStore(
+        Path(database_text),
+        migration_crash_injector=_MigrationProcessCrash(point),
+    )
 
 
 def _store(tmp_path: Path) -> ConversationStore:
@@ -119,7 +138,8 @@ def test_same_turn_replay_requires_the_exact_original_source_references(
             ),
         )
     )
-    replay = store.capture_turn_and_freeze_context(
+    reopened = ConversationStore(store.database_path)
+    replay = reopened.capture_turn_and_freeze_context(
         CaptureLearnerTurn(
             "conversation-1",
             LearnerTurn(
@@ -130,7 +150,7 @@ def test_same_turn_replay_requires_the_exact_original_source_references(
         )
     )
     assert replay == initial
-    assert [item.reference_id for item in store.load_request("turn-1").source_references] == [
+    assert [item.reference_id for item in reopened.load_request("turn-1").source_references] == [
         "source-1",
         "source-2",
         "attached-1",
@@ -151,7 +171,7 @@ def test_same_turn_replay_requires_the_exact_original_source_references(
         ),
     }[variant]
     with pytest.raises(ConversationConflictError, match="different input"):
-        store.capture_turn_and_freeze_context(
+        reopened.capture_turn_and_freeze_context(
             CaptureLearnerTurn(
                 "conversation-1",
                 LearnerTurn(
@@ -169,8 +189,174 @@ def test_same_turn_replay_requires_the_exact_original_source_references(
 
 
 @pytest.mark.parametrize(
+    ("table", "column"),
+    [
+        ("turns", "inbound_request_json"),
+        ("turns", "inbound_request_digest"),
+        ("turns", "inbound_source_reference_count"),
+        ("attempts", "owner_id"),
+        ("attempts", "lease_expires_at"),
+    ],
+)
+def test_hardening_migration_resumes_each_independently_missing_column(
+    tmp_path: Path,
+    table: str,
+    column: str,
+) -> None:
+    database = tmp_path / f"partial-{column}.sqlite3"
+    ConversationStore(database)
+    with sqlite3.connect(database) as connection:
+        connection.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+
+    store = ConversationStore(database, ids=_Ids())
+    receipt = _capture(store)
+    attempt = store.begin_attempt(
+        BeginModelAttempt("conversation-1", "turn-1", receipt.turn_version, None)
+    )
+
+    assert attempt.status == "active"
+
+
+@pytest.mark.parametrize(
+    ("table", "column", "crash_point"),
+    [
+        ("turns", "inbound_request_json", "after_add_turns_inbound_request_json"),
+        ("turns", "inbound_request_digest", "after_add_turns_inbound_request_digest"),
+        (
+            "turns",
+            "inbound_source_reference_count",
+            "after_add_turns_inbound_source_reference_count",
+        ),
+        ("turns", "inbound_replay_state", "after_add_turns_inbound_replay_state"),
+        ("attempts", "owner_id", "after_add_attempts_owner_id"),
+        ("attempts", "lease_expires_at", "after_add_attempts_lease_expires_at"),
+    ],
+)
+def test_hardening_schema_migration_rolls_back_and_restarts_after_process_death(
+    tmp_path: Path,
+    table: str,
+    column: str,
+    crash_point: str,
+) -> None:
+    database = tmp_path / f"crash-{column}.sqlite3"
+    ConversationStore(database)
+    with sqlite3.connect(database) as connection:
+        columns = {str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")}
+        if column in columns:
+            connection.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+    context = multiprocessing.get_context("spawn")
+    worker = context.Process(
+        target=_migration_crash_worker,
+        args=(str(database), crash_point),
+    )
+    worker.start()
+    worker.join(15)
+
+    assert worker.exitcode == 79
+    store = ConversationStore(database, ids=_Ids())
+    receipt = _capture(store)
+    assert (
+        store.begin_attempt(
+            BeginModelAttempt("conversation-1", "turn-1", receipt.turn_version, None)
+        ).status
+        == "active"
+    )
+
+
+def test_legacy_attachment_id_collision_is_readable_but_exact_replay_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "legacy-collision.sqlite3"
+    store = ConversationStore(database, ids=_Ids())
+    attachment = store.attach_context(
+        AttachContext("conversation-1", "shared-id", "Selected notes", "notes body")
+    )
+    learner = "I want to understand protocols"
+    original_reference = SourceReference(
+        attachment.context_id,
+        attachment.content_digest,
+        "supplied_material",
+        attachment.label,
+    )
+    original_turn = LearnerTurn(
+        "turn-1",
+        learner,
+        PlanningRequest(
+            "create",
+            learner,
+            "request-1",
+            source_references=(original_reference,),
+        ),
+    )
+    store.capture_turn_and_freeze_context(CaptureLearnerTurn("conversation-1", original_turn))
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE turns SET inbound_request_json='',inbound_request_digest='',"
+            "inbound_source_reference_count=0"
+        )
+
+    migrated = ConversationStore(database)
+
+    assert [item.reference_id for item in migrated.load_request("turn-1").source_references] == [
+        "shared-id"
+    ]
+    with pytest.raises(ConversationConflictError, match=r"exact replay unavailable.*legacy"):
+        migrated.capture_turn_and_freeze_context(
+            CaptureLearnerTurn("conversation-1", original_turn)
+        )
+    with sqlite3.connect(database) as connection:
+        inbound_json, replay_state = connection.execute(
+            "SELECT inbound_request_json,inbound_replay_state FROM turns WHERE turn_id='turn-1'"
+        ).fetchone()
+    assert inbound_json == ""
+    assert replay_state == "unavailable"
+
+
+def test_legacy_replay_classification_rolls_back_and_restarts_after_process_death(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "classification-crash.sqlite3"
+    store = ConversationStore(database)
+    _capture(store)
+    with sqlite3.connect(database) as connection:
+        connection.execute("UPDATE turns SET inbound_request_digest=''")
+    context = multiprocessing.get_context("spawn")
+    worker = context.Process(
+        target=_migration_crash_worker,
+        args=(str(database), "after_legacy_replay_classification"),
+    )
+    worker.start()
+    worker.join(15)
+
+    assert worker.exitcode == 79
+    migrated = ConversationStore(database)
+    with pytest.raises(ConversationConflictError, match=r"exact replay unavailable.*legacy"):
+        _capture(migrated)
+
+
+def test_complete_hardening_schema_reopens_without_a_write_migration(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "complete-schema.sqlite3"
+    store = ConversationStore(database)
+    _capture(store)
+
+    def unexpected_migration_write(point: str) -> None:
+        raise AssertionError(f"steady-state reopen reached migration write point {point}")
+
+    reopened = ConversationStore(
+        database,
+        migration_crash_injector=unexpected_migration_write,
+    )
+
+    assert reopened.get_turn("conversation-1", "turn-1").status == "ready"
+
+
+@pytest.mark.parametrize(
     "label",
     [
+        "Course from /secret (selected)",
+        "Selected ~/secret for planning",
         "Course from /Users/alice/private/course.md (selected)",
         r"Imported from C:\\Users\\alice\\course.txt today",
         "Loaded (file:///srv/studyloop/course.txt), selected",
@@ -226,6 +412,140 @@ def test_conversation_store_rejects_a_symlinked_planning_parent(tmp_path: Path) 
         ConversationStore(database)
 
     assert list(outside.iterdir()) == []
+
+
+@pytest.mark.parametrize("swap_target", ["database", "parent"])
+def test_conversation_store_detects_identity_swap_during_sqlite_open(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    swap_target: str,
+) -> None:
+    root = tmp_path / "planning"
+    root.mkdir()
+    database = root / "planning-conversations.sqlite3"
+    outside_root = tmp_path / "outside"
+    outside_root.mkdir()
+    outside_database = outside_root / database.name
+    with sqlite3.connect(outside_database) as connection:
+        connection.execute("CREATE TABLE sentinel(value TEXT NOT NULL)")
+        connection.execute("INSERT INTO sentinel VALUES ('unchanged')")
+    outside_before = outside_database.read_bytes()
+    real_connect = sqlite3.connect
+    swapped = False
+
+    def racing_connect(path, *args, **kwargs):
+        nonlocal swapped
+        if not swapped and Path(path) == database:
+            swapped = True
+            if swap_target == "database":
+                database.unlink(missing_ok=True)
+                database.symlink_to(outside_database)
+            else:
+                displaced = tmp_path / "displaced-planning"
+                root.rename(displaced)
+                root.symlink_to(outside_root, target_is_directory=True)
+            return real_connect(path, *args, **kwargs)
+        return real_connect(path, *args, **kwargs)
+
+    monkeypatch.setattr(conversation_store_module.sqlite3, "connect", racing_connect)
+
+    with pytest.raises(PathContainmentError, match=r"changed|identity|symlink"):
+        ConversationStore(database)
+
+    assert swapped
+    assert outside_database.read_bytes() == outside_before
+
+
+@pytest.mark.parametrize("target_kind", ["database", "wal", "shm"])
+def test_private_mode_enforcement_does_not_follow_check_chmod_target_swap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    target_kind: str,
+) -> None:
+    database = tmp_path / "planning-conversations.sqlite3"
+    store = ConversationStore(database)
+    suffix = {"database": "", "wal": "-wal", "shm": "-shm"}[target_kind]
+    target = Path(f"{database}{suffix}")
+    target.touch(exist_ok=True)
+    outside = tmp_path / f"outside-{target_kind}"
+    outside.write_text("outside", encoding="utf-8")
+    outside.chmod(0o644)
+    real_open = os.open
+    swapped = False
+
+    def racing_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal swapped
+        if not swapped and dir_fd is not None and os.fspath(path) == target.name:
+            swapped = True
+            target.unlink()
+            target.symlink_to(outside)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(conversation_store_module.os, "open", racing_open)
+
+    with pytest.raises(PathContainmentError, match=r"symlink|changed|regular"):
+        store.ensure_private_modes()
+
+    assert swapped
+    assert stat.S_IMODE(outside.stat().st_mode) == 0o644
+
+
+def test_private_mode_enforcement_tolerates_a_disappearing_sqlite_sidecar(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "planning-conversations.sqlite3"
+    store = ConversationStore(database)
+    wal = Path(f"{database}-wal")
+    wal.touch()
+    real_stat = os.stat
+    wal_stat_calls = 0
+
+    def racing_stat(path, *args, **kwargs):
+        nonlocal wal_stat_calls
+        if kwargs.get("dir_fd") is not None and os.fspath(path) == wal.name:
+            wal_stat_calls += 1
+            if wal_stat_calls == 2:
+                wal.unlink()
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(conversation_store_module.os, "stat", racing_stat)
+
+    store.ensure_private_modes()
+
+    assert wal_stat_calls == 2
+    assert not wal.exists()
+
+
+def test_planning_parent_mode_enforcement_uses_stable_directory_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "planning"
+    root.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    outside.chmod(0o755)
+    database = root / "planning-conversations.sqlite3"
+    real_open = os.open
+    swapped = False
+
+    def racing_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal swapped
+        if not swapped and dir_fd is None and Path(path) == root:
+            swapped = True
+            displaced = tmp_path / "displaced-root"
+            root.rename(displaced)
+            root.symlink_to(outside, target_is_directory=True)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(conversation_store_module.os, "open", racing_open)
+
+    with pytest.raises(PathContainmentError, match=r"planning root|symlink|changed"):
+        ConversationStore(database)
+
+    assert swapped
+    assert stat.S_IMODE(outside.stat().st_mode) == 0o755
 
 
 def test_first_attempt_and_interrupted_retry_keep_turn_and_accumulate_history(
