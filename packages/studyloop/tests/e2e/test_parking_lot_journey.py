@@ -448,6 +448,11 @@ def test_edit_in_place_with_markdown_and_diagram_rendering(page: Page, clean_boa
             timeout=15000,
         )
         assert preview.locator(".mermaid-fallback").count() == 0, "mermaid fell back to <pre>"
+        mermaid_config = page.evaluate("() => window.mermaid.mermaidAPI.getConfig()")
+        assert mermaid_config["htmlLabels"] is False
+        assert mermaid_config["flowchart"]["htmlLabels"] is False, (
+            "Mermaid was not configured to emit sanitizer-safe SVG labels"
+        )
         # text_content, not inner_text: an <svg> is not an HTMLElement.
         diagram_text = preview.locator(".mermaid-diagram svg").text_content()
         assert diagram_text is not None
@@ -520,7 +525,7 @@ def test_rendered_markdown_follows_the_active_theme(page: Page, clean_board: str
                 const css = getComputedStyle(document.body);
                 const prev = document.querySelector('#parking-panel .parking-note-preview');
                 const svg = prev.querySelector('.mermaid-diagram svg');
-                const node = svg.querySelector('.node rect, rect.basic, rect');
+                const node = svg.querySelector('.node > rect.label-container');
                 return {
                   palette: document.body.getAttribute('data-palette') || 'tokyo-night',
                   tokenBg: css.getPropertyValue('--bg').trim(),

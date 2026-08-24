@@ -2511,6 +2511,11 @@ function _mermaidInitForPalette() {
     window.mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'strict',
+      /* Rich-text hardening deliberately removes foreignObject because it can
+         embed an HTML subtree. Native SVG labels survive that boundary and
+         keep every flowchart readable after sanitisation. */
+      htmlLabels: false,
+      flowchart: { htmlLabels: false },
       theme: 'base',
       themeVariables: {
         darkMode: false,

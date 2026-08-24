@@ -51,7 +51,13 @@
   <script src="/vendor/js/mermaid-11.4.1.min.js"></script>
   <script>
     if (window.mermaid) {
-      window.mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+      window.mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        securityLevel: 'strict',
+        htmlLabels: false,
+        flowchart: { htmlLabels: false },
+      });
     }
   </script>
   <!-- Fuse.js fuzzy search (vendored). UMD global: window.Fuse.
