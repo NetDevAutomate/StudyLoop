@@ -145,9 +145,11 @@ def assert_scroll_reachable(page: Page, selector: str, container: str) -> None:
     ancestor. Motivated by the Study Session picker clipping bug.
     """
     reachable = page.evaluate(
-        """([sel, contSel]) => {
-            const el = document.querySelector(sel);
-            const cont = document.querySelector(contSel);
+        """([sel, contSel]) => {"""
+        + _VIS_FN
+        + """
+            const el = __vis(sel);
+            const cont = __vis(contSel);
             if (!el || !cont) return null;
             cont.scrollTop = cont.scrollHeight;
             const er = el.getBoundingClientRect();
