@@ -17,6 +17,7 @@ DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs.yml"
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 JUSTFILE = REPO_ROOT / "Justfile"
 CI_GUIDE = REPO_ROOT / "docs" / "ci.md"
+E2E_GUIDE = REPO_ROOT / "docs" / "e2e-test-harness.md"
 PINNED_ACTION = re.compile(r"^[^@]+@[0-9a-f]{40}$")
 
 
@@ -140,11 +141,13 @@ def test_frontend_unit_tests_are_local_and_ci_release_gates() -> None:
     assert "just test-js" in commands
 
 
-def test_ci_guide_does_not_promise_a_fixed_e2e_duration() -> None:
-    guide = CI_GUIDE.read_text(encoding="utf-8")
+def test_public_test_guides_do_not_promise_a_fixed_e2e_duration() -> None:
+    approximate_duration = re.compile(r"\b(?:roughly|about|approximately)\s+\d+(?:-|\s+)minutes?\b")
 
-    assert not re.search(r"\b(?:roughly|about|approximately)\s+\d+\s+minutes?\b", guide)
-    assert "duration depends on the host and installed browsers" in guide
+    for path in (CI_GUIDE, E2E_GUIDE):
+        guide = path.read_text(encoding="utf-8")
+        assert not approximate_duration.search(guide), path
+        assert "duration depends on the host" in guide, path
 
 
 def test_docs_workflow_builds_on_pull_request_without_write_permission() -> None:
