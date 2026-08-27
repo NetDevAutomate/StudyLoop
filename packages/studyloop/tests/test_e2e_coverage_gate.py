@@ -33,6 +33,7 @@ if _tests_dir not in sys.path:
 
 from e2e.surface import (  # noqa: E402
     RENDER_SURFACES,
+    _inactive_reference_diagnostics,
     cli_references,
     discover_cli_commands,
     discover_multiplexers,
@@ -44,6 +45,12 @@ from e2e.surface import (  # noqa: E402
     route_references,
     view_references,
 )
+
+#: Prepended to every "missing surface" message. Coverage now comes from test
+#: items pytest can actually run, so a quarantined test no longer certifies its
+#: surface — the single most surprising behaviour change for a contributor who
+#: sees a green suite go red after adding ``@pytest.mark.skip``.
+_SKIP_NOTE = "Skipped and active-xfail tests do not count as coverage."
 
 # ---------------------------------------------------------------------------
 # Waiver registries
@@ -112,6 +119,25 @@ def _fmt(items: dict[str, str] | list[str]) -> str:
     return "\n".join(f"  - {i}" for i in sorted(items))
 
 
+def _inactive_note(needle: str) -> str:
+    """Append any skipped/xfail candidate that WOULD have matched ``needle``.
+
+    Turns "this surface has no test" into "its only textual candidate is this
+    quarantined test, for this reason" — the difference between a mystery and
+    an actionable failure.
+    """
+    cands = _inactive_reference_diagnostics(needle)
+    if not cands:
+        return ""
+    body = "\n".join(f"      · {c}" for c in cands)
+    return "\n    inactive textual candidates (skipped/xfail — do not count):\n" + body
+
+
+def _fmt_missing(pairs: list[tuple[str, str]]) -> str:
+    """Format ``(label, needle)`` rows, annotating each inactive candidate."""
+    return "\n".join(f"  - {label}{_inactive_note(needle)}" for label, needle in sorted(pairs))
+
+
 # ---------------------------------------------------------------------------
 # 1. Every route is reachable by some test
 # ---------------------------------------------------------------------------
@@ -119,12 +145,13 @@ def _fmt(items: dict[str, str] | list[str]) -> str:
 
 def test_every_route_has_a_test() -> None:
     """No endpoint ships without a test touching it."""
-    missing = [r.key for r in discover_routes() if not route_references(r)]
-    unwaived = [k for k in missing if k not in ROUTE_NO_TEST_WAIVERS]
+    missing = [r for r in discover_routes() if not route_references(r)]
+    unwaived = [r for r in missing if r.key not in ROUTE_NO_TEST_WAIVERS]
     assert not unwaived, (
-        "New/untested endpoints detected. Add a test that exercises each "
-        "(preferably a browser journey in tests/e2e/), or register a reasoned "
-        f"waiver in ROUTE_NO_TEST_WAIVERS:\n{_fmt(unwaived)}"
+        f"New/untested endpoints detected. {_SKIP_NOTE} Add a test that "
+        "exercises each (preferably a browser journey in tests/e2e/), or "
+        "register a reasoned waiver in ROUTE_NO_TEST_WAIVERS:\n"
+        + _fmt_missing([(r.key, r.literal_prefix) for r in unwaived])
     )
 
 
@@ -152,15 +179,16 @@ def test_every_route_has_a_full_stack_test() -> None:
     real event loop — which is where StudyLoop's session-start bugs have lived.
     """
     missing = [
-        r.key
+        r
         for r in discover_routes()
         if not full_stack_route_references(r) and r.key not in ROUTE_NO_TEST_WAIVERS
     ]
-    unwaived = [k for k in missing if k not in ROUTE_NO_FULL_STACK_WAIVERS]
+    unwaived = [r for r in missing if r.key not in ROUTE_NO_FULL_STACK_WAIVERS]
     assert not unwaived, (
-        "These endpoints are never exercised against a running server. Add a "
-        "walk in tests/e2e/ (see test_remaining_surface.py for the pattern), or "
-        f"register a reasoned waiver in ROUTE_NO_FULL_STACK_WAIVERS:\n{_fmt(unwaived)}"
+        f"These endpoints are never exercised against a running server. {_SKIP_NOTE} "
+        "Add a walk in tests/e2e/ (see test_remaining_surface.py for the pattern), or "
+        "register a reasoned waiver in ROUTE_NO_FULL_STACK_WAIVERS:\n"
+        + _fmt_missing([(r.key, r.literal_prefix) for r in unwaived])
     )
 
 
@@ -207,9 +235,9 @@ def test_every_nav_view_has_a_browser_test() -> None:
     """Each SPA view a user can open is opened by the harness."""
     missing = [v for v in discover_views() if not view_references(v)]
     assert not missing, (
-        "These nav views are never opened by a browser test. Every view a "
-        "user can reach must be walked (and its render validated) in "
-        f"tests/e2e/:\n{_fmt(missing)}"
+        f"These nav views are never opened by a browser test. {_SKIP_NOTE} Every "
+        "view a user can reach must be walked (and its render validated) in "
+        "tests/e2e/:\n" + _fmt_missing([(v, v) for v in missing])
     )
 
 
@@ -223,8 +251,9 @@ def test_every_cli_command_has_a_test() -> None:
     missing = [c for c in discover_cli_commands() if not cli_references(c)]
     unwaived = [c for c in missing if c not in CLI_WAIVERS]
     assert not unwaived, (
-        "These CLI commands have no test invoking them. Add one (CliRunner or "
-        f"subprocess), or register a reasoned waiver in CLI_WAIVERS:\n{_fmt(unwaived)}"
+        f"These CLI commands have no test invoking them. {_SKIP_NOTE} Add one "
+        "(CliRunner or subprocess), or register a reasoned waiver in CLI_WAIVERS:\n"
+        + _fmt_missing([(c, c) for c in unwaived])
     )
 
 
@@ -261,10 +290,10 @@ def test_every_multiplexer_backend_has_a_lifecycle_test() -> None:
     missing = [b for b in backends if not multiplexer_references(b)]
     unwaived = [b for b in missing if b not in MULTIPLEXER_WAIVERS]
     assert not unwaived, (
-        "These terminal-multiplexer backends have no test driving them. A new "
-        "backend (e.g. the planned herdr replacement for tmux) must ship with a "
+        f"These terminal-multiplexer backends have no test driving them. {_SKIP_NOTE} "
+        "A new backend (e.g. the planned herdr replacement for tmux) must ship with a "
         "session-lifecycle test — start/attach/pane-layout/end — before it can "
-        f"become the default:\n{_fmt(unwaived)}"
+        "become the default:\n" + _fmt_missing([(b, b) for b in unwaived])
     )
 
 
@@ -304,7 +333,8 @@ def test_render_class_has_a_named_proof_test(render_class: str) -> None:
     assert hits, (
         f"Render class {render_class!r} claims to be proven by {proof}(), but "
         "no test module defines that function. Render validation must be a "
-        f"real executable test.\nExpected: {RENDER_SURFACES[render_class]}"
+        f"real executable test. {_SKIP_NOTE}\n"
+        f"Expected: {RENDER_SURFACES[render_class]}" + _inactive_note(f"def {proof}(")
     )
 
 
