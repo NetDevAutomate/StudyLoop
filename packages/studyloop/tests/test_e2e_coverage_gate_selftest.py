@@ -21,6 +21,7 @@ if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
 import test_e2e_coverage_gate as gate  # noqa: E402
+from e2e import surface  # noqa: E402
 from e2e.surface import (  # noqa: E402
     Route,
     cli_references,
@@ -157,3 +158,204 @@ def test_gate_flags_a_stale_waiver(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(AssertionError) as excinfo:
         gate.test_route_full_stack_waivers_are_not_stale()
     assert covered.key in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# The regression this whole change exists to prevent: quarantining the ONLY
+# covering test for a surface must turn the gate RED. The control phase proves
+# the very same test made the gate GREEN while unmarked, so the red result is
+# attributable to the skip and nothing else.
+# ---------------------------------------------------------------------------
+
+
+def _clear_evidence_caches() -> None:
+    surface._collect_test_items.cache_clear()
+    surface._evidence_fragments_for.cache_clear()
+
+
+def _eligible(fragments: tuple) -> tuple:
+    return tuple(f for f in fragments if f.eligible)
+
+
+def test_gate_goes_red_when_only_covering_test_is_skipped(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A skip on the sole covering test flips the gate from green to red.
+
+    The route literal is built at runtime so this file's own source cannot
+    satisfy the matcher, and the probe lives in its own tmp tree so it is
+    collected in isolation from the real suite.
+    """
+    route = "/api/" + "zz-skip-probe-" + "route"
+    fake = Route("GET", route)
+    module = tmp_path / "test_skip_probe.py"
+
+    unmarked = (
+        "def test_probe() -> None:\n"
+        f"    resp = client.get({route!r})  # noqa: F821\n"
+        "    assert resp\n"
+    )
+    module.write_text(unmarked, encoding="utf-8")
+
+    _clear_evidence_caches()
+    frags_green = _eligible(surface._evidence_fragments_for(tmp_path))
+    assert any(route in f.text for f in frags_green), (
+        "the unmarked probe must supply route evidence — the control phase is "
+        "only meaningful if the gate is genuinely green first"
+    )
+
+    monkeypatch.setattr(gate, "discover_routes", lambda: (fake,))
+    monkeypatch.setattr(surface, "_evidence_fragments", lambda: frags_green)
+    # CONTROL: unmarked → covered → the gate passes. Must not raise.
+    gate.test_every_route_has_a_test()
+
+    # Now quarantine the only covering test.
+    skipped = (
+        "import pytest\n\n"
+        '@pytest.mark.skip(reason="quarantined panel journey")\n'
+        "def test_probe() -> None:\n"
+        f"    resp = client.get({route!r})  # noqa: F821\n"
+        "    assert resp\n"
+    )
+    module.write_text(skipped, encoding="utf-8")
+
+    _clear_evidence_caches()
+    frags_red = _eligible(surface._evidence_fragments_for(tmp_path))
+    assert not any(route in f.text for f in frags_red), (
+        "a skipped test must not supply route evidence"
+    )
+
+    monkeypatch.setattr(surface, "_evidence_fragments", lambda: frags_red)
+    with pytest.raises(AssertionError) as excinfo:
+        gate.test_every_route_has_a_test()
+    message = str(excinfo.value)
+    assert route in message, "the failure must name the now-uncovered route"
+    assert "do not count" in message, "the failure must explain that skipped tests do not count"
+
+    # Leave the caches clean for the rest of the suite.
+    _clear_evidence_caches()
+
+
+# ---------------------------------------------------------------------------
+# Collector-contract self-test: the SURFACE pipeline (subprocess collect + AST
+# attribution) must reproduce pytest's marker semantics. Six cases, one
+# collection. Literals are built at runtime so this file cannot match itself.
+# ---------------------------------------------------------------------------
+
+_MODULE_SKIP = """\
+import pytest
+
+pytestmark = pytest.mark.skip(reason="module-level pytestmark")
+
+
+def test_module_level() -> None:
+    assert "/api/TOKEN-module"
+"""
+
+_CLASS_SKIP = """\
+import pytest
+
+
+@pytest.mark.skip(reason="class-level skip")
+class TestClass:
+    def test_class_level(self) -> None:
+        assert "/api/TOKEN-class"
+"""
+
+_PARAM_SKIP = """\
+import pytest
+
+
+@pytest.mark.parametrize(
+    "route",
+    [
+        "/api/TOKEN-active",
+        pytest.param("/api/TOKEN-skipped", marks=pytest.mark.skip(reason="param skipped")),
+    ],
+)
+def test_param(route: str) -> None:
+    assert route
+"""
+
+_SKIPIF = """\
+import pytest
+
+
+@pytest.mark.skipif(True, reason="condition true")
+def test_skipif_true() -> None:
+    assert "/api/TOKEN-skipif-true"
+
+
+@pytest.mark.skipif(False, reason="condition false")
+def test_skipif_false() -> None:
+    assert "/api/TOKEN-skipif-false"
+"""
+
+_XFAIL = """\
+import pytest
+
+
+@pytest.mark.xfail(run=True, reason="runs but cannot fail the build")
+def test_xfail() -> None:
+    assert "/api/TOKEN-xfail"
+"""
+
+
+@pytest.fixture(scope="module")
+def marker_probe(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, tuple]:
+    """Collect a directory of marker cases through the surface pipeline once."""
+    token = "zz" + "-marker-probe-" + "xyzzy"
+    workdir = tmp_path_factory.mktemp("marker_probe")
+    for name, template in (
+        ("test_module_skip.py", _MODULE_SKIP),
+        ("test_class_skip.py", _CLASS_SKIP),
+        ("test_param_skip.py", _PARAM_SKIP),
+        ("test_skipif.py", _SKIPIF),
+        ("test_xfail.py", _XFAIL),
+    ):
+        (workdir / name).write_text(template.replace("TOKEN", token), encoding="utf-8")
+
+    surface._collect_test_items.cache_clear()
+    surface._evidence_fragments_for.cache_clear()
+    fragments = surface._evidence_fragments_for(workdir)
+    # Do not leave the tmp collection cached for the real suite.
+    surface._collect_test_items.cache_clear()
+    surface._evidence_fragments_for.cache_clear()
+    return token, fragments
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "module_pytestmark_skip",
+        "class_level_skip",
+        "parametrized_skip_and_active_sibling",
+        "skipif_true",
+        "skipif_false",
+        "active_xfail",
+    ],
+)
+def test_collector_marker_attribution(marker_probe: tuple[str, tuple], case: str) -> None:
+    """Only items pytest can run AND fail contribute evidence."""
+    token, fragments = marker_probe
+
+    def has_evidence(suffix: str) -> bool:
+        needle = f"/api/{token}{suffix}"
+        return any(needle in f.text for f in fragments if f.eligible)
+
+    if case == "module_pytestmark_skip":
+        assert not has_evidence("-module"), "module-level pytestmark skip must not count"
+    elif case == "class_level_skip":
+        assert not has_evidence("-class"), "an inherited class-level skip must not count"
+    elif case == "parametrized_skip_and_active_sibling":
+        assert has_evidence("-active"), "the runnable parameter must remain evidence"
+        assert not has_evidence("-skipped"), "the skip-marked parameter must not leak"
+    elif case == "skipif_true":
+        assert not has_evidence("-skipif-true"), "an active skipif must not count"
+    elif case == "skipif_false":
+        assert has_evidence("-skipif-false"), "an inactive skipif is still real coverage"
+    elif case == "active_xfail":
+        assert not has_evidence("-xfail"), "an xfail asserts breakage, not coverage"
+    else:  # pragma: no cover - defensive
+        raise AssertionError(f"unknown case {case!r}")
