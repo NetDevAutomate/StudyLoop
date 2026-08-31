@@ -64,8 +64,8 @@ tmux-resurrect and warns if the restore hook is not detected.
 
 ### User Install (recommended)
 
-Install from a source checkout. The PyPI/Homebrew distribution was yanked;
-source install is the current supported path, and `scripts/install.sh` is the
+Install from a source checkout. There is no current PyPI or Homebrew release, so
+source install is the supported path, and `scripts/install.sh` is the
 primary installer because it installs both `studyloop` and the
 `agent-session-tools` console scripts used by the session database workflow.
 

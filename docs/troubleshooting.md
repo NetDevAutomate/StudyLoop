@@ -110,17 +110,19 @@ session clears this; the message says so rather than leaving a blank pane.
 
 ## The Terminal Is Empty After A Page Refresh
 
-This is a known limitation. What holds today:
+The panel should reattach on its own. What holds today:
 
 - **The session survives the refresh.** A disconnect starts a detach grace
   window on the server (90 s by default; `STUDYLOOP_WS_GRACE_SECONDS`
   overrides it), so the agent process keeps running and
   `GET /api/session/state` still reports the session after the reload.
-- **The reattach is not automatic yet.** `liveAgentConsole.init()` reads
-  `GET /api/session/state` on load and *attempts* to re-adopt a live session
-  it owns, but that path is not yet reliable (the end-to-end test that proves
-  it is currently red) — an empty terminal after a refresh can happen even
-  when nothing on your machine is misconfigured.
+- **The reattach is automatic.** `liveAgentConsole.init()` reads
+  `GET /api/session/state` on load and re-adopts a live session it owns,
+  restoring the terminal and reporting *Reattached* rather than *Starting*.
+
+An empty terminal after a refresh is therefore a real fault worth
+investigating, not expected behaviour. The most likely cause is a reload that
+took longer than the grace window, which genuinely ends the session.
 
 If a refresh leaves an empty terminal:
 

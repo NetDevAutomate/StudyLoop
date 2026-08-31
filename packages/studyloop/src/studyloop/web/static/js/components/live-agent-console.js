@@ -27,12 +27,19 @@
  *
  * KNOWN GAPS (see docs/handoffs/2026-08-22-frontend-modularisation-findings.md)
  * ---------------------------------------------------------------------------
- * The 3 TestLiveRefresh tests are red because this console has no LOAD-TIME
- * ADOPTION path: init() registers a study-session-start listener, but on a page
- * reload that event was dispatched before the page existed, so nothing ever mounts
- * a terminal. The fix is to read GET /api/session/state on init and, when a live
- * session's origin matches this console's, mount and connect. `origin` is already
- * echoed by that endpoint for exactly this purpose.
+ * LOAD-TIME ADOPTION. init() registers a study-session-start listener, but on a
+ * page reload that event was dispatched before the page existed, so a listener
+ * alone never mounts a terminal. init() therefore also reads
+ * GET /api/session/state and, when a live session's origin matches this
+ * console's, mounts and connects. `origin` is echoed by that endpoint for
+ * exactly this decision.
+ *
+ * This path is live and covered by TestLiveRefresh in
+ * tests/e2e/test_ghostty_live_session_journey.py (4 tests, green). Earlier
+ * revisions of this comment described those tests as red, from the period
+ * before the adopt path existed; docs then repeated that as a current
+ * limitation. If this behaviour changes, re-run TestLiveRefresh and fix
+ * troubleshooting.md and system-overview.md with it.
  *
  * Extracted verbatim from index.html lines 2652-3371.
  */

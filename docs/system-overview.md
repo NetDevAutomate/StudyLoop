@@ -211,9 +211,9 @@ Target:
 The ttyd browser surface is **already gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)).
 It was removed as part of the PTY refresh work: a page reload no longer kills a
 live session — the server holds a disconnected session in a detach grace window
-(90 s by default) — and the console attempts to re-adopt that session on load.
-Automatic reattachment of the terminal is not yet reliable, though; if a reload
-leaves an empty pane, see
+(90 s by default) — and the console re-adopts that session on load, restoring
+the terminal automatically. If a reload leaves an empty pane, the usual cause is
+a grace window that expired; see
 [the troubleshooting entry](troubleshooting.md#the-terminal-is-empty-after-a-page-refresh).
 The ttyd **server** transport
 (`STUDYLOOP_TRANSPORT=ttyd`, the `/terminal/` proxy) is retained for maintainers,
