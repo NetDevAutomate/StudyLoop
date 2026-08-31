@@ -8,6 +8,8 @@ than treat the app as broken.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 pytest = __import__("pytest")
 pytest.importorskip("fastapi")
 
@@ -17,6 +19,9 @@ from studyloop.learning.voice import OpenVoxHealth  # noqa: E402
 from studyloop.web.app import create_app  # noqa: E402
 from studyloop.web.routes import tts as tts_route  # noqa: E402
 
+if TYPE_CHECKING:
+    from pytest import MonkeyPatch
+
 
 @pytest.fixture
 def client() -> TestClient:
@@ -25,7 +30,7 @@ def client() -> TestClient:
 
 class TestHealth:
     def test_reports_available_with_english_voices_only(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
         """The catalogue offered to the browser must never include a voice that
         would speak another language -- they are valid ids on the same model."""
@@ -52,7 +57,7 @@ class TestHealth:
         assert "jf_alpha" not in ids
 
     def test_filters_a_real_servers_full_multilingual_catalogue(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
         """The filter is load-bearing, not precautionary -- proved against a live server.
 
@@ -154,9 +159,7 @@ class TestHealth:
         ):
             assert not any(v.startswith(prefix) for v in offered), f"{prefix} leaked"
 
-    def test_marks_british_voices(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_marks_british_voices(self, client: TestClient, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(
             tts_route,
             "openvox_health",
@@ -171,9 +174,7 @@ class TestHealth:
         assert by_id["bf_emma"]["british"] is True
         assert by_id["af_heart"]["british"] is False
 
-    def test_unavailable_explains_why(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_unavailable_explains_why(self, client: TestClient, monkeypatch: MonkeyPatch) -> None:
         """A client that only learns 'false' cannot tell the learner what to fix."""
         monkeypatch.setattr(
             tts_route,
@@ -190,7 +191,7 @@ class TestHealth:
 
 class TestSpeak:
     def test_returns_audio_bytes_with_an_audio_mime_type(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
         """An <audio> element refuses to play without a real audio MIME type."""
         monkeypatch.setattr(
@@ -202,7 +203,7 @@ class TestSpeak:
         assert response.content == b"RIFFfake-audio"
 
     def test_unavailable_is_503_so_the_client_falls_back(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
         """503 means 'try elsewhere'; 500 would mean 'this app is broken'."""
         monkeypatch.setattr(
@@ -215,7 +216,7 @@ class TestSpeak:
         assert "could not reach" in response.json()["detail"]
 
     def test_a_refused_voice_is_reported_not_spoken(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
             tts_route,
@@ -239,12 +240,12 @@ class TestSpeak:
 
 
 class TestWarm:
-    def test_warm_is_reported(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_warm_is_reported(self, client: TestClient, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(tts_route, "openvox_warm", lambda: True)
         assert client.post("/api/tts/warm").json() == {"warmed": True}
 
     def test_warm_failure_is_not_an_error_response(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, client: TestClient, monkeypatch: MonkeyPatch
     ) -> None:
         """Failing to warm is not a reason to refuse to try speaking later."""
         monkeypatch.setattr(tts_route, "openvox_warm", lambda: False)

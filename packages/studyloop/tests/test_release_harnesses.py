@@ -54,8 +54,8 @@ def test_pi_adapter_uses_project_context_and_native_resume(tmp_path) -> None:
 
     assert persona == tmp_path / "AGENTS.md"
     assert persona.read_text(encoding="utf-8") == "# StudyLoop mentor"
-    assert ADAPTER.launch_cmd(persona, resume=False).endswith("pi --no-extensions")
-    assert ADAPTER.launch_cmd(persona, resume=True).endswith("pi --no-extensions --continue")
+    assert ADAPTER.launch_cmd(persona, False).endswith("pi --no-extensions")
+    assert ADAPTER.launch_cmd(persona, True).endswith("pi --no-extensions --continue")
 
 
 def test_pi_adapter_is_a_complete_release_adapter() -> None:

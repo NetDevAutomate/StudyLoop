@@ -163,8 +163,22 @@ async def live_session_socket(websocket: WebSocket) -> None:
         finally:
             if not nxt.done():
                 nxt.cancel()
-            with contextlib.suppress(BaseException):
-                await events.aclose()
+            # Only the PTY transport's events() is an async generator, so only
+            # it has aclose(). The ACP transport deliberately returns a
+            # class-based _EventStream instead — see transports/acp.py, where a
+            # generator here once let a wait_for timeout permanently close the
+            # stream and broke real-Kiro chat. The protocol therefore declares
+            # AsyncIterator, which genuinely has no aclose.
+            #
+            # Until now the suppress below was absorbing the resulting
+            # AttributeError on every ACP teardown. Checking first keeps the
+            # suppress for what it is meant to catch — errors raised by a real
+            # aclose during cancellation — instead of also hiding a structural
+            # mismatch.
+            aclose = getattr(events, "aclose", None)
+            if aclose is not None:
+                with contextlib.suppress(BaseException):
+                    await aclose()
 
     async def ws_to_pty() -> None:
         """Read WS control frames and forward to transport."""

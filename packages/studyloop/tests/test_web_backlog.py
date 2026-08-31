@@ -255,22 +255,26 @@ def test_resolve_removes_from_backlog(monkeypatch) -> None:
 
 def test_dismiss_route_registered() -> None:
     """POST /api/backlog/dismiss is a registered route."""
+    from starlette.routing import Route
+
     from studyloop.web.app import create_app
 
     app = create_app(study_dirs=[])
     routes = {
-        (r.path, ",".join(r.methods)) for r in app.routes if hasattr(r, "methods") and r.methods
+        (r.path, ",".join(r.methods)) for r in app.routes if isinstance(r, Route) and r.methods
     }
     assert ("/api/backlog/dismiss", "POST") in routes
 
 
 def test_resolve_route_registered() -> None:
     """POST /api/backlog/resolve is a registered route."""
+    from starlette.routing import Route
+
     from studyloop.web.app import create_app
 
     app = create_app(study_dirs=[])
     routes = {
-        (r.path, ",".join(r.methods)) for r in app.routes if hasattr(r, "methods") and r.methods
+        (r.path, ",".join(r.methods)) for r in app.routes if isinstance(r, Route) and r.methods
     }
     assert ("/api/backlog/resolve", "POST") in routes
 
