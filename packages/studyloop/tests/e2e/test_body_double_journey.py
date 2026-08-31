@@ -37,6 +37,7 @@ import contextlib
 import socket
 import sys
 import urllib.request
+from collections.abc import Generator
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
@@ -53,6 +54,8 @@ from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from playwright.sync_api import Page
 
 pytestmark = [pytest.mark.e2e]
@@ -133,7 +136,7 @@ def _free_port() -> int:
 
 
 @pytest.fixture(scope="module")
-def bd_env(tmp_path_factory: pytest.TempPathFactory) -> RunningServer:
+def bd_env(tmp_path_factory: pytest.TempPathFactory) -> Generator[RunningServer, None, None]:
     """A server in its own world, with the deterministic harness agent.
 
     Module-scoped because a server start is expensive and every phase below is

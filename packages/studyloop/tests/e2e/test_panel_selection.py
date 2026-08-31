@@ -48,6 +48,8 @@ from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from playwright.sync_api import Page
 
 pytestmark = [pytest.mark.e2e]
@@ -78,7 +80,9 @@ def _diag(page: Page | None, name: str) -> None:
 
 
 @pytest.fixture(scope="module")
-def running_server(tmp_path_factory: pytest.TempPathFactory) -> RunningServer:
+def running_server(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[RunningServer, None, None]:
     """Real subprocess server on a temp DB and a temp state dir.
 
     Isolation is not optional here: this module creates and deletes parked

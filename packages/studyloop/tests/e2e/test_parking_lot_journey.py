@@ -47,6 +47,8 @@ from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 from e2e._env import TestWorld as E2ETestWorld  # noqa: E402
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from playwright.sync_api import Page
 
 pytestmark = [pytest.mark.e2e]
@@ -227,7 +229,7 @@ def test_world(tmp_path_factory: pytest.TempPathFactory) -> E2ETestWorld:
 
 
 @pytest.fixture(scope="module")
-def running_server(test_world: E2ETestWorld) -> RunningServer:
+def running_server(test_world: E2ETestWorld) -> Generator[RunningServer, None, None]:
     """Run the Parking journey against its explicit hermetic world."""
     server = start_server(test_world)
     try:
@@ -448,6 +450,7 @@ def test_edit_in_place_with_markdown_and_diagram_rendering(page: Page, clean_boa
         assert preview.locator(".mermaid-fallback").count() == 0, "mermaid fell back to <pre>"
         # text_content, not inner_text: an <svg> is not an HTMLElement.
         diagram_text = preview.locator(".mermaid-diagram svg").text_content()
+        assert diagram_text is not None
         assert "Nested loop chosen" in diagram_text.replace("\n", " ")
 
         # --- Phase 5: save; the textarea adopts the server's clean Markdown ---
