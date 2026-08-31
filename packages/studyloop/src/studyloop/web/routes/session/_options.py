@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import Request  # noqa: TC002 - FastAPI needs Request at runtime for injection.
 
+from studyloop.harnesses import HARNESSES, RELEASE_HARNESSES
 from studyloop.settings import MAX_ACTIVE_TOPICS
 from studyloop.web.routes.session._models import SessionOption
 from studyloop.web.routes.session._router import router
@@ -19,14 +20,7 @@ from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
 _SESSION_OPTION_INDEX_VERSION = 3
 _SESSION_OPTION_INDEX_LOCK = threading.Lock()
 _OUTPUT_DIR_NAMES = {"flashcards", "quizzes"}
-_AGENT_FALLBACK_BINARIES = {
-    "claude": "claude",
-    "codex": "codex",
-    "gemini": "gemini",
-    "grok": "grok",
-    "kiro": "kiro-cli",
-    "opencode": "opencode",
-}
+_AGENT_FALLBACK_BINARIES = {name: HARNESSES[name].binary for name in RELEASE_HARNESSES}
 
 
 @router.get("/session/options")
@@ -460,15 +454,15 @@ def _existing_unique_dirs(paths: list[Path]) -> list[Path]:
 
 
 def _agent_options() -> list[dict[str, object]]:
-    names = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
-    if os.environ.get("STUDYLOOP_TEST_AGENT") == "1":
-        # Harness-only: surface the deterministic fake agent in the picker so
-        # browser e2e can drive the real UI spawn path (adapters/fake.py).
-        names.append("fake")
+    names: list[str] = list(RELEASE_HARNESSES)
     try:
         from studyloop.agent_launcher import AGENTS, detect_agents
 
         detected = set(detect_agents())
+        # Browser tests inject a test-local child command while exercising the
+        # real Codex adapter/picker contract. No fake adapter is shipped.
+        if os.environ.get("STUDYLOOP_TEST_AGENT_CMD"):
+            detected.add("codex")
         return [
             {
                 "label": _agent_label(name),
@@ -496,11 +490,4 @@ def _agent_options() -> list[dict[str, object]]:
 
 
 def _agent_label(name: str) -> str:
-    return {
-        "claude": "Claude Code",
-        "codex": "Codex",
-        "gemini": "Gemini",
-        "grok": "Grok",
-        "kiro": "Kiro",
-        "opencode": "OpenCode",
-    }.get(name, name)
+    return {name: harness.label for name, harness in HARNESSES.items()}.get(name, name)

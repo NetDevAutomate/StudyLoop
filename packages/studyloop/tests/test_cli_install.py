@@ -54,10 +54,8 @@ class TestInstallAgents:
         mock_install.assert_called_once_with(tmp_path, tools=["codex"], uninstall=False)
         assert "Updated agent definitions" in result.output
 
-    @pytest.mark.parametrize("tool", ["pi", "omp"])
-    def test_install_agents_accepts_pi_and_omp(
-        self, runner: CliRunner, tmp_path: Path, tool: str
-    ) -> None:
+    @pytest.mark.parametrize("tool", ["pi"])
+    def test_install_agents_accepts_pi(self, runner: CliRunner, tmp_path: Path, tool: str) -> None:
         with (
             patch("studyloop.cli._install.require_repo_root", return_value=tmp_path),
             patch(

@@ -56,7 +56,7 @@ class TestEntryPointParsesArgv:
         with mock.patch.object(export_sessions, "_run_export") as mock_run:
             result = runner.invoke(app, ["--full", "--claude-only"])
         assert result.exit_code == 0
-        # _run_export(output_path, export_sources, incremental, aider_paths)
+        # _run_export(output_path, export_sources, incremental)
         assert mock_run.call_args.args[2] is False
 
     def test_default_is_incremental(self) -> None:

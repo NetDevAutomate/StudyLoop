@@ -17,19 +17,10 @@ import pytest
 
 
 class TestAgentRegistry:
-    def test_eight_agents_registered(self):
+    def test_release_agents_registered(self):
         from studyloop.agent_launcher import AGENTS
 
-        assert set(AGENTS.keys()) == {
-            "claude",
-            "codex",
-            "gemini",
-            "grok",
-            "kiro",
-            "opencode",
-            "ollama",
-            "lmstudio",
-        }
+        assert tuple(AGENTS) == ("kiro", "codex", "claude", "opencode", "pi")
 
     def test_adapters_have_required_fields(self):
         from studyloop.agent_launcher import AGENTS
@@ -55,7 +46,7 @@ class TestAgentRegistry:
     def test_all_agents_are_wired(self, tmp_path):
         from studyloop.agent_launcher import AGENTS
 
-        for name in ("codex", "grok", "gemini", "opencode"):
+        for name in ("codex", "opencode", "pi"):
             # These write to session_dir — should not raise
             path = AGENTS[name].setup("# test content", tmp_path)
             assert path.exists()
@@ -66,10 +57,9 @@ class TestAgentRegistry:
         assert AGENTS["kiro"].teardown is not None
         assert AGENTS["claude"].teardown is None
 
-    def test_gemini_has_mcp_setup(self):
+    def test_opencode_has_mcp_setup(self):
         from studyloop.agent_launcher import AGENTS
 
-        assert AGENTS["gemini"].mcp_setup is not None
         assert AGENTS["opencode"].mcp_setup is not None
         assert AGENTS["claude"].mcp_setup is None
 
@@ -111,23 +101,23 @@ class TestDetectAgents:
     def test_detect_multiple_agents(self):
         from studyloop.agent_launcher import detect_agents
 
-        installed = {"claude", "gemini"}
+        installed = {"claude", "pi"}
         with patch("studyloop.agent_launcher.shutil.which") as mock_which:
             mock_which.side_effect = lambda b: f"/usr/bin/{b}" if b in installed else None
             agents = detect_agents()
             assert "claude" in agents
-            assert "gemini" in agents
+            assert "pi" in agents
             assert "kiro" not in agents
 
     def test_detect_respects_env_var_override(self):
         from studyloop.agent_launcher import detect_agents
 
         with (
-            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/gemini"),
-            patch.dict(os.environ, {"STUDYLOOP_AGENT": "gemini"}),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/pi"),
+            patch.dict(os.environ, {"STUDYLOOP_AGENT": "pi"}),
         ):
             agents = detect_agents()
-            assert agents == ["gemini"]
+            assert agents == ["pi"]
 
     def test_detect_env_var_not_installed_returns_empty(self):
         from studyloop.agent_launcher import detect_agents
@@ -160,6 +150,24 @@ class TestDetectAgents:
 
 
 class TestBuildCanonicalPersona:
+    def test_injects_runtime_session_paths_without_home_directory_defaults(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from studyloop import session_state
+        from studyloop.agent_launcher import build_canonical_persona
+
+        monkeypatch.setattr(session_state, "SESSION_DIR", tmp_path)
+        monkeypatch.setattr(session_state, "STATE_FILE", tmp_path / "session-state.json")
+        monkeypatch.setattr(session_state, "TOPICS_FILE", tmp_path / "session-topics.md")
+        monkeypatch.setattr(session_state, "PARKING_FILE", tmp_path / "session-parking.md")
+
+        content = build_canonical_persona("study", "Python Decorators", 6)
+
+        assert str(tmp_path / "session-state.json") in content
+        assert str(tmp_path / "session-topics.md") in content
+        assert str(tmp_path / "session-parking.md") in content
+        assert "~/.config/studyloop/session-state.json" not in content
+
     def test_includes_topic_and_energy(self):
         from studyloop.agent_launcher import build_canonical_persona
 
@@ -481,49 +489,6 @@ class TestMcpCommand:
             assert "studyloop-mcp" in cmd
 
 
-# ---------------------------------------------------------------------------
-# Gemini adapter
-# ---------------------------------------------------------------------------
-
-
-class TestGeminiAdapter:
-    def test_setup_writes_gemini_md(self, tmp_path):
-        from studyloop.agent_launcher import _gemini_setup
-
-        path = _gemini_setup("# Gemini Persona", tmp_path)
-        assert path == tmp_path / "GEMINI.md"
-        assert path.exists()
-        assert path.read_text() == "# Gemini Persona"
-
-    def test_mcp_writes_settings_json(self, tmp_path):
-        import json
-
-        from studyloop.agent_launcher import _gemini_mcp
-
-        fake = "/usr/local/bin/studyloop-mcp"
-        with patch("studyloop.agent_launcher.shutil.which", return_value=fake):
-            _gemini_mcp(tmp_path)
-        settings_path = tmp_path / ".gemini" / "settings.json"
-        assert settings_path.exists()
-        data = json.loads(settings_path.read_text())
-        server = data["mcpServers"]["studyloop-mcp"]
-        assert server["command"] == "/usr/local/bin/studyloop-mcp"
-        assert server["args"] == []
-
-    def test_launch_new_session(self):
-        from studyloop.agent_launcher import _gemini_launch
-
-        cmd = _gemini_launch(Path("/tmp/GEMINI.md"), resume=False)
-        assert "gemini" in cmd
-        assert "-r" not in cmd
-
-    def test_launch_resume(self):
-        from studyloop.agent_launcher import _gemini_launch
-
-        cmd = _gemini_launch(Path("/tmp/GEMINI.md"), resume=True)
-        assert "-r" in cmd
-
-
 class TestCodexAdapter:
     def test_setup_writes_agents_md(self, tmp_path):
         from studyloop.agent_launcher import _codex_setup
@@ -544,28 +509,6 @@ class TestCodexAdapter:
 
         cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
         assert cmd.endswith("codex --resume")
-
-
-class TestGrokAdapter:
-    def test_setup_writes_agents_md(self, tmp_path):
-        from studyloop.agent_launcher import _grok_setup
-
-        path = _grok_setup("# Grok Persona", tmp_path)
-        assert path == tmp_path / "AGENTS.md"
-        assert path.exists()
-        assert path.read_text() == "# Grok Persona"
-
-    def test_launch_new_session(self):
-        from studyloop.agent_launcher import _grok_launch
-
-        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=False)
-        assert cmd.endswith("grok")
-
-    def test_launch_resume(self):
-        from studyloop.agent_launcher import _grok_launch
-
-        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=True)
-        assert cmd.endswith("grok --resume")
 
 
 # ---------------------------------------------------------------------------
@@ -630,163 +573,3 @@ class TestOpenCodeAdapter:
         cmd = _opencode_launch(Path("/tmp/persona.md"), resume=True)
         assert "-c" in cmd
         assert "--agent study-mentor" in cmd
-
-
-# ---------------------------------------------------------------------------
-# Ollama adapter (local LLM via Claude frontend)
-# ---------------------------------------------------------------------------
-
-
-class TestOllamaAdapter:
-    def test_uses_claude_setup(self):
-        from studyloop.agent_launcher import AGENTS, _claude_setup
-
-        assert AGENTS["ollama"].setup is _claude_setup
-
-    def test_binary_is_ollama(self):
-        from studyloop.agent_launcher import AGENTS
-
-        assert AGENTS["ollama"].binary == "ollama"
-
-    def test_launch_sets_env_vars(self):
-        from studyloop.agent_launcher import _ollama_launch
-
-        cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
-        assert "ANTHROPIC_BASE_URL=" in cmd
-        assert "ANTHROPIC_AUTH_TOKEN=ollama" in cmd
-        assert "ANTHROPIC_MODEL=" in cmd
-        assert "ANTHROPIC_SMALL_FAST_MODEL=" in cmd
-        assert "ANTHROPIC_DEFAULT_HAIKU_MODEL=" in cmd
-        assert "--append-system-prompt-file" in cmd
-
-    def test_launch_uses_claude_binary(self):
-        from studyloop.agent_launcher import _ollama_launch
-
-        with patch("studyloop.agent_launcher.shutil.which", return_value="/usr/local/bin/claude"):
-            cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
-        assert "/usr/local/bin/claude" in cmd
-
-    def test_launch_resume(self):
-        from studyloop.agent_launcher import _ollama_launch
-
-        cmd = _ollama_launch(Path("/tmp/persona.md"), resume=True)
-        assert " -r " in cmd
-
-    def test_tier_pinning_all_same_model(self):
-        """All model tier env vars must point to the same model."""
-        from studyloop.agent_launcher import _ollama_launch
-
-        cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
-        # Extract the model from ANTHROPIC_MODEL=<model>
-        for part in cmd.split():
-            if part.startswith("ANTHROPIC_MODEL="):
-                model = part.split("=", 1)[1]
-                break
-        else:
-            pytest.fail("ANTHROPIC_MODEL not found in command")
-        # All tier vars should use the same model
-        assert f"ANTHROPIC_SMALL_FAST_MODEL={model}" in cmd
-        assert f"ANTHROPIC_DEFAULT_HAIKU_MODEL={model}" in cmd
-        assert f"ANTHROPIC_DEFAULT_SONNET_MODEL={model}" in cmd
-        assert f"ANTHROPIC_DEFAULT_OPUS_MODEL={model}" in cmd
-
-    def test_respects_config_model(self):
-        from studyloop.agent_launcher import _ollama_launch
-        from studyloop.settings import AgentsConfig, LocalLLMConfig, Settings
-
-        fake = Settings(
-            agents=AgentsConfig(
-                ollama=LocalLLMConfig(model="llama3.2", base_url="http://localhost:11434"),
-            )
-        )
-        with patch("studyloop.settings.load_settings", return_value=fake):
-            cmd = _ollama_launch(Path("/tmp/persona.md"), resume=False)
-        assert "ANTHROPIC_MODEL=llama3.2" in cmd
-
-    def test_no_teardown_or_mcp(self):
-        from studyloop.agent_launcher import AGENTS
-
-        assert AGENTS["ollama"].teardown is None
-        assert AGENTS["ollama"].mcp_setup is None
-
-
-# ---------------------------------------------------------------------------
-# LM Studio adapter (local LLM via Claude frontend)
-# ---------------------------------------------------------------------------
-
-
-class TestLmStudioAdapter:
-    def test_uses_claude_setup(self):
-        from studyloop.agent_launcher import AGENTS, _claude_setup
-
-        assert AGENTS["lmstudio"].setup is _claude_setup
-
-    def test_binary_is_lms(self):
-        from studyloop.agent_launcher import AGENTS
-
-        assert AGENTS["lmstudio"].binary == "lms"
-
-    def test_launch_sets_env_vars(self):
-        from studyloop.agent_launcher import _lmstudio_launch
-
-        cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=False)
-        assert "ANTHROPIC_BASE_URL=" in cmd
-        assert "ANTHROPIC_AUTH_TOKEN=lm-studio" in cmd
-        assert "ANTHROPIC_MODEL=" in cmd
-        assert "--append-system-prompt-file" in cmd
-
-    def test_launch_resume(self):
-        from studyloop.agent_launcher import _lmstudio_launch
-
-        cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=True)
-        assert " -r " in cmd
-
-    def test_default_base_url(self):
-        from studyloop.agent_launcher import _lmstudio_launch
-
-        cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=False)
-        assert "localhost:1234" in cmd
-
-    def test_respects_config_model(self):
-        from studyloop.agent_launcher import _lmstudio_launch
-        from studyloop.settings import AgentsConfig, LocalLLMConfig, Settings
-
-        fake = Settings(
-            agents=AgentsConfig(
-                lmstudio=LocalLLMConfig(
-                    model="deepseek/deepseek-coder-v2",
-                    base_url="http://localhost:1234",
-                ),
-            )
-        )
-        with patch("studyloop.settings.load_settings", return_value=fake):
-            cmd = _lmstudio_launch(Path("/tmp/persona.md"), resume=False)
-        assert "ANTHROPIC_MODEL=deepseek/deepseek-coder-v2" in cmd
-
-
-# ---------------------------------------------------------------------------
-# Local LLM shared helpers
-# ---------------------------------------------------------------------------
-
-
-class TestLocalLLMHelpers:
-    def test_env_prefix_format(self):
-        from studyloop.agent_launcher import _local_llm_env_prefix
-
-        env = _local_llm_env_prefix("http://localhost:11434", "ollama", "qwen3-coder")
-        assert env.startswith("export ")
-        assert env.endswith("; ")
-        assert "ANTHROPIC_BASE_URL=http://localhost:11434" in env
-        assert "ANTHROPIC_AUTH_TOKEN=ollama" in env
-        assert "ANTHROPIC_MODEL=qwen3-coder" in env  # pragma: allowlist secret
-
-    def test_get_local_llm_config_defaults(self):
-        from studyloop.agent_launcher import _get_local_llm_config
-
-        base_url, model = _get_local_llm_config("ollama")
-        assert "4000" in base_url  # LiteLLM proxy port
-        assert model  # Non-empty
-
-        base_url, model = _get_local_llm_config("lmstudio")
-        assert "1234" in base_url
-        assert model

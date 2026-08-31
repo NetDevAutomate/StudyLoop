@@ -2302,10 +2302,10 @@
             </select>
           </div>
           <p class="picker-hint" x-show="transport === 'pty'">
-            Native browser terminal via xterm.js — the default. Works with Claude Code, Codex, Grok, Gemini, Kiro, and OpenCode.
+            Native browser terminal via xterm.js — the default. Works with Kiro CLI, Codex, Claude Code, OpenCode, and pi.
           </p>
           <p class="picker-hint" x-show="transport === 'acp'">
-            Structured ACP events (no raw terminal). Works with Kiro, Gemini, and Grok. Assumes tool auth is already completed; run the selected agent interactively once before enabling this transport.
+            Structured ACP events (no raw terminal). Available for Kiro CLI. Complete Kiro authentication interactively before enabling this transport.
           </p>
           <p class="picker-hint" x-show="transport === 'ttyd'">
             Legacy tmux+ttyd fallback. Use only if the xterm.js terminal misbehaves; we plan to remove this after one deprecation window.

@@ -23,16 +23,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from studyloop.extractors.llm import (
-    DEFAULT_MODEL,
-    INITIAL_PROMPT,
-    extract_struggles,
-)
+from studyloop.extractors.llm import INITIAL_PROMPT, extract_struggles
 from studyloop.extractors.pipeline import pre_filter
 
 if TYPE_CHECKING:
@@ -241,8 +238,8 @@ def run_eval(
     split: str,
     *,
     db_path: Path,
+    model: str,
     prompt_template: str = INITIAL_PROMPT,
-    model: str = DEFAULT_MODEL,
     client: Any | None = None,
 ) -> tuple[dict[str, float], float, list[SessionScore]]:
     """Run the extractor over the chosen split; return (metrics, cost_usd, scores)."""
@@ -338,9 +335,16 @@ def main() -> None:
     )
     ap.add_argument("--status", default="baseline", help="Ledger status label.")
     ap.add_argument("--note", default="initial", help="Mutation description for the ledger.")
+    configured_model = os.environ.get("STUDYLOOP_EXTRACTOR_MODEL", "").strip()
+    ap.add_argument(
+        "--model",
+        default=configured_model or None,
+        required=not configured_model,
+        help="Live Bedrock model ID (or set STUDYLOOP_EXTRACTOR_MODEL).",
+    )
     args = ap.parse_args()
 
-    metrics, cost, scores = run_eval(args.split, db_path=args.db)
+    metrics, cost, scores = run_eval(args.split, db_path=args.db, model=args.model)
     append_results_row(
         prompt_template=INITIAL_PROMPT,
         metrics=metrics,

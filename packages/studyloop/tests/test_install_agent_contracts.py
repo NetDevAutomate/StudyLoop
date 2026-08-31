@@ -117,7 +117,6 @@ def test_doctor_agent_registry_paths_match_installer_targets() -> None:
 
     assert str(Path(doctor_paths["claude"]).expanduser()) in installer_targets["claude"]
     assert str(Path(doctor_paths["pi"]).expanduser()) in installer_targets["pi"]
-    assert str(Path(doctor_paths["omp"]).expanduser()) in installer_targets["omp"]
 
 
 def test_agent_install_docs_tool_options_match_installer_choices() -> None:

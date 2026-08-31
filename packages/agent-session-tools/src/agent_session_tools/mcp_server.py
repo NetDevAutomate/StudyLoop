@@ -1,7 +1,7 @@
 """MCP server for session-db — universal AI tool integration.
 
 Exposes session database as MCP tools via stdio transport.
-Any MCP-compatible AI tool (Claude Code, Kiro, Gemini CLI, OpenCode)
+Any MCP-compatible admitted harness (Kiro CLI, Codex, Claude Code, OpenCode, or pi)
 can search, browse, and retrieve session context through this server.
 
 Usage:

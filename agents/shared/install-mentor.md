@@ -23,15 +23,15 @@ python3 --version           # Python version (need 3.10+)
 which uv 2>/dev/null        # Preferred package manager
 which brew 2>/dev/null      # macOS Homebrew
 which pip3 2>/dev/null      # Fallback package manager
-which claude 2>/dev/null    # Claude Code CLI
-which kiro 2>/dev/null      # Kiro IDE CLI
-which gemini 2>/dev/null    # Gemini CLI
-which opencode 2>/dev/null  # OpenCode CLI
-which amp 2>/dev/null       # Amp CLI
+which kiro-cli 2>/dev/null  # Kiro CLI (core)
+which codex 2>/dev/null     # Codex (core)
+which claude 2>/dev/null    # Claude Code (core)
+which opencode 2>/dev/null  # OpenCode (preview)
+which pi 2>/dev/null        # pi (preview)
 ls ~/.config/studyloop/config.yaml 2>/dev/null && echo "config exists" || echo "config missing"
 ```
 
-**Why this matters**: `studyloop` uses `uv` for package management when available (faster, isolated environments). The AI tool detection determines which agents directory is relevant. Config detection tells us whether to run `config init` or skip it.
+**Why this matters**: `studyloop` uses `uv` for package management when available (faster, isolated environments). Harness detection is limited to StudyLoop's pre-release contract: Kiro CLI, Codex, Claude Code, OpenCode, and pi. Config detection tells us whether to run `config init` or skip it.
 
 Summarise findings before proceeding:
 - OS + architecture

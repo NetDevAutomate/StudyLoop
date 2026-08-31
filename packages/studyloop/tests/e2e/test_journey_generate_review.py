@@ -1,7 +1,7 @@
 """Journey phases 2-4 — generation walk, review loop, durable outcomes.
 
-Extends the representative journey past "session start" using the STUB
-generator (deterministic, free) on an isolated tmp vault + tmp sessions.db:
+Extends the representative journey past "session start" with a test-only
+generator injected before the real server starts, using an isolated vault:
 
   Phase 2  Generate: drive the REAL Generate panel end-to-end — submit the
            form, watch the WS-fed progress UI finish, assert deck files
@@ -100,9 +100,8 @@ review:
 content:
   base_path: {study}
 card_generator:
-  backend: stub
+  backend: ollama
   max_workers: 2
-  stub_card_count: 3
 """,
         encoding="utf-8",
     )
@@ -120,7 +119,13 @@ def server(world: dict) -> Generator[str, None, None]:
     env = os.environ.copy()
     env["STUDYLOOP_CONFIG"] = str(world["config"])
     proc = subprocess.Popen(
-        [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)],
+        [
+            sys.executable,
+            str(Path(_tests_dir) / "_content_test_server.py"),
+            "web",
+            "--port",
+            str(WEB_PORT),
+        ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         env=env,
@@ -159,7 +164,7 @@ def _diag(page: Page, name: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 2 — Generate: real panel, stub backend, files on disk
+# Phase 2 — Generate: real panel, test-only generator, files on disk
 # ---------------------------------------------------------------------------
 
 

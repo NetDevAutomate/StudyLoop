@@ -1,4 +1,4 @@
-"""studyloop-fake-agent — deterministic stand-in agent for e2e harness runs.
+"""Deterministic child process used only by StudyLoop source tests.
 
 A real console script (so ``shutil.which`` finds it like any agent binary)
 that speaks just enough "agent" to exercise the spawn → PTY → WebSocket →
@@ -7,13 +7,13 @@ terminal path without an LLM:
 - prints a recognisable banner (``FAKE-AGENT READY``) on startup
 - reads the study topic from the persona file passed as argv[1] and
   announces it (``FAKE-AGENT TOPIC: <topic>``)
-- asks the topic's Socratic question bank (``studyloop.testing.socratic_bank``)
+- asks the test suite's Socratic question bank (``_socratic_bank``)
   one question at a time, grades each answer, and reveals the canonical
   answer only after an attempt is accepted — never before
 - exits cleanly on EOF or SIGTERM so session teardown is exercised
 
-It is registered as the ``fake`` adapter ONLY when ``STUDYLOOP_TEST_AGENT=1``
-(see ``adapters/fake.py``), so it never appears in a real user's picker.
+It is launched only through the test suite's explicit child-command injection
+and is excluded from built wheels, so it never appears in a user's picker.
 
 Wire protocol (see ``tests/e2e/test_socratic_topic_qa.py`` for the assertions
 that pin this down):
@@ -38,7 +38,7 @@ import signal
 import sys
 from pathlib import Path
 
-from studyloop.testing.socratic_bank import TopicBank, bank_for_topic, topic_from_persona
+from _socratic_bank import TopicBank, bank_for_topic, topic_from_persona
 
 BANNER = "FAKE-AGENT READY"
 REPLY_PREFIX = "FAKE-AGENT SAYS:"
@@ -57,7 +57,7 @@ def _load_bank(persona_arg: str | None) -> TopicBank | None:
     agent then falls back to echo mode.
 
     That distinction matters: the plumbing tests invoke this binary with no
-    argument at all (``python -m studyloop.testing.fake_agent``) or with a
+    argument at all or with a
     deliberately absent path, because all they prove is that bytes flow both
     ways through the PTY. Defaulting an unbriefed agent into a full Socratic
     session made it teach a topic nobody asked about, and broke those tests.

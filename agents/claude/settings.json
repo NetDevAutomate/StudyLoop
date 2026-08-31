@@ -2,17 +2,5 @@
   "statusLine": {
     "type": "command",
     "command": "~/.claude/study-statusline.sh"
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "studyloop extract-struggles --incremental 2>/dev/null || true"
-          }
-        ]
-      }
-    ]
   }
 }

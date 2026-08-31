@@ -12,15 +12,12 @@ for arg in "$@"; do
   case "$arg" in
     --kiro)      TOOLS+=("--tool" "kiro") ;;
     --claude)    TOOLS+=("--tool" "claude") ;;
-    --gemini)    TOOLS+=("--tool" "gemini") ;;
     --opencode)  TOOLS+=("--tool" "opencode") ;;
     --codex)     TOOLS+=("--tool" "codex") ;;
-    --amp)       TOOLS+=("--tool" "amp") ;;
     --pi)        TOOLS+=("--tool" "pi") ;;
-    --omp)       TOOLS+=("--tool" "omp") ;;
     --uninstall) UNINSTALL=true ;;
     -h|--help)
-      echo "Usage: ./scripts/install-agents.sh [--kiro|--claude|--gemini|--opencode|--codex|--amp|--pi|--omp] [--uninstall]"
+      echo "Usage: ./scripts/install-agents.sh [--kiro|--codex|--claude|--opencode|--pi] [--uninstall]"
       exit 0
       ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;

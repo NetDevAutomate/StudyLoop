@@ -306,7 +306,7 @@ def start_session(
         if not available:
             raise SessionStartError(
                 "[red]No AI agent found.[/red]\n"
-                "  Install one of: Claude Code, Gemini CLI, Kiro CLI, OpenCode, or Codex CLI\n"
+                "  Install one of: Kiro CLI, Codex, Claude Code, OpenCode, or pi\n"
                 "  e.g. [bold]npm install -g @anthropic-ai/claude-code[/bold]"
             )
         agent = available[0]
@@ -417,7 +417,7 @@ def start_session(
         if adapter.mcp_setup:
             adapter.mcp_setup(session_dir)
 
-        # Allow integration tests to inject a mock agent command
+        # Allow integration tests to inject a test-only agent command.
         import os
 
         test_agent_cmd = os.environ.get("STUDYLOOP_TEST_AGENT_CMD")

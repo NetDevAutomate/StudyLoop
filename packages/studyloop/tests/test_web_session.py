@@ -432,7 +432,7 @@ class TestStartSessionAPI:
         assert "Unknown agent" in resp.json()["error"]
 
     def test_start_rejects_agent_when_binary_missing(self, client: TestClient) -> None:
-        """User picks gemini but only claude is on PATH → 503, not a silent Claude session.
+        """User picks pi but its binary is absent → 503, not a silent fallback.
 
         Locks in the Phase 0 decision that agent selection is always respected:
         no `null`-fallback substitution, no silent routing to the first detected
@@ -448,11 +448,11 @@ class TestStartSessionAPI:
         ):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5, "agent": "gemini", "transport": "ttyd"},
+                json={"topic": "Python", "energy": 5, "agent": "pi", "transport": "ttyd"},
             )
         assert resp.status_code == 503
         error = resp.json()["error"]
-        assert "gemini" in error
+        assert "pi" in error
         assert "not found" in error
 
     def test_start_validates_energy_range(self, client: TestClient) -> None:

@@ -239,9 +239,8 @@ def test_agent_options_fall_back_when_detection_fails() -> None:
     assert {agent["value"] for agent in agents} == {
         "claude",
         "codex",
-        "gemini",
-        "grok",
         "kiro",
         "opencode",
+        "pi",
     }
     assert all(agent["available"] is False for agent in agents)

@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-BUILTIN_ADAPTERS = ["claude", "codex", "gemini", "grok", "kiro", "opencode", "ollama", "lmstudio"]
+BUILTIN_ADAPTERS = ["kiro", "codex", "claude", "opencode", "pi"]
 
 
 class TestBuiltinAdapters:
@@ -31,7 +31,7 @@ class TestBuiltinAdapters:
         assert callable(adapter.setup)
         assert callable(adapter.launch_cmd)
 
-    @pytest.mark.parametrize("name", ["codex", "grok", "gemini", "opencode"])
+    @pytest.mark.parametrize("name", ["codex", "opencode", "pi"])
     def test_setup_creates_file_in_session_dir(self, name, tmp_path):
         import importlib
 
@@ -40,7 +40,7 @@ class TestBuiltinAdapters:
         assert path.exists()
         assert "test content" in path.read_text()
 
-    @pytest.mark.parametrize("name", ["claude", "ollama", "lmstudio"])
+    @pytest.mark.parametrize("name", ["claude"])
     def test_cli_flag_setup_creates_temp_file(self, name, tmp_path):
         import importlib
 
@@ -53,11 +53,6 @@ class TestBuiltinAdapters:
         from studyloop.adapters.kiro import ADAPTER
 
         assert ADAPTER.teardown is not None
-
-    def test_gemini_has_mcp_setup(self):
-        from studyloop.adapters.gemini import ADAPTER
-
-        assert ADAPTER.mcp_setup is not None
 
     def test_opencode_has_mcp_setup(self):
         from studyloop.adapters.opencode import ADAPTER
@@ -75,8 +70,7 @@ class TestBuiltinAdapters:
 
         reset_registry()
         adapters = get_all_adapters()
-        expected = {"claude", "codex", "gemini", "grok", "kiro", "opencode", "ollama", "lmstudio"}
-        assert set(adapters.keys()) >= expected
+        assert tuple(adapters) == tuple(BUILTIN_ADAPTERS)
 
 
 class TestCodexAdapter:
@@ -99,28 +93,6 @@ class TestCodexAdapter:
 
         cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
         assert cmd.endswith("codex --resume")
-
-
-class TestGrokAdapter:
-    def test_grok_setup_writes_agents_md(self, tmp_path):
-        from studyloop.adapters.grok import _grok_setup
-
-        path = _grok_setup("# Grok Persona", tmp_path)
-        assert path == tmp_path / "AGENTS.md"
-        assert path.exists()
-        assert path.read_text() == "# Grok Persona"
-
-    def test_grok_launch_new_session(self):
-        from studyloop.adapters.grok import _grok_launch
-
-        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=False)
-        assert cmd.endswith("grok")
-
-    def test_grok_launch_resume(self):
-        from studyloop.adapters.grok import _grok_launch
-
-        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=True)
-        assert cmd.endswith("grok --resume")
 
 
 class TestKiroAdapter:
@@ -210,6 +182,21 @@ class TestKiroAdapter:
         data = json.loads(target.read_text())
         # Template field preserved
         assert data["extra"] == "value"
+
+    def test_kiro_setup_honours_explicit_template_path(self, monkeypatch, tmp_path):
+        """Capture and deployment tooling can select a real alternate profile."""
+        kiro_agents = self._patch_kiro_dir(monkeypatch, tmp_path)
+        template = tmp_path / "capture-agent.json"
+        template.write_text(json.dumps({"name": "study-mentor", "tools": [], "allowedTools": []}))
+        monkeypatch.setenv("STUDYLOOP_KIRO_AGENT_TEMPLATE", str(template))
+
+        from studyloop.adapters.kiro import KIRO_AGENT_NAME, _kiro_setup
+
+        _kiro_setup("content", tmp_path / "session")
+
+        data = json.loads((kiro_agents / f"{KIRO_AGENT_NAME}.json").read_text())
+        assert data["tools"] == []
+        assert data["allowedTools"] == []
 
     def test_kiro_setup_backs_up_existing_json(self, monkeypatch, tmp_path):
         """If agent JSON already exists, it is copied to a .studyloop-backup file."""
@@ -442,82 +429,6 @@ class TestKiroAdapter:
 class TestLaunchCommands:
     """Verify launch_cmd output for all built-in adapters."""
 
-    def test_ollama_launch_includes_env_vars(self, tmp_path):
-        from studyloop.adapters.ollama import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.ollama.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        assert "ANTHROPIC_BASE_URL=" in cmd
-        assert str(persona) in cmd
-
-    def test_ollama_launch_resume(self, tmp_path):
-        from studyloop.adapters.ollama import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.ollama.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, True)
-        assert "-r" in cmd or "--resume" in cmd
-
-    def test_ollama_launch_no_resume_no_r_flag(self, tmp_path):
-        from studyloop.adapters.ollama import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.ollama.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        # -r should NOT appear in a non-resume launch
-        parts = cmd.split()
-        assert "-r" not in parts
-
-    def test_ollama_launch_fallback_binary_when_not_on_path(self, tmp_path):
-        from studyloop.adapters.ollama import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.ollama.shutil.which", return_value=None):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        # Falls back to bare "claude" string
-        assert "claude" in cmd
-
-    def test_gemini_launch(self, tmp_path):
-        from studyloop.adapters.gemini import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.gemini.shutil.which", return_value="/usr/bin/gemini"):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        assert "/usr/bin/gemini" in cmd
-
-    def test_gemini_launch_resume(self, tmp_path):
-        from studyloop.adapters.gemini import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.gemini.shutil.which", return_value="/usr/bin/gemini"):
-            cmd = ADAPTER.launch_cmd(persona, True)
-        assert "-r" in cmd
-
-    def test_gemini_launch_no_resume_no_r_flag(self, tmp_path):
-        from studyloop.adapters.gemini import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.gemini.shutil.which", return_value="/usr/bin/gemini"):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        assert "-r" not in cmd.split()
-
-    def test_gemini_launch_fallback_binary(self, tmp_path):
-        from studyloop.adapters.gemini import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.gemini.shutil.which", return_value=None):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        assert "gemini" in cmd
-
     def test_opencode_launch(self, tmp_path):
         from studyloop.adapters.opencode import ADAPTER
 
@@ -553,33 +464,6 @@ class TestLaunchCommands:
         with patch("studyloop.adapters.opencode.shutil.which", return_value=None):
             cmd = ADAPTER.launch_cmd(persona, False)
         assert "opencode" in cmd
-
-    def test_lmstudio_launch_includes_env_vars(self, tmp_path):
-        from studyloop.adapters.lmstudio import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.lmstudio.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        assert "ANTHROPIC_BASE_URL=" in cmd
-
-    def test_lmstudio_launch_resume(self, tmp_path):
-        from studyloop.adapters.lmstudio import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.lmstudio.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, True)
-        assert "-r" in cmd
-
-    def test_lmstudio_launch_includes_persona_path(self, tmp_path):
-        from studyloop.adapters.lmstudio import ADAPTER
-
-        persona = tmp_path / "p.md"
-        persona.touch()
-        with patch("studyloop.adapters.lmstudio.shutil.which", return_value="/usr/bin/claude"):
-            cmd = ADAPTER.launch_cmd(persona, False)
-        assert str(persona) in cmd
 
     def test_claude_launch_absolute_path(self, tmp_path):
         from studyloop.adapters.claude import ADAPTER

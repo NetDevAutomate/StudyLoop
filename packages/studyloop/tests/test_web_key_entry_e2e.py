@@ -39,7 +39,7 @@ NEEDS_KEY = f"() => window.Alpine.$data({GENERATE_PANEL}).needsKey"
 def stub_config(tmp_path: Path) -> Path:
     cfg = tmp_path / "studyloop-keyentry.yaml"
     cfg.write_text(
-        f"session_db: {tmp_path / 'sessions.db'}\ncard_generator:\n  backend: stub\n",
+        f"session_db: {tmp_path / 'sessions.db'}\ncard_generator:\n  backend: ollama\n",
         encoding="utf-8",
     )
     return cfg

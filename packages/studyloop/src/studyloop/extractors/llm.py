@@ -1,15 +1,16 @@
 """LLM struggle extractor — AWS Bedrock Converse API with forced tool-use.
 
-Implements the same ``extract_struggles(messages, session_id) -> list[
-ExtractorResult]`` contract as :mod:`studyloop.extractors.stub`, but infers real
-struggle signals from session transcripts.
+Implements ``extract_struggles(messages, session_id) -> list[ExtractorResult]``
+using real struggle signals inferred from session transcripts.
 
 Transport: AWS Bedrock Converse API with ``toolChoice`` forcing a single
 ``emit_struggle_extractions`` tool call — the same structured-output mechanism
 the card generator uses (see ``content/generators/bedrock.py``).  NOT httpx /
 LiteLLM (the handoff was wrong about the transport).
 
-Determinism: ``temperature=0`` on every call, so the eval signal is stable.
+Compatibility: temperature is omitted by default because current Bedrock
+models can reject that inference field. Callers may supply it explicitly for a
+model that supports it.
 
 The system prompt embeds the canonical topic vocabulary
 (``extractors/topic_vocab.json``) so the model normalises onto known keys,
@@ -37,12 +38,6 @@ logger = logging.getLogger(__name__)
 
 _TOOL_NAME = "emit_struggle_extractions"
 _VOCAB_PATH = Path(__file__).resolve().parent / "topic_vocab.json"
-
-# Default Bedrock target. Overridable via the function args; kept as module
-# constants so the eval runner and tests reference one source of truth.
-DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-6"
-DEFAULT_REGION = "us-east-1"
-DEFAULT_PROFILE = "arraafat+prod-user"
 
 # The JSON schema the model must satisfy. evidence_quote is required so the
 # model must ground each struggle in the transcript (discourages hallucination)
@@ -128,11 +123,12 @@ def _build_system_prompt(prompt_template: str = INITIAL_PROMPT) -> str:
     return prompt_template.replace("{vocab}", vocab_lines)
 
 
-def _build_client(*, profile: str = DEFAULT_PROFILE, region: str = DEFAULT_REGION) -> Any:
-    """Create a bedrock-runtime client. Monkeypatched in unit tests.
+def _build_client() -> Any:
+    """Create a bedrock-runtime client from ambient AWS configuration.
 
     boto3 is imported lazily so the ``[sessions]``-only install does not need
-    it; the eval / live path requires the ``[bedrock]`` extra.
+    it; the eval / live path requires the ``[bedrock]`` extra. Profile and
+    region selection stay with standard AWS environment/config resolution.
     """
     try:
         import boto3
@@ -141,7 +137,7 @@ def _build_client(*, profile: str = DEFAULT_PROFILE, region: str = DEFAULT_REGIO
             "LLM extractor requires boto3. Install with: "
             "uv pip install 'studyloop[bedrock]' (or run eval via uv run --with boto3)."
         ) from exc
-    return boto3.Session(profile_name=profile).client("bedrock-runtime", region_name=region)
+    return boto3.Session().client("bedrock-runtime")
 
 
 def _transcript_text(messages: Sequence[dict[str, Any]], *, max_chars: int = 15000) -> str:
@@ -185,10 +181,10 @@ def extract_struggles(
     messages: Sequence[dict[str, Any]],
     session_id: str,
     *,
+    model: str,
     client: Any | None = None,
-    model: str = DEFAULT_MODEL,
     prompt_template: str = INITIAL_PROMPT,
-    temperature: float = 0.0,
+    temperature: float | None = None,
     max_tokens: int = 2048,
 ) -> list[ExtractorResult]:
     """Extract struggle signals from a session transcript via Bedrock Converse.
@@ -215,6 +211,10 @@ def extract_struggles(
         "toolChoice": {"tool": {"name": _TOOL_NAME}},
     }
 
+    inference_config: dict[str, Any] = {"maxTokens": max_tokens}
+    if temperature is not None:
+        inference_config["temperature"] = temperature
+
     response = bedrock.converse(
         modelId=model,
         system=[{"text": _build_system_prompt(prompt_template)}],
@@ -224,7 +224,7 @@ def extract_struggles(
                 "content": [{"text": f"Session {session_id} transcript:\n\n{transcript}"}],
             }
         ],
-        inferenceConfig={"temperature": temperature, "maxTokens": max_tokens},
+        inferenceConfig=inference_config,
         toolConfig=tool_config,
     )
 
@@ -248,9 +248,6 @@ def extract_struggles(
 extract_struggles.last_usage = {}  # type: ignore[attr-defined]
 
 __all__ = [
-    "DEFAULT_MODEL",
-    "DEFAULT_PROFILE",
-    "DEFAULT_REGION",
     "INITIAL_PROMPT",
     "extract_struggles",
 ]

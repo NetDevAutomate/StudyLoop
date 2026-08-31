@@ -1,10 +1,9 @@
-"""Tests for the pi / oh-my-pi (omp) session exporter.
+"""Tests for the pi session exporter.
 
 Validates:
-- PiFamilyExporter is parametrised; PiExporter and OhMyPiExporter are concrete
-  instances with distinct source names.
+- PiFamilyExporter is parameterised for isolated test roots.
 - is_available() reflects root-directory existence.
-- export_all() imports well-formed JSONL sessions for both "pi" and "omp".
+- export_all() imports well-formed pi JSONL sessions.
 - Incremental mode skips sessions whose updated_at is unchanged.
 - Updated sessions (new last-message timestamp) are re-imported.
 - Missing / malformed session headers increment errors but do not abort.
@@ -20,7 +19,6 @@ import pytest
 
 import agent_session_tools.exporters.pi as pi_mod
 from agent_session_tools.exporters.pi import (
-    OhMyPiExporter,
     PiExporter,
     PiFamilyExporter,
     _extract_text,
@@ -122,25 +120,6 @@ def pi_tree(tmp_path: Path, monkeypatch) -> Path:
     )
 
     monkeypatch.setattr(pi_mod, "PI_SESSIONS", root)
-    return root
-
-
-@pytest.fixture()
-def omp_tree(tmp_path: Path, monkeypatch) -> Path:
-    """Build a fake omp sessions tree and monkeypatch the module constant."""
-    root = tmp_path / "omp_sessions"
-    slug_dir = root / "-home-user-project"
-
-    _write_jsonl(
-        slug_dir / "2024-06-01T10:00:00_sess-omp001.jsonl",
-        [
-            _header(session_id="sess-omp001"),
-            _user_message(msg_id="omsg-001", text="What is asyncio?"),
-            _assistant_message(msg_id="omsg-002", text="It is Python's async runtime."),
-        ],
-    )
-
-    monkeypatch.setattr(pi_mod, "OMP_SESSIONS", root)
     return root
 
 
@@ -246,9 +225,6 @@ class TestIsAvailable:
         # The module-level PiExporter was bound at import time — create a fresh one
         exp = PiFamilyExporter("pi", pi_mod.PI_SESSIONS)
         assert exp.is_available() is False
-
-    def test_omp_exporter_source_name(self):
-        assert OhMyPiExporter.source_name == "omp"
 
     def test_pi_exporter_source_name(self):
         assert PiExporter.source_name == "pi"
@@ -364,24 +340,6 @@ class TestPiExportAll:
         ).fetchall()
         assert len(msgs) == 2
         assert msgs[1]["role"] == "assistant"
-
-
-# ---------------------------------------------------------------------------
-# export_all — omp happy path
-# ---------------------------------------------------------------------------
-
-
-class TestOmpExportAll:
-    def test_exports_with_omp_source(self, migrated_db, omp_tree):
-        conn, _ = migrated_db
-        exp = PiFamilyExporter("omp", omp_tree)
-        stats = exp.export_all(conn, incremental=False)
-
-        assert stats.added == 1
-        assert stats.errors == 0
-
-        row = conn.execute("SELECT source FROM sessions").fetchone()
-        assert row["source"] == "omp"
 
 
 # ---------------------------------------------------------------------------
@@ -505,9 +463,3 @@ class TestRegistry:
 
         assert "pi" in EXPORTERS
         assert EXPORTERS["pi"].source_name == "pi"
-
-    def test_omp_in_exporters(self):
-        from agent_session_tools.exporters import EXPORTERS
-
-        assert "omp" in EXPORTERS
-        assert EXPORTERS["omp"].source_name == "omp"

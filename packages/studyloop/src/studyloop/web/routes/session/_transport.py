@@ -81,13 +81,11 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
     shell command:
 
     - Kiro: ``["kiro-cli", "acp"]``
-    - Gemini: ``["gemini", "--acp"]``
-    - Grok: ``["grok", "agent", "stdio"]``
 
     The ``STUDYLOOP_TEST_ACP_CMD`` env var overrides the argv entirely,
     matching the shape of ``STUDYLOOP_TEST_AGENT_CMD`` on the PTY side.
     Splits the override with ``shlex.split`` so tests can script real
-    argv (``"python3 /path/to/stub.py"``) without shell expansion.
+    argv (``"python3 /path/to/test_agent.py"``) without shell expansion.
     """
     import shlex
     import shutil as _shutil
@@ -104,7 +102,7 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
         # route's pre-flight 503 guard.
         #
         # When STUDYLOOP_TEST_ACP_CMD is set, the argv is a full command
-        # (e.g. "python3 /path/to/stub.py"); return the first token
+        # (e.g. "python3 /path/to/test_agent.py"); return the first token
         # resolved so ``asyncio.create_subprocess_exec`` gets a real
         # path — ``shutil.which`` on an absolute path returns it
         # unchanged when executable.
@@ -124,14 +122,7 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
             return shlex.split(test_cmd)
         if _config.agent == "kiro":
             return ["kiro-cli", "acp"]
-        if _config.agent == "gemini":
-            return ["gemini", "--acp"]
-        if _config.agent == "grok":
-            return ["grok", "agent", "stdio"]
-        # Fall back to adapter binary + `acp` subcommand. Any future ACP
-        # agent added to AGENTS should either speak ``<bin> acp`` or
-        # register here explicitly.
-        return [adapter.binary, "acp"]
+        raise ValueError(f"ACP is not supported for agent {_config.agent!r}")
 
     return lambda: ACPTransport(
         resolve_binary=_resolve_binary,

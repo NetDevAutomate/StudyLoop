@@ -3,63 +3,55 @@
   "agents": {
     "claude/socratic-mentor.md": {
       "hash": "93f844100b6ba0b9",
-      "updated": "2026-06-11"
+      "updated": "2026-08-27"
     },
     "codex/AGENTS.md": {
-      "hash": "0f2b2948bda9f7f4",
-      "updated": "2026-07-10"
-    },
-    "gemini/study-mentor.md": {
-      "hash": "1c5304b43d58f298",
-      "updated": "2026-06-11"
+      "hash": "1604a3ebdf014205",
+      "updated": "2026-08-27"
     },
     "kiro/study-mentor.json": {
       "hash": "c9f2302ebc8d3c39",
-      "updated": "2026-05-31"
-    },
-    "omp/AGENTS.md": {
-      "hash": "11fc8823e09973ea",
-      "updated": "2026-05-31"
+      "updated": "2026-08-27"
     },
     "opencode/study-mentor.md": {
-      "hash": "9c6014483e09c845",
-      "updated": "2026-06-11"
+      "hash": "aa2e849e351ec55c",
+      "updated": "2026-08-27"
     },
     "pi/AGENTS.md": {
-      "hash": "2938d63517e5b284",
-      "updated": "2026-05-31"
+      "hash": "cf02d2854a27d5b8",
+      "updated": "2026-08-27"
     },
     "shared/audhd-framework.md": {
       "hash": "8b694064b100741f",
-      "updated": "2026-08-24"
+      "updated": "2026-08-27"
     },
     "shared/break-science.md": {
       "hash": "74541a44431f7f6a",
-      "updated": "2026-05-31"
+      "updated": "2026-08-27"
     },
     "shared/knowledge-bridging.md": {
       "hash": "adb4221cda83498f",
-      "updated": "2026-05-31"
+      "updated": "2026-08-27"
     },
     "shared/network-bridges.md": {
       "hash": "8af4732b77cc15ae",
-      "updated": "2026-05-31"
+      "updated": "2026-08-27"
     },
     "shared/session-protocol.md": {
-      "hash": "ae187f9ae15a99ea",
-      "updated": "2026-08-24"
+      "hash": "fc88049adb1badc4",
+      "updated": "2026-08-27"
     },
     "shared/socratic-engine.md": {
       "hash": "42738fba9479ec14",
-      "updated": "2026-05-31"
+      "updated": "2026-08-27"
     },
     "shared/teach-back-protocol.md": {
       "hash": "9bbe8831f1c74837",
-      "updated": "2026-05-31"
+      "updated": "2026-08-27"
     },
     "shared/wind-down-protocol.md": {
       "hash": "065bef2cc196fe9b",
-      "updated": "2026-06-11"
+      "updated": "2026-08-27"
     }
   }
 }

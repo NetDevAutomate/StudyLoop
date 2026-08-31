@@ -1,4 +1,4 @@
-"""Tests for --pi-only / --omp-only CLI flags and pi/omp SOURCE_CHOICES entries."""
+"""CLI contracts for the preview pi and OpenCode exporters."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from agent_session_tools.export_sessions import SOURCE_CHOICES, app
 runner = CliRunner()
 
 
-class TestSourceChoicesContainsPiOmp:
+class TestReleaseSourceChoices:
     def test_pi_in_source_choices(self) -> None:
         assert "pi" in SOURCE_CHOICES
 
-    def test_omp_in_source_choices(self) -> None:
-        assert "omp" in SOURCE_CHOICES
+    def test_exact_release_sources(self) -> None:
+        assert SOURCE_CHOICES == ["claude", "codex", "kiro", "opencode", "pi"]
 
     def test_source_choices_sorted(self) -> None:
         assert SOURCE_CHOICES == sorted(SOURCE_CHOICES), (
@@ -64,26 +64,27 @@ class TestPiOnlyFlag:
             )
 
 
-class TestOmpOnlyFlag:
-    def test_omp_only_flag_accepted(self, tmp_path: Path) -> None:
-        """--omp-only must be accepted without 'invalid choice' / exit-code 2."""
+class TestOpenCodeOnlyFlag:
+    def test_opencode_only_flag_accepted(self, tmp_path: Path) -> None:
         db = tmp_path / "sessions.db"
-        result = runner.invoke(app, ["--omp-only", "--output", str(db)])
+        result = runner.invoke(app, ["--opencode-only", "--output", str(db)])
         assert result.exit_code != 2, (
-            f"--omp-only was rejected as invalid: {result.output}"
+            f"--opencode-only was rejected as invalid: {result.output}"
         )
 
-    def test_omp_only_in_help(self) -> None:
+    def test_opencode_only_in_help(self) -> None:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "--omp-only" in result.output
+        assert "--opencode-only" in result.output
+        assert "--omp-only" not in result.output
+        assert "--gemini-only" not in result.output
+        assert "--grok-only" not in result.output
 
-    def test_omp_only_exports_only_omp_source(self, tmp_path: Path) -> None:
-        """When --omp-only is given, only the 'omp' source is queried."""
+    def test_opencode_only_exports_only_opencode_source(self, tmp_path: Path) -> None:
         db = tmp_path / "sessions.db"
-        result = runner.invoke(app, ["--omp-only", "--output", str(db)])
+        result = runner.invoke(app, ["--opencode-only", "--output", str(db)])
         assert result.exit_code != 2, (
-            f"--omp-only flagged as bad parameter: {result.output}"
+            f"--opencode-only flagged as bad parameter: {result.output}"
         )
         if db.exists():
             conn = sqlite3.connect(db)
@@ -94,16 +95,18 @@ class TestOmpOnlyFlag:
                 ).fetchall()
             }
             conn.close()
-            assert sources_in_db <= {"omp"}, (
-                f"--omp-only wrote unexpected sources: {sources_in_db}"
+            assert sources_in_db <= {"opencode"}, (
+                f"--opencode-only wrote unexpected sources: {sources_in_db}"
             )
 
 
 class TestMutualExclusivity:
-    def test_pi_and_omp_together_rejected(self, tmp_path: Path) -> None:
+    def test_pi_and_opencode_together_rejected(self, tmp_path: Path) -> None:
         """Specifying two --*-only flags simultaneously must be rejected."""
         db = tmp_path / "sessions.db"
-        result = runner.invoke(app, ["--pi-only", "--omp-only", "--output", str(db)])
+        result = runner.invoke(
+            app, ["--pi-only", "--opencode-only", "--output", str(db)]
+        )
         # The code raises BadParameter when more than one *_only flag is active.
         assert result.exit_code != 0, (
             "Expected non-zero exit when two --*-only flags are combined"
@@ -117,7 +120,7 @@ class TestMutualExclusivity:
         )
 
 
-class TestSourcesArgumentAcceptsPiOmp:
+class TestSourcesArgument:
     def test_sources_pi_accepted(self, tmp_path: Path) -> None:
         db = tmp_path / "sessions.db"
         result = runner.invoke(app, ["--sources", "pi", "--output", str(db)])
@@ -125,9 +128,7 @@ class TestSourcesArgumentAcceptsPiOmp:
             f"'pi' rejected as invalid --sources value: {result.output}"
         )
 
-    def test_sources_omp_accepted(self, tmp_path: Path) -> None:
+    def test_out_of_scope_source_rejected(self, tmp_path: Path) -> None:
         db = tmp_path / "sessions.db"
-        result = runner.invoke(app, ["--sources", "omp", "--output", str(db)])
-        assert result.exit_code != 2, (
-            f"'omp' rejected as invalid --sources value: {result.output}"
-        )
+        result = runner.invoke(app, ["--sources", "gemini", "--output", str(db)])
+        assert result.exit_code != 0

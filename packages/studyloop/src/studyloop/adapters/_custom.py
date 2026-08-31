@@ -8,19 +8,11 @@ Example config::
 
     agents:
       custom:
-        aider:
-          binary: aider
+        my-agent:
+          binary: my-agent
           strategy: cli-flag
           launch: "{binary} --read {persona}"
           resume: "{binary} --read {persona} --resume"
-          env:
-            OPENAI_API_KEY: sk-...
-        my-agent:
-          binary: my-agent
-          strategy: cwd-file
-          filename: .context.md
-          launch: "{binary}"
-          teardown: "pkill -f my-agent"
           mcp:
             format: generic
 """

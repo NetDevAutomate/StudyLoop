@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestAgentToolDetection:
@@ -50,15 +47,15 @@ class TestAgentToolDetection:
             tools = _detect_ai_tools()
         assert "codex" in tools
 
-    def test_detect_grok(self):
+    def test_detect_pi(self):
         from studyloop.doctor.agents import _detect_ai_tools
 
         def _which(binary: str) -> str | None:
-            return "/usr/local/bin/grok" if binary == "grok" else None
+            return "/usr/local/bin/pi" if binary == "pi" else None
 
         with patch("shutil.which", side_effect=_which):
             tools = _detect_ai_tools()
-        assert "grok" in tools
+        assert "pi" in tools
 
 
 class TestAgentSmokeTests:
@@ -97,8 +94,8 @@ class TestAgentSmokeTests:
         from studyloop.doctor.agents import check_agent_smoke_tests
 
         with (
-            patch("studyloop.doctor.agents._detect_ai_tools", return_value=["gemini"]),
-            patch("studyloop.doctor.agents.shutil.which", return_value="/usr/bin/gemini"),
+            patch("studyloop.doctor.agents._detect_ai_tools", return_value=["pi"]),
+            patch("studyloop.doctor.agents.shutil.which", return_value="/usr/bin/pi"),
             patch(
                 "studyloop.doctor.agents.subprocess.run", side_effect=sp.TimeoutExpired("cmd", 5)
             ),
@@ -123,11 +120,10 @@ class TestAgentDefinitionCheck:
         agent_file.write_text("# Socratic Mentor Agent\nTest content")
         return tmp_path
 
-    def test_grok_definition_uses_repo_agents_md(self, tmp_path: Path):
+    def test_pi_definition_uses_global_agents_md(self, tmp_path: Path):
         from studyloop.doctor.agents import _get_agent_install_path
 
-        with patch("studyloop.doctor.agents.find_repo_root", return_value=tmp_path):
-            assert _get_agent_install_path("grok") == tmp_path / "AGENTS.md"
+        assert _get_agent_install_path("pi") == Path.home() / ".pi/agent/AGENTS.md"
 
     def test_agent_installed_and_current(self, agent_dir: Path):
         import hashlib

@@ -1,15 +1,13 @@
 """ACP wire-format normaliser.
 
 Translates between the on-the-wire shapes used by Agent Client Protocol
-CLIs (Kiro, Gemini) and the ``AgentSessionTransport`` event vocabulary.
+Kiro CLI and the ``AgentSessionTransport`` event vocabulary.
 
-As of 2026-05-10 (see ``docs/research/2026-05-10-acp-event-shapes.md``)
-Kiro 0.11.131 and Gemini 0.41.2 have **converged** on the slash-prefixed
+The captured Kiro protocol uses the slash-prefixed
 method names (``session/new``, ``session/prompt``, ``session/cancel``,
 etc.). The plan pre-loaded a ``METHOD_ALIASES`` dict for translating
-Kiro ``session/new`` → Gemini ``newSession``; that translation is a
-no-op on current CLIs and Gemini actively rejects ``newSession`` with
-a -32601 "Method not found" error.
+Earlier experimental clients translated ``session/new`` to ``newSession``;
+that translation is not required by the admitted Kiro harness.
 
 This module is deliberately thin. It exists so:
 
@@ -31,14 +29,13 @@ from __future__ import annotations
 
 from typing import Any
 
-# Outbound request/method aliasing. Empty today because Kiro 0.11.131 and
-# Gemini 0.41.2 both accept the slash-prefixed spec names. If a future
+# Outbound request/method aliasing. Empty today because Kiro accepts the
+# slash-prefixed spec names. If a future admitted
 # CLI drifts, add a mapping here — e.g.
 # ``{"session/new": "newSession"}`` would rewrite our outbound call when
 # targeting that CLI.
 OUTBOUND_METHOD_ALIASES: dict[str, dict[str, str]] = {
     # agent_slug -> {canonical_method: alias_for_this_agent}
-    # "gemini_old": {"session/new": "newSession"},
 }
 
 
@@ -117,7 +114,7 @@ def rewrite_outbound_method(method: str, agent_slug: str) -> str:
     """Apply agent-specific outbound aliasing if any is registered.
 
     Pure function. Returns ``method`` unchanged when no alias exists,
-    which is the current reality for both Kiro and Gemini.
+    which is the current Kiro behaviour.
     """
     aliases = OUTBOUND_METHOD_ALIASES.get(agent_slug, {})
     return aliases.get(method, method)

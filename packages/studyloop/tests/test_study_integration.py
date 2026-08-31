@@ -864,28 +864,18 @@ class TestMultiAgentSessionLaunch:
             "session_dir": state.get("session_dir"),
         }
 
-    def test_gemini_session_creates_gemini_md(self, tmp_path):
-        """Gemini adapter writes GEMINI.md to the session directory."""
-        info = self._start_with_agent(tmp_path, "gemini")
+    def test_pi_session_creates_agents_md(self, tmp_path):
+        """pi adapter writes the project context it discovers natively."""
+        info = self._start_with_agent(tmp_path, "pi")
         session_dir = Path(info["session_dir"])
 
-        gemini_md = session_dir / "GEMINI.md"
-        assert gemini_md.exists(), "Gemini adapter should write GEMINI.md"
-        content = gemini_md.read_text()
+        agents_md = session_dir / "AGENTS.md"
+        assert agents_md.exists(), "pi adapter should write AGENTS.md"
+        content = agents_md.read_text()
         assert "Integration Test" in content
         assert "5/10" in content
 
-        assert info["state"]["agent"] == "gemini"
-
-    def test_gemini_session_creates_mcp_settings(self, tmp_path):
-        """Gemini adapter writes .gemini/settings.json with MCP config."""
-        info = self._start_with_agent(tmp_path, "gemini")
-        session_dir = Path(info["session_dir"])
-
-        settings = session_dir / ".gemini" / "settings.json"
-        assert settings.exists(), "Gemini adapter should write .gemini/settings.json"
-        data = json.loads(settings.read_text())
-        assert "studyloop-mcp" in data["mcpServers"]
+        assert info["state"]["agent"] == "pi"
 
     def test_codex_session_creates_agents_md(self, tmp_path):
         """Codex adapter writes AGENTS.md to the session directory."""
@@ -974,7 +964,7 @@ class TestMultiAgentSessionLaunch:
 
     def test_all_agents_support_topic_logging(self, tmp_path):
         """All agents can log topics via the studyloop wrapper in the session dir."""
-        for agent_name in ("claude", "codex", "gemini", "grok", "opencode"):
+        for agent_name in ("kiro", "codex", "claude", "opencode", "pi"):
             _cleanup_all()
             extra_env = {}
             if agent_name == "kiro":

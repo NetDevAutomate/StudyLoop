@@ -1,4 +1,4 @@
-"""In-memory NotebookLM client for local simulation and contract tests."""
+"""In-memory NotebookLM client used only by contract tests."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class _NotebookState:
 
 
 class InMemoryNotebookClient:
-    """Deterministic Notebook client fake with NotebookLM-like semantics."""
+    """Implement the client protocol without leaving the test process."""
 
     def __init__(self, *, authenticated: bool = True) -> None:
         self._authenticated = authenticated
@@ -28,24 +28,20 @@ class InMemoryNotebookClient:
         self._next_source_id = 1
 
     async def ensure_notebook(self, title: str) -> NotebookRef:
-        """Return an existing notebook by title, creating it when needed."""
         self._require_auth()
         for state in self._notebooks.values():
             if state.notebook.title == title:
                 return state.notebook
-
         notebook = NotebookRef(id=f"nb-{self._next_notebook_id}", title=title)
         self._next_notebook_id += 1
         self._notebooks[notebook.id] = _NotebookState(notebook=notebook)
         return notebook
 
     async def list_sources(self, notebook_id: str) -> list[NotebookSource]:
-        """List sources currently attached to the notebook."""
         self._require_auth()
         return list(self._state(notebook_id).sources)
 
     async def add_source(self, notebook_id: str, upload: SourceUpload) -> NotebookSource:
-        """Add a new local source to the notebook."""
         self._require_auth()
         state = self._state(notebook_id)
         source = NotebookSource(
@@ -59,12 +55,8 @@ class InMemoryNotebookClient:
         return source
 
     async def replace_source(
-        self,
-        notebook_id: str,
-        source_id: str,
-        upload: SourceUpload,
+        self, notebook_id: str, source_id: str, upload: SourceUpload
     ) -> NotebookSource:
-        """Replace an existing source with changed local content."""
         self._require_auth()
         state = self._state(notebook_id)
         replacement = NotebookSource(

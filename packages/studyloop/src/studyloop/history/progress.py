@@ -164,6 +164,64 @@ def spaced_repetition_due(topic_keywords_map: dict[str, list[str]]) -> list[dict
     return new_topics
 
 
+def _record_progress_on_connection(
+    conn: sqlite3.Connection,
+    topic: str,
+    concept: str,
+    confidence: str,
+    notes: str | None = None,
+    *,
+    source_course: str | None = None,
+    source_section: str | None = None,
+    source_publisher: str | None = None,
+    source_session_id: str | None = None,
+    created_by: str = "agent",
+) -> None:
+    """Write one progress row on the caller's transaction without committing."""
+    topic = topic.lower().strip()
+    concept = concept.lower().strip()
+    now = datetime.now(UTC).isoformat()
+    progress_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic}:{concept}"))
+    conn.execute(
+        """
+        INSERT INTO study_progress
+            (id, topic, concept, confidence, first_seen, last_seen, session_count,
+             notes, source_course, source_section, source_publisher,
+             source_session_id, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            confidence = excluded.confidence,
+            last_seen = excluded.last_seen,
+            session_count = session_count + CASE
+                WHEN excluded.source_session_id IS NOT NULL
+                 AND excluded.source_session_id = source_session_id THEN 0
+                ELSE 1
+            END,
+            notes = COALESCE(excluded.notes, notes),
+            source_course = COALESCE(excluded.source_course, source_course),
+            source_section = COALESCE(excluded.source_section, source_section),
+            source_publisher = COALESCE(excluded.source_publisher, source_publisher),
+            source_session_id = COALESCE(excluded.source_session_id, source_session_id),
+            created_by = COALESCE(excluded.created_by, created_by),
+            updated_at = datetime('now')
+        """,
+        (
+            progress_id,
+            topic,
+            concept,
+            confidence,
+            now,
+            now,
+            notes,
+            source_course,
+            source_section,
+            source_publisher,
+            source_session_id,
+            created_by,
+        ),
+    )
+
+
 def record_progress(
     topic: str,
     concept: str,
@@ -173,6 +231,7 @@ def record_progress(
     source_course: str | None = None,
     source_section: str | None = None,
     source_publisher: str | None = None,
+    source_session_id: str | None = None,
     created_by: str = "agent",
 ) -> bool:
     """Record or update progress on a concept.
@@ -190,45 +249,22 @@ def record_progress(
     if not conn:
         return False
     try:
-        # Normalise to avoid case-sensitive duplicates (e.g. "Python" vs "python")
-        topic = topic.lower().strip()
-        concept = concept.lower().strip()
-        now = datetime.now(UTC).isoformat()
-        progress_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic}:{concept}"))
-        conn.execute(
-            """
-            INSERT INTO study_progress
-                (id, topic, concept, confidence, first_seen, last_seen, session_count,
-                 notes, source_course, source_section, source_publisher, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                confidence = excluded.confidence,
-                last_seen = excluded.last_seen,
-                session_count = session_count + 1,
-                notes = COALESCE(excluded.notes, notes),
-                source_course = COALESCE(excluded.source_course, source_course),
-                source_section = COALESCE(excluded.source_section, source_section),
-                source_publisher = COALESCE(excluded.source_publisher, source_publisher),
-                created_by = COALESCE(excluded.created_by, created_by),
-                updated_at = datetime('now')
-            """,
-            (
-                progress_id,
-                topic,
-                concept,
-                confidence,
-                now,
-                now,
-                notes,
-                source_course,
-                source_section,
-                source_publisher,
-                created_by,
-            ),
+        _record_progress_on_connection(
+            conn,
+            topic,
+            concept,
+            confidence,
+            notes,
+            source_course=source_course,
+            source_section=source_section,
+            source_publisher=source_publisher,
+            source_session_id=source_session_id,
+            created_by=created_by,
         )
         conn.commit()
         return True
     except sqlite3.OperationalError:
+        conn.rollback()
         return False
     finally:
         conn.close()

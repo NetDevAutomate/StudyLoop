@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -284,16 +283,11 @@ def test_the_plugin_refuses_to_load_without_a_manifest_path(tmp_path: Path) -> N
     assert "STUDYLOOP_COVERAGE_MANIFEST" in result.stdout + result.stderr
 
 
-def test_the_fake_agent_entry_point_is_installed() -> None:
-    """Assert the precondition the collector's blind spot depends on.
+def test_the_source_test_agent_is_importable_without_a_product_entry_point() -> None:
+    """E2E support is available in source tests but absent from the product CLI."""
+    import importlib.util
 
-    Much of the e2e suite gates itself with imperative ``pytest.skip()`` behind
-    ``shutil.which(...)`` -- which a collection-time manifest cannot see. Those
-    skips do not fire while the fake-agent console script is installed, so this
-    turns a silent environmental assumption into a checked one.
-    """
-    assert shutil.which("studyloop-fake-agent") is not None, (
-        "studyloop-fake-agent is not on PATH, so parts of the e2e suite will "
-        "skip themselves at runtime in a way the coverage manifest cannot see. "
-        "Run `uv sync --all-packages` to install the console scripts."
-    )
+    assert Path(__file__).with_name("_fake_agent.py").is_file()
+    assert importlib.util.find_spec("studyloop.testing") is None
+    package_toml = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    assert "studyloop-fake-agent" not in package_toml.read_text(encoding="utf-8")

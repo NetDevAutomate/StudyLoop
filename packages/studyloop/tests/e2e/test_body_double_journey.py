@@ -34,7 +34,6 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_body_double_journey.
 from __future__ import annotations
 
 import contextlib
-import shutil
 import socket
 import sys
 import urllib.request
@@ -143,8 +142,6 @@ def bd_env(tmp_path_factory: pytest.TempPathFactory) -> RunningServer:
     """
     root = tmp_path_factory.mktemp("body-double-journey")
     world = build_test_world(root, _free_port(), fake_agent=True)
-    if not shutil.which("studyloop-fake-agent", path=world.env["PATH"]):
-        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
     server = start_server(world)
     try:
         yield server
@@ -436,8 +433,6 @@ def test_phase2_focus_contract_caps_live_topics_at_three(page: Page, bd_env: Run
 
 def test_phase3_session_starts_on_this_surface_only(page: Page, bd_env: RunningServer) -> None:
     """Real spawn, real WebSocket, and only the Body Double console mounts."""
-    if not shutil.which("studyloop-fake-agent", path=bd_env.world.env["PATH"]):
-        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
     try:
         _open_body_double(page, bd_env)
         _ensure_topic_live(page, STUDY_TOPIC)
@@ -450,11 +445,11 @@ def test_phase3_session_starts_on_this_surface_only(page: Page, bd_env: RunningS
         page.wait_for_function(
             """() => {
                 const sel = document.querySelector('#bd-agent-select');
-                return sel && [...sel.options].some((o) => o.value === 'fake');
+                return sel && [...sel.options].some((o) => o.value === 'codex');
             }""",
             timeout=60_000,
         )
-        page.select_option("#bd-agent-select", value="fake")
+        page.select_option("#bd-agent-select", value="codex")
         page.locator("[data-testid='bd-energy-slider']").press("ArrowRight")
         page.wait_for_function(
             "() => !document.querySelector('#bd-start-session').disabled", timeout=10_000
@@ -493,8 +488,6 @@ def test_phase4_agent_asks_a_relevant_question_and_grades_the_answer(
     page: Page, bd_env: RunningServer
 ) -> None:
     """Presence is not enough: the body double must engage with the topic."""
-    if not shutil.which("studyloop-fake-agent", path=bd_env.world.env["PATH"]):
-        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
     try:
         _wait_for_terminal_text(page, "FAKE-AGENT ASKS")
         transcript = _terminal_text(page)

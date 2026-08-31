@@ -1,76 +1,52 @@
-"""
-P5 smoke tests: verify that 'extract-struggles' is wired into all four
-agent harness files.  These are pure file-content assertions — no execution,
-no DB access, no network calls.
-"""
+"""Shipped mentor definitions must not trigger unconfigured extraction."""
+
+from __future__ import annotations
 
 import json
 from pathlib import Path
 
+import pytest
+
 
 def _repo_root() -> Path:
-    """Walk up from this file until we find a directory that contains both
-    'agents/' and 'packages/' subdirectories (repo root)."""
     candidate = Path(__file__).resolve()
     for parent in candidate.parents:
         if (parent / "agents").is_dir() and (parent / "packages").is_dir():
             return parent
-    raise RuntimeError(
-        f"Could not locate repo root (expected dir with agents/ and packages/) "
-        f"starting from {__file__}"
-    )
+    raise RuntimeError("Could not locate repository root")
 
 
 REPO = _repo_root()
-
-CLAUDE_SETTINGS = REPO / "agents" / "claude" / "settings.json"
-KIRO_SKILL = REPO / "agents" / "kiro" / "skills" / "study-mentor" / "SKILL.md"
-GEMINI_MD = REPO / "agents" / "gemini" / "GEMINI.md"
-OPENCODE_MD = REPO / "agents" / "opencode" / "study-mentor.md"
-
 TARGET = "extract-struggles"
+SHIPPED_MENTOR_FILES = (
+    REPO / "agents" / "claude" / "settings.json",
+    REPO / "agents" / "kiro" / "skills" / "study-mentor" / "SKILL.md",
+    REPO / "agents" / "codex" / "AGENTS.md",
+    REPO / "agents" / "opencode" / "study-mentor.md",
+    REPO / "agents" / "pi" / "AGENTS.md",
+)
 
 
-def test_claude_settings_has_extract_struggles() -> None:
-    """agents/claude/settings.json must contain the extract-struggles hook
-    and must be valid JSON."""
-    assert CLAUDE_SETTINGS.exists(), f"File not found: {CLAUDE_SETTINGS}"
-    raw = CLAUDE_SETTINGS.read_text()
-    # Must parse as valid JSON
-    parsed = json.loads(raw)
-    assert parsed is not None, "settings.json is not valid JSON"
-    # Must contain the substring
-    assert TARGET in raw, (
-        f"'{TARGET}' not found in {CLAUDE_SETTINGS}. "
-        "Add the Stop hook block as described in the P5 task."
+@pytest.mark.parametrize("path", SHIPPED_MENTOR_FILES, ids=lambda path: path.parent.name)
+def test_shipped_mentor_does_not_run_unconfigured_extraction(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".json":
+        assert json.loads(text) is not None
+    assert TARGET not in text
+
+
+def test_every_release_harness_has_a_real_session_export_route() -> None:
+    from studyloop.installers import _HARNESS_EXPORT
+
+    assert {name: spec.export_flag for name, spec in _HARNESS_EXPORT.items()} == {
+        "kiro": "kiro-only",
+        "claude": "claude-only",
+        "opencode": "opencode-only",
+        "pi": "pi-only",
+    }
+    assert "session-export --codex-only" in (REPO / "agents" / "codex" / "AGENTS.md").read_text(
+        encoding="utf-8"
     )
-
-
-def test_kiro_skill_has_extract_struggles() -> None:
-    """agents/kiro/skills/study-mentor/SKILL.md must reference extract-struggles."""
-    assert KIRO_SKILL.exists(), f"File not found: {KIRO_SKILL}"
-    text = KIRO_SKILL.read_text()
-    assert TARGET in text, (
-        f"'{TARGET}' not found in {KIRO_SKILL}. "
-        "Add a Session End step referencing studyloop extract-struggles."
-    )
-
-
-def test_gemini_has_extract_struggles() -> None:
-    """agents/gemini/GEMINI.md must reference extract-struggles."""
-    assert GEMINI_MD.exists(), f"File not found: {GEMINI_MD}"
-    text = GEMINI_MD.read_text()
-    assert TARGET in text, (
-        f"'{TARGET}' not found in {GEMINI_MD}. "
-        "Add studyloop extract-struggles to the Key Commands section."
-    )
-
-
-def test_opencode_has_extract_struggles() -> None:
-    """agents/opencode/study-mentor.md must reference extract-struggles."""
-    assert OPENCODE_MD.exists(), f"File not found: {OPENCODE_MD}"
-    text = OPENCODE_MD.read_text()
-    assert TARGET in text, (
-        f"'{TARGET}' not found in {OPENCODE_MD}. "
-        "Add studyloop extract-struggles to permissions and End-of-Session Protocol."
-    )
+    assert "session-export --opencode-only" in (
+        REPO / "agents" / "opencode" / "study-mentor.md"
+    ).read_text(encoding="utf-8")

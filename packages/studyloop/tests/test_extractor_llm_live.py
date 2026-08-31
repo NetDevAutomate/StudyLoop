@@ -21,6 +21,7 @@ Budget: 2-3 real Converse calls on the cheap default; < $0.10 per full run.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
@@ -31,13 +32,19 @@ from studyloop.extractors.pipeline import pre_filter
 
 pytestmark = pytest.mark.live_provider
 
-_DB = Path.home() / ".config" / "studyloop" / "sessions.db"
-_PROFILE = "arraafat+prod-user"
-_REGION = "us-east-1"
 
-# Real sessions, confirmed present in the live DB.
-_STUDY_SESSION = "kiro_0b7a9687-2735-48f7-b287-31a0085dfd93"  # type-hints, 4 user turns, clean
-_NEGATIVE_SESSION = "agent-a7ccf07"  # claude_code build subagent — must yield zero
+def _required_env(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        pytest.skip(f"{name} is required for opt-in live extractor evidence")
+    return value
+
+
+def _live_db() -> Path:
+    path = Path(_required_env("STUDYLOOP_LIVE_SESSION_DB")).expanduser()
+    if not path.is_file():
+        pytest.skip("configured live session database does not exist")
+    return path
 
 
 def _real_client():
@@ -47,18 +54,15 @@ def _real_client():
     except ImportError:
         pytest.skip("boto3 not installed (need the [bedrock] extra) — skipping live test")
     try:
-        session = boto3.Session(profile_name=_PROFILE)
-        # STS keepalive: skip (don't fail) if creds are expired/missing.
-        session.client("sts", region_name=_REGION).get_caller_identity()
-        return session.client("bedrock-runtime", region_name=_REGION)
+        session = boto3.Session()
+        session.client("sts").get_caller_identity()
+        return session.client("bedrock-runtime")
     except Exception as exc:
-        pytest.skip(f"AWS profile {_PROFILE!r} unavailable ({type(exc).__name__}) — skipping")
+        pytest.skip(f"ambient AWS identity unavailable ({type(exc).__name__})")
 
 
-def _fetch(session_id: str) -> list[dict]:
-    if not _DB.exists():
-        pytest.skip(f"live sessions.db not found at {_DB}")
-    conn = sqlite3.connect(_DB)
+def _fetch(db_path: Path, session_id: str) -> list[dict]:
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(
@@ -72,8 +76,8 @@ def _fetch(session_id: str) -> list[dict]:
     return [{"role": r["role"], "content": r["content"]} for r in rows]
 
 
-def _source(session_id: str) -> str | None:
-    conn = sqlite3.connect(_DB)
+def _source(db_path: Path, session_id: str) -> str | None:
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
         row = conn.execute("SELECT source FROM sessions WHERE id = ?", (session_id,)).fetchone()
@@ -90,9 +94,12 @@ def test_real_study_session_yields_valid_results() -> None:
     """
     from studyloop.extractors.llm import extract_struggles
 
+    db_path = _live_db()
+    session_id = _required_env("STUDYLOOP_LIVE_STUDY_SESSION_ID")
+    model = _required_env("STUDYLOOP_LIVE_EXTRACTOR_MODEL")
     client = _real_client()
-    messages = _fetch(_STUDY_SESSION)
-    results = extract_struggles(messages, _STUDY_SESSION, client=client)
+    messages = _fetch(db_path, session_id)
+    results = extract_struggles(messages, session_id, model=model, client=client)
 
     # The extractor must not crash and must return a (possibly empty) list of
     # structurally-valid results.
@@ -118,15 +125,18 @@ def test_real_negative_session_yields_zero_via_pipeline() -> None:
     """
     from studyloop.extractors.llm import extract_struggles
 
-    messages = _fetch(_NEGATIVE_SESSION)
-    source = _source(_NEGATIVE_SESSION)
+    db_path = _live_db()
+    session_id = _required_env("STUDYLOOP_LIVE_NEGATIVE_SESSION_ID")
+    model = _required_env("STUDYLOOP_LIVE_EXTRACTOR_MODEL")
+    messages = _fetch(db_path, session_id)
+    source = _source(db_path, session_id)
 
     # Production path: pre_filter gates the extractor.
-    if pre_filter(_NEGATIVE_SESSION, source, messages):
+    if pre_filter(session_id, source, messages):
         # Should not happen for a claude_code session, but if it did, the
         # extractor output must still be empty — assert the stronger invariant.
         client = _real_client()
-        results = extract_struggles(messages, _NEGATIVE_SESSION, client=client)
+        results = extract_struggles(messages, session_id, model=model, client=client)
         assert results == [], f"negative session leaked {len(results)} rows"
     else:
         # Expected branch: filtered out, zero cost, zero rows.
@@ -144,14 +154,11 @@ def test_eval_run_survives_a_crashing_model() -> None:
     """
     from studyloop.extractors import eval_runner as ev
 
+    db_path = _live_db()
+    model = _required_env("STUDYLOOP_LIVE_CRASHING_MODEL")
     client = _real_client()
-    if not _DB.exists():
-        pytest.skip(f"live sessions.db not found at {_DB}")
 
-    # nova-lite is known to emit invalid ToolUse on some real transcripts.
-    metrics, _cost, scores = ev.run_eval(
-        "train", db_path=_DB, model="amazon.nova-lite-v1:0", client=client
-    )
+    metrics, _cost, scores = ev.run_eval("train", db_path=db_path, model=model, client=client)
 
     expected_n = len(ev._load(ev._SPLIT_PATH)["train"])
     assert len(scores) == expected_n, "run did not complete all sessions — isolation failed"
@@ -163,21 +170,16 @@ def test_eval_run_survives_a_crashing_model() -> None:
             assert "Exception" in s.error or "Error" in s.error
 
 
-def test_real_extraction_respects_temperature_zero_determinism() -> None:
-    """Two real runs on the same session return the same normalised topic set.
-
-    temperature=0 should make the (topic, concept) key set stable across runs.
-    Tolerant by design: asserts set equality of normalised keys, not full
-    object equality (notes/evidence quotes may vary).
-    """
+def test_real_extraction_returns_validated_normalised_keys() -> None:
+    """A real current model returns only validated normalised topic keys."""
     from studyloop.extractors.llm import extract_struggles
 
+    db_path = _live_db()
+    session_id = _required_env("STUDYLOOP_LIVE_STUDY_SESSION_ID")
+    model = _required_env("STUDYLOOP_LIVE_EXTRACTOR_MODEL")
     client = _real_client()
-    messages = _fetch(_STUDY_SESSION)
+    messages = _fetch(db_path, session_id)
 
-    def keyset(rs: list[ExtractorResult]) -> set[tuple[str, str]]:
-        return {(r.topic, r.concept) for r in rs}
-
-    first = keyset(extract_struggles(messages, _STUDY_SESSION, client=client))
-    second = keyset(extract_struggles(messages, _STUDY_SESSION, client=client))
-    assert first == second, f"temperature=0 not stable: {first} vs {second}"
+    results = extract_struggles(messages, session_id, model=model, client=client)
+    assert all(result.topic == result.topic.strip().lower() for result in results)
+    assert all(result.concept == result.concept.strip().lower() for result in results)

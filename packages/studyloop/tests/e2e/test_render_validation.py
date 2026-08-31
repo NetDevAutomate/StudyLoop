@@ -378,11 +378,7 @@ FAKE_PORT = 18602
 
 @pytest.fixture(scope="module")
 def fake_env(tmp_path_factory):
-    """Server with the deterministic fake agent registered."""
-    import shutil
-
-    if not shutil.which("studyloop-fake-agent"):
-        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
+    """Server with a source-test child behind the real Codex adapter."""
     root = tmp_path_factory.mktemp("render-terminal")
     e = launch_env(root, FAKE_PORT, fake_agent=True)
     try:
@@ -428,11 +424,11 @@ def test_terminal_paints_agent_bytes(browser: Browser, fake_env) -> None:
         page.wait_for_function(
             """() => {
                 const s = document.querySelector('#agent-select');
-                return s && [...s.options].some(o => o.value === 'fake');
+                return s && [...s.options].some(o => o.value === 'codex');
             }""",
             timeout=40000,
         )
-        page.select_option("#agent-select", value="fake")
+        page.select_option("#agent-select", value="codex")
         page.wait_for_function(
             "() => !document.querySelector('.study-start-picker .start-session-btn').disabled",
             timeout=10000,

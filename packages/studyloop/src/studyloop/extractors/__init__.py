@@ -4,13 +4,9 @@ Reads study-session transcripts from sessions.db, identifies topics the learner
 struggled with, and upserts structured rows into ``study_progress`` via
 ``record_progress()``.
 
-The public contract every extractor implements is ``extract_struggles(messages,
-session_id) -> list[ExtractorResult]``.  Two implementations exist:
-
-- :mod:`studyloop.extractors.stub` — deterministic, fixture-backed, zero LLM
-  cost.  Used for all pipeline-plumbing tests.
-- :mod:`studyloop.extractors.llm` — the real Anthropic-compat extractor (built
-  in a later phase).
+The production extractor is :mod:`studyloop.extractors.llm`. Pipeline tests
+inject their deterministic double from the test package; fixture-backed
+extractors are never distributed with StudyLoop.
 
 Confidence values mirror the ``study_progress`` vocabulary used elsewhere in the
 codebase (see ``mcp/tools.py`` ``_CONFIDENCE_MAP``).

@@ -15,11 +15,17 @@ See `~/.agents/shared/teach-back-protocol.md` for teach-back scoring.
 
 ## Session Memory
 
-Read `./session-db.md` at the start of every session for the full mandate.
+At the **start** of each session, use StudyLoop's installed CLI to recover real
+learning context without requiring a pi extension:
 
-At the **start** of each session, call the `session_search` MCP tool with the
-current project path to surface relevant past sessions and struggle signals
-before proceeding.
+```
+studyloop resume
+studyloop struggles
+studyloop review
+```
+
+Briefly mention relevant prior context before proceeding. If a command is
+unavailable, report that once and continue without inventing replacement data.
 
 ## Session Export
 

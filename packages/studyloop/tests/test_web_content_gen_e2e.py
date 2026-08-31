@@ -1,9 +1,8 @@
 """Playwright UI tests for the Generate panel (U8).
 
-Spawns a real ``studyloop web`` subprocess pointed at a tmp study
-vault + a tmp config file that pins ``card_generator.backend = stub``.
-The stub backend is offline + free, so these tests run in seconds and
-exercise the full REST → WS → progress UI loop end-to-end.
+Spawns the real ``studyloop web`` command through a test-only launcher.
+The launcher injects a deterministic generator before startup, while the
+production factory remains restricted to real model backends.
 
 Mirrors the harness pattern used by ``test_web_navigation.py``.
 """
@@ -16,6 +15,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -26,7 +26,6 @@ pytest.importorskip("uvicorn")
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from pathlib import Path
 
     from playwright.sync_api import Browser, Page
 
@@ -62,14 +61,14 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def stub_config(tmp_path: Path, vault: Path) -> Path:
-    """Tmp config that pins backend=stub and points review + content at the vault.
+    """Tmp config that points review and content at the isolated vault.
 
     ``review.directories`` (drives ``/api/courses``) points at the course
     dir so generated decks are discoverable by the reviewer;
     ``content.base_path`` (drives the scope resolver + sections route)
     points at the study root. They are read by different code paths.
     """
-    cfg = tmp_path / "studyloop-stub.yaml"
+    cfg = tmp_path / "studyloop-test.yaml"
     sessions_db = tmp_path / "sessions.db"
     course_dir = vault / _PUBLISHER / _COURSE
     cfg.write_text(
@@ -81,9 +80,8 @@ review:
 content:
   base_path: {vault}
 card_generator:
-  backend: stub
+  backend: ollama
   max_workers: 2
-  stub_card_count: 3
 """,
         encoding="utf-8",
     )
@@ -97,8 +95,7 @@ def server(stub_config: Path) -> Generator[subprocess.Popen, None, None]:
     env["STUDYLOOP_CONFIG"] = str(stub_config)
     cmd = [
         sys.executable,
-        "-m",
-        "studyloop.cli",
+        str(Path(__file__).resolve().parent / "_content_test_server.py"),
         "web",
         "--port",
         str(WEB_PORT),

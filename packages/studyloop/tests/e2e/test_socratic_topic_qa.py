@@ -15,7 +15,7 @@ Two properties the goal calls for, both machine-checked rather than eyeballed:
 The transcript is produced by the real product path: the web app spawns the
 agent over a PTY, bytes travel the real session WebSocket, and the learner's
 answers are typed the way the UI types them. The question bank is shared with
-the agent (``studyloop.testing.socratic_bank``) so the assertions cannot drift
+the test agent (``_socratic_bank``) so the assertions cannot drift
 from what the agent actually says.
 
 The same properties against a **live LLM mentor** are covered by
@@ -29,8 +29,6 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_socratic_topic_qa.py
 from __future__ import annotations
 
 import json
-import os
-import shutil
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -74,9 +72,6 @@ WRONG_ANSWER = "i think you just put an at sign there and python compiles it awa
 
 @pytest.fixture(scope="module")
 def env(tmp_path_factory):
-    controlled_path = os.pathsep.join((str(Path(sys.prefix) / "bin"), os.defpath))
-    if not shutil.which("studyloop-fake-agent", path=controlled_path):
-        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
     root = tmp_path_factory.mktemp("socratic-qa")
     e = launch_env(root, PORT, fake_agent=True)
     try:
@@ -141,16 +136,15 @@ def test_mentor_asks_topic_relevant_questions_and_grades_answers(env) -> None:
     questions → assert every question was on-topic and the session completed.
     """
     import requests
+    from _socratic_bank import bank_for_topic
     from websockets.sync.client import connect as ws_connect
-
-    from studyloop.testing.socratic_bank import bank_for_topic
 
     bank = bank_for_topic(STUDY_TOPIC)
     assert bank.questions, f"no question bank for {STUDY_TOPIC!r} — nothing to teach"
 
     resp = requests.post(
         f"{env.base_url}/api/session/start",
-        json={"topic": STUDY_TOPIC, "energy": 6, "agent": "fake", "transport": "pty"},
+        json={"topic": STUDY_TOPIC, "energy": 6, "agent": "codex", "transport": "pty"},
         timeout=25,
     )
     body = resp.json()
@@ -241,7 +235,7 @@ def test_grading_boundary_is_asserted_both_ways() -> None:
     Unit-level counterpart to the transcript assertions: without this, a
     grader that returns True for everything would still satisfy the journey.
     """
-    from studyloop.testing.socratic_bank import bank_for_topic
+    from _socratic_bank import bank_for_topic
 
     bank = bank_for_topic(STUDY_TOPIC)
     for question, good in zip(bank.questions, GOOD_ANSWERS, strict=False):
@@ -257,7 +251,7 @@ def test_every_bank_question_is_socratic_and_on_topic() -> None:
     mark, without topic vocabulary, or with a keyword set its own canonical
     answer fails, breaks here rather than in a confusing journey timeout.
     """
-    from studyloop.testing.socratic_bank import BANKS
+    from _socratic_bank import BANKS
 
     for bank in BANKS:
         assert bank.questions, f"bank {bank.topic!r} has no questions"
@@ -321,11 +315,11 @@ def test_learner_answers_questions_in_the_browser_terminal(browser: Browser, env
         page.wait_for_function(
             """() => {
                 const s = document.querySelector('#agent-select');
-                return s && [...s.options].some(o => o.value === 'fake');
+                return s && [...s.options].some(o => o.value === 'codex');
             }""",
             timeout=40000,
         )
-        page.select_option("#agent-select", value="fake")
+        page.select_option("#agent-select", value="codex")
         page.wait_for_function(
             "() => !document.querySelector('.study-start-picker .start-session-btn').disabled",
             timeout=10000,

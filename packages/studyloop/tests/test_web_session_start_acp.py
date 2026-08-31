@@ -217,7 +217,7 @@ class TestAcpCapabilityGuard:
         assert "repair" in body
         assert run_async(active.current()) is None
 
-    @pytest.mark.parametrize("agent", ["kiro", "gemini", "grok"])
+    @pytest.mark.parametrize("agent", ["kiro"])
     def test_acp_capable_agents_pass_the_guard(self, agent: str) -> None:
         """The guard admits exactly the ACP-capable set (contract lock)."""
         from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS

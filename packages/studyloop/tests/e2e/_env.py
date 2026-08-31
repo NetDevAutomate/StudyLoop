@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import sys
 import time
 from contextlib import suppress
@@ -32,6 +33,8 @@ if _tests_dir not in sys.path:
 
 from _playwright_helpers import start_web_server  # noqa: E402
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS  # noqa: E402
+
+_TEST_AGENT_SCRIPT = Path(_tests_dir) / "_fake_agent.py"
 
 if TYPE_CHECKING:
     import subprocess
@@ -259,7 +262,9 @@ def build_test_world(
         "STUDYLOOP_PLANS_DIR": str(plans),
     }
     if fake_agent:
-        child_env["STUDYLOOP_TEST_AGENT"] = "1"
+        child_env["STUDYLOOP_TEST_AGENT_CMD"] = shlex.join(
+            [sys.executable, str(_TEST_AGENT_SCRIPT), "{persona_file}"]
+        )
     if path_prefix is not None:
         child_env["PATH"] = os.pathsep.join((str(path_prefix), child_env["PATH"]))
     if extra_env:

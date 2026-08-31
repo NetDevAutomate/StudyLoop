@@ -8,6 +8,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from studyloop.harnesses import RELEASE_HARNESSES
 from studyloop.settings import generate_default_config, get_config_path, load_settings
 
 
@@ -48,13 +49,6 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
             str(_HOME / ".claude/agents/socratic-mentor.md"),
         ),
     ),
-    "gemini": (
-        LinkSpec(
-            "agents/gemini/study-mentor.md",
-            str(_HOME / ".gemini/agents/study-mentor.md"),
-        ),
-        LinkSpec("agents/gemini/GEMINI.md", "{repo_root}/GEMINI.md"),
-    ),
     "opencode": (
         LinkSpec(
             "agents/opencode/study-mentor.md",
@@ -62,15 +56,12 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
         ),
     ),
     "codex": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
-    "grok": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
-    "amp": (),
     "pi": (LinkSpec("agents/pi/AGENTS.md", str(_HOME / ".pi/agent/AGENTS.md")),),
-    "omp": (LinkSpec("agents/omp/AGENTS.md", str(_HOME / ".omp/agent/AGENTS.md")),),
 }
 
 _SHARED_LINKS: tuple[LinkSpec, ...] = (LinkSpec("agents/shared", str(_HOME / ".agents/shared")),)
 
-_AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "grok", "amp", "pi", "omp")
+_AGENT_CHOICES = RELEASE_HARNESSES
 
 # ---------------------------------------------------------------------------
 # Cross-harness session-export wiring (W4)
@@ -79,8 +70,8 @@ _AGENT_CHOICES = ("kiro", "claude", "gemini", "opencode", "codex", "grok", "amp"
 # The session DB is the single source of truth for cross-harness struggle
 # tracking. Each harness needs a steering-file mandate telling its agent to
 # run `session-export` at session end; Claude Code additionally gets a Stop
-# hook so export happens automatically. ``codex`` is intentionally absent —
-# session-export has no codex source in SOURCE_CHOICES yet.
+# hook so export happens automatically. Codex carries the same mandate directly
+# in its installed ``AGENTS.md``, so it does not need a second steering file.
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,10 +85,8 @@ class _HarnessExport:
 _HARNESS_EXPORT: dict[str, _HarnessExport] = {
     "claude": _HarnessExport(_HOME / ".claude/rules/session-db.md", "claude-only"),
     "kiro": _HarnessExport(_HOME / ".kiro/steering/session-db.md", "kiro-only"),
-    "gemini": _HarnessExport(_HOME / ".gemini/session-db.md", "gemini-only"),
-    "opencode": _HarnessExport(_HOME / ".config/opencode/session-db.md", "sources opencode"),
+    "opencode": _HarnessExport(_HOME / ".config/opencode/session-db.md", "opencode-only"),
     "pi": _HarnessExport(_HOME / ".pi/agent/session-db.md", "pi-only"),
-    "omp": _HarnessExport(_HOME / ".omp/agent/session-db.md", "omp-only"),
 }
 
 # Sentinel marking a steering file as carrying the export mandate (idempotency
@@ -314,20 +303,12 @@ def detect_available_agent_tools() -> list[str]:
         available.append("kiro")
     if (_HOME / ".claude").is_dir():
         available.append("claude")
-    if (_HOME / ".gemini").is_dir():
-        available.append("gemini")
     if shutil.which("opencode"):
         available.append("opencode")
     if shutil.which("codex"):
         available.append("codex")
-    if shutil.which("grok"):
-        available.append("grok")
-    if shutil.which("amp"):
-        available.append("amp")
-    if (_HOME / ".pi").is_dir():
+    if shutil.which("pi") or (_HOME / ".pi").is_dir():
         available.append("pi")
-    if (_HOME / ".omp").is_dir():
-        available.append("omp")
     return available
 
 
@@ -353,23 +334,6 @@ def _configure_claude(repo_root: Path, *, uninstall: bool) -> int:
     return changed
 
 
-def _configure_gemini(*, uninstall: bool) -> int:
-    gemini_home = _HOME / ".gemini"
-    settings = gemini_home / "settings.json"
-    changed = 0
-
-    if uninstall:
-        return 0
-
-    if settings.exists() and '"enableAgents"' in settings.read_text():
-        return 0
-
-    gemini_home.mkdir(parents=True, exist_ok=True)
-    settings.write_text('{\n  "experimental": {\n    "enableAgents": true\n  }\n}\n')
-    changed += 1
-    return changed
-
-
 def install_agent_definitions(
     repo_root: Path,
     *,
@@ -381,7 +345,7 @@ def install_agent_definitions(
     if not selected:
         raise InstallError(
             "No supported AI tools detected. "
-            "Install Claude Code, Kiro, Gemini, OpenCode, Codex, Grok, or Amp first."
+            "Install Kiro CLI, Codex, Claude Code, OpenCode, or pi first."
         )
 
     invalid = [tool for tool in selected if tool not in _AGENT_CHOICES]
@@ -394,8 +358,6 @@ def install_agent_definitions(
         summary[tool] = _link_paths(repo_root, _TOOL_LINKS[tool], uninstall=uninstall)
         if tool == "claude":
             summary[tool] += _configure_claude(repo_root, uninstall=uninstall)
-        elif tool == "gemini":
-            summary[tool] += _configure_gemini(uninstall=uninstall)
 
     # Cross-harness session-export wiring: steering mandate for every detected
     # harness + a Stop hook for Claude. Skipped on uninstall.

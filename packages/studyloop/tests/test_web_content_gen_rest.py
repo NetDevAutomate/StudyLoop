@@ -4,13 +4,13 @@ The REST handler resolves scope synchronously, acquires the
 active-generation singleton, and spawns the orchestrator on a
 background task. We exercise:
 
-- 202 + plan summary on the happy path (stub backend).
+- 202 + plan summary on the happy path with a test-only generator.
 - 400/404 on ill-formed / empty scopes.
 - 409 on a second concurrent request.
 - Singleton released after the spawned task completes.
 
-The stub backend is deterministic, offline, and free, so these tests
-run in milliseconds and don't touch any provider keys.
+The generator is injected at the production protocol seam, so these tests run
+without provider keys while the shipped factory remains real-backend-only.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
+from _content_generator import DeterministicTestGenerator, GeneratorFixtureConfig
 from _helpers import run_async
 
 pytest.importorskip("fastapi")
@@ -64,17 +65,17 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def stub_settings(vault: Path, monkeypatch: MonkeyPatch):
-    """Patch ``load_settings`` so the route uses our tmp vault + stub backend."""
+    """Patch settings and inject a generator that exists only in tests."""
     from studyloop.settings import CardGeneratorConfig, ContentConfig, Settings
 
     s = Settings()
     s.content = ContentConfig(base_path=vault)
-    s.card_generator = CardGeneratorConfig(
-        backend="stub",
-        max_workers=2,
-        stub_card_count=3,
-    )
+    s.card_generator = CardGeneratorConfig(backend="ollama", max_workers=2)
     monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+    monkeypatch.setattr(
+        "studyloop.content.job.get_generator",
+        lambda _config: DeterministicTestGenerator(GeneratorFixtureConfig(card_count=3)),
+    )
     return s
 
 
@@ -114,7 +115,7 @@ def _valid_body(
         "kinds": ["flashcards"],
         "count_per_source": 5,
         "on_existing": "suffix",
-        "backend": "stub",
+        "backend": "ollama",
     }
 
 
@@ -131,7 +132,7 @@ class TestHappyPath:
         assert data["job_id"].startswith("gen-")
         assert data["plan"]["task_count"] == 1
         assert data["plan"]["kinds"] == ["flashcards"]
-        assert data["plan"]["backend"] == "stub"
+        assert data["plan"]["backend"] == "ollama"
         assert data["plan"]["count_per_source"] == 5
         assert len(data["plan"]["sources"]) == 1
         assert data["plan"]["sources"][0]["identifier"] == "joins"

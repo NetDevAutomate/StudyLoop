@@ -320,6 +320,11 @@ export function liveAgentConsole(origin = 'study') {
           this.connected = true;
           this.statusDot = 'live';
           this.status = `Connected · ${detail.resolvedAgent || detail.agent || 'Agent'}`;
+          if (detail.reattached && this._term) {
+            this._term.writeln(
+              '\r\n\x1b[2m[reattached to your running session; earlier output is not replayed]\x1b[0m',
+            );
+          }
           /* Send initial resize so the child sees the real terminal size. */
           if (this._term) {
             ws.send(JSON.stringify({

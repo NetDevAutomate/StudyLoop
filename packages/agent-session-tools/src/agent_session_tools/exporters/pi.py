@@ -1,10 +1,6 @@
-"""pi coding agent and oh-my-pi (omp) session exporter.
-
-Both harnesses use an identical on-disk JSONL format and differ only in their
-storage roots:
+"""pi coding agent session exporter.
 
   pi  sessions:  ~/.pi/agent/sessions/<cwd-slug>/<ISO-ts>_<uuid>.jsonl
-  omp sessions:  ~/.omp/agent/sessions/<cwd-slug>/<ISO-ts>_<uuid>.jsonl
 
 **File format (version 3)**
 ============================
@@ -13,7 +9,7 @@ Line 1 — session header::
     {"type": "session", "version": 3, "id": "<uuid>",
      "timestamp": "<ISO8601 with ms+Z>", "cwd": "/abs/path"}
 
-  ``timestamp`` may be absent on some omp headers; fall back to the session-id's
+  ``timestamp`` may be absent on some headers; fall back to the session-id's
   embedded time or the first message timestamp.
 
 Subsequent lines::
@@ -47,7 +43,6 @@ from .base import ExportStats, commit_batch
 
 # Module-level constants — monkeypatched in tests
 PI_SESSIONS = Path.home() / ".pi" / "agent" / "sessions"
-OMP_SESSIONS = Path.home() / ".omp" / "agent" / "sessions"
 
 
 def _ms_to_iso(ms: int | float | None) -> str | None:
@@ -61,7 +56,7 @@ def _ms_to_iso(ms: int | float | None) -> str | None:
 
 
 def _extract_text(msg_obj: dict) -> str | None:
-    """Extract plain text from a pi/omp message object.
+    """Extract plain text from a pi message object.
 
     Concatenates all ``type=="text"`` parts from the ``content`` array.
     Skips ``thinking`` and ``toolCall`` parts.
@@ -115,11 +110,10 @@ def _header_timestamp(header: dict) -> str | None:
 
 
 class PiFamilyExporter:
-    """Parametrised exporter for pi and oh-my-pi (omp) JSONL session files.
+    """Exporter for pi JSONL session files.
 
-    Instantiate with a ``source_name`` ("pi" or "omp") and the corresponding
-    session root directory.  Two concrete instances are provided as module-level
-    constants: ``PiExporter`` and ``OhMyPiExporter``.
+    The constructor remains parameterised to support isolated test roots without
+    changing the admitted source name used by the CLI registry.
     """
 
     def __init__(self, source_name: str, root: Path) -> None:
@@ -321,4 +315,3 @@ class PiFamilyExporter:
 
 # Concrete instances used by the exporter registry
 PiExporter = PiFamilyExporter("pi", PI_SESSIONS)
-OhMyPiExporter = PiFamilyExporter("omp", OMP_SESSIONS)

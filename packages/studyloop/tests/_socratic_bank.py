@@ -12,7 +12,7 @@ The e2e harness must prove two things that a canned echo cannot:
 An LLM can do both but is non-deterministic and needs credentials; a stub that
 replies "tell me more" does neither. This bank is the middle ground: real
 topic-specific questions with graded answers, keyed by topic, shared by
-``studyloop-fake-agent`` (which asks them) and the e2e tests (which assert
+the test child process (which asks them) and the e2e tests (which assert
 relevance and grading). One source of truth means a test cannot drift from
 what the agent actually says.
 

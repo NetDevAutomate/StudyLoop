@@ -45,7 +45,7 @@ def test_world_paths_are_under_its_temporary_root(tmp_path: Path) -> None:
     ):
         assert path.is_relative_to(world.root), path
 
-    assert world.env["STUDYLOOP_TEST_AGENT"] == "1"
+    assert "_fake_agent.py" in world.env["STUDYLOOP_TEST_AGENT_CMD"]
     assert world.base_url == "http://127.0.0.1:18700"
 
 

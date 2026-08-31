@@ -47,6 +47,7 @@ import click
 import yaml
 
 from studyloop.cli._shared import console
+from studyloop.harnesses import HARNESSES, RELEASE_HARNESSES
 from studyloop.settings import CONFIG_DIR, MAX_ACTIVE_TOPICS, get_config_path
 
 #: Extensions treated as study notes in 0.1.0. Kept as a list rather than a
@@ -78,15 +79,8 @@ SCAN_MAX_DEPTH = 3
 SCAN_MAX_FILES = 5000
 
 #: Harness binaries, in the order they are offered when detection is ambiguous.
-HARNESS_BINARIES: tuple[tuple[str, str], ...] = (
-    ("claude", "claude-code"),
-    ("codex", "codex"),
-    ("kiro-cli", "kiro"),
-    ("gemini", "gemini-cli"),
-    ("opencode", "opencode"),
-    ("pi", "pi"),
-    ("omp", "omp"),
-    ("ollama", "ollama"),
+HARNESS_BINARIES: tuple[tuple[str, str], ...] = tuple(
+    (HARNESSES[name].binary, name) for name in RELEASE_HARNESSES
 )
 
 

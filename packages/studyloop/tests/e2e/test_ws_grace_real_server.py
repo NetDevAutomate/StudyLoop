@@ -30,7 +30,6 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-import shutil
 import signal
 import socket
 import subprocess
@@ -58,7 +57,7 @@ from websockets.sync.client import connect as ws_connect  # noqa: E402
 #: a real wait, short enough that "expires" is testable.
 GRACE_S = 3.0
 
-AGENT_BINARY = "studyloop-fake-agent"
+AGENT_PROCESS_PATTERN = "_fake_agent.py"
 BANNER = b"FAKE-AGENT READY"
 
 
@@ -81,7 +80,7 @@ def _agent_pids() -> set[int]:
     leave an orphan behind" is a question about the OS, not about our bookkeeping.
     """
     result = subprocess.run(
-        ["pgrep", "-f", AGENT_BINARY],
+        ["pgrep", "-f", AGENT_PROCESS_PATTERN],
         capture_output=True,
         text=True,
         check=False,
@@ -177,13 +176,6 @@ def _read_until(ws, marker: bytes, timeout: float = 15.0) -> bytes:
     raise AssertionError(f"never saw {marker!r}; got {buf[-400:]!r}")
 
 
-@pytest.fixture(autouse=True)
-def _needs_editable_install() -> None:
-    controlled_path = os.pathsep.join((str(Path(sys.prefix) / "bin"), os.defpath))
-    if not shutil.which(AGENT_BINARY, path=controlled_path):
-        pytest.skip(f"{AGENT_BINARY} not installed (editable install needed)")
-
-
 @pytest.fixture()
 def server(tmp_path: Path):
     srv = Server(tmp_path)
@@ -204,7 +196,7 @@ def server(tmp_path: Path):
 def _start(server: Server, topic: str) -> str:
     status, body = server.post(
         "/api/session/start",
-        {"topic": topic, "energy": 5, "agent": "fake", "transport": "pty"},
+        {"topic": topic, "energy": 5, "agent": "codex", "transport": "pty"},
     )
     assert status == 201, (status, body)
     return body["study_session_id"]
@@ -316,7 +308,7 @@ class TestGraceAgainstARealAgent:
         # And the freed slot is immediately usable.
         status, _ = server.post(
             "/api/session/start",
-            {"topic": "Next One", "energy": 5, "agent": "fake", "transport": "pty"},
+            {"topic": "Next One", "energy": 5, "agent": "codex", "transport": "pty"},
         )
         assert status == 201, "slot still pinned after the agent died"
 
@@ -328,7 +320,7 @@ class TestGraceAgainstARealAgent:
 
         status, body = server.post(
             "/api/session/start",
-            {"topic": "Something Else", "energy": 5, "agent": "fake", "transport": "pty"},
+            {"topic": "Something Else", "energy": 5, "agent": "codex", "transport": "pty"},
         )
         assert status == 409, (status, body)
         assert "WS Grace Conflict" in body["error"], body
@@ -413,9 +405,6 @@ class TestServerShutdown:
         Owns its server rather than using the fixture, because the assertion is
         about what the *stop* leaves behind.
         """
-        if not shutil.which(AGENT_BINARY):
-            pytest.skip(f"{AGENT_BINARY} not installed (editable install needed)")
-
         before = _agent_pids()
         srv = Server(tmp_path, grace=300.0)  # long window: only shutdown can free it
         try:
