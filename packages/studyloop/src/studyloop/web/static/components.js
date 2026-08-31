@@ -2719,6 +2719,19 @@ function parkingPanel() {
         if (this.selectMode) this.toggleSelect(item.id);
         else this.openEditor(item);
       } else if (ev.key === 'Escape') {
+        /* The panel has its own window-level Escape handler
+           (index.html: @keydown.escape.window -> close()), so an Escape aimed
+           at the note editor would otherwise ALSO close the whole parking
+           panel. That closure is near-invisible: the panel is x-show'd, so its
+           cards stay queryable in the DOM while hidden, and the only
+           consequence is that the 'parking:changed' listener stops refreshing
+           the board, because it is gated on the panel being open. Anything
+           parked afterwards then silently fails to appear.
+
+           So swallow the Escape only when there is an editor to close. With no
+           editor open, Escape still means 'dismiss the panel' and must reach
+           the window handler. */
+        if (this.editingId != null) ev.stopPropagation();
         this.closeEditor();
       }
     },

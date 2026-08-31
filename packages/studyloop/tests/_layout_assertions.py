@@ -143,11 +143,24 @@ def assert_scroll_reachable(page: Page, selector: str, container: str) -> None:
     scrollable container (``overflow-y:auto`` with scrollHeight > clientHeight)
     so the user can scroll to it — not be clipped by an ``overflow:hidden``
     ancestor. Motivated by the Study Session picker clipping bug.
+
+    Resolves both selectors through ``__vis``, not ``document.querySelector``.
+    That is not a style preference. ``.session-start-picker .picker-hint``
+    matches six elements, because StudyLoop keeps every view in the DOM and
+    toggles them with x-show, and ``document.querySelector`` returned a hidden
+    zero-size instance whose rect sits at the document origin. Such a rect can
+    never fall inside a container that has just been scrolled to its bottom, so
+    this assertion reported clipping against a layout that was genuinely
+    scrollable — scrollHeight 814 > clientHeight 642 on the one visible
+    container. The file header calls this out as the hazard ``__vis`` exists
+    for; every other helper here already obeys it.
     """
     reachable = page.evaluate(
-        """([sel, contSel]) => {
-            const el = document.querySelector(sel);
-            const cont = document.querySelector(contSel);
+        """([sel, contSel]) => {"""
+        + _VIS_FN
+        + """
+            const el = __vis(sel);
+            const cont = __vis(contSel);
             if (!el || !cont) return null;
             cont.scrollTop = cont.scrollHeight;
             const er = el.getBoundingClientRect();
