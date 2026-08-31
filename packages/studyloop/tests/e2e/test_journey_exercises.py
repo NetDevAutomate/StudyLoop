@@ -23,6 +23,39 @@ The journey mirrors what a learner actually does:
 Run:
     cd packages/studyloop
     uv run pytest tests/e2e/test_journey_exercises.py -m e2e
+
+QUARANTINED FOR 0.1.0 — the panel this journey drives does not exist.
+
+Exercises ship in 0.1.0 as an API and a CLI surface only; no web panel and no
+LLM generation. Every one of the five testids this file drives
+(``exercise-refresh``, ``exercises-section``, ``exercise-generate``,
+``exercise-format``, ``exercise-submit``) has zero occurrences in
+web/static, and the string "exercise" appears nowhere in the SPA's HTML or JS.
+All 11 phases were red for that one reason: 3 failed and 8 errored at fixture
+setup.
+
+Phase 11 is quarantined with the rest, which the remediation brief did not
+anticipate, for two verified reasons:
+
+  1. It cannot be kept live. It is not an API test — its ``authored_set``
+     fixture creates the set through the real API and then OPENS IT IN THE UI
+     (line ~356, ``page.locator('[data-testid="exercise-refresh"]').click()``),
+     so it errors at setup like the panel phases. Its assertion reads
+     ``page._seen_bodies``, i.e. traffic the panel generated; with no panel
+     there is no traffic and ``assert bodies`` fails.
+
+  2. Nothing is lost. The answer-key guarantee is covered at the API boundary,
+     more strongly than here, by test_web_exercises.py:
+     ``test_attempt_payload_withholds_the_answer`` and
+     ``test_whole_response_body_is_free_of_the_answer_key``, which asserts
+     ``'"correct"' not in text`` across the WHOLE response body, plus the
+     author-side counterparts proving ``include_reference=true`` still works.
+     Those are deterministic and need no browser. This phase only inspected
+     whatever the panel happened to request.
+
+Un-quarantine when the exercises panel is built: delete the pytestmark and
+re-run. Do not "fix" these tests against a panel that is absent — that is how
+a green suite starts certifying a surface nobody shipped.
 """
 
 from __future__ import annotations
@@ -51,7 +84,19 @@ from e2e._env import launch_env, shutdown  # noqa: E402
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
-pytestmark = [pytest.mark.e2e]
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skip(
+        reason=(
+            "quarantined panel journey — the exercises web panel is not part of "
+            "0.1.0. All five testids this file drives have zero occurrences in "
+            "web/static, so every phase errors at setup. Answer-key privacy is "
+            "covered at the API boundary by test_web_exercises.py "
+            "(test_whole_response_body_is_free_of_the_answer_key). Un-quarantine "
+            "when the panel exists; see the module docstring for the full reason."
+        )
+    ),
+]
 
 WEB_PORT = 18613
 

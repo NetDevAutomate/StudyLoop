@@ -435,6 +435,19 @@ class TestStudyPickerRecovery:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(
+    reason=(
+        "out of scope for 0.1.0, not a defect to fix. These two tests drive "
+        ".park-first-delete and .park-first-undo-btn — per-item delete and undo "
+        "inside the park-first modal. That interaction is superseded by the "
+        "bridge-aware deferred-topics design in "
+        "docs/adr/0006-bridge-aware-deferred-topics.md, which deliberately "
+        "replaces the standing pile of deferred topics rather than adding more "
+        "ways to prune it. Building these to green the suite would ship a "
+        "surface the ADR says must not exist. Revisit with 0.2.0's deferred-"
+        "topics work, not before."
+    )
+)
 class TestParkFirstModalDelete:
     def _seed_three(self, base_url: str) -> list[str]:
         questions = ["Topic Alpha", "Topic Bravo", "Topic Charlie"]
