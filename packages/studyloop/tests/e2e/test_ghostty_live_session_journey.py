@@ -26,7 +26,7 @@ cannot: xterm paints to a WebGL canvas with no DOM text, so
 "Connected". The ghostty adapter exposes the VT buffer, so the actual banner and
 replies are assertable.
 
-The agent is ``studyloop-fake-agent`` (``STUDYLOOP_TEST_AGENT=1``), which emits
+The child is a source-test module injected behind the real Codex adapter, which emits
 stable line-oriented markers — ``FAKE-AGENT READY``, ``FAKE-AGENT VERDICT:`` — so
 the transcript is parseable without an LLM.
 
@@ -36,7 +36,6 @@ Plan/analysis: docs/explorations/ghostty-web-evaluation.md
 from __future__ import annotations
 
 import contextlib
-import shutil
 import socket
 import sys
 import time
@@ -92,9 +91,6 @@ def live_env(tmp_path_factory: pytest.TempPathFactory) -> RunningServer:
     """Dev-mode server with the fake agent inside a disposable test world."""
     root = tmp_path_factory.mktemp("ghostty-live")
     world = build_test_world(root, _free_port(), fake_agent=True)
-    if not shutil.which("studyloop-fake-agent", path=world.env["PATH"]):
-        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
-
     server = start_server(world, extra_args=["--dev"])
     try:
         yield server
@@ -181,11 +177,11 @@ def _start_session_through_ui(page, server: RunningServer, topic: str) -> None:
     page.wait_for_function(
         """() => {
             const sel = document.querySelector('#agent-select');
-            return sel && [...sel.options].some((o) => o.value === 'fake');
+            return sel && [...sel.options].some((o) => o.value === 'codex');
         }""",
         timeout=45_000,
     )
-    page.select_option("#agent-select", value="fake")
+    page.select_option("#agent-select", value="codex")
     page.wait_for_function(
         "() => !document.querySelector('.study-start-picker .start-session-btn').disabled",
         timeout=10_000,

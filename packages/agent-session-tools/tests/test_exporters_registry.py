@@ -3,7 +3,7 @@
 Validates:
 - Every registered exporter satisfies the SessionExporter protocol
   (source_name, is_available, export_all).
-- The "bedrock" key is present in EXPORTERS.
+- Registry keys match the five admitted release harnesses.
 - get_exporter raises ValueError for unknown keys.
 """
 
@@ -65,8 +65,8 @@ class TestExporterProtocolConformance:
 
 
 class TestRegistryContents:
-    def test_bedrock_key_exists(self) -> None:
-        assert "bedrock" in EXPORTERS
+    def test_exact_release_keys(self) -> None:
+        assert tuple(EXPORTERS) == ("claude", "codex", "kiro", "opencode", "pi")
 
     def test_claude_key_exists(self) -> None:
         assert "claude" in EXPORTERS
@@ -93,7 +93,7 @@ class TestRegistryContents:
 
 class TestGetExporter:
     def test_valid_key_returns_exporter(self) -> None:
-        exporter = get_exporter("bedrock")
+        exporter = get_exporter("claude")
         assert exporter.source_name is not None
 
     def test_invalid_key_raises_value_error(self) -> None:

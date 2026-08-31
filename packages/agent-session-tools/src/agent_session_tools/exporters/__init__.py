@@ -1,17 +1,11 @@
 """Modular session exporters for different AI tools."""
 
-from .aider import AiderExporter
 from .base import ExportStats, SessionExporter, commit_batch
-from .bedrock import BedrockProxyExporter
 from .claude import ClaudeCodeExporter
 from .codex import CodexExporter
-from .gemini import GeminiCliExporter
-from .grok import GrokExporter
 from .kiro import KiroCliExporter
-from .litellm import LitellmExporter
 from .opencode import OpenCodeExporter
-from .pi import OhMyPiExporter, PiExporter, PiFamilyExporter
-from .repoprompt import RepoPromptExporter
+from .pi import PiExporter, PiFamilyExporter
 
 __all__ = [
     "ExportStats",
@@ -19,33 +13,19 @@ __all__ = [
     "commit_batch",
     "ClaudeCodeExporter",
     "CodexExporter",
-    "GrokExporter",
     "KiroCliExporter",
-    "GeminiCliExporter",
-    "AiderExporter",
-    "BedrockProxyExporter",
-    "LitellmExporter",
-    "RepoPromptExporter",
     "OpenCodeExporter",
     "PiFamilyExporter",
     "PiExporter",
-    "OhMyPiExporter",
 ]
 
 # Registry of available exporters
 EXPORTERS = {
     "claude": ClaudeCodeExporter(),
     "codex": CodexExporter(),
-    "grok": GrokExporter(),
     "kiro": KiroCliExporter(),
-    "gemini": GeminiCliExporter(),
     "opencode": OpenCodeExporter(),
-    "aider": AiderExporter(),
-    "bedrock": BedrockProxyExporter(),
-    "litellm": LitellmExporter(),
-    "repoprompt": RepoPromptExporter(),
     "pi": PiExporter,
-    "omp": OhMyPiExporter,
 }
 
 

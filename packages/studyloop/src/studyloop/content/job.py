@@ -271,7 +271,7 @@ def _progress_provider(config: Any) -> str:
     if provider:
         return provider
     backend = getattr(config, "backend", "")
-    if backend in {"ollama", "bedrock", "stub"}:
+    if backend in {"ollama", "bedrock"}:
         return backend
     return ""
 

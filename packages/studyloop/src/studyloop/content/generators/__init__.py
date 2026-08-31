@@ -106,8 +106,8 @@ def get_generator(config: CardGeneratorConfig) -> CardGenerator:
     """Return a concrete :class:`CardGenerator` for the configured backend.
 
     Reads ``config.backend`` and returns the matching implementation.
-    The only backend supported today is ``"ollama"``; additional
-    backends slot in here without interface changes.
+    Only live model backends are selectable here. Test doubles are injected
+    at this protocol seam from the test tree and are not packaged.
 
     Raises:
         ValueError: If ``config.backend`` is not a known backend name.
@@ -125,12 +125,6 @@ def get_generator(config: CardGeneratorConfig) -> CardGenerator:
         from studyloop.content.generators.bedrock import BedrockGenerator
 
         return BedrockGenerator(config)
-    if backend == "stub":
-        # Test/dogfood-only backend: deterministic, offline, free.
-        # Wired in U1 ahead of the real `*_compat` adapters in U1.5.
-        from studyloop.content.generators.stub import StubGenerator
-
-        return StubGenerator(config)
     if backend in ("openai_compat", "anthropic_compat"):
         # Pluggable adapter path: registry profile + curated model entry
         # drive a generic adapter. New providers = registry rows, no
@@ -164,7 +158,7 @@ def get_generator(config: CardGeneratorConfig) -> CardGenerator:
         return AnthropicCompatGenerator(config, profile, model_entry)
     raise ValueError(
         f"Unknown card_generator.backend: {config.backend!r}. "
-        "Supported backends: 'ollama', 'bedrock', 'stub', "
+        "Supported backends: 'ollama', 'bedrock', "
         "'openai_compat', 'anthropic_compat'."
     )
 

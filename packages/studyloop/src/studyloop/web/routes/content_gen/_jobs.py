@@ -209,7 +209,7 @@ def _resolved_provider(settings: Settings, req: GenerateRequest) -> str:
     if settings.card_generator.provider:
         return settings.card_generator.provider
     backend = _resolved_backend(settings, req)
-    if backend in {"ollama", "bedrock", "stub"}:
+    if backend in {"ollama", "bedrock"}:
         return backend
     return ""
 

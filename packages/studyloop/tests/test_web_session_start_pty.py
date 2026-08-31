@@ -138,6 +138,25 @@ def _stub_db(monkeypatch):
 
 
 class TestPtyStartHappyPath:
+    def test_source_test_command_bypasses_vendor_binary_preflight(
+        self,
+        client: TestClient,
+        _stub_db,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An explicit source-test child replaces the vendor process entirely."""
+        monkeypatch.setenv("STUDYLOOP_TEST_AGENT_CMD", "test-agent {persona_file}")
+        monkeypatch.setattr("shutil.which", lambda _name: None)
+
+        with patch("studyloop.web.routes.session.is_session_active", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "codex", "transport": "pty"},
+            )
+
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["agent"] == "codex"
+
     def test_pty_start_returns_ws_url_and_no_tmux(
         self,
         client: TestClient,
@@ -294,11 +313,11 @@ class TestPtyStartBinaryMissing:
         ):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5, "agent": "gemini", "transport": "pty"},
+                json={"topic": "Python", "energy": 5, "agent": "pi", "transport": "pty"},
             )
         assert resp.status_code == 503
         body = resp.json()
-        assert "gemini" in body["error"]
+        assert "pi" in body["error"]
         assert "install_hint" in body
         assert body["install_hint"]  # non-empty string
 

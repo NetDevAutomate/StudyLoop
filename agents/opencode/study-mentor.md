@@ -11,7 +11,6 @@ permission:
   edit: allow
   bash:
     "studyloop *": allow
-    "studyloop extract-struggles *": allow
     "session-* *": allow
     "uv run tutor-*": allow
     "*": ask
@@ -87,11 +86,11 @@ See `agents/shared/audhd-framework.md` for the complete methodology. Always acti
 Follow `wind-down-protocol.md`:
 1. Record progress: `studyloop progress "<concept>" -t <topic> -c <confidence>`
 2. End session: `studyloop session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
-3. Suggest next review based on spaced repetition intervals
-4. Suggest a concrete next study block in prose (no calendar CLI exists yet)
-5. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break
-6. Parking lot: note tangential topics worth revisiting
-7. Extract struggle signals: `studyloop extract-struggles --incremental` — keeps Generate panel topic dropdown fresh; best-effort, non-blocking
+3. Export the real OpenCode conversation: `session-export --opencode-only`
+4. Suggest next review based on spaced repetition intervals
+5. Suggest a concrete next study block in prose (no calendar CLI exists yet)
+6. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break
+7. Parking lot: note tangential topics worth revisiting
 
 ## Break Reminders
 

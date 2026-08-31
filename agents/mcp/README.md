@@ -20,7 +20,7 @@ uv tool install "./packages/agent-session-tools[tts]" --force
     uvx --from "mcp[cli]" mcp run agents/mcp/study-speak-server.py
     ```
 
-=== "Claude Code / Gemini / OpenCode / Amp"
+=== "Claude Code / Codex / OpenCode / pi"
 
     Add to your MCP config (see agent-specific paths below):
     ```json

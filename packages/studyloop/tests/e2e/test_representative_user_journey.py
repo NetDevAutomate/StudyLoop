@@ -41,6 +41,8 @@ if _tests_dir not in sys.path:
 
 from _playwright_helpers import start_web_server  # noqa: E402
 
+_TEST_AGENT_SCRIPT = Path(_tests_dir) / "_fake_agent.py"
+
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
@@ -216,8 +218,8 @@ def test_socratic_study_conversation(browser, running_server: str) -> None:  # p
 # ---------------------------------------------------------------------------
 # Fake-agent phases — the spawn → PTY → WS → terminal path, walkable in CI.
 #
-# These use a SEPARATE server (module-scoped fixture below) launched with
-# STUDYLOOP_TEST_AGENT=1 so the deterministic 'fake' adapter registers. The
+# These use a SEPARATE server with a source-test child command injected behind
+# the real Codex adapter. The
 # main `running_server` stays vanilla so the picker-hydration tests keep
 # asserting the real agent surface.
 # ---------------------------------------------------------------------------
@@ -227,13 +229,16 @@ FAKE_WEB_PORT = 18594
 
 @pytest.fixture(scope="module")
 def fake_agent_server():
-    """Server with the fake harness agent enabled (STUDYLOOP_TEST_AGENT=1)."""
-    if not __import__("shutil").which("studyloop-fake-agent"):
-        pytest.skip("studyloop-fake-agent not installed (editable install needed)")
+    """Server with a source-test child behind the real Codex adapter."""
     from _playwright_helpers import clean_ipc
 
     clean_ipc()  # stale IPC from earlier runs makes /session/end 404
-    proc = start_web_server(FAKE_WEB_PORT, extra_env={"STUDYLOOP_TEST_AGENT": "1"})
+    proc = start_web_server(
+        FAKE_WEB_PORT,
+        extra_env={
+            "STUDYLOOP_TEST_AGENT_CMD": (f"{sys.executable} {_TEST_AGENT_SCRIPT} {{persona_file}}")
+        },
+    )
     try:
         yield f"http://127.0.0.1:{FAKE_WEB_PORT}"
     finally:
@@ -262,7 +267,7 @@ def test_fake_agent_full_session_walk(fake_agent_server: str) -> None:
         json={
             "topic": "Fake Agent Walk",
             "energy": 5,
-            "agent": "fake",
+            "agent": "codex",
             "transport": "pty",
         },
         timeout=20,
@@ -349,11 +354,11 @@ def test_fake_agent_terminal_renders_in_browser(browser, fake_agent_server: str)
         page.wait_for_function(
             """() => {
                 const sel = document.querySelector('#agent-select');
-                return sel && [...sel.options].some(o => o.value === 'fake');
+                return sel && [...sel.options].some(o => o.value === 'codex');
             }""",
             timeout=30000,
         )
-        page.select_option("#agent-select", value="fake")
+        page.select_option("#agent-select", value="codex")
         page.wait_for_function(
             "() => !document.querySelector('.start-session-btn').disabled",
             timeout=5000,
@@ -363,11 +368,11 @@ def test_fake_agent_terminal_renders_in_browser(browser, fake_agent_server: str)
         # Proof the whole loop connected. xterm's WebGL renderer paints to a
         # canvas, so the banner text is NOT in the DOM — assert the two
         # DOM-visible signals instead: (1) the terminal header flips to
-        # "Connected · fake" (WS established, transport Started), and (2) the
+        # "Connected · Codex" (WS established, transport Started), and (2) the
         # session status bar shows the live topic (state hydrated end-to-end).
         page.wait_for_function(
             """() => document.body.innerText.includes('Connected') &&
-                     document.body.innerText.includes('fake')""",
+                     document.body.innerText.includes('Codex')""",
             timeout=20000,
         )
         page.wait_for_function(

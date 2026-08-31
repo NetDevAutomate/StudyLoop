@@ -1,7 +1,7 @@
 """ACPTransport — stdio JSON-RPC 2.0 transport for Agent Client Protocol CLIs.
 
-Implements the ``AgentSessionTransport`` Protocol against Kiro and
-Gemini CLIs (and any future agent that speaks the spec-canonical
+Implements the ``AgentSessionTransport`` Protocol against Kiro CLI
+(and any future admitted agent that speaks the spec-canonical
 method names confirmed by the Phase 1.5 capture spike in
 ``docs/research/2026-05-10-acp-event-shapes.md``).
 
@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _INITIALIZE_TIMEOUT_S = 15.0
-# Kiro's MCP-server bootstrap takes ~13s; gemini varies. Generous margin.
+# Kiro's MCP-server bootstrap takes around 13 seconds. Generous margin.
 _SESSION_NEW_TIMEOUT_S = 60.0
 _EVENT_QUEUE_MAX = 256
 
@@ -298,7 +298,7 @@ class ACPTransport:
         a JSON-RPC **response** — a frame with the matching ``id``, a
         ``result`` field, and **no** ``method`` key.
 
-        Shape per ``zRequestPermissionResponse`` in the Gemini CLI source::
+        Shape required by the ACP permission-response schema::
 
             {"jsonrpc": "2.0", "id": <request_id>,
              "result": {"outcome": {"outcome": "selected", "optionId": "..."}}}

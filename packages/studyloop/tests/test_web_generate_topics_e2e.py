@@ -127,13 +127,13 @@ def sessions_db(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def stub_config(tmp_path: Path, vault: Path, sessions_db: Path) -> Path:
-    """Tmp YAML config — stub backend, vault paths, and session_db wired to
+    """Tmp YAML config with vault paths and session_db wired to
     our seeded tmp DB so the running server never touches the real DB.
 
     ``session_db`` is the YAML key; ``_connection._connect()`` resolves it
     via ``load_settings().session_db`` which reads ``STUDYLOOP_CONFIG``.
     """
-    cfg = tmp_path / "studyloop-stub.yaml"
+    cfg = tmp_path / "studyloop-test.yaml"
     course_dir = vault / _PUBLISHER / _COURSE
     cfg.write_text(
         f"""
@@ -144,9 +144,8 @@ review:
 content:
   base_path: {vault}
 card_generator:
-  backend: stub
+  backend: ollama
   max_workers: 2
-  stub_card_count: 3
 """,
         encoding="utf-8",
     )

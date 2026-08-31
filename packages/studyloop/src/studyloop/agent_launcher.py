@@ -20,15 +20,11 @@ import tempfile
 from pathlib import Path
 
 import studyloop.adapters.kiro as _kiro_module
-from studyloop.adapters._local_llm import _get_local_llm_config, _local_llm_env_prefix
 from studyloop.adapters._protocol import AgentAdapter
 from studyloop.adapters._strategies import cli_flag_setup as _claude_setup
 from studyloop.adapters.claude import _claude_launch
 from studyloop.adapters.codex import _codex_launch, _codex_setup
-from studyloop.adapters.gemini import _gemini_launch, _gemini_setup
-from studyloop.adapters.grok import _grok_launch, _grok_setup
 from studyloop.adapters.kiro import _KIRO_BACKUP_SUFFIX, KIRO_AGENT_NAME
-from studyloop.adapters.lmstudio import _lmstudio_launch
 from studyloop.adapters.opencode import _opencode_launch, _opencode_setup
 from studyloop.adapters.registry import (
     get_all_adapters,
@@ -46,19 +42,10 @@ __all__ = [
     "_claude_setup",
     "_codex_launch",
     "_codex_setup",
-    "_gemini_launch",
-    "_gemini_mcp",
-    "_gemini_setup",
-    "_get_local_llm_config",
-    "_grok_launch",
-    "_grok_setup",
     "_kiro_launch",
     "_kiro_setup",
     "_kiro_teardown",
-    "_lmstudio_launch",
-    "_local_llm_env_prefix",
     "_mcp_command",
-    "_ollama_launch",
     "_opencode_launch",
     "_opencode_mcp",
     "_opencode_setup",
@@ -104,28 +91,6 @@ def _mcp_command() -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Gemini MCP — local so patch on agent_launcher.shutil.which reaches _mcp_command.
-# ---------------------------------------------------------------------------
-
-
-def _gemini_mcp(session_dir: Path) -> None:
-    """Write .gemini/settings.json with studyloop-mcp server config."""
-    gemini_dir = session_dir / ".gemini"
-    gemini_dir.mkdir(parents=True, exist_ok=True)
-
-    cmd = _mcp_command()
-    settings = {
-        "mcpServers": {
-            "studyloop-mcp": {
-                "command": cmd[0],
-                "args": cmd[1:],
-            },
-        },
-    }
-    (gemini_dir / "settings.json").write_text(json.dumps(settings, indent=2))
-
-
-# ---------------------------------------------------------------------------
 # OpenCode MCP — local so patch on agent_launcher.shutil.which reaches _mcp_command.
 # ---------------------------------------------------------------------------
 
@@ -145,21 +110,6 @@ def _opencode_mcp(session_dir: Path) -> None:
         },
     }
     (oc_dir / "opencode.json").write_text(json.dumps(config, indent=2))
-
-
-# ---------------------------------------------------------------------------
-# Ollama launch — local so patch on agent_launcher.shutil.which reaches shutil.which("claude").
-# ---------------------------------------------------------------------------
-
-
-def _ollama_launch(persona_path: Path, resume: bool) -> str:
-    """Build Claude launch command with Ollama backend env vars."""
-    claude_bin = shutil.which("claude") or "claude"
-    base_url, model = _get_local_llm_config("ollama")
-    env = _local_llm_env_prefix(base_url, "ollama", model)
-    if resume:
-        return f"{env}{claude_bin} -r --append-system-prompt-file {persona_path}"
-    return f"{env}{claude_bin} --append-system-prompt-file {persona_path}"
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +260,26 @@ def build_canonical_persona(
     """
     persona_path = PERSONA_DIR / f"{mode}.md"
     template = persona_path.read_text() if persona_path.exists() else _default_persona(mode)
+    from studyloop import session_state
+
+    session_paths = {
+        "~/.config/studyloop/session-state.json": str(session_state.STATE_FILE),
+        "~/.config/studyloop/session-topics.md": str(session_state.TOPICS_FILE),
+        "~/.config/studyloop/session-parking.md": str(session_state.PARKING_FILE),
+    }
+    for default_path, runtime_path in session_paths.items():
+        template = template.replace(default_path, runtime_path)
+
+    session_files = f"""
+## Session Files for This Run
+
+Use these exact runtime-resolved paths. Do not infer a home-directory default:
+
+- State: `{session_state.STATE_FILE}`
+- Topics: `{session_state.TOPICS_FILE}`
+- Parking lot: `{session_state.PARKING_FILE}`
+
+"""
 
     resume_section = ""
     if previous_notes:
@@ -335,6 +305,7 @@ student wants to continue.
 **Mode:** {mode}
 
 ---
+{session_files}
 {resume_section}
 {template}
 """

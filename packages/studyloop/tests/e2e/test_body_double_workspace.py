@@ -28,7 +28,6 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_body_double_workspac
 from __future__ import annotations
 
 import contextlib
-import shutil
 import sys
 import urllib.request
 from pathlib import Path
@@ -297,16 +296,10 @@ class TestCommittedFocusIsRemovable:
 def _start_session(page: Page, activity: str) -> None:
     """Start a real body-double session through the picker."""
     page.locator("#bd-activity-input").fill(activity)
-    page.select_option("#bd-agent-select", value="fake")
+    page.select_option("#bd-agent-select", value="codex")
     page.select_option("#bd-transport-select", value="pty")
     page.locator("#bd-start-session").click()
     page.wait_for_selector("#bd-end-session", state="visible", timeout=30_000)
-
-
-needs_fake_agent = pytest.mark.skipif(
-    not shutil.which("studyloop-fake-agent"),
-    reason="studyloop-fake-agent not installed (uv sync installs it)",
-)
 
 
 class TestEndingASessionIsFindableAndComplete:
@@ -322,7 +315,6 @@ class TestEndingASessionIsFindableAndComplete:
                 timeout=10,
             )
 
-    @needs_fake_agent
     def test_end_control_is_labelled_and_stays_on_screen_over_the_terminal(
         self, bd_page: Page
     ) -> None:
@@ -351,7 +343,6 @@ class TestEndingASessionIsFindableAndComplete:
             diag(bd_page, "bd-end-pinned", _watch_for(bd_page))
             raise
 
-    @needs_fake_agent
     def test_ending_asks_first_and_can_be_cancelled(self, bd_page: Page) -> None:
         """Ending kills a live agent and its PTY. Study Session has always
         confirmed; the Body Double twin ended instantly, and its control is now
@@ -375,7 +366,6 @@ class TestEndingASessionIsFindableAndComplete:
                     "async () => { await fetch('/api/session/end', {method:'POST'}); }"
                 )
 
-    @needs_fake_agent
     def test_ending_stops_the_pomodoro_and_clears_the_stale_activity(self, bd_page: Page) -> None:
         """Two things used to outlive the session that ended them.
 
@@ -407,7 +397,6 @@ class TestEndingASessionIsFindableAndComplete:
             diag(bd_page, "bd-end-releases", _watch_for(bd_page))
             raise
 
-    @needs_fake_agent
     def test_the_panes_are_still_usable_after_the_session_ends(self, bd_page: Page) -> None:
         """Post-end state, which nothing asserted before: the panes stay (they
         are the workspace, not session chrome), and they stay operable."""

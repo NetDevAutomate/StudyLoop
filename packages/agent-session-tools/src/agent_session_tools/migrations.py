@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 26
+CURRENT_VERSION = 27
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -982,6 +982,20 @@ def migrate_v26(conn: sqlite3.Connection) -> None:
     ).fetchone()[0]
     logger.info(
         f"v26 dedup: partial index created, {dismissed_count} total dismissed rows"
+    )
+
+
+@migration(27, "Add source-session provenance to extracted study progress")
+def migrate_v27(conn: sqlite3.Connection) -> None:
+    """Add nullable source_session_id without inventing historical provenance."""
+    columns = _table_columns(conn, "study_progress")
+    if not columns:
+        return
+    if "source_session_id" not in columns:
+        conn.execute("ALTER TABLE study_progress ADD COLUMN source_session_id TEXT")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_progress_source_session "
+        "ON study_progress(source_session_id)"
     )
 
 

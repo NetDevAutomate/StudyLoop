@@ -2,26 +2,26 @@
 
 Two modes:
 - ``--incremental --session-id X`` : process exactly one session (used by the
-  per-harness session-end hooks).  If no session-id is given, falls back to the
-  most-recently-updated kiro_cli session.
-- ``--full`` : process every kiro_cli session that has no study_progress rows
-  yet (the backfill / reconcile path).
+  operator-driven reconciliation path). If no session-id is given, ``--harness``
+  is required and selects that harness's most recent session.
+- ``--full --harness X`` : process sessions from one explicitly selected
+  release harness.
 
-``--dry-run`` prints what would be written without touching the DB.
-
-The actual LLM extractor is wired in a later phase; this command currently uses
-the stub extractor so the plumbing is fully testable with zero API cost.  The
-``--llm`` flag is reserved for when the real extractor lands.
+``--dry-run`` prints what live extraction would write without touching the DB.
+The command requires an explicit live model and never selects a fixture-backed
+extractor.
 """
 
 from __future__ import annotations
 
 import logging
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 import click
 
 from studyloop.cli._shared import console
+from studyloop.harnesses import RELEASE_HARNESSES, SESSION_SOURCE_BY_HARNESS
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -29,23 +29,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _get_extractor(use_llm: bool):
-    """Return the extractor function for the selected backend.
+def _get_extractor(model: str):
+    """Return the live extractor pinned to the explicitly selected model.
 
     Imported lazily so ``--help`` and ``--dry-run`` stay cheap and never pull in
-    httpx / LLM machinery unless actually extracting with the real backend.
+    the Bedrock SDK unless extraction actually runs.
     """
-    if use_llm:
-        try:
-            from studyloop.extractors.llm import extract_struggles
-        except ImportError as exc:  # llm.py lands in a later phase
-            raise click.ClickException(
-                "LLM extractor not available yet — run without --llm to use the stub."
-            ) from exc
-        return extract_struggles
-    from studyloop.extractors.stub import extract_struggles
-
-    return extract_struggles
+    try:
+        from studyloop.extractors.llm import extract_struggles
+    except ImportError as exc:
+        raise click.ClickException(
+            "Live extractor unavailable. Install StudyLoop with the Bedrock extra."
+        ) from exc
+    return partial(extract_struggles, model=model)
 
 
 def _fetch_messages(conn, session_id: str) -> list[dict[str, Any]]:
@@ -62,24 +58,27 @@ def _session_source(conn, session_id: str) -> str | None:
     return row["source"] if row else None
 
 
-def _most_recent_kiro_session(conn) -> str | None:
+def _most_recent_session(conn, source: str) -> str | None:
     row = conn.execute(
-        "SELECT id FROM sessions WHERE source = 'kiro_cli' ORDER BY updated_at DESC LIMIT 1"
+        "SELECT id FROM sessions WHERE source = ? ORDER BY updated_at DESC LIMIT 1",
+        (source,),
     ).fetchone()
     return row["id"] if row else None
 
 
-def _unprocessed_kiro_sessions(conn, limit: int | None) -> list[str]:
-    """kiro_cli sessions that have no study_progress rows derived from them.
+def _sessions_for_source(conn, source: str, limit: int | None) -> list[str]:
+    """Return sessions for one operator-selected release harness.
 
     study_progress is keyed by (topic, concept), not by session, so 'unprocessed'
-    is approximated as: every kiro_cli session.  Idempotent upsert makes
+    is approximated as every session for the source. Idempotent upsert makes
     re-processing safe, so the worst case is redundant (cheap, deduped) work.
     """
-    sql = "SELECT id FROM sessions WHERE source = 'kiro_cli' ORDER BY updated_at DESC"
+    sql = "SELECT id FROM sessions WHERE source = ? ORDER BY updated_at DESC"
+    params: tuple[Any, ...] = (source,)
     if limit is not None:
-        sql += f" LIMIT {int(limit)}"
-    return [r["id"] for r in conn.execute(sql).fetchall()]
+        sql += " LIMIT ?"
+        params = (source, limit)
+    return [r["id"] for r in conn.execute(sql, params).fetchall()]
 
 
 def _process_one(
@@ -97,27 +96,45 @@ def _process_one(
     if not pre_filter(session_id, source, messages):
         console.print(f"[dim]skip[/dim] {session_id} (source={source}, filtered)")
         return 0
-    written = extract_and_write(session_id, messages, extractor_fn, dry_run=dry_run)
+    written = extract_and_write(
+        session_id,
+        messages,
+        extractor_fn,
+        dry_run=dry_run,
+        connection=conn,
+    )
     verb = "would write" if dry_run else "wrote"
     console.print(f"[green]{verb}[/green] {written} row(s) from {session_id}")
     return written
 
 
 @click.command(name="extract-struggles")
+@click.option("--incremental", is_flag=True, help="Process one session from the selected harness.")
 @click.option(
-    "--incremental", is_flag=True, help="Process one session (default: most recent kiro)."
+    "--full", "full", is_flag=True, help="Process all sessions from the selected harness."
 )
-@click.option("--full", "full", is_flag=True, help="Process all kiro_cli sessions (backfill).")
 @click.option("--session-id", default=None, help="Target session id (with --incremental).")
+@click.option(
+    "--harness",
+    type=click.Choice(RELEASE_HARNESSES),
+    default=None,
+    help="Harness used to select latest/full sessions when no session id is supplied.",
+)
 @click.option("--dry-run", is_flag=True, help="Print what would be written; do not write.")
-@click.option("--llm", "use_llm", is_flag=True, help="Use the LLM extractor (default: stub).")
+@click.option(
+    "--model",
+    required=True,
+    envvar="STUDYLOOP_EXTRACTOR_MODEL",
+    help="Live Bedrock model ID (or set STUDYLOOP_EXTRACTOR_MODEL).",
+)
 @click.option("--limit", type=int, default=None, help="Cap sessions processed (with --full).")
 def extract_struggles_cmd(
     incremental: bool,
     full: bool,
     session_id: str | None,
     dry_run: bool,
-    use_llm: bool,
+    model: str,
+    harness: str | None,
     limit: int | None,
 ) -> None:
     """Extract topics the learner struggled with into study_progress."""
@@ -126,6 +143,15 @@ def extract_struggles_cmd(
     if not full and not incremental:
         # Default to incremental for the hook-friendly common case.
         incremental = True
+    if full and session_id:
+        raise click.UsageError("--session-id can only be used with --incremental.")
+    if harness is None and (full or session_id is None):
+        raise click.UsageError(
+            "Choose --harness when selecting latest or full sessions, "
+            "or provide an explicit --session-id."
+        )
+
+    selected_source = SESSION_SOURCE_BY_HARNESS[harness] if harness else None
 
     from studyloop.history import _connection
 
@@ -135,19 +161,19 @@ def extract_struggles_cmd(
             "Could not open sessions.db (is agent-session-tools installed?)."
         )
 
-    extractor_fn = _get_extractor(use_llm)
+    extractor_fn = _get_extractor(model)
     total = 0
     try:
         if incremental:
-            target = session_id or _most_recent_kiro_session(conn)
+            target = session_id or _most_recent_session(conn, selected_source or "")
             if not target:
-                console.print("[yellow]No kiro_cli session found to process.[/yellow]")
+                console.print(f"[yellow]No {selected_source} session found to process.[/yellow]")
                 return
             total = _process_one(conn, target, extractor_fn, dry_run=dry_run)
         else:  # full
-            targets = _unprocessed_kiro_sessions(conn, limit)
+            targets = _sessions_for_source(conn, selected_source or "", limit)
             if not targets:
-                console.print("[yellow]No kiro_cli sessions found.[/yellow]")
+                console.print(f"[yellow]No {selected_source} sessions found.[/yellow]")
                 return
             for sid in targets:
                 total += _process_one(conn, sid, extractor_fn, dry_run=dry_run)

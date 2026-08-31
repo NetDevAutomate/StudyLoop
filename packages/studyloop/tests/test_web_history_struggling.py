@@ -180,6 +180,7 @@ def test_post_struggling_topic_records_lesson_slug_as_generation_topic(
         setup.execute("ALTER TABLE study_progress ADD COLUMN source_course TEXT")
         setup.execute("ALTER TABLE study_progress ADD COLUMN source_section TEXT")
         setup.execute("ALTER TABLE study_progress ADD COLUMN source_publisher TEXT")
+        setup.execute("ALTER TABLE study_progress ADD COLUMN source_session_id TEXT")
         setup.execute("ALTER TABLE study_progress ADD COLUMN created_by TEXT DEFAULT 'agent'")
         setup.commit()
     finally:

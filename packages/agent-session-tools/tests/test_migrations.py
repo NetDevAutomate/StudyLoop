@@ -766,6 +766,29 @@ class TestMigrationV24:
             )
 
 
+class TestMigrationV27:
+    """Test source-session provenance for extracted progress."""
+
+    def test_study_progress_has_nullable_source_session_id(self, fresh_db):
+        migrate(fresh_db)
+        cols = {
+            r[1]
+            for r in fresh_db.execute("PRAGMA table_info(study_progress)").fetchall()
+        }
+        assert "source_session_id" in cols
+
+        fresh_db.execute(
+            "INSERT INTO study_progress "
+            "(id, topic, concept, confidence, first_seen, last_seen, session_count) "
+            "VALUES ('historical-row', 'python', 'protocols', 'learning', "
+            "datetime('now'), datetime('now'), 1)"
+        )
+        row = fresh_db.execute(
+            "SELECT source_session_id FROM study_progress WHERE id='historical-row'"
+        ).fetchone()
+        assert row[0] is None
+
+
 class TestV25CascadeOnMessageDelete:
     """v25: deleting a message must cascade to scrub_log + file_references."""
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def _make_db(tmp_path: Path) -> Path:
-    """Create a temp SQLite DB with the study_progress table (incl. v22 columns)."""
+    """Create a temp SQLite DB with the current progress provenance columns."""
     db_path = tmp_path / "sessions.db"
     conn = sqlite3.connect(db_path)
     conn.execute(
@@ -29,6 +29,7 @@ def _make_db(tmp_path: Path) -> Path:
             source_course TEXT,
             source_section TEXT,
             source_publisher TEXT,
+            source_session_id TEXT,
             created_by TEXT DEFAULT 'agent'
         )
         """

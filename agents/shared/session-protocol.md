@@ -106,7 +106,7 @@ Keep celebrations specific and factual. No empty praise.
 
 The learner can toggle voice output on/off during a session:
 
-- **Kiro CLI / Gemini / OpenCode / Amp:** `@speak-start` and `@speak-stop`
+- **Kiro CLI / Codex / OpenCode / pi:** `@speak-start` and `@speak-stop`
 - **Claude Code:** `/speak-start` and `/speak-stop`
 
 Voice is **off by default**. When the learner enables it, you MUST execute this shell command every time you ask a Socratic question, confirm an answer, or highlight a key principle:

@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 TransportName = Literal["pty", "acp", "ttyd"]
 
 # Agents that speak the Agent Client Protocol. Single source of truth shared by
-# the session-start ACP guard and the options endpoint (_options.py). Claude
-# Code and Codex are PTY-only; only these three have an ACP transport.
-ACP_CAPABLE_AGENTS: frozenset[str] = frozenset({"kiro", "gemini", "grok"})
+# the session-start ACP guard and the options endpoint (_options.py). Kiro is
+# the sole ACP harness in the pre-release contract; the others use PTY.
+ACP_CAPABLE_AGENTS: frozenset[str] = frozenset({"kiro"})
 
 
 def slug_session_dir(topic: str) -> str:

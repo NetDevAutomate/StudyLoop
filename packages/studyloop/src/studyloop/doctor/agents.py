@@ -16,6 +16,7 @@ import urllib.request
 from pathlib import Path
 
 from studyloop.doctor.models import CheckResult
+from studyloop.harnesses import HARNESSES, RELEASE_HARNESSES
 from studyloop.installers import find_repo_root
 
 MANIFEST_URL = (
@@ -23,15 +24,15 @@ MANIFEST_URL = (
 )
 
 TOOL_AGENTS: dict[str, tuple[str, str]] = {
-    "claude": ("claude", "~/.claude/agents/socratic-mentor.md"),
-    "codex": ("codex", "{repo_root}/AGENTS.md"),
-    "grok": ("grok", "{repo_root}/AGENTS.md"),
     "kiro": ("kiro-cli", "~/.kiro/agents/study-mentor.json"),
-    "gemini": ("gemini", "~/.gemini/agents/study-mentor.md"),
+    "codex": ("codex", "{repo_root}/AGENTS.md"),
+    "claude": ("claude", "~/.claude/agents/socratic-mentor.md"),
     "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
     "pi": ("pi", "~/.pi/agent/AGENTS.md"),
-    "omp": ("omp", "~/.omp/agent/AGENTS.md"),
 }
+
+assert tuple(TOOL_AGENTS) == RELEASE_HARNESSES
+assert all(TOOL_AGENTS[name][0] == HARNESSES[name].binary for name in RELEASE_HARNESSES)
 
 _SMOKE_TIMEOUT = 5  # seconds
 
@@ -134,115 +135,6 @@ def check_agent_smoke_tests() -> list[CheckResult]:
     return results
 
 
-def check_local_llm_servers() -> list[CheckResult]:
-    """Check Ollama and LM Studio availability — binary, server, and claude dependency."""
-    results: list[CheckResult] = []
-    claude_installed = bool(shutil.which("claude"))
-
-    # Ollama
-    ollama_bin = shutil.which("ollama")
-    if ollama_bin:
-        if not claude_installed:
-            results.append(
-                CheckResult(
-                    "agents",
-                    "ollama_claude",
-                    "warn",
-                    "ollama installed but claude not found (required as frontend)",
-                    "Install Claude Code: npm i -g @anthropic-ai/claude-code",
-                    False,
-                )
-            )
-        # Check server is running by listing models
-        try:
-            result = subprocess.run(
-                ["ollama", "list"],
-                capture_output=True,
-                text=True,
-                timeout=_SMOKE_TIMEOUT,
-            )
-            if result.returncode == 0:
-                # Count models (skip header line)
-                lines = [line for line in result.stdout.strip().splitlines()[1:] if line.strip()]
-                n = len(lines)
-                results.append(
-                    CheckResult(
-                        "agents",
-                        "ollama_server",
-                        "pass",
-                        f"ollama running, {n} model{'s' if n != 1 else ''} available",
-                        "",
-                        False,
-                    )
-                )
-            else:
-                results.append(
-                    CheckResult(
-                        "agents",
-                        "ollama_server",
-                        "warn",
-                        "ollama installed but server not responding",
-                        "Start with: ollama serve",
-                        False,
-                    )
-                )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            results.append(
-                CheckResult(
-                    "agents",
-                    "ollama_server",
-                    "warn",
-                    "ollama installed but server not responding",
-                    "Start with: ollama serve",
-                    False,
-                )
-            )
-
-    # LM Studio
-    lms_bin = shutil.which("lms")
-    if lms_bin:
-        if not claude_installed:
-            results.append(
-                CheckResult(
-                    "agents",
-                    "lmstudio_claude",
-                    "warn",
-                    "lms installed but claude not found (required as frontend)",
-                    "Install Claude Code: npm i -g @anthropic-ai/claude-code",
-                    False,
-                )
-            )
-        # Probe the API endpoint
-        try:
-            result = subprocess.run(
-                ["lms", "status"],
-                capture_output=True,
-                text=True,
-                timeout=_SMOKE_TIMEOUT,
-            )
-            status = "pass" if result.returncode == 0 else "warn"
-            msg = (
-                "LM Studio server running"
-                if result.returncode == 0
-                else "LM Studio CLI found but server not responding"
-            )
-            hint = "" if result.returncode == 0 else "Start LM Studio and load a model"
-            results.append(CheckResult("agents", "lmstudio_server", status, msg, hint, False))
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            results.append(
-                CheckResult(
-                    "agents",
-                    "lmstudio_server",
-                    "warn",
-                    "LM Studio CLI found but server not responding",
-                    "Start LM Studio and load a model",
-                    False,
-                )
-            )
-
-    return results
-
-
 def check_agent_definitions() -> list[CheckResult]:
     """Check that agent definitions are installed and match the manifest."""
     tools = _detect_ai_tools()
@@ -253,7 +145,7 @@ def check_agent_definitions() -> list[CheckResult]:
                 "no_ai_tools",
                 "info",
                 "No AI coding tools detected",
-                "Install Claude Code, Codex CLI, Kiro CLI, Gemini CLI, OpenCode, or Amp",
+                "Install Kiro CLI, Codex, Claude Code, OpenCode, or pi",
                 False,
             )
         ]

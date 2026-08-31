@@ -419,54 +419,23 @@ def test_content_defaults_when_absent(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Agents config (including _local_llm helper)
+# Agent harness configuration
 # ---------------------------------------------------------------------------
 
 
-def test_agents_priority_parsed(tmp_path):
-    config_path = _write_config(tmp_path, {"agents": {"priority": ["gemini", "claude"]}})
+def test_agents_priority_filters_out_of_scope_harnesses(tmp_path):
+    config_path = _write_config(
+        tmp_path, {"agents": {"priority": ["pi", "gemini", "grok", "claude"]}}
+    )
     s = _load(config_path)
-    assert s.agents.priority == ["gemini", "claude"]
+    assert s.agents.priority == ["pi", "claude"]
 
 
-def test_agents_default_priority_includes_codex_and_grok():
+def test_agents_default_priority_matches_release_harnesses():
     from studyloop.settings import Settings
 
     s = Settings()
-    assert s.agents.priority == [
-        "claude",
-        "kiro",
-        "gemini",
-        "opencode",
-        "codex",
-        "grok",
-        "ollama",
-        "lmstudio",
-    ]
-
-
-def test_agents_ollama_custom_model(tmp_path):
-    config_path = _write_config(
-        tmp_path, {"agents": {"ollama": {"model": "llama3", "base_url": "http://gpu:4000"}}}
-    )
-    s = _load(config_path)
-    assert s.agents.ollama.model == "llama3"
-    assert s.agents.ollama.base_url == "http://gpu:4000"
-
-
-def test_agents_ollama_defaults_when_section_omitted(tmp_path):
-    # agents: section present but no ollama key — should use built-in defaults.
-    config_path = _write_config(tmp_path, {"agents": {"priority": ["claude"]}})
-    s = _load(config_path)
-    assert s.agents.ollama.model == "qwen3-coder"
-    assert s.agents.ollama.base_url == "http://localhost:4000"
-
-
-def test_agents_lmstudio_defaults_when_section_omitted(tmp_path):
-    config_path = _write_config(tmp_path, {"agents": {"priority": ["claude"]}})
-    s = _load(config_path)
-    assert s.agents.lmstudio.model == "qwen3-coder"
-    assert s.agents.lmstudio.base_url == "http://localhost:1234"
+    assert s.agents.priority == ["kiro", "codex", "claude", "opencode", "pi"]
 
 
 def test_custom_agents_parsed(tmp_path):

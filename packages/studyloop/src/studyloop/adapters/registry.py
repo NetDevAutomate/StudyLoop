@@ -1,6 +1,6 @@
-"""Adapter registry with auto-discovery for built-in and custom agents.
+"""Adapter registry for the five admitted pre-release harnesses.
 
-Built-in adapters live as sibling modules (e.g. claude.py, gemini.py) and
+Built-in adapters live as sibling modules (e.g. ``claude.py``) and
 expose a module-level ``ADAPTER`` attribute of type ``AgentAdapter``.
 Custom adapters are loaded via ``studyloop.adapters._custom.load_custom_adapters()``,
 which is generated from config at runtime and may not exist.
@@ -14,10 +14,10 @@ from __future__ import annotations
 import importlib
 import logging
 import os
-import pkgutil
 import shutil
 
 from studyloop.adapters._protocol import AgentAdapter
+from studyloop.harnesses import RELEASE_HARNESSES
 
 log = logging.getLogger(__name__)
 
@@ -26,24 +26,10 @@ _registry: dict[str, AgentAdapter] | None = None
 
 
 def _discover_builtins() -> dict[str, AgentAdapter]:
-    """Scan the ``studyloop.adapters`` package for built-in adapter modules.
-
-    Skips modules whose names start with ``_`` and the ``registry`` module
-    itself. For each candidate module, imports it and looks for an ``ADAPTER``
-    attribute of the correct type. Logs a warning and continues on any failure.
-    """
-    import studyloop.adapters as _pkg
-
+    """Load only adapters admitted by the pre-release harness contract."""
     adapters: dict[str, AgentAdapter] = {}
-    pkg_path = _pkg.__path__
-    pkg_name = _pkg.__name__
-
-    for module_info in pkgutil.iter_modules(pkg_path):
-        name = module_info.name
-        if name.startswith("_") or name == "registry":
-            continue
-
-        full_name = f"{pkg_name}.{name}"
+    for name in RELEASE_HARNESSES:
+        full_name = f"studyloop.adapters.{name}"
         try:
             module = importlib.import_module(full_name)
         except Exception as exc:
@@ -54,12 +40,6 @@ def _discover_builtins() -> dict[str, AgentAdapter]:
             log.warning("Adapter module %s has no ADAPTER attribute — skipped", full_name)
             continue
         adapter = module.ADAPTER
-        if adapter is None:
-            # Explicit opt-out (e.g. the 'fake' harness adapter gates itself
-            # behind STUDYLOOP_TEST_AGENT) — intentional, not a warning.
-            log.debug("Adapter module %s opted out (ADAPTER=None)", full_name)
-            continue
-
         if not isinstance(adapter, AgentAdapter):
             log.warning(
                 "ADAPTER in %s is not an AgentAdapter instance (%s) — skipped",
@@ -88,14 +68,16 @@ def _load_custom_agents() -> dict[str, AgentAdapter]:
 
 
 def _build_registry() -> dict[str, AgentAdapter]:
-    """Build the full registry from built-in + custom adapters.
+    """Build the registry from admitted built-ins plus explicit extensions.
 
-    Custom adapters win on name conflicts, allowing users to override
-    built-in behaviour without modifying source.
+    Custom adapters may add locally maintained harnesses, but cannot override
+    the semantics of an admitted release harness.
     """
     combined: dict[str, AgentAdapter] = {}
     combined.update(_discover_builtins())
-    combined.update(_load_custom_agents())  # custom wins
+    combined.update(
+        (name, adapter) for name, adapter in _load_custom_agents().items() if name not in combined
+    )
     return combined
 
 

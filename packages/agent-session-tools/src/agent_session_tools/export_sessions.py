@@ -3,12 +3,10 @@
 
 Supported sources:
 - Claude Code (~/.claude/projects/)
+- Codex (~/.codex/sessions/)
 - Kiro CLI (~/Library/Application Support/kiro-cli/)
-- Gemini CLI (~/.gemini/tmp/)
-- Kilocode CLI (~/.kilocode/cli/)
-- Aider (.aider.chat.history.md files)
+- OpenCode (~/.local/share/opencode/storage/)
 - pi coding agent (~/.pi/agent/sessions/)
-- oh-my-pi (omp) (~/.omp/agent/sessions/)
 """
 
 import shutil
@@ -27,7 +25,6 @@ from agent_session_tools.config_loader import (
 )
 from agent_session_tools.exporters import (
     EXPORTERS,
-    AiderExporter,
     ExportStats,
     get_exporter,
 )
@@ -62,8 +59,6 @@ config = load_config()
 # Source directories
 CLAUDE_DIR = Path.home() / ".claude"
 KIRO_DB = Path.home() / "Library/Application Support/kiro-cli/data.sqlite3"
-GEMINI_DIR = Path.home() / ".gemini" / "tmp"
-KILOCODE_DIR = Path.home() / ".kilocode" / "cli"
 SCHEMA_FILE = Path(__file__).parent / "schema.sql"
 DEFAULT_DB = get_db_path(config)
 
@@ -112,30 +107,13 @@ def create_progress_bar() -> Progress | None:
     )
 
 
-def export_aider(
-    conn: sqlite3.Connection, incremental: bool = True, args=None
-) -> ExportStats:
-    """Export Aider sessions using modular exporter."""
-    aider_exporter = get_exporter("aider")
-    if args and hasattr(args, "aider_paths") and args.aider_paths:
-        aider_exporter = AiderExporter(args.aider_paths)
-    return aider_exporter.export_all(conn, incremental)
-
-
 # Valid source choices for CLI
 SOURCE_CHOICES = [
-    "aider",
-    "bedrock",
     "claude",
     "codex",
-    "gemini",
-    "grok",
-    "kilocode",
     "kiro",
-    "omp",
     "opencode",
     "pi",
-    "repoprompt",
 ]
 
 
@@ -143,7 +121,6 @@ def _run_export(
     output_path: Path,
     sources: set[str],
     incremental: bool,
-    aider_paths: list[Path] | None = None,
     obsidian: bool | None = None,
     obsidian_vault: Path | None = None,
     obsidian_backfill: bool = False,
@@ -178,15 +155,7 @@ def _run_export(
 
         for source in sources:
             source_stats = None
-            if source == "aider":
-
-                class AiderArgs:
-                    aider_paths: list[Path] | None = None
-
-                args = AiderArgs()
-                args.aider_paths = aider_paths
-                source_stats = export_aider(conn, incremental, args)
-            elif source in EXPORTERS:
+            if source in EXPORTERS:
                 exporter = get_exporter(source)
                 source_stats = exporter.export_all(conn, incremental)
 
@@ -331,33 +300,17 @@ def export(
     kiro_only: Annotated[
         bool, typer.Option("--kiro-only", help="Only export Kiro CLI")
     ] = False,
-    gemini_only: Annotated[
-        bool, typer.Option("--gemini-only", help="Only export Gemini CLI")
-    ] = False,
-    grok_only: Annotated[
-        bool, typer.Option("--grok-only", help="Only export Grok CLI")
-    ] = False,
-    kilocode_only: Annotated[
-        bool, typer.Option("--kilocode-only", help="Only export Kilocode CLI")
+    opencode_only: Annotated[
+        bool, typer.Option("--opencode-only", help="Only export OpenCode CLI")
     ] = False,
     pi_only: Annotated[
         bool, typer.Option("--pi-only", help="Only export pi coding agent")
-    ] = False,
-    omp_only: Annotated[
-        bool, typer.Option("--omp-only", help="Only export oh-my-pi (omp)")
     ] = False,
     sources: Annotated[
         list[str] | None,
         typer.Option(
             "--sources",
             help=f"Export specific sources ({', '.join(SOURCE_CHOICES)})",
-        ),
-    ] = None,
-    # Aider-specific options
-    aider_paths: Annotated[
-        list[Path] | None,
-        typer.Option(
-            "--aider-paths", help="Additional paths to search for Aider history files"
         ),
     ] = None,
     # Safety options
@@ -414,19 +367,15 @@ def export(
 
     Supported sources:
     - claude_code: Claude Code (~/.claude/projects/)
+    - codex: Codex (~/.codex/sessions/)
     - kiro_cli: Kiro CLI (~/Library/Application Support/kiro-cli/)
-    - gemini_cli: Gemini CLI (~/.gemini/tmp/)
-    - grok: Grok CLI (~/.grok/sessions/)
-    - kilocode_cli: Kilocode CLI (~/.kilocode/cli/)
     - opencode: OpenCode CLI (~/.local/share/opencode/storage/)
-    - repoprompt: RepoPrompt (~/Library/Application Support/RepoPrompt/)
     - pi: pi coding agent (~/.pi/agent/sessions/)
-    - omp: oh-my-pi (omp) (~/.omp/agent/sessions/)
 
     Examples:
         session-export                          # Export all sources
         session-export --claude-only            # Only Claude Code
-        session-export --sources gemini opencode  # Specific sources
+        session-export --sources opencode --sources pi  # Specific sources
         session-export --dated --backup         # Dated output with backup
         session-export --obsidian               # Also write Obsidian vault notes
         session-export --obsidian --obsidian-dry-run  # Preview vault export
@@ -449,11 +398,8 @@ def export(
         "claude": claude_only,
         "codex": codex_only,
         "kiro": kiro_only,
-        "gemini": gemini_only,
-        "grok": grok_only,
-        "kilocode": kilocode_only,
+        "opencode": opencode_only,
         "pi": pi_only,
-        "omp": omp_only,
     }
     active = [k for k, v in only_flags.items() if v]
     if len(active) > 1:
@@ -476,7 +422,6 @@ def export(
         output_path,
         export_sources,
         incremental,
-        aider_paths,
         obsidian=obsidian,
         obsidian_vault=obsidian_vault,
         obsidian_backfill=obsidian_backfill,

@@ -38,7 +38,7 @@ class OutputBytes(TransportEvent):
 class Started(TransportEvent):
     """Emitted once after the agent child is running. The PID is NOT on
     the wire — log it server-side. `agent` is the adapter name (claude,
-    codex, gemini, ...), not the binary path."""
+    codex, pi, ...), not the binary path."""
 
     agent: str
 
@@ -120,7 +120,7 @@ class AgentSessionTransport(Protocol):
 
     Implementations:
         - PTYTransport (session/transports/pty.py) — pty.fork() + raw
-          bytes. PTY agents (claude, codex, gemini, kiro, ...).
+          bytes. PTY agents (claude, codex, pi, kiro, ...).
         - StubTransport (tests/conftest.py) — pre-populated in-memory
           queue for fast unit tests.
         - ACPTransport (future, Phase 2) — JSON-RPC over stdio, emits

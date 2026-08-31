@@ -50,6 +50,8 @@ if _tests_dir not in sys.path:
 
 from _playwright_helpers import start_web_server  # noqa: E402
 
+_TEST_AGENT_SCRIPT = Path(_tests_dir) / "_fake_agent.py"
+
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
@@ -95,7 +97,7 @@ def env(tmp_path_factory):
             "STUDYLOOP_CONFIG": str(config),
             "STUDYLOOP_SESSION_DIR": str(session_dir),
             "STUDYLOOP_PLANS_DIR": str(root / "study-plans"),
-            "STUDYLOOP_TEST_AGENT": "1",
+            "STUDYLOOP_TEST_AGENT_CMD": (f"{sys.executable} {_TEST_AGENT_SCRIPT} {{persona_file}}"),
         },
     )
     base_url = f"http://127.0.0.1:{port}"
@@ -142,7 +144,7 @@ def _start_session(base_url: str, topic: str, origin: str) -> str:
     status, body = _post(
         base_url,
         "/api/session/start",
-        {"topic": topic, "energy": 5, "agent": "fake", "transport": "pty", "origin": origin},
+        {"topic": topic, "energy": 5, "agent": "codex", "transport": "pty", "origin": origin},
     )
     assert status == 201, f"could not start a {origin} session: {status} {body}"
     return body["study_session_id"]
@@ -323,7 +325,7 @@ class TestStudyPickerRecovery:
               const d = window.Alpine.$data(root);
               d.topicInput = 'Something else entirely';
               d.selectedTopic = '';
-              d.agent = 'fake';
+              d.agent = 'codex';
             }"""
         )
         page.locator("[data-testid='study-start-session']").click()
@@ -407,7 +409,7 @@ class TestStudyPickerRecovery:
               data.conflictSession = null;
               data.startError = '';
               data.activity = 'Another focus';
-              data.agent = 'fake';
+              data.agent = 'codex';
             }"""
         )
         page.locator("#bd-start-session").click()
@@ -450,7 +452,7 @@ class TestParkFirstModalDelete:
               const d = window.Alpine.$data(root);
               d.topicInput = 'A brand new fourth topic';
               d.selectedTopic = '';
-              d.agent = 'fake';
+              d.agent = 'codex';
             }"""
         )
         page.locator("[data-testid='study-start-session']").click()
@@ -557,7 +559,7 @@ class TestConfiguredTopicEscapeHatch:
         page.evaluate(
             """() => {
               const root = document.querySelector('[x-data="sessionTimer()"]');
-              window.Alpine.$data(root).agent = 'fake';
+              window.Alpine.$data(root).agent = 'codex';
             }"""
         )
         page.wait_for_function(

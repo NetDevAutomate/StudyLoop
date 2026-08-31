@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from _notebook_client import InMemoryNotebookClient
 
 from studyloop.content.notebook_client import (
     NotebookAuthError,
     SourceUpload,
     sync_notebook_sources,
 )
-from studyloop.content.notebook_fake import InMemoryNotebookClient
 
 pytestmark = pytest.mark.asyncio
 

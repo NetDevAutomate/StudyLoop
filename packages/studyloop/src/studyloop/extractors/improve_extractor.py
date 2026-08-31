@@ -15,21 +15,22 @@ FIXED BOUNDARY (the loop must never mutate):
 SAFETY RAILS (all enforced here):
 - baseline-first: score the initial prompt before any mutation
 - budget checked BEFORE every iteration (hard stop) + MAX_ITERATIONS
-- temperature=0 on the extractor (deterministic, verified live); 0.7 on the
-  meta-agent (diverse mutations)
+- model-compatible inference controls: temperature is omitted unless the
+  selected model explicitly supports it
 - per-session error isolation lives in run_eval, so one crash can't kill the loop
 - NEVER writes study_progress; eval scores in memory against frozen labels
 - on any stop reason, writes extractor_candidate.py with the best prompt
 
 Run:
-    AWS_PROFILE=... uv run --with boto3 python -m studyloop.extractors.improve_extractor \\
-        --budget-usd 2.0 --max-iterations 20
+    uv run --with boto3 python -m studyloop.extractors.improve_extractor \\
+        --model MODEL_ID --budget-usd 2.0 --max-iterations 20
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -41,12 +42,9 @@ from studyloop.extractors.eval_runner import (
     append_results_row,
     run_eval,
 )
-from studyloop.extractors.llm import DEFAULT_MODEL, DEFAULT_REGION, INITIAL_PROMPT
+from studyloop.extractors.llm import INITIAL_PROMPT
 
 _CANDIDATE_PATH = Path(__file__).resolve().parent / "extractor_candidate.py"
-_META_MODEL = DEFAULT_MODEL  # sonnet for mutation quality (this run, per user)
-_META_TEMPERATURE = 0.7
-
 _META_SYSTEM = """\
 You improve the SYSTEM PROMPT of an LLM that extracts learning 'struggles' from \
 study-session transcripts. You are given the current prompt, its F1 score, and \
@@ -62,10 +60,13 @@ equal.
 Return ONLY the new prompt text between <prompt> and </prompt> tags, nothing else."""
 
 
-def _build_client(profile: str, region: str = DEFAULT_REGION) -> Any:
+def _build_client(profile: str | None, region: str | None) -> Any:
     import boto3
 
-    return boto3.Session(profile_name=profile).client("bedrock-runtime", region_name=region)
+    session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+    if region:
+        return session.client("bedrock-runtime", region_name=region)
+    return session.client("bedrock-runtime")
 
 
 def _format_failures(scores: list[SessionScore], limit: int = 5) -> str:
@@ -90,7 +91,13 @@ def _format_failures(scores: list[SessionScore], limit: int = 5) -> str:
 
 
 def _mutate_prompt(
-    client: Any, current_prompt: str, f1: float, failures: str
+    client: Any,
+    current_prompt: str,
+    f1: float,
+    failures: str,
+    model: str,
+    *,
+    temperature: float | None = None,
 ) -> tuple[str | None, float]:
     """Call the meta-agent to rewrite the prompt. Returns (new_prompt|None, cost)."""
     user = (
@@ -100,11 +107,15 @@ def _mutate_prompt(
         "Rewrite the prompt to fix these failures. Return only the new prompt "
         "between <prompt> and </prompt>."
     )
+    inference_config: dict[str, Any] = {"maxTokens": 4096}
+    if temperature is not None:
+        inference_config["temperature"] = temperature
+
     resp = client.converse(
-        modelId=_META_MODEL,
+        modelId=model,
         system=[{"text": _META_SYSTEM}],
         messages=[{"role": "user", "content": [{"text": user}]}],
-        inferenceConfig={"temperature": _META_TEMPERATURE, "maxTokens": 4096},
+        inferenceConfig=inference_config,
     )
     usage = resp.get("usage", {})
     cost = usage.get("inputTokens", 0) * _PRICE_IN + usage.get("outputTokens", 0) * _PRICE_OUT
@@ -136,18 +147,20 @@ def _write_candidate(prompt: str, metrics: dict[str, float]) -> None:
 def hill_climb(
     *,
     db_path: Path,
-    profile: str,
+    model: str,
+    profile: str | None,
+    region: str | None,
     budget_usd: float,
     max_iterations: int,
 ) -> dict[str, Any]:
     """Run the loop. Returns a summary dict. Writes extractor_candidate.py on exit."""
-    client = _build_client(profile)
+    client = _build_client(profile, region)
     cumulative_cost = 0.0
 
     # ── baseline-first ────────────────────────────────────────────────
     best_prompt = INITIAL_PROMPT
     metrics, cost, scores = run_eval(
-        "train", db_path=db_path, prompt_template=best_prompt, client=client
+        "train", db_path=db_path, model=model, prompt_template=best_prompt, client=client
     )
     cumulative_cost += cost
     best_f1 = metrics["f1"]
@@ -174,14 +187,14 @@ def hill_climb(
             break
 
         failures = _format_failures(scores)
-        new_prompt, mut_cost = _mutate_prompt(client, best_prompt, best_f1, failures)
+        new_prompt, mut_cost = _mutate_prompt(client, best_prompt, best_f1, failures, model)
         cumulative_cost += mut_cost
         if new_prompt is None:
             print(f"[iter {i}] meta-agent produced no valid prompt; skipping")
             continue
 
         metrics, eval_cost, new_scores = run_eval(
-            "train", db_path=db_path, prompt_template=new_prompt, client=client
+            "train", db_path=db_path, model=model, prompt_template=new_prompt, client=client
         )
         cumulative_cost += eval_cost
         f1 = metrics["f1"]
@@ -229,7 +242,15 @@ def main() -> None:
     ap.add_argument(
         "--db", type=Path, default=Path.home() / ".config" / "studyloop" / "sessions.db"
     )
-    ap.add_argument("--profile", default="arraafat+prod-user")
+    configured_model = os.environ.get("STUDYLOOP_EXTRACTOR_MODEL", "").strip()
+    ap.add_argument(
+        "--model",
+        default=configured_model or None,
+        required=not configured_model,
+        help="Live Bedrock model ID (or set STUDYLOOP_EXTRACTOR_MODEL).",
+    )
+    ap.add_argument("--profile", default=None, help="Optional AWS profile override.")
+    ap.add_argument("--region", default=None, help="Optional AWS region override.")
     ap.add_argument("--budget-usd", type=float, default=2.0)
     ap.add_argument("--max-iterations", type=int, default=20)
     args = ap.parse_args()
@@ -239,7 +260,9 @@ def main() -> None:
 
     summary = hill_climb(
         db_path=args.db,
+        model=args.model,
         profile=args.profile,
+        region=args.region,
         budget_usd=args.budget_usd,
         max_iterations=args.max_iterations,
     )

@@ -56,7 +56,7 @@ def offer_agent_install(flag: bool | None) -> None:
         console.print("\n[bold cyan]Agent Installation[/bold cyan]")
         console.print(
             "The study mentor agents can be installed for detected AI tools\n"
-            "(Claude Code, Codex CLI, Kiro CLI, Gemini, OpenCode, Amp).\n"
+            "(Kiro CLI, Codex, Claude Code, OpenCode, or pi).\n"
         )
         reply = input("Install agent definitions now? [Y/n] ").strip().lower()
         flag = reply in ("", "y", "yes")

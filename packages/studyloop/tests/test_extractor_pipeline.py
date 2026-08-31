@@ -1,6 +1,6 @@
 """Pipeline-plumbing tests for the struggle-extraction pipeline (P1).
 
-These test the PLUMBING only, against the deterministic stub extractor:
+These test the plumbing against a deterministic test-local extractor:
 - pre_filter accept/reject logic
 - extract_and_write row counts, empty handling, idempotency
 - CLI wiring (--help, --dry-run) via click.testing.CliRunner
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 from click.testing import CliRunner
@@ -20,11 +21,10 @@ from click.testing import CliRunner
 from studyloop.cli._extract import extract_struggles_cmd
 from studyloop.extractors import ExtractorResult
 from studyloop.extractors.pipeline import (
-    STUDY_SOURCE,
+    STUDY_SOURCES,
     extract_and_write,
     pre_filter,
 )
-from studyloop.extractors.stub import extract_struggles as stub_extract
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -47,9 +47,28 @@ _STUDY_PROGRESS_DDL = """
         source_course TEXT,
         source_section TEXT,
         source_publisher TEXT,
+        source_session_id TEXT,
         created_by TEXT DEFAULT 'agent'
     )
 """
+
+
+def deterministic_test_extract(_messages, _session_id) -> list[ExtractorResult]:
+    """Isolated test double for pipeline behavior; never shipped in StudyLoop."""
+    return [
+        ExtractorResult(
+            topic="python",
+            concept="abc-vs-protocol",
+            confidence="struggling",
+            notes="test-only extraction one",
+        ),
+        ExtractorResult(
+            topic="sql-joins",
+            concept="outer-join",
+            confidence="struggling",
+            notes="test-only extraction two",
+        ),
+    ]
 
 
 @pytest.fixture
@@ -93,15 +112,15 @@ def _count_struggling(db: Path) -> int:
 # --------------------------------------------------------------------------- #
 
 
-def test_pre_filter_rejects_non_kiro_source() -> None:
-    """(a) claude_code build sessions are skipped."""
+def test_pre_filter_rejects_unsupported_source() -> None:
     msgs = [{"role": "user", "content": "hi"}]
-    assert pre_filter("s1", "claude_code", msgs) is False
+    assert pre_filter("s1", "aider", msgs) is False
 
 
-def test_pre_filter_accepts_kiro_study_session() -> None:
+@pytest.mark.parametrize("source", sorted(STUDY_SOURCES))
+def test_pre_filter_accepts_release_harness_session(source: str) -> None:
     msgs = [{"role": "user", "content": "explain ABC"}, {"role": "assistant", "content": "..."}]
-    assert pre_filter("s1", STUDY_SOURCE, msgs) is True
+    assert pre_filter("s1", source, msgs) is True
 
 
 def test_pre_filter_rejects_tool_noise_majority() -> None:
@@ -112,11 +131,11 @@ def test_pre_filter_rejects_tool_noise_majority() -> None:
         {"role": "tool_result", "content": "{}"},
         {"role": "tool_use", "content": "{}"},
     ]  # 3/4 = 75% tool noise
-    assert pre_filter("s1", STUDY_SOURCE, msgs) is False
+    assert pre_filter("s1", "kiro_cli", msgs) is False
 
 
 def test_pre_filter_rejects_empty_session() -> None:
-    assert pre_filter("s1", STUDY_SOURCE, []) is False
+    assert pre_filter("s1", "kiro_cli", []) is False
 
 
 # --------------------------------------------------------------------------- #
@@ -125,41 +144,64 @@ def test_pre_filter_rejects_empty_session() -> None:
 
 
 def test_extract_and_write_writes_expected_rows(tmp_db: Path) -> None:
-    """(c) stub extractor writes its 2 fixture rows into the tmp DB."""
+    """(c) an injected extractor writes its validated rows into the tmp DB."""
     msgs = [{"role": "user", "content": "x"}]
-    written = extract_and_write("stub-session-001", msgs, stub_extract)
+    written = extract_and_write("test-session-001", msgs, deterministic_test_extract)
     assert written == 2
     assert _count_struggling(tmp_db) == 2
 
 
-def test_extract_and_write_zero_messages_still_writes_stub_default(tmp_db: Path) -> None:
-    """(d) stub ignores content, so even empty messages yield its default list.
+def test_extract_and_write_trusts_injected_extractor_after_caller_filter(tmp_db: Path) -> None:
+    """(d) extract_and_write does not duplicate its caller's pre-filter.
 
     extract_and_write does NOT pre-filter (that is the caller's job); it trusts
-    the extractor. With zero messages the stub returns its 2 default rows.
+    the injected extractor.
     """
-    written = extract_and_write("unknown-session", [], stub_extract)
+    written = extract_and_write("test-session", [], deterministic_test_extract)
     assert written == 2
 
 
 def test_extract_and_write_idempotent(tmp_db: Path) -> None:
     """(e) re-running on the same session does not duplicate rows (uuid5 upsert)."""
     msgs = [{"role": "user", "content": "x"}]
-    first = extract_and_write("stub-session-001", msgs, stub_extract)
+    first = extract_and_write("test-session-001", msgs, deterministic_test_extract)
     assert first == 2
-    second = extract_and_write("stub-session-001", msgs, stub_extract)
+    second = extract_and_write("test-session-001", msgs, deterministic_test_extract)
     assert second == 2  # write path ran again...
     conn = sqlite3.connect(tmp_db)
     try:
-        total = conn.execute("SELECT COUNT(*) FROM study_progress").fetchone()[0]
+        rows = conn.execute(
+            "SELECT session_count, source_session_id FROM study_progress"
+        ).fetchall()
     finally:
         conn.close()
-    assert total == 2  # ...but the table still holds exactly 2 distinct rows
+    assert rows == [(1, "test-session-001"), (1, "test-session-001")]
+
+
+def test_extract_and_write_validates_entire_batch_before_first_write(tmp_db: Path) -> None:
+    def partly_invalid(_messages, _session_id):
+        return [
+            ExtractorResult(topic="python", concept="valid", confidence="struggling"),
+            ExtractorResult(topic="", concept="invalid", confidence="struggling"),
+        ]
+
+    with pytest.raises(ValueError, match="topic"):
+        extract_and_write("s1", [{"role": "user", "content": "x"}], partly_invalid)
+    assert _count_struggling(tmp_db) == 0
+
+
+def test_extract_and_write_model_failure_writes_nothing(tmp_db: Path) -> None:
+    def failed_model(_messages, _session_id):
+        raise RuntimeError("live model unavailable")
+
+    with pytest.raises(RuntimeError, match="live model unavailable"):
+        extract_and_write("s1", [{"role": "user", "content": "x"}], failed_model)
+    assert _count_struggling(tmp_db) == 0
 
 
 def test_extract_and_write_dry_run_writes_nothing(tmp_db: Path) -> None:
     msgs = [{"role": "user", "content": "x"}]
-    written = extract_and_write("stub-session-001", msgs, stub_extract, dry_run=True)
+    written = extract_and_write("test-session-001", msgs, deterministic_test_extract, dry_run=True)
     assert written == 2  # counts what *would* be written
     assert _count_struggling(tmp_db) == 0  # but nothing landed
 
@@ -185,7 +227,236 @@ def test_cli_help_exits_zero() -> None:
     assert result.exit_code == 0
     assert "--incremental" in result.output
     assert "--full" in result.output
+    assert "--harness" in result.output
     assert "--dry-run" in result.output
+
+
+def test_cli_requires_harness_for_implicit_session_before_opening_database(
+    monkeypatch,
+) -> None:
+    def database_must_not_open():
+        raise AssertionError("database opened before harness selection was validated")
+
+    monkeypatch.setattr("studyloop.history._connection._connect", database_must_not_open)
+    result = CliRunner().invoke(
+        extract_struggles_cmd,
+        ["--incremental", "--model", "example.live-model"],
+    )
+
+    assert result.exit_code != 0
+    assert "--harness" in result.output
+    assert not isinstance(result.exception, AssertionError)
+
+
+def test_cli_requires_explicit_live_model_before_opening_database(monkeypatch) -> None:
+    """An unconfigured extraction fails closed before learner state is opened."""
+
+    def database_must_not_open():
+        raise AssertionError("database opened before extractor configuration was validated")
+
+    monkeypatch.setattr("studyloop.history._connection._connect", database_must_not_open)
+
+    result = CliRunner().invoke(extract_struggles_cmd, ["--incremental"])
+
+    assert result.exit_code != 0
+    assert "--model" in result.output
+    assert not isinstance(result.exception, AssertionError)
+
+
+def test_cli_uses_live_extractor_by_default_when_model_is_supplied(
+    tmp_db: Path, monkeypatch
+) -> None:
+    """The normal CLI path uses transcript-derived live output, never fixtures."""
+    conn = sqlite3.connect(tmp_db)
+    conn.execute(
+        "INSERT INTO sessions (id, source, updated_at) VALUES (?, ?, ?)",
+        ("live-session", "kiro_cli", "2026-08-27T20:00:00Z"),
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, content, seq) VALUES (?, ?, ?, ?)",
+        ("live-session", "user", "I still do not understand protocols", 1),
+    )
+    conn.commit()
+    conn.close()
+
+    bedrock = MagicMock()
+    bedrock.converse.return_value = {
+        "output": {
+            "message": {
+                "content": [
+                    {
+                        "toolUse": {
+                            "name": "emit_struggle_extractions",
+                            "input": {
+                                "struggles": [
+                                    {
+                                        "topic": "python",
+                                        "concept": "protocols",
+                                        "confidence": "struggling",
+                                        "evidence_quote": "I still do not understand protocols",
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                ]
+            }
+        },
+        "usage": {},
+    }
+    monkeypatch.setattr("studyloop.extractors.llm._build_client", lambda: bedrock)
+
+    result = CliRunner().invoke(
+        extract_struggles_cmd,
+        [
+            "--incremental",
+            "--session-id",
+            "live-session",
+            "--dry-run",
+            "--model",
+            "example.live-model",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "would write 1 row(s)" in result.output
+    assert _count_struggling(tmp_db) == 0
+    assert bedrock.converse.call_args.kwargs["modelId"] == "example.live-model"
+
+
+def test_cli_rolls_back_every_result_when_one_progress_write_fails(
+    tmp_db: Path, monkeypatch
+) -> None:
+    conn = sqlite3.connect(tmp_db)
+    conn.execute(
+        "INSERT INTO sessions (id, source, updated_at) VALUES (?, ?, ?)",
+        ("atomic-session", "kiro_cli", "2026-08-27T20:00:00Z"),
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, content, seq) VALUES (?, ?, ?, ?)",
+        ("atomic-session", "user", "Two concepts are still unclear", 1),
+    )
+    conn.execute(
+        """
+        CREATE TRIGGER reject_second_progress
+        BEFORE INSERT ON study_progress
+        WHEN NEW.concept = 'reject-me'
+        BEGIN
+            SELECT RAISE(ABORT, 'intentional write rejection');
+        END
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    bedrock = MagicMock()
+    bedrock.converse.return_value = {
+        "output": {
+            "message": {
+                "content": [
+                    {
+                        "toolUse": {
+                            "name": "emit_struggle_extractions",
+                            "input": {
+                                "struggles": [
+                                    {
+                                        "topic": "python",
+                                        "concept": "first-result",
+                                        "confidence": "struggling",
+                                        "evidence_quote": "Two concepts are still unclear",
+                                    },
+                                    {
+                                        "topic": "python",
+                                        "concept": "reject-me",
+                                        "confidence": "struggling",
+                                        "evidence_quote": "Two concepts are still unclear",
+                                    },
+                                ]
+                            },
+                        }
+                    }
+                ]
+            }
+        },
+        "usage": {},
+    }
+    monkeypatch.setattr("studyloop.extractors.llm._build_client", lambda: bedrock)
+
+    result = CliRunner().invoke(
+        extract_struggles_cmd,
+        [
+            "--incremental",
+            "--session-id",
+            "atomic-session",
+            "--model",
+            "example.live-model",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert _count_struggling(tmp_db) == 0
+
+
+def test_cli_records_source_session_provenance(tmp_db: Path, monkeypatch) -> None:
+    conn = sqlite3.connect(tmp_db)
+    conn.execute(
+        "INSERT INTO sessions (id, source, updated_at) VALUES (?, ?, ?)",
+        ("provenance-session", "kiro_cli", "2026-08-27T20:00:00Z"),
+    )
+    conn.execute(
+        "INSERT INTO messages (session_id, role, content, seq) VALUES (?, ?, ?, ?)",
+        ("provenance-session", "user", "Protocols are still unclear", 1),
+    )
+    conn.commit()
+    conn.close()
+
+    bedrock = MagicMock()
+    bedrock.converse.return_value = {
+        "output": {
+            "message": {
+                "content": [
+                    {
+                        "toolUse": {
+                            "name": "emit_struggle_extractions",
+                            "input": {
+                                "struggles": [
+                                    {
+                                        "topic": "python",
+                                        "concept": "protocols",
+                                        "confidence": "struggling",
+                                        "evidence_quote": "Protocols are still unclear",
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                ]
+            }
+        },
+        "usage": {},
+    }
+    monkeypatch.setattr("studyloop.extractors.llm._build_client", lambda: bedrock)
+
+    result = CliRunner().invoke(
+        extract_struggles_cmd,
+        [
+            "--incremental",
+            "--session-id",
+            "provenance-session",
+            "--model",
+            "example.live-model",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    conn = sqlite3.connect(tmp_db)
+    try:
+        row = conn.execute(
+            "SELECT source_session_id FROM study_progress WHERE concept = 'protocols'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row == ("provenance-session",)
 
 
 def test_cli_incremental_dry_run_no_write(tmp_db: Path) -> None:
@@ -196,7 +467,14 @@ def test_cli_incremental_dry_run_no_write(tmp_db: Path) -> None:
     """
     result = CliRunner().invoke(
         extract_struggles_cmd,
-        ["--incremental", "--session-id", "FAKE", "--dry-run"],
+        [
+            "--incremental",
+            "--session-id",
+            "FAKE",
+            "--dry-run",
+            "--model",
+            "example.live-model",
+        ],
     )
     assert result.exit_code == 0, result.output
     assert _count_struggling(tmp_db) == 0

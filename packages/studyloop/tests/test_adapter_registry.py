@@ -355,8 +355,7 @@ class TestDiscoveryErrorHandling:
         assert "custom-agent" in result
         registry.reset_registry()
 
-    def test_custom_overrides_builtin(self):
-        """A custom agent with the same name as a built-in overrides it."""
+    def test_custom_cannot_override_admitted_harness(self):
         from studyloop.adapters import registry
 
         registry.reset_registry()
@@ -373,8 +372,7 @@ class TestDiscoveryErrorHandling:
             ),
         ):
             result = registry._build_registry()
-        # custom wins
-        assert result["claude"].binary == "custom-claude-bin"
+        assert result["claude"].binary == "claude-bin"
         registry.reset_registry()
 
     def test_load_custom_agents_returns_empty_on_missing_module(self):

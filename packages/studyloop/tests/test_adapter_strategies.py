@@ -61,16 +61,6 @@ class TestMcpConfigWriter:
         assert "command" in entry
         assert "args" in entry
 
-    def test_gemini_format(self, tmp_path):
-        from studyloop.adapters._strategies import write_mcp_config
-
-        write_mcp_config(tmp_path, fmt="gemini")
-        config_path = tmp_path / ".gemini" / "settings.json"
-        assert config_path.exists()
-        data = json.loads(config_path.read_text())
-        assert "mcpServers" in data
-        assert "studyloop-mcp" in data["mcpServers"]
-
     def test_opencode_format(self, tmp_path):
         from studyloop.adapters._strategies import write_mcp_config
 

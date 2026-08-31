@@ -47,7 +47,7 @@ def start_web_server(
 
     ``extra_env`` is merged *over* the inherited environment — the original
     contract, used by the older ``test_web_*`` modules and by the journey to
-    enable the fake harness agent (``STUDYLOOP_TEST_AGENT=1``).
+    inject the source-test agent command while selecting a release adapter.
 
     ``env`` replaces the environment *verbatim*, inheriting nothing. The e2e
     harness (``e2e/_env.py``) builds a complete ``TestWorld`` environment this

@@ -35,6 +35,17 @@ _KIRO_TEMPLATE = _REPO_ROOT / "agents" / "kiro" / "study-mentor.json"
 _KIRO_BACKUP_SUFFIX = ".studyloop-backup"
 
 
+def _template_path() -> Path:
+    """Resolve an explicitly selected Kiro profile or the shipped default."""
+    configured = os.environ.get("STUDYLOOP_KIRO_AGENT_TEMPLATE", "").strip()
+    if not configured:
+        return _KIRO_TEMPLATE
+    path = Path(configured).expanduser()
+    if not path.is_file():
+        raise FileNotFoundError(f"Kiro agent template not found: {path}")
+    return path
+
+
 def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:
     """Write persona temp file and update Kiro agent JSON atomically."""
     # 1. Write canonical content to a temp persona file
@@ -48,8 +59,9 @@ def _kiro_setup(canonical_content: str, _session_dir: Path) -> Path:
         f.write(canonical_content)
 
     # 2. Load the base agent template
-    if _KIRO_TEMPLATE.exists():
-        agent_def = json.loads(_KIRO_TEMPLATE.read_text())
+    template_path = _template_path()
+    if template_path.exists():
+        agent_def = json.loads(template_path.read_text())
     else:
         agent_def = {
             "name": KIRO_AGENT_NAME,

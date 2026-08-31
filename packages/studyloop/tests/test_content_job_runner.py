@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from _content_generator import DeterministicTestGenerator, GeneratorFixtureConfig
 from _helpers import run_async
 
 from studyloop.content import active_gen
@@ -27,8 +28,12 @@ from studyloop.settings import CardGeneratorConfig, ContentConfig, Settings
 
 
 @pytest.fixture(autouse=True)
-def _release_singleton():
+def _release_singleton(monkeypatch: pytest.MonkeyPatch):
     """Singleton is shared module state; release before AND after every test."""
+    monkeypatch.setattr(
+        "studyloop.content.job.get_generator",
+        lambda _config: DeterministicTestGenerator(GeneratorFixtureConfig(card_count=3)),
+    )
     run_async(active_gen.release())
     yield
     run_async(active_gen.release())
@@ -52,11 +57,7 @@ def vault(tmp_path: Path) -> Path:
 def settings(vault: Path) -> Settings:
     s = Settings()
     s.content = ContentConfig(base_path=vault)
-    s.card_generator = CardGeneratorConfig(
-        backend="stub",
-        max_workers=2,
-        stub_card_count=3,  # MVD shape
-    )
+    s.card_generator = CardGeneratorConfig(backend="ollama", max_workers=2)
     return s
 
 
@@ -149,7 +150,7 @@ class TestHappyPath:
         assert started["type"] == "started"
         assert started["kinds"] == ["flashcards", "quizzes"]
         assert started["count_per_source"] == 5
-        assert started["provider"] == "stub"
+        assert started["provider"] == "ollama"
         flashcards = json.loads(
             (vault / _PUBLISHER / _COURSE / "flashcards" / "joins-flashcards.json").read_text()
         )
@@ -183,10 +184,19 @@ def test_build_tasks_uses_count_per_source_for_flashcards_and_quizzes() -> None:
 
 
 class TestPartialFailure:
-    def test_one_failing_task_does_not_abort_run(self, settings: Settings, vault: Path) -> None:
-        # Make the stub fail on one specific title only.
-        settings.card_generator.stub_failure_mode = "fail_titles"
-        settings.card_generator.stub_failure_titles = ("Joins",)
+    def test_one_failing_task_does_not_abort_run(
+        self, settings: Settings, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "studyloop.content.job.get_generator",
+            lambda _config: DeterministicTestGenerator(
+                GeneratorFixtureConfig(
+                    card_count=3,
+                    failure_mode="fail_titles",
+                    failure_titles=("Joins",),
+                )
+            ),
+        )
         result = run_job(
             "gen-3",
             JobRequest(
@@ -253,7 +263,7 @@ class TestOnExistingPolicy:
         merged = FlashcardDeck.model_validate(
             json.loads((target_dir / "joins-flashcards.json").read_text())
         )
-        # 3 stub cards + 1 existing card = 4 total (stub titles are unique).
+        # Three generated cards plus the existing card are retained.
         assert len(merged.cards) == 4
 
 

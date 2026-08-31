@@ -59,11 +59,12 @@ async def test_pty_transport_streams_output_and_accepts_input(tmp_path: Path) ->
     assert "echo:hello" in "".join(chunks)
 
 
-def test_acp_command_supports_kiro_and_gemini(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_acp_command_supports_only_kiro(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("shutil.which", lambda binary: f"/usr/bin/{binary}")
 
     assert _acp_command("kiro") == ["/usr/bin/kiro-cli", "acp"]
-    assert _acp_command("gemini") == ["/usr/bin/gemini", "--acp"]
+    with pytest.raises(ValueError, match="not configured"):
+        _acp_command("gemini")
 
 
 def test_clean_terminal_output_strips_ansi_and_control_codes() -> None:

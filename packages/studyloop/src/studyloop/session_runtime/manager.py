@@ -134,9 +134,6 @@ def _acp_command(agent: str) -> list[str]:
     if agent == "kiro":
         binary = shutil.which("kiro-cli") or shutil.which("kiro") or "kiro-cli"
         return [binary, "acp"]
-    if agent == "gemini":
-        binary = shutil.which("gemini") or "gemini"
-        return [binary, "--acp"]
     raise ValueError(f"ACP transport is not configured for agent: {agent}")
 
 

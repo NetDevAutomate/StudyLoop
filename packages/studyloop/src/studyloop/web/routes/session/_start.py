@@ -219,7 +219,8 @@ async def _start_pty_session(
         agent = available[0]
 
     adapter = AGENTS[agent]
-    if not shutil.which(adapter.binary):
+    test_agent_cmd = os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
+    if not test_agent_cmd and not shutil.which(adapter.binary):
         return JSONResponse(
             {
                 "error": f"Agent '{agent}' binary not found: {adapter.binary}",
@@ -436,8 +437,8 @@ async def _start_acp_session(
 
     adapter = AGENTS[agent]
     # STUDYLOOP_TEST_ACP_CMD bypasses the binary check entirely — the test
-    # stub (tests/_stub_acp_agent.py) is the argv we spawn, so the real
-    # Kiro / Gemini binary doesn't need to be installed. Parity with the
+    # test agent (tests/_stub_acp_agent.py) is the argv we spawn, so the real
+    # Kiro binary doesn't need to be installed. Parity with the
     # PTY test hatch behaviour (which dodges the check by routing every
     # launch through /bin/sh anyway).
     test_acp_cmd = os.environ.get("STUDYLOOP_TEST_ACP_CMD")

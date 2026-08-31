@@ -123,7 +123,7 @@ def list_cmd(
         typer.Option(
             "-s",
             "--source",
-            help="Filter by source (claude_code, kiro_cli, gemini_cli, etc.)",
+            help="Filter by source (kiro_cli, codex, claude_code, opencode, or pi)",
         ),
     ] = None,
     limit: Annotated[int, typer.Option("-n", "--limit", help="Max results")] = 20,

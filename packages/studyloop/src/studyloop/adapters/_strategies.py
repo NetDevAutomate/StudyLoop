@@ -111,7 +111,6 @@ def write_mcp_config(
     Supported formats:
 
     * ``"generic"`` — Claude Code / generic MCP schema at ``.mcp.json``
-    * ``"gemini"`` — Gemini CLI schema at ``.gemini/settings.json``
     * ``"opencode"`` — OpenCode schema at ``.opencode/opencode.json``
 
     Args:
@@ -128,16 +127,6 @@ def write_mcp_config(
 
     if fmt == "generic":
         default_path = ".mcp.json"
-        config = {
-            "mcpServers": {
-                "studyloop-mcp": {
-                    "command": cmd[0],
-                    "args": cmd[1:],
-                }
-            }
-        }
-    elif fmt == "gemini":
-        default_path = ".gemini/settings.json"
         config = {
             "mcpServers": {
                 "studyloop-mcp": {

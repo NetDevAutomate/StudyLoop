@@ -17,6 +17,7 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
+from _content_generator import DeterministicTestGenerator, GeneratorFixtureConfig
 from _helpers import run_async
 
 pytest.importorskip("fastapi")
@@ -66,8 +67,12 @@ def stub_settings(vault: Path, monkeypatch: MonkeyPatch):
 
     s = Settings()
     s.content = ContentConfig(base_path=vault)
-    s.card_generator = CardGeneratorConfig(backend="stub", max_workers=2, stub_card_count=3)
+    s.card_generator = CardGeneratorConfig(backend="ollama", max_workers=2)
     monkeypatch.setattr("studyloop.settings.load_settings", lambda: s)
+    monkeypatch.setattr(
+        "studyloop.content.job.get_generator",
+        lambda _config: DeterministicTestGenerator(GeneratorFixtureConfig(card_count=3)),
+    )
     return s
 
 
@@ -89,7 +94,7 @@ def _valid_body() -> dict:
         "kinds": ["flashcards"],
         "count_per_source": 5,
         "on_existing": "suffix",
-        "backend": "stub",
+        "backend": "ollama",
     }
 
 

@@ -174,14 +174,6 @@ class ContentConfig:
 
 
 @dataclass
-class LocalLLMConfig:
-    """Configuration for a local LLM provider (Ollama, LM Studio)."""
-
-    model: str = ""
-    base_url: str = ""
-
-
-@dataclass
 class PomodoroConfig:
     """Configuration for the Pomodoro timer (web UI + TUI sidebar)."""
 
@@ -251,7 +243,7 @@ class CardGeneratorConfig:
     # OpenRouter, Gemini, or Anthropic.
     backend: str = "ollama"
     # Registry slug for ``*_compat`` backends. Empty for legacy backends
-    # (ollama, bedrock, stub) -- they ignore this field.
+    # (ollama, bedrock) -- they ignore this field.
     provider: str = ""
     # Curated model id within the chosen provider's profile. Empty
     # defaults to the profile's first cheap-tier entry.
@@ -274,15 +266,6 @@ class CardGeneratorConfig:
     ollama: OllamaBackendConfig = field(default_factory=OllamaBackendConfig)
     bedrock: BedrockBackendConfig = field(default_factory=BedrockBackendConfig)
 
-    # ---- Stub backend knobs (test/dogfood only) ---------------------------
-    # These are intentionally NOT loaded from config.yaml -- they're set in
-    # tests via direct construction or env-var hatch. Defaults make the stub
-    # behave like a happy backend. See content/generators/stub.py.
-    stub_card_count: int = 10
-    stub_latency_s: float = 0.0
-    stub_failure_mode: str = "none"  # "none" | "always" | "fail_titles"
-    stub_failure_titles: tuple[str, ...] = ()
-
 
 @dataclass
 class ObsidianConfig:
@@ -302,27 +285,12 @@ class AgentsConfig:
 
     priority: list[str] = field(
         default_factory=lambda: [
-            "claude",
             "kiro",
-            "gemini",
-            "opencode",
             "codex",
-            "grok",
-            "ollama",
-            "lmstudio",
+            "claude",
+            "opencode",
+            "pi",
         ]
-    )
-    ollama: LocalLLMConfig = field(
-        default_factory=lambda: LocalLLMConfig(
-            model="qwen3-coder",
-            base_url="http://localhost:4000",  # LiteLLM proxy (Ollama doesn't speak Anthropic API)
-        )
-    )
-    lmstudio: LocalLLMConfig = field(
-        default_factory=lambda: LocalLLMConfig(
-            model="qwen3-coder",
-            base_url="http://localhost:1234",
-        )
     )
     custom: dict[str, dict] = field(default_factory=dict)
 
@@ -579,14 +547,6 @@ def _topic_from_raw(raw: object, settings: Settings, position: int) -> TopicConf
     )
 
 
-def _local_llm(raw: dict, default_model: str, default_base_url: str) -> LocalLLMConfig:
-    """Build a LocalLLMConfig from a raw dict, falling back to explicit defaults."""
-    return LocalLLMConfig(
-        model=str(raw.get("model", default_model)),
-        base_url=str(raw.get("base_url", default_base_url)),
-    )
-
-
 def load_settings() -> Settings:
     """Load settings from config file, falling back to defaults."""
     settings = Settings()
@@ -675,21 +635,15 @@ def load_settings() -> Settings:
 
     ag = raw.get("agents", {})
     if ag:
-        default_priority = [
-            "claude",
-            "kiro",
-            "gemini",
-            "opencode",
-            "codex",
-            "grok",
-            "ollama",
-            "lmstudio",
-        ]
+        from studyloop.harnesses import RELEASE_HARNESSES
+
+        default_priority = ["kiro", "codex", "claude", "opencode", "pi"]
+        custom = ag.get("custom", {})
+        admitted = set(RELEASE_HARNESSES) | set(custom)
+        configured_priority = ag.get("priority", default_priority)
         settings.agents = AgentsConfig(
-            priority=ag.get("priority", default_priority),
-            ollama=_local_llm(ag.get("ollama", {}), "qwen3-coder", "http://localhost:4000"),
-            lmstudio=_local_llm(ag.get("lmstudio", {}), "qwen3-coder", "http://localhost:1234"),
-            custom=ag.get("custom", {}),
+            priority=[name for name in configured_priority if name in admitted],
+            custom=custom,
         )
 
     cg = raw.get("card_generator", {})
@@ -813,17 +767,10 @@ topics:
 
 # AI agent configuration
 # Priority order for auto-detection (first installed agent wins)
-# Override per-session with: studyloop study "topic" --agent gemini
-# Override via env var: STUDYLOOP_AGENT=gemini
+# Override per-session with: studyloop study "topic" --agent kiro
+# Override via env var: STUDYLOOP_AGENT=kiro
 # agents:
-#   priority: [codex, grok, claude, kiro, gemini, opencode, ollama, lmstudio]
-#   ollama:
-#     model: qwen3-coder                # Model name from 'ollama list'
-#     # base_url: http://localhost:4000   # LiteLLM proxy (Ollama needs a translation layer)
-#   lmstudio:
-#     model: qwen3-coder                # Model loaded in LM Studio
-#     # base_url: http://localhost:1234   # Default LM Studio API endpoint
-
+#   priority: [kiro, codex, claude, opencode, pi]
 # Medication timing (optional — for ADHD stimulant medication awareness)
 # Uncomment to enable medication-aware session recommendations
 # medication:

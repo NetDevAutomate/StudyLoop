@@ -302,9 +302,7 @@ class TestTransportAcpOption:
             timeout=3000,
         )
 
-    def test_acp_hint_text_mentions_kiro_and_gemini(self, web_page: Page) -> None:
-        """The hint shown under the transport <select> when ACP is selected
-        should name both supported agents so users know the scope."""
+    def test_acp_hint_text_names_only_kiro(self, web_page: Page) -> None:
         _stub_options(web_page, _acp_options_payload())
         _stub_session_state(web_page)
         _stub_topics_list(web_page)
@@ -324,7 +322,7 @@ class TestTransportAcpOption:
               for (const h of hints) {
                 if (window.getComputedStyle(h).display === 'none') continue;
                 const t = h.textContent || '';
-                if (t.includes('ACP') || t.includes('Kiro') || t.includes('Gemini')) {
+                if (t.includes('ACP') || t.includes('Kiro')) {
                   return t;
                 }
               }
@@ -332,7 +330,7 @@ class TestTransportAcpOption:
             }"""
         )
         assert "Kiro" in hint_text
-        assert "Gemini" in hint_text
+        assert "Gemini" not in hint_text
 
 
 # ---------------------------------------------------------------------------

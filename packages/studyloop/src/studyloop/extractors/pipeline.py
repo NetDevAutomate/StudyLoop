@@ -1,30 +1,26 @@
 """Pipeline glue: pre-filter, then extract-and-write.
 
-Deterministic Python — no LLM here.  The extractor function is injected so the
-same pipeline runs against either the stub (tests) or the real LLM extractor
-(production).
+Deterministic Python — no LLM here. The extractor function is injected so tests
+can use an isolated double while production supplies the live extractor.
 
-Pre-filter contract (from the handoff red-team):
-- Only process sessions whose ``source == 'kiro_cli'`` (study harness).  Build
-  sessions (claude_code subagents) are skipped — they generate false-positive
-  "struggles" from debugging episodes.
+Pre-filter contract:
+- Only process sessions exported by the five release harnesses. The CLI requires
+  an explicit session id or harness selection, so supporting Claude/Codex does
+  not imply scanning arbitrary coding history.
 - Skip a session when more than ``TOOL_USE_THRESHOLD`` of its messages are
   tool_use / tool_result roles (subagent tool-noise, not study Q&A).
 """
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
-from studyloop.history import record_progress
+from studyloop.harnesses import SESSION_SOURCE_BY_HARNESS
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from studyloop.extractors import ExtractorResult
-
-logger = logging.getLogger(__name__)
 
 # Roles that signal machine tool-noise rather than study conversation.
 _TOOL_ROLES = frozenset({"tool_use", "tool_result"})
@@ -32,8 +28,8 @@ _TOOL_ROLES = frozenset({"tool_use", "tool_result"})
 # Sessions with a higher fraction of tool-noise than this are skipped.
 TOOL_USE_THRESHOLD = 0.50
 
-# The only source we treat as study material by default.
-STUDY_SOURCE = "kiro_cli"
+# Exporter source names admitted by the release harness contract.
+STUDY_SOURCES = frozenset(SESSION_SOURCE_BY_HARNESS.values())
 
 
 def pre_filter(
@@ -43,10 +39,10 @@ def pre_filter(
 ) -> bool:
     """Return True if this session should be processed by the extractor.
 
-    A session qualifies when its source is the study harness AND it is not
-    dominated by tool-noise.  Empty sessions are rejected (nothing to extract).
+    A session qualifies when its source belongs to a release harness and it is
+    not dominated by tool-noise. Empty sessions are rejected.
     """
-    if source != STUDY_SOURCE:
+    if source not in STUDY_SOURCES:
         return False
     if not messages:
         return False
@@ -61,6 +57,7 @@ def extract_and_write(
     extractor_fn: Callable[[Sequence[dict[str, Any]], str], list[ExtractorResult]],
     *,
     dry_run: bool = False,
+    connection: Any | None = None,
 ) -> int:
     """Run ``extractor_fn`` on a session and upsert each result.
 
@@ -74,28 +71,42 @@ def extract_and_write(
     tmp DB, so this function never touches the user's live sessions.db under
     test.
     """
+    from studyloop.history.progress import _record_progress_on_connection
+
     results = extractor_fn(messages, session_id)
-    written = 0
     for result in results:
         result.validate()  # defensive: never write an invalid row
-        if dry_run:
-            written += 1
-            continue
-        if record_progress(
-            topic=result.topic,
-            concept=result.concept,
-            confidence=result.confidence,
-            notes=result.notes,
-        ):
-            written += 1
-        else:
-            logger.warning(
-                "record_progress returned False for %s/%s in session %s",
-                result.topic,
-                result.concept,
-                session_id,
+    if dry_run:
+        return len(results)
+
+    owns_connection = connection is None
+    conn = connection
+    if conn is None:
+        from studyloop.history import _connection
+
+        conn = _connection._connect()
+    if conn is None:
+        raise RuntimeError("Could not open sessions database for progress write")
+
+    try:
+        for result in results:
+            _record_progress_on_connection(
+                conn,
+                topic=result.topic,
+                concept=result.concept,
+                confidence=result.confidence,
+                notes=result.notes,
+                source_session_id=session_id,
+                created_by="extractor",
             )
-    return written
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        if owns_connection:
+            conn.close()
+    return len(results)
 
 
-__all__ = ["STUDY_SOURCE", "TOOL_USE_THRESHOLD", "extract_and_write", "pre_filter"]
+__all__ = ["STUDY_SOURCES", "TOOL_USE_THRESHOLD", "extract_and_write", "pre_filter"]
