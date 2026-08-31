@@ -1,10 +1,9 @@
 """Per-agent parametrised Playwright tests (plan Test Strategy §Amendment #1).
 
 Exercises the full start-session → WebSocket-handshake → Started-event
-path end-to-end for each registered agent (``claude``, ``codex``,
-``gemini``, ``grok``, ``kiro``, ``opencode``). Real agent binaries are not
-required: the ``STUDYLOOP_TEST_AGENT_CMD`` env var stubs the PTY child
-with a tiny shell snippet that prints a banner then sleeps.
+path end-to-end for every harness in ``RELEASE_HARNESSES``. Real agent
+binaries are not required: the ``STUDYLOOP_TEST_AGENT_CMD`` env var stubs
+the PTY child with a tiny shell snippet that prints a banner then sleeps.
 
 The test server is started with this env var so the ``_build_pty_transport``
 helper in ``web/routes/session.py`` picks it up and substitutes for the
@@ -31,6 +30,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from studyloop.harnesses import RELEASE_HARNESSES
+
 pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
@@ -53,11 +54,12 @@ pytestmark = [pytest.mark.e2e]
 
 WEB_PORT = 18574
 
-# Every agent registered in ``studyloop.agent_launcher.AGENTS`` should
-# appear here. The stub command doesn't care which agent is selected —
-# the point is that each agent's launch path is driven uniformly
-# through ``_build_pty_transport`` without the real binary.
-AGENTS = ["claude", "codex", "gemini", "grok", "kiro", "opencode"]
+# Derived from the release contract, so a harness added to or dropped from
+# ``RELEASE_HARNESSES`` cannot silently keep or lose coverage here. The stub
+# command doesn't care which agent is selected — the point is that each
+# agent's launch path is driven uniformly through ``_build_pty_transport``
+# without the real binary.
+AGENTS = list(RELEASE_HARNESSES)
 
 
 # ---------------------------------------------------------------------------

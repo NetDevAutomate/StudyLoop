@@ -1,14 +1,16 @@
 """Autoresearch-style E2E test matrix for all agent adapters.
 
-Parametrized over all 8 agents. Each test uses a mock agent script
-injected via ``STUDYLOOP_TEST_AGENT_CMD``.
+Parametrized over ``RELEASE_HARNESSES`` — the harnesses the 0.1.0 release
+contract actually admits — rather than a hand-maintained list. Deriving it
+means a harness added to or dropped from the contract cannot silently keep
+or lose matrix coverage. Each test uses a mock agent script injected via
+``STUDYLOOP_TEST_AGENT_CMD``, so no real agent binary is required.
 
 Run::
 
     uv run pytest tests/test_harness_matrix.py -v
     uv run pytest tests/test_harness_matrix.py -v -k claude      # single agent
-    uv run pytest tests/test_harness_matrix.py -v -k "gemini or kiro"
-    uv run pytest tests/test_harness_matrix.py -v -k claude      # single agent
+    uv run pytest tests/test_harness_matrix.py -v -k "kiro or pi"
 """
 
 from __future__ import annotations
@@ -25,6 +27,8 @@ from pathlib import Path
 
 import pytest
 
+from studyloop.harnesses import RELEASE_HARNESSES
+
 # Path bootstrapping — no conftest.py (see MEMORY.md: pluggy conflict)
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -34,7 +38,11 @@ from harness.agents import matrix_agent
 # Constants
 # ---------------------------------------------------------------------------
 
-AGENTS = ["claude", "codex", "gemini", "grok", "kiro", "opencode", "ollama", "lmstudio"]
+# Derived, never hand-listed. The previous literal carried gemini and grok
+# (both dropped from the release contract) plus ollama and lmstudio, which
+# are content-generation providers rather than PTY-launched mentor agents —
+# they have no launch path, so the matrix could only ever error on them.
+AGENTS = list(RELEASE_HARNESSES)
 
 TOPIC = "Harness Matrix"
 ENERGY = 5
