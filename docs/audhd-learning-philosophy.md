@@ -4,7 +4,8 @@ The thinking behind how this toolkit teaches — and why it works differently.
 
 For the product-level wiring of this philosophy into teach-back scoring,
 evidence-based scheduling, due-card priority, and hands-on practice generation,
-see [AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md).
+The public guides describe each learner-facing workflow; lower-level design and
+implementation notes remain in the repository for contributors.
 
 ## Table of Contents
 

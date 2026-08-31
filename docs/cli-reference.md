@@ -65,7 +65,7 @@ studyloop streaks                         # Study streak and consistency stats
 studyloop backlog list                    # Pending study backlog (parked/struggled/manual)
 studyloop bridge list                     # Network→DE (or cross-domain) knowledge bridges
 studyloop clean --dry-run                 # Preview orphan tmux/session cleanup
-studyloop extract-struggles --incremental # Session DB → study_progress (stub or --llm)
+studyloop extract-struggles --incremental --harness kiro --model MODEL_ID
 
 # Study plans
 studyloop plan interview                  # Interview questions + evidence-based seed suggestions
@@ -135,8 +135,8 @@ studyloop study "topic" --agent claude --web            # Explicit agent + web d
 studyloop study "topic" --agent codex                  # Explicit Codex CLI session
 studyloop study "topic" --lan                           # LAN access with password auth (implies --web)
 studyloop study "topic" --lan --password SECRET         # Explicit password for LAN auth
-studyloop study "topic" --agent ollama                  # Local LLM via Ollama + LiteLLM
-studyloop study "topic" --agent lmstudio                # Local LLM via LM Studio
+studyloop study "topic" --agent opencode                # Preview OpenCode integration
+studyloop study "topic" --agent pi                      # Preview pi integration
 studyloop study --resume                                # Resume conversation (-r)
 studyloop study --end                                   # End session cleanly
 studyloop park "How does asyncio compare?"              # Park mid-session
@@ -302,7 +302,8 @@ The summary includes local source count, unique review cards, due cards, mastere
 
 ### Wins, resume, and streaks (AuDHD progress)
 
-These commands surface progress without opening the web UI. Agents often run them at session start (see [Session Protocol](session-protocol.md)).
+These commands surface progress without opening the Web UI. Shipped mentor
+definitions run the relevant checks at session start.
 
 ```bash
 studyloop wins                    # Progress overview + recent mastered/confident concepts
@@ -320,14 +321,17 @@ studyloop streaks                 # Current/longest streak, weekly sessions, ene
 ```bash
 studyloop struggles --days 30     # Topics mentioned in 3+ sessions (table)
 
-studyloop extract-struggles --incremental              # Most recent kiro_cli session → study_progress
-studyloop extract-struggles --incremental --session-id ID
-studyloop extract-struggles --full                     # Backfill all kiro_cli sessions
-studyloop extract-struggles --dry-run                  # Show what would be written
-studyloop extract-struggles --llm                      # LLM extractor (requires deps; default is stub)
+studyloop extract-struggles --incremental --harness kiro --model MODEL_ID
+studyloop extract-struggles --incremental --session-id ID --model MODEL_ID
+studyloop extract-struggles --full --harness codex --model MODEL_ID
+studyloop extract-struggles --dry-run --harness claude --model MODEL_ID
 ```
 
-Used by session-end hooks and reconciliation; default backend is a **stub** (no API cost). `--llm` enables the real extractor when configured.
+Extraction always calls the explicitly selected live Bedrock model. You can set
+`STUDYLOOP_EXTRACTOR_MODEL` instead of repeating `--model`. There is no fixture
+or fallback backend: missing model access fails without writing progress rows.
+Latest-session and full-history runs require `--harness`; an explicit session ID
+does not scan unrelated coding history.
 
 ### Study backlog
 
@@ -456,7 +460,10 @@ studyloop web --lan --password SECRET
 
 **Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** showing the live session. The panel renders one of two surfaces: **xterm.js** driven by a PTY streamed over a WebSocket (`transport: "pty"`), or **ACP chat** for structured-event agents (`transport: "acp"`). It is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads `GET /api/session/state` on init and adopts a live session it owns.
 
-There is **no browser terminal fallback**: the ttyd iframe surface was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md). Installing ttyd no longer enables anything user-visible in the dashboard. The `ttyd` **server** transport still exists for maintainers (`STUDYLOOP_TRANSPORT=ttyd`, plus the `/terminal/` proxy), but a session started that way has no browser renderer and reports an explicit `unavailable` state.
+There is **no browser terminal fallback**: the ttyd iframe surface was retired.
+Installing ttyd no longer enables anything user-visible in the dashboard. The
+`ttyd` **server** transport still exists for maintainers, but a session started
+that way has no browser renderer and reports an explicit `unavailable` state.
 
 **Voice:** Server-side Kokoro. The browser posts to StudyLoop's own authenticated `/api/tts/speak`, which proxies to the Kokoro server named by `tts.openvox_base_url`; with none reachable it falls back to the OS's Web Speech voices, then to silence. Off until enabled in the header.
 - **Read once** — speaker icon on card or `T` key
@@ -476,7 +483,7 @@ lan_password: ""     # persistent password for --lan mode (auto-generated if emp
 
 ```yaml
 agents:
-  priority: [codex, grok, claude, gemini, opencode, kiro, ollama, lmstudio]
+  priority: [kiro, codex, claude, opencode, pi]
 ```
 
 ---
@@ -517,15 +524,8 @@ The `--sources` values below are the complete set the CLI accepts — anything e
 | `claude` | Claude Code |
 | `codex` | OpenAI Codex CLI |
 | `kiro` | Kiro CLI |
-| `gemini` | Gemini CLI |
-| `grok` | Grok CLI |
-| `kilocode` | Kilocode CLI |
-| `aider` | Aider |
 | `opencode` | OpenCode |
-| `bedrock` | Bedrock proxy |
-| `repoprompt` | RepoPrompt |
-| `pi` | pi coding agent (`@earendil-works/pi-coding-agent`) |
-| `omp` | oh-my-pi (`@oh-my-pi/pi-coding-agent`) |
+| `pi` | pi coding agent |
 
 ### Results & Incremental Behaviour
 
@@ -539,17 +539,6 @@ reports four outcomes:
 | `updated` | Existing session re-imported because its source changed |
 | `skipped` | Already up-to-date since last export (unchanged) — **not** re-read |
 | `empty` | No extractable messages (header-only, content-less, or only tool-results) |
-
-```text
-Export results:
-  added:   0
-  updated: 6
-  skipped: 710 (unchanged since last export)
-  empty:   96 (no extractable messages)
-
-note: 'skipped' = sessions already up-to-date since last export;
-re-run with --full to force a full re-import.
-```
 
 `skipped` is the steady-state for a repeat run — a large `skipped` count is
 normal and means deduplication is working, not that anything failed. `empty`
@@ -565,18 +554,18 @@ unchanged session then re-imports as `updated` instead of `skipped`).
 studyloop install tools
 studyloop install agents
 studyloop install agents --tool codex
-studyloop install agents --tool claude --tool gemini
+studyloop install agents --tool claude --tool kiro
+studyloop install agents --tool opencode
 studyloop install agents --tool pi
-studyloop install agents --tool omp
 
 session-export
-session-export --sources claude codex
-session-export --sources gemini opencode
-session-export --sources pi omp
+session-export --sources claude --sources codex
+session-export --sources opencode --sources pi
 session-export --claude-only
-session-export --gemini-only
+session-export --codex-only
+session-export --kiro-only
+session-export --opencode-only
 session-export --pi-only
-session-export --omp-only
 session-export --full
 ```
 

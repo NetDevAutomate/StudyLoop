@@ -526,6 +526,10 @@ benchmarks/d2-output/
 
 # Playwright MCP browser cache
 .playwright-mcp/
+.playwright-cli/
+
+# Repeatable README/e2e media staging. Curated public captures live in docs/images/.
+output/playwright/
 
 # Local debug screenshots at repo root (don't commit; allow under packages/ and docs/)
 /*.png

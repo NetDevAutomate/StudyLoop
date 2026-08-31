@@ -4,327 +4,130 @@
 
 # StudyLoop
 
-> An AuDHD-aware study toolkit for live Socratic mentoring, body-doubling, local study artefacts, and cross-assistant session memory.
+StudyLoop is a local-first study companion for people who learn better by doing,
+explaining, and being asked the next useful question. It pairs a browser workspace
+with AI mentors such as Kiro, keeps track of where you left off, and turns real
+practice into evidence you can revisit.
 
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/NetDevAutomate/StudyLoop/actions/workflows/ci.yml/badge.svg)
 
-## What Does It Do?
+<p align="center">
+  <img src="docs/images/studyloop-kiro-demo.gif" alt="StudyLoop Study Session and Body Double modes using Kiro as the mentor" width="960">
+</p>
 
-Five things:
+<p align="center"><em>A real StudyLoop session with live Kiro responses; the topic and learner reply were supplied when recording.</em></p>
 
-1. **Socratic AI sessions** — Body doubling with AI mentors that ask questions instead of giving answers. Energy-adaptive (low day? shorter chunks, more scaffolding).
-2. **Content pipeline** — Chunk eBooks and Obsidian notes → generate quizzes, flashcards, and hands-on practice tasks locally, without requiring external notebook services.
-3. **Active learning decisions** — `studyloop now` chooses one useful next action from due reviews, weak concepts, practice tasks, energy, modality, and time available.
-4. **Flashcard review** — Spaced repetition (SM-2) in the browser app. Works on tablet and laptop.
-5. **Session tracking** — Export AI coding sessions (Claude Code, Codex, Kiro, Gemini, OpenCode, pi, omp, and more) into a searchable SQLite database. Track trends, find struggle topics, search across sessions. Optionally mirror each session into your Obsidian vault (`--obsidian`) as Dataview-compatible Markdown with `[[wikilink]]` backlinks and per-project index notes.
+## What studying with it feels like
 
-Built by a neurodivergent learner transitioning from networking to data engineering. If you're self-teaching and AuDHD, this might help.
+- **Study Session** gives you a live mentor that asks short Socratic questions,
+  adapts to your energy, and leaves space for you to reason.
+- **Body Double** gives you a calm workspace, a visible timer, and an agent beside
+  you while you work through one task.
+- **Today, flashcards, and quizzes** help you return to useful work without having
+  to reconstruct the whole plan in your head.
+- **Sessions and teach-backs** preserve what you actually practised. Notes can add
+  context, but they are optional and are not treated as proof that something was
+  learned.
 
-## Quick Start
+| Study Session | Body Double |
+| --- | --- |
+| ![A Kiro mentor asking a learner about Python decorators in Study Session](docs/images/studyloop-study-session.png) | ![A focused Python decorators Body Double session with Kiro](docs/images/studyloop-body-double.png) |
+
+StudyLoop was built by a neurodivergent learner moving from networking into data
+engineering. Its AuDHD support is part of the workflow: smaller starting steps,
+energy-aware pacing, visible closure, a parking lot for tangents, and prompts that
+challenge without shaming.
+
+## Is it for me?
+
+You do not need to be a software developer to use the study workspace. You do need
+someone comfortable with a terminal for the current source installation, plus at
+least one supported AI command-line agent. If that setup is unfamiliar, the
+[step-by-step setup guide](docs/setup-guide.md) is the best place to start—and
+reports about confusing instructions are genuinely useful contributions.
+
+The current release is best suited to:
+
+- self-directed learners who want an active study partner rather than an answer bot;
+- AuDHD learners who benefit from low-friction starts and explicit session endings;
+- technical learners using Kiro CLI, Codex, Claude Code, OpenCode, or pi;
+- contributors interested in learning tools, accessibility, documentation, or Python.
+
+## Try one study session
+
+StudyLoop currently installs from source on macOS or Linux and requires Python
+3.12 or newer.
 
 ```bash
-# Install from source (no PyPI release)
-git clone https://github.com/NetDevAutomate/StudyLoop studyloop
+git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
 cd studyloop
 ./scripts/install.sh
+studyloop setup
+studyloop doctor --fix
+studyloop web
+```
 
-# Configure
-studyloop self-test        # Lightweight post-install check
-studyloop setup              # Interactive setup wizard (incl. optional Obsidian export)
-studyloop doctor --fix       # Verify and apply safe fixes
+Open the URL printed in the terminal, choose **Study Session**, enter a topic,
+select your installed agent, and start. The browser workspace runs locally; your
+study database, plans, and generated materials stay on your machine unless you
+choose to sync or export them. The selected AI agent may still send conversation
+content to its own model provider; its privacy and billing terms apply.
 
-# Core workflow — live Socratic study (tmux + agent, or web Study Session tab)
+Prefer the terminal? Start the same kind of session with:
+
+```bash
 studyloop study "Python decorators" --energy 6
-# studyloop web              # Alternative: browser picker + ACP chat
-
-# Supporting workflows
-studyloop now                # One recommended study action for your energy/time
-studyloop chat-note NOTE.md  # Turn one note into a Socratic context pack
-studyloop content generate-cards SOURCE --course python     # Local quiz + flashcard JSON
-studyloop content generate-practice SOURCE --course python  # Local hands-on practice JSON
-studyloop resume             # Where you left off (session summary)
-studyloop review             # Spaced repetition due today
-studyloop recap today        # One win, one repair target, one due item, one next action
-studyloop recap today --audio-file recap.wav  # Save a local audio recap
-studyloop web                # Flashcards, quizzes, live session dashboard
-session-export               # Export AI sessions to SQLite
-session-query search-cmd "decorators"
 ```
 
-See [docs/first-week.md](docs/first-week.md) for a day-by-day onboarding path.
+Follow [Your First Week](docs/first-week.md) for a gentle path through study,
+review, and session history.
 
-## Architecture
+## What is ready—and what is not
 
-```mermaid
-graph LR
-    subgraph "Study Materials"
-        OB[Obsidian Vault]
-        SRC[Markdown/PDF/text]
-    end
+StudyLoop is an early open-source release, so the boundaries are worth making
+clear:
 
-    subgraph "CLI Tools"
-        SC[studyloop]
-        LEARN["Active learning services<br/>now, chat-note,<br/>practice verify,<br/>recap, mastery"]
-        AST[agent-session-tools]
-        DB[(SQLite DB)]
-    end
+- installation is from a Git checkout; there is no current PyPI or Homebrew release;
+- the Web UI supports laptop and tablet layouts, not phone screens;
+- the Web UI needs the local StudyLoop server and does not work offline;
+- voice uses a configured Kokoro-compatible server, then falls back to operating
+  system voices when available;
+- study plans can be created in the Web UI or CLI, but the current Web UI form is
+  manual—an agent-led planning interview is not integrated there yet;
+- practice-task generation and verification are currently CLI workflows.
 
-    subgraph "AI Agents"
-        CA[Claude Code]
-        CX[Codex CLI]
-        KA[Kiro CLI]
-        GA[Gemini CLI]
-        OA[OpenCode]
-        OL[Ollama]
-        LM[LM Studio]
-    end
+Those limits are tracked openly in the [roadmap](docs/roadmap.md). If one blocks
+you, an issue describing the real workflow is more helpful than a feature wishlist
+without context.
 
-    subgraph "Live Session"
-        IPC["IPC Files<br/>(state, topics, parking)"]
-        SSE["Web Dashboard<br/>(SSE + HTMX)"]
-    end
+## Help shape StudyLoop
 
-    OBV["Obsidian Vault<br/>AgentMemory/"]
+Contributions do not have to be code. Clear bug reports, setup notes, accessibility
+feedback, screenshots, documentation fixes, and descriptions of where a study flow
+became overwhelming are all welcome.
 
-    OB -->|study source| SC
-    SRC -->|parse/generate| SC
-    SC --> LEARN
-    SC -->|sessions + review| DB
-    LEARN -->|recommend + record evidence| DB
-    AST -->|export sessions| DB
-    AST -.->|"--obsidian (opt-in)"| OBV
-    CA -->|Socratic sessions| DB
-    CX -->|Socratic sessions| DB
-    KA -->|Socratic sessions| DB
-    GA -->|Socratic sessions| DB
-    OA -->|Socratic sessions| DB
-    OL -->|Socratic sessions| DB
-    LM -->|Socratic sessions| DB
-    CA -->|writes| IPC
-    IPC -->|polls| SSE
-```
+For code changes, small pull requests with a focused test are easiest to review.
+The [contributing guide](CONTRIBUTING.md) covers the development setup, checks, and
+pull request process.
 
-## CLI Reference
+- [Open an issue](https://github.com/NetDevAutomate/StudyLoop/issues)
+- [Browse pull requests](https://github.com/NetDevAutomate/StudyLoop/pulls)
+- [Read the contribution guide](CONTRIBUTING.md)
 
-### studyloop
+## Guides
 
-```bash
-# Study sessions (tmux + AI agent + sidebar)
-studyloop study "topic" --energy 7      # Full tmux environment in one command
-studyloop study "topic" --web           # Also start web dashboard + auto-open browser
-studyloop study "topic" --lan           # LAN access with password auth (implies --web)
-studyloop study "topic" --lan --password SECRET  # Explicit LAN password
-studyloop study --resume                # Resume conversation from history
-studyloop study --end                   # End session (quit Claude also works)
-studyloop park "question"               # Park tangential topic
-
-# Content pipeline
-studyloop content split SOURCE       # Split PDF by chapters
-studyloop content generate-cards DIR --course COURSE  # Generate local quiz/flashcard JSON
-studyloop content generate-practice DIR --course COURSE  # Generate local hands-on practice JSON
-studyloop content discover           # Preview configured study sources
-studyloop content ingest --dry-run   # Plan course-material ingest
-
-# Review & AuDHD progress
-studyloop now                        # Recommend one next study action
-studyloop now --energy low --time 15 # Smaller, lower-switching recommendation
-studyloop chat-note NOTE.md --mode diagram  # Socratic prompt from a note
-studyloop practice verify TASKS.json --task 1 --notes "what passed"
-studyloop recap today --speak        # Daily audio recap through study-speak
-studyloop recap today --audio-file recap.wav
-studyloop mastery graph --topic python  # Mermaid concept dependency graph
-studyloop mastery weak-links --topic python
-studyloop review                     # Check spaced repetition due dates
-studyloop review --interleave adaptive --energy medium
-studyloop struggles --days 30        # Find recurring struggle topics
-studyloop wins                       # Learning wins (mastered / confident concepts)
-studyloop resume                     # Where you left off (session summary)
-studyloop streaks                    # Study streak and consistency stats
-studyloop web                        # Launch flashcard/quiz web app
-
-# Backlog & cleanup
-studyloop backlog list               # Cross-session study backlog
-studyloop clean --dry-run            # Preview orphan session cleanup
-
-# Focus & session-DB tiering
-studyloop focus                      # Show current focus topics (max 3)
-studyloop focus suggest              # Suggest focus from recent sessions + struggles
-studyloop focus set "python" "sql"   # Confirm up to 3 focus topics
-studyloop prune --days 30            # Preview pruning old local sessions (dry run)
-studyloop prune --days 30 --apply    # Delete — only sessions verified in the full DB
-session-maint sync-full              # Incremental sync of sessions.db -> full DB
-session-maint snapshot               # Point-in-time snapshot of the full DB (rotated)
-session-maint fts-check --fix        # Check/repair the FTS index invariant
-
-# Status/topics
-studyloop status                     # Show sync status
-studyloop topics                     # List configured course topics (config.yaml)
-
-# Health & metrics
-studyloop doctor                     # Check installation health
-studyloop doctor --fix               # Apply safe automatic fixes
-studyloop install agents             # Install AI agent definitions from source checkout
-studyloop setup                      # Interactive configuration
-studyloop session effectiveness      # Persona effectiveness over time
-```
-
-### agent-session-tools
-
-```bash
-session-export                       # Export AI sessions to SQLite
-session-export --sources claude codex
-session-export --pi-only             # Export only pi sessions
-session-export --omp-only            # Export only omp sessions
-session-export --obsidian            # Also write notes to your Obsidian vault
-session-export --obsidian --obsidian-backfill  # one-time: mirror all history
-session-query search-cmd QUERY       # Full-text search across sessions
-session-query list --since 7d        # List recent sessions
-session-query stats-cmd              # Database statistics
-session-sync push/pull/sync HOST     # Cross-machine sync
-```
-
-## Agent Support
-
-| Platform | Agent | Start With |
-|----------|-------|------------|
-| Claude Code | `socratic-mentor` | `/agent socratic-mentor` |
-| Codex CLI | `AGENTS.md` | `codex` in the project root |
-| Kiro CLI | `study-mentor` | `kiro-cli chat --agent study-mentor` |
-| Gemini CLI | `study-mentor` | `gemini` (auto-detected) |
-| OpenCode | `study-mentor` | Tab to switch agent |
-| pi | `AGENTS.md` | `pi` in the project root |
-| omp | `AGENTS.md` | `omp` in the project root |
-| Ollama | (local LLM) | `studyloop study "topic" --agent ollama` |
-| LM Studio | (local LLM) | `studyloop study "topic" --agent lmstudio` |
-
-## Web PWA
-
-Launch with `studyloop web`. Reachable from any tablet or laptop on the network.
-
-> **Not designed for phone screens.** The layout collapses to a single column
-> and the sidebar becomes a bottom bar below 600px wide, but the study panels
-> themselves — flashcards, quizzes, plans, Mastery — have no phone treatment and
-> are unusable at phone width. Tablet and laptop are the supported sizes.
-
-**Flashcard review:**
-- SM-2 spaced repetition with source/chapter filter
-- Session history with 90-day study heatmap
-- Pomodoro timer, voice output, OpenDyslexic font toggle
-- Add to home screen for a standalone, browser-chrome-free window (`manifest.json` sets `display: standalone`)
-
-> **Not offline.** There is no service worker, so no page or asset is cached: the
-> `studyloop web` server must be reachable every time you open the app.
-
-**Course Explorer** (sidebar "Courses" button):
-- Browse course material by provider in horizontal carousels, with per-provider filter
-- Click a course to list its lessons; click a lesson to read rendered markdown + mermaid diagrams + syntax-highlighted code
-- Global fuzzy search (Fuse.js, instant over titles) + full-text search (SQLite FTS5, over lesson bodies)
-- "Struggling?" button in the reader flags a lesson to the session DB; surfaces in next study session and deck generation
-- "Discuss" copies a Socratic prompt from the current lesson so the reader becomes an active recall or diagram session without a separate chat backend
-- "▶ Listen" read-aloud button — speaks the lesson through the Kokoro server configured in `tts.openvox_base_url`, falling back to your OS voices when none is reachable
-
-**Live session dashboard** (`/session`):
-- Real-time activity feed via SSE (Server-Sent Events)
-- Timer with energy-adaptive colour phases (green/amber/red)
-- Topic counters (wins, parked, review)
-- Session summary on completion
-- **Terminal panel** — the live agent renders as xterm.js driving a PTY over a WebSocket (transport `pty`), or as an ACP chat surface (transport `acp`). Those are the only two transports the UI offers; no external terminal binary is involved. See [ADR-0005](docs/adr/0005-retire-ttyd-browser-surface.md).
-- HTMX + Alpine.js — no build step
-
-> **Practice tasks and topic exercises are CLI-only for now.** Feature 2 above
-> generates them, and `studyloop practice verify` / `studyloop exercise` score
-> them from the terminal. The web backend route exists, but the browser app has
-> no exercises panel yet.
-
-## Optional Extras
-
-```bash
-# Repo-local optional dependencies
-uv sync --all-packages --extra web      # FastAPI web UI
-uv sync --all-packages --extra content  # PDF splitting + content pipeline
-
-# Global CLI with the features used in this README
-studyloop install tools
-```
-
-## Documentation
-
-- [Setup Guide](docs/setup-guide.md) — installation and configuration
-- [Your First Week](docs/first-week.md) — minimal day-by-day onboarding
-- [Architecture](docs/architecture.md) — current and target architecture
-- [Session-DB Tiering](docs/session-db-tiering.md) — hot/full DB tiers, sync, prune, snapshots, restore procedures
-- [Content Pipeline](docs/content-pipeline.md) — local generation of review artefacts
-- [TUI Sidebar Guide](docs/tui-guide.md) — terminal sidebar layout, timer, key bindings
-- [Web UI Guide](docs/web-ui-guide.md) — live sessions, live terminal, flashcards, quizzes
-- [Agent Installation](docs/agent-install.md) — per-platform agent setup
-- [CI Workflows](docs/ci.md) — local and GitHub Actions quality gates
-- [Ownership Map](docs/ownership.md) — where common changes should live
-- [System Overview](docs/system-overview.md) — architecture and data flow diagrams
-- [Repository Standards](docs/standards/repo-standards.md)
-- [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md)
-- [AuDHD Learning Loop Implementation](docs/audhd-learning-loop-implementation.md) — how notes become recall, practice, verification, recap, and mastery evidence
-- [AuDHD Deep Technical Learning Roadmap](docs/audhd-deep-technical-learning-roadmap.md) — implementation status and next refinements for the six active-learning features
-- [Voice Output Guide](docs/voice-output.md)
-- [Contributing](CONTRIBUTING.md)
-
-## Maintainer Tasks
-
-For local contributor and release workflows, use `just`:
-
-```bash
-just preflight
-just release-check
-just smoke-installed
-```
-
-Use `just sync-web`, `just sync-content`, or `just sync-semantic` before optional profile tests when the active `.venv` does not include that dependency set.
-
-Install `just` with:
-
-```bash
-brew install just
-```
-
-<!-- ARTEFACTS:START -->
-## Generated Artefacts
-
-> Explore this project — generated overviews from the historical artefact pipeline.
-
-| | |
-|---|---|
-| 🎧 **[Listen to the Audio Overview](https://artefacts.netdevautomate.dev/studyloop/artefacts/)** | Two AI hosts discuss the project — great for commutes |
-| 🎬 **[Watch the Video Overview](https://artefacts.netdevautomate.dev/studyloop/artefacts/#video)** | Visual walkthrough of architecture and concepts |
-| 🖼️ **[View the Infographic](https://artefacts.netdevautomate.dev/studyloop/artefacts/#infographic)** | Architecture and flow at a glance |
-| 📊 **[Browse the Slide Deck](https://artefacts.netdevautomate.dev/studyloop/artefacts/#slides)** | Presentation-ready project overview |
-
-*Historical generated artefacts. NotebookLM is not required for the core study workflow.*
-<!-- ARTEFACTS:END -->
-
-## Maintainer Notes
-
-### Set the GitHub social preview image
-
-The OpenGraph card shown when this repo is shared on Slack / X / LinkedIn / etc. is **not** picked up automatically — GitHub requires a one-time upload via the web UI:
-
-1. Go to **Settings → General** (top of the repo).
-2. Scroll to **Social preview**.
-3. Click **Edit** → **Upload an image…**
-4. Pick `icons/studyloop-social.png` (1280×640, generated from `icons/studyloop-banner.svg`).
-5. Save.
-
-After this, link previews use the proper StudyLoop card. If the banner ever changes, regenerate the social PNG with:
-
-```bash
-rsvg-convert -w 1280 -h 640 icons/studyloop-banner.svg -o icons/studyloop-social.png
-```
-
-…then re-upload via the same Settings page. The repo can't trigger this from CI.
+- [Setup Guide](docs/setup-guide.md) — install and configure the current release
+- [Your First Week](docs/first-week.md) — reach a useful first routine gradually
+- [Web UI Guide](docs/web-ui-guide.md) — Study Session, Body Double, review, and access
+- [Study Plans](docs/study-plans.md) — create and use plans without over-planning
+- [Content Pipeline](docs/content-pipeline.md) — make local cards and practice material
+- [Troubleshooting](docs/troubleshooting.md) — recover from common setup problems
+- [CLI Reference](docs/cli-reference.md) — complete command details
+- [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — why the workflow is designed this way
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
-Third-party work that influenced StudyLoop is credited in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+MIT — see [LICENSE](LICENSE). Third-party work that influenced StudyLoop is
+credited in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

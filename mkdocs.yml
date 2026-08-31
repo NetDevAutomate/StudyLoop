@@ -1,6 +1,6 @@
 site_name: StudyLoop
-site_description: AuDHD-aware Socratic study toolkit with AI session management
-site_url: https://hookey-street-software.github.io/StudyLoop/
+site_description: A local-first, AuDHD-aware study companion for active learning with AI mentors
+site_url: https://netdevautomate.github.io/StudyLoop/
 
 theme:
   name: material
@@ -53,59 +53,50 @@ extra_css:
 extra_javascript:
   - javascripts/preferences.js
 
+# Public documentation contract: new files stay out of the rendered site until
+# they are explicitly rooted here and added to nav. Repository history, audits,
+# plans, handoffs, ADRs, and agent instructions remain source-only by default.
 exclude_docs: |
-  archive/**
-  course-explorer/**
-  designs/**
-  handoffs/**
-  plans/**
-  research/**
-  brainstorms/**
-  explorations/**
-  superpowers/plans/**
+  **
+  !/index.md
+  !/first-week.md
+  !/setup-guide.md
+  !/study-plans.md
+  !/web-ui-guide.md
+  !/content-pipeline.md
+  !/voice-output.md
+  !/obsidian-export.md
+  !/tui-guide.md
+  !/agent-install.md
+  !/cli-reference.md
+  !/troubleshooting.md
+  !/audhd-learning-philosophy.md
+  !/roadmap.md
+  !/architecture.md
+  !/contributing.md
+  !/images/**
+  !/stylesheets/**
+  !/javascripts/**
 
 nav:
   - Home: index.md
-  - Getting Started:
-    - Setup Guide: setup-guide.md
+  - Start Here:
     - Your First Week: first-week.md
-    - Agent Installation: agent-install.md
-    - Architecture Overview: architecture.md
-    - Current Architecture: architecture/current.md
-    - Target Architecture: architecture/target.md
-    - pi / omp Harness Integration: architecture/pi-omp-harness-integration.md
-  - Learning:
+    - Setup Guide: setup-guide.md
+  - Study and Review:
+    - Study Plans: study-plans.md
+    - Web UI Guide: web-ui-guide.md
     - Content Pipeline: content-pipeline.md
-    - AuDHD Philosophy: audhd-learning-philosophy.md
-    - Learning Loop Implementation: audhd-learning-loop-implementation.md
-    - Deep Technical Learning Roadmap: audhd-deep-technical-learning-roadmap.md
-    - Session Protocol: session-protocol.md
+    - Voice Output: voice-output.md
+    - Obsidian Export: obsidian-export.md
+  - Interfaces:
+    - TUI Guide: tui-guide.md
+    - Agent Installation: agent-install.md
   - Reference:
     - CLI Reference: cli-reference.md
-    - CI Workflows: ci.md
-    - Obsidian Vault Export: obsidian-export.md
-    - System Overview: system-overview.md
-    - TUI Guide: tui-guide.md
-    - Web UI Guide: web-ui-guide.md
-    - Voice Output: voice-output.md
-    - AuDHD Framework: audhd-framework.md
-    - Socratic Engine: socratic-engine.md
-    - Network Bridges: network-bridges.md
-    - Ownership Map: ownership.md
-    - OpenSpec Framework: openspec.md
-    - Repository Standards: standards/repo-standards.md
-  - Troubleshooting:
-    - General Troubleshooting: troubleshooting.md
-    - pi / omp Harnesses: troubleshooting/pi-omp.md
-  - Governance:
-    - Architecture Decisions: adr/README.md
-    - "ADR-0001 Body Double reuses session start": adr/0001-body-double-reuses-session-start-endpoint.md
-    - "ADR-0002 Origin-scoped live agent console": adr/0002-origin-scoped-live-agent-console.md
-    - "ADR-0003 Body Double exempt from park-first": adr/0003-body-double-exempt-from-park-first-friction.md
-    - "ADR-0004 Unmount terminalPanel": adr/0004-retire-terminal-panel-from-body-double.md
-    - Audit 2026-05-09: audit/2026_05_09_audit.md
-    - Planning 2026-05-09: planning/2026_05_09_planning.md
-    - Release Process: release-process.md
-  - Contributing: contributing.md
-  - Roadmap: roadmap.md
-  - MCP Integrations: mcp.md
+    - Troubleshooting: troubleshooting.md
+  - About:
+    - AuDHD Learning Philosophy: audhd-learning-philosophy.md
+    - Architecture Overview: architecture.md
+    - Roadmap: roadmap.md
+  - Contribute: contributing.md

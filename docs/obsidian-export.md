@@ -2,8 +2,8 @@
 
 `session-export` can mirror your AI coding sessions into an Obsidian vault as
 structured Markdown, alongside the usual SQLite export. The feature is **opt-in**
-and **tool-agnostic** — sessions from Claude Code, Kiro, Gemini, Codex, OpenCode,
-pi, and omp all flow into one folder, so your hand-written study notes stay clean.
+and shared across the supported harnesses — Kiro CLI, Codex, Claude Code,
+OpenCode, and pi all flow into one folder, so your hand-written notes stay clean.
 
 > Looking for the implementation spec or the GraphRAG follow-up? See
 > `docs/designs/obsidian-export.md` and `docs/designs/obsidian-graphrag-roadmap.md`.
@@ -129,4 +129,4 @@ studyloop doctor --category config
 
 - [Setup Guide → Obsidian session-memory export](setup-guide.md#obsidian-session-memory-export)
 - [CLI Reference → Obsidian Vault Export](cli-reference.md#obsidian-vault-export-opt-in)
-- [Current Architecture → component map](architecture/current.md)
+- [Architecture Overview](architecture.md)

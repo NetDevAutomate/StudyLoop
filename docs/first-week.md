@@ -5,7 +5,8 @@ A minimal, repeatable path for getting value from StudyLoop without configuring 
 ## What you need
 
 - Python 3.12+, [uv](https://docs.astral.sh/uv/), and **tmux 3.1+** (for `studyloop study`)
-- One AI coding agent on your PATH (Kiro, Claude Code, Codex, or Gemini are common choices)
+- One supported AI coding agent on your PATH: Kiro CLI, Codex, Claude Code,
+  OpenCode, or pi. Kiro is the documented first-session path.
 - Optional: Obsidian vault for study notes; optional: Ollama or AWS Bedrock for local/cloud card generation
 
 Install from source (see [Setup Guide](setup-guide.md)):
@@ -118,7 +119,9 @@ For generation, configure **one** provider in the web **Settings → LLM Provide
    studyloop backlog list
    ```
 
-3. Re-read [Session Protocol](session-protocol.md) so your agent runs `studyloop resume` and `studyloop review` at session start.
+3. Check that your chosen mentor runs `studyloop resume` and `studyloop review`
+   at session start. Reinstall the shipped agent definitions with
+   `studyloop install agents` if it does not.
 
 ## Day 6 — Visualise weak links
 
@@ -136,7 +139,9 @@ The graph is Mermaid by default, so it can be pasted into Obsidian.
 
 - Run `studyloop clean --dry-run` if tmux study sessions ever feel “stuck”.
 - Set `studyloop backup` before big config experiments.
-- Skim [Web UI Guide](web-ui-guide.md) for LAN mode (`studyloop web --lan`) if you review from a phone on the same network.
+- Skim [Web UI Guide](web-ui-guide.md) for LAN mode (`studyloop web --lan`) if
+  you review from a tablet or another laptop on the same trusted network. Phone
+  screens are not supported.
 
 ## What to defer
 
@@ -150,5 +155,5 @@ The graph is Mermaid by default, so it can be pasted into Obsidian.
 ## Where to go next
 
 - [CLI Reference](cli-reference.md) — full command list
-- [Architecture (current)](architecture/current.md) — how web, tmux, ACP, and SQLite fit together
+- [Architecture Overview](architecture.md) — how the Web UI, agents, files, and SQLite fit together
 - [AuDHD Philosophy](audhd-learning-philosophy.md) — why energy checks and wins matter

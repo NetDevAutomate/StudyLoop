@@ -1,301 +1,432 @@
 #!/usr/bin/env python3
-"""Record a Playwright demo of the studyloop study session dashboard.
+"""Capture README media from the real StudyLoop Web UI and Kiro CLI.
 
-Starts a study session with --lan --web, opens the dashboard in a
-headless recorded browser, interacts with the agent via the ttyd
-terminal, and saves the video as mp4.
+The capture runs the production StudyLoop server with fresh, isolated config,
+database, plans, notes, and session directories. It does not import the test
+harness, seed fixture data, use a fake agent, or mock an API response.
 
-Handles the Claude Code trust prompt and waits for the agent to be
-ready before typing questions.
+It does use the current Kiro login, installed StudyLoop mentor, and model, so
+recording can consume provider credits. The Kiro adapter restores any existing
+mentor definition when the session ends.
 
 Usage:
-    uv run python scripts/record-demo.py
+    uv run python scripts/record-demo.py --topic "..." --answer "..."
 
 Output:
-    demos/studyloop-session-demo.mp4
+    docs/images/studyloop-study-session.png
+    docs/images/studyloop-body-double.png
+    docs/images/studyloop-kiro-demo.gif
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 import os
+import shutil
+import socket
 import subprocess
 import sys
+import tempfile
 import time
+import urllib.error
+import urllib.request
+from contextlib import suppress
 from pathlib import Path
 
-PROJECT_DIR = Path(__file__).parent.parent
-DEMO_DIR = PROJECT_DIR / "demos"
-DEMO_DIR.mkdir(exist_ok=True)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_OUTPUT = PROJECT_ROOT / "docs" / "images"
 
-WEB_PORT = 8567
-TTYD_PORT = 7681
+_TERMINAL_TEXT_JS = """
+(selector) => {
+  const el = document.querySelector(selector);
+  if (!el || !window.Alpine) return '';
+  const data = window.Alpine.$data(el);
+  const term = data && data._term;
+  if (!term || !term.buffer) return '';
+  const buffer = term.buffer.active;
+  const lines = [];
+  for (let index = 0; index < buffer.length; index += 1) {
+    const line = buffer.getLine(index);
+    if (line) lines.push(line.translateToString(true));
+  }
+  return lines.join('\\n');
+}
+"""
 
-# Demo questions — concise, showcasing the Socratic method + AuDHD support
-DEMO_QUESTIONS = [
-    (
-        "I want to learn about Python decorators. I know networking really"
-        " well but I'm new to Python patterns — where should we start?"
-    ),
-    "Can you show me a simple decorator example? I learn best from concrete code.",
-    "How does this relate to middleware in networking? That's something I know well.",
-]
 
-# How long to wait for each response (seconds)
-RESPONSE_WAIT = [60, 60, 60]
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
 
 
-def _studyloop(*args: str) -> subprocess.CompletedProcess | None:
-    """Run studyloop, handling the expected timeout from tmux attach."""
-    env = {**os.environ}
-    env.pop("TMUX", None)
-    try:
-        return subprocess.run(
-            [sys.executable, "-m", "studyloop.cli", *args],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            env=env,
-            cwd=str(PROJECT_DIR),
+def _write_capture_config(config_path: Path, root: Path) -> None:
+    """Write a fresh production config containing paths, not fixture data."""
+    notes = root / "notes"
+    materials = root / "study-materials"
+    notes.mkdir(parents=True, exist_ok=True)
+    materials.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        f"""notes_path: {json.dumps(str(notes))}
+session_db: {json.dumps(str(root / "sessions.db"))}
+state_dir: {json.dumps(str(root / "state"))}
+content:
+  base_path: {json.dumps(str(materials))}
+  study_paths:
+    - {json.dumps(str(materials))}
+agents:
+  priority: [kiro]
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_capture_agent_template(root: Path) -> Path:
+    """Create a tool-free Kiro profile; the production adapter adds the persona."""
+    template = root / "kiro-capture-agent.json"
+    template.write_text(
+        json.dumps(
+            {
+                "name": "study-mentor",
+                "description": "StudyLoop public mentor demonstration.",
+                "prompt": "",
+                "tools": [],
+                "allowedTools": [],
+                "resources": [],
+                "mcpServers": {},
+            },
+            indent=2,
         )
-    except subprocess.TimeoutExpired:
-        # Expected — studyloop study calls os.execvp(tmux attach) which
-        # hangs since we have no terminal. Session is already started.
-        return None
+        + "\n",
+        encoding="utf-8",
+    )
+    return template
 
 
-def _wait_for_port(port: int, timeout: int = 20) -> bool:
-    import urllib.request
+def _capture_environment(
+    root: Path, config_path: Path, kiro_binary: Path, agent_template: Path
+) -> dict[str, str]:
+    """Return an isolated production environment while retaining Kiro auth."""
+    capture_env = os.environ.copy()
+    capture_env.update(
+        {
+            "PATH": os.pathsep.join(
+                (str(Path(sys.executable).parent), str(kiro_binary.parent), os.defpath)
+            ),
+            "TMPDIR": str(root / "tmp"),
+            "XDG_CONFIG_HOME": str(root / "xdg-config"),
+            "XDG_STATE_HOME": str(root / "xdg-state"),
+            "XDG_CACHE_HOME": str(root / "xdg-cache"),
+            "STUDYLOOP_CONFIG": str(config_path),
+            "STUDYLOOP_DB": str(root / "sessions.db"),
+            "STUDYLOOP_STATE_DIR": str(root / "state"),
+            "STUDYLOOP_SESSION_DIR": str(root / "session-ipc"),
+            "STUDYLOOP_PLANS_DIR": str(root / "study-plans"),
+            "STUDYLOOP_AGENT": "kiro",
+            "STUDYLOOP_KIRO_AGENT_TEMPLATE": str(agent_template),
+        }
+    )
+    capture_env.pop("STUDYLOOP_TEST_AGENT", None)
+    capture_env.pop("STUDYLOOP_TEST_AGENT_CMD", None)
+    for directory in (
+        root / "tmp",
+        root / "xdg-config",
+        root / "xdg-state",
+        root / "xdg-cache",
+        root / "state",
+        root / "session-ipc",
+        root / "study-plans",
+    ):
+        directory.mkdir(parents=True, exist_ok=True)
+    return capture_env
 
-    for _ in range(timeout * 2):
+
+def _start_server(root: Path, port: int, capture_env: dict[str, str]) -> subprocess.Popen:
+    """Start the production CLI and wait until its Web UI responds."""
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)],
+        cwd=root,
+        env=capture_env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    for _ in range(60):
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)
-            return True
-        except Exception:
-            time.sleep(0.5)
-    return False
+            return proc
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                return proc
+        except OSError:
+            pass
+        time.sleep(0.25)
+    proc.kill()
+    proc.wait(timeout=5)
+    raise RuntimeError(f"StudyLoop Web UI did not start on port {port}")
 
 
-def _get_xterm_text(frame) -> str:
-    """Extract visible text from xterm terminal."""
+def _stop_server(proc: subprocess.Popen) -> None:
+    proc.terminate()
     try:
-        # xterm.js renders text in .xterm-rows
-        rows = frame.locator(".xterm-rows")
-        return rows.inner_text(timeout=2000)
-    except Exception:
-        return ""
+        proc.wait(timeout=8)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=5)
 
 
-def main() -> None:
+def _end_active_session(base_url: str) -> None:
+    """End any capture session so the Kiro adapter restores user state."""
+    request = urllib.request.Request(f"{base_url}/api/session/end", method="POST")
+    with suppress(urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
+        urllib.request.urlopen(request, timeout=5).close()
+
+
+def _wait_for_terminal(page, selector: str, needle: str, timeout: int = 30_000) -> None:
+    page.wait_for_function(
+        "([selector, needle]) => {"
+        " const el = document.querySelector(selector);"
+        " if (!el || !window.Alpine) return false;"
+        " const data = window.Alpine.$data(el);"
+        " const term = data && data._term;"
+        " if (!term || !term.buffer) return false;"
+        " const buffer = term.buffer.active;"
+        " const lines = [];"
+        " for (let index = 0; index < buffer.length; index += 1) {"
+        "   const line = buffer.getLine(index);"
+        "   if (line) lines.push(line.translateToString(true));"
+        " }"
+        " return lines.join('\\n').includes(needle);"
+        "}",
+        arg=[selector, needle],
+        timeout=timeout,
+    )
+
+
+def _wait_for_terminal_count(
+    page, selector: str, needle: str, count: int, timeout: int = 120_000
+) -> None:
+    page.wait_for_function(
+        "([selector, needle, count]) => {"
+        " const el = document.querySelector(selector);"
+        " if (!el || !window.Alpine) return false;"
+        " const data = window.Alpine.$data(el);"
+        " const term = data && data._term;"
+        " if (!term || !term.buffer) return false;"
+        " const buffer = term.buffer.active;"
+        " const lines = [];"
+        " for (let index = 0; index < buffer.length; index += 1) {"
+        "   const line = buffer.getLine(index);"
+        "   if (line) lines.push(line.translateToString(true));"
+        " }"
+        " return lines.join('\\n').split(needle).length - 1 >= count;"
+        "}",
+        arg=[selector, needle, count],
+        timeout=timeout,
+    )
+
+
+def _select_kiro(page, selector: str) -> None:
+    page.wait_for_function(
+        "selector => {"
+        " const select = document.querySelector(selector);"
+        " return select && [...select.options].some(option => "
+        "   option.value === 'kiro' && !option.disabled);"
+        "}",
+        arg=selector,
+        timeout=30_000,
+    )
+    page.select_option(selector, value="kiro")
+
+
+def _ask_kiro_to_start(page, terminal_selector: str, topic: str) -> None:
+    _wait_for_terminal(page, terminal_selector, "ask a question or describe a task")
+    terminal = page.locator(terminal_selector)
+    terminal.click()
+    page.keyboard.type(
+        f"Energy 6/10, steady mood, setup ready. I want to study {topic}. "
+        "Ask one short diagnostic question to discover what I understand.",
+        delay=18,
+    )
+    page.keyboard.press("Enter")
+
+
+def _capture_study_session(
+    page, base_url: str, output_dir: Path, topic: str, learner_answer: str
+) -> None:
+    page.goto(f"{base_url}/#study-session")
+    page.wait_for_function("() => !!window.Alpine", timeout=15_000)
+    page.locator("#topic-input").fill(topic)
+    _select_kiro(page, "#agent-select")
+    page.locator(".start-session-btn").click()
+
+    terminal_area = ".session-active-layout .session-terminal-area"
+    page.wait_for_selector(f"{terminal_area} .xterm-mount", state="visible", timeout=30_000)
+    terminal = page.locator(f"{terminal_area} .xterm-mount")
+    _ask_kiro_to_start(page, f"{terminal_area} .xterm-mount", topic)
+    _wait_for_terminal_count(page, terminal_area, "Credits:", 1)
+    page.wait_for_timeout(900)
+
+    terminal.click()
+    page.keyboard.type(learner_answer, delay=28)
+    page.keyboard.press("Enter")
+    _wait_for_terminal_count(page, terminal_area, "Credits:", 2)
+    page.wait_for_timeout(1_200)
+    page.screenshot(path=str(output_dir / "studyloop-study-session.png"))
+
+    page.locator(".status-btn.end-btn").click()
+    page.get_by_test_id("study-end-confirm-yes").click()
+    page.wait_for_selector(".study-start-picker", state="visible", timeout=15_000)
+
+
+def _capture_body_double(page, base_url: str, output_dir: Path, topic: str) -> None:
+    page.evaluate("() => window.Alpine.store('nav').go('body-double')")
+    page.wait_for_selector(".body-double-view", state="visible", timeout=15_000)
+    page.locator("#bd-activity-input").fill(topic)
+    _select_kiro(page, "#bd-agent-select")
+    page.get_by_role("button", name="Start Pomodoro").click()
+    page.locator("#bd-start-session").click()
+
+    terminal_area = ".bd-console-panel .session-terminal-area"
+    page.wait_for_selector(f"{terminal_area} .xterm-mount", state="visible", timeout=30_000)
+    _ask_kiro_to_start(page, f"{terminal_area} .xterm-mount", topic)
+    _wait_for_terminal_count(page, terminal_area, "Credits:", 1)
+    page.wait_for_timeout(1_500)
+    page.screenshot(path=str(output_dir / "studyloop-body-double.png"))
+    page.get_by_role("button", name="End body double session").click()
+
+
+def _encode_video(source: Path, output_dir: Path) -> None:
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        raise RuntimeError("ffmpeg is required to create the public Kiro GIF")
+
+    mp4 = output_dir / "studyloop-kiro-demo.mp4"
+    subprocess.run(
+        [
+            ffmpeg,
+            "-y",
+            "-i",
+            str(source),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "24",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(mp4),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+    gif = output_dir / "studyloop-kiro-demo.gif"
+    filters = (
+        "fps=8,scale=960:-1:flags=lanczos,split[frames][palette_source];"
+        "[palette_source]palettegen=max_colors=128[palette];"
+        "[frames][palette]paletteuse=dither=bayer:bayer_scale=4"
+    )
+    subprocess.run(
+        [ffmpeg, "-y", "-i", str(source), "-vf", filters, "-loop", "0", str(gif)],
+        check=True,
+        capture_output=True,
+    )
+    source.unlink(missing_ok=True)
+    mp4.unlink(missing_ok=True)
+
+
+def capture(output_dir: Path, topic: str, learner_answer: str) -> None:
+    """Capture screenshots and video, then convert the video when possible."""
     from playwright.sync_api import sync_playwright
 
-    # 1. Clean up
-    print("[1/7] Cleaning up stale sessions...")
-    _studyloop("study", "--end")
-    time.sleep(2)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for name in (
+        "studyloop-study-session.png",
+        "studyloop-body-double.png",
+        "studyloop-kiro-demo.webm",
+        "studyloop-kiro-demo.mp4",
+        "studyloop-kiro-demo.gif",
+    ):
+        (output_dir / name).unlink(missing_ok=True)
 
-    # Kill any stale ttyd processes
-    subprocess.run(["pkill", "-f", "ttyd"], capture_output=True, check=False)
-    time.sleep(1)
-
-    # 2. Start a fresh study session
-    print("[2/7] Starting study session (Python Decorators, energy 8, --lan)...")
-    _studyloop("study", "Python Decorators for Network Engineers", "--energy", "8", "--lan")
-
-    # 3. Wait for services
-    print(f"[3/7] Waiting for web server on :{WEB_PORT}...")
-    if not _wait_for_port(WEB_PORT):
-        print(f"  ERROR: Web server not ready on port {WEB_PORT}")
-        return
-    print("  Web server ready.")
-
-    print(f"  Waiting for ttyd on :{TTYD_PORT}...")
-    ttyd_ready = _wait_for_port(TTYD_PORT)
-    if ttyd_ready:
-        print("  ttyd ready.")
-    else:
-        print("  WARNING: ttyd not ready — will record dashboard only.")
-        return
-
-    time.sleep(3)
-
-    # 4. Record with Playwright
-    print("[4/7] Starting Playwright recording (headless)...")
-    video_path = None
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            viewport={"width": 1280, "height": 900},
-            record_video_dir=str(DEMO_DIR),
-            record_video_size={"width": 1280, "height": 900},
-        )
-        page = context.new_page()
-
-        # --- Scene 1: Dashboard overview ---
-        print("[5/7] Recording dashboard overview...")
-        page.goto(f"http://127.0.0.1:{WEB_PORT}/session")
-        page.wait_for_load_state("load")
-        time.sleep(4)  # Alpine.js init
-
-        # --- Scene 2: Handle Claude Code startup in ttyd ---
-        terminal_panel = page.locator(".terminal-panel")
-        if not terminal_panel.is_visible():
-            print("  No terminal panel visible — aborting.")
-            context.close()
-            browser.close()
-            return
-
-        print("  Terminal panel visible.")
-        frame = page.frame_locator(".terminal-iframe")
-        xterm = frame.locator(".xterm")
+    with tempfile.TemporaryDirectory(prefix="studyloop-readme-") as tmp:
+        root = Path(tmp)
+        kiro_binary = shutil.which("kiro-cli")
+        if kiro_binary is None:
+            raise RuntimeError("kiro-cli is required to record the public demo")
+        config_path = root / "config.yaml"
+        _write_capture_config(config_path, root)
+        agent_template = _write_capture_agent_template(root)
+        capture_env = _capture_environment(root, config_path, Path(kiro_binary), agent_template)
+        port = _free_port()
+        server = _start_server(root, port, capture_env)
+        base_url = f"http://127.0.0.1:{port}"
+        kiro_target = Path.home() / ".kiro" / "agents" / "study-mentor.json"
+        kiro_backup = kiro_target.with_suffix(kiro_target.suffix + ".studyloop-backup")
 
         try:
-            xterm.wait_for(timeout=15000)
-            print("  xterm loaded.")
-
-            # Wait for Claude Code to show the trust prompt or its prompt
-            print("  Waiting for Claude Code to initialize (10s)...")
-            time.sleep(10)
-
-            # Check for trust prompt — accept it if present
-            terminal_text = _get_xterm_text(frame)
-            if "trust" in terminal_text.lower() or "Yes, I trust" in terminal_text:
-                print("  Trust prompt detected — accepting...")
-                xterm.click()
-                time.sleep(0.3)
-                # Press Enter to accept default (option 1: Yes, I trust)
-                xterm.press("Enter")
-                print("  Waiting for Claude to fully start (20s)...")
-                time.sleep(20)
-            else:
-                print("  No trust prompt — Claude may already be ready.")
-                time.sleep(5)
-
-            # Verify Claude is ready by checking for its prompt indicator
-            terminal_text = _get_xterm_text(frame)
-            if ">" in terminal_text or "claude" in terminal_text.lower():
-                print("  Claude prompt detected — ready for interaction!")
-            else:
-                print("  Terminal state unclear — proceeding anyway.")
-                print(f"  Terminal text sample: {terminal_text[:200]!r}")
-
-            # --- Scene 3: Ask questions ---
-            print("[6/7] Interacting with agent...")
-            for i, question in enumerate(DEMO_QUESTIONS):
-                q_num = i + 1
-                wait_time = RESPONSE_WAIT[i]
-                print(f"  Q{q_num}/{len(DEMO_QUESTIONS)}: {question[:60]}...")
-
-                # Focus and type with natural speed
-                xterm.click()
-                time.sleep(0.5)
-                xterm.type(question, delay=25)
-                time.sleep(0.3)
-                xterm.press("Enter")
-
-                print(f"    Waiting {wait_time}s for response...")
-                time.sleep(wait_time)
-
-                # Brief pause between questions
-                if i < len(DEMO_QUESTIONS) - 1:
-                    time.sleep(3)
-
-            # --- Scene 4: Pop-out demo ---
-            print("  Demonstrating pop-out feature...")
-            popout_btn = page.locator(".terminal-controls .timer-btn").nth(1)
-            if popout_btn.is_visible():
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                video_dir = root / "video"
+                video_dir.mkdir()
+                context = browser.new_context(
+                    viewport={"width": 1440, "height": 900},
+                    record_video_dir=str(video_dir),
+                    record_video_size={"width": 1440, "height": 900},
+                )
+                page = context.new_page()
+                video = page.video
                 try:
-                    with context.expect_page() as new_page_info:
-                        popout_btn.click()
-                    new_page = new_page_info.value
-                    new_page.wait_for_load_state("load")
-                    time.sleep(3)
+                    _capture_study_session(page, base_url, output_dir, topic, learner_answer)
+                    _capture_body_double(page, base_url, output_dir, topic)
+                    page.wait_for_timeout(750)
+                finally:
+                    context.close()
+                    browser.close()
 
-                    # Show placeholder on main page
-                    page.bring_to_front()
-                    time.sleep(2)
+                if video is None:
+                    raise RuntimeError("Playwright did not create a video")
+                generated = Path(video.path())
+                webm = output_dir / "studyloop-kiro-demo.webm"
+                generated.replace(webm)
+                _encode_video(webm, output_dir)
+        finally:
+            _end_active_session(base_url)
+            with suppress(Exception):
+                _stop_server(server)
+            if kiro_backup.exists():
+                os.replace(kiro_backup, kiro_target)
 
-                    # Show the pop-out terminal
-                    new_page.bring_to_front()
-                    time.sleep(3)
+    print(f"README media written to {output_dir}")
 
-                    # Back to main dashboard
-                    page.bring_to_front()
-                    new_page.close()
-                    time.sleep(1)
 
-                    # Re-expand inline terminal
-                    collapse_btn = page.locator(".terminal-controls .timer-btn").first
-                    if collapse_btn.is_visible():
-                        collapse_btn.click()
-                        time.sleep(2)
-                except Exception as e:
-                    print(f"  Pop-out demo error: {e}")
-
-        except Exception as e:
-            print(f"  Terminal interaction error: {e}")
-            time.sleep(5)
-
-        # --- Scene 5: Final dashboard view ---
-        print("[7/7] Final dashboard shot...")
-        page.bring_to_front()
-        time.sleep(3)
-
-        # Save
-        video_path = page.video.path()
-        context.close()
-        browser.close()
-
-    # 5. Process video
-    if video_path and Path(video_path).exists():
-        webm_path = DEMO_DIR / "studyloop-session-demo.webm"
-        # Remove old output files (not the source we're about to rename)
-        for old in DEMO_DIR.glob("studyloop-session-demo.*"):
-            old.unlink(missing_ok=True)
-
-        Path(video_path).rename(webm_path)
-        size_mb = webm_path.stat().st_size / 1024 / 1024
-        print(f"\nRecorded: {webm_path} ({size_mb:.1f} MB)")
-
-        # Convert to mp4
-        import shutil
-
-        if shutil.which("ffmpeg"):
-            mp4_path = DEMO_DIR / "studyloop-session-demo.mp4"
-            print("Converting to mp4...")
-            result = subprocess.run(
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-i",
-                    str(webm_path),
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "medium",
-                    "-crf",
-                    "23",
-                    "-pix_fmt",
-                    "yuv420p",
-                    str(mp4_path),
-                ],
-                capture_output=True,
-            )
-            if mp4_path.exists():
-                mp4_mb = mp4_path.stat().st_size / 1024 / 1024
-                print(f"MP4: {mp4_path} ({mp4_mb:.1f} MB)")
-            else:
-                print(f"ffmpeg error: {result.stderr.decode()[:300]}")
-        else:
-            print("ffmpeg not found — webm only")
-    else:
-        print("WARNING: No video file generated")
-
-    # 6. End session
-    print("\nEnding study session...")
-    _studyloop("study", "--end")
-    print("Done! Demo files in demos/")
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help=f"artifact directory (default: {DEFAULT_OUTPUT.relative_to(PROJECT_ROOT)})",
+    )
+    parser.add_argument(
+        "--topic",
+        required=True,
+        help="learner-chosen topic to type into the real StudyLoop session",
+    )
+    parser.add_argument(
+        "--answer",
+        required=True,
+        help="learner-authored answer to the mentor's first live question",
+    )
+    args = parser.parse_args()
+    output_dir = args.output if args.output.is_absolute() else PROJECT_ROOT / args.output
+    capture(output_dir.resolve(), args.topic.strip(), args.answer.strip())
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

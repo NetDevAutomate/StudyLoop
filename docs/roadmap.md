@@ -1,412 +1,56 @@
 # Roadmap
 
-> **Current direction (May 2026)**: the core product is interactive Socratic study and body-doubling with shared session intelligence. Local quiz/flashcard generation supports that workflow. NotebookLM is not a core dependency and any remaining NotebookLM workflows should become optional plugins or archived legacy paths.
-
-## vNext — AuDHD Deep Technical Learning Loops
-
-These six high-impact improvements for turning Obsidian notes into active learning now have a first vertical slice. See [AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md) for the detailed implementation notes and follow-up boundaries.
-
-- [x] **What Should I Study Now?** — `studyloop now` recommends one next action based on due reviews, struggles, energy, modality, and available time.
-- [x] **Conversational Obsidian note companion** — `studyloop chat-note` builds a Socratic context pack from a note, including diagram/trace/teach-back modes.
-- [x] **Practice-task verification** — `studyloop practice verify` records checklist/rubric or explicit command verification attempts.
-- [x] **Daily audio recap** — `studyloop recap today --speak` speaks one win, one repair target, one due item, and one next action through `study-speak`.
-- [x] **Mastery graph** — `studyloop mastery graph` and `studyloop mastery weak-links` expose concept dependencies and blockers.
-- [x] **Interleaving mode** — `studyloop now --interleave adaptive` and `studyloop review --interleave adaptive` apply energy-based mixes.
-- [x] **OpenVox optional CLI voice backend** — `study-speak -b openvox` calls the local OpenVox API for terminal/MCP sessions and falls back gracefully.
-
-Final refinement slice:
-
-- [x] **In-app note companion** — Course Explorer now opens a browser-local companion panel with mode switching, retrieval space, next nudge generation, prompt copy, and evidence-command copy.
-- [x] **Mastery graph Web UI** — the Web app has a Mastery tab backed by `/api/mastery/graph` and `/api/mastery/weak-links`, with Mermaid rendering and weak-link cards.
-- [x] **Recap audio-file export** — `studyloop recap today --audio-file recap.wav` saves a local audio recap through OpenVox when configured, with macOS `say` fallback.
-- [x] **Deeper practice verification metadata** — generated practice decks can include rubric, evidence prompts, setup command, timeout, command, and expected-artifact metadata.
-
-## v1.0 — Foundation
-
-- [x] Monorepo with studyloop + agent-session-tools
-- [x] Kiro CLI + Claude Code agent definitions
-- [x] Spaced repetition scheduling (1/3/7/14/30 days)
-- [x] Session export from 8+ AI tools
-- [x] FTS5 + hybrid semantic search
-- [x] Cross-machine sync
-- [x] Obsidian/local source integration
-- [x] Install scripts for both platforms
-
-## v1.1 — AuDHD Learning Intelligence
-
-Features designed specifically for AuDHD brains, ranked by impact.
-
-### 🔴 High Priority
-
-#### ~~Win Tracking~~ ✅
-**Why:** AuDHD brains are terrible at recognising progress (RSD + imposter syndrome). Seeing concrete evidence of improvement is genuinely therapeutic.
-
-- [x] `studyloop wins` — show concepts that moved from "struggled" to "confident"
-- [x] Session count trends (studying more consistently?)
-- [x] Skills where scaffolding level decreased over time
-- [x] Queryable from agents for positive reinforcement during sessions
-
-#### ~~Energy-Adaptive Sessions~~ ✅
-**Why:** Variable capacity is THE defining AuDHD challenge. A "high energy" day and a "low energy" day need completely different study approaches.
-
-- [x] `--energy low|medium|high` flag on session start
-- [x] Low → shorter chunks, more scaffolding, review-only mode
-- [x] High → deeper dives, harder Socratic questions, new material
-- [x] Historical energy patterns → "you do your best Python work on Tuesday mornings"
-- [x] Claude Code status line shows current energy level
-- [x] Emotional regulation check (calm/anxious/frustrated/flat/shutdown)
-
-#### ~~Struggle → Adaptive Difficulty~~ ✅
-**Why:** Repeating the same explanation doesn't work for neurodivergent brains. If a concept appears in 3+ sessions with questions, try a different approach.
-
-- [x] Auto-detect recurring struggles from session history
-- [x] Agent offers different analogies, smaller pieces, different modalities
-- [x] "Try writing a small program that uses X" vs "let me explain X again"
-- [x] Feeds into spaced repetition scheduling
-- [x] struggle_topics now config-driven
-
-### 🟡 Medium Priority
-
-#### ~~"Where Was I?" Auto-Resume~~ ✅
-**Why:** AuDHD learners lose context between sessions constantly. Manual context loading is a barrier to starting.
-
-- [x] `studyloop resume` — automatic last-session summary with topics, concepts in progress
-- [x] Built on existing session query infrastructure
-- [x] Shows: what you were learning, where you got stuck, what's next
-- [x] Integrated into session protocol — agents run it at session start
-
-#### ~~Hyperfocus Guardrails~~ ✅
-**Why:** Hyperfocus is a superpower but needs channeling. A study partner would say "you've been at this for 2 hours."
-
-- [x] Session duration tracking with configurable nudges
-- [x] Rabbit hole detection: "you started SQL but you've been in Python for 40 min"
-- [x] Break reminders at configurable intervals (25/50/90 min)
-- [x] Claude Code status line shows elapsed time + focus state
-
-#### ~~Calendar Time-Blocking & Reminders~~ ✅
-**Why:** ADHD task initiation is the hardest part. External triggers (notifications, calendar blocks) bypass the executive function barrier.
-
-- [x] Apple Calendar + Reminders MCP integration (macOS) — native notifications
-- [x] Google Calendar MCP integration (cross-platform)
-- [x] Auto-create study time blocks from `studyloop review` output
-- [x] Daily study briefing generation
-- [x] Break reminders via native notifications
-- [x] Note: Windows/WSL2 users use Google Calendar; macOS users can use either
-
-### 🔵 Nice to Have
-
-#### Pomodoro Session Structure
-**Why:** Time-boxed structure helps ADHD brains with task initiation and sustained attention.
-
-- 5 min review → 20 min focus → 5 min summarise
-- Agent adapts behaviour to current phase
-- Claude Code status line shows phase + timer
-- Configurable intervals
-
-#### Claude Code Status Line Integration
-**Why:** Persistent visual feedback without interrupting flow. Shows energy, timer, pomodoro phase, context usage.
-
-- Custom status line script reading session state file
-- Display: 🔋 Energy | ⏱️ Timer | 🍅 Pomodoro | 📊 Context %
-- Agent writes state → script reads state → user sees it
-- Note: kiro-cli does not support status lines (state shown in chat messages instead)
-
-#### Cowork Integration (Claude Desktop)
-**Why:** Scheduled daily study briefings without opening a terminal.
-
-- Cowork folder instructions for Socratic mentoring behaviour
-- `/schedule` recurring tasks for daily study review
-- Google Calendar connector for schedule-aware study planning
-- Note: Requires Claude Desktop open + computer awake
-
-## v1.2 — Community & Polish
-
-- [x] PyPI publishing (v2.0 — OIDC trusted publishing)
-- [ ] Additional test coverage (exporters, scheduler, CLI commands, speak, PDF)
-- [ ] VSCode integration (fix circular import)
-- [x] TUI interface (textual) (v1.5)
-- [ ] Watchdog file watcher for auto-sync
-- [ ] Community-contributed study topics
-- [ ] Localisation support
-- [x] TTS voice output (kokoro-tts / ltts integration)
-- [x] MkDocs documentation site (font toggle, Nord colours, reading preferences, 7 admonition types, `studyloop docs` CLI)
-- [x] Gemini CLI / OpenCode / Amp agents (unified shared framework)
-- [x] CI Python version matrix (3.12, 3.13)
-- [x] GitHub Pages deployment workflow
-- [x] CHANGELOG.md (Keep a Changelog format, at repo root)
-- [ ] Release automation (git-cliff + release.yml) — **not yet built**; there is
-  no `release.yml`. CI today is `ci.yml`, `docs.yml`, `nightly-install.yml`,
-  `nightly-uat.yml`.
-- [x] `query_sessions.py` refactor — split into `query_logic.py` (717 lines) + CLI (505 lines)
-
-## v1.3 — AuDHD Intelligence (from review)
-
-Features identified through comprehensive code review:
-
-- [x] **"Where Was I?" auto-resume** — `studyloop resume` shows last session, topics, concepts in progress
-- [x] **Medication timing awareness** — optional config for cognitive windows (onset/peak/tapering/worn off)
-- [x] **Visual progress map** — `studyloop progress-map` with Mermaid diagram output
-- [x] **Routine building / streak tracking** — `studyloop streaks` with current/longest streak, consistency %
-- [x] **Interleaving suppression on low-energy days** — automatic rule to disable topic mixing when energy < 4
-- [x] **Custom admonition style guide** — document the 7 custom admonition types for contributors
-
-## v1.4 — Pedagogical Intelligence
-
-Features to deepen the mentor's teaching methodology and student wellbeing.
-
-### Active Break Protocol
-**Why:** The science shows sustained attention degrades after ~25 minutes (Ariga & Lleras, 2011). ADHD brains deplete faster. Evidence-based break timing dramatically improves retention and focus.
-
-- [x] Three-tier break system: micro (2-3 min), short (5-10 min), long (15-20 min)
-- [x] Energy-adaptive intervals (shorter breaks when energy is low)
-- [x] Wrap-up buffer for flow states (don't hard-stop mid-thought)
-- [x] Non-negotiable hydration minimum even during hyperfocus
-- [x] PDA-sensitive reminders (information, not instruction)
-- [x] Science communication (explain WHY on first break)
-- [x] Shared framework: `agents/shared/break-science.md`
-
-### Session Wind-Down
-**Why:** NIH research (Buch et al., 2021) shows the brain replays learning at 20x speed during quiet rest — but only if you avoid high-cognitive-load activities for 10-15 minutes after a session. This consolidation is 4x more powerful than overnight sleep.
-
-- [x] Three-phase wind-down: session wrap → consolidation guidance → next session suggestion
-- [x] Science-based consolidation advice (walk, avoid phone, leave desk)
-- [x] Concrete first step for ADHD transition support ("Stand up. Walk to kitchen.")
-- [x] Time-of-day aware next session suggestions
-- [x] Shared framework: `agents/shared/wind-down-protocol.md`
-
-### Teach the Teacher
-**Why:** The Protege Effect (Chase et al., 2009) — people learn more deeply when teaching. Scoring teach-backs provides concrete mastery evidence (fights RSD/imposter syndrome) and drives adaptive spaced repetition.
-
-- [x] 5-dimension scoring rubric: Accuracy, Own Words, Structure, Depth, Transfer (each 1-4)
-- [x] Teach-back layered into every spaced repetition interval (micro at 3 days → full at 30 days)
-- [x] Detection probes for understanding vs memorisation
-- [x] Angle rotation: Bloom's levels, contexts, modalities, directions
-- [x] Score transparency with metacognitive calibration
-- [x] `studyloop teachback` and `studyloop teachback-history` CLI commands
-- [x] Database migration v10: teach_back_scores table + study_progress extensions
-- [x] Shared framework: `agents/shared/teach-back-protocol.md`
-
-### Dynamic Knowledge Bridging
-**Why:** The current system hardcodes networking as the bridge domain. Configurable bridges make the tool usable for anyone, and dynamic bridge tracking improves analogy quality over time.
-
-- [x] Configurable knowledge domains via `~/.config/studyloop/config.yaml`
-- [x] Interactive configure flow (discover student's expertise, map anchors, generate bridges)
-- [x] Bridge lifecycle: proposed → validated → effective (or misleading → rejected)
-- [x] Student-generated bridge capture and re-use
-- [x] Bridge fading (explicit at L1-L2, prompted at L3, student-generated at L4)
-- [x] Warm-up activation before new material
-- [x] `studyloop bridge add/list` CLI commands
-- [x] Database migration v11: knowledge_bridges table
-- [x] Shared framework: `agents/shared/knowledge-bridging.md`
-- [x] Default: networking bridges preserved as zero-configuration experience
-
-## v1.5 — Code Quality & Framework Unification
-
-Bug fixes, agent framework unification, and documentation polish.
-
-- [x] **Bug fixes**: `record_progress()` case sensitivity, legacy DB paths removed, `init_config()` hardcoded machine names
-- [x] **Study sessions wired up**: `start_study_session()`, `end_study_session()`, `get_study_session_stats()` for the orphaned `study_sessions` table
-- [x] **Unified agent framework**: All 5 platforms (Kiro, Claude Code, Gemini, OpenCode, Amp) reference `agents/shared/` — eliminated ~700 lines of inline duplication
-- [x] **Interactive config wizard**: `studyloop config init` with knowledge bridging, NotebookLM, Obsidian vault questions
-- [x] **Config viewer**: `studyloop config show` with Rich tables
-- [x] **Docs site**: `studyloop docs serve/open/list/read` commands
-- [x] **Agent installation integration**: `install-agents.sh` called from `config init` flow
-
-## v2.0 — Unified Platform
-
-Monorepo restructure, content pipeline absorption, packaging, and infrastructure hardening.
-
-- [x] **Phase 0**: Config consolidation (`settings.py` single source), CLI split into `cli/` package with LazyGroup (12 modules), WAL mode on all SQLite connections, service layer (`services/review.py`, `services/content.py`), JSON contract formalised
-- [x] **Phase 1**: Content absorption — 7 modules from pdf-by-chapters (`splitter`, `notebooklm_client`, `syllabus`, `markdown_converter`, `models`, `storage`), 10 CLI commands under `studyloop content`, 76 tests
-- [x] **Phase 4**: PyPI publishing (`studyctl` on PyPI), Homebrew personal tap (`NetDevAutomate/studyctl/studyctl`), OIDC trusted publishing, `studyloop setup` wizard
-- [x] **327 tests**, 4 skipped (optional deps)
-
-## v2.1 — Health & Self-Update (current)
-
-Diagnostic engine, self-update mechanism, and AI-guided setup for non-technical users.
-
-- [x] **`studyloop doctor`** — 19 health checks across 7 categories (core, database, config, agents, deps, voice, updates). Rich table output, `--json` for AI agents/CI, `--quiet` for scripts, `--category` for filtering. Exit codes: 0=healthy, 1=actionable, 2=core failure.
-- [x] **`studyloop update`** — check for available updates (always exit 0, informational)
-- [x] **`studyloop upgrade`** — apply updates with `--dry-run`, `--component`, `--force`. Package manager detection (uv/brew/pip), DB backup with 30-day pruning, agent definition updates.
-- [x] **Install-mentor agent** — tool-agnostic AI-guided setup prompt (`agents/shared/install-mentor.md`). Uses `studyloop doctor --json` as contract, fix loop capped at 3 iterations. Works with Claude Code, Kiro, Gemini CLI, OpenCode, Amp.
-- [x] **Agent manifest** — `agents/manifest.json` tracks SHA-256 hashes of all agent definitions. `scripts/update-agent-manifest.py` regenerates.
-- [x] **Documentation** — README, CLI reference, setup guide, agent-install all updated for non-technical users.
-
-## v2.2 — Live Session Dashboard
-
-Live study session with real-time dashboard, parking lot, and timer.
-
-- [x] **Phase 1 — Foundation**: Session CLI (`session start/end/status`, `park`), file-IPC protocol (`session-state.json`, `session-topics.md`, `session-parking.md`), parking lot persistence (migration v14), auto-migration on connect
-- [x] **Phase 1.5 — cmux**: Agent protocol for cmux MCP pane control (macOS/Ghostty)
-- [x] **Phase 2 — Web Dashboard**: SSE-powered live dashboard (`/session`), HTMX + Alpine.js, energy-adaptive timer, activity feed with visual language, session summary, artefact viewer, 14 tests
-- [x] **Bugs fixed**: Parking deduplication (migration v15 + `INSERT OR IGNORE`), IPC file permissions (0700/0600), CORS wildcard removed, SSE mtime optimization, timer pause/reset controls, auto-migrate parked_topics
-- [x] **Phase 1 — Unified Session**: `studyloop study` single command, tmux session runtime (`tmux.py`), agent launcher (`agent_launcher.py`, Claude-only), Textual sidebar (`tui/sidebar.py`), `--resume`/`--end`/`--web`, agent personas (`study.md`, `co-study.md`), persistent session directories with conversation history resume (`claude -r`), auto-cleanup on agent exit, catppuccin-compatible tmux overlay, 39 tests.
-
-### v2.2.1 — CI Fixes, Test Harness & Session Bug Fixes (2026-04-02)
-
-- [x] **CI fixes**: ruff formatting, integration test markers (`@pytest.mark.integration`), exclude tmux tests from CI
-- [x] **Copilot review**: 7 comments resolved (migrations v15, session state cleanup, IPC chmod, INSERT OR IGNORE dedup, accessibility, notification prompt, SW cache)
-- [x] **Session bugs**: Q quit kills all `study-*` sessions (stale first, current last), `detach-on-destroy on` returns user to shell, resume zombie detection via `pgrep`, agent binary absolute path resolution
-- [x] **3-layer test harness**: Textual Pilot (5 tests), tmux Lifecycle (15 tests), pexpect UAT (6 tests) — 747 tests total
-- [x] **Docs**: setup-guide (tmux prereq + resurrect note), session-protocol (tmux environment section), solution doc
-
-## Next
-
-### v2.2 — Polish (Phase 2) ✅
-
-- [x] `studyloop clean` — kill stale tmux sessions, remove old IPC files, prune orphaned session dirs
-- [x] tmux-resurrect compatibility — exclude `study-*` sessions from resurrect save/restore
-- [x] Vendor HTMX + Alpine.js + OpenDyslexic + Inter into `web/static/` (zero CDN — no third-party requests at runtime; note this is *not* offline support, as there is no service worker)
-- [x] Parked topic warmup at session start (surface unresolved topics from previous sessions)
-- [x] Break suggestions at timer threshold crossings (FCIS `logic/break_logic.py`, sidebar BreakBanner)
-- [x] Energy streaks — distribution, trend detection, duration correlation in `studyloop streaks`
-- [x] Register all 10 MCP tools in agent persona and `agents/claude/mcp.json`
-- [x] `logic/` subpackage for FCIS cores (clean, backlog, break, streaks)
-- [x] Self-healing `_connect()` for parking table schema drift
-- [x] Nested tmux UAT + `--end` from outside UAT (5 new tests)
-- [x] **896 tests passing, 0 failures**
-
-### Phase 6: CI/CD Pipeline ✅
-
-Nightly drift detection, pre-release gate, backup/restore.
-
-- [x] Nightly: fresh install on Ubuntu + macOS, `studyloop doctor --json` as gate (`nightly-install.yml`)
-- [x] Nightly: UAT tmux integration tests on macOS (`nightly-uat.yml`)
-- [ ] Pre-release: upgrade path N-1 → N, triggered on release tags — **not yet
-  built**; there is no `pre-release.yml`. Only `nightly-install.yml` and
-  `nightly-uat.yml` exist today.
-- [x] `studyloop backup` / `studyloop restore` — timestamped snapshots with safety backup
-- [x] Orphaned process cleanup in test harness (`conftest.py` session-scoped fixture)
-- [ ] Docker: `studyloop-web` image with health check via doctor — deferred to Phase 3
-- [ ] `compatibility.json` for pre-flight version checks — deferred (doctor already covers this)
-
-### Multi-Agent Support ✅
-
-- [x] Gemini CLI launch command + persona integration (GEMINI.md auto-loaded)
-- [x] Kiro CLI launch command + persona integration (atomic JSON + backup + teardown)
-- [x] OpenCode launch command + persona integration (YAML frontmatter persona)
-- [x] Agent auto-detection priority order (configurable via `config.yaml` + `STUDYLOOP_AGENT` env var)
-- [x] Frozen `AgentAdapter` dataclass with per-agent setup/launch/teardown/mcp callables
-- [x] Doctor agent smoke tests (binary detection + version check)
-
-### CI/CD Fixes (2026-04-04) ✅
-
-- [x] Doctor exit code `|| true` in nightly-install workflow (no pre-release
-  workflow exists yet)
-- [x] Atomic state file writes (threading.Lock + temp file + os.replace)
-- [x] Auto-create sessions DB on first connect (run migrations on fresh machine)
-- [x] Internal docs consolidation (66 → 18 files)
-
-## Next: v2.2.0 — Remote Study + Local LLMs
-
-Study from any device (iPad, laptop, phone) via the web dashboard, with optional local LLMs.
-
-### ttyd Integration + Embedded Web Pane
-
-> **Superseded by [ADR-0005](adr/0005-retire-ttyd-browser-surface.md) (2026-08-22).**
-> The items below shipped as written, but the ttyd **browser surface** has since
-> been retired: the iframe panels and the `ttyd` transport option are gone from
-> the UI, and the browser terminal is now xterm.js over a WebSocket (PTY) or ACP
-> chat. The ttyd **server** transport, the `/terminal/` proxy, the LAN Basic-Auth
-> middleware, and the port/browser config all remain. Remote study from an iPad
-> is served by the web dashboard, not by ttyd.
-
-- [x] `studyloop study --lan` starts ttyd alongside tmux session (port 7681)
-- [x] Embed ttyd as iframe in existing web dashboard
-- [x] "Open Study Agent Session" button — iframe split (default) + pop-out new window
-- [x] Doctor check for ttyd binary
-- [x] Config support for ttyd port
-- [x] Draggable split-pane layout (stacked/side-by-side)
-- [x] Browser auto-open with configurable browser
-- [x] Claude Code trust bypass (`hasTrustDialogAccepted`)
-- [x] `window-size largest` tmux option for multi-client compatibility
-- [x] Same-origin reverse proxy — ttyd proxied through FastAPI at `/terminal/` (HTTP + WebSocket)
-- [x] Pop-out/return persistence — iframe stays in DOM (visibility CSS), pop-out auto-closes on return
-- [x] LAN password protection — HTTP Basic Auth middleware, auto-generated or explicit `--password`
-- [x] `lan_password` config option for persistent password
-
-### Local LLMs via Ollama / LM Studio
-
-- [x] `studyloop study Python --agent ollama` / `--agent lmstudio` — AgentAdapter entries with tier-pinning
-- [x] Claude Code frontend with `ANTHROPIC_BASE_URL` pointed at local backend
-- [x] LM Studio: native Anthropic API support (simplest path)
-- [x] Ollama: via LiteLLM proxy (Ollama lacks Anthropic API)
-- [x] Doctor checks: binary detection, server reachability, claude dependency
-- [x] Config support: `agents.ollama.model`, `agents.lmstudio.model` in config.yaml
-- [x] Documentation with model recommendations and quality expectations
-
-### Multi-Agent Cleanup
-
-- [x] Kiro crash recovery (check + restore on session start)
-- [x] Gemini MCP pip-install path fix
-- [x] OpenCode real-binary validation
-
-### Deferred
-
-- Docker web + server-side TTS — parked
-- Full TUI session view — cut (the web dashboard's terminal panel covers this)
-
-## v2.3 — Autoresearch Harness + Persona Effectiveness (2026-04-05)
-
-### Test Matrix (Phase 1)
-
-- [x] Parametrized E2E test matrix — 7 lifecycle tests x 6 agent adapters = 42 tests
-- [x] `matrix_agent` mock factory in `tests/harness/agents.py`
-- [x] Topic resolution, briefing injection, flashcard generation verified per agent
-- [x] Full matrix runs in ~25s
-
-### Iterate Runner (Phase 2)
-
-- [x] `scripts/test_iterate.py` — autoresearch-style iterate loop
-- [x] JUnit XML parsing, `results.tsv` tracking (autoresearch format)
-- [x] Git clean-tree safety, structured failure reports with source context
-- [x] `--progress` flag shows iteration history
-- [x] `--agent`, `--max-iterations`, `--test-path`, `--report` flags
-
-### Persona Effectiveness Tracking (Tier 1)
-
-- [x] Migration v20: `persona_hash`, `win_count`, `struggle_count` on `study_sessions`
-- [x] SHA-256[:16] persona hash computed at session start
-- [x] Structured win/struggle counts extracted at session end
-- [x] `get_persona_effectiveness()` query — win rate per persona version
-- [x] `studyloop session effectiveness` CLI command (Rich table)
-- [ ] Tier 2: Autonomous persona optimisation against simulated student evaluations
-- [x] Obsidian session export — `session-export --obsidian` writes `AgentMemory/` vault notes (Dataview frontmatter, `[[wikilinks]]`, per-project MOC); shipped 2026-06-01
-- [ ] Obsidian + session-DB GraphRAG — unified retrieval over vault embeddings + sessions (see `docs/designs/obsidian-graphrag-roadmap.md`)
-
-## v2.4 — Web Quality And Architecture Alignment (2026-06-02)
-
-Quality waves focused on making the current web/content surfaces robust before
-new feature work.
-
-- [x] **Wave 1 — quality gates and install hardening**: profile-specific checks,
-  install/script contracts, and repo gates documented through `just` recipes.
-- [x] **Wave 2A — docs/runtime/security cleanup**: LAN/runtime feedback,
-  route/package cleanup, and documentation alignment from the first review pass.
-- [x] **Wave 2B — generation-control honesty**: `count_per_source` is visible in
-  REST plans, WebSocket progress, and browser plan text; `GenerationTask.count`
-  is covered from request planning through generator execution.
-- [x] **Wave 3 — Course Explorer cache freshness**: provider/course tree caching
-  uses a visible tree fingerprint, refreshes on nested course create/delete, and
-  ignores generated output directories.
-- [x] **Wave 4 — DB/FTS integrity**: migration tests cover FTS NULL transitions,
-  legacy DB compatibility, `study_progress` provenance columns, and foreign-key
-  state.
-- [x] **Wave 5 — browser smoke and accessibility**: route-stubbed Playwright
-  smoke covers app load, Course Explorer reading, struggle marking, Generate
-  panel reachability, Escape close, accessible control names, and visible
-  failure states.
-- [x] **Wave 6 — docs and C4 alignment**: user, troubleshooting, ownership,
-  roadmap, and current/target architecture docs now describe the shipped
-  generation, Explorer cache, DB/FTS, and browser-smoke behavior.
-
-Remaining future work from these waves:
-
-- [ ] Persist per-provider model preferences server-side.
-- [ ] Add an agent-side tool surface for immediate mid-session deck generation
-  from a specific struggle, rather than only date-window `topic_struggles`.
-- [x] Continue replacing ttyd fallback paths as ACP/PTY web sessions cover all
-  supported agents. — done for the **browser** surface (ADR-0005): the iframe
-  fallback is replaced by an explicit `unavailable` state. The ttyd **server**
-  transport remains, and retiring it is scheduled with the herdr multiplexer
-  default flip.
+StudyLoop is an early open-source release. This roadmap describes product
+outcomes rather than promising dates or version numbers.
+
+## Now: make the core loop dependable
+
+The current release supports:
+
+- local Study Session and Body Double workspaces with supported AI CLI agents;
+- energy-aware Socratic sessions, parking, timers, and session close-out;
+- flashcards, quizzes, spaced repetition, and a single recommended next action;
+- local content generation from Markdown, text, and supported PDF sources;
+- study plans stored as readable Markdown with session checkpoints;
+- searchable session history and optional Obsidian export;
+- laptop and tablet Web UI layouts.
+
+Work in this phase is about trustworthy installation, recovery, accessibility,
+and documentation. A feature is not considered ready merely because a backend
+route or design document exists; the user-facing path and its evidence must work.
+
+## Next: reduce setup and planning friction
+
+The next product improvements are:
+
+- a simpler installation and upgrade path than a source checkout;
+- a guided planning conversation that turns a learner's own words into a useful
+  plan without silently inventing goals or evidence;
+- stronger continuity between active plans, Today, review, and the next session;
+- clearer in-product explanations when an agent, voice backend, or optional
+  integration is unavailable;
+- broader manual accessibility testing and more contributor-friendly UI evidence.
+
+## Later: broaden access carefully
+
+These are useful directions, but they should not weaken the current local-first
+workflow:
+
+- a supported phone experience designed for the smaller screen rather than a
+  compressed desktop layout;
+- offline review where the data and conflict model are explicit;
+- easier community-created courses and learning templates;
+- localisation;
+- additional agent and local-model integrations with the same session guarantees.
+
+## Not a current promise
+
+StudyLoop does not currently promise a hosted service, mobile app, PyPI package,
+Homebrew formula, phone support, or offline Web UI. Historical implementation
+plans live in the repository for maintainers, but they are deliberately excluded
+from the public documentation site.
+
+Have a workflow that should influence the order? Open an
+[issue](https://github.com/NetDevAutomate/StudyLoop/issues) with the learning
+problem, the device or agent involved, and what a successful outcome would look
+like.

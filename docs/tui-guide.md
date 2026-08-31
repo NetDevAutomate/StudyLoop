@@ -14,8 +14,8 @@ When you start a study session with `studyloop study "topic"`, a tmux session is
 |         AI Agent (main pane)             |    Sidebar       |
 |                                          |                  |
 |   Your AI mentor runs here.              |   00:12:34       |
-|   Claude Code, Gemini, Kiro,             |   ELAPSED        |
-|   OpenCode, Ollama, or LM Studio.        |                  |
+|   Kiro, Codex, Claude Code,              |   ELAPSED        |
+|   OpenCode, or pi.                       |                  |
 |                                          |  ── Activity ──  |
 |   The agent has full terminal access     |  * Closures  win |
 |   and uses Socratic questioning to       |  * Decorators    |
@@ -171,7 +171,7 @@ studyloop study "Python Decorators" --energy 7 --web
 studyloop study "Python Decorators" --mode co-study
 
 # Choose a specific AI agent
-studyloop study "Python Decorators" --agent gemini
+studyloop study "Python Decorators" --agent kiro
 ```
 
 You'll be dropped into the tmux session automatically. The agent starts in the left pane, the sidebar in the right.
