@@ -26,7 +26,7 @@ flowchart TB
     Discover["studyloop content discover"]
     Generate["studyloop content generate-cards"]
     Practice["studyloop content generate-practice"]
-    Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI-compat / Anthropic-compat /<br/>Stub"]
+    Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI-compat / Anthropic-compat"]
     Validate["Pydantic validation<br/>FlashcardDeck / QuizDeck / PracticeDeck"]
     Artefacts["content.base_path/&lt;course&gt;<br/>or &lt;publisher&gt;/&lt;course&gt;<br/>flashcards + quizzes"]
     PracticeArtefacts["content.base_path/&lt;course&gt;<br/>practice tasks"]
@@ -56,14 +56,20 @@ source markdown -> resolve_scope -> GenerationTask(count) -> provider prompt -> 
 `count_per_source` is copied from the browser request into each
 `GenerationTask.count`. The provider adapters include that count in the
 flashcard/quiz prompt and validate the returned JSON before writing. Treat it as
-a requested target per source and per artefact kind: the Stub backend returns the
-exact requested count, while external providers must still follow the prompt and
-schema. The Generate panel reports the requested count, provider, and model in
+a requested target per source and per artefact kind. Live providers must still
+follow the prompt and schema; StudyLoop fails visibly instead of writing
+placeholder decks. The Generate panel reports the requested count, provider, and model in
 the plan/progress view so mismatches are visible during a run.
 
 ## Pluggable Provider Abstraction
 
-Six providers — OpenAI, OpenRouter, Gemini, Anthropic, **AWS Bedrock**, and **Ollama** — plus the test-only Stub backend all share one factory: `studyloop.content.generators.get_generator(config)` and one registry (`provider_profiles.py`). Bedrock and Ollama are now **first-class registry entries** (not ad-hoc paths): the registry drives the Generate panel and the Settings → LLM Providers panel uniformly. Two generic adapter classes carry the HTTP-backed providers; Bedrock keeps its own boto3/Converse generator and Ollama its own local generator:
+The live content providers — OpenAI, OpenRouter, Gemini, Anthropic,
+**AWS Bedrock**, and **Ollama** — share one factory:
+`studyloop.content.generators.get_generator(config)` and one registry
+(`provider_profiles.py`). This Gemini entry is a card-generation API provider;
+Gemini CLI is not a supported StudyLoop mentor harness. Bedrock and Ollama are
+first-class registry entries, while two generic adapters carry the HTTP-backed
+providers:
 
 ```mermaid
 flowchart LR
@@ -74,7 +80,6 @@ flowchart LR
     Cfg --> Factory
     Factory -->|"backend == ollama"| Ollama["OllamaGenerator<br/>(legacy, untouched)"]
     Factory -->|"backend == bedrock"| Bedrock["BedrockGenerator<br/>(legacy, untouched)"]
-    Factory -->|"backend == stub"| Stub["StubGenerator<br/>(deterministic / offline)"]
     Factory -->|"backend ==<br/>openai_compat"| OAA["OpenAICompatGenerator"]
     Factory -->|"backend ==<br/>anthropic_compat"| AAA["AnthropicCompatGenerator"]
 
@@ -118,16 +123,13 @@ This means a key added in the web UI takes effect immediately, with no `.env` ed
 ### Anthropic-compat adapter robustness
 
 The `AnthropicCompatGenerator` carries three robustness behaviours so a flaky
-Anthropic-compat shim can't silently break generation. (These were originally
-prompted by MiniMax M2.7 — now removed as a provider, see note below — but they
-are correct Messages-protocol handling that protects the `anthropic` provider
-and any future shim.)
+Anthropic-compatible endpoint cannot silently break generation. They are
+Messages-protocol safeguards that protect the `anthropic` provider and any
+future compatible endpoint.
 
 - **Schema-correction retries carry a `tool_result` block**, never a plain-text user turn — the Messages protocol requires the user turn after an assistant `tool_use` to be a `tool_result` for that id; strict shims reject the plain-text form (error 2013, `tool call result does not follow tool call`).
 - **Inline-XML tool calls are parsed as a fallback** — if a shim narrates the tool call as `<…:tool_call><invoke …><parameter …>` text instead of a native `tool_use` block, the adapter extracts it rather than failing.
 - **Transient bad emissions are retried** — the shared `call_with_correction` loop retries an unparseable response within its budget, so one malformed reply doesn't hard-fail the job.
-
-> **MiniMax was removed 2026-06-01.** It generated cleanly after the hardening above, but an Opus-4.8 judge rejected its quiz content across 5 SQL sections (wrong `isCorrect` flags, garbled characters, factual errors). Its flashcards were strong, but Bedrock and Ollama both clear the quiz bar, so MiniMax was redundant and dropped.
 
 ### Curation policy
 

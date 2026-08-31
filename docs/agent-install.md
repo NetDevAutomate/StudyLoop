@@ -1,671 +1,99 @@
-# Agent Installation Guide
+# Connect your AI coding tool
 
-How to set up the AI mentor agents for kiro-cli, Claude Code, Codex CLI, Grok Build CLI, Gemini CLI, OpenCode, Amp, pi, and oh-my-pi (omp).
+StudyLoop turns a supported coding assistant into an AuDHD-aware Socratic mentor. You keep using the tool you already know; StudyLoop supplies the study behaviour, session context, and progress export.
 
-## Table of Contents
+## Supported in the initial pre-release
 
-- [What are AI Agents?](#what-are-ai-agents)
-- [Automatic Installation](#automatic-installation)
-- [Kiro CLI Setup](#kiro-cli-setup)
-- [Claude Code Setup](#claude-code-setup)
-- [Codex CLI Setup](#codex-cli-setup)
-- [Grok Build CLI Setup](#grok-build-cli-setup)
-- [Gemini CLI Setup](#gemini-cli-setup)
-- [OpenCode Setup](#opencode-setup)
-- [Amp Setup](#amp-setup)
-- [pi Setup](#pi-setup)
-- [oh-my-pi (omp) Setup](#oh-my-pi-omp-setup)
-- [Local LLMs](#local-llms)
-- [Agent Descriptions](#agent-descriptions)
-- [Skills Reference](#skills-reference)
-- [Uninstalling](#uninstalling)
+The core release harnesses are:
 
-## AI-Guided Setup (Recommended for New Users)
+- **Kiro CLI** — the reference experience used in StudyLoop demos
+- **Codex**
+- **Claude Code**
 
-The **install-mentor agent** can guide you through the entire setup process conversationally. It detects your environment, installs packages, configures studyloop, and verifies everything works using `studyloop doctor`.
+StudyLoop also includes complete integrations for **OpenCode** and **pi**. They are shown as preview harnesses until their live release checks pass on the target environment.
 
-The prompt lives at `agents/shared/install-mentor.md` in the repo and works with any AI coding tool. To use it:
+Gemini CLI, Antigravity, and Grok are not part of this pre-release. Their presence on your computer will not make StudyLoop advertise or select them.
 
-```bash
-# In Claude Code — just ask:
-# "Read agents/shared/install-mentor.md and follow it to set up studyloop"
+## Install automatically
 
-# Or in any AI tool that can run shell commands, paste the prompt contents
-```
-
-The install-mentor uses `studyloop doctor --json` as its contract — it parses the health check output and fixes issues automatically (up to 3 iterations).
-
-## What are AI Agents?
-
-AI agents are custom personas you load into tools like kiro-cli or Claude Code. Instead of a generic assistant, you get a Socratic mentor that knows your learning style, tracks your progress, and teaches through questioning rather than lecturing.
-
-This project ships agents for nine platforms:
-- **study-mentor** (kiro-cli) — full study pipeline with spaced repetition
-- **socratic-mentor** (Claude Code) — Socratic questioning with AuDHD-aware pedagogy
-- **AGENTS.md** (Codex CLI) — Socratic mentoring auto-loaded from project context
-- **AGENTS.md** (Grok Build CLI) — Socratic mentoring auto-loaded from project context
-- **study-mentor** (Gemini CLI) — Socratic study sessions with energy-adaptive teaching
-- **study-mentor** (OpenCode) — AuDHD-aware study mentor with spaced repetition
-- **AGENTS.md** (Amp) — Socratic mentoring loaded automatically from project context
-- **AGENTS.md** (pi) — session-export mandate + studyloop context for pi coding agent
-- **AGENTS.md** (omp) — session-export mandate + studyloop context for oh-my-pi
-
-## Automatic Installation
-
-The preferred interface is the typed CLI command:
+From a StudyLoop source checkout, install every supported harness detected on your computer:
 
 ```bash
 studyloop install agents
 ```
 
-The compatibility wrapper still exists if you are working from a repo checkout:
-
-```bash
-./scripts/install-agents.sh
-```
-
-It checks for `~/.kiro/`, `~/.claude/`, and `~/.gemini/` directories, and `opencode`/`codex`/`grok`/`amp` commands on PATH. If found, it creates symlinks from the repo's `agents/` directory into the tool's config.
-
-Options:
+Or install one explicitly:
 
 ```bash
 studyloop install agents --tool kiro
-studyloop install agents --tool claude
 studyloop install agents --tool codex
-studyloop install agents --tool grok
-studyloop install agents --tool gemini
+studyloop install agents --tool claude
 studyloop install agents --tool opencode
-studyloop install agents --tool amp
 studyloop install agents --tool pi
-studyloop install agents --tool omp
-studyloop install agents --uninstall
 ```
 
-## Kiro CLI Setup
+Then check the result:
 
-### Prerequisites
+```bash
+studyloop doctor --category agents
+```
 
-- [kiro-cli](https://github.com/aws/kiro-cli) installed
-- `~/.kiro/` directory exists
+The installer links StudyLoop-managed definitions while preserving an existing file as a `.bak` backup when necessary. Use `studyloop install agents --uninstall` to remove links created by StudyLoop.
 
-### What gets installed
+## Start a study session
 
-The script creates symlinks for:
+The easiest route is the Web UI: open **Study Session**, choose an available harness, and start. From the command line:
 
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/kiro/study-mentor.json` | `~/.kiro/agents/study-mentor.json` | Agent definition |
-| `agents/kiro/study-mentor/` | `~/.kiro/agents/study-mentor/` | Agent persona and resources |
-| `agents/kiro/skills/study-mentor/` | `~/.kiro/skills/study-mentor/` | Session workflow skill |
-| `agents/kiro/skills/audhd-socratic-mentor/` | `~/.kiro/skills/audhd-socratic-mentor/` | Teaching methodology skill |
-| `agents/kiro/skills/tutor-progress-tracker/` | `~/.kiro/skills/tutor-progress-tracker/` | Progress tracking skill |
+```bash
+studyloop study "Python generators" --agent kiro
+```
 
-### Starting a session
+Replace `kiro` with `codex`, `claude`, `opencode`, or `pi`.
+
+## What each integration installs
+
+### Kiro CLI
+
+Kiro receives the `study-mentor` agent, its focused skills, and the voice helper. Start it directly with:
 
 ```bash
 kiro-cli chat --agent study-mentor
 ```
 
-The agent will automatically:
-1. Run `studyloop status` to check sync state
-2. Run `studyloop review` to find what's due for spaced repetition
-3. Run `studyloop struggles` to identify recurring struggle areas
-4. Ask your energy level to match session type
+Kiro is the demo harness because it makes the named mentor and session flow visible without requiring users to understand prompt files.
 
-### Customizing
+### Codex
 
-Edit the persona at `agents/kiro/study-mentor/persona.md` to adjust:
-- Session start behaviour
-- Teaching style preferences
-- Which CLI commands run automatically
+Codex reads the StudyLoop `AGENTS.md` from the project. Launching through `studyloop study` creates the session context and starts Codex in that directory.
 
-Edit skills in `agents/kiro/skills/` to modify:
-- Socratic questioning patterns
-- Network→Data Engineering bridges
-- Progress tracking thresholds
+### Claude Code
 
-## Claude Code Setup
+Claude Code receives the `socratic-mentor` agent and a session-export hook. The installer merges the hook into existing settings and does not replace unrelated hooks.
 
-### Prerequisites
+### OpenCode
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
-- `~/.claude/` directory exists
+OpenCode receives a project-local `study-mentor` definition and StudyLoop MCP configuration. StudyLoop does not choose or hard-code an OpenCode model; your working OpenCode provider and model remain authoritative.
 
-### What gets installed
+### pi
 
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/claude/socratic-mentor.md` | `~/.claude/agents/socratic-mentor.md` | Socratic teaching agent |
+pi reads the project `AGENTS.md` and resumes through its native `--continue` option. Its session-export mandate writes real pi sessions to StudyLoop’s session database; it does not generate fixture or placeholder progress.
 
-### Starting a session
+## Data integrity
+
+Agent installation never seeds study progress. Session export records genuine harness sessions, and struggle extraction requires an explicitly configured live model. If the live extractor cannot authenticate or returns invalid data, it fails without writing partial progress.
+
+## Troubleshooting
+
+Run:
 
 ```bash
-/agent socratic-mentor
+studyloop doctor --category agents --json
 ```
 
-### Customizing
+The human-readable output gives repair guidance; JSON is useful when another agent is helping with setup. If a harness appears unavailable, first confirm its binary responds to `--version`, then rerun the installer for that harness.
 
-- **socratic-mentor**: Edit `agents/claude/socratic-mentor.md` — it's a markdown file with the full persona, questioning techniques, and learning session orchestration
-
-## Codex CLI Setup
-
-### Prerequisites
-
-- Codex CLI installed
-- `codex` command available on PATH
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/codex/AGENTS.md` | `AGENTS.md` (project root) | Project-level Codex instructions |
-| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
-
-Codex auto-loads `AGENTS.md` from the current working directory, so the installer symlinks the study mentor instructions into the repo root.
-
-### Auto-install
-
-```bash
-studyloop install agents --tool codex
-```
-
-### Manual install
-
-```bash
-# Symlink AGENTS.md to project root
-ln -s "$(pwd)/agents/codex/AGENTS.md" ./AGENTS.md
-
-# Symlink shared framework
-mkdir -p ~/.agents
-ln -s "$(pwd)/agents/shared" ~/.agents/shared
-```
-
-### Starting a session
-
-```bash
-codex
-# AGENTS.md is loaded automatically
-
-# Or let studyloop launch Codex directly
-studyloop study "Python" --agent codex
-```
-
-## Grok Build CLI Setup
-
-### Prerequisites
-
-- Grok Build CLI installed (`npm i -g @xai-official/grok` or the installer from xAI)
-- `grok` command available on PATH
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/codex/AGENTS.md` | `AGENTS.md` (project root) | Project-level Socratic mentor instructions |
-| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
-
-Grok reads the AGENTS.md instruction-file family from the current working directory, so StudyLoop reuses the project-level mentor instructions that Codex uses.
-
-### Auto-install
-
-```bash
-studyloop install agents --tool grok
-```
-
-### Starting a session
-
-```bash
-grok
-# AGENTS.md is loaded automatically
-
-# Or let studyloop launch Grok directly
-studyloop study "Python" --agent grok
-```
-
-## Gemini CLI Setup
-
-### Prerequisites
-
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) installed
-- `~/.gemini/` directory exists
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/gemini/study-mentor.md` | `~/.gemini/agents/study-mentor.md` | Subagent definition |
-| `agents/gemini/GEMINI.md` | `GEMINI.md` (project root) | Project-level Gemini instructions |
-| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
-
-The installer also creates `~/.gemini/settings.json` with `experimental.enableAgents` enabled (required for subagent support). If the file already exists, you'll be prompted to add the setting manually.
-
-### Auto-install
-
-```bash
-studyloop install agents --tool gemini
-```
-
-### Manual install
-
-```bash
-# Create directories
-mkdir -p ~/.gemini/agents
-
-# Symlink agent definition
-ln -s "$(pwd)/agents/gemini/study-mentor.md" ~/.gemini/agents/study-mentor.md
-ln -s "$(pwd)/agents/gemini/GEMINI.md" ./GEMINI.md
-
-# Symlink shared framework
-mkdir -p ~/.agents
-ln -s "$(pwd)/agents/shared" ~/.agents/shared
-
-# Enable subagents in settings
-cat > ~/.gemini/settings.json << 'EOF'
-{
-  "experimental": {
-    "enableAgents": true
-  }
-}
-EOF
-```
-
-### Starting a session
-
-```bash
-gemini
-# Then ask for a study session — the study-mentor subagent is auto-detected
-```
-
-## OpenCode Setup
-
-### Prerequisites
-
-- [OpenCode](https://github.com/opencode-ai/opencode) installed
-- `opencode` command available on PATH
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/opencode/study-mentor.md` | `~/.config/opencode/agents/study-mentor.md` | Agent definition |
-| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
-
-OpenCode discovers agents from `.opencode/agents/*.md` (project-level) or `~/.config/opencode/agents/*.md` (global). The installer uses the global path.
-
-### Auto-install
-
-```bash
-studyloop install agents --tool opencode
-```
-
-### Manual install
-
-```bash
-# Create directories
-mkdir -p ~/.config/opencode/agents
-
-# Symlink agent definition
-ln -s "$(pwd)/agents/opencode/study-mentor.md" ~/.config/opencode/agents/study-mentor.md
-
-# Symlink shared framework
-mkdir -p ~/.agents
-ln -s "$(pwd)/agents/shared" ~/.agents/shared
-```
-
-### Starting a session
-
-```bash
-opencode
-# Press Tab to switch to the study-mentor agent
-```
-
-## Amp Setup
-
-### Prerequisites
-
-- [Amp](https://ampcode.com) installed
-- `amp` command available on PATH
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/shared/` | `~/.agents/shared/` | Shared framework (cross-tool) |
-
-Amp currently has no dedicated project-level agent file in this repo. `studyloop install agents --tool amp` installs the shared framework only; if you want project-level instructions, create or link `AGENTS.md` in the repo root yourself.
-
-### Auto-install
-
-```bash
-studyloop install agents --tool amp
-```
-
-### Manual install
-
-```bash
-# Symlink AGENTS.md to project root
-ln -s "$(pwd)/agents/amp/AGENTS.md" ./AGENTS.md
-
-# Symlink shared framework
-mkdir -p ~/.agents
-ln -s "$(pwd)/agents/shared" ~/.agents/shared
-```
-
-### Starting a session
-
-```bash
-amp
-# AGENTS.md is loaded automatically — just start asking for a study session
-```
-
-## pi Setup
-
-### Prerequisites
-
-- [pi coding agent](https://github.com/earendil-works/pi-coding-agent) installed (`npm install -g @earendil-works/pi-coding-agent`)
-- `~/.pi/` directory exists (created on first run of `pi`)
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/pi/AGENTS.md` | `~/.pi/agent/AGENTS.md` | Project-level pi instructions — loads session-export mandate |
-| *(generated from template)* | `~/.pi/agent/session-db.md` | Session-export steering mandate |
-
-pi loads `AGENTS.md` from its agent directory, which references `session-db.md` to pull in the session-export instructions.
-
-### Auto-install
-
-```bash
-studyloop install agents --tool pi
-```
-
-### Manual install
-
-```bash
-# Symlink AGENTS.md
-mkdir -p ~/.pi/agent
-ln -s "$(pwd)/agents/pi/AGENTS.md" ~/.pi/agent/AGENTS.md
-
-# Write steering mandate
-studyloop doctor --fix   # writes ~/.pi/agent/session-db.md
-```
-
-### Exporting sessions
-
-```bash
-session-export --pi-only           # Export only pi sessions
-session-export --sources pi omp    # Export pi and omp together
-```
-
-### Verifying
-
-```bash
-studyloop doctor   # checks ~/.pi/agent/session-db.md contains the mandate
-```
-
----
-
-## oh-my-pi (omp) Setup
-
-oh-my-pi is a fork of pi with an identical session format. The setup mirrors pi exactly, substituting `~/.omp` for `~/.pi`.
-
-### Prerequisites
-
-- [oh-my-pi](https://github.com/oh-my-pi/pi-coding-agent) installed (`npm install -g @oh-my-pi/pi-coding-agent`)
-- `~/.omp/` directory exists (created on first run of `omp`)
-
-### What gets installed
-
-| Source | Target | Purpose |
-|--------|--------|---------|
-| `agents/omp/AGENTS.md` | `~/.omp/agent/AGENTS.md` | Project-level omp instructions — loads session-export mandate |
-| *(generated from template)* | `~/.omp/agent/session-db.md` | Session-export steering mandate |
-
-### Auto-install
-
-```bash
-studyloop install agents --tool omp
-```
-
-### Manual install
-
-```bash
-# Symlink AGENTS.md
-mkdir -p ~/.omp/agent
-ln -s "$(pwd)/agents/omp/AGENTS.md" ~/.omp/agent/AGENTS.md
-
-# Write steering mandate
-studyloop doctor --fix   # writes ~/.omp/agent/session-db.md
-```
-
-### Exporting sessions
-
-```bash
-session-export --omp-only           # Export only omp sessions
-session-export --sources pi omp     # Export pi and omp together
-```
-
-### Verifying
-
-```bash
-studyloop doctor   # checks ~/.omp/agent/session-db.md contains the mandate
-```
-
-### Session format note
-
-pi and omp use JSONL v3 (one JSON object per line). Session files live under:
-
-```
-~/.pi/agent/sessions/<cwd-slug>/<ISO-ts>_<uuid>.jsonl
-~/.omp/agent/sessions/<cwd-slug>/<ISO-ts>_<uuid>.jsonl
-```
-
-The `<cwd-slug>` is the working directory path with `/` replaced by `-`. See the [pi / omp Harness Integration](architecture/pi-omp-harness-integration.md) doc for full details, and [Troubleshooting: pi / omp](troubleshooting/pi-omp.md) if sessions aren't appearing in the DB.
-
----
-
-## Local LLMs
-
-studyloop can use local LLMs as the study mentor backend instead of cloud Claude. This uses Claude Code as the frontend but points it at a local model server via environment variables.
-
-### Honest expectations
-
-Local models are a **cost/privacy trade-off with significant capability regression**:
-
-- **Works well**: Simple tasks, single-turn questions, code explanation, light review
-- **Works poorly**: Multi-file refactors, complex agentic loops, subagent coordination, test-fix cycles
-- **Rough quality**: Best local models (Qwen3-Coder 30B, Devstral 24B) are approximately Claude Haiku 3.5 quality for agentic tasks
-
-If you need reliable multi-step study sessions, cloud Claude is substantially better. Local LLMs are best for privacy-sensitive work, offline use, or cost-free experimentation.
-
-### API compatibility
-
-Claude Code requires the **Anthropic Messages API format** (`/v1/messages`). Not all local backends support this:
-
-| Backend | Anthropic API? | Notes |
-|---------|---------------|-------|
-| **LM Studio 0.4.1+** | Native | Simplest path. Just load a model and point studyloop at it. |
-| **llama.cpp server** | Native (since Nov 2025) | Low-level, good for headless servers. |
-| **LiteLLM proxy** | Translates | Bridges Ollama's OpenAI API to Anthropic format. |
-| **Ollama (direct)** | No | Only speaks OpenAI format. Needs LiteLLM as a proxy. |
-
-### Recommended models
-
-Models ranked by suitability for studyloop's agentic, multi-turn workflow:
-
-| Model | VRAM/RAM | Context | Best for |
-|-------|----------|---------|----------|
-| **Qwen3-Coder 30B** | ~19 GB | 256K | Best open-source for coding. Explicit tool-use training. |
-| **Devstral 24B** | ~14 GB | 128K | Top SWE-bench open-source. Runs on 32 GB Mac. Apache 2.0. |
-| **DeepSeek-Coder-V2 16B** | ~9 GB | 160K | Good at the 16B weight class. |
-
-**Minimum context window**: 64K tokens. Claude Code's system prompt, CLAUDE.md, tool definitions, and file reads consume 20K-50K tokens before your conversation even starts. Models with <32K context will truncate constantly.
-
-**Not recommended**: CodeLlama (superseded), MiniMax M2.7 as a *local coding agent* (known freeze bug), anything <10B parameters.
-
-### Option A: LM Studio (simplest)
-
-1. Install [LM Studio](https://lmstudio.ai) (0.4.1+)
-2. Download and load a model (e.g., Qwen3-Coder 30B)
-3. Start the local server (LM Studio > Developer tab > Start Server)
-4. Run studyloop:
-
-```bash
-studyloop study "Python decorators" --agent lmstudio
-```
-
-Config (`~/.config/studyloop/config.yaml`):
-```yaml
-agents:
-  priority: [lmstudio, claude]  # prefer local, fall back to cloud
-  lmstudio:
-    model: qwen3-coder           # must match what's loaded in LM Studio
-    # base_url: http://localhost:1234  # default
-```
-
-### Option B: Ollama via LiteLLM proxy
-
-Ollama doesn't speak Anthropic API natively. You need [LiteLLM](https://docs.litellm.ai/) as a translation layer.
-
-1. Install Ollama and pull a model:
-```bash
-ollama pull qwen3-coder:30b
-```
-
-2. Install and configure LiteLLM:
-```bash
-pip install litellm
-```
-
-Create `litellm-config.yaml`:
-```yaml
-model_list:
-  - model_name: qwen3-coder
-    litellm_params:
-      model: ollama_chat/qwen3-coder:30b
-      api_base: http://localhost:11434
-```
-
-3. Start LiteLLM:
-```bash
-litellm --config litellm-config.yaml --port 4000
-```
-
-4. Run studyloop:
-```bash
-studyloop study "SQL window functions" --agent ollama
-```
-
-Config:
-```yaml
-agents:
-  priority: [ollama, claude]
-  ollama:
-    model: qwen3-coder
-    # base_url: http://localhost:4000  # default (LiteLLM proxy)
-```
-
-### Option C: llama.cpp server (headless)
-
-For servers without a GUI:
-
-```bash
-llama-server -m qwen3-coder-30b.gguf --port 8080 --ctx-size 131072
-```
-
-Use the LM Studio adapter with a custom base_url:
-```yaml
-agents:
-  lmstudio:
-    model: qwen3-coder
-    base_url: http://localhost:8080
-```
-
-### Known issues
-
-- **Malformed tool calls**: Local models emit invalid tool-use JSON more often than cloud Claude. Claude Code may crash with `Cannot read properties of undefined`. Workaround: `export CLAUDE_CODE_USE_POWERSHELL_TOOL=0`
-- **No prompt caching**: Every turn processes the full context from scratch. Sessions feel slower as context grows.
-- **No extended thinking**: The effort slider and thinking modes are Claude-specific features.
-- **Background tasks use local model**: Claude Code routes statusline updates and codebase searches through the "haiku" model tier. With tier-pinning (which studyloop sets automatically), all of these hit your local GPU.
-
-### Verifying your setup
-
-```bash
-studyloop doctor
-```
-
-The doctor checks will report:
-- Whether ollama/lms binaries are installed
-- Whether the local server is responding
-- Whether Claude Code is installed (required as the frontend)
-
-## Agent Descriptions
-
-### study-mentor (kiro-cli)
-
-The primary study agent. Integrates with the full studyloop pipeline:
-
-- Checks spaced repetition schedule before each session
-- Detects struggle topics from your session history
-- Uses local study sources, generated review artefacts, and shared session history during teaching
-- Records progress via `tutor-checkpoint`
-- Adapts session type to your energy level (deep study, light review, body doubling)
-- Uses network→data engineering analogies for concept bridging
-
-### socratic-mentor (Claude Code)
-
-A focused Socratic teaching agent with AuDHD-aware pedagogy:
-
-- Teaches through progressive questioning (observation → pattern → principle → application)
-- Embeds knowledge from Clean Code (Robert C. Martin) and GoF Design Patterns
-- Adapts question difficulty based on demonstrated understanding
-- Tracks principle mastery: discovered → applied → mastered
-- Never gives direct answers unless explicitly asked (or after 4+ rounds stuck)
-
-### AGENTS.md (Codex CLI)
-
-Codex uses the repository-root `AGENTS.md` as its project contract:
-
-- Auto-loads study mentor guidance when you start `codex` in the repo
-- Keeps the session aligned with the studyloop workflow and session-state tooling
-- Works well with `studyloop study ...` when studyloop launches Codex inside tmux
-- Can also be used manually for ad-hoc study, review, and note-refinement sessions
-
-## Skills Reference
-
-Skills are modular knowledge packages that agents load for specific capabilities.
-
-### audhd-socratic-mentor
-
-The core teaching methodology skill. Defines:
-- Socratic questioning framework (70% questions / 30% strategic info drops)
-- AuDHD cognitive support patterns (executive function scaffolding, overload prevention)
-- Network→Data Engineering concept bridges (BGP→event streaming, VLAN→data lake zones)
-- The golden rule: never give direct answers, guide discovery through productive struggle
-
-### study-mentor
-
-Session workflow and pipeline integration. Defines:
-- Session start protocol (status → review → struggles → energy check)
-- Spaced repetition schedule and review types
-- Local study-source and session-history integration
-- Session type selection based on energy level
-
-### tutor-progress-tracker
-
-Cross-agent progress tracking. Provides:
-- Shared assessment database for skill scores
-- `tutor-checkpoint` CLI integration
-- Score history and trend tracking
-- Skill-specific progress queries
-
-## Uninstalling
-
-Remove all symlinks created by the installer:
+For a clean removal:
 
 ```bash
 studyloop install agents --uninstall
 ```
-
-This only removes symlinks that point into this repo. It won't touch agent files you've created manually or from other sources. Any existing files that were backed up during installation (with `.bak` suffix) remain untouched.

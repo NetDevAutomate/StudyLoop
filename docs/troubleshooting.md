@@ -101,8 +101,8 @@ studyloop web
 Installing `ttyd` does **not** fix this and is not required for the terminal
 panel. The ttyd browser surface was retired deliberately, because without the
 binary the old iframe rendered an empty frame that was indistinguishable from a
-hang. See [ADR-0005](adr/0005-retire-ttyd-browser-surface.md) for the reasoning
-and for what remains on the server path.
+hang. The retired design record remains in the repository for maintainers,
+including the reasoning and the server path that remains.
 
 If the transport is already `pty` and the panel still reports no terminal, the
 server did not return a connection for the session. Ending and restarting the
@@ -178,9 +178,10 @@ The **Cards / questions per source** field is sent as `count_per_source`. It is
 copied into each `GenerationTask.count` and included in the provider prompt for
 every selected source and kind.
 
-This is a target, not a filesystem quota. The Stub backend returns the exact
-requested count. External providers can still under- or over-produce if they do
-not follow the prompt; invalid shapes fail validation and show as task errors.
+This is a target, not a filesystem quota. Live providers can under- or
+over-produce if they do not follow the prompt; invalid shapes fail validation
+and appear as task errors. StudyLoop does not substitute generated-looking
+placeholder cards when a provider fails.
 Use the Generate panel plan/progress line to confirm the requested count,
 provider, and model before comparing output files.
 

@@ -1,115 +1,68 @@
 # StudyLoop
 
-**TL;DR:** A local-first, AuDHD-aware study toolkit for live Socratic mentoring, body-doubling, cross-assistant session memory, and supporting spaced repetition.
+StudyLoop is a local-first study companion for active learning with an AI mentor.
+It is designed for learners who benefit from one clear focus, short Socratic
+questions, visible progress, and a dependable way to return after a break.
 
----
+<figure markdown="span">
+  ![StudyLoop Study Session using Kiro](images/studyloop-study-session.png)
+  <figcaption>A real StudyLoop session with live Kiro responses; the topic and learner reply were supplied when recording.</figcaption>
+</figure>
 
-## Quick Start
+## Start with one useful session
 
-```bash
-# 1. Install and configure
-git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
-cd studyloop
-./scripts/install.sh
-studyloop setup
-studyloop doctor --fix
+1. Follow the [Setup Guide](setup-guide.md) to install StudyLoop and connect an
+   agent such as Kiro.
+2. Run `studyloop web` and open the address printed in the terminal.
+3. Choose **Study Session**, enter one topic, set your energy, and start.
 
-# 2. Start an interactive study session
-studyloop study
-# or specify a topic directly
-studyloop study "Python" --mode co-study
-# or launch your preferred assistant directly:
-# kiro-cli chat --agent study-mentor
-# claude      # then /agent socratic-mentor
-# codex       # in the project root with AGENTS.md present
+If you would rather build a routine gradually, [Your First Week](first-week.md)
+adds review, plans, and session history one step at a time.
 
-# 3. Ask for one active next step, then optionally generate review artefacts
-studyloop now --energy medium --time 20
-studyloop chat-note ~/Obsidian/Personal/Study/Python/decorators.md --mode recall
-studyloop content generate-cards ~/Obsidian/Personal/Study/Python --course python
-studyloop review
-```
+## Choose the support you need
 
-!!! tip "First time?"
-    Head to the [Setup Guide](setup-guide.md), then follow [Your First Week](first-week.md) for a minimal daily path. Configure agents via [Agent Installation](agent-install.md) when you are ready to go deeper.
+| Mode | Useful when | What StudyLoop provides |
+| --- | --- | --- |
+| **Study Session** | You want to understand or practise a concept | A live mentor that asks one useful question at a time |
+| **Body Double** | Starting or staying with a task is the hard part | A focused workspace, timer, and quiet agent presence |
+| **Today** | Too many possible next steps are competing | One recommended action based on time, energy, reviews, and recent work |
+| **Flashcards and quizzes** | Something needs retrieval practice | Local review material and spaced-repetition scheduling |
+| **Study Plans** | A larger goal needs shape | A plain-language mission, milestones, and checkpoints |
 
----
+!!! energy-check "Designed with AuDHD learners in mind"
+    Energy-aware pacing, tangible closure, a parking lot for tangents, readable
+    themes, and low-shame recovery are part of the workflow rather than optional
+    polish. Read the [AuDHD Learning Philosophy](audhd-learning-philosophy.md)
+    for the reasoning behind those choices.
 
-## How It Works
+## What stays local
 
-```mermaid
-graph LR
-    subgraph "Study Materials"
-        OB[Obsidian Vault]
-        SRC[Markdown/PDF/text]
-    end
+Your StudyLoop database, study plans, generated material, and optional note
+exports live on your machine by default. The selected AI agent may use its own
+provider or local model, so its data handling depends on that agent's setup.
+StudyLoop does not make a local workflow automatically offline: the Web UI needs
+the local server, and cloud-backed agents still need their provider.
 
-    subgraph "CLI Tools"
-        SC[studyloop]
-        AST[agent-session-tools]
-        DB[(SQLite DB)]
-    end
+## Current boundaries
 
-    subgraph "AI Agents"
-        KA[kiro-cli]
-        CA[Claude Code]
-        CX[Codex CLI]
-        GA[Gemini CLI]
-        OA[OpenCode]
-        PI[pi]
-        OMP[omp]
-    end
+- Install from a Git checkout on macOS or Linux; there is no current PyPI or
+  Homebrew release.
+- Use a laptop or tablet for the Web UI. Phone layouts are not supported.
+- Keep `studyloop web` running while using the browser app; there is no offline
+  service worker.
+- Create study plans through the current Web UI form or CLI. An agent-led
+  planning interview is not integrated into the Web UI yet.
+- Use the CLI for practice-task generation and verification.
 
-    OBV["Obsidian Vault<br/>AgentMemory/"]
+See the [public roadmap](roadmap.md) for what is ready, what is being refined,
+and what is deliberately later.
 
-    OB -->|study sources| SC
-    SRC -->|parse/generate| SC
-    SC -->|sessions + review| DB
-    AST -->|export sessions| DB
-    AST -.->|"--obsidian (opt-in)"| OBV
-    DB -->|query history| SC
-    KA -->|Socratic sessions| DB
-    CA -->|Socratic sessions| DB
-    CX -->|Socratic sessions| DB
-    GA -->|Socratic sessions| DB
-    OA -->|Socratic sessions| DB
-    PI -->|Socratic sessions| DB
-    OMP -->|Socratic sessions| DB
-```
+## Find the right guide
 
----
-
-## What's Inside
-
-| Tool | Purpose |
-|------|---------|
-| **studyloop** | Interactive study sessions, local content generation, spaced repetition, struggle detection, win tracking |
-| **agent-session-tools** | Export and search AI sessions from Claude Code, Codex, Kiro, Gemini, Aider, pi, omp, and more |
-| **AI Agents** | Socratic mentors that adapt to your energy, emotional state, and sensory environment |
-
-!!! energy-check "Designed for AuDHD brains"
-    Every session starts with an energy + emotional state check. Low energy? Shorter chunks, more scaffolding. Shutdown? No teaching — just presence. Read the [AuDHD Philosophy](audhd-learning-philosophy.md) to understand why.
-
----
-
-## Key Sections
-
-- **[Your First Week](first-week.md)** — day-by-day path: live study first, then review and export
-- **[Content Pipeline](content-pipeline.md)** — local review artefact generation from study sources
-- **[Architecture](architecture.md)** — current and target architecture docs
-- **[Target Architecture](architecture/target.md)** — plugin architecture, ACP/PTY live sessions, macOS/iOS direction
-- **[Architecture Decision Records](adr/README.md)** — why load-bearing choices were made, and what was rejected
-- **[TUI Sidebar Guide](tui-guide.md)** — Terminal sidebar layout, timer modes, key bindings
-- **[Web UI Guide](web-ui-guide.md)** — live sessions, session dashboard, live terminal, review UI
-- **[Session Protocol](session-protocol.md)** — How every study session flows, from arrival to close
-- **[CLI Reference](cli-reference.md)** — Full command reference for `studyloop` and `session-query`
-- **[Repository Standards](standards/repo-standards.md)** — naming, doc, and structure standards
-- **[AuDHD Framework](audhd-framework.md)** — The cognitive support framework behind the agents
-- **[AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md)** — How teach-back, `studyloop now`, note conversation, verification, recap, mastery graphs, and interleaving turn notes into learning
-- **[AuDHD Deep Technical Learning Roadmap](audhd-deep-technical-learning-roadmap.md)** — Implementation status and remaining refinements for the six active-learning features
-- **[Outstanding Work Plan](superpowers/plans/2026-07-12-studyloop-outstanding-work-plan.md)** — Consolidated outstanding remediation, MCP parity, and the next AuDHD-focused UX slice
-- **[Network Bridges](network-bridges.md)** — Network→Data Engineering analogies for infrastructure people
-- **[Roadmap](roadmap.md)** — What's coming next
-
-!!! micro-celebration "You're here"
-    Reading docs is the first step. That counts.
+- [Web UI Guide](web-ui-guide.md) — Study Session, Body Double, review, and LAN access
+- [Study Plans](study-plans.md) — shape goals without turning planning into work avoidance
+- [Content Pipeline](content-pipeline.md) — generate cards and practice material from local sources
+- [Voice Output](voice-output.md) — server and operating-system speech options
+- [CLI Reference](cli-reference.md) — every command and option
+- [Troubleshooting](troubleshooting.md) — common installation and runtime problems
+- [Contributing](contributing.md) — help with code, docs, accessibility, or testing

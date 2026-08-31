@@ -1,69 +1,82 @@
-# Architecture
+# Architecture Overview
 
-This is the entry point for architecture documentation.
-
-## Read These First
-
-- [Current Architecture](architecture/current.md) describes the system as it works today, with C4 Level 1 / 2 / 3 diagrams and a sequence diagram of the ACP persona-injection flow.
-- [Target Architecture](architecture/target.md) describes the plugin-based, web-first, native-client-ready direction.
-- [System Overview](system-overview.md) is the lighter-touch user-and-operator big picture.
-- [Standards](standards/repo-standards.md) defines naming, structure, and documentation conventions.
-- [Planning](planning/2026_05_09_planning.md) contains the remediation plan.
-
-## Architecture Decision Summary
-
-The project is moving toward a local-first, pluggable study platform.
-
-The core workflow is not flashcards or quizzes. The core workflow is live interactive study with an assistant and active-learning services that understand the learner's history, recurring struggles, wins, practice evidence, weak links, and progress through the shared database.
+StudyLoop is a local-first Python application with two main interfaces: a
+command-line toolkit and a browser workspace served from the same machine.
 
 ```mermaid
 flowchart LR
-    Current["Current<br/>CLI + tmux + web<br/>+ xterm.js over WS (PTY)<br/>+ ACP chat (Kiro/Gemini)<br/>+ active learning loop"]
-    Hybrid["Near-term<br/>ACP-first web sessions<br/>PTY fallback over WS<br/>+ herdr multiplexer default"]
-    Target["Target<br/>plugin architecture<br/>macOS/iOS ready"]
+    Learner["Learner"]
+    Web["Local Web UI"]
+    CLI["StudyLoop CLI"]
+    Agent["Kiro or another AI agent"]
+    Sessions[("Session database")]
+    Files["Plans, notes, generated material"]
 
-    Current --> Hybrid --> Target
+    Learner --> Web
+    Learner --> CLI
+    Web --> Agent
+    CLI --> Agent
+    Web --> Sessions
+    CLI --> Sessions
+    Web --> Files
+    CLI --> Files
 ```
 
-The browser terminal is **xterm.js over a WebSocket**, or ACP chat. There is no ttyd browser surface — it was retired in [ADR-0005](adr/0005-retire-ttyd-browser-surface.md) once the PTY path survived a page refresh. The ttyd **server** transport is retained for maintainers only.
+## The important boundaries
 
-## Frontend Structure
+### StudyLoop owns the learning workflow
 
-The SPA's component logic is being unwound from one large inline `<script>` into ES modules. Commit `4f06915` completed Phase 1, taking `web/static/index.html` from **4,403 to 2,702 lines** (it is **3,112** today, having grown again with the study-plan panel markup).
+StudyLoop chooses the session shape, records progress and review evidence, keeps
+plans and parked thoughts, and renders the browser workspace. It does not embed
+one model provider as its intelligence layer.
 
-- `web/static/js/main.js` is the ESM entry point, loaded as `<script type="module" src="/js/main.js">`.
-- `web/static/js/components/*.js` holds the extracted Alpine factories — currently **seven** on `window`: `generatePanel`, `liveAgentConsole`, `plansPanel`, `sessionTimer`, `settingsPanel`, `splitLayout`, `terminalPanel`.
-- `web/static/js/lib/` holds shared helpers (`chunk-text.js`, `timer-thresholds.js`).
-- `web/static/components.js` is **still present and still loaded** as a classic script; components not yet extracted (for example `courseExplorer()`) continue to live there.
+### The selected agent owns the model conversation
 
-Factories are assigned to `window` deliberately: Alpine evaluates `x-data="sessionTimer()"` in global scope, so a module-only export is invisible to it. Any doc or diagram describing frontend logic as inline script in `index.html` is describing the pre-`4f06915` layout.
+Kiro CLI, Codex, Claude Code, OpenCode, and pi launch as separate processes.
+StudyLoop connects the chosen agent to the session through
+a terminal or structured chat transport. Provider authentication, billing, and
+data handling therefore depend on that agent.
 
-## Session Multiplexer
+### Local files are authoritative
 
-`studyloop/multiplexer.py` defines a `Multiplexer` protocol with two backends. `get_backend()` selects between them from `STUDYLOOP_MULTIPLEXER`:
+Study plans and generated learning material are readable local files. Session,
+review, and checkpoint history are stored in SQLite. Optional Obsidian export is
+a mirror, not a requirement for the core workflow.
 
-| Value | Backend |
-|---|---|
-| unset (default) | `TmuxBackend` |
-| `tmux` | `TmuxBackend` |
-| `herdr` | `HerdrBackend` — raises `MultiplexerError` if the `herdr` binary is absent |
+### The browser is a view onto the local service
 
-**tmux is still the default.** `HerdrBackend` is implemented, but herdr stays opt-in until its journey suite is green; it has **not** replaced tmux. Call sites import from `multiplexer.py` rather than `tmux.py` directly.
+`studyloop web` starts the FastAPI service that powers the browser app. Live
+updates use normal local HTTP, WebSocket, and server-sent-event connections. The
+app has no offline service worker, so the server must remain reachable.
 
-## Active Architecture Docs
+## Why there are two live agent surfaces
 
-| Document | Purpose |
-|---|---|
-| [Current Architecture](architecture/current.md) | Containers, components, flows, and limitations as they work today (C4 L1+L2+L3 + sequence diagram). |
-| [Target Architecture](architecture/target.md) | Plugin interfaces, ACP/PTY session strategy, native app direction. |
-| [pi / omp Harness Integration](architecture/pi-omp-harness-integration.md) | How `@earendil-works/pi-coding-agent` (pi) and `@oh-my-pi/pi-coding-agent` (omp) plug into the session export pipeline, installer, and doctor. Includes C4 L1+L2 diagrams and end-of-session sequence. |
-| [System Overview](system-overview.md) | User-facing explanation of how the pieces connect. |
-| [Web UI Guide](web-ui-guide.md) | Web UI walkthrough, ACP chat mode, theme palettes, terminal surfaces. |
-| [AuDHD Learning Loop Implementation](audhd-learning-loop-implementation.md) | Product and data-flow details for `studyloop now`, note companion prompts, verification, recap, mastery graphs, and interleaving. |
-| [Session Protocol](session-protocol.md) | The transport-agnostic study protocol every agent follows. |
-| [MCP Integrations](mcp.md) | Agent/tool integration details. |
-| [Standards](standards/repo-standards.md) | Repository and naming standards. |
+Agents with a compatible structured protocol can use a chat-like surface with
+Markdown and status events. Other command-line agents use an xterm.js terminal
+connected to a pseudo-terminal over a WebSocket. Both enter the same StudyLoop
+session lifecycle and save the same learning evidence.
 
-## Historical Architecture Docs
+There is no learner-facing ttyd iframe. Installing ttyd does not enable a hidden
+fallback in the current Web UI.
 
-Historical drafts, reviews, and old NotebookLM-specific designs live under `docs/archive/`.
+## Repository layers
+
+| Area | Responsibility |
+| --- | --- |
+| `packages/studyloop` | CLI, Web UI, planning, review, content, adapters, session runtime |
+| `packages/agent-session-tools` | export, query, sync, and optional note mirroring for agent sessions |
+| `agents` | mentor definitions and shared learning protocols for supported harnesses |
+| `docs` | public guides plus excluded maintainer history and design evidence |
+| `scripts` and `justfile` | installation, verification, release, and media workflows |
+
+The repository also keeps detailed implementation maps, design records, audits,
+and historical plans. They remain available to contributors in the source tree,
+but are deliberately outside the published user documentation.
+
+## Where to continue
+
+- [Web UI Guide](web-ui-guide.md) for the learner-facing browser workflow
+- [Agent Installation](agent-install.md) for supported harness setup
+- [Content Pipeline](content-pipeline.md) for generated learning material
+- [CLI Reference](cli-reference.md) for exact commands
+- [Contributing](contributing.md) for repository setup and pull requests

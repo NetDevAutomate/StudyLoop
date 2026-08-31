@@ -63,7 +63,7 @@ Voice is **off by default**. Toggle it during a session:
 
     Uses shell command `~/.local/bin/study-speak`.
 
-=== "Gemini / OpenCode / Amp"
+=== "Codex / OpenCode / pi"
 
     ```
     @speak-start    # enable voice
@@ -150,8 +150,8 @@ Windows the container is the intended route.
     tablet on the same network fetched `http://<host>:8880/v1/models`
     successfully **with no credentials**. It is not configurable — VoiceMode
     exposes port, models dir, cache dir, default voice and max-requests settings,
-    but no host setting, and the address is hardcoded in a git-tracked start
-    script that the next install or pull reverts.
+    but no host setting. Its upstream start script fixes the bind address to
+    `0.0.0.0`, and a subsequent upstream install or pull can restore that value.
 
     **The trade-off, stated plainly, because it is a real choice and not a defect
     to route around.** Kokoro is CPU-intensive, so an open TTS port lets anything
@@ -216,7 +216,7 @@ The study-speak MCP server lets AI agents call the TTS tool directly. The standa
 
 Configured automatically via `agents/kiro/study-mentor.json`. No manual setup needed — the install script handles it.
 
-### Claude Code / Gemini / OpenCode / Amp
+### Codex / Claude Code / OpenCode / pi
 
 Each agent has an `mcp.json` in its `agents/` directory. The server command uses `uvx` to run the standalone MCP server:
 

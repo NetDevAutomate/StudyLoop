@@ -41,8 +41,6 @@ jobs:
           # the vendor's own documented off-switch (material/plugins/__init__.py).
           # justfile already sets this; CI must match or the two gates disagree.
           NO_MKDOCS_2_WARNING: "1"
-        env:
-          NO_MKDOCS_2_WARNING: "1"
 
   deploy:
     if: github.event_name == 'push'
