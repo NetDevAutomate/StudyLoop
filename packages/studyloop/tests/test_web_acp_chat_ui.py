@@ -29,6 +29,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
+
 pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
@@ -52,7 +54,12 @@ pytestmark = [pytest.mark.e2e]
 WEB_PORT = 18576
 
 # These agents advertise supports_acp: true.
-ACP_AGENTS = ["kiro", "gemini", "grok"]
+# Derived from the server's own capability set, never hand-listed. The
+# previous literal was ["kiro", "gemini", "grok"]: gemini and grok were
+# dropped from the release contract, so /api/session/start rejects them with
+# a 400 naming supported_agents, and every parametrisation over them failed
+# while asserting success — 62 failures across these two files.
+ACP_AGENTS = sorted(ACP_CAPABLE_AGENTS)
 
 
 # ---------------------------------------------------------------------------
