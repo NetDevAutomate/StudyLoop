@@ -23,6 +23,7 @@ Four endpoints:
 
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
 import stat
@@ -31,6 +32,10 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+
+from studyloop.db import connect_db, immediate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -339,50 +344,75 @@ def _refresh_fts_index(conn: sqlite3.Connection, base: Path) -> None:
     """
     current_lessons = {entry["lesson_id"]: entry for entry in _walk_lessons(base)}
 
-    cur = conn.execute("SELECT lesson_id, file_path, mtime FROM lesson_index_meta")
-    indexed: dict[str, dict[str, Any]] = {}
-    for row in cur.fetchall():
-        indexed[row[0]] = {"path": row[1], "mtime": row[2]}
+    # BEGIN IMMEDIATE must be held across the SELECT that informs the diff, not
+    # just the writes. sqlite3 defers its BEGIN to the first DML, so this SELECT
+    # used to be an autocommit read: two refreshers computed to_add from the same
+    # snapshot, and the loser's deferred-to-write upgrade got SQLITE_BUSY.
+    #
+    # _walk_lessons stays OUTSIDE: it is filesystem I/O (an rglob over the vault
+    # plus a stat per file) and the expensive step, so holding the write lock
+    # across it would queue every search behind a directory walk. It is racy
+    # against the filesystem no matter what the DB does; the mtime check below is
+    # the reconciliation, and it self-heals on the next call.
+    with immediate(conn):
+        cur = conn.execute("SELECT lesson_id, file_path, mtime FROM lesson_index_meta")
+        indexed: dict[str, dict[str, Any]] = {}
+        for row in cur.fetchall():
+            indexed[row[0]] = {"path": row[1], "mtime": row[2]}
 
-    to_add: list[dict[str, Any]] = []
-    to_delete: list[str] = []
+        to_add: list[dict[str, Any]] = []
+        to_delete: list[str] = []
 
-    for lesson_id, entry in current_lessons.items():
-        if lesson_id not in indexed:
-            to_add.append(entry)
-        elif abs(entry["mtime"] - indexed[lesson_id]["mtime"]) > 0.01:
-            # mtime changed — re-index
-            to_delete.append(lesson_id)
-            to_add.append(entry)
+        for lesson_id, entry in current_lessons.items():
+            if lesson_id not in indexed:
+                to_add.append(entry)
+            elif abs(entry["mtime"] - indexed[lesson_id]["mtime"]) > 0.01:
+                # mtime changed — re-index
+                to_delete.append(lesson_id)
+                to_add.append(entry)
 
-    for lesson_id in indexed:
-        if lesson_id not in current_lessons:
-            to_delete.append(lesson_id)
+        for lesson_id in indexed:
+            if lesson_id not in current_lessons:
+                to_delete.append(lesson_id)
 
-    if to_delete:
-        placeholders = ",".join("?" * len(to_delete))
-        conn.execute(f"DELETE FROM lesson_fts WHERE lesson_id IN ({placeholders})", to_delete)
-        conn.execute(
-            f"DELETE FROM lesson_index_meta WHERE lesson_id IN ({placeholders})", to_delete
-        )
+        # Read the bodies before touching the index. These are file reads inside
+        # what is now a write-locked span, and the loop below would otherwise hold
+        # the lock across every one of them.
+        bodies: list[tuple[dict[str, Any], str]] = []
+        for entry in to_add:
+            try:
+                bodies.append(
+                    (entry, Path(entry["path"]).read_text(encoding="utf-8", errors="replace"))
+                )
+            except OSError:
+                continue
 
-    for entry in to_add:
-        try:
-            body = Path(entry["path"]).read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        conn.execute(
-            "INSERT INTO lesson_fts(lesson_id, course_id, provider, title, body) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (entry["lesson_id"], entry["course_id"], entry["provider"], entry["title"], body),
-        )
-        conn.execute(
-            "INSERT OR REPLACE INTO lesson_index_meta"
-            "(lesson_id, file_path, mtime) VALUES (?, ?, ?)",
-            (entry["lesson_id"], entry["path"], entry["mtime"]),
-        )
+        if to_delete:
+            placeholders = ",".join("?" * len(to_delete))
+            # lesson_id is UNINDEXED and FTS5 supports no secondary index, so this
+            # is a full scan of lesson_fts -- it sets the lock hold time and grows
+            # with the vault. The sibling delete below is a keyed PK delete.
+            conn.execute(f"DELETE FROM lesson_fts WHERE lesson_id IN ({placeholders})", to_delete)
+            conn.execute(
+                f"DELETE FROM lesson_index_meta WHERE lesson_id IN ({placeholders})", to_delete
+            )
 
-    conn.commit()
+        # DELETE must precede INSERT: lesson_fts can carry no UNIQUE constraint,
+        # so a changed lesson relies on this ordering to avoid two rows with the
+        # same lesson_id. lesson_index_meta's INSERT OR REPLACE dedupes by primary
+        # key, so the two tables have asymmetric protection -- reordering these
+        # would silently double FTS rows while meta still reported health.
+        for entry, body in bodies:
+            conn.execute(
+                "INSERT INTO lesson_fts(lesson_id, course_id, provider, title, body) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (entry["lesson_id"], entry["course_id"], entry["provider"], entry["title"], body),
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO lesson_index_meta"
+                "(lesson_id, file_path, mtime) VALUES (?, ?, ?)",
+                (entry["lesson_id"], entry["path"], entry["mtime"]),
+            )
 
 
 def _run_fts_search(db_path: Path, base: Path, q: str, limit: int) -> list[dict[str, Any]]:
@@ -392,28 +422,49 @@ def _run_fts_search(db_path: Path, base: Path, q: str, limit: int) -> list[dict[
         lesson_id, course_id, provider, title, excerpt
     """
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
+    # connect_db, not raw sqlite3.connect: this database had neither WAL nor
+    # busy_timeout, and BEGIN IMMEDIATE without a busy_timeout does not wait --
+    # the losing writer fails instantly. WAL additionally keeps readers off the
+    # writer's back.
+    conn = connect_db(db_path, row_factory=True)
     try:
-        _ensure_fts_schema(conn)
-        _refresh_fts_index(conn, base)
+        try:
+            _ensure_fts_schema(conn)
+        except sqlite3.OperationalError:
+            logger.warning("explorer FTS schema unavailable", exc_info=True)
+            return []
+
+        # Refresh is best-effort and deliberately NOT fatal. It is an index sync,
+        # not the request's job. A single handler used to span schema, refresh and
+        # query, so a write-lock collision with the MCP tool returned [] -- and to
+        # the caller an empty list is indistinguishable from "nothing matches".
+        # A stale index still answers usefully; a silent empty result does not.
+        try:
+            _refresh_fts_index(conn, base)
+        except sqlite3.OperationalError:
+            logger.warning(
+                "explorer FTS refresh skipped; serving a possibly stale index", exc_info=True
+            )
 
         fts_query = _sanitize_fts_query(q)
-        rows = conn.execute(
-            """
-            SELECT lesson_id, course_id, provider, title,
-                   snippet(lesson_fts, 4, '<mark>', '</mark>', '…', 16) AS excerpt,
-                   bm25(lesson_fts, 1.0, 1.0, 1.0, 5.0, 1.0) AS score
-            FROM lesson_fts
-            WHERE lesson_fts MATCH ?
-            ORDER BY rank
-            LIMIT ?
-            """,
-            (fts_query, limit),
-        ).fetchall()
-    except sqlite3.OperationalError:
-        # Defensive: any FTS error returns empty rather than 500.
-        return []
+        try:
+            rows = conn.execute(
+                """
+                SELECT lesson_id, course_id, provider, title,
+                       snippet(lesson_fts, 4, '<mark>', '</mark>', '…', 16) AS excerpt,
+                       bm25(lesson_fts, 1.0, 1.0, 1.0, 5.0, 1.0) AS score
+                FROM lesson_fts
+                WHERE lesson_fts MATCH ?
+                ORDER BY rank
+                LIMIT ?
+                """,
+                (fts_query, limit),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            # The original intent of the blanket handler: a malformed FTS5 MATCH
+            # expression is a bad query, not a server fault.
+            logger.info("explorer FTS query rejected: %r", fts_query, exc_info=True)
+            return []
     finally:
         conn.close()
 

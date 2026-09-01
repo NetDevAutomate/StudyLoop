@@ -12,13 +12,18 @@ non-allowlist suffix).
 
 from __future__ import annotations
 
+import sqlite3
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from shutil import rmtree
 from typing import TYPE_CHECKING
 
 import pytest
+
+from studyloop.db import connect_db
 
 pytest.importorskip("fastapi")
 
@@ -740,3 +745,104 @@ class TestExplorerSearch:
         assert resp2.status_code == 200
         after = [r["lesson_id"] for r in resp2.json()["results"]]
         assert not any("intro" in lid for lid in after), f"Deleted lesson still in results: {after}"
+
+
+# ---------------------------------------------------------------------------
+# FTS index concurrency — refresh is a read-modify-write over two tables
+# ---------------------------------------------------------------------------
+
+
+class TestFtsRefreshConcurrency:
+    """The refresh diffs the meta table against the vault, then rewrites both."""
+
+    @staticmethod
+    def _fts_rows(db: Path) -> list[str]:
+        conn = sqlite3.connect(str(db))
+        try:
+            return [r[0] for r in conn.execute("SELECT lesson_id FROM lesson_fts")]
+        finally:
+            conn.close()
+
+    def test_concurrent_refresh_does_not_duplicate_index_rows(self, vault: Path) -> None:
+        """Two refreshes at once must leave exactly one FTS row per lesson.
+
+        The diff read (``SELECT ... FROM lesson_index_meta``) used to run outside
+        the write transaction, because sqlite3 defers BEGIN until the first DML.
+        Both refreshers therefore saw the same empty index, both computed the same
+        ``to_add``, and both inserted.
+
+        lesson_fts is an FTS5 table and FTS5 permits no UNIQUE constraint, so
+        nothing at the schema level stops duplicate rows -- while the sibling
+        ``lesson_index_meta`` uses INSERT OR REPLACE and dedupes by primary key.
+        The index would report itself healthy while search returned every lesson
+        twice.
+        """
+        from studyloop.web.routes.explorer import _ensure_fts_schema, _refresh_fts_index
+
+        db = vault / "fts.db"
+        setup = connect_db(db, row_factory=True)
+        try:
+            _ensure_fts_schema(setup)
+        finally:
+            setup.close()
+
+        n = 4
+        gate = threading.Barrier(n)
+
+        def refresh() -> None:
+            conn = connect_db(db, row_factory=True)
+            try:
+                gate.wait()
+                _refresh_fts_index(conn, vault)
+            finally:
+                conn.close()
+
+        with ThreadPoolExecutor(max_workers=n) as pool:
+            for f in [pool.submit(refresh) for _ in range(n)]:
+                f.result()
+
+        rows = self._fts_rows(db)
+        assert rows, "the index should have been populated"
+        assert len(rows) == len(set(rows)), (
+            f"duplicate FTS rows after concurrent refresh: "
+            f"{sorted(r for r in rows if rows.count(r) > 1)}"
+        )
+
+    def test_a_locked_index_still_answers_instead_of_returning_empty(self, vault: Path) -> None:
+        """A write-lock collision must not masquerade as 'nothing matches'.
+
+        One handler used to span schema creation, refresh and query, so
+        ``except sqlite3.OperationalError: return []`` swallowed write-lock
+        failures as well as the malformed-MATCH errors it was written for. To the
+        caller an empty list is indistinguishable from a genuinely absent term,
+        and nothing was logged, so the failure left no trace at all.
+
+        Refresh is now best-effort: if the index cannot be updated the search
+        still runs against what is already there. A stale answer is useful; a
+        silent empty one is a lie.
+        """
+        from studyloop.web.routes.explorer import _run_fts_search
+
+        db = vault / "fts.db"
+        assert _run_fts_search(db, vault, "Chapter", 10), "expected a populated baseline"
+
+        # Give the refresh real work to do. Without a pending change it computes an
+        # empty diff, issues no DML, and never needs the write lock -- so the lock
+        # path would not be exercised at all and this test would pass vacuously.
+        new_lesson = vault / "CodeWithMosh" / "Python_Pro" / "ch3.md"
+        new_lesson.write_text("# Chapter 3\nAnother", encoding="utf-8")
+
+        # Hold the write lock so the refresh inside the next search cannot run.
+        blocker = connect_db(db, row_factory=True)
+        try:
+            blocker.isolation_level = None
+            blocker.execute("BEGIN IMMEDIATE")
+            results = _run_fts_search(db, vault, "Chapter", 10)
+        finally:
+            blocker.execute("ROLLBACK")
+            blocker.close()
+
+        assert results, (
+            "a write-locked index returned an empty result -- the lock failure was "
+            "swallowed and reported as 'no matches'"
+        )
