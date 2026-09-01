@@ -1,6 +1,7 @@
 """Tests for database migration system."""
 
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -1073,3 +1074,131 @@ class TestMigrationV26:
         assert len(resolved) == 1
         assert resolved[0]["status"] == "resolved"
         conn.close()
+
+
+class TestConcurrentFirstBoot:
+    """A fresh database opened by several connections at once migrates exactly once.
+
+    ``schema.sql`` leaves ``user_version`` at 0, so *every* first boot runs all
+    27 migrations -- and those migrations are not idempotent (``ADD COLUMN``,
+    ``CREATE INDEX``, ``CREATE TABLE`` without ``IF NOT EXISTS``).
+
+    The web SPA fires ``/api/now``, ``/api/backlog``, ``/api/session/last`` and
+    ``/api/history`` in parallel on page load, and each reaches ``migrate()``
+    through its own lazily-opened connection. So a first run on a new machine
+    races its own schema setup -- the failure a user meets on a cold install,
+    not an exotic edge case.
+
+    Before the fix this produced real errors: ``duplicate column name: seq``,
+    ``duplicate column name: content_hash``, ``index
+    uix_parked_topics_session_question already exists`` and ``table messages_fts
+    already exists``.
+    """
+
+    ROUNDS = 25
+    PARALLEL = 5
+
+    @staticmethod
+    def _connect(db_path: Path) -> sqlite3.Connection:
+        """Mirror the production connection settings (studyloop.db.connect_db).
+
+        Deliberately mirrors the *fixed* ordering -- busy_timeout first, and a
+        tolerated busy on the journal_mode change -- so this test exercises the
+        migration race and nothing else. WAL contention on a brand-new file is a
+        separate defect with its own test in the studyloop package.
+        """
+        conn = sqlite3.connect(str(db_path), timeout=5)
+        conn.execute("PRAGMA busy_timeout=5000")
+        if str(conn.execute("PRAGMA journal_mode").fetchone()[0]).lower() != "wal":
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+            except sqlite3.OperationalError:
+                pass
+        return conn
+
+    @classmethod
+    def _boot_once(cls, db_path: Path) -> tuple[int, BaseException | None]:
+        """One connection's worth of the lazy per-request boot path."""
+        conn = cls._connect(db_path)
+        try:
+            return len(migrate(conn)), None
+        except BaseException as exc:  # catching any is the point of this test
+            return 0, exc
+        finally:
+            conn.close()
+
+    def test_parallel_first_boot_migrates_once_without_errors(self, tmp_path):
+        """125 concurrent first-boot migrations: no errors, one winner each round.
+
+        Asserting *exactly one* winner per round is what proves serialisation.
+        Merely asserting "no exceptions" would also pass if the migrations had
+        been made individually idempotent, which is a different fix with
+        different failure modes.
+        """
+        schema_sql = SCHEMA_PATH.read_text()
+        failures: list[tuple[int, BaseException]] = []
+        winner_counts: list[int] = []
+
+        for round_index in range(self.ROUNDS):
+            db_path = tmp_path / f"race-{round_index}.db"
+            seed = sqlite3.connect(str(db_path))
+            seed.executescript(schema_sql)
+            seed.commit()
+            assert get_user_version(seed) == 0, "schema.sql should leave version 0"
+            seed.close()
+
+            with ThreadPoolExecutor(max_workers=self.PARALLEL) as pool:
+                results = list(
+                    pool.map(
+                        lambda _, p=db_path: self._boot_once(p),
+                        range(self.PARALLEL),
+                    )
+                )
+
+            for applied, exc in results:
+                if exc is not None:
+                    failures.append((round_index, exc))
+                del applied
+
+            winner_counts.append(sum(1 for applied, _ in results if applied > 0))
+
+            check = self._connect(db_path)
+            try:
+                assert get_user_version(check) == CURRENT_VERSION, (
+                    f"round {round_index}: database left at version "
+                    f"{get_user_version(check)}, expected {CURRENT_VERSION}"
+                )
+            finally:
+                check.close()
+
+        assert not failures, (
+            f"{len(failures)} of {self.ROUNDS * self.PARALLEL} concurrent boots raised: "
+            + "; ".join(f"round {r}: {type(e).__name__}: {e}" for r, e in failures[:5])
+        )
+        assert winner_counts == [1] * self.ROUNDS, (
+            "each round should have exactly one connection that applied migrations; "
+            f"got {winner_counts}"
+        )
+
+    def test_loser_of_the_race_reports_nothing_applied(self, tmp_path):
+        """A connection that arrives after the winner returns an empty list.
+
+        Not merely 'does not raise': the return value is the caller's record of
+        what it did, and a loser claiming to have applied 27 migrations would be
+        a lie that any audit trail built on it would inherit.
+        """
+        db_path = tmp_path / "sequential.db"
+        seed = sqlite3.connect(str(db_path))
+        seed.executescript(SCHEMA_PATH.read_text())
+        seed.commit()
+        seed.close()
+
+        first = self._connect(db_path)
+        second = self._connect(db_path)
+        try:
+            assert len(migrate(first)) == CURRENT_VERSION
+            assert migrate(second) == []
+            assert get_user_version(second) == CURRENT_VERSION
+        finally:
+            first.close()
+            second.close()
