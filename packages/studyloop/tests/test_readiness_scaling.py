@@ -8,7 +8,7 @@ it should, and that it restores what it borrowed.
 from __future__ import annotations
 
 import inspect
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -330,3 +330,83 @@ class TestScalingApplies:
             FakePage.wait_for_function = original  # type: ignore[method-assign]
 
         assert FakePage.wait_for_function is original, "the patch must be reverted"
+
+
+class TestHollowRunGuard:
+    """A green run that tested almost nothing must not pass for green.
+
+    If a dependency goes missing the browser suite skips rather than fails, so
+    "0 failed" survives a run that executed nothing. Enforcing a minimum pass
+    count covers every way a run can become hollow, rather than only the missing
+    dependencies somebody predicted.
+    """
+
+    @staticmethod
+    def _run(monkeypatch: pytest.MonkeyPatch, *, required: str | None, passed: int, skipped: int):
+        import conftest
+
+        if required is None:
+            monkeypatch.delenv("STUDYLOOP_MIN_PASSED", raising=False)
+        else:
+            monkeypatch.setenv("STUDYLOOP_MIN_PASSED", required)
+
+        written: list[str] = []
+
+        class FakeReporter:
+            stats: ClassVar[dict[str, list[None]]] = {
+                "passed": [None] * passed,
+                "skipped": [None] * skipped,
+            }
+
+            def write_sep(self, sep: str, text: str, **kwargs: object) -> None:
+                written.append(text)
+
+        class FakePluginManager:
+            def get_plugin(self, name: str) -> object:
+                return FakeReporter()
+
+        class FakeConfig:
+            pluginmanager = FakePluginManager()
+
+        class FakeSession:
+            config = FakeConfig()
+            exitstatus = 0
+
+        session = FakeSession()
+        conftest.pytest_sessionfinish(session, 0)  # pyright: ignore[reportAttributeAccessIssue]
+        return session, written
+
+    def test_a_hollow_run_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """400 of 500 tests skipping because ttyd vanished must not read green."""
+        session, written = self._run(monkeypatch, required="450", passed=100, skipped=400)
+
+        assert session.exitstatus == 1
+        assert "HOLLOW RUN" in written[0]
+        assert "400 skipped" in written[0]
+
+    def test_a_full_run_passes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        session, written = self._run(monkeypatch, required="450", passed=500, skipped=20)
+
+        assert session.exitstatus == 0
+        assert written == []
+
+    def test_exactly_the_minimum_is_enough(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        session, _ = self._run(monkeypatch, required="500", passed=500, skipped=0)
+
+        assert session.exitstatus == 0
+
+    def test_unset_leaves_local_runs_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Running one file must not trip a suite-sized threshold."""
+        session, written = self._run(monkeypatch, required=None, passed=3, skipped=0)
+
+        assert session.exitstatus == 0
+        assert written == []
+
+    def test_a_garbage_threshold_is_ignored_rather_than_fatal(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A typo in CI config must not fail every run for the wrong reason."""
+        session, written = self._run(monkeypatch, required="lots", passed=1, skipped=0)
+
+        assert session.exitstatus == 0
+        assert written == []

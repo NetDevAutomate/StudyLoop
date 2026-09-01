@@ -47,9 +47,9 @@ test-browser-smoke:
 # machine, call pytest directly with the variable set; the run then labels
 # itself in both its header and its summary.
 
-# Full browser e2e suite, unscaled (~8 min)
-e2e:
-    STUDYLOOP_E2E_TIMEOUT_SCALE= uv run --group dev pytest -m e2e
+# Full browser e2e suite, unscaled (~8 min). Args narrow it: just e2e <file>
+e2e *ARGS:
+    STUDYLOOP_E2E_TIMEOUT_SCALE= uv run --group dev pytest -m e2e {{ARGS}}
 
 # Browser-side unit tests. Pass the GLOB, not the directory — `node --test <dir>`
 # discovers nothing here. The repo-local package.json declares the ESM type so
