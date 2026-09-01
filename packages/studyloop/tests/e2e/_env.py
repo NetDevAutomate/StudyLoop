@@ -385,10 +385,20 @@ class ConsoleWatch:
         self.errors.append(f"console.error: {text}")
 
     def assert_clean(self, context: str) -> None:
-        detail = "\n".join(f"  - {e}" for e in self.errors)
-        if self.failed_requests:
-            detail += "\nfailed requests:\n" + "\n".join(f"  - {r}" for r in self.failed_requests)
-        assert not self.errors, f"JS errors while {context}:\n{detail}"
+        """Fail if the page saw a JS error OR the server returned a 5xx.
+
+        The 5xx list used to be collected and then only interpolated into this
+        assertion's message, so a server error with no accompanying JS error
+        passed silently -- which is how a 500 on /api/session/state survived a
+        run reported as fully green. Both are now failures, because a page that
+        rendered from an error response is not a page that worked.
+        """
+        problems = [*self.errors, *self.failed_requests]
+        if not problems:
+            return
+        detail = "\n".join(f"  - {p}" for p in problems)
+        msg = f"browser or server errors while {context}:\n{detail}"
+        raise AssertionError(msg)
 
 
 def diag(page: Page | None, name: str, watch: ConsoleWatch | None = None) -> None:
@@ -402,7 +412,11 @@ def diag(page: Page | None, name: str, watch: ConsoleWatch | None = None) -> Non
         (RESULTS / f"{name}-{ts}.html").write_text(page.content(), encoding="utf-8")
         if watch is not None:
             (RESULTS / f"{name}-{ts}-console.json").write_text(
-                json.dumps(watch.errors, indent=2), encoding="utf-8"
+                json.dumps(
+                    {"errors": watch.errors, "failed_requests": watch.failed_requests},
+                    indent=2,
+                ),
+                encoding="utf-8",
             )
     except Exception:  # pragma: no cover - diagnostics must never mask the real failure
         pass

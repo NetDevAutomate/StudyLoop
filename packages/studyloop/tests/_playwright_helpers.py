@@ -115,6 +115,9 @@ def start_web_server(
     )
     # Discoverable by tests and by a failing teardown.
     proc.studyloop_log_path = log_path  # type: ignore[attr-defined]
+    # Every start path funnels through here, so registering the log at this one
+    # point is what makes the per-test server-error check unbypassable.
+    _register_server_log(log_path)
 
     def _fail(reason: str) -> RuntimeError:
         tail = _read_log_tail(log_path)
@@ -155,6 +158,83 @@ def _port_is_free(port: int) -> bool:
         except OSError:
             return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# Server-side failure detection
+# ---------------------------------------------------------------------------
+
+#: Captured log of every studyloop server started during this pytest run, mapped
+#: to the offset already scanned. Registered by ``start_web_server`` itself,
+#: which every start path funnels through: the fixture factories here, the e2e
+#: world builder, the journey tests, and test classes that roll their own server
+#: wrapper. Registering at the chokepoint rather than in each teardown means a
+#: test cannot opt out of the check by bringing its own client or its own
+#: process -- which is the point. The failure that motivated this scanned clean
+#: through the browser-attached watcher because it drove the server with urllib.
+_SERVER_LOGS: dict[str, int] = {}
+
+#: uvicorn logs an unhandled route exception under this banner at ERROR level.
+#: The servers run with log_level="warning", so access-log lines are absent and
+#: a response status cannot be recovered from the log at all; ConsoleWatch
+#: covers status codes for browser traffic, and the two are complementary
+#: rather than redundant.
+_ASGI_EXCEPTION_BANNER = "Exception in ASGI application"
+
+
+def _register_server_log(path: str) -> None:
+    _SERVER_LOGS.setdefault(path, 0)
+
+
+def _summarise_asgi_failure(block: str, log_path: str) -> str:
+    """One line naming the exception and the deepest studyloop frame."""
+    lines = [ln for ln in block.splitlines() if ln.strip()]
+    exception = "<no exception line found>"
+    for line in lines:
+        stripped = line.strip()
+        # The traceback's final line is the exception; it is the only
+        # non-indented, non-"File"/"Traceback" line in the block.
+        if (
+            stripped
+            and not line.startswith((" ", "\t"))
+            and not stripped.startswith(("File ", "Traceback"))
+        ):
+            exception = stripped
+    frame = ""
+    for line in lines:
+        if 'File "' in line and "/studyloop/" in line and "site-packages" not in line:
+            frame = line.strip()
+    where = f" at {frame}" if frame else ""
+    return f"server raised {exception}{where} (log: {log_path})"
+
+
+def new_server_log_failures() -> list[str]:
+    """Server-side failures logged since the previous call.
+
+    Reads each log incrementally so a module- or session-scoped server is
+    attributed to the test during which it actually failed, rather than to the
+    first test that happened to touch it.
+    """
+    found: list[str] = []
+    for path, offset in list(_SERVER_LOGS.items()):
+        try:
+            text = Path(path).read_text(errors="replace")
+        except OSError:  # pragma: no cover - log removed under us
+            continue
+        _SERVER_LOGS[path] = len(text)
+        fresh = text[offset:]
+        if _ASGI_EXCEPTION_BANNER not in fresh:
+            continue
+        found.extend(
+            _summarise_asgi_failure(block, path)
+            for block in fresh.split(_ASGI_EXCEPTION_BANNER)[1:]
+        )
+    return found
+
+
+def reset_server_log_tracking() -> None:
+    """Forget every registered log. For tests of this mechanism itself."""
+    _SERVER_LOGS.clear()
 
 
 def _read_log_tail(log_path: str, limit: int = 4000) -> str:
