@@ -348,6 +348,49 @@ class TestVendoredBundle:
         assert "studyloop-dev-mode" in adapter
         assert "'ghostty'" in adapter
 
+    def test_adapter_forwards_the_whole_selection_api(self) -> None:
+        """The facade must forward every selection method, not just getSelection.
+
+        ghostty-web's Terminal exposes five (selectAll, getSelection,
+        hasSelection, clearSelection, selectLines), each delegating to its
+        selectionManager. This adapter is the ONLY thing callers touch --
+        liveAgentConsole() never holds the underlying Terminal -- so a method the
+        facade omits is simply absent at runtime, however well the library
+        implements it. That is not a cosmetic gap: ghostty-web paints to a
+        canvas, so there is no DOM text and ``window.getSelection()`` cannot
+        stand in.
+
+        For most of this adapter's life only getSelection was forwarded, which
+        made three browser tests fail in ways that read like a missing library
+        feature (``selectAll is not a function``) or an unrelated race (a 15s
+        readiness timeout, because that predicate called selectAll before
+        deciding the terminal was ready). This asserts the parity directly so a
+        future facade method cannot go missing quietly.
+        """
+        from studyloop.web.app import STATIC_DIR
+
+        bundle_dir = STATIC_DIR / "vendor/dev/js"
+        adapter = (bundle_dir / "ghostty-adapter-0.4.0.js").read_text(encoding="utf-8")
+        bundle = (bundle_dir / "ghostty-web-0.4.0.js").read_text(encoding="utf-8")
+
+        selection_api = (
+            "selectAll",
+            "getSelection",
+            "hasSelection",
+            "clearSelection",
+            "selectLines",
+        )
+        for name in selection_api:
+            assert f"{name}(" in bundle, (
+                f"{name} is missing from ghostty-web itself -- this test's premise "
+                "changed; re-check the bundle before relaxing the adapter."
+            )
+            assert f"    {name}(" in adapter, (
+                f"the adapter facade does not forward {name}(). Callers only ever "
+                "reach this facade, so the method is absent at runtime even though "
+                "ghostty-web implements it."
+            )
+
     def test_dev_css_declares_terminal_font_variables(self) -> None:
         """Font propagation depends on these custom properties existing."""
         from studyloop.web.app import STATIC_DIR
