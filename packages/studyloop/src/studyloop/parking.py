@@ -9,16 +9,11 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
-from contextlib import contextmanager
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
-from studyloop.db import SCHEMA_LOCK, connect_db
+from studyloop.db import SCHEMA_LOCK, connect_db, immediate
 from studyloop.markdown_notes import normalise_markdown
 from studyloop.settings import get_db_path
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -106,35 +101,6 @@ def _connect() -> sqlite3.Connection:
         _ensure_board_schema(conn)
 
     return conn
-
-
-@contextmanager
-def _immediate(conn: sqlite3.Connection) -> Iterator[None]:
-    """Run a read-modify-write inside a single ``BEGIN IMMEDIATE`` transaction.
-
-    Python's :mod:`sqlite3` defers its implicit ``BEGIN`` until the first DML
-    statement, so a ``SELECT`` that feeds a later ``INSERT``/``UPDATE`` runs
-    without holding the write lock. Two callers can then read the same state
-    and write conflicting values — a lost update (e.g. two cards appended to a
-    column both reading the same ``MAX(board_order)`` and landing on the same
-    order). ``BEGIN IMMEDIATE`` takes the write lock up front, so concurrent
-    writers serialise (they wait out ``busy_timeout``) instead of racing.
-
-    Switches the connection to manual-commit for the duration and restores its
-    prior ``isolation_level`` afterwards.
-    """
-    prior = conn.isolation_level
-    conn.isolation_level = None
-    conn.execute("BEGIN IMMEDIATE")
-    try:
-        yield
-    except BaseException:
-        conn.execute("ROLLBACK")
-        raise
-    else:
-        conn.execute("COMMIT")
-    finally:
-        conn.isolation_level = prior
 
 
 def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
@@ -310,7 +276,7 @@ def park_topic(
             # across both, two concurrent parks into the same column read the
             # same MAX and write the same board_order (a lost update). Taking
             # the lock up front (BEGIN IMMEDIATE) forces them to serialise.
-            with _immediate(conn):
+            with immediate(conn):
                 _ensure_reference_rows(
                     conn,
                     study_session_id=study_session_id,
@@ -660,8 +626,8 @@ def move_parked_topic(item_id: int, board_column: str, position: int | None = No
     try:
         # Serialise validate → move → reindex under one write lock so two
         # concurrent moves can't interleave and clobber each other's
-        # board_order (see _immediate).
-        with _immediate(conn):
+        # board_order (see db.immediate).
+        with immediate(conn):
             if (
                 conn.execute(
                     "SELECT 1 FROM board_columns WHERE key = ?", (board_column,)
@@ -780,20 +746,24 @@ def add_board_column(name: str) -> dict | None:
         return None
     conn = _connect()
     try:
-        existing = {row["key"] for row in conn.execute("SELECT key FROM board_columns")}
-        key = base
-        suffix = 2
-        while key in existing:
-            key = f"{base}-{suffix}"
-            suffix += 1
-        position = conn.execute(
-            "SELECT COALESCE(MAX(position), -1) + 1 AS p FROM board_columns"
-        ).fetchone()["p"]
-        conn.execute(
-            "INSERT INTO board_columns (key, name, position) VALUES (?, ?, ?)",
-            (key, clean, position),
-        )
-        conn.commit()
+        # The free-key search and the MAX(position) read both inform the INSERT,
+        # so all three must hold the write lock together: otherwise concurrent
+        # adds pick the same key (unhandled IntegrityError on the PRIMARY KEY) or
+        # the same position (silent -- position has no UNIQUE constraint).
+        with immediate(conn):
+            existing = {row["key"] for row in conn.execute("SELECT key FROM board_columns")}
+            key = base
+            suffix = 2
+            while key in existing:
+                key = f"{base}-{suffix}"
+                suffix += 1
+            position = conn.execute(
+                "SELECT COALESCE(MAX(position), -1) + 1 AS p FROM board_columns"
+            ).fetchone()["p"]
+            conn.execute(
+                "INSERT INTO board_columns (key, name, position) VALUES (?, ?, ?)",
+                (key, clean, position),
+            )
         return {"key": key, "name": clean, "position": position}
     finally:
         conn.close()
@@ -825,24 +795,27 @@ def delete_board_column(key: str, move_items_to: str | None = None) -> bool:
     """
     conn = _connect()
     try:
-        keys = _column_keys(conn)
-        if key not in keys or len(keys) <= 1:
-            return False
-        remaining = [k for k in keys if k != key]
-        target = move_items_to if move_items_to in remaining else remaining[0]
+        # The key set decides both the relocation target and the renumbering, so
+        # reading it outside the write lock lets a concurrent delete/reorder move
+        # cards into a column this call is about to remove.
+        with immediate(conn):
+            keys = _column_keys(conn)
+            if key not in keys or len(keys) <= 1:
+                return False
+            remaining = [k for k in keys if k != key]
+            target = move_items_to if move_items_to in remaining else remaining[0]
 
-        conn.execute(
-            "UPDATE parked_topics SET board_column = ? WHERE board_column = ?",
-            (target, key),
-        )
-        conn.execute("DELETE FROM board_columns WHERE key = ?", (key,))
-        for position, remaining_key in enumerate(remaining):
             conn.execute(
-                "UPDATE board_columns SET position = ? WHERE key = ?",
-                (position, remaining_key),
+                "UPDATE parked_topics SET board_column = ? WHERE board_column = ?",
+                (target, key),
             )
-        _renormalise_column(conn, target)
-        conn.commit()
+            conn.execute("DELETE FROM board_columns WHERE key = ?", (key,))
+            for position, remaining_key in enumerate(remaining):
+                conn.execute(
+                    "UPDATE board_columns SET position = ? WHERE key = ?",
+                    (position, remaining_key),
+                )
+            _renormalise_column(conn, target)
         return True
     finally:
         conn.close()
@@ -859,17 +832,20 @@ def reorder_board_columns(keys: list[str]) -> bool:
         return False
     conn = _connect()
     try:
-        existing = _column_keys(conn)
-        ordered = [k for k in keys if k in existing]
-        if not ordered:
-            return False
-        ordered.extend(k for k in existing if k not in ordered)
-        for position, key in enumerate(ordered):
-            conn.execute(
-                "UPDATE board_columns SET position = ? WHERE key = ?",
-                (position, key),
-            )
-        conn.commit()
+        # Reading the existing order and writing every position must be one unit,
+        # or two concurrent reorders interleave into an arrangement neither caller
+        # requested -- including duplicate positions.
+        with immediate(conn):
+            existing = _column_keys(conn)
+            ordered = [k for k in keys if k in existing]
+            if not ordered:
+                return False
+            ordered.extend(k for k in existing if k not in ordered)
+            for position, key in enumerate(ordered):
+                conn.execute(
+                    "UPDATE board_columns SET position = ? WHERE key = ?",
+                    (position, key),
+                )
         return True
     finally:
         conn.close()

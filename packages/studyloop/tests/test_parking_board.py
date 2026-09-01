@@ -10,6 +10,7 @@ ever created by the migration, a user on a drifted DB would hit
 from __future__ import annotations
 
 import sqlite3
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
@@ -492,3 +493,132 @@ def test_reorder_rejects_empty(board_db: Path) -> None:
     from studyloop.parking import reorder_board_columns
 
     assert reorder_board_columns([]) is False
+
+
+# ---------------------------------------------------------------------------
+# Board-column concurrency — add / delete / reorder are read-modify-write
+# ---------------------------------------------------------------------------
+
+
+def _column_rows(board_db: Path) -> list[tuple[str, int]]:
+    """(key, position) for every column, ordered by position."""
+    conn = sqlite3.connect(str(board_db))
+    try:
+        return [
+            (r[0], r[1])
+            for r in conn.execute("SELECT key, position FROM board_columns ORDER BY position")
+        ]
+    finally:
+        conn.close()
+
+
+def test_concurrent_same_name_adds_all_get_distinct_keys(board_db: Path) -> None:
+    """Adding the same column name at once must de-duplicate, not raise.
+
+    ``add_board_column`` reads every existing key, picks the first free
+    ``slug``/``slug-2``/``slug-3``, then inserts. The read and the insert are two
+    statements on a deferred transaction, so concurrent callers see the same key
+    set, choose the SAME key, and one hits the ``key TEXT PRIMARY KEY``
+    constraint with an unhandled IntegrityError -- a 500 to the user, from a
+    button that should always work.
+    """
+    from studyloop.parking import add_board_column, get_board_columns
+
+    get_board_columns()  # warm up: schema prep must not absorb the race window
+    n = 8
+    gate = threading.Barrier(n)
+
+    def add() -> dict | None:
+        gate.wait()
+        return add_board_column("Research")
+
+    with ThreadPoolExecutor(max_workers=n) as pool:
+        results = [f.result() for f in [pool.submit(add) for _ in range(n)]]
+
+    assert all(r is not None for r in results), (
+        f"every concurrent add should succeed, got {results.count(None)} failures"
+    )
+    keys = [r["key"] for r in results]
+    assert len(set(keys)) == n, f"duplicate keys handed out: {sorted(keys)}"
+
+
+def test_concurrent_distinct_name_adds_get_dense_unique_positions(board_db: Path) -> None:
+    """Concurrent adds of different names must not land on the same position.
+
+    ``position`` is ``MAX(position)+1`` read in its own statement, and the column
+    has no UNIQUE constraint -- so a lost update here is SILENT. Two columns
+    sharing a position give an order that depends on SQLite's row order rather
+    than on what the user arranged.
+    """
+    from studyloop.parking import add_board_column, get_board_columns
+
+    before = len(get_board_columns())
+    n = 8
+    gate = threading.Barrier(n)
+
+    def add(i: int) -> dict | None:
+        gate.wait()
+        return add_board_column(f"Topic {i}")
+
+    with ThreadPoolExecutor(max_workers=n) as pool:
+        results = [f.result() for f in [pool.submit(add, i) for i in range(n)]]
+
+    assert all(r is not None for r in results)
+    rows = _column_rows(board_db)
+    positions = [p for _, p in rows]
+    assert len(rows) == before + n
+    assert len(set(positions)) == len(positions), f"duplicate positions: {rows}"
+    assert positions == list(range(len(rows))), f"positions not dense 0..n-1: {rows}"
+
+
+def test_concurrent_reorder_and_delete_leave_a_coherent_board(board_db: Path) -> None:
+    """Reorder and delete both rewrite every position from a snapshot they read.
+
+    ``reorder_board_columns`` reads the current order then writes each position;
+    ``delete_board_column`` reads all keys, relocates the doomed column's cards
+    to a target chosen from that snapshot, then renumbers the survivors. Run at
+    once on a deferred transaction they interleave into an arrangement neither
+    caller asked for, and a card can be relocated INTO the column the other
+    caller is deleting -- which strands it under a key no column owns.
+
+    Asserts the invariants rather than one winning order: positions dense and
+    unique, and every card sitting under a key that still exists.
+    """
+    from studyloop.parking import add_board_column, delete_board_column, reorder_board_columns
+
+    for name in ("Alpha", "Beta"):
+        assert add_board_column(name) is not None
+    _park("card in alpha", board_column="alpha")
+    _park("card in beta", board_column="beta")
+
+    gate = threading.Barrier(2)
+
+    def reorder() -> bool:
+        gate.wait()
+        return reorder_board_columns(["done", "exploring", "next", "inbox"])
+
+    def delete() -> bool:
+        gate.wait()
+        return delete_board_column("alpha")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(reorder), pool.submit(delete)]
+        [f.result() for f in futures]
+
+    rows = _column_rows(board_db)
+    positions = [p for _, p in rows]
+    assert len(set(positions)) == len(positions), f"duplicate positions: {rows}"
+    assert positions == list(range(len(rows))), f"positions not dense 0..n-1: {rows}"
+
+    live_keys = {k for k, _ in rows}
+    conn = sqlite3.connect(str(board_db))
+    try:
+        stored = {
+            r[0]
+            for r in conn.execute(
+                "SELECT DISTINCT board_column FROM parked_topics WHERE status = 'pending'"
+            )
+        }
+    finally:
+        conn.close()
+    assert stored <= live_keys, f"cards stranded under deleted columns: {stored - live_keys}"
