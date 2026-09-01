@@ -3413,18 +3413,40 @@ function bodyDoubleSession() {
     },
 
     async submitPark() {
+      // Capture what is being sent, rather than reading the live fields again
+      // later. This function used to clear this.parkQuestion unconditionally in
+      // its success path, which loses a race against the learner: submit A ->
+      // await -> they start typing B -> A's response lands and wipes B. Their
+      // next submit then sends an empty question, and ParkingCreate.question is
+      // Field(min_length=1), so the server answers 422 and they get a generic
+      // "try again" for a tangent they had already typed twice.
+      const question = (this.parkQuestion || '').trim();
+      const notes = this.parkNotes;
+
+      // Do not spend a request on something the server must reject. The submit
+      // control can be reached with an empty field, and a POST that is a
+      // guaranteed 422 produces a console error and a toast that blames the
+      // network for a validation rule.
+      if (!question) {
+        Alpine.store('toast').show('Add a thought to park first');
+        return;
+      }
+
       try {
         const res = await fetch('/api/parking/item', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: this.parkQuestion, notes: this.parkNotes }),
+          body: JSON.stringify({ question, notes }),
         });
         if (!res.ok) { Alpine.store('toast').show('Could not park — try again'); return; }
         this.parkSaved = true;
         if (this._parkTimer) clearTimeout(this._parkTimer);
         this._parkTimer = setTimeout(() => { this.parkSaved = false; }, 1500);
-        this.parkQuestion = '';
-        this.parkNotes = '';
+        // Clear only what was actually sent. If the field has moved on while the
+        // request was in flight, that newer text is the learner's, not ours to
+        // discard.
+        if (this.parkQuestion.trim() === question) this.parkQuestion = '';
+        if (this.parkNotes === notes) this.parkNotes = '';
         await this.refreshFocus();
         window.dispatchEvent(new CustomEvent('parking:changed'));
       } catch {
