@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path  # noqa: TC003 — used at runtime in fixtures
 
 import pytest
@@ -274,3 +276,86 @@ class TestGetWrongHashes:
 
         ensure_tables(db_path)
         assert get_wrong_hashes("ZTM-DE", db_path=db_path) == set()
+
+
+class TestConcurrentSameCardReviews:
+    """record_card_review reads the last schedule, then inserts the next one."""
+
+    def test_concurrent_reviews_match_the_sequential_schedule(self, tmp_path: Path) -> None:
+        """N reviews at once must land exactly where N reviews in a row land.
+
+        The SM-2 update reads the newest (ease_factor, interval_days) for the
+        card, derives the next pair from it, and inserts a row. The read and the
+        insert sit on sqlite3's DEFERRED transaction, so the SELECT holds no write
+        lock: concurrent reviewers all read the SAME predecessor and all compute
+        the SAME successor, because the calculation is deterministic given
+        (ease, interval, correct).
+
+        Every row still persists, so nothing looks broken -- the review COUNT is
+        right. What is lost is progression: correct answers should walk the
+        interval 1 -> 2 -> 5 -> 13 ..., but an unserialised run writes the same
+        step repeatedly and the card comes back far sooner than the learner
+        earned. That is the whole product promise of spaced repetition, failing
+        quietly.
+
+        Asserts serialisability against a sequential control run rather than
+        counting distinct steps. The schedule legitimately SATURATES -- ease caps
+        at 3.0 and the interval at 365 days, after which every further review
+        yields the same pair -- so "all steps distinct" would fail on correct
+        behaviour. Comparing against sequential also survives a deliberate change
+        to the SM-2 constants.
+        """
+        from studyloop.review_db import ensure_tables, record_card_review
+
+        def fresh(name: str) -> Path:
+            db = tmp_path / name
+            sqlite3.connect(db).close()
+            ensure_tables(db)
+            return db
+
+        def schedule(db: Path) -> list[tuple[float, int]]:
+            conn = sqlite3.connect(db)
+            try:
+                return [
+                    (r[0], r[1])
+                    for r in conn.execute(
+                        "SELECT ease_factor, interval_days FROM card_reviews "
+                        "WHERE card_hash = 'card-abc' ORDER BY reviewed_at, id"
+                    )
+                ]
+            finally:
+                conn.close()
+
+        def review(db: Path) -> None:
+            record_card_review(
+                course="python",
+                card_type="flashcard",
+                card_hash="card-abc",
+                correct=True,
+                db_path=db,
+            )
+
+        n = 8
+
+        control = fresh("sequential.db")
+        for _ in range(n):
+            review(control)
+        expected = schedule(control)
+
+        concurrent = fresh("concurrent.db")
+        gate = threading.Barrier(n)
+
+        def contended() -> None:
+            gate.wait()
+            review(concurrent)
+
+        with ThreadPoolExecutor(max_workers=n) as pool:
+            for f in [pool.submit(contended) for _ in range(n)]:
+                f.result()
+        actual = schedule(concurrent)
+
+        assert len(actual) == n, f"every review should persist, got {len(actual)}"
+        assert actual == expected, (
+            "concurrent reviews did not reproduce the sequential schedule -- "
+            f"lost progression.\n  sequential: {expected}\n  concurrent: {actual}"
+        )
