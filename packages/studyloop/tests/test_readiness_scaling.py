@@ -56,10 +56,10 @@ class TestScalingContract:
 
 
 class TestScaleSelection:
-    """The multiplier is derived from the size of the run."""
+    """The multiplier comes from the environment, and from nothing else."""
 
     @staticmethod
-    def _scale_for(count: int, monkeypatch: pytest.MonkeyPatch, env: str | None = None) -> float:
+    def _scale(monkeypatch: pytest.MonkeyPatch, env: str | None = None) -> float:
         import _readiness
 
         if env is None:
@@ -67,38 +67,64 @@ class TestScaleSelection:
         else:
             monkeypatch.setenv("STUDYLOOP_E2E_TIMEOUT_SCALE", env)
         monkeypatch.setattr(_readiness, "_scale", 1.0, raising=False)
-        _readiness.set_scale_for_run(count)
+        _readiness.configure_scale()
         return _readiness.readiness_scale()
 
-    def test_single_file_run_is_left_exactly_as_written(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """One file on an idle machine gets no allowance, so a hang fails fast."""
-        assert self._scale_for(7, monkeypatch) == 1.0
+    def test_unset_means_unscaled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The default is the release configuration: budgets exactly as written."""
+        assert self._scale(monkeypatch) == 1.0
 
-    def test_a_large_run_gets_headroom(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """~500 browser tests contending for CPU, disk and ports."""
-        assert self._scale_for(500, monkeypatch) == 3.0
-
-    def test_a_mid_sized_run_gets_some(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        assert self._scale_for(120, monkeypatch) == 2.0
-
-    def test_env_override_wins(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        assert self._scale_for(7, monkeypatch, env="4") == 4.0
+    def test_an_explicit_override_applies(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        assert self._scale(monkeypatch, env="4") == 4.0
 
     def test_a_garbage_override_falls_back_rather_than_crashing_collection(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A typo in the env var must not take the whole run down at collection."""
-        assert self._scale_for(500, monkeypatch, env="soon") == 1.0
+        assert self._scale(monkeypatch, env="soon") == 1.0
 
     def test_an_override_cannot_shrink_budgets(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Below 1.0 would tighten every budget and invent failures."""
-        assert self._scale_for(500, monkeypatch, env="0.1") == 1.0
+        assert self._scale(monkeypatch, env="0.1") == 1.0
+
+    def test_the_size_of_the_run_cannot_reach_the_multiplier(self) -> None:
+        """The defect this replaced, guarded structurally.
+
+        Keying the multiplier off the collected item count meant a test's budget
+        depended on what was selected beside it: the default selection collects
+        3599 items and chose 3.0 while running zero browser tests, and a
+        browser-free unit test's 4s poll silently became 12s. A count cannot
+        reach the multiplier if the configuring function takes no arguments and
+        the one that used to accept a count no longer exists.
+        """
+        import inspect
+
+        import _readiness
+
+        assert inspect.signature(_readiness.configure_scale).parameters == {}
+        assert not hasattr(_readiness, "set_scale_for_run")
+
+    def test_no_test_outside_this_file_scales_its_own_budget(self) -> None:
+        """scaled_seconds is a diagnostic lever, not a way to size a budget.
+
+        It reads the same global as the Playwright patch, so a call site that
+        uses it inherits whatever the environment says. A unit test did exactly
+        that and had its poll tripled by an unrelated selection; budgets belong
+        at a justified fixed ceiling instead.
+        """
+        from pathlib import Path
+
+        tests_dir = Path(__file__).parent
+        users = sorted(
+            p.name
+            for p in tests_dir.rglob("test_*.py")
+            if p.name != Path(__file__).name and "scaled_seconds" in p.read_text()
+        )
+        assert users == [], f"these tests scale their own budgets: {users}"
 
 
-class TestTheHookDoesBothJobs:
-    """One hook, two responsibilities — and pytest only calls one by that name."""
+class TestTheCollectionHook:
+    """One hook — and pytest calls only one function by that name."""
 
     def test_e2e_items_still_get_their_per_test_timeout(
         self, monkeypatch: pytest.MonkeyPatch
@@ -145,10 +171,14 @@ class TestTheHookDoesBothJobs:
             f"expected a {E2E_TIMEOUT_SECONDS}s budget, got {applied[0].args}"
         )
 
-    def test_the_same_call_also_sets_the_readiness_scale(
+    def test_the_hook_does_not_touch_the_readiness_scale(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Both jobs happen in one pass, so neither can be lost again."""
+        """Collection must not set the multiplier, however large the run.
+
+        This hook used to call set_scale_for_run(len(items)), which is what made
+        a budget depend on the size of the selection.
+        """
         import _readiness
 
         from conftest import (
@@ -165,8 +195,29 @@ class TestTheHookDoesBothJobs:
             def add_marker(self, marker) -> None:  # pragma: no cover
                 raise AssertionError("a non-e2e item should not be marked")
 
-        pytest_collection_modifyitems([FakeItem() for _ in range(500)])
-        assert _readiness.readiness_scale() == 3.0
+        pytest_collection_modifyitems([FakeItem() for _ in range(3599)])
+
+        assert _readiness.readiness_scale() == 1.0
+
+    def test_the_header_states_the_multiplier(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Every run must say what sensitivity produced its pass count.
+
+        The report that started this work said "500 passed" without recording
+        that budgets had been widened, so the number could not be interpreted.
+        """
+        from conftest import (
+            pytest_report_header,  # pyright: ignore[reportAttributeAccessIssue]
+        )
+
+        monkeypatch.delenv("STUDYLOOP_E2E_TIMEOUT_SCALE", raising=False)
+        unscaled = pytest_report_header()
+        assert "1.0x" in unscaled
+        assert "release configuration" in unscaled
+
+        monkeypatch.setenv("STUDYLOOP_E2E_TIMEOUT_SCALE", "3")
+        scaled = pytest_report_header()
+        assert "3.0x" in scaled
+        assert "NOT a release-pass configuration" in scaled
 
 
 class TestScalingApplies:

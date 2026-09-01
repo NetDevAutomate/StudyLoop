@@ -265,19 +265,33 @@ E2E_TIMEOUT_SECONDS = 300
 
 
 def pytest_collection_modifyitems(items) -> None:
-    """Grant every e2e test its own timeout, and set the readiness scale.
+    """Grant every e2e test its own timeout.
 
-    Both live in one hook because pytest calls a conftest's
-    ``pytest_collection_modifyitems`` by name: a second definition does not run
-    alongside the first, it REPLACES it. Splitting these silently dropped the
-    per-test timeout below, which would have turned a hanging test from a 300s
-    failure into a run that never ends.
+    Kept as one hook deliberately: pytest calls a conftest's
+    ``pytest_collection_modifyitems`` by name, so a second definition does not
+    run alongside the first, it REPLACES it. Splitting this once silently
+    dropped the per-test timeout below, which would have turned a hanging test
+    from a 300s failure into a run that never ends.
     """
     for item in items:
         if item.get_closest_marker("e2e") and not item.get_closest_marker("timeout"):
             item.add_marker(pytest.mark.timeout(E2E_TIMEOUT_SECONDS))
 
-    _readiness.set_scale_for_run(len(items))
+
+def pytest_report_header() -> str:
+    """State the readiness multiplier in every run's header.
+
+    Unconditional, including at 1.0. A pass count is only meaningful alongside
+    the sensitivity that produced it, and this suite once reported "500 passed"
+    without recording that its budgets had been widened.
+    """
+    scale = _readiness.configure_scale()
+    if scale == 1.0:
+        return "readiness budgets: unscaled (1.0x) — release configuration"
+    return (
+        f"readiness budgets: SCALED {scale}x via {_readiness.ENV_OVERRIDE} "
+        "— diagnostic only, NOT a release-pass configuration"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +301,14 @@ def pytest_collection_modifyitems(items) -> None:
 
 @pytest.fixture(autouse=True, scope="session")
 def _scale_playwright_readiness_budgets():
-    """Widen Playwright readiness budgets in proportion to the run's size."""
+    """Apply the readiness multiplier, if one was explicitly requested.
+
+    Calls ``configure_scale()`` itself rather than trusting
+    ``pytest_report_header`` to have run: that hook's output is suppressed under
+    ``-q``, and configuration must not depend on whether a header was printed.
+    Idempotent -- both call sites read the same environment variable.
+    """
+    _readiness.configure_scale()
     patched = _readiness.install_scaling()
     try:
         yield
