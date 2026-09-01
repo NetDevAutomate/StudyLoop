@@ -23,6 +23,7 @@ Adding an engine requires only a new entry in :data:`DEV_ENGINES`.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Final
 
 #: What renders the terminal when no ``--dev`` engine is loaded. This is the
@@ -40,14 +41,19 @@ DEV_ENGINES: Final[dict[str, dict[str, Any]]] = {
     # libghostty — Ghostty's VT100 parser compiled to WASM, via
     # https://github.com/coder/ghostty-web (MIT).
     #
-    # Self-contained: the 423 KB WASM binary is inlined in the UMD bundle as a
-    # base64 data URL, so there is no second network fetch, no .wasm MIME-type
-    # configuration, and the bundle works offline.
+    # Self-contained: the WASM binary is inlined in this bundle as a base64 data
+    # URL, so there is no second network fetch, no .wasm MIME-type configuration,
+    # and it works offline. That inlining is why the repo carries no standalone
+    # ghostty-vt-*.wasm: the only thing that ever fetched one was the deprecated
+    # inline path, removed with its bootstrap script.
+    #
+    # These assets live under vendor/dev/ and are excluded from the wheel. They
+    # are dev-only by design — see docs/adr/0007-dev-only-vendored-assets.md.
     "ghostty": {
-        "css": ("/vendor/css/ghostty-0.4.0.css",),
+        "css": ("/vendor/dev/css/ghostty-0.4.0.css",),
         "js": (
-            "/vendor/js/ghostty-web-0.4.0.js",
-            "/vendor/js/ghostty-adapter-0.4.0.js",
+            "/vendor/dev/js/ghostty-web-0.4.0.js",
+            "/vendor/dev/js/ghostty-adapter-0.4.0.js",
         ),
         "renderer": "libghostty",
         # Verbatim from docs/web-ui-guide.md, "Known gaps (why this is still
@@ -66,6 +72,26 @@ DEV_ENGINES: Final[dict[str, dict[str, Any]]] = {
 #: Engine used when ``--dev`` is passed without ``--dev-engine``.
 DEFAULT_DEV_ENGINE: Final[str] = "ghostty"
 
+#: Static root, resolved locally rather than imported from ``studyloop.web.app``
+#: so this module stays free of FastAPI (see the module docstring).
+_STATIC_DIR = Path(__file__).parent / "static"
+
+
+def missing_dev_assets(engine: str) -> list[str]:
+    """URL paths for ``engine`` that have no file behind them.
+
+    Dev-only vendored assets live under ``static/vendor/dev/`` and are excluded
+    from the wheel, so in an installed copy they are simply absent. Without this
+    check the server would start happily and serve a page whose terminal never
+    initialises -- a silent failure a long way from its cause.
+    """
+    spec = DEV_ENGINES[engine]
+    missing: list[str] = []
+    for url in (*spec.get("css", ()), *spec.get("js", ())):
+        if not (_STATIC_DIR / url.lstrip("/")).is_file():
+            missing.append(url)
+    return missing
+
 
 def resolve_dev_engine(engine: str | None) -> str:
     """Normalise and validate a dev engine name.
@@ -77,14 +103,25 @@ def resolve_dev_engine(engine: str | None) -> str:
         The canonical lower-case engine key.
 
     Raises:
-        ValueError: If the engine is not registered in :data:`DEV_ENGINES`.
+        ValueError: If the engine is not registered in :data:`DEV_ENGINES`, or if
+            its vendored assets are not present in this installation.
     """
     if engine is None:
-        return DEFAULT_DEV_ENGINE
-    normalised = engine.strip().lower()
-    if normalised not in DEV_ENGINES:
-        known = ", ".join(sorted(DEV_ENGINES))
-        raise ValueError(f"Unknown dev engine {engine!r}. Known engines: {known}")
+        normalised = DEFAULT_DEV_ENGINE
+    else:
+        normalised = engine.strip().lower()
+        if normalised not in DEV_ENGINES:
+            known = ", ".join(sorted(DEV_ENGINES))
+            raise ValueError(f"Unknown dev engine {engine!r}. Known engines: {known}")
+
+    absent = missing_dev_assets(normalised)
+    if absent:
+        raise ValueError(
+            f"Dev engine {normalised!r} is unavailable in this installation: its "
+            f"vendored assets are missing ({', '.join(absent)}). Dev mode is for "
+            "working from a Git checkout -- these files are deliberately excluded "
+            "from the published wheel. Run from a clone, or drop --dev."
+        )
     return normalised
 
 

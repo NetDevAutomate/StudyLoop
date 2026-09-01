@@ -58,6 +58,20 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/studyloop"]
+# Dev-only vendored assets are tracked in git -- a developer needs them on every
+# machine they check out on -- but must not reach users, who never run --dev.
+# See docs/adr/0007-dev-only-vendored-assets.md.
+#
+# The boundary is a DIRECTORY, not a filename glob, on purpose. This repo has
+# twice been bitten by name-based rules that outlived their intent: a bare `lib/`
+# in .gitignore silently untracked two production modules, and a blanket
+# `*.wasm` swept a 423 KB file into Git LFS and broke three CI jobs. A glob would
+# silently ship the NEXT dev-only asset; a directory whose name states the
+# contract cannot drift.
+#
+# Enforced both ways by tests/test_dev_asset_packaging.py: the wheel must not
+# contain these files, and the repo must.
+exclude = ["src/studyloop/web/static/vendor/dev"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
