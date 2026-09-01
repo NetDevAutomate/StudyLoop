@@ -10,9 +10,11 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,44 @@ logger = logging.getLogger(__name__)
 #: Guards schema repair only. Normal reads and writes rely on WAL plus
 #: ``busy_timeout``, so this is not a global database mutex.
 SCHEMA_LOCK = threading.Lock()
+
+
+@contextmanager
+def immediate(conn: sqlite3.Connection) -> Iterator[None]:
+    """Run a read-modify-write inside a single ``BEGIN IMMEDIATE`` transaction.
+
+    Python's :mod:`sqlite3` defers its implicit ``BEGIN`` until the first DML
+    statement, so a ``SELECT`` that feeds a later ``INSERT``/``UPDATE`` runs
+    without holding the write lock. Two callers can then read the same state and
+    write conflicting values — a lost update. ``BEGIN IMMEDIATE`` takes the write
+    lock up front, so concurrent writers serialise (they wait out
+    ``busy_timeout``, set to 5s by :func:`connect_db`) instead of racing.
+
+    Switches the connection to manual-commit for the duration and restores its
+    prior ``isolation_level`` afterwards.
+
+    Wrap the whole read-decide-write span, not just the writes: the point is that
+    nobody else can write between the SELECT that informs a decision and the
+    statement that acts on it. A single self-contained statement
+    (``UPDATE ... WHERE id = (SELECT ...)``, an UPSERT) is already atomic and
+    gains nothing from this.
+
+    This lives in :mod:`studyloop.db` rather than any one feature module because
+    the pattern is not parking-specific — card scheduling, board columns and FTS
+    refresh all need it, and a second copy would be a second thing to fix.
+    """
+    prior = conn.isolation_level
+    conn.isolation_level = None
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
+    else:
+        conn.execute("COMMIT")
+    finally:
+        conn.isolation_level = prior
 
 
 def _ensure_wal(conn: sqlite3.Connection) -> None:
