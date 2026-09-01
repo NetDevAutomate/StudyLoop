@@ -1,31 +1,49 @@
-"""Readiness-budget scaling — absorbs full-suite load without editing 835 waits.
+"""Readiness-budget scaling — an opt-in diagnostic, never a release configuration.
 
-Browser tests are full of fixed readiness budgets: 835 explicit ``timeout=``
-arguments across 67 files. Every one was calibrated while running its own file,
-where the machine is idle. The full suite runs ~500 browser tests that contend for
-CPU, disk and a fixed set of ports, and a budget that is generous in isolation
-becomes marginal there.
+Browser tests carry 835 explicit ``timeout=`` arguments across 67 files, each
+calibrated while running its own file on an idle machine. The full suite runs
+~500 browser tests contending for CPU, disk and a fixed set of ports, so a
+budget that is generous in isolation can become marginal there.
 
-Three separate tests failed that way in one afternoon -- a 5s wait in the live
-session banner, a 20s wait in the representative user journey, and a 4s poll loop
-in the WebSocket grace tests -- each passing on every isolated re-run. They were
-not the same bug three times; they were the same missing allowance.
+This module can multiply those budgets. It is switched on ONLY by
+``STUDYLOOP_E2E_TIMEOUT_SCALE`` and is a no-op otherwise.
 
-The allowance is nearly free, which is the point. A readiness wait that resolves in
-200ms costs 200ms whether its ceiling is 5s or 20s: raising the ceiling costs
-nothing on success and only lengthens the report of a genuine failure. That is the
-right trade for a safety net and the wrong one for an assertion -- a test asserting
-"this must appear within 300ms for the UX to be acceptable" is measuring, not
-waiting, and scaling it would destroy what it measures. Nothing here touches
-``wait_for_timeout``, which is a fixed sleep rather than a budget.
+Why it is no longer automatic
+-----------------------------
+The multiplier used to be chosen from the number of collected tests, which made
+a test's meaning depend on a property of the run rather than on the test. Two
+measured consequences:
 
-Scaling by collected test count rather than a flag keeps both honest: run one file
-and the budgets stay exactly as written, so a real hang still fails fast; run the
-suite and they widen.
+* ``pytest`` with its default selection collects 3599 items and so chose 3.0
+  while running zero browser tests -- the patch was installed for nothing.
+* ``test_session_ws_grace.py`` is a unit test with no browser at all, yet its
+  4s poll silently became 12s because an unrelated selection was large.
 
-This lives outside ``conftest.py`` deliberately. Two ``conftest.py`` files exist in
+A run whose sensitivity varies with how it was invoked cannot be reported
+honestly, and printing the multiplier would have made the altered semantics
+visible without making them valid. Load allowance now belongs in the budget at
+the call site, as a justified fixed ceiling: a generous ceiling costs nothing on
+success and is INVARIANT, which is the property the multiplier lacked.
+
+What was NOT the reason
+-----------------------
+An earlier version of this docstring claimed three failures were "the same
+missing allowance". That was not established. The HTTP 500 in
+``e2e/test_ws_grace_real_server.py`` was a file-deletion race in the product
+(session teardown unlinking IPC files mid-request), reachable with no browser
+involved, and that test contains no scaled call. The dialog failure in
+``test_web_session_lifecycle.py`` was a 200ms sleep racing an
+``x-transition.opacity`` fade measured at 187ms. Both are fixed at the source.
+
+The remaining honest argument for an allowance is narrower: for a POLLING wait,
+a wider ceiling grants more retries, so an intermittent server error followed by
+a success becomes indistinguishable from clean. That is a masking channel, which
+is why the per-test server-error detectors in ``conftest.py`` and ``e2e/_env.py``
+exist and must stay independent of any timeout.
+
+Living outside ``conftest.py`` is deliberate: two ``conftest.py`` files exist in
 this repo, so ``from conftest import ...`` resolves to whichever one the type
-checker finds first -- and a pytest hook file is not a public helper module anyway.
+checker finds first -- and a pytest hook file is not a public helper module.
 """
 
 from __future__ import annotations
@@ -48,24 +66,29 @@ ENV_OVERRIDE = "STUDYLOOP_E2E_TIMEOUT_SCALE"
 _scale = 1.0
 
 
-def set_scale_for_run(collected: int) -> float:
-    """Choose the multiplier from the size of the run, or the env override."""
+def configure_scale() -> float:
+    """Set the multiplier from the environment. 1.0 unless explicitly asked.
+
+    Takes no argument on purpose. It used to take the collected test count and
+    pick 1.0/2.0/3.0 from thresholds, which is what made a test's budget depend
+    on how many unrelated tests were selected alongside it.
+    """
     global _scale
     override = os.environ.get(ENV_OVERRIDE)
-    if override:
-        try:
-            # Never below 1.0: shrinking every budget would invent failures.
-            _scale = max(1.0, float(override))
-        except ValueError:
-            _scale = 1.0
-        return _scale
-    if collected < 50:
+    if not override:
         _scale = 1.0
-    elif collected < 300:
-        _scale = 2.0
-    else:
-        _scale = 3.0
+        return _scale
+    try:
+        # Never below 1.0: shrinking every budget would invent failures.
+        _scale = max(1.0, float(override))
+    except ValueError:
+        _scale = 1.0
     return _scale
+
+
+def scale_is_explicit() -> bool:
+    """True when a multiplier was requested via the environment."""
+    return bool(os.environ.get(ENV_OVERRIDE)) and _scale != 1.0
 
 
 def readiness_scale() -> float:
@@ -74,15 +97,16 @@ def readiness_scale() -> float:
 
 
 def scaled_seconds(base: float) -> float:
-    """Scale a hand-rolled polling budget, in seconds.
+    """Scale a hand-rolled polling budget, in seconds. Usually a no-op.
 
-    The Playwright patch only reaches Playwright's own waits. A test that polls an
-    asyncio condition itself -- ``while not released: await sleep(0.1)`` -- has the
-    same load sensitivity and none of the coverage, so it must ask explicitly.
+    Returns ``base`` unchanged unless ``STUDYLOOP_E2E_TIMEOUT_SCALE`` is set, so
+    this is a diagnostic lever rather than a way to size a budget. If a poll
+    needs more headroom, raise its base to a justified fixed ceiling instead --
+    an invariant number a reader can check against the thing being waited for.
 
-    Prefer a deadline over an iteration count at the call site: ``range(40)`` with a
-    0.1s sleep assumes each turn costs only the sleep, which stops being true on
-    precisely the loaded machine the budget is for.
+    Prefer a deadline over an iteration count at the call site: ``range(40)``
+    with a 0.1s sleep assumes each turn costs only the sleep, which stops being
+    true on precisely the loaded machine the budget is for.
     """
     return base * _scale
 

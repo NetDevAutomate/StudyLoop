@@ -39,7 +39,6 @@ from pathlib import Path
 
 import pytest
 from _helpers import run_async
-from _readiness import scaled_seconds
 
 pytest.importorskip("fastapi")
 
@@ -273,7 +272,14 @@ class TestGraceModule:
         # each turn costs only the sleep, which is exactly what stops being true
         # on the loaded machine this budget exists for. This test timed out under
         # the full suite and passed on every isolated re-run.
-        deadline = time.monotonic() + scaled_seconds(4.0)
+        #
+        # A fixed 15s rather than a load-scaled 4s. Measured, the release lands
+        # in ~0.5s, so this is a 30x margin that does not move with the size of
+        # the run -- this is a unit test with no browser, and its budget used to
+        # triple when an unrelated selection was large. Still comfortably inside
+        # the 30s grace window above, so a pass here means the dead agent was
+        # reaped rather than the window merely expiring.
+        deadline = time.monotonic() + 15.0
         while time.monotonic() < deadline:
             await asyncio.sleep(0.1)
             if await active.current() is None:
