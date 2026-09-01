@@ -205,10 +205,16 @@ class TestTheCollectionHook:
         The report that started this work said "500 passed" without recording
         that budgets had been widened, so the number could not be interpreted.
         """
+        import _readiness
+
         from conftest import (
             pytest_report_header,  # pyright: ignore[reportAttributeAccessIssue]
         )
 
+        # setattr, so monkeypatch restores the module global too. Only setenv-ing
+        # left _scale at 3.0 after teardown, and the terminal-summary hook then
+        # warned that an unscaled run was scaled.
+        monkeypatch.setattr(_readiness, "_scale", 1.0, raising=False)
         monkeypatch.delenv("STUDYLOOP_E2E_TIMEOUT_SCALE", raising=False)
         unscaled = pytest_report_header()
         assert "1.0x" in unscaled
@@ -218,6 +224,63 @@ class TestTheCollectionHook:
         scaled = pytest_report_header()
         assert "3.0x" in scaled
         assert "NOT a release-pass configuration" in scaled
+
+    def test_the_summary_warning_tracks_the_session_not_the_global(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A test mutating the scale must not make an unscaled run look scaled.
+
+        The first version of this hook read the live global, so the test above
+        -- which legitimately sets the env var and reconfigures -- left it at
+        3.0 and the summary warned on a genuinely unscaled run. An honesty
+        signal that cries wolf is worse than none, because it trains people to
+        ignore it.
+        """
+        import _readiness
+
+        import conftest
+
+        monkeypatch.setattr(conftest, "_SESSION_SCALE", 1.0, raising=False)
+        monkeypatch.setattr(_readiness, "_scale", 3.0, raising=False)
+
+        written: list[str] = []
+
+        class FakeReporter:
+            def write_sep(self, sep: str, text: str, **kwargs: object) -> None:
+                written.append(text)
+
+        # Two conftest.py files exist in this repo, so the type checker cannot
+        # tell which module this name resolves to -- the same reason sibling
+        # imports here carry per-symbol ignores.
+        conftest.pytest_terminal_summary(  # pyright: ignore[reportAttributeAccessIssue]
+            FakeReporter()  # pyright: ignore[reportArgumentType]
+        )
+
+        assert written == [], f"warned about scaling on an unscaled session: {written}"
+
+    def test_the_summary_warns_when_the_session_really_was_scaled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """And it must still fire when it matters, under -q as well."""
+        import conftest
+
+        monkeypatch.setattr(conftest, "_SESSION_SCALE", 3.0, raising=False)
+
+        written: list[str] = []
+
+        class FakeReporter:
+            def write_sep(self, sep: str, text: str, **kwargs: object) -> None:
+                written.append(text)
+
+        # Two conftest.py files exist in this repo, so the type checker cannot
+        # tell which module this name resolves to -- the same reason sibling
+        # imports here carry per-symbol ignores.
+        conftest.pytest_terminal_summary(  # pyright: ignore[reportAttributeAccessIssue]
+            FakeReporter()  # pyright: ignore[reportArgumentType]
+        )
+
+        assert len(written) == 1
+        assert "NOT a release result" in written[0]
 
 
 class TestScalingApplies:

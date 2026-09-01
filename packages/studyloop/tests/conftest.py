@@ -294,9 +294,41 @@ def pytest_report_header() -> str:
     )
 
 
+def pytest_terminal_summary(terminalreporter) -> None:
+    """Repeat the multiplier beside the pass count, where -q cannot hide it.
+
+    ``-q`` suppresses the header above, so the first full unscaled run after
+    this check was added printed its counts with no statement of its
+    sensitivity -- the original defect rebuilt in a new place. A summary line
+    survives ``-q``, so the number and the configuration that produced it are
+    always reported together.
+
+    Reads the scale recorded when the session installed it, NOT the live global:
+    tests in this repo legitimately set the env var and call
+    ``configure_scale()``, and the first version of this hook read the global
+    afterwards and warned on an unscaled run. A signal that cries wolf gets
+    ignored, which would cost more than having no signal.
+    """
+    if _SESSION_SCALE is None or _SESSION_SCALE == 1.0:
+        return
+    terminalreporter.write_sep(
+        "!",
+        f"readiness budgets SCALED {_SESSION_SCALE}x "
+        f"({_readiness.ENV_OVERRIDE}) — these counts are NOT a release result",
+        red=True,
+        bold=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Readiness-budget scaling — see _readiness.py for the reasoning
 # ---------------------------------------------------------------------------
+
+
+#: The multiplier this session actually installed, recorded once so the terminal
+#: summary reports the run's real configuration rather than a global that tests
+#: of the scaling mechanism legitimately mutate.
+_SESSION_SCALE: float | None = None
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -308,7 +340,8 @@ def _scale_playwright_readiness_budgets():
     ``-q``, and configuration must not depend on whether a header was printed.
     Idempotent -- both call sites read the same environment variable.
     """
-    _readiness.configure_scale()
+    global _SESSION_SCALE
+    _SESSION_SCALE = _readiness.configure_scale()
     patched = _readiness.install_scaling()
     try:
         yield
