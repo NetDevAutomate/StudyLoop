@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from typing import TYPE_CHECKING
 
+from studyloop.session.child_env import build_child_env
 from studyloop.session_runtime.protocol import SessionEvent, SessionStartSpec
 
 if TYPE_CHECKING:
@@ -31,7 +31,15 @@ class AcpAgentSessionTransport:
         """Start the ACP subprocess."""
         command = self.spec.command
         argv = ["/bin/sh", "-lc", command] if isinstance(command, str) else command
-        env = os.environ.copy()
+        # Scrubbed, not os.environ.copy(). An ACP agent is a third-party binary
+        # granted filesystem read/write, so handing it the parent's credentials
+        # hands them to whatever it runs. The PTY transport already stripped
+        # these; this path did not, which made the protection depend on which
+        # transport the learner happened to pick.
+        env = build_child_env()
+        # spec.env is the caller's deliberate configuration for this agent and is
+        # applied after the scrub, so an agent that legitimately needs a token can
+        # still be given one explicitly.
         env.update(self.spec.env)
         self._process = await asyncio.create_subprocess_exec(
             *argv,

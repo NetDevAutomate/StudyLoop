@@ -37,6 +37,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from studyloop.session.child_env import build_child_env
 from studyloop.session.transport import (
     AgentMessage,
     Started,
@@ -167,12 +168,18 @@ class ACPTransport:
             raise FileNotFoundError(f"Agent binary for {config.agent!r} not found on PATH")
 
         argv = self._build_argv(config)
+        # env= is passed explicitly. Omitting it inherits the parent environment
+        # wholesale, which handed this child every credential the server holds --
+        # while the sibling PTY transport stripped exactly those. See
+        # studyloop.session.child_env for why the rule is shared rather than
+        # duplicated.
         proc = await asyncio.create_subprocess_exec(
             *argv,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
             cwd=config.cwd,
+            env=build_child_env(),
         )
 
         queue: asyncio.Queue[TransportEventT | None] = asyncio.Queue(maxsize=_EVENT_QUEUE_MAX)
