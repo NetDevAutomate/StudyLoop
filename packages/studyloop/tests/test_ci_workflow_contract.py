@@ -141,4 +141,26 @@ def test_docs_deploy_job_is_push_only() -> None:
 
     deploy = data["jobs"]["deploy"]
     assert deploy["if"] == "github.event_name == 'push'"
-    assert deploy["permissions"] == {"contents": "write"}
+
+    # Publishing moved from `mkdocs gh-deploy --force`, which pushed rendered
+    # HTML to a gh-pages branch, to an upload-pages-artifact + deploy-pages
+    # pair. So the permissions inverted: the job no longer writes to the
+    # repository at all, and instead needs the Pages scope plus an OIDC token
+    # for deploy-pages to authenticate with.
+    assert deploy["permissions"] == {"pages": "write", "id-token": "write"}
+
+    # Asserted as an absence, not just a set equality, because the equality
+    # above could be relaxed later without anyone noticing this mattered:
+    # contents: write is what let the old mechanism rewrite a branch, and a
+    # deploy that publishes an artifact has no business holding it.
+    assert "contents" not in deploy["permissions"], (
+        "the artifact deploy must not be able to write to the repository"
+    )
+
+    # Bound to the Pages environment, which is what makes the deployment show
+    # up as one and gives the job its URL output.
+    assert deploy["environment"]["name"] == "github-pages"
+
+    steps = [step.get("uses", "") for step in deploy["steps"]]
+    assert any("actions/upload-pages-artifact" in s for s in steps)
+    assert any("actions/deploy-pages" in s for s in steps)
