@@ -1110,9 +1110,20 @@ class TestKeyboardInput:
         )
         dev_page.click(".xterm-mount")
         dev_page.keyboard.type("keypath")
+        # MOUNT_TIMEOUT_MS, not the 10s used by its two sibling keystroke tests.
+        # Those wait on a JS array that onData appends to synchronously; this one
+        # waits on readBuffer(), so its chain also includes the wasm renderer --
+        # the subsystem this file already calibrates at 20s to mount and 30s to
+        # load. A 10s ceiling on the longer chain was inconsistent with that, and
+        # this was the only failure in 500 unscaled e2e tests.
+        #
+        # A fixed number, checkable against the constant above, and it does not
+        # move with the size of the run. Nor can it now hide a server error: the
+        # per-test server-log detector fails a test on an unhandled exception
+        # independently of any timeout, which is why that landed first.
         dev_page.wait_for_function(
             "() => (window.__studyloopGhostty.readBuffer() || []).join('\\n').includes('keypath')",
-            timeout=10_000,
+            timeout=MOUNT_TIMEOUT_MS,
         )
         assert "keypath" in _buffer_text(dev_page)
 
