@@ -836,6 +836,33 @@
       return sel ? sel.toString() : '';
     }
 
+    // ghostty-web's Terminal forwards all five selection methods to its
+    // selectionManager, but this facade forwarded only getSelection(), so
+    // `term.selectAll` was undefined for every caller that went through the
+    // adapter -- which is every caller, since liveAgentConsole() never touches
+    // the underlying Terminal. Selection is NOT DOM-selectable here: ghostty-web
+    // paints to a canvas, so window.getSelection() cannot substitute for these.
+    selectAll() {
+      if (this._term) this._term.selectAll();
+    }
+
+    hasSelection() {
+      if (!this._term) return false;
+      try {
+        return Boolean(this._term.hasSelection());
+      } catch {
+        return false;
+      }
+    }
+
+    clearSelection() {
+      if (this._term) this._term.clearSelection();
+    }
+
+    selectLines(start, end) {
+      if (this._term) this._term.selectLines(start, end);
+    }
+
     resize(cols, rows) {
       this.cols = cols;
       this.rows = rows;

@@ -442,18 +442,6 @@ class TestKeystrokeEchoRealPTY:
     - A shell command is sent and its output is verified
     """
 
-    @pytest.mark.skip(
-        reason=(
-            "Duplicates registry-path coverage that already passes: "
-            "e2e/test_ghostty_dev_terminal.py::TestKeyboardInput::"
-            "test_printable_keys_reach_the_terminal_buffer (that file is 31/31 "
-            "green). Written against the deprecated inline --dev-renderer path "
-            "removed in ADR-0007, and its buffer predicate times out because it "
-            "types before proving the mount owns keyboard focus -- the same "
-            "readiness gap identified in the sibling test. No coverage is lost "
-            "by skipping it; fixing focus readiness belongs with that sibling."
-        )
-    )
     def test_typed_text_appears_in_terminal(self, ghostty_pty_page) -> None:
         """Type a recognisable string and assert it renders in the terminal."""
         page = ghostty_pty_page
@@ -726,18 +714,6 @@ class TestKeystrokeEchoRealPTY:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(
-    reason=(
-        "Registry dev engine has no term.selectAll(). These tests were written "
-        "against the deprecated inline --dev-renderer path, whose UMD bootstrap "
-        "patched window.Terminal with ghostty-web's own Terminal (which had "
-        "selectAll). That path was removed in ADR-0007. The registry adapter "
-        "implements getSelection() (ghostty-adapter-0.4.0.js:827) but not "
-        "selectAll, so these cannot run as written. RECORDED GAP: this is the "
-        "repo's ONLY selection/copy coverage -- test_ghostty_dev_terminal.py has "
-        "none -- so unskipping needs selectAll on the adapter, not a test edit."
-    )
-)
 class TestSelectionCopyRealPTY:
     """B5: With real rendered content present, selection API returns text.
 
