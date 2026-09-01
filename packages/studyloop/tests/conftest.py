@@ -17,11 +17,22 @@ These env vars affect only the test process, never user runtime.
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+
+# conftest.py is loaded BEFORE its own directory is on sys.path -- pytest adds the
+# rootdir while collecting test modules, not while importing the conftest itself --
+# so a sibling import needs this first. Same pattern the test modules already use
+# for _playwright_helpers.
+_TESTS_DIR = str(Path(__file__).resolve().parent)
+if _TESTS_DIR not in sys.path:
+    sys.path.insert(0, _TESTS_DIR)
+
+import _readiness  # noqa: E402
 
 # These MUST be set before any `from studyloop...` import, because
 # ``studyloop.output`` (and CLI submodules) construct a module-level
@@ -254,7 +265,31 @@ E2E_TIMEOUT_SECONDS = 300
 
 
 def pytest_collection_modifyitems(items) -> None:
-    """Grant every e2e-marked test E2E_TIMEOUT_SECONDS unless it sets its own."""
+    """Grant every e2e test its own timeout, and set the readiness scale.
+
+    Both live in one hook because pytest calls a conftest's
+    ``pytest_collection_modifyitems`` by name: a second definition does not run
+    alongside the first, it REPLACES it. Splitting these silently dropped the
+    per-test timeout below, which would have turned a hanging test from a 300s
+    failure into a run that never ends.
+    """
     for item in items:
         if item.get_closest_marker("e2e") and not item.get_closest_marker("timeout"):
             item.add_marker(pytest.mark.timeout(E2E_TIMEOUT_SECONDS))
+
+    _readiness.set_scale_for_run(len(items))
+
+
+# ---------------------------------------------------------------------------
+# Readiness-budget scaling — see _readiness.py for the reasoning
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _scale_playwright_readiness_budgets():
+    """Widen Playwright readiness budgets in proportion to the run's size."""
+    patched = _readiness.install_scaling()
+    try:
+        yield
+    finally:
+        _readiness.remove_scaling(patched)

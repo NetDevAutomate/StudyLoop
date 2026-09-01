@@ -39,6 +39,7 @@ from pathlib import Path
 
 import pytest
 from _helpers import run_async
+from _readiness import scaled_seconds
 
 pytest.importorskip("fastapi")
 
@@ -268,7 +269,12 @@ class TestGraceModule:
         _grace.schedule_release(config.study_session_id, grace=30.0)
         transport.alive = False  # agent exits while nobody is watching
 
-        for _ in range(40):
+        # Deadline, not an iteration count: range(40) with a 0.1s sleep assumes
+        # each turn costs only the sleep, which is exactly what stops being true
+        # on the loaded machine this budget exists for. This test timed out under
+        # the full suite and passed on every isolated re-run.
+        deadline = time.monotonic() + scaled_seconds(4.0)
+        while time.monotonic() < deadline:
             await asyncio.sleep(0.1)
             if await active.current() is None:
                 break
