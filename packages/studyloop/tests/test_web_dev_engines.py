@@ -86,9 +86,9 @@ class TestInjection:
     def test_injects_all_engine_assets(self) -> None:
         html = inject_dev_engine(SAMPLE_HTML, "ghostty")
         for url in (
-            "/vendor/js/ghostty-web-0.4.0.js",
-            "/vendor/js/ghostty-adapter-0.4.0.js",
-            "/vendor/css/ghostty-0.4.0.css",
+            "/vendor/dev/js/ghostty-web-0.4.0.js",
+            "/vendor/dev/js/ghostty-adapter-0.4.0.js",
+            "/vendor/dev/css/ghostty-0.4.0.css",
         ):
             assert url in html, f"{url} not injected"
 
@@ -317,7 +317,7 @@ class TestVendoredBundle:
     def _bundle_text() -> str:
         from studyloop.web.app import STATIC_DIR
 
-        path = STATIC_DIR / "vendor/js/ghostty-web-0.4.0.js"
+        path = STATIC_DIR / "vendor/dev/js/ghostty-web-0.4.0.js"
         return path.read_text(encoding="utf-8", errors="replace")
 
     def test_bundle_is_umd_exposing_a_global(self) -> None:
@@ -342,7 +342,9 @@ class TestVendoredBundle:
         """The adapter keys off the same marker value the server injects."""
         from studyloop.web.app import STATIC_DIR
 
-        adapter = (STATIC_DIR / "vendor/js/ghostty-adapter-0.4.0.js").read_text(encoding="utf-8")
+        adapter = (STATIC_DIR / "vendor/dev/js/ghostty-adapter-0.4.0.js").read_text(
+            encoding="utf-8"
+        )
         assert "studyloop-dev-mode" in adapter
         assert "'ghostty'" in adapter
 
@@ -350,7 +352,7 @@ class TestVendoredBundle:
         """Font propagation depends on these custom properties existing."""
         from studyloop.web.app import STATIC_DIR
 
-        css = (STATIC_DIR / "vendor/css/ghostty-0.4.0.css").read_text(encoding="utf-8")
+        css = (STATIC_DIR / "vendor/dev/css/ghostty-0.4.0.css").read_text(encoding="utf-8")
         assert "--term-font-family" in css
         assert "--term-font-size" in css
         # Re-pointed per reading-font choice and for OpenDyslexic.

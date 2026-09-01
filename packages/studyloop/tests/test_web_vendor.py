@@ -277,42 +277,79 @@ class TestNoServiceWorker:
 
 
 class TestGhosttyWebVendorFilesExist:
-    """Vendor file assertions for ghostty-web 0.4.0 (T3 — ghostty-web renderer)."""
+    """Vendor file assertions for ghostty-web 0.4.0 (dev-only renderer).
 
-    def test_ghostty_web_umd_exists(self):
-        assert (VENDOR_DIR / "js" / "ghostty-web-0.4.0.umd.js").exists()
+    The deprecated inline path (``*.umd.js`` + bootstrap) was removed, and with
+    it the standalone ``ghostty-vt-0.4.0.wasm``: the bootstrap was that file's
+    only runtime consumer, because the registry bundle carries the same wasm
+    inline as a base64 data URL. So there is no separate binary to assert on any
+    more -- the check moved onto the bundle that actually loads.
+    """
 
-    def test_ghostty_web_wasm_exists(self):
-        assert (VENDOR_DIR / "js" / "ghostty-vt-0.4.0.wasm").exists()
+    def test_ghostty_web_bundle_exists(self):
+        assert (VENDOR_DIR / "dev" / "js" / "ghostty-web-0.4.0.js").exists()
 
-    def test_ghostty_web_bootstrap_exists(self):
-        assert (VENDOR_DIR / "js" / "ghostty-web-bootstrap-0.4.0.js").exists()
+    def test_ghostty_adapter_exists(self):
+        assert (VENDOR_DIR / "dev" / "js" / "ghostty-adapter-0.4.0.js").exists()
 
-    def test_ghostty_web_wasm_size(self):
-        """WASM binary should be between 300 KB and 600 KB (sanity check)."""
-        wasm = VENDOR_DIR / "js" / "ghostty-vt-0.4.0.wasm"
-        size = wasm.stat().st_size
-        assert 300_000 < size < 600_000, f"WASM size {size} outside expected range"
+    def test_the_deprecated_inline_path_assets_are_gone(self):
+        """These three went with the inline dev_renderer path.
+
+        Asserted rather than merely deleted, because re-adding any of them would
+        quietly reintroduce ~1 MB of vendored weight and -- for the wasm -- the
+        blanket ``*.wasm`` LFS rule that broke three CI jobs.
+        """
+        for name in (
+            "ghostty-web-0.4.0.umd.js",
+            "ghostty-web-bootstrap-0.4.0.js",
+            "ghostty-vt-0.4.0.wasm",
+        ):
+            assert not (VENDOR_DIR / "js" / name).exists(), (
+                f"{name} belongs to the removed inline dev_renderer path"
+            )
+
+    def test_bundle_embeds_the_wasm_rather_than_fetching_it(self):
+        """The VT parser must travel inside the bundle, not as a second request.
+
+        This is what makes the standalone .wasm unnecessary. If a future bundle
+        drop reverted to an external fetch, dev mode would 404 on a file the repo
+        no longer carries -- so assert the embedding directly.
+        """
+        bundle = VENDOR_DIR / "dev" / "js" / "ghostty-web-0.4.0.js"
+        text = bundle.read_text(errors="replace")
+        assert "data:application/wasm;base64," in text, (
+            "bundle no longer embeds the VT wasm; it would need the standalone "
+            "ghostty-vt-*.wasm restored, which this repo deliberately removed"
+        )
+        # The embedded payload dominates the bundle: a bundle that lost it would
+        # be a fraction of this size.
+        assert bundle.stat().st_size > 400_000, (
+            f"bundle is only {bundle.stat().st_size} bytes; the embedded wasm looks to be missing"
+        )
 
 
-class TestDevRendererInjection:
-    """Verify that create_app injects correct scripts based on dev_renderer."""
+class TestDevEngineInjection:
+    """create_app must inject the registry engine's assets in dev mode."""
 
-    def _get_index_html(self, dev_mode: bool, dev_renderer: str | None = None) -> str:
+    def _get_index_html(self, dev_mode: bool) -> str:
         from fastapi.testclient import TestClient
 
         from studyloop.web.app import create_app
 
-        app = create_app(dev_mode=dev_mode, dev_renderer=dev_renderer)
+        app = create_app(dev_mode=dev_mode)
         client = TestClient(app)
         resp = client.get("/")
         return resp.text
 
-    def test_ghostty_renderer_injects_ghostty_scripts(self):
-        html = self._get_index_html(dev_mode=True, dev_renderer="ghostty")
-        assert 'content="ghostty-web"' in html
-        assert "ghostty-web-0.4.0.umd.js" in html
-        assert "ghostty-web-bootstrap-0.4.0.js" in html
+    def test_dev_mode_injects_the_registry_engine_assets(self):
+        html = self._get_index_html(dev_mode=True)
+        assert 'content="ghostty"' in html
+        assert "ghostty-web-0.4.0.js" in html
+        assert "ghostty-adapter-0.4.0.js" in html
+        # The removed inline path's markup must not come back.
+        assert 'content="ghostty-web"' not in html
+        assert "ghostty-web-0.4.0.umd.js" not in html
+        assert "ghostty-web-bootstrap-0.4.0.js" not in html
         # Must NOT have wterm scripts
         assert "wterm-0.3.0.js" not in html
         assert "wterm-adapter" not in html

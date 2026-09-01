@@ -42,19 +42,12 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
     default=False,
     help="Developer experiment mode: swap xterm.js for an alternative renderer.",
 )
-@click.option(
-    "--dev-renderer",
-    type=click.Choice(["ghostty"], case_sensitive=False),
-    default=None,
-    help="Select the dev-mode renderer (default: ghostty). Implies --dev.",
-)
 def web(
     port: int,
     lan: bool,
     password: str,
     ttyd_port: int,
     dev: bool,
-    dev_renderer: str | None,
 ) -> None:
     """Launch the study PWA in your browser.
 
@@ -119,22 +112,11 @@ def web(
 
     from studyloop.web.app import create_app
 
-    # --dev-renderer implies --dev
-    if dev_renderer is not None:
-        dev = True
-
-    # Bare `--dev` must go through the dev_engines REGISTRY, not the deprecated
-    # `dev_renderer` inline path. Defaulting dev_renderer to "ghostty" here (as
-    # this did) forced every plain `--dev` down the legacy branch, which injects
-    # materially different markup: content="ghostty-web" plus the
-    # *.umd.js/bootstrap pair, instead of content="ghostty" plus
-    # ghostty-web-0.4.0.js + ghostty-adapter-0.4.0.js. app.py's own comment
-    # states the intent — "Every other dev_mode=True call — including the new
-    # default — goes through the dev_engines registry below" — but this default
-    # defeated it, so the registry path was unreachable from the CLI and the
-    # adapter, window.GhosttyWeb and __studyloopGhostty were never loaded.
-    # dev_renderer now stays None unless the user explicitly asked for it.
-    dev_engine = "ghostty" if dev and dev_renderer is None else None
+    # `--dev` goes through the dev_engines REGISTRY. The deprecated
+    # `--dev-renderer` inline path that used to sit alongside it is gone: it
+    # injected different markup and shipped a duplicate 624 KB bundle plus the
+    # only runtime consumer of the standalone ghostty-vt wasm.
+    dev_engine = "ghostty" if dev else None
 
     if dev:
         # One engine since wterm was removed, so no branch is needed. Kept as a
@@ -150,7 +132,6 @@ def web(
         username=username,
         password=password,
         dev_mode=dev,
-        dev_renderer=dev_renderer,
         dev_engine=dev_engine,
     )
     access_info = build_web_access_info(
