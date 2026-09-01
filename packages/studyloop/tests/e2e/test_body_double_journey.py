@@ -1059,3 +1059,93 @@ def test_phase9_everything_survives_a_reload(page: Page, bd_env: RunningServer) 
     except Exception:
         _diag(page, "phase9")
         raise
+
+
+# ---------------------------------------------------------------------------
+# Phase 10 — the park form's own contract, independent of the phase sequence
+# ---------------------------------------------------------------------------
+
+
+def test_phase10_park_form_survives_a_draft_typed_while_a_save_is_in_flight(
+    page: Page, bd_env: RunningServer
+) -> None:
+    """A tangent typed while the previous park is saving must not be discarded.
+
+    submitPark() used to clear parkQuestion unconditionally in its success path,
+    which loses a race against a fast learner: submit A, start typing B, A's
+    response lands and wipes B. The next submit then sends an empty question,
+    and ParkingCreate.question is Field(min_length=1), so the server answers 422
+    and the UI blames the network for a validation rule. That 422 is what
+    surfaced in CI as a console error in phase9.
+    """
+    try:
+        _open_body_double(page, bd_env)
+        before = _api(page, "/api/backlog")
+        total = before["active_count"] + before["parking_lot_count"]
+
+        page.locator("#bd-tab-park").click()
+        page.wait_for_selector("#bd-park-form", state="visible", timeout=5_000)
+
+        # Submit one, then immediately type the next WITHOUT waiting for the
+        # first to finish -- the whole point is to be mid-flight.
+        page.locator("#bd-park-question").fill("Race first tangent")
+        page.locator("#bd-park-submit").click()
+        page.locator("#bd-park-question").fill("Race second tangent")
+
+        # Let the first save complete server-side.
+        page.wait_for_function(
+            """async (want) => {
+                const r = await fetch('/api/backlog');
+                if (!r.ok) return false;
+                const b = await r.json();
+                return (b.active_count + b.parking_lot_count) >= want;
+            }""",
+            arg=total + 1,
+            timeout=15_000,
+        )
+
+        # The draft must still be there. Before the fix this was '' and the next
+        # submit was a guaranteed 422.
+        assert page.locator("#bd-park-question").input_value() == "Race second tangent", (
+            "a draft typed while the previous park was saving was discarded"
+        )
+    except Exception:
+        _diag(page, "phase10_race")
+        raise
+
+
+def test_phase10b_empty_park_is_refused_without_a_request(
+    page: Page, bd_env: RunningServer
+) -> None:
+    """An empty park must not be sent. The server would reject it anyway.
+
+    ParkingCreate.question is Field(min_length=1), so posting an empty question
+    can only ever be a 422. Spending a request on it puts a console error in the
+    log and shows the learner 'Could not park - try again', which points at the
+    network for what is really an empty field.
+    """
+    try:
+        _open_body_double(page, bd_env)
+        before = _api(page, "/api/backlog")
+        total = before["active_count"] + before["parking_lot_count"]
+
+        requests: list[str] = []
+        page.on(
+            "request",
+            lambda r: requests.append(r.url) if "/api/parking/item" in r.url else None,
+        )
+
+        page.locator("#bd-tab-park").click()
+        page.wait_for_selector("#bd-park-form", state="visible", timeout=5_000)
+        page.locator("#bd-park-question").fill("")
+        page.locator("#bd-park-submit").click()
+        page.wait_for_timeout(500)
+
+        assert requests == [], f"an empty park was still sent: {requests}"
+        after = _api(page, "/api/backlog")
+        assert after["active_count"] + after["parking_lot_count"] == total, (
+            "an empty park changed server state"
+        )
+    except Exception:
+        _diag(page, "phase10b_empty")
+        raise
