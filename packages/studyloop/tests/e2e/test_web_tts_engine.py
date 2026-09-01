@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e]
 
-WEB_PORT = 18614  # unique port; sister e2e suites use 18568-18613
+WEB_PORT = 18591  # uniqueness enforced by tests/test_port_uniqueness.py
 
 web_server = web_server_fixture_factory(WEB_PORT)
 auth_context = auth_context_fixture_factory()

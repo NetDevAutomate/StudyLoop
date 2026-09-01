@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e]
 
-WEB_PORT = 18580  # unique port to avoid clashes with sister e2e suites
+WEB_PORT = 18586  # unique port to avoid clashes with sister e2e suites
 
 
 # ---------------------------------------------------------------------------

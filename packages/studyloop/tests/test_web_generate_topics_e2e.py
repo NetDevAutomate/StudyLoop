@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e]
 
-WEB_PORT = 18581  # unique port; test_web_content_gen_e2e.py uses 18580
+WEB_PORT = 18587  # uniqueness enforced by tests/test_port_uniqueness.py
 
 _PUBLISHER = "DataCamp"
 _COURSE = "Intro_To_Pandas"
