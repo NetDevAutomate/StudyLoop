@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from .db import connect_db
+from .db import connect_db, immediate
 from .settings import get_db_path
 
 # SM-2 simplified intervals: correct → double interval, wrong → reset to 1
@@ -86,14 +86,30 @@ def record_card_review(
     path = db_path or _get_db()
     ensure_tables(path)
 
-    with _connect(path) as conn:
+    with _connect(path) as conn, immediate(conn):
+        # The prior schedule is what the next one is derived from, so the read and
+        # the insert must hold the write lock together. Otherwise concurrent
+        # reviews of the same card read the same predecessor and -- the SM-2 step
+        # being deterministic given (ease, interval, correct) -- all write the same
+        # successor. Every row persists, so the count looks right while the
+        # progression silently stalls.
+
+        # Stamped INSIDE the transaction on purpose. Taken before it, threads
+        # acquire the write lock in a different order than they read the
+        # clock, so a review could insert a row that sorts BELOW one already
+        # committed -- making its own update invisible to the next reader,
+        # which then derived from the same predecessor again. Serialising the
+        # transaction alone did not fix that; the ordering key had to become
+        # monotonic too.
         now = datetime.now(UTC).isoformat()
 
-        # Get previous review for this card
+        # `id DESC` breaks ties: two reviews inside the same clock tick would
+        # otherwise leave "the latest review" ambiguous, and SQLite free to
+        # return either.
         row = conn.execute(
             "SELECT ease_factor, interval_days FROM card_reviews "
             "WHERE course = ? AND card_hash = ? "
-            "ORDER BY reviewed_at DESC LIMIT 1",
+            "ORDER BY reviewed_at DESC, id DESC LIMIT 1",
             (course, card_hash),
         ).fetchone()
 
