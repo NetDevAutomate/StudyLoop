@@ -24,27 +24,52 @@ from studyloop.session.child_env import (
 
 
 class TestScrubbing:
-    def test_credential_shaped_keys_are_removed(self) -> None:
-        env = {
-            "AWS_SESSION_TOKEN": "t",
-            "GITHUB_TOKEN": "t",
-            "MY_PASSWORD": "p",
-            "CLIENT_SECRET": "s",
-            "OPENAI_API_KEY": "k",
-            "AWS_SECRET_ACCESS_KEY": "k",
-            "PATH": "/usr/bin",
-            "HOME": "/home/x",
-        }
+    #: Credential names taken from tools this project actually integrates with,
+    #: not invented shapes. Every one of these must be stripped.
+    MUST_STRIP = (
+        # Ends in a credential word — caught by the suffix rule.
+        "AWS_SECRET_ACCESS_KEY",
+        "OPENAI_API_KEY",
+        "GITHUB_TOKEN",
+        "ANTHROPIC_AUTH_TOKEN",
+        "LITELLM_API_KEY",
+        "MY_PASSWORD",
+        "CLIENT_SECRET",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        # Credential word MID-name — these defeated the suffix-only rule.
+        # AWS_BEARER_TOKEN_BEDROCK is not hypothetical: it is the credential this
+        # project's own Bedrock generators use on their profile-less fast path,
+        # and it reached the agent child until the segment rule was added.
+        "AWS_BEARER_TOKEN_BEDROCK",
+        "AZURE_CLIENT_SECRET_ID",
+        "GCP_PRIVATE_KEY_ID",
+        "SOME_ACCESS_TOKEN_V2",
+        # Innocent shape, dangerous value.
+        "DATABASE_URL",
+    )
+
+    #: Ordinary environment that MUST survive. Keep-controls matter as much as the
+    #: strip list: a scrubber that removed these would break agents for reasons
+    #: nobody can see, which is how protections get switched off.
+    MUST_KEEP = (
+        "PATH",
+        "HOME",
+        "LANG",
+        "TERM",
+        "XDG_CONFIG_HOME",
+        "HTTPS_PROXY",
+        "TOKENIZERS_PARALLELISM",
+        "TOKEN_BUDGET_HINT",
+        "AWS_REGION",
+        "AWS_PROFILE",
+        "EDITOR",
+    )
+
+    def test_every_known_credential_shape_is_removed(self) -> None:
+        env = dict.fromkeys(self.MUST_STRIP, "sensitive")
         clean = build_child_env(env)
-        for leaked in (
-            "AWS_SESSION_TOKEN",
-            "GITHUB_TOKEN",
-            "MY_PASSWORD",
-            "CLIENT_SECRET",
-            "OPENAI_API_KEY",
-            "AWS_SECRET_ACCESS_KEY",
-        ):
-            assert leaked not in clean, f"{leaked} reached the child"
+        leaked = sorted(k for k in self.MUST_STRIP if k in clean)
+        assert leaked == [], f"these credentials reached the agent child: {leaked}"
 
     def test_ordinary_environment_survives(self) -> None:
         """Deny-list, not allow-list.
@@ -53,25 +78,23 @@ class TestScrubbing:
         configuration, and every breakage would be reported as 'the agent does
         not work' long after the cause was forgotten.
         """
-        env = {
-            "PATH": "/usr/bin",
-            "HOME": "/home/x",
-            "LANG": "en_GB.UTF-8",
-            "XDG_CONFIG_HOME": "/home/x/.config",
-            "HTTPS_PROXY": "http://proxy:3128",
-            "TERM": "xterm-256color",
-        }
+        env = dict.fromkeys(self.MUST_KEEP, "fine")
         assert build_child_env(env) == env
+
+    def test_the_two_lists_do_not_overlap(self) -> None:
+        """Guards the test itself: a name in both lists makes one assertion a lie."""
+        assert not (set(self.MUST_STRIP) & set(self.MUST_KEEP))
 
     def test_named_keys_are_removed_regardless_of_shape(self) -> None:
         env = {"STUDYLOOP_TEST_AGENT_CMD": "fake", "STUDYLOOP_CONFIG": "/tmp/c.yaml"}
         assert build_child_env(env) == {}
 
     def test_a_name_merely_containing_token_is_kept(self) -> None:
-        """The pattern is anchored, so it does not sweep up innocent names.
+        """The rules work on underscore segments, so innocent names survive.
 
-        Over-broad scrubbing is its own failure: it breaks agents for reasons
-        nobody can see, which trains people to disable the protection.
+        TOKENIZERS_PARALLELISM splits to TOKENIZERS + PARALLELISM, neither of
+        which is TOKEN. Over-broad scrubbing is its own failure: it breaks agents
+        invisibly, which trains people to disable the protection.
         """
         env = {"TOKENIZERS_PARALLELISM": "false", "TOKEN_BUDGET_HINT": "8000"}
         assert build_child_env(env) == env

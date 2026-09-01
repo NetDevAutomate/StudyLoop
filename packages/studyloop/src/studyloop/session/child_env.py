@@ -30,19 +30,46 @@ import re
 #: fake agent; a real child inheriting it could re-enter the harness path.
 #: STUDYLOOP_CONFIG would point the child at the parent's config, including its
 #: configured paths.
+#: DATABASE_URL is named explicitly because its SHAPE is innocent while its VALUE
+#: routinely embeds a password (postgres://user:pw@host/db). No pattern over key
+#: names can catch that, and an agent child has no business holding the app's
+#: database credentials.
 CHILD_ENV_DENY: frozenset[str] = frozenset(
     {
         "STUDYLOOP_TEST_AGENT_CMD",
         "STUDYLOOP_CONFIG",
+        "DATABASE_URL",
     }
 )
 
-#: Suffix match on the shape credentials are conventionally named.
+#: Suffix match, for names that END in a credential word.
 #:
-#: Anchored at the end so AWS_SECRET_ACCESS_KEY-style names are caught by the
-#: KEY-bearing rule below rather than by accident, and so a legitimate name like
-#: TOKENIZERS_PARALLELISM is not swept up -- it does not END in 'token'.
-CHILD_ENV_DENY_PAT = re.compile(r"(?i)(password|secret|token|api_key|access_key)$")
+#: Anchored so an innocent name is not swept up: TOKENIZERS_PARALLELISM does not
+#: end in 'token', and TOKEN_BUDGET_HINT names a budget rather than a secret.
+#: Over-broad scrubbing is its own failure mode -- it breaks agents for reasons
+#: nobody can see, which trains people to disable the protection.
+CHILD_ENV_DENY_PAT = re.compile(
+    r"(?i)(password|passwd|secret|token|api_key|access_key|credentials|private_key)$"
+)
+
+#: Segment match, for credential words that appear MID-NAME.
+#:
+#: The suffix rule alone was not enough, and the gap was not hypothetical:
+#: AWS_BEARER_TOKEN_BEDROCK is the credential this project's own Bedrock
+#: generators use on their profile-less fast path, and it ends in BEDROCK, so a
+#: suffix-only rule handed it straight to the agent child. GOOGLE_APPLICATION_-
+#: CREDENTIALS and AZURE_CLIENT_SECRET_ID have the same shape.
+#:
+#: Matched on underscore-delimited segments rather than as bare substrings, which
+#: is what keeps TOKENIZERS_PARALLELISM: its segments are TOKENIZERS and
+#: PARALLELISM, neither of which is TOKEN.
+CHILD_ENV_DENY_SEGMENT_PAT = re.compile(
+    r"(?i)(^|_)("
+    r"bearer_token|auth_token|access_token|refresh_token|id_token"
+    r"|api_key|access_key|secret_key|private_key|client_secret"
+    r"|secret|password|passwd|credentials"
+    r")(_|$)"
+)
 
 
 def build_child_env(caller_env: dict[str, str] | None = None) -> dict[str, str]:
@@ -57,6 +84,8 @@ def build_child_env(caller_env: dict[str, str] | None = None) -> dict[str, str]:
         if key in CHILD_ENV_DENY:
             continue
         if CHILD_ENV_DENY_PAT.search(key):
+            continue
+        if CHILD_ENV_DENY_SEGMENT_PAT.search(key):
             continue
         clean[key] = value
     return clean
