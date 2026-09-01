@@ -21,7 +21,6 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_representative_user_
 
 from __future__ import annotations
 
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -66,16 +65,30 @@ def _diag(page: Page | None, name: str) -> None:
 
 
 @pytest.fixture(scope="module")
-def running_server():
-    """Real subprocess server (main thread owns the loop → SIGCHLD works)."""
-    # Index real course content so the picker has data to hydrate.
-    subprocess.run(
-        ["uv", "run", "studyloop", "content", "index", "--force"],
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    proc = start_web_server(WEB_PORT)
+def running_server(tmp_path_factory: pytest.TempPathFactory):
+    """Real subprocess server (main thread owns the loop → SIGCHLD works).
+
+    Seeds its own course vault. This used to run ``studyloop content index
+    --force`` against the real environment and then start the server with no
+    env, so the picker's vendor list was read from the DEVELOPER'S
+    ``~/Obsidian/Personal/Study`` -- the vendor select is filesystem-backed
+    (``_options.py:_vendor_options`` -> ``_study_roots``), and ``study_paths``
+    defaults to ``Path.home()/"Obsidian"/...`` (``settings.py:167``). The test
+    therefore asserted on personal machine state as if it were fixture data and
+    failed on any host without that vault, CI included.
+    """
+    # Vendors are visible child directories of a study root; a ``Courses/``
+    # level is honoured when present but must not be invented, or ``Courses``
+    # itself surfaces as a bogus vendor (``_options.py:_courses_roots``).
+    # Two vendors, so the assertion still holds if one were ever excluded as a
+    # configured topic dir.
+    root = tmp_path_factory.mktemp("picker-vault")
+    for vendor in ("StudyLoopTest", "SecondVendor"):
+        (root / vendor / "Python_Deep_Dive" / "study-notes").mkdir(parents=True)
+    config = root / "studyloop-e2e-config.yaml"
+    config.write_text(f"content:\n  base_path: {root}\n  study_paths:\n    - {root}\n")
+
+    proc = start_web_server(WEB_PORT, extra_env={"STUDYLOOP_CONFIG": str(config)})
     try:
         yield f"http://127.0.0.1:{WEB_PORT}"
     finally:

@@ -65,17 +65,31 @@ web_page = web_page_fixture_factory("web_server", "auth_context")
 # Headless Chromium ships no system voices at all, so the "Apple voices leak
 # into the picker" defect is invisible unless we supply some. This stubs
 # speechSynthesis with a macOS-shaped voice list BEFORE any app script runs.
+#
+# Installed with defineProperty, NOT assignment. Window.speechSynthesis is a
+# read-only WebIDL attribute, so `window.speechSynthesis = {...}` is a silent
+# no-op and the page kept reading the HOST's real voice list. That passed on
+# macOS purely because its default en-US voice is named Samantha, and failed on
+# a Linux runner with no voices at all. Worse, it left the three tests that
+# assert Apple voices are ABSENT passing vacuously against an empty list -- they
+# would have kept passing if the original defect were reintroduced. Same reason
+# the engine stub below is an accessor.
 _APPLE_VOICES = """
 window.__appleVoiceNames = ['Samantha', 'Daniel', 'Karen'];
 const __voices = window.__appleVoiceNames.map((name) => ({
   name, lang: 'en-US', localService: true, default: name === 'Samantha',
 }));
-window.speechSynthesis = {
+const __synth = {
   getVoices: () => __voices,
   speak() {},
   cancel() {},
   onvoiceschanged: null,
 };
+Object.defineProperty(window, 'speechSynthesis', {
+  get: () => __synth,
+  set: () => {},
+  configurable: true,
+});
 window.SpeechSynthesisUtterance = function (text) { this.text = text; };
 """
 

@@ -734,6 +734,26 @@ class TestU2ChatPanelMount:
             f"expected terminalMode='acp-chat', got {terminal_mode!r}"
         )
 
+        # Alpine applies a hide synchronously but defers a REVEAL: x-show's
+        # once(first, subsequent) sends later toggles through
+        # _x_toggleAndCascadeWithTransitions, which lands on a later frame.
+        # terminalMode is set synchronously, so asserting it above proves the
+        # transport initialised but NOT that the frame clearing display:none has
+        # been produced. Reading the style one CDP round-trip later caught the
+        # reveal mid-flight on a frame-starved runner: xterm already hidden, chat
+        # not yet shown, so both looked hidden and the failure read as "the
+        # transport never started". Wait on the reveal itself.
+        #
+        # Not wait_for_selector(state="visible"): that requires a non-empty
+        # bounding box, which this panel need not have yet.
+        acp_page.wait_for_function(
+            """() => {
+              const chat = document.querySelector('.acp-chat-panel');
+              return !!chat && chat.style.display !== 'none';
+            }""",
+            timeout=5000,
+        )
+
         # Check Alpine x-show binding: the panel whose x-show evaluates
         # true must be .acp-chat-panel; .xterm-panel must be hidden.
         # We read the inline style that Alpine writes (display:none = hidden).
