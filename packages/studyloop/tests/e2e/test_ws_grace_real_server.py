@@ -217,15 +217,21 @@ class TestGraceAgainstARealAgent:
         session_id = _start(server, "WS Grace Survives")
         with server.ws(session_id) as ws:
             _read_until(ws, BANNER)
-        new_pids = _agent_pids() - before
-        assert len(new_pids) == 1, f"expected one agent child, got {new_pids}"
-        agent_pid = next(iter(new_pids))
+        started = _agent_pids() - before
+        assert started, "no agent child was started"
+        # Deliberately not `len(started) == 1`. Every PTY launch is wrapped in
+        # /bin/sh -c (_transport.py:69) and _agent_pids() greps the process
+        # table, so the wrapper's own argv matches the pattern too. Whether that
+        # wrapper survives is shell-specific: macOS /bin/sh is bash, which execs
+        # over itself and leaves one process; Ubuntu's is dash, which forks and
+        # waits, leaving two. Measured on both. The claim this test makes is that
+        # a plain WS close kills nothing -- survival, not arithmetic.
 
         time.sleep(1.0)  # well inside the window, well past the old 0.4 s death
         assert server.state().get("study_session_id") == session_id, (
             "the session was destroyed by a plain WS close"
         )
-        assert agent_pid in _agent_pids(), "the agent child was killed by a plain WS close"
+        assert started <= _agent_pids(), "an agent process was killed by a plain WS close"
 
     def test_reattach_inside_the_window_talks_to_the_same_agent(self, server: Server) -> None:
         """Case 2 + case 9's server half: same process, still answering.

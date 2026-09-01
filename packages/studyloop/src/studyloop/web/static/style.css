@@ -483,13 +483,31 @@ main {
     overflow-x: auto;
     overflow-y: hidden;
   }
+  /* Desktop-only furniture leaves the bar. Kept in, 12 tabs share 375px minus
+     a fixed brand and a growing spacer, so each lands ~20px wide while a
+     label's shortest word needs ~40px at 0.7rem. The labels then overflow
+     their own tab and cover the neighbour, swallowing taps aimed at it -- a
+     Playwright click on the Courses tab was intercepted by the adjacent
+     "Parking Lot" span. */
+  .sidebar-brand,
+  .sidebar-divider,
+  .sidebar-spacer {
+    display: none;
+  }
   .sidebar-btn {
     flex-direction: column;
     gap: 2px;
     padding: 6px 8px;
     font-size: 0.7rem;
-    min-width: 0;
-    flex: 1;
+    /* The base rule sets width: 100%, right for the desktop vertical sidebar
+       but full-bar-width in a horizontal bar. The old `flex: 1; min-width: 0`
+       countered that by forcing flex-basis to 0, which let each tab shrink to
+       ~21px -- narrower than its own label, so labels overflowed their tab and
+       covered the neighbour, swallowing its taps. Size to content instead and
+       let the bar scroll (overflow-x: auto above). */
+    width: auto;
+    flex: 0 0 auto;
+    min-width: 64px;
     text-align: center;
     justify-content: center;
   }
@@ -501,6 +519,14 @@ main {
   }
   .content-area {
     order: 1;
+  }
+  /* The tab bar now owns the bottom of the viewport. A viewport-fixed FAB at
+     bottom: 20px sits ON the bar, and at z-index 90 against the bar's auto it
+     wins the hit test for every tap aimed at a tab beneath it -- which is the
+     other half of why clicking Courses was intercepted. Lift it clear of the
+     bar (~56px of stacked icon + label + padding, plus the bar's own 4px). */
+  .quick-park-btn {
+    bottom: 76px;
   }
 }
 

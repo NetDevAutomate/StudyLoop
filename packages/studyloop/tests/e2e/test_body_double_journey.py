@@ -567,6 +567,20 @@ def test_phase5_notes_are_structured_markdown_and_preview_renders(
             page, kind="plan", title="Plan: own the decorator story", body=PLAN_NOTE, confidence=2
         )
 
+        # Wait for the server to hold both notes before reading. The save chip
+        # cannot carry this: saveNote() sets noteSaved = true, then clears and
+        # re-arms a 1500ms reset timer (components.js:3406-3408), and
+        # #bd-note-saved is x-show so it never leaves the DOM. So the
+        # wait_for_selector(state="visible") inside the second _write_note is
+        # satisfied by the FIRST save's chip, still showing, and the read below
+        # then races the second POST. The write itself is durable once it returns
+        # -- add_note commits before responding -- so polling the count is the
+        # honest signal. test_phase8 already polls a count for this reason.
+        page.wait_for_function(
+            "async () => (await (await fetch('/api/notes')).json()).active_total === 2",
+            timeout=10_000,
+        )
+
         notes = _api(page, "/api/notes")
         assert notes["active_total"] == 2
         by_title = {n["title"]: n for n in notes["notes"]}
