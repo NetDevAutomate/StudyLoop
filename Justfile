@@ -36,6 +36,21 @@ test-web:
 test-browser-smoke:
     uv run --group dev pytest packages/studyloop/tests/test_web_smoke_browser.py -m e2e -q
 
+# The FULL browser suite (~500 tests, ~8 min). Until this target existed the
+# only -m e2e invocation in this file was the single smoke file above, so the
+# other 39 e2e files ran in no gate at all -- the same blind spot ci.yml already
+# names for the browser-side unit tests.
+#
+# STUDYLOOP_E2E_TIMEOUT_SCALE is cleared rather than passed through, so this
+# target is the release configuration BY CONSTRUCTION and cannot accidentally
+# report a widened run as a gate result. To diagnose a flake on a loaded
+# machine, call pytest directly with the variable set; the run then labels
+# itself in both its header and its summary.
+
+# Full browser e2e suite, unscaled (~8 min)
+e2e:
+    STUDYLOOP_E2E_TIMEOUT_SCALE= uv run --group dev pytest -m e2e
+
 # Browser-side unit tests. Pass the GLOB, not the directory — `node --test <dir>`
 # discovers nothing here. The repo-local package.json declares the ESM type so
 # Node does not walk up out of the repository looking for one.
