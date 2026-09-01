@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e]
 
-PORT = 18613
+PORT = 18589
 
 
 @pytest.fixture(scope="module")

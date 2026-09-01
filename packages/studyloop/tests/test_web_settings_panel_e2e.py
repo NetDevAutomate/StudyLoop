@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e]
 
-WEB_PORT = 18583
+WEB_PORT = 18588
 
 
 # Provider list spanning all three auth kinds, with mixed availability.
